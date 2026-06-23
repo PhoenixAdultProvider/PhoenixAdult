@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Provider Dev UI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
+    h2 { font-size: 0.8rem; font-weight: 600; color: #64748b; margin: 1.5rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .card { background: #1e2433; border: 1px solid #2d3748; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+    label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.4rem; }
+    input[type=text] { width: 100%; padding: 0.6rem 0.75rem; background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; color: #e2e8f0; font-size: 0.95rem; outline: none; }
+    input[type=text]:focus { border-color: #6366f1; }
+    .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 200px; }
+    button { padding: 0.6rem 1.25rem; background: #6366f1; color: white; border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; white-space: nowrap; }
+    button:hover { background: #4f46e5; }
+    button:disabled { background: #374151; cursor: not-allowed; color: #6b7280; }
+    .examples { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .example-btn { background: none; border: 1px solid #2d3748; border-radius: 4px; color: #94a3b8; font-size: 0.75rem; padding: 0.2rem 0.5rem; cursor: pointer; }
+    .example-btn:hover { border-color: #6366f1; color: #a5b4fc; background: none; }
+    code { background: #0f1117; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: #7dd3fc; }
+
+    .step { border: 1px solid #2d3748; border-radius: 8px; overflow: hidden; margin-bottom: 0.6rem; }
+    .step-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; background: #1a2035; }
+    .step-header:hover { background: #202840; }
+    .badge { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.45rem; border-radius: 4px; }
+    .ok   { background: #064e3b; color: #6ee7b7; }
+    .fail { background: #7f1d1d; color: #fca5a5; }
+    .step-title { font-weight: 600; flex: 1; font-size: 0.9rem; }
+    .step-duration { font-size: 0.75rem; color: #64748b; }
+    .step-body { padding: 0.75rem 1rem; border-top: 1px solid #2d3748; display: none; }
+    .step-body.open { display: block; }
+
+    .captures-section { margin-top: 0.75rem; }
+    .captures-label   { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .capture          { border: 1px solid #2d3748; border-radius: 6px; overflow: hidden; margin-bottom: 0.4rem; background: #0f1117; }
+    .capture-header   { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.65rem; user-select: none; background: #161c2c; }
+    .capture-header > .badge,
+    .capture-header > .capture-label { cursor: pointer; }
+    .capture-header:hover { background: #1a2138; }
+    .capture-label    { flex: 1; font-size: 0.78rem; color: #cbd5e1; word-break: break-all; }
+    .capture-url      { color: #93c5fd; text-decoration: none; }
+    .capture-url:hover { color: #bfdbfe; text-decoration: underline; }
+    .copy-btn {
+      padding: 0.18rem 0.5rem; font-size: 0.7rem; font-weight: 600;
+      color: #cbd5e1; background: #1f2937; border: 1px solid #2d3748;
+      border-radius: 4px; cursor: pointer; transition: background 0.12s, color 0.12s;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover  { background: #2d3748; color: #f8fafc; }
+    .copy-btn.copied { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+    .capture-size     { font-size: 0.7rem; color: #64748b; }
+    .capture-body     { display: none; }
+    .capture-body.open { display: block; }
+    .capture-body pre { margin: 0; border: 0; border-radius: 0; max-height: 500px; }
+    .badge.json { background: #064e3b; color: #6ee7b7; }
+    .badge.html { background: #5b21b6; color: #ddd6fe; }
+    .step-error { color: #f87171; font-size: 0.85rem; margin-bottom: 0.5rem; }
+    pre { background: #0a0d14; border: 1px solid #2d3748; border-radius: 6px; padding: 0.75rem; font-size: 0.75rem; overflow-x: auto; color: #a5f3fc; white-space: pre-wrap; word-break: break-word; max-height: 400px; overflow-y: auto; }
+
+    .log-box { padding: 0.5rem 0.75rem; max-height: 320px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .log-line { font-size: 0.72rem; line-height: 1.5; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; border-bottom: 1px solid #161c2c; padding: 0.1rem 0; }
+    .log-line:last-child { border-bottom: 0; }
+    .log-level { display: inline-block; min-width: 3.2rem; font-weight: 700; text-transform: uppercase; font-size: 0.62rem; margin-right: 0.5rem; }
+    .log-info  .log-level { color: #6ee7b7; }
+    .log-warn  .log-level { color: #fcd34d; }
+    .log-warn  { color: #fde68a; }
+    .log-error .log-level { color: #fca5a5; }
+    .log-error { color: #fecaca; }
+    .log-debug .log-level { color: #64748b; }
+    .log-debug { color: #94a3b8; }
+
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
+    .result-card { background: #0f1117; border: 2px solid #2d3748; border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+    .result-card:hover { border-color: #6366f1; transform: translateY(-2px); }
+    .result-card.selected { border-color: #6366f1; box-shadow: 0 0 0 2px #6366f140; }
+    .result-card.loading { opacity: 0.6; pointer-events: none; }
+    .result-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #1a2035; display: block; }
+    .result-thumb-placeholder { width: 100%; aspect-ratio: 16/9; background: #1a2035; display: flex; align-items: center; justify-content: center; color: #4b5563; font-size: 1.5rem; }
+    .result-info { padding: 0.5rem; }
+    .result-title { font-size: 0.75rem; font-weight: 600; color: #e2e8f0; line-height: 1.3; margin-bottom: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .result-score { font-size: 0.7rem; color: #64748b; }
+    .result-score span { color: #6ee7b7; font-weight: 600; }
+
+    #meta-panel { display: none; }
+    .meta-layout { display: grid; grid-template-columns: 180px 1fr; gap: 1.25rem; align-items: start; }
+    .meta-poster { width: 100%; border-radius: 6px; border: 1px solid #2d3748; }
+    .meta-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: #1a2035; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #4b5563; font-size: 2rem; }
+    .meta-field { margin-bottom: 0.6rem; }
+    .meta-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
+    .meta-value { font-size: 0.9rem; color: #e2e8f0; }
+    .meta-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .meta-tag { background: #1e2433; border: 1px solid #374151; border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.75rem; color: #94a3b8; }
+    .actor-cards { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .actor-card { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 84px; }
+    .actor-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #1a2035; }
+    .actor-avatar-ph { width: 64px; height: 64px; border-radius: 50%; background: #1a2035; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: #4b5563; }
+    .actor-name { font-size: 0.72rem; text-align: center; color: #e2e8f0; line-height: 1.2; word-break: break-word; }
+    .actor-name span { opacity: 0.6; font-size: 0.65rem; }
+    .image-strip { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 0.5rem; }
+    .image-strip img { height: 80px; border-radius: 4px; border: 1px solid #2d3748; flex-shrink: 0; cursor: pointer; }
+    .image-strip img:hover { border-color: #6366f1; }
+
+    .art-bg { position: fixed; inset: 0; z-index: -1; opacity: 0.08; background-size: cover; background-position: center; pointer-events: none; transition: background-image 0.5s; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { text-align: left; padding: 0.5rem 0.75rem; color: #64748b; font-weight: 600; border-bottom: 1px solid #2d3748; }
+    td { padding: 0.45rem 0.75rem; border-bottom: 1px solid #1a2035; vertical-align: top; }
+    td:first-child { font-weight: 600; color: #a5b4fc; }
+
+    tr.group-row td:first-child { color: #c4b5fd; }
+    .group-badge { display: inline-block; padding: 0.1rem 0.4rem; margin-left: 0.4rem;
+                   font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+                   color: #c7d2fe; background: #312e81; border-radius: 999px;
+                   text-transform: uppercase; }
+    details > summary { cursor: pointer; color: #94a3b8; font-size: 0.75rem;
+                        user-select: none; padding: 0.1rem 0; }
+    details > summary:hover { color: #cbd5e1; }
+    details[open] > summary { color: #a5b4fc; margin-bottom: 0.3rem; }
+    .alias-list  { display: flex; flex-wrap: wrap; gap: 0.25rem; padding-top: 0.2rem; }
+    .alias-chip  { display: inline-block; padding: 0.12rem 0.45rem; font-size: 0.7rem;
+                   color: #cbd5e1; background: #1e2433; border: 1px solid #374151;
+                   border-radius: 4px; white-space: nowrap; }
+    table.sites-table { table-layout: fixed; }
+    table.sites-table td { overflow-wrap: anywhere; }
+    table.sites-table th:nth-child(1), table.sites-table td:nth-child(1) { width: 20%; }
+    table.sites-table th:nth-child(2), table.sites-table td:nth-child(2) { width: 16%; }
+    table.sites-table th:nth-child(3), table.sites-table td:nth-child(3) { width: 18%; }
+    table.sites-table th:nth-child(4), table.sites-table td:nth-child(4) { width: 46%; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #374151; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="art-bg" id="artBg"></div>
+
+  <h1>🎬 Provider Dev UI</h1>
+  <p style="color:#64748b;margin-top:0.25rem;font-size:0.875rem">Test the full scraper pipeline — search, select a result, inspect metadata</p>
+
+  <div class="card" style="margin-top:1.25rem">
+    <div class="row" style="align-items:flex-start">
+      <div>
+        <label for="filename">Filename</label>
+        <input type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
+        <div class="examples">
+          <span style="font-size:0.72rem;color:#475569;align-self:center">Examples:</span>
+          <button class="example-btn" onclick="setExample('sitename.24.03.15.scene.name.mp4')">date short</button>
+          <button class="example-btn" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">date long</button>
+        </div>
+      </div>
+      <div style="flex:0;min-width:6rem">
+        <label for="year-override">Year (override)</label>
+        <input type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div style="flex:0">
+        <button id="runBtn" onclick="runSearch()" style="margin-top:1.6rem">▶ Search</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="search-output" style="display:none">
+    <h2>Search Pipeline</h2>
+    <div id="search-steps"></div>
+    <h2>Pipeline Logs</h2>
+    <div class="card log-box" id="search-logs"></div>
+  </div>
+
+  <div id="results-section" style="display:none">
+    <h2>Results — click to load metadata</h2>
+    <div class="results-grid" id="results-grid"></div>
+  </div>
+
+  <div id="meta-panel">
+    <h2 id="meta-heading">Metadata</h2>
+
+    <div class="card">
+      <div class="meta-layout" id="meta-summary">
+        <div id="meta-poster-wrap">
+          <div class="meta-poster-placeholder">🎬</div>
+        </div>
+        <div id="meta-fields"></div>
+      </div>
+    </div>
+
+    <div id="meta-images-section" style="display:none">
+      <h2>Images (<span id="img-count">0</span>)</h2>
+      <div class="card" style="padding:0.75rem">
+        <div class="image-strip" id="image-strip"></div>
+      </div>
+    </div>
+
+    <div id="fixture-section" style="display:none">
+      <h2>Fixture (paste into <code>tests/health/fixtures.json</code>)</h2>
+      <div class="capture">
+        <div class="capture-header">
+          <span class="badge json">JSON</span>
+          <span class="capture-label" style="cursor:default">Suggested fixture for this result</span>
+          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
+          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy one-liner</button>
+        </div>
+        <div class="capture-body open"><pre id="fixture-pre"></pre></div>
+        <pre id="fixture-pre-oneline" style="display:none"></pre>
+      </div>
+    </div>
+
+    <h2>Metadata Pipeline</h2>
+    <div id="meta-steps"></div>
+    <h2>Pipeline Logs</h2>
+    <div class="card log-box" id="meta-logs"></div>
+  </div>
+
+  <h2>Registered Sites</h2>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="sites-table">
+      <thead><tr><th>Site</th><th>Content Type</th><th>Scraper</th><th>Aliases</th></tr></thead>
+      <tbody>__SITE_ROWS__</tbody>
+    </table>
+  </div>
+
+  <script>
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Forward the admin token (from the page URL ?token=) onto the API calls so
+    // the dev UI works behind a tunnel where requests aren't loopback.
+    const AUTH_TOKEN = new URLSearchParams(location.search).get('token') || '';
+    function apiUrl(path) {
+      if (!AUTH_TOKEN) return path;
+      return path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(AUTH_TOKEN);
+    }
+
+    function setExample(val) {
+      document.getElementById('filename').value = val;
+      document.getElementById('filename').focus();
+    }
+
+    document.getElementById('filename').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSearch();
+    });
+
+    function toggle(id) {
+      document.getElementById(id).classList.toggle('open');
+    }
+
+    function renderCapture(cap, stepId, idx) {
+      const id   = stepId + '-cap-' + idx;
+      const isJson = cap.contentType === 'json';
+      const body   = isJson
+        ? JSON.stringify(cap.body, null, 2)
+        : String(cap.body ?? '');
+      const sizeHint = body.length > 1024
+        ? Math.round(body.length / 1024) + ' kB'
+        : body.length + ' B';
+
+      const rawLabel = String(cap.label ?? '');
+      const urlMatch = rawLabel.match(/https?:\/\/[^\s)"']+/);
+      let labelHtml;
+      let url = '';
+      if (urlMatch) {
+        url = urlMatch[0];
+        const before = esc(rawLabel.slice(0, urlMatch.index));
+        const after  = esc(rawLabel.slice(urlMatch.index + url.length));
+        labelHtml = before
+          + '<a class="capture-url" href="' + esc(url)
+          + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'
+          + esc(url) + '</a>'
+          + after;
+      } else {
+        labelHtml = esc(rawLabel);
+      }
+
+      const copyUrlBtn = url
+        ? '<button class="copy-btn" type="button" data-url="' + esc(url)
+          + '" onclick="copyText(this, event)">Copy URL</button>'
+        : '';
+
+      return `<div class="capture">
+        <div class="capture-header">
+          <span class="badge ${isJson ? 'json' : 'html'}" onclick="toggle('${id}')">${isJson ? 'JSON' : 'HTML'}</span>
+          <span class="capture-label" onclick="toggle('${id}')">${labelHtml}</span>
+          <span class="capture-size">${sizeHint}</span>
+          ${copyUrlBtn}
+          <button class="copy-btn" type="button" onclick="copyFromPre(this, '${id}-pre', event)">Copy Body</button>
+        </div>
+        <div class="capture-body" id="${id}"><pre id="${id}-pre">${esc(body)}</pre></div>
+      </div>`;
+    }
+
+    function clipboardWrite(btn, text) {
+      const ack = () => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+      const fail = (err) => {
+        const orig = btn.textContent;
+        btn.textContent = 'Failed';
+        btn.style.color = '#fca5a5';
+        console.warn('clipboard copy failed:', err);
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.color = '';
+        }, 1500);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(ack).catch(fail);
+      } else {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-1000px';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          ok ? ack() : fail('execCommand returned false');
+        } catch (e) { fail(e); }
+      }
+    }
+
+    function copyFromPre(btn, preId, ev) {
+      if (ev) ev.stopPropagation();
+      const pre = document.getElementById(preId);
+      if (!pre) return;
+      clipboardWrite(btn, pre.innerText);
+    }
+
+    function copyText(btn, ev) {
+      if (ev) ev.stopPropagation();
+      const text = btn.getAttribute('data-url') || '';
+      if (text) clipboardWrite(btn, text);
+    }
+
+    function fmtFixture(value, curIndent) {
+      curIndent = curIndent || '';
+      const innerIndent = curIndent + '  ';
+      if (value === null || typeof value !== 'object') return JSON.stringify(value);
+      if (Array.isArray(value)) {
+        if (value.length === 0) return '[]';
+        return '[' + value.map((v) => JSON.stringify(v)).join(', ') + ']';
+      }
+      const keys = Object.keys(value);
+      if (keys.length === 0) return '{}';
+      const lines = keys.map((k) =>
+        innerIndent + JSON.stringify(k) + ': ' + fmtFixture(value[k], innerIndent),
+      );
+      return '{\n' + lines.join(',\n') + '\n' + curIndent + '}';
+    }
+
+    function renderFixture(fixture) {
+      const pre        = document.getElementById('fixture-pre');
+      const preOneLine = document.getElementById('fixture-pre-oneline');
+      const section    = document.getElementById('fixture-section');
+      if (!pre || !preOneLine || !section) return;
+      pre.textContent        = fmtFixture(fixture);
+      preOneLine.textContent = JSON.stringify(fixture);
+      section.style.display  = 'block';
+    }
+
+    function renderLogs(logs, containerId) {
+      const box = document.getElementById(containerId);
+      if (!box) return;
+      if (!logs || !logs.length) {
+        box.innerHTML = '<p style="color:#475569;font-size:0.8rem">No logs captured</p>';
+        return;
+      }
+      box.innerHTML = logs.map((l) => {
+        const lvl = String(l.level || 'info');
+        return '<div class="log-line log-' + esc(lvl) + '"><span class="log-level">' + esc(lvl) + '</span>' + esc(l.message) + '</div>';
+      }).join('');
+    }
+
+    function renderSteps(steps, containerId) {
+      document.getElementById(containerId).innerHTML = steps.map((s, i) => {
+        const id = containerId + '-body-' + i;
+
+        let captures = [];
+        let cleanData = s.data;
+        if (cleanData && Array.isArray(cleanData.captures)) {
+          captures = cleanData.captures;
+          const { captures: _drop, ...rest } = cleanData;
+          cleanData = rest;
+        }
+        if (cleanData && cleanData.fixture) {
+          const { fixture: _f, ...rest } = cleanData;
+          cleanData = rest;
+        }
+
+        let body = '';
+        if (s.error)    body += '<p class="step-error">⚠ ' + esc(s.error) + '</p>';
+        if (cleanData)  body += '<pre>' + esc(JSON.stringify(cleanData, null, 2)) + '</pre>';
+        if (captures.length) {
+          body += '<div class="captures-section"><div class="captures-label">Raw upstream responses (' + captures.length + ')</div>';
+          body += captures.map((c, ci) => renderCapture(c, id, ci)).join('');
+          body += '</div>';
+        }
+
+        return `<div class="step">
+          <div class="step-header" onclick="toggle('${id}')">
+            <span class="badge ${s.ok ? 'ok' : 'fail'}">${s.ok ? 'OK' : 'FAIL'}</span>
+            <span class="step-title">${esc(s.step)}</span>
+            <span class="step-duration">${s.durationMs != null ? s.durationMs + 'ms' : ''}</span>
+          </div>
+          <div class="step-body ${s.ok ? 'open' : ''}" id="${id}">
+            ${body || '<p style="color:#475569;font-size:0.82rem">No data</p>'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    let lastResults = [];
+
+    async function runSearch() {
+      const filename = document.getElementById('filename').value.trim();
+      if (!filename) return;
+      const yearOverride = document.getElementById('year-override').value.trim();
+
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Searching…';
+
+      document.getElementById('search-output').style.display  = 'none';
+      document.getElementById('results-section').style.display = 'none';
+      document.getElementById('meta-panel').style.display      = 'none';
+      document.getElementById('artBg').style.backgroundImage   = '';
+
+      try {
+        const res  = await fetch(apiUrl('/dev/test'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename, yearOverride: yearOverride || undefined }),
+        });
+        const data = await res.json();
+
+        renderSteps(data.steps, 'search-steps');
+        renderLogs(data.logs, 'search-logs');
+        document.getElementById('search-output').style.display = 'block';
+
+        const searchStep = data.steps.find(s => s.step.includes('Search results'));
+        if (searchStep?.ok && searchStep.data?.results?.length > 0) {
+          lastResults = searchStep.data.results;
+          renderResultCards(lastResults);
+          document.getElementById('results-section').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('search-steps').innerHTML =
+          '<p style="color:#f87171">Request failed: ' + esc(err.message) + '</p>';
+        document.getElementById('search-output').style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '▶ Search';
+      }
+    }
+
+    function renderResultCards(results) {
+      const grid = document.getElementById('results-grid');
+      grid.innerHTML = results.map((r, i) => {
+        const thumb = r.thumbUrl
+          ? `<img class="result-thumb" src="${esc(r.thumbUrl)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" loading="lazy"><div class="result-thumb-placeholder" style="display:none">🎬</div>`
+          : '<div class="result-thumb-placeholder">🎬</div>';
+        return `<div class="result-card" id="card-${i}" onclick="selectResult(${i})">
+          ${thumb}
+          <div class="result-info">
+            <div class="result-title">${esc(r.title)}</div>
+            <div class="result-score">Score: <span>${r.score}</span></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function selectResult(idx) {
+      const result = lastResults[idx];
+      if (!result) return;
+
+      document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
+      const card = document.getElementById('card-' + idx);
+      card.classList.add('selected', 'loading');
+
+      document.getElementById('meta-panel').style.display = 'none';
+      document.getElementById('meta-steps').innerHTML = '';
+      document.getElementById('meta-fields').innerHTML = '<p style="color:#64748b;font-size:0.85rem"><span class="spinner"></span> Fetching metadata…</p>';
+      document.getElementById('meta-poster-wrap').innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
+      document.getElementById('fixture-section').style.display = 'none';
+      document.getElementById('meta-panel').style.display = 'block';
+      document.getElementById('meta-heading').textContent = 'Metadata — ' + result.title;
+
+      document.getElementById('meta-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      try {
+        const filename = document.getElementById('filename').value.trim();
+        const res  = await fetch(apiUrl('/dev/metadata'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ratingKey:   result.ratingKey,
+            providerId:  result.providerId,
+            filename,
+            resultScore: result.score,
+          }),
+        });
+        const data = await res.json();
+
+        renderSteps(data.steps, 'meta-steps');
+        renderLogs(data.logs, 'meta-logs');
+
+        const metaStep = data.steps.find(s => s.step.includes('Fetch metadata'));
+        if (metaStep?.ok && metaStep.data) {
+          renderMetaPanel(metaStep.data);
+          if (metaStep.data.fixture) {
+            renderFixture(metaStep.data.fixture);
+          }
+        } else {
+          document.getElementById('meta-fields').innerHTML =
+            '<p style="color:#f87171">Failed to fetch metadata — see pipeline steps below</p>';
+          document.getElementById('fixture-section').style.display = 'none';
+        }
+      } catch (err) {
+        document.getElementById('meta-fields').innerHTML =
+          '<p style="color:#f87171">Request failed: ' + esc(err.message) + '</p>';
+      } finally {
+        card.classList.remove('loading');
+      }
+    }
+
+    function renderMetaPanel(meta) {
+      const posterWrap = document.getElementById('meta-poster-wrap');
+      if (meta.thumb) {
+        posterWrap.innerHTML = `<img class="meta-poster" src="${esc(meta.thumb)}"
+          onerror="this.outerHTML='<div class=meta-poster-placeholder>🎬</div>'">`;
+      } else {
+        posterWrap.innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
+      }
+
+      if (meta.art) {
+        document.getElementById('artBg').style.backgroundImage = `url('${esc(meta.art)}')`;
+      }
+
+      const fields = [];
+      if (meta.servedFrom === 'snapshot') {
+        fields.push(field('Source', '<span class="meta-tag" style="background:#064e3b;color:#a7f3d0;border-color:#065f46;font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>'));
+      } else if (meta.servedFrom === 'live') {
+        const snap = !meta.snapshotEnabled ? 'snapshot cache off' : meta.snapshotSaved ? '📦 snapshot saved' : 'snapshot NOT saved (error-looking title or write failed)';
+        fields.push(field('Source', '<span class="meta-tag">live scrape &middot; ' + esc(snap) + '</span>'));
+      }
+      if (meta.title)         fields.push(field('Title', esc(meta.title)));
+      if (meta.studio)        fields.push(field('Studio (network)', esc(meta.studio)));
+      if (meta.tagline && meta.tagline !== meta.studio) fields.push(field('Tagline (sub-site)', esc(meta.tagline)));
+      if (meta.contentRating) fields.push(field('Content Rating', '<span class="meta-tag" style="background:#7f1d1d;color:#fecaca;border-color:#991b1b;letter-spacing:0.04em;font-weight:700">' + esc(meta.contentRating).toUpperCase() + '</span>'));
+      if (meta.releaseDate)   fields.push(field('Released', esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
+      if (meta.summary)       fields.push(field('Summary', '<span style="font-size:0.82rem;line-height:1.5;color:#94a3b8">' + esc(meta.summary) + '</span>'));
+      if (meta.genres?.length)      fields.push(field('Genres', tags(meta.genres)));
+      if (meta.actors?.length) {
+        const actorCards = meta.actors.map((a) => {
+          const border = a.gender === 'male'
+            ? '#1e3a8a'
+            : a.gender === 'female'
+              ? '#831843'
+              : a.gender === 'trans'
+                ? '#581c87'
+                : '#374151';
+          const genderSuffix = a.gender ? ' <span>(' + esc(a.gender) + ')</span>' : '';
+          const avatar = a.photoURL
+            ? `<img class="actor-avatar" style="border:2px solid ${border}" src="${esc(a.photoURL)}" alt="${esc(a.name)}" loading="lazy" onerror="this.outerHTML='<div class=actor-avatar-ph>👤</div>'">`
+            : '<div class="actor-avatar-ph">👤</div>';
+          return `<div class="actor-card">${avatar}<span class="actor-name">${esc(a.name)}${genderSuffix}</span></div>`;
+        }).join('');
+        fields.push(field('Actors', '<div class="actor-cards">' + actorCards + '</div>'));
+      }
+      if (meta.directors?.length) fields.push(field('Directors', tags(meta.directors)));
+      if (meta.producers?.length) fields.push(field('Producers', tags(meta.producers)));
+      if (meta.collections?.length) fields.push(field('Collections', tags(meta.collections)));
+
+      const rawCount = meta.rawImageCount != null ? meta.rawImageCount : meta.images.length;
+      fields.push(field('Images', `${rawCount} raw → ${meta.images.length} mapped`));
+      if (meta.thumb) fields.push(field('Thumb URL', `<code style="word-break:break-all;font-size:0.7rem">${esc(meta.thumb)}</code>`));
+      if (meta.art)   fields.push(field('Art URL',   `<code style="word-break:break-all;font-size:0.7rem">${esc(meta.art)}</code>`));
+
+      document.getElementById('meta-fields').innerHTML = fields.join('');
+
+      if (meta.images?.length > 0) {
+        document.getElementById('img-count').textContent = meta.images.length;
+        document.getElementById('image-strip').innerHTML = meta.images.map(img =>
+          `<img src="${esc(img.url)}" title="${esc(img.type)}"
+            onerror="this.style.opacity='0.2'"
+            onclick="window.open('${esc(img.url)}','_blank')">`
+        ).join('');
+        document.getElementById('meta-images-section').style.display = 'block';
+      } else {
+        document.getElementById('meta-images-section').style.display = 'none';
+      }
+    }
+
+    function field(label, value) {
+      return `<div class="meta-field"><div class="meta-label">${label}</div><div class="meta-value">${value}</div></div>`;
+    }
+
+    function tags(arr) {
+      return '<div class="meta-tags">' + arr.map(t => `<span class="meta-tag">${esc(t)}</span>`).join('') + '</div>';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
+
+from app.config.env import env
+from app.utils.http.ssrf_guard import assert_fetchable_url
+from app.utils.images.image_classifier import classify_image
+from app.utils.images.image_fetcher import fetch_image
+from app.utils.logging.logger import logger
+
+router = APIRouter()
+# Mounted at the site root (NOT under /images) so frozen snapshot image URLs are
+# short and `images` doesn't appear in the path: GET /cache/<studio>/<sub>/<hash>/<file>.
+cache_router = APIRouter()
+
+_ALLOWED_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
+_PROXY_CACHE_CONTROL = 'public, max-age=3600'
+
+
+def _safe_path(directory: str, *parts: str) -> Path | None:
+    root = Path(directory).resolve()
+    try:
+        resolved = root.joinpath(*parts).resolve()
+    except (ValueError, OSError):
+        return None
+    if resolved == root or root in resolved.parents:
+        return resolved
+    return None
+
+
+def _read_multi(request: Request, key: str) -> list[str]:
+    return [v for v in request.query_params.getlist(key) if v]
+
+
+@router.get('/local/{filename}')
+async def local_image(filename: str) -> Response:
+    if Path(filename).suffix.lower() not in _ALLOWED_EXT:
+        return JSONResponse({'error': 'Invalid file type'}, status_code=400)
+
+    file_path = _safe_path(env.image_dir, filename)
+    if not file_path:
+        return JSONResponse({'error': 'Invalid path'}, status_code=400)
+    if file_path.exists():
+        return FileResponse(file_path)
+
+    cached = _safe_path(env.actor_cache_dir, filename)
+    if cached and cached.exists():
+        return FileResponse(cached)
+
+    return JSONResponse({'error': 'Image not found'}, status_code=404)
+
+
+@cache_router.get('/cache/{splat:path}')
+async def cached_metadata_image(splat: str) -> Response:
+    # Serves images frozen by the snapshot cache (<studio>/<sub>/<hash>/images/<file>).
+    if Path(splat).suffix.lower() not in _ALLOWED_EXT:
+        return JSONResponse({'error': 'Invalid file type'}, status_code=400)
+    file_path = _safe_path(env.metadata_cache_dir, splat)
+    if not file_path or not file_path.exists():
+        return JSONResponse({'error': 'Image not found'}, status_code=404)
+    return FileResponse(file_path)
+
+
+@router.get('/manual-nfo/{splat:path}')
+async def manual_nfo_image(splat: str) -> Response:
+    segments = [s for s in splat.split('/') if s]
+    if not segments:
+        return JSONResponse({'error': 'Invalid path'}, status_code=400)
+    if Path(segments[-1]).suffix.lower() not in _ALLOWED_EXT:
+        return JSONResponse({'error': 'Invalid file type'}, status_code=400)
+    file_path = _safe_path(env.manual_nfo_path, *segments)
+    if not file_path:
+        return JSONResponse({'error': 'Invalid path'}, status_code=400)
+    if not file_path.exists():
+        return JSONResponse({'error': 'Image not found'}, status_code=404)
+    return FileResponse(file_path)
+
+
+async def _proxy(request: Request, send_body: bool) -> Response:
+    raw_url = request.query_params.get('url')
+    if not raw_url:
+        return JSONResponse({'error': 'Missing url'}, status_code=400)
+    try:
+        target = await assert_fetchable_url(raw_url)
+    except ValueError:
+        return JSONResponse({'error': 'Invalid url'}, status_code=400)
+    try:
+        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'))
+    except Exception as err:  # noqa: BLE001
+        logger.warn('proxy', f'502 {target} - {err}')
+        return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
+    headers = {'Content-Length': str(len(entry.data)), 'Cache-Control': _PROXY_CACHE_CONTROL}
+    body = entry.data if send_body else b''
+    return Response(content=body, media_type=entry.content_type, headers=headers)
+
+
+async def _proxy_classified(request: Request, send_body: bool) -> Response:
+    raw_url = request.query_params.get('url')
+    if not raw_url:
+        return JSONResponse({'error': 'Missing url'}, status_code=400)
+    try:
+        target = await assert_fetchable_url(raw_url)
+    except ValueError:
+        return JSONResponse({'error': 'Invalid url'}, status_code=400)
+    try:
+        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'))
+    except Exception as err:  # noqa: BLE001
+        logger.warn('proxy-classified', f'502 {target} - {err}')
+        return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
+    result = classify_image(entry.width, entry.height)
+    if result.image_class == 'unknown':
+        return JSONResponse({'error': 'Image could not be classified as poster or background'}, status_code=404)
+    headers = {
+        'Content-Length': str(len(entry.data)),
+        'Cache-Control': _PROXY_CACHE_CONTROL,
+        'X-Image-Type': result.image_class,
+    }
+    body = entry.data if send_body else b''
+    return Response(content=body, media_type=entry.content_type, headers=headers)
+
+
+@router.get('/proxy')
+async def proxy_get(request: Request) -> Response:
+    return await _proxy(request, True)
+
+
+@router.head('/proxy')
+async def proxy_head(request: Request) -> Response:
+    return await _proxy(request, False)
+
+
+@router.get('/proxy-classified')
+async def proxy_classified_get(request: Request) -> Response:
+    return await _proxy_classified(request, True)
+
+
+@router.head('/proxy-classified')
+async def proxy_classified_head(request: Request) -> Response:
+    return await _proxy_classified(request, False)

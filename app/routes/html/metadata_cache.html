@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Metadata Cache</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+
+    /* ── Filter bar ── */
+    .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 3px; }
+    .filter-group label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+    .filters input[type=text],
+    .filters select {
+      background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
+      padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
+    }
+    .filters input[type=text] { width: 240px; }
+    .filters select { min-width: 140px; }
+    .filters input[type=text]::placeholder { color: #475569; }
+    .count-badge { font-size: 12px; color: #64748b; align-self: center; padding-bottom: 2px; }
+    .reset-btn {
+      align-self: flex-end; padding: 0 12px; height: 32px; border: 1px solid #334155;
+      border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 12px;
+    }
+    .reset-btn:hover { color: #e2e8f0; border-color: #475569; }
+
+    /* ── Table ── */
+    .wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 30px; }
+    thead th {
+      background: #1a2035; color: #94a3b8; text-align: left;
+      padding: 9px 12px; border-bottom: 2px solid #334155;
+      white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    }
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { color: #e2e8f0; }
+    thead th.sort-asc::after { content: ' \2191'; color: #60a5fa; }
+    thead th.sort-desc::after { content: ' \2193'; color: #60a5fa; }
+    tbody td { padding: 5px 12px; border-bottom: 1px solid #1a2035; vertical-align: middle; }
+    tbody tr:hover td { background: #1a2035; }
+
+    /* ── Thumb cell ── */
+    .thumb-cell { width: 240px; text-align: center; }
+    .thumb-cell img { height: 160px; width: auto; max-width: 240px; object-fit: contain; border-radius: 4px; background: #0b0d12; display: inline-block; vertical-align: middle; }
+    .noimg { height: 160px; width: 224px; background: #0b0d12; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #334155; font-size: 10px; }
+
+    /* ── Misc ── */
+    .blank { color: #334155; }
+    .cached-ts { color: #94a3b8; white-space: nowrap; }
+    .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
+    .purge-btn:hover { background: #dc2626; }
+    .empty { color: #94a3b8; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <h1>Snapshot Metadata Cache</h1>
+  <div class="sub">Status: __STATE__</div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Search</label>
+      <input type="text" id="q" placeholder="title, studio, tagline…" oninput="render()">
+    </div>
+    <div class="filter-group">
+      <label>Studio</label>
+      <select id="f-studio" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Year</label>
+      <select id="f-year" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Month</label>
+      <select id="f-month" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Day</label>
+      <select id="f-day" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Tagline</label>
+      <select id="f-tagline" onchange="render()"><option value="">All</option></select>
+    </div>
+    <button class="reset-btn" onclick="reset()">Reset</button>
+    <span class="count-badge" id="count"></span>
+  </div>
+
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="thumb-cell">Image</th>
+          <th class="sortable" data-key="mtime" onclick="sort('mtime')">Cached</th>
+          <th class="sortable" data-key="date" onclick="sort('date')">Date</th>
+          <th class="sortable" data-key="studio" onclick="sort('studio')">Studio</th>
+          <th class="sortable" data-key="title" onclick="sort('title')">Scene Title</th>
+          <th class="sortable" data-key="tagline" onclick="sort('tagline')">Tagline</th>
+          <th class="sortable" data-key="year" onclick="sort('year')">Year</th>
+          <th>Purge</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
+  </div>
+
+  <script>
+    const TOKEN = __TOKEN__;
+    const ALL = __ENTRIES_JSON__;
+
+    // Derive date parts (YYYY-MM-DD); format mtime for display
+    ALL.forEach(e => {
+      e.year = e.date ? e.date.slice(0, 4) : '';
+      e.month = e.date ? e.date.slice(5, 7) : '';
+      e.day = e.date ? e.date.slice(8, 10) : '';
+      e.cached_display = e.mtime
+        ? new Date(e.mtime * 1000).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})
+        : '';
+    });
+
+    // Populate studio dropdown
+    const studios = [...new Set(ALL.map(e => e.studio).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const studioSel = document.getElementById('f-studio');
+    studios.forEach(s => {
+      const o = document.createElement('option'); o.value = s; o.textContent = s; studioSel.appendChild(o);
+    });
+
+    // Populate tagline dropdown with each distinct tagline + a Blank bucket
+    const taglines = [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const taglineSel = document.getElementById('f-tagline');
+    taglines.forEach(t => {
+      const o = document.createElement('option'); o.value = t; o.textContent = t; taglineSel.appendChild(o);
+    });
+    if (ALL.some(e => !e.tagline)) {
+      const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; taglineSel.appendChild(o);
+    }
+
+    // Populate Year / Month / Day dropdowns from distinct date parts (+ Blank where applicable)
+    const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function fillDatePart(selId, values, labelFn, hasBlank) {
+      const sel = document.getElementById(selId);
+      values.forEach(v => {
+        const o = document.createElement('option'); o.value = v; o.textContent = labelFn ? labelFn(v) : v; sel.appendChild(o);
+      });
+      if (hasBlank) {
+        const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; sel.appendChild(o);
+      }
+    }
+    const hasBlankDate = ALL.some(e => !e.date);
+    fillDatePart('f-year', [...new Set(ALL.map(e => e.year).filter(Boolean))].sort().reverse(), null, hasBlankDate);
+    fillDatePart('f-month', [...new Set(ALL.map(e => e.month).filter(Boolean))].sort(), m => `${m} – ${MONTH_NAMES[+m]}`, false);
+    fillDatePart('f-day', [...new Set(ALL.map(e => e.day).filter(Boolean))].sort(), null, false);
+
+    const DEFAULT_SORT_KEY = 'mtime';
+    const DEFAULT_SORT_DIR = -1; // newest first
+
+    let sortKey = DEFAULT_SORT_KEY;
+    let sortDir = DEFAULT_SORT_DIR;
+
+    function applyHeaderIndicator() {
+      document.querySelectorAll('thead th[data-key]').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.key === sortKey) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+      });
+    }
+
+    function sort(key) {
+      if (sortKey === key) { sortDir = -sortDir; } else { sortKey = key; sortDir = 1; }
+      applyHeaderIndicator();
+      render();
+    }
+
+    function reset() {
+      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline'].forEach(id => { document.getElementById(id).value = ''; });
+      sortKey = DEFAULT_SORT_KEY;
+      sortDir = DEFAULT_SORT_DIR;
+      applyHeaderIndicator();
+      render();
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // One predicate per dropdown facet, plus the value an entry maps to for that facet.
+    const FACETS = {
+      'f-studio':  {pred: (e, v) => e.studio === v,                                val: e => e.studio},
+      'f-year':    {pred: (e, v) => v === '__blank__' ? !e.date : e.year === v,    val: e => e.date ? e.year : '__blank__'},
+      'f-month':   {pred: (e, v) => e.month === v,                                 val: e => e.month},
+      'f-day':     {pred: (e, v) => e.day === v,                                   val: e => e.day},
+      'f-tagline': {pred: (e, v) => v === '__blank__' ? !e.tagline : e.tagline === v, val: e => e.tagline ? e.tagline : '__blank__'},
+    };
+
+    function textPred(e, q) {
+      return !q || [e.title, e.studio, e.tagline, e.date].join(' ').toLowerCase().includes(q);
+    }
+
+    // Rows passing the text query + every facet EXCEPT the one named (so a facet
+    // never hides its own still-selectable options).
+    function rowsExcept(exceptId) {
+      const q = document.getElementById('q').value.toLowerCase();
+      return ALL.filter(e => {
+        if (!textPred(e, q)) return false;
+        for (const [id, f] of Object.entries(FACETS)) {
+          if (id === exceptId) continue;
+          const v = document.getElementById(id).value;
+          if (v && !f.pred(e, v)) return false;
+        }
+        return true;
+      });
+    }
+
+    // Hide options no longer reachable under the other active filters; keep "All",
+    // the current selection, and anything still present in the filtered view.
+    function refreshFacets() {
+      for (const [id, f] of Object.entries(FACETS)) {
+        const sel = document.getElementById(id);
+        const reachable = new Set(rowsExcept(id).map(f.val));
+        for (const opt of sel.options) {
+          if (opt.value === '') continue; // "All" always shown
+          opt.hidden = !reachable.has(opt.value) && opt.value !== sel.value;
+        }
+      }
+    }
+
+    function render() {
+      refreshFacets();
+      const q = document.getElementById('q').value.toLowerCase();
+
+      let rows = ALL.filter(e => {
+        if (!textPred(e, q)) return false;
+        for (const [id, f] of Object.entries(FACETS)) {
+          const v = document.getElementById(id).value;
+          if (v && !f.pred(e, v)) return false;
+        }
+        return true;
+      });
+
+      rows.sort((a, b) => {
+        // mtime is numeric; everything else string
+        const av = sortKey === 'mtime' ? (a.mtime ?? 0) : String(a[sortKey] ?? '');
+        const bv = sortKey === 'mtime' ? (b.mtime ?? 0) : String(b[sortKey] ?? '');
+        return av < bv ? -sortDir : av > bv ? sortDir : 0;
+      });
+
+      document.getElementById('count').textContent = `${rows.length} of ${ALL.length} snapshot(s)`;
+
+      const tbody = document.getElementById('tbody');
+      const empty = document.getElementById('empty');
+      if (!rows.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      empty.style.display = 'none';
+
+      tbody.innerHTML = rows.map(e => {
+        const thumb = e.thumb
+          ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">`
+          : `<div class="noimg">—</div>`;
+        const cached = e.cached_display ? `<span class="cached-ts">${esc(e.cached_display)}</span>` : '<span class="blank">—</span>';
+        const date = e.date ? esc(e.date) : '<span class="blank">—</span>';
+        const tagline = e.tagline ? esc(e.tagline) : '<span class="blank">—</span>';
+        const year = e.year ? esc(e.year) : '<span class="blank">—</span>';
+        const key = JSON.stringify(e.key);
+        return `<tr>
+          <td class="thumb-cell">${thumb}</td>
+          <td>${cached}</td>
+          <td>${date}</td>
+          <td>${esc(e.studio)}</td>
+          <td>${esc(e.title)}</td>
+          <td>${tagline}</td>
+          <td>${year}</td>
+          <td><button class="purge-btn" onclick="purge(${key})">Purge</button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function purge(key) {
+      if (!confirm('Purge this snapshot?')) return;
+      const headers = {'Content-Type': 'application/json'};
+      if (TOKEN) headers['x-admin-token'] = TOKEN;
+      const r = await fetch('/metadata-cache/purge', {method: 'POST', headers, body: JSON.stringify({key})});
+      const j = await r.json().catch(() => ({ok: false}));
+      if (j.ok) location.reload(); else alert('Purge failed');
+    }
+
+    // Boot with default sort indicator showing
+    applyHeaderIndicator();
+    render();
+  </script>
+</body>
+</html>

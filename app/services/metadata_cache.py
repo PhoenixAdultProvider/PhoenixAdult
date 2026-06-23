@@ -1,0 +1,293 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import shutil
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlsplit
+
+import httpx2
+
+from app.config import config
+from app.config.env import env
+from app.models.metadata import PlexMetadataResponse
+from app.registry import SITE_DEFINITIONS, find_site
+from app.utils.helpers.helpers import slugify
+from app.utils.logging.logger import logger
+
+_IMG_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
+_ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
+
+_index: dict[str, str] | None = None
+_index_dir: str | None = None
+
+
+def enabled() -> bool:
+    return env.metadata_cache_enabled
+
+
+def cache_dir() -> str:
+    return env.metadata_cache_dir
+
+
+_scraper_counts: dict[str, int] | None = None
+
+
+def _scraper_site_count(scraper_type: str) -> int:
+    """How many registered sites a scraper drives (cached)."""
+    global _scraper_counts
+    if _scraper_counts is None:
+        counts: dict[str, int] = {}
+        for s in SITE_DEFINITIONS:
+            counts[s.scraper_config.type] = counts.get(s.scraper_config.type, 0) + 1
+        _scraper_counts = counts
+    return _scraper_counts.get(scraper_type, 0)
+
+
+def _hash(site_name: str, cur_id: str) -> str:
+    """Stable leaf-dir name for a scene, derivable from the ratingKey alone (so a
+    cache-first read can find it before any scrape). Scoped by the resolved site so
+    two sites sharing a cur_id don't collide."""
+    site = find_site(site_name)
+    base = site.name if site else site_name
+    raw = f'{slugify(base)}\n{cur_id}'
+    return hashlib.sha1(raw.encode('utf-8')).hexdigest()[:12]  # noqa: S324 - non-crypto key
+
+
+def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
+    """On-disk folder for a scene, per the site's registry `cache_layout`:
+    'network' → <scraper>/<studio>, 'aggregator' → <scraper>/<studio>/<sub-site>,
+    'studio' → flat <studio>, 'auto' → <studio>/<sub-site> for multi-site scrapers
+    else flat <studio>."""
+    site = find_site(site_name)
+    studio_slug = slugify(studio) or slugify(site.name if site else site_name) or 'studio'
+    layout = site.cache_layout if site else 'auto'
+    scraper = slugify(site.scraper_config.type) if site else ''
+
+    if layout == 'studio':
+        return studio_slug
+    if layout == 'network':
+        return f'{scraper}/{studio_slug}' if scraper else studio_slug
+    if layout == 'aggregator':
+        sub_slug = slugify(tagline) or studio_slug
+        return f'{scraper}/{studio_slug}/{sub_slug}' if scraper else f'{studio_slug}/{sub_slug}'
+    # auto
+    if site and _scraper_site_count(site.scraper_config.type) >= 2:
+        return f'{studio_slug}/{slugify(tagline) or studio_slug}'
+    return studio_slug
+
+
+def _ensure_index() -> dict[str, str]:
+    global _index, _index_dir
+    directory = cache_dir()
+    if _index is not None and _index_dir == directory:
+        return _index
+    idx: dict[str, str] = {}
+    root = Path(directory)
+    if root.exists():
+        # The leaf dir name is the scene hash; map it to the (variable-depth) path.
+        for meta_file in root.rglob('meta.json'):
+            parent = meta_file.parent
+            if parent.name.endswith('.tmp'):
+                continue  # half-written snapshot mid-rename
+            idx[parent.name] = parent.relative_to(root).as_posix()
+    _index, _index_dir = idx, directory
+    logger.info('meta-cache', f'Indexed {len(idx)} snapshot(s) ({directory})')
+    return _index
+
+
+# ── Read ─────────────────────────────────────────────────────────────────────
+
+
+def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
+    """Return the frozen PlexMetadataResponse dict, or None if not snapshotted."""
+    if not enabled():
+        return None
+    scene_hash = _hash(site_name, cur_id)
+    rel_path = _ensure_index().get(scene_hash)
+    if not rel_path:
+        return None
+    try:
+        loaded = json.loads((Path(cache_dir()) / rel_path / 'meta.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError) as err:
+        logger.warn('meta-cache', f'snapshot read failed {rel_path}: {err}')
+        return None
+    if not isinstance(loaded, dict):
+        return None
+    rebased = _rebase(loaded, config.base_url.rstrip('/'))
+    return rebased if isinstance(rebased, dict) else None
+
+
+# ── Write ────────────────────────────────────────────────────────────────────
+
+
+def _proxy_target(url: str) -> str:
+    """Pull the real upstream URL out of our /images/proxy?url=… wrapper."""
+    if '/images/proxy' in url:
+        qs = parse_qs(urlsplit(url).query)
+        if qs.get('url'):
+            return unquote(qs['url'][0])
+    return url
+
+
+def _ext_of(url: str) -> str:
+    suffix = Path(urlsplit(url).path).suffix.lower()
+    return suffix if suffix in _IMG_EXT else '.jpg'
+
+
+def _origin(url: str) -> str:
+    parts = urlsplit(url)
+    return f'{parts.scheme}://{parts.netloc}/' if parts.scheme and parts.netloc else ''
+
+
+def _rebase(obj: Any, base: str) -> Any:
+    """Resolve host-relative cached image URLs against the live base_url, recursively."""
+    if isinstance(obj, dict):
+        return {k: _rebase(v, base) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_rebase(v, base) for v in obj]
+    if isinstance(obj, str) and (obj.startswith('/cache/') or obj.startswith('/images/')):
+        return f'{base}{obj}'
+    return obj
+
+
+async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
+    """Freeze a scraped scene: download images locally, rewrite URLs, persist JSON.
+    Skips error-looking titles. Atomic (temp dir + rename). Best-effort per image."""
+    if not enabled():
+        return False
+    try:
+        md0 = response.MediaContainer.Metadata[0]
+        title = (md0.title or '').strip()
+    except (AttributeError, IndexError):
+        return False
+    if not title or _ERROR_TITLE_RE.search(title):
+        logger.info('meta-cache', f'skip snapshot (title looks like an error): {title!r}')
+        return False
+
+    scene_hash = _hash(site_name, cur_id)
+    rel_path = f'{_rel_dir(site_name, (md0.studio or ""), (md0.tagline or ""))}/{scene_hash}'
+    root = Path(cache_dir()).resolve()
+    final_dir = (root / rel_path).resolve()
+    if root not in final_dir.parents:
+        return False
+    tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
+
+    data = response.model_dump(by_alias=True, exclude_none=True)
+    meta: dict[str, Any] = data['MediaContainer']['Metadata'][0]
+    base = config.base_url.rstrip('/')
+    counter = [0]
+
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        async with httpx2.AsyncClient(timeout=20.0, verify=False, follow_redirects=True) as client:
+
+            def _relativize(u: str) -> str:
+                # Strip our own base_url so stored links survive a base_url/tunnel change.
+                return u[len(base) :] if u.startswith(f'{base}/') else u
+
+            async def localize(url: str | None, hint: str) -> str | None:
+                if not url:
+                    return url
+                if '/images/local/' in url:
+                    return _relativize(url)  # already-local cached-actor photo
+                target = _proxy_target(url)
+                name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
+                counter[0] += 1
+                try:
+                    resp = await client.get(target, headers={'User-Agent': 'Mozilla/5.0', 'Referer': _origin(target)})
+                    resp.raise_for_status()
+                    img_dir = tmp_dir / 'images'
+                    img_dir.mkdir(exist_ok=True)
+                    (img_dir / name).write_bytes(resp.content)
+                    return f'/cache/{rel_path}/images/{name}'
+                except (httpx2.HTTPError, OSError) as err:
+                    logger.debug('meta-cache', f'image download failed {target}: {err}')
+                    return _relativize(url)  # best-effort: keep the link, host-relative
+
+            if meta.get('thumb'):
+                meta['thumb'] = await localize(meta['thumb'], 'poster')
+            if meta.get('art'):
+                meta['art'] = await localize(meta['art'], 'art')
+            for img in meta.get('Image', []):
+                img['url'] = await localize(img.get('url'), 'img')
+            for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+                for role in meta.get(role_key, []):
+                    if role.get('thumb'):
+                        role['thumb'] = await localize(role['thumb'], 'role')
+            for rating in meta.get('Rating', []):
+                if rating.get('image'):
+                    rating['image'] = await localize(rating['image'], 'rating')
+
+        (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+        if final_dir.exists():
+            shutil.rmtree(final_dir, ignore_errors=True)
+        tmp_dir.rename(final_dir)
+    except OSError as err:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        logger.warn('meta-cache', f'snapshot write failed {rel_path}: {err}')
+        return False
+
+    if _index is not None:
+        _index[scene_hash] = rel_path
+    logger.info('meta-cache', f'snapshot saved {rel_path} ({title})')
+    return True
+
+
+# ── Management (UI) ──────────────────────────────────────────────────────────
+
+
+def entries() -> list[dict[str, Any]]:
+    """All snapshots, newest first, for the /metadata-cache UI."""
+    out: list[dict[str, Any]] = []
+    root = Path(cache_dir())
+    if not root.exists():
+        return out
+    for mj in root.rglob('meta.json'):
+        scene = mj.parent
+        if scene.name.endswith('.tmp'):
+            continue
+        try:
+            data = json.loads(mj.read_text(encoding='utf-8'))
+            md = (data.get('MediaContainer', {}).get('Metadata') or [{}])[0]
+            mtime = mj.stat().st_mtime
+        except (OSError, ValueError):
+            continue
+        rel = scene.relative_to(root).as_posix()
+        segs = rel.split('/')
+        out.append(
+            {
+                'key': rel,  # full relative path to the scene dir — the purge handle
+                'site_slug': segs[-2] if len(segs) >= 2 else rel,
+                'studio_dir': segs[-3] if len(segs) >= 3 else '',
+                'hash': segs[-1],
+                'title': md.get('title', ''),
+                'studio': md.get('studio', ''),
+                'tagline': md.get('tagline', ''),
+                'date': md.get('originallyAvailableAt', ''),
+                'thumb': md.get('thumb', ''),
+                'images': len(md.get('Image', [])),
+                'mtime': mtime,
+            }
+        )
+    out.sort(key=lambda e: e['mtime'], reverse=True)
+    return out
+
+
+def purge(key: str) -> bool:
+    """Remove one snapshot by its relative path ('<studio>/<hash>' or
+    '<studio>/<sub-site>/<hash>')."""
+    root = Path(cache_dir()).resolve()
+    target = (root / key).resolve()
+    if root not in target.parents or not target.exists():
+        return False
+    shutil.rmtree(target, ignore_errors=True)
+    if _index is not None:
+        leaf = key.rsplit('/', 1)[-1]
+        if _index.get(leaf) == key:
+            del _index[leaf]
+    logger.info('meta-cache', f'purged snapshot {key}')
+    return True

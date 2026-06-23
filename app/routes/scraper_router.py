@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from app.clients import get_client
+from app.clients.base import SceneContext, SceneDetail, SearchContext, SearchResult
+from app.registry import ResolvedSiteInfo
+from app.utils.helpers.helpers import b64url_decode
+
+
+class ScraperRouter:
+    async def search(self, search_data: SearchContext | None) -> list[SearchResult] | None:
+        if not search_data:
+            return None
+        client = get_client(search_data.site_info.scraper_config.type)
+        if client is None:
+            return None
+        return await client.search(search_data)
+
+    async def fetch_scene_detail(self, scene_url: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+        client = get_client(site.scraper_config.type)
+        if client is None:
+            return None
+        return await client.fetch_scene_detail(scene_url, site, ctx)
+
+    def decode(self, cur_id: str) -> str:
+        return b64url_decode(cur_id)
+
+    def image_rule(self, site: ResolvedSiteInfo) -> str:
+        client = get_client(site.scraper_config.type)
+        return client.image_rule(site) if client else 'threshold'

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhoenixAdult Config</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 2rem; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
+    h2 { font-size: 0.8rem; font-weight: 600; color: #64748b; margin: 1.75rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .sub { color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; }
+    .card { background: #1e2433; border: 1px solid #2d3748; border-radius: 8px; padding: 1.1rem 1.25rem; margin-bottom: 0.75rem; }
+    code { background: #0f1117; padding: 0.12rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: #7dd3fc; word-break: break-all; }
+
+    /* Toolbar */
+    .toolbar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; position: sticky; top: 0;
+               background: #0f1117; padding: 0.85rem 0; z-index: 5; border-bottom: 1px solid #1a2035; }
+    button { padding: 0.55rem 1.1rem; background: #6366f1; color: #fff; border: none; border-radius: 6px;
+             font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
+    button:hover { background: #4f46e5; }
+    button:disabled { background: #374151; cursor: not-allowed; color: #6b7280; }
+    button.secondary { background: #1f2937; border: 1px solid #2d3748; color: #cbd5e1; }
+    button.secondary:hover { background: #2d3748; }
+    .toolbar-status { font-size: 0.82rem; color: #64748b; flex: 1; min-width: 140px; }
+    .toolbar-status.ok   { color: #6ee7b7; }
+    .toolbar-status.err  { color: #fca5a5; }
+
+    /* Variable rows */
+    .var { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 0.85rem 0; border-bottom: 1px solid #1a2035; }
+    .var:last-child { border-bottom: 0; }
+    .var-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .var-label { font-weight: 600; color: #e2e8f0; font-size: 0.92rem; }
+    .var-key { font-size: 0.72rem; color: #64748b; font-family: ui-monospace, monospace; }
+    .var-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.45; }
+    .var-control { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=password], select {
+      flex: 1; min-width: 220px; padding: 0.5rem 0.65rem; background: #0f1117; border: 1px solid #2d3748;
+      border-radius: 6px; color: #e2e8f0; font-size: 0.88rem; outline: none; font-family: ui-monospace, monospace;
+    }
+    input:focus, select:focus { border-color: #6366f1; }
+    input.changed, select.changed { border-color: #fcd34d; }
+    select { flex: 0 0 auto; min-width: 130px; }
+    .icon-btn { padding: 0.45rem 0.7rem; font-size: 0.78rem; background: #1f2937; border: 1px solid #2d3748;
+                color: #cbd5e1; border-radius: 6px; cursor: pointer; }
+    .icon-btn:hover { background: #2d3748; }
+    .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Image preview */
+    .img-preview { display: none; width: 38px; height: 38px; object-fit: cover; border-radius: 6px;
+                   border: 1px solid #2d3748; background: #0f1117; }
+    .img-preview.loaded { display: block; }
+
+    /* Sortable list controls (ACTOR_SOURCE_ORDER, BYPASS_ORDER) */
+    .listwrap { flex: 1 1 100%; }
+    .listwrap.changed .srclist { border-color: #fcd34d; }
+    .srclist { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem; background: #0f1117;
+               border: 1px solid #2d3748; border-radius: 6px; }
+    .srcitem { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; background: #1e2433;
+               border: 1px solid #2d3748; border-radius: 5px; cursor: grab; font-size: 0.85rem; }
+    .srcitem.dragging { opacity: 0.4; }
+    .drag-grip { color: #475569; cursor: grab; font-size: 0.85rem; }
+    .srcitem-name { flex: 1; color: #e2e8f0; }
+    .srcitem-x { padding: 0 0.45rem; font-size: 0.9rem; line-height: 1; background: #1f2937;
+                 border: 1px solid #2d3748; color: #fca5a5; border-radius: 4px; }
+    .srcitem-x:hover { background: #7f1d1d; color: #fecaca; }
+    .srcadd { display: flex; gap: 0.4rem; margin-top: 0.4rem; align-items: center; }
+    .src-add-select { flex: 0 0 auto; min-width: 180px; padding: 0.4rem 0.5rem; background: #0f1117;
+                      border: 1px solid #2d3748; border-radius: 6px; color: #e2e8f0; font-size: 0.82rem; }
+
+    /* Badges */
+    .badge { font-size: 0.62rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 4px;
+             text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge.override { background: #312e81; color: #c7d2fe; }
+    .badge.restart  { background: #7c2d12; color: #fed7aa; }
+    .badge.secret   { background: #064e3b; color: #6ee7b7; }
+    .hint { font-size: 0.72rem; color: #475569; }
+
+    /* Restart button */
+    button.danger { background: #7f1d1d; }
+    button.danger:hover { background: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1>⚙️ PhoenixAdult Config</h1>
+  <p class="sub">Change runtime configuration without restarting. Overrides apply immediately and persist to
+    <code id="ovPath"></code>.</p>
+
+  <div class="toolbar">
+    <button id="saveBtn" onclick="save()" disabled>Save changes</button>
+    <button class="secondary" onclick="resetAll()">Reset all overrides</button>
+    <button class="secondary" onclick="reload()">Reload</button>
+    <button class="danger" onclick="restartServer()">Restart server</button>
+    <span class="toolbar-status" id="status"></span>
+  </div>
+
+  <div id="groups"></div>
+
+  <script>
+    const STATE = __STATE_JSON__;
+    const LISTS = {};                 // key → ordered array (list controls)
+    const PREVIEW_PREFIX = 'phoenixcfg:img:';
+    const imgDebounce = {};
+
+    // Forward the admin token (from the page URL ?token=) onto the API calls so
+    // the config UI works behind a tunnel where requests aren't loopback.
+    const TOKEN = new URLSearchParams(location.search).get('token') || '';
+    function api(path) {
+      if (!TOKEN) return path;
+      return path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN);
+    }
+
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function allVars() { return STATE.groups.flatMap((g) => g.vars); }
+    function specOf(key) { return allVars().find((v) => v.key === key) || null; }
+    function inputFor(key) { return document.querySelector('[data-key="' + key + '"]'); }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    function render() {
+      document.getElementById('ovPath').textContent = STATE.overridesPath;
+      document.getElementById('groups').innerHTML = STATE.groups.map(renderGroup).join('');
+      for (const v of allVars()) {
+        if (v.kind === 'list') initList(v);
+        if (v.preview === 'image') {
+          const inp = inputFor(v.key);
+          loadPreview(v.key, (inp && inp.value.trim()) || v.defaultValue || '');
+        }
+      }
+      refreshDirty();
+    }
+
+    function renderGroup(group) {
+      return '<h2>' + esc(group.name) + '</h2><div class="card">'
+        + group.vars.map(renderVar).join('') + '</div>';
+    }
+
+    function selectControl(key, initial, pairs) {
+      return '<select class="ctl" data-key="' + esc(key) + '" data-initial="' + esc(initial)
+        + '" onchange="refreshDirty()">'
+        + pairs.map((p) => '<option value="' + esc(p[0]) + '"' + (p[0] === initial ? ' selected' : '')
+            + '>' + esc(p[1]) + '</option>').join('')
+        + '</select>';
+    }
+
+    function renderVar(v) {
+      const badges = []
+        .concat(v.overridden ? '<span class="badge override">overridden</span>' : [])
+        .concat(v.requiresRestart ? '<span class="badge restart">restart</span>' : [])
+        .concat(v.kind === 'secret' ? '<span class="badge secret">secret</span>' : [])
+        .join(' ');
+
+      let control;
+      if (v.kind === 'boolean') {
+        const initial = (v.value === 'true' || v.value === 'false') ? v.value : (v.defaultValue || 'false');
+        control = selectControl(v.key, initial, [['true', 'On'], ['false', 'Off']]);
+      } else if (v.kind === 'enum') {
+        const opts = v.options || [];
+        const initial = opts.indexOf(v.value) >= 0 ? v.value : (v.defaultValue || opts[0] || '');
+        control = selectControl(v.key, initial, opts.map((o) => [o, o]));
+      } else if (v.kind === 'list') {
+        control = '<div class="listwrap">'
+          + '<input type="hidden" class="ctl" data-key="' + esc(v.key) + '" data-initial="' + esc(v.value)
+            + '" value="' + esc(v.value) + '">'
+          + '<div class="srclist" id="srclist-' + esc(v.key) + '"></div>'
+          + '<div class="srcadd" id="srcadd-' + esc(v.key) + '"></div>'
+          + '</div>';
+      } else {
+        const type = v.kind === 'secret' ? 'password' : 'text';
+        const ph = v.defaultValue ? 'default: ' + v.defaultValue : (v.kind === 'secret' ? (v.isSet ? 'set — leave blank to keep' : 'not set') : '');
+        const oninput = v.preview === 'image' ? 'onImgInput(this)' : 'refreshDirty()';
+        control = '<input type="' + type + '" class="ctl" data-key="' + esc(v.key) + '" data-initial="'
+          + esc(v.value) + '" value="' + esc(v.value) + '" placeholder="' + esc(ph) + '"'
+          + ' autocomplete="off" spellcheck="false" oninput="' + oninput + '">';
+        if (v.kind === 'secret') {
+          control += '<button type="button" class="icon-btn" onclick="toggleReveal(this)">Show</button>';
+        }
+      }
+
+      const resetBtn = '<button type="button" class="icon-btn" data-reset="' + esc(v.key) + '"'
+        + (v.overridden ? '' : ' disabled') + ' title="Clear this override">Reset</button>';
+      const imgPrev = v.preview === 'image'
+        ? '<img class="img-preview" id="imgprev-' + esc(v.key) + '" alt="preview">' : '';
+      const defHint = (!v.value && v.defaultValue && v.kind !== 'boolean' && v.kind !== 'enum' && v.kind !== 'list')
+        ? '<span class="hint">using default</span>' : '';
+
+      return '<div class="var">'
+        + '<div class="var-head"><span class="var-label">' + esc(v.label) + '</span>'
+        + '<span class="var-key">' + esc(v.key) + '</span>' + badges + '</div>'
+        + '<div class="var-desc">' + esc(v.description) + '</div>'
+        + '<div class="var-control">' + control + resetBtn + imgPrev + defHint + '</div>'
+        + '</div>';
+    }
+
+    // ── Sortable list control ───────────────────────────────────────────────────
+
+    function initList(v) {
+      LISTS[v.key] = v.value ? v.value.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      rebuildList(v.key);
+    }
+
+    function rebuildList(key) {
+      const v = specOf(key);
+      const arr = LISTS[key];
+      const list = document.getElementById('srclist-' + key);
+      list.innerHTML = arr.map((item, i) =>
+        '<div class="srcitem" draggable="true" data-idx="' + i + '">'
+        + '<span class="drag-grip">⠿</span>'
+        + '<span class="srcitem-name">' + esc(item) + '</span>'
+        + '<button type="button" class="srcitem-x" data-list-remove="' + esc(key) + '" data-idx="' + i + '"'
+        + ' title="Remove">×</button>'
+        + '</div>').join('') || '<span class="hint">empty — add a source below</span>';
+
+      const remaining = (v.options || []).filter((o) => arr.indexOf(o) < 0);
+      const add = document.getElementById('srcadd-' + key);
+      if (remaining.length) {
+        add.innerHTML = '<select class="src-add-select">'
+          + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
+          + '</select><button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add source</button>';
+      } else {
+        add.innerHTML = '<span class="hint">all known sources added</span>';
+      }
+
+      inputFor(key).value = arr.join(',');
+      attachDrag(key);
+    }
+
+    function attachDrag(key) {
+      const list = document.getElementById('srclist-' + key);
+      list.querySelectorAll('.srcitem').forEach((item) => {
+        item.addEventListener('dragstart', () => item.classList.add('dragging'));
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          LISTS[key] = [...list.querySelectorAll('.srcitem-name')].map((n) => n.textContent);
+          rebuildList(key);
+          refreshDirty();
+        });
+      });
+      list.ondragover = (e) => {
+        e.preventDefault();
+        const dragging = list.querySelector('.dragging');
+        if (!dragging) return;
+        const after = dragAfterElement(list, e.clientY);
+        if (after == null) list.appendChild(dragging);
+        else list.insertBefore(dragging, after);
+      };
+    }
+
+    function dragAfterElement(list, y) {
+      const items = [...list.querySelectorAll('.srcitem:not(.dragging)')];
+      let closest = null;
+      let closestOffset = -Infinity;
+      for (const el of items) {
+        const box = el.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closestOffset) { closestOffset = offset; closest = el; }
+      }
+      return closest;
+    }
+
+    function listRemove(key, idx) {
+      LISTS[key].splice(idx, 1);
+      rebuildList(key);
+      refreshDirty();
+    }
+
+    function listAdd(key) {
+      const sel = document.querySelector('#srcadd-' + key + ' .src-add-select');
+      if (!sel || !sel.value) return;
+      LISTS[key].push(sel.value);
+      rebuildList(key);
+      refreshDirty();
+    }
+
+    // ── Image preview (cached to localStorage) ──────────────────────────────────
+
+    function onImgInput(input) {
+      refreshDirty();
+      const key = input.dataset.key;
+      clearTimeout(imgDebounce[key]);
+      imgDebounce[key] = setTimeout(() => {
+        loadPreview(key, input.value.trim() || (specOf(key).defaultValue || ''));
+      }, 500);
+    }
+
+    async function loadPreview(key, url) {
+      const img = document.getElementById('imgprev-' + key);
+      if (!img) return;
+      if (!url) { img.removeAttribute('src'); img.classList.remove('loaded'); return; }
+
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem(PREVIEW_PREFIX + key) || 'null'); } catch (e) {}
+      if (cached && cached.url === url && cached.data) {
+        img.src = cached.data;
+        img.classList.add('loaded');
+        return;
+      }
+      // Fetch + cache as a data URL. Cross-origin hosts may block fetch —
+      // fall back to loading the URL directly (no localStorage cache).
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('http ' + resp.status);
+        const blob = await resp.blob();
+        const data = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = rej;
+          fr.readAsDataURL(blob);
+        });
+        try { localStorage.setItem(PREVIEW_PREFIX + key, JSON.stringify({ url: url, data: data })); } catch (e) {}
+        img.src = data;
+        img.classList.add('loaded');
+      } catch (e) {
+        img.src = url;
+        img.classList.add('loaded');
+      }
+    }
+
+    // Resolve true when the URL loads as a real image within 8s.
+    function testImage(url) {
+      return new Promise((resolve) => {
+        const probe = new Image();
+        let done = false;
+        const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
+        probe.onload = () => finish(probe.naturalWidth > 0);
+        probe.onerror = () => finish(false);
+        probe.src = url;
+        setTimeout(() => finish(false), 8000);
+      });
+    }
+
+    // ── Dirty tracking ──────────────────────────────────────────────────────────
+
+    function controls() { return [...document.querySelectorAll('[data-key]')]; }
+    function changedControls() { return controls().filter((c) => c.value !== c.dataset.initial); }
+
+    function refreshDirty() {
+      let n = 0;
+      for (const c of controls()) {
+        const dirty = c.value !== c.dataset.initial;
+        if (dirty) n++;
+        c.classList.toggle('changed', dirty);
+        if (c.type === 'hidden') {
+          const wrap = c.closest('.listwrap');
+          if (wrap) wrap.classList.toggle('changed', dirty);
+        }
+      }
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = n === 0;
+      btn.textContent = n ? 'Save ' + n + ' change' + (n === 1 ? '' : 's') : 'Save changes';
+    }
+
+    function toggleReveal(btn) {
+      const input = btn.previousElementSibling;
+      if (!input) return;
+      const reveal = input.type === 'password';
+      input.type = reveal ? 'text' : 'password';
+      btn.textContent = reveal ? 'Hide' : 'Show';
+    }
+
+    function setStatus(msg, kind) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'toolbar-status' + (kind ? ' ' + kind : '');
+    }
+
+    // ── Server calls ────────────────────────────────────────────────────────────
+
+    async function postJSON(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      return data;
+    }
+
+    function applyState(newState) {
+      STATE.overridesPath = newState.overridesPath;
+      STATE.groups = newState.groups;
+      render();
+    }
+
+    async function save() {
+      let changed = changedControls();
+      if (!changed.length) return;
+      setStatus('Validating…');
+
+      // Image-URL fields: probe the URL before saving. A URL that doesn't
+      // resolve to an image is reverted and reported.
+      const failed = [];
+      for (const c of changed) {
+        const spec = specOf(c.dataset.key);
+        if (spec && spec.preview === 'image' && c.value.trim()) {
+          const ok = await testImage(c.value.trim());
+          if (!ok) { c.value = c.dataset.initial; failed.push(c.dataset.key); }
+        }
+      }
+      if (failed.length) refreshDirty();
+
+      changed = changedControls();
+      let saved = 0;
+      if (changed.length) {
+        const updates = {};
+        for (const c of changed) updates[c.dataset.key] = c.value;
+        try {
+          saved = changed.length;
+          applyState(await postJSON(api('/config/api/save'), { updates }));
+        } catch (err) {
+          setStatus('Save failed: ' + err.message, 'err');
+          return;
+        }
+      }
+
+      if (failed.length) {
+        setStatus('Image URL did not resolve for ' + failed.join(', ') + ' — reverted.'
+          + (saved ? ' Saved ' + saved + ' other change(s).' : ''), 'err');
+      } else {
+        setStatus('Saved ' + saved + ' change' + (saved === 1 ? '' : 's') + '.', 'ok');
+      }
+    }
+
+    async function resetOne(key) {
+      setStatus('Resetting ' + key + '…');
+      try {
+        applyState(await postJSON(api('/config/api/reset'), { key: key }));
+        setStatus('Cleared override for ' + key + '.', 'ok');
+      } catch (err) {
+        setStatus('Reset failed: ' + err.message, 'err');
+      }
+    }
+
+    async function resetAll() {
+      if (!confirm('Clear ALL runtime overrides and restore startup values?')) return;
+      setStatus('Resetting all overrides…');
+      try {
+        applyState(await postJSON(api('/config/api/reset'), {}));
+        setStatus('All overrides cleared.', 'ok');
+      } catch (err) {
+        setStatus('Reset failed: ' + err.message, 'err');
+      }
+    }
+
+    async function reload() {
+      setStatus('Reloading…');
+      try {
+        const res = await fetch(api('/config/api/state'));
+        applyState(await res.json());
+        setStatus('Reloaded.', 'ok');
+      } catch (err) {
+        setStatus('Reload failed: ' + err.message, 'err');
+      }
+    }
+
+    async function restartServer() {
+      if (!confirm('Restart the server now? The process will exit; a supervisor must bring it back up.')) return;
+      setStatus('Requesting restart…');
+      try {
+        await postJSON(api('/config/api/restart'), {});
+      } catch (err) {
+        // The process may exit before the response flushes — expected.
+      }
+      setStatus('Server restarting — waiting for it to come back…');
+      waitForServer();
+    }
+
+    // Poll /config/api/state until the process is back, then refresh the UI.
+    function waitForServer() {
+      let tries = 0;
+      const tick = async () => {
+        tries++;
+        try {
+          const res = await fetch(api('/config/api/state'), { cache: 'no-store' });
+          if (res.ok) {
+            applyState(await res.json());
+            setStatus('Server is back up.', 'ok');
+            return;
+          }
+        } catch (e) { /* still down — keep waiting */ }
+        if (tries > 60) {
+          setStatus('Server has not come back after 60s — check the supervisor.', 'err');
+          return;
+        }
+        setTimeout(tick, 1000);
+      };
+      setTimeout(tick, 2000);
+    }
+
+    // ── Delegated clicks (reset / list add+remove) ──────────────────────────────
+
+    document.addEventListener('click', (e) => {
+      const resetEl = e.target.closest('[data-reset]');
+      if (resetEl && !resetEl.disabled) { resetOne(resetEl.dataset.reset); return; }
+      const removeEl = e.target.closest('[data-list-remove]');
+      if (removeEl) { listRemove(removeEl.dataset.listRemove, Number(removeEl.dataset.idx)); return; }
+      const addEl = e.target.closest('[data-list-add]');
+      if (addEl) { listAdd(addEl.dataset.listAdd); return; }
+    });
+
+    render();
+  </script>
+</body>
+</html>
