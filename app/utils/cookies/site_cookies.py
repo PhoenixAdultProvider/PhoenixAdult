@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import time
+from urllib.parse import urlsplit
+
+import httpx2
+
+from app.utils.logging.logger import logger
+
+_HOST_CACHE_TTL = 30 * 60  # seconds
+_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+_COOKIE_CACHE: dict[str, tuple[dict[str, str], float]] = {}
+
+
+def parse_set_cookie(lines: list[str]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for line in lines:
+        first = line.split(';', 1)[0]
+        eq = first.find('=')
+        if eq > 0:
+            out[first[:eq].strip()] = first[eq + 1 :].strip()
+    return out
+
+
+async def get_site_cookies(base_url: str) -> dict[str, str]:
+    host = urlsplit(base_url).hostname or ''
+    if not host:
+        return {}
+
+    cached = _COOKIE_CACHE.get(host)
+    if cached and time.time() - cached[1] < _HOST_CACHE_TTL:
+        return cached[0]
+
+    cookies: dict[str, str] = {}
+    try:
+        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+            r = await client.get(base_url, headers={'User-Agent': _UA})
+        cookies = parse_set_cookie(r.headers.get_list('set-cookie'))
+    except httpx2.HTTPError as err:
+        logger.warn('siteCookies', f'GET {base_url} failed: {err}')
+
+    _COOKIE_CACHE[host] = (cookies, time.time())
+    return cookies

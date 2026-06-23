@@ -1,0 +1,299 @@
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Literal
+
+# fmt: off
+LOWER_EXCEPTIONS = {
+    'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
+}
+
+UPPER_EXCEPTIONS = {
+    'bbc', 'xxx', 'bbw', 'bf', 'bff', 'bts', 'pov', 'dp', 'gf', 'bj', 'wtf', 'cfnm', 'bwc', 'fm', 'tv',
+    'hd', 'milf', 'gilf', 'dilf', 'dtf', 'zz', 'xxxl', 'usa', 'nsa', 'hr', 'ii', 'iii', 'iv', 'bbq',
+    'avn', 'xtc', 'atv', 'joi', 'rpg', 'wunf', 'uk', 'asap', 'sss', 'nf', 'pawg', 'ama',
+}
+
+ACRONYMS = {'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'}
+
+SIZE_CODES = {'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'}
+
+NAME_EXCEPTIONS = {'ai'}
+
+NAME_EXCEPTION_SITES = {'JavBus', 'JavLibrary', 'TeamSkeet X JavHub', 'JAVDatabase', 'JAV888'}
+
+CONTRACTION_EXCEPTIONS = {'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'}
+
+SYMBOLS = ['-', '/', '.', '+', '\'']
+
+SymbolTreatment = Literal['compound', 'initials_or_acronym', 'contraction']
+SYMBOL_RULES: dict[str, tuple[bool, SymbolTreatment]] = {
+    '-': (True, 'compound'), '/': (True, 'compound'), '.': (True, 'initials_or_acronym'),
+    '+': (True, 'compound'), '\'': (True, 'contraction'),
+}
+
+SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
+    'strike3': {'a game': 'A Game'},
+}
+
+MANUAL_CORRECTIONS: dict[str, str] = {
+    'im': 'I\'m', 'theyll': 'They\'ll', 'cant': 'Can\'t', 'ive': 'I\'ve', 'shes': 'She\'s', 'theyre': 'They\'re',
+    'tshirt': 'T-Shirt', 'dont': 'Don\'t', 'wasnt': 'Wasn\'t', 'youre': 'You\'re', 'ill': 'I\'ll', 'whats': 'What\'s',
+    'didnt': 'Didn\'t', 'isnt': 'Isn\'t', 'senor': 'Señor', 'senorita': 'Señorita', 'thats': 'That\'s',
+    'gstring': 'G-String', 'milfs': 'MILFs', 'oreilly': 'O\'Reilly', 'bangbros': 'BangBros', 'bday': 'B-Day',
+    'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': 'Won\'t', 'whos': 'Who\'s', 'shouldnt': 'Shouldn\'t',
+    'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': 'You\'d', 'redwolf': 'RedWolf',
+    'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': 'Coach\'s'
+}
+# fmt: on
+
+MAX_TITLE_LENGTH = 1000
+
+_NON_WORD_RE = re.compile(r'\W', re.UNICODE)
+
+
+def _strip_non_word(s: str) -> str:
+    return _NON_WORD_RE.sub('', s)
+
+
+def _is_alnum(ch: str) -> bool:
+    return bool(re.match(r'[a-zA-Z0-9]', ch))
+
+
+def _capitalize(s: str) -> str:
+    return s[0].upper() + s[1:] if s else s
+
+
+TokenKind = Literal['word', 'space', 'symbol', 'punct']
+
+
+@dataclass
+class _Token:
+    text: str
+    kind: TokenKind
+    normalized: str | None = None
+
+
+class _TitleCaseEngine:
+    def __init__(self, type: str | None, site_name: str | None, scraper_type: str | None = None) -> None:
+        self.type = type or 'title'
+        self.site_name = site_name or ''
+        self.clean_site = _strip_non_word(re.sub(r'\s+', '', self.site_name)).lower()
+        self.scraper_type = scraper_type or ''
+        self._manual_cache: dict[str, str] = {}
+
+    def parse(self, text: str) -> str:
+        s = self._pre_process(text)
+        tokens = self._tokenize(s)
+        self._apply_word_rules(tokens)
+        s = ''.join(t.normalized if t.normalized is not None else t.text for t in tokens)
+        return self._post_process(s)
+
+    # ── Pre-process ──────────────────────────────────────────────────────────
+    def _pre_process(self, s: str) -> str:
+        s = s.replace('_', ' ')
+        s = re.sub(r'[’´]', "'", s)
+        s = re.sub(r'(?i)\bw/(?!\s)', 'w/ ', s)
+        s = re.sub(r'(?i)\bb day\b', 'bday', s)
+        s = re.sub(r',(?![\s\d])', ', ', s)
+        s = s.replace('\xa0', ' ')
+        return s
+
+    # ── Tokenize ─────────────────────────────────────────────────────────────
+    def _tokenize(self, s: str) -> list[_Token]:
+        tokens: list[_Token] = []
+        length = len(s)
+        i = 0
+        while i < length:
+            ch = s[i]
+            if ch.isspace():
+                j = i + 1
+                while j < length and s[j].isspace():
+                    j += 1
+                tokens.append(_Token(s[i:j], 'space'))
+                i = j
+                continue
+            if _is_alnum(ch):
+                j = i + 1
+                while j < length and (_is_alnum(s[j]) or s[j] == "'"):
+                    j += 1
+                tokens.append(_Token(s[i:j], 'word'))
+                i = j
+                continue
+            if ch == "'":
+                if 0 < i and i + 1 < length and _is_alnum(s[i - 1]) and _is_alnum(s[i + 1]):
+                    tokens[-1].text += "'"
+                    i += 1
+                    continue
+                tokens.append(_Token("'", 'symbol'))
+                i += 1
+                continue
+            tokens.append(_Token(ch, 'punct'))
+            i += 1
+        return tokens
+
+    # ── Word rules ───────────────────────────────────────────────────────────
+    def _apply_word_rules(self, tokens: list[_Token]) -> None:
+        for token in tokens:
+            if token.kind == 'word':
+                token.normalized = self._normalize_word(token.text)
+        self._capitalize_first_word(tokens)
+
+    def _normalize_word(self, word: str) -> str:
+        clean_word = _strip_non_word(word)
+        clean_lower = clean_word.lower()
+
+        if self.clean_site and clean_lower == self.clean_site:
+            return self._manual_word_fix(self.site_name)
+
+        symbol = next((s for s in SYMBOLS if s in word), None)
+        if symbol:
+            return self._manual_word_fix(self._handle_symbol_word(word))
+
+        if "'" in word:
+            apos = word.index("'")
+            base = word[:apos]
+            suffix = word[apos + 1 :]
+            clean_suffix = _strip_non_word(suffix).lower()
+            if clean_suffix in CONTRACTION_EXCEPTIONS:
+                base_norm = self._normalize_word(base)
+                return f"{base_norm}'{clean_suffix}"
+
+        is_special, special_val = self._is_acronym_or_size(clean_lower, clean_word)
+        if is_special:
+            assert special_val is not None
+            return self._manual_word_fix(special_val)
+
+        if clean_lower in UPPER_EXCEPTIONS:
+            return self._manual_word_fix(word.upper())
+
+        if clean_word and clean_word == clean_word.upper() and clean_lower not in LOWER_EXCEPTIONS:
+            return self._manual_word_fix(word.upper())
+
+        if clean_lower in LOWER_EXCEPTIONS:
+            return self._manual_word_fix(word.lower())
+
+        has_lower = bool(re.search(r'[a-z]', word))
+        has_upper = bool(re.search(r'[A-Z]', word))
+        if has_lower and has_upper:
+            return self._manual_word_fix(word)
+
+        return self._manual_word_fix(_capitalize(word))
+
+    def _is_acronym_or_size(self, clean_lower: str, clean_word: str) -> tuple[bool, str | None]:
+        if clean_lower in NAME_EXCEPTIONS and self.site_name in NAME_EXCEPTION_SITES:
+            return False, None
+        if clean_lower in LOWER_EXCEPTIONS:
+            return False, None
+        if self.type == 'name':
+            return False, None
+        if clean_lower in SIZE_CODES:
+            return True, clean_word.upper()
+        if clean_lower in ACRONYMS:
+            return True, clean_word.upper()
+        if 2 <= len(clean_word) <= 4 and clean_word == clean_word.upper():
+            return True, clean_word.upper()
+        return False, None
+
+    def _handle_symbol_word(self, word: str) -> str:
+        symbol = next((s for s in SYMBOLS if s in word), None)
+        if not symbol:
+            return word
+        join, treat_as = SYMBOL_RULES.get(symbol, (True, 'compound'))
+        parts = word.split(symbol)
+        sep = symbol if join else ''
+        out: list[str] = []
+        for part in parts:
+            if not part:
+                out.append(part)
+                continue
+            clean = _strip_non_word(part)
+            clean_lower = clean.lower()
+            if treat_as == 'contraction' and clean_lower in CONTRACTION_EXCEPTIONS:
+                norm = part.lower()
+            elif treat_as == 'initials_or_acronym' and len(clean) == 1:
+                norm = clean.upper()
+            else:
+                norm = self._normalize_word(part)
+            out.append(self._manual_word_fix(norm))
+        return sep.join(out)
+
+    def _capitalize_first_word(self, tokens: list[_Token]) -> None:
+        for token in tokens:
+            if token.kind != 'word':
+                continue
+            text = token.normalized if token.normalized is not None else token.text
+            clean = _strip_non_word(text)
+            if not clean:
+                return
+            token.normalized = text[0].upper() + text[1:] if len(clean) > 1 else text.upper()
+            return
+
+    def _manual_word_fix(self, word: str) -> str:
+        cached = self._manual_cache.get(word)
+        if cached is not None:
+            return cached
+        clean = _strip_non_word(word).lower()
+        correction = MANUAL_CORRECTIONS.get(clean)
+        if correction:
+            fixed = re.sub(re.escape(clean), lambda _m: correction, word, count=1, flags=re.IGNORECASE)
+            self._manual_cache[word] = fixed
+            return fixed
+        self._manual_cache[word] = word
+        return word
+
+    # ── Post-process ─────────────────────────────────────────────────────────
+    def _post_process(self, output: str) -> str:
+        output = output.replace('“', '"').replace('”', '"').replace('’', "'")  # Normalize curly quotes
+        # Rotate trailing ", the/a/an" to front
+        output = re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
+        # Add missing space after ! : ? (but not before domains)
+        output = re.sub(r'(?i)([!:?])(?=\w)(?!(?:co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b))', r'\1 ', output)
+        # Add missing space after period when followed by a letter (not domains)
+        output = re.sub(r'\.(?=[A-Za-z])(?!co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b)', '. ', output)
+        # Remove a single trailing period (but keep "..", "..." etc.)
+        output = re.sub(r'(?<!\.)\.$', '', output)
+        # Remove spaces before punctuation characters
+        output = re.sub(r"\s+(?=[.,!'):])", '', output)
+        # Insert a space before an opening double quote when it starts a token
+        output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
+        # Insert a space before an opening single quote (when not a contraction),
+        # and capitalize the quoted word; only applies if another quote appears later
+        output = re.sub(
+            r"(?<=\S)('(?!re\b|t\b|s\b|d\b|ll\b|ve\b|m\b|am\b|ed\b)\S+)(?=.*')",
+            lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}',
+            output,
+        )
+        # Remove spaces after opening punctuation characters
+        output = re.sub(r'(?<=[#("\[])\s+', '', output)
+        # Add a space after a closing double quote, but only if quotes are balanced
+        output = re.sub(r'"(?!\s)(?=(?:(?:[^"]*"){2})*[^"]*$)', '" ', output)
+        # Capitalize the first letter of a word following punctuation (except after "vs.")
+        output = re.sub(r'(?<!vs\.)([!:?.\-–])(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
+        # Capitalize the first letter of a word following a closing bracket
+        output = re.sub(r'([\])])(\s)([a-z])', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
+        # Capitalize a lowercase letter immediately after certain opening punctuation
+        output = re.sub(r'(?<=[(|&"\[*~])([a-z])', lambda m: m.group(1).upper(), output)
+        # Capitalize any token ending with ], ), ", ~, or :
+        output = re.sub(r'\S+[\])"~:]', lambda m: _capitalize(m.group(0)), output)
+        # Capitalize the final token in the string
+        output = re.sub(r'\S+$', lambda m: _capitalize(m.group(0)), output)
+        # Add a trailing period to initials of the form "A. B" → "A. B."
+        output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
+        # Remove the space between two initials: "A. B." → "A.B."
+        output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
+        # Fix "a/A" → "an/An" before vowel-initial words
+        output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
+        # Scraper-specific phrase corrections
+        for phrase, replacement in SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
+            output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
+
+        return output
+
+
+def title_case(text: str, *, type: str | None = None, site_name: str | None = None, site_id: str | None = None, scraper_type: str | None = None) -> str:
+    if not text:
+        return text
+    bounded = text[:MAX_TITLE_LENGTH] if len(text) > MAX_TITLE_LENGTH else text
+    return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
