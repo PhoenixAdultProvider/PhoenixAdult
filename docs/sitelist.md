@@ -1,0 +1,1874 @@
+# Supported Sites
+#### Key: Supported Search Methods
++ ✅ = **[Enhanced Search](./manualsearch.md#enhanced-search)**. This includes searching by title and/or actor(s), enhanced with date and/or SceneID matching.
++ ✓ = **[Limited Search](./manualsearch.md#limited-search)**. Only title and/or actor can be used, unless otherwise noted.
++ ❌ = **[Exact Match](./manualsearch.md#exact-match)** only. Either using a numerical Scene&nbsp;ID or a Direct&nbsp;URL.
+
+If the site is not listed below &mdash; i.e. the site is not yet supported &mdash; use the instructions for [manual adding](./manualsearch.md#manual-nfo).
+
+To update the site list run `python -m scripts.generate_sitelist`
+## All Supported Networks and Sites
+
++ #### 5K Porn | ✓
+  - 5Kporn
+  - 5Kteens
++ #### Abby Winters | ✅ - **Actor only**
+  - Abby Winters Behind the Scenes
+  - Abby Winters Best Of
+  - Abby Winters Girl Girl
+  - Girls and Their Boys
+  - Girls In Lingerie At Night
+  - Guest Direction
+  - Learn How to Get Women
+  - Mystery Shoot
+  - Nude Girls
+  - Nude In Public
+  - Video Masturbation
+  - Video Of Myself at Home
++ #### Adult Empire | ✅
++ #### Adult Empire Cash | ✅ - **DVDs not supported**
+  - 18 Lust
+  - Bizarre Entertainment
+  - Black Massive Cocks
+  - Brutha's Inc
+  - Concoxxxion
+  - Conor Coxxx
+  - Darkside Entertainment
+  - Digital Video Vision
+  - Elegant Angel
+  - Evasive Angles
+  - Forbidden Fruits Films
+  - Horny Household
+  - Hot Wife Fun
+  - Hot Wives Cheating
+  - Jays POV
+  - Joanna Angel
+  - Jodi West
+  - Jonathan Jordan XXX
+  - Kaiia Eve
+  - Kings of Fetish
+  - LeWood
+  - Only 3x
+  - Pornstar Stroker
+  - Reagan Foxx
+  - Real Girls Fuck
+  - Severe Sex Films
+  - SINematica
+  - Smut Factor
+  - SpankMonster
+  - Star Strokers
+  - Step House XXX
+  - Vouyer Media
+  - West Coast Productions
+  - Whorecraft VR
++ #### Adult Prime | ✅
+  - 4K CFNM
+  - Adult Prime Originals
+  - BBvideo
+  - Beauty and the Senior
+  - Bondagettes
+  - Bound Men Wanked
+  - BrasilBimbos
+  - Breed Bus
+  - Club Bang Boys
+  - Club Castings
+  - Club Sweethearts
+  - Cockin
+  - Color Climax
+  - CuckOldest
+  - DaringSex HD
+  - Digital Desire
+  - Dirty Gunther
+  - Dirty Hospital
+  - Distorded
+  - Elegant Raw
+  - Evil Playgrounds
+  - Family Screw
+  - Fan Fuckers
+  - Fixxxion
+  - Fresh POV
+  - Fucking Skinny
+  - Gonzo 2000
+  - Granddadz
+  - GrandMams
+  - GrandParentsX
+  - Group Banged
+  - Group Mams
+  - Group Sex Games
+  - Hollandsche Passie
+  - Interraced
+  - Jim Slip
+  - Laras Playground
+  - Lets Go Bi
+  - Mams Casting
+  - Manalized
+  - Manko 88
+  - Massage Sins
+  - Mature Van
+  - My MILFz
+  - My Sexy Kittens
+  - OldieX
+  - Peep Leek
+  - Perfect 18
+  - Plumperd
+  - Pornstar Classics
+  - Pornstars Live
+  - Prime Lesbian
+  - Raw Euro
+  - Red Light Sex Trips
+  - Retro Raw
+  - Rodox
+  - Salsa XXX
+  - Sensual Heat
+  - Shadow Slaves
+  - Sinful Raw
+  - Sinful Soft
+  - Sinful XXX
+  - Southern Sins
+  - Submissed
+  - Summer Sinners
+  - Swhores
+  - Teenrs
+  - The Pain Files
+  - Tranny Bizarre
+  - UK Flashers
+  - Vintage Classic Porn
+  - VR Teens
+  - Young Busty
++ #### Allure Media | ✓
+  - Amateur Allure
+  - Swallow Salon
++ #### ALS Angels | ❌ - **Actress name with subject, Date Add**
++ #### Amour Angels | ❌ - **SceneID**
++ #### AnalVids | ✅
++ #### BaDoink VR | ✅
+  - 18VR
+  - BabeVR
+  - BaDoinkVR
+  - PassthroughVR
+  - VRCosplayX
++ #### BAMVisions | ✓
++ #### Bang! | ✓ - **Title Only**
+  - Bang
+  - Bang Movies
++ #### Bel Ami Online | ❌ - **SceneID**
++ #### BellaPass | ✓ - **Title or Slug**
+  - Babe Archives
+  - Cum Hard Babes
+  - Family Trick
+  - Help Me Honey
+  - Hookup Hotshot
+  - Inn of Anal
+  - Innocent High Brats
+  - Lady Wood
+  - Mighty Mistress
+  - My Angry Boss
+  - Sloppy Toppy
+  - Tug Me Off
+  - Hussie Pass
+  - See Him Fuck
++ #### Bellesa | ✅ - **Flaresolverr Required**
+  - Bellesa Films
+  - Bellesa House
++ #### Black PayBack | ✓
++ #### BlurredMedia | ✅
+  - Bi Guys Fuck
+  - Gay Hoopla
+  - Hot Guys Fuck
+  - Sugar Daddy Porn
++ #### Bound Honeys | ✓ - **Title only, Date Add**
++ #### Brand New Amateurs | ✓ - **Actor Name**
++ #### Caramel Cash | ❌ - **Scene ID**
+  - Alex Legend
+  - CuckoldWish
+  - VrpmvBay
++ #### Caribbeancom | ❌ - **SceneID**
++ #### Cherry Pimps | ✅
+  - BCM.XXX
+  - Britney Amber
+  - Bush
+  - Busted
+  - Cheese.XXX
+  - Cherry Spot
+  - Confessions.XXX
+  - Cucked.XXX
+  - Drilled.XXX
+  - Family
+  - Femme
+  - Fresh
+  - Ginger
+  - Petite.XXX
+  - Taboo
+  - Wild On Cam
++ #### Clips4Sale | ❌ - **StudioID with Title Search**
++ #### ClubFilly | ❌ - **SceneID, DVDs not supported**
++ #### Colette | ✅
++ #### Couples Cinema | ✅ - **Title or Scene ID**
+  - Common Sensual
+  - Couple Fantasies
+  - Foxhouse Films
+  - Gentle Desire
+  - JoyBear
+  - Light Southern Cinema
+  - Madison Young
+  - Maria Beatty
+  - Mario Ancewicz
+  - Morgana Muses
+  - Ninja
+  - Petra Joy
+  - Pink and Whit Productions
+  - Sex School
+  - Signe Baumane
+  - Spark Erotic
+  - The Lifestyle
+  - Thousand Faces Films
+  - Verso Cinema
++ #### Cumbizz | ❌ - **Direct URL**
++ #### CumLouder | ❌ - **Direct URL**
++ #### Czech Authentic Videos | ✓ - **Title only and Date Add**
+  - Czech Amateurs
+  - Czech Bangbus
+  - Czech Bitch
+  - Czech Cabins
+  - Czech Casting
+  - Czech Couples
+  - Czech Dungeon
+  - Czech Estrogenolit
+  - Czech Experiment
+  - Czech Fantasy
+  - Czech First Video
+  - Czech Game
+  - Czech Gangbang
+  - Czech Garden Party
+  - Czech Harem
+  - Czech Home Orgy
+  - Czech Lesbians
+  - Czech Massage
+  - Czech Mega Swingers
+  - Czech Orgasm
+  - Czech Parties
+  - Czech Pawn Shop
+  - Czech Pool
+  - Czech Sauna
+  - Czech Sharking
+  - Czech Snooper
+  - Czech Solarium
+  - Czech Spy
+  - Czech Streets
+  - Czech Super Models
+  - Czech Taxi
+  - Czech Toilets
+  - Czech Twins
+  - Czech Wife Swap
++ #### CzechVR | ✅
+  - CzechVR Casting
+  - CzechVR Fetish
+  - CzechVR Network
++ #### DarkRoomVR | ✓ - **Title only**
++ #### Data18 Porn Database | ✅
+  - Data18 Empire
+  - Data18 Movie Scene
+  - Data18 Movies
+  - Data18 Scenes
++ #### Deranged Dollars | ✅
++ #### Desperate Amateurs | ✓
++ #### DickDrainers | ✅
++ #### Dirty Flix | ✅ - **Title Only and Date Add**
+  - Make Him Cuckold
+  - She Is Nerdy
+  - Trick Your GF
+  - Tricky Agent
++ #### Dirty Hard Drive | ✅
++ #### Dorcel Vision | ✓ - **Title only**
++ #### Evolved Fights Network | ✅
+  - Evolved Fights
+  - Evolved Fights Lez
++ #### Explicite Art | ✓
++ #### FAKings | ✅
+  - Ainaras Diary
+  - Alumnas De Intercambio
+  - Arnaldo Series
+  - Behind FAKings
+  - Big Rubber Cocks
+  - Blowjob Lessons
+  - Castings de FAKings
+  - Cazadas
+  - Chicas Curvis
+  - Clases de Mamadas
+  - Club Maduras
+  - Curvy Girls
+  - De Paseo con FAKings
+  - Diario de Ainara
+  - El Día del Coño GRATIS
+  - El Sulfato Anatómico
+  - Es Tu Vecina
+  - Exchange Student Girls
+  - FAKings Academy
+  - FAKings Busted
+  - FAKings Castings
+  - FAKings PornStars
+  - FAKings Slutwalk
+  - FAKingsVR
+  - FAKins Wild Party
+  - Fiestas FAKings
+  - First FAKings
+  - Follame Tonto
+  - Follatelos
+  - Free Couples
+  - FREE Pussy Day
+  - Fuck Me Fool
+  - Fuck Them
+  - Hable Con Ellas
+  - Historias de Cuarentena
+  - Horsedicks
+  - I Sell My Girlfriend
+  - Im a Webcam Girl
+  - Innocent 18
+  - Inocentes 18
+  - La Escuela de FAKings
+  - Los Cazatolas
+  - Mi Primer Anal
+  - Mi Primera DP
+  - MILF Club
+  - Muy Voyeur
+  - My First Anal
+  - My First DP
+  - NERD BUSTER
+  - Newbies Or So They Say
+  - Next Door Girl
+  - Novatas O Eso Dicen
+  - Parejas.NET
+  - Parejitas Libres
+  - Perverting Couples
+  - Pervirtiendo Parejas
+  - Pollazas de Goma
+  - Porno Dolares
+  - Quarantine Stories
+  - Rabos de Caballo
+  - Sick Videos
+  - Soy Webcamer
+  - Swingers Life
+  - Talk To Them
+  - The Anatomical Sulphate
+  - The Naughty Bet
+  - Trans FAKings
+  - Vendo a mi Novia
+  - Very Voyeur
+  - Vidas Liberales
+  - Videos Enfermos
+  - Virtual Reality
++ #### Family Therapy | ✅
++ #### Femdom Empire | ✅
+  - Feminized
++ #### Femjoy | ✅ - **Filename support**
++ #### Finishes The Job | ✓ - **Date Add**
+  - Mano Job
+  - Mister POV
+  - The Dick Suckers
++ #### First Anal Quest | ✅
++ #### First Time Videos | ✅
+  - FTVGirls
+  - FTVMilfs
++ #### Fitting-Room | ❌ - **SceneID**
++ #### FuckingAwesome | ✅
++ #### FuelVirtual | ✅
+  - FuckedHard18
+  - MassageGirls18
+  - NewGirlPOV
++ #### Full Porn Network | ✓ - **Model Name**
+  - Analized
+  - Bad Daddy POV
+  - Bad Mommy POV
+  - Daughter JOI
+  - DTF Sluts
+  - James Deen
+  - Only Prince
+  - Pervert Gallery
+  - POV Perverts
+  - Twisted Visual
++ #### Gamma | ✅
+  - 21Naturals
+    - 21EroticAnal
+    - 21FootArt
+  - 21Sextreme
+    - Dominated Girls
+    - Grandpas Fuck Teens
+    - Lusty Grandmas
+    - Teach Me Fisting
+    - Zoliboy
+  - 21Sextury
+    - Anal Teen Angels
+    - Asshole Fever
+    - Butt Plays
+    - Deepthroat Frenzy
+    - DP Fanatics
+    - Footsie Babes
+    - Gapeland
+    - Lez Cuties
+    - Pix and Video
+  - Adult Time
+    - Accidental Gangbang
+    - Caught Fapping
+    - Couple Swapping
+    - Dare We Share
+    - Kiss Me Fuck Me
+    - Modern Day Sins
+    - Oopsie
+    - Poly Family Life
+    - Real Sensual
+    - Teen Sneaks
+  - B Skow
+  - Blowpass
+    - 1000 Facials
+    - Immoral Live
+    - Mommy Blows Best
+    - My XXX Pass
+    - Only Teen Blowjobs
+    - Throated
+  - Burning Angel
+  - Cumshot Oasis
+  - Dogfart Network
+    - Barb Cummings
+    - Black Meat White Feet
+    - Blacks On Blondes
+    - Blacks On Boys
+    - Blacks On Cougars
+    - Candy Monroe
+    - Cuckold Sessions
+    - CumBang
+    - DFXtra
+    - Dogfart
+    - Dogfart Behind The Scenes
+    - Glory Hole
+    - Glory Hole Initiations
+    - Gloryholes And Handjobs
+    - Interracial Blowbang
+    - Interracial Pickups
+    - Katie Thomas
+    - Ruth Blackwell
+    - Spring Thomas
+    - The Minion
+    - Watching My Daughter Go Black
+    - Watching My Mom Go Black
+    - We Fuck Black Girls
+    - Wife Writing
+    - Zebra Girls
+  - Evil Angel
+    - Blackmailed
+  - Fame Digital
+    - Devils Film
+    - Peter North
+    - Rocco Siffredi
+    - Tera Patrick
+  - Fantasy Massage
+    - All Girl Massage
+    - Massage Parlor
+    - Milking Table
+    - Nuru Massage
+    - POV Massage
+    - Soapy Massage
+    - Tricky Spa
+  - Filthy Kings
+    - Fill Up My Mom
+    - Filthy Blowjobs
+    - Filthy Massage
+    - Filthy Newbies
+    - Filthy POV
+    - Filthy Taboo
+    - FK BTS
+    - Hot Girls Raw
+    - Its Anal
+    - MYLF Seeker
+    - Night Creep
+  - Gangbang Creampie
+  - Gender X
+  - Girlfriends Films
+  - Girlsway
+    - Girls Try Anal
+    - Girlsway Originals
+    - Mommy's Girl
+    - Sextape Lesbians
+    - Web Young
+  - Give Me Teens
+  - GloryHoleSecrets
+  - Joymii
+  - Lethal Hardcore
+    - Lethal Hardcore VR
+  - Model Time
+  - Mommys Boy
+    - Mommy's Boy
+  - My Pervy Family
+  - Open Life Network
+    - Abbey Brooks
+    - Devon Lee
+    - Dylan Ryder
+    - Hanna Hilton
+    - Lane Sisters
+    - Sunny Leone
+  - Out Of the Family
+  - Pretty Dirty
+  - Pure Taboo
+  - Silvia Saint
+  - Taboo Heat
+  - Touch My Wife
+  - White Ghetto
+  - Wicked
+  - XEmpire
+    - AllBlackX
+    - DarkX
+    - EroticaX
+    - HardX
+    - LesbianX
+  - Zero Tolerance
++ #### GASM | ✅
+  - Butt Formation
+  - Cosplay Babes
+  - Filthy and Fisting
+  - Fun Movies
+  - Harmony Vision
+  - Herzog
+  - Hot Gold
+  - Inflagranti
+  - JapanHD
+  - Leche69
+  - Magma Film
+  - MMV Films
+  - Paradise Films
+  - PornXN
+  - Pure XXX Films
+  - The Undercover Lover
++ #### Girls Rimming | ✅
++ #### GirlsOutWest | ✅
++ #### Grooby | ✅
+  - Black TGirls
+  - Black TGirls Hardcore
+  - Bobs TGirls
+  - Brazilian Transsexuals
+  - Femout
+  - Grooby Girls
+  - Ladyboy
+  - TGirl Japan
+  - TGirl Japan Hardcore
+  - TGirls
+  - TGirls Porn
+  - TS Casting Couch
++ #### Heavy on Hotties | ✅
++ #### Hegre | ✅
++ #### High-Tech VR | ❌
+  - RealJamVR - **Direct URL**
+  - SexBabesVR - **Direct URL**
+  - SinsVR - **Direct URL**
+  - StasyQ VR - **SceneID**
++ #### Holly Randall Productions | ✓
+  - Holly Randall
++ #### HoloGirlsVR | ✅
++ #### HotwifeXXX | ✅
++ #### HuCows | ✅
++ #### InterracialPass | ✅
+  - Backroom Casting Couch
+  - BBC Surprise
+  - Exploited College Girls
+  - Hot Milfs Fuck
+  - HushPass
+  - I Kiss Girls
+  - Interracial Pass
++ #### Intersec | ✅ - **Actor Only**
+  - Hardtied
+  - Hotel Hostages
+  - Infernal Restraints
+  - Insex
+  - Pain Toy
+  - Real Time Bondage
+  - Renderfiend
+  - Sensual Pain
+  - Sexually Broken
+  - Topgrl
++ #### InTheCrack | ✓ - **Actor only**
+  - In The Crack
++ #### Jacquie Et Michel TV | ✅
++ #### JavBus | ✅ - **SceneID (in form of JAVID)**
++ #### JAVDatabase | ✅ - **SceneID (in form of JAVID)**
++ #### JAVLibrary | ✅ - **SceneID (in form of JAVID)**
++ #### Jesse Loads Monster Facials | ✅ - **Actor only**
++ #### Jules Jordan | ✅ - **Movies Not Supported**
+  - GirlGirl
+  - Manuel Ferrara
+  - Sperm Swallowers
+  - The Ass Factory
++ #### JVR Porn | ✅ - **Date Add**
++ #### Karups | ✅ - **Actor only**
+  - KarupsHA
+  - KarupsOW
+  - KarupsPC
++ #### Kelly Madison | ✅ - **Episode ID or URL ID**
+  - PornFidelity
+  - TeenFidelity
++ #### Killergram | ❌ - **SceneID**
+  - Killergram Platinum
++ #### Kin8tengoku | ✅
++ #### Kink | ✅
+  - 30 Minutes of Torment
+  - Bound Gang Bangs
+  - Bound Gods
+  - Bound in Public
+  - Brutal Sessions
+  - Butt Machine Boys
+  - Captive Male
+  - Chantas Bitches
+  - Device Bondage
+  - Divine Bitches
+  - Electrosluts
+  - Everything Butt
+  - Families Tied
+  - FetishNetwork
+  - FetishNetwork Male
+  - Filthy Femdom
+  - Foot Worship
+  - Fucked and Bound
+  - Fucking Machines
+  - Hardcore Gangbang
+  - Hogtied
+  - Kink Evolved Fights
+  - Kink Evolved Fights Lesbian Edition
+  - Kink Features
+  - Kink University
+  - Men In Pain
+  - Men on Edge
+  - Naked Kombat
+  - Public Disgrace
+  - Sadistic Rope
+  - Sex and Submission
+  - SexualDisgrace
+  - StraponSquad
+  - SubmissiveX
+  - The Training of O
+  - The Upper Floor
+  - TS Pussy Hunters
+  - TS Seduction
+  - Ultimate Surrender
+  - Water Bondage
+  - Whipped Ass
+  - Wired Pussy
++ #### LittleCaprice | ✅
+  - Buttmuse
+  - Caprice Divas
+  - Little Caprice Dreams
+  - NasstyX
+  - POVDreams
+  - Streetfuck
+  - SuperprivateX
+  - Wecumtoyou
+  - Xpervo
++ #### LoveHerFilms | ✅
+  - LoveHerBoobs
+  - LoveHerFeet
+  - SheLovesBlack
++ #### Lust Reality | ✅
++ #### Lustomic | ❌ - **SceneID, Date Add**
++ #### Manual NFO | ❌ - **NFO basename**
+  - manual
++ #### ManyVids | ❌ - **SceneID, Date Add**
++ #### Marc Dorcel | ✅
+  - Dorcel Club
++ #### Meana Wolf | ✓
++ #### Melena Maria Rya | ❌ - **SceneID, Date Add**
++ #### Melone Challenge | ✅
++ #### MetadataAPI | ✅
++ #### MetArt Network | ✅
+  - ALS Scan
+  - Errotica Archives
+  - Eternal Desire
+  - Hustler
+  - Love Hairy
+  - MetArt
+  - MetArtX
+  - Rylsky Art
+  - SexArt
+  - Straplezz
+  - Stunning18
+  - The Life Erotic
+  - VivThomas
++ #### MissaX | ✓
+  - AllHerLuv
+  - Exposed Whores
+  - House of Fyre
+  - Lauren Phillips
+  - Philavise
+  - She Seduced Me
++ #### ModelCentro Network | ✅
+  - Bruce and Morgan
+  - Dani Daniels
+  - De Nude Art
+  - Dillion Nation
+  - Fall In Lovia
+  - Get Your Knees Dirty
+  - Gina Gerson
+  - Jerk Off With Me
+  - Katya Clover
+  - Lilu Moon
+  - Lisey Sweet
+  - My Life In Miami
+  - Nude Beauties
+  - Official Chloe Toy
+  - Romi Rain
+  - SlutInspection
+  - Vicki Valkyrie
+  - Vina Sky XXX
+  - Yummy Couple
++ #### Mom Comes First | ✅
++ #### Mom POV | ✅ - **Title only**
++ #### My Dirty Hobby | ✅
++ #### Naughty America | ✅
+  - 2 Chicks Same Time
+  - American Daydreams
+  - Anal College
+  - Asian 1 on 1
+  - Ass Masterpiece
+  - Big Cock Bully
+  - Big Cock Hero
+  - College Sugarbabes
+  - Diary of a Milf
+  - Diary of a Nanny
+  - Dirty Wives Club
+  - Fast Times
+  - Housewife 1 on 1
+  - I have a Wife
+  - LA Sluts
+  - Latin Adultery
+  - Latina Stepmom
+  - Lesbian Girl on Girl
+  - Live Gym Cam
+  - Live Naughty Milf
+  - Live Naughty Nurse
+  - Live Naughty Secretary
+  - Live Naughty Student
+  - Live Naughty Teacher
+  - Live Party Girl
+  - Milf Sugar Babes
+  - Mom's Money
+  - Mrs. Creampie
+  - My Dads Hot Girlfriend
+  - My Daughters Hot Friend
+  - My First Sex Teacher
+  - My Friends Hot Girl
+  - My Friends Hot Mom
+  - My Girl Loves Anal
+  - My Girlfriends Busty Friend
+  - My Naughty Latin Maid
+  - My Naughty Massage
+  - My Sisters Hot Friend
+  - My Wife is My Pornstar
+  - My Wifes Hot Friend
+  - Naughty Athletics
+  - Naughty Bookworms
+  - Naughty Country Girls
+  - Naughty Flipside
+  - Naughty Office
+  - Naughty Rich Girls
+  - Naughty Weddings
+  - Neighbor Affair
+  - Open Family
+  - Perfect Fucking Strangers
+  - Seduced By A Cougar
+  - Show My BF
+  - Sleazy Stepdad
+  - Slut Stepmom
+  - Slut Stepsister
+  - SoCal Coeds
+  - Teens Love Cream
+  - The Passenger
+  - Thundercock
+  - Tonights Girlfriend Classic
+  - Watch Your Mom
+  - Watch Your Wife
+  - Wives on Vacation
++ #### Naughty America Other Sites | ✓ - **Actor only**
+  - Tonights Girlfriend
++ #### Network 18 | ✓ - **Title or Actor Name**
+  - Fit18
+  - Thicc18
++ #### New Sensations | ✅ - **Date Add**
+  - FamilyXXX
+  - Fresh Out Of High School
+  - Shane Diesel's Banging Babes
+  - Tales From the Edge
+  - The Romance Series
+  - The Tabu Tales
++ #### Nubiles | ✅
+  - /video/
+    - Anilos
+    - Deep Lush
+    - Hot Crazy Mess
+    - NF Busty
+    - That Sitcom Show
+  - /video/gallery/
+    - Bad Teens Punished
+    - Bountyhunter Porn
+    - Bratty MILF
+    - Bratty Sis
+    - Caught My Coach
+    - Cheating Mommy
+    - Cheating Sis
+    - Cum Swapping Sis
+    - Daddy's Lil Angel
+    - Dating My Stepson
+    - Detention Girls
+    - Driver XXX
+    - Family Swap
+    - I'm Not Your Mommy
+    - MILF Coach
+    - Mom Lover
+    - Mom Swapped
+    - Mom Wants Creampie
+    - Mom Wants to Breed
+    - Mom's Boy Toy
+    - Mom's Family Secrets
+    - Mom's Tight
+    - Moms Teach Sex
+    - My Family Pies
+    - Nubile Films
+    - Nubiles
+    - Nubiles Casting
+    - Nubiles ET
+    - Nubiles Porn
+    - Nubiles Unscripted
+    - Petite Ballerinas Fucked
+    - Petite HD Porn
+    - Princess Cum
+    - Reality Sis
+    - She's Breeding Material
+    - Smashed
+    - Step Siblings Caught
+    - Teacher Fucks Teens
+    - The POV God
+    - Younger Mommy
+  - /video/watch/
+    - FamilySwapXXX
+    - GirlsOnlyPorn
+  - /video/website/73/
+    - Reality Sis (Legacy)
++ #### NVG Network | ❌ - **SceneID Only, Date Add, Actor Add (Name1 AND Name2)**
+  - Net Video Girls
++ #### Penthouse Gold | ✅
++ #### Perfect Gonzo | ✅
+  - All Internal
+  - Ass Traffic
+  - Cum For Cover
+  - Fist Flush
+  - Give Me Pink
+  - Milf Thing
+  - Perfect Gonzo Interview
+  - PerfectGonzo
+  - Primecups
+  - PurePOV
+  - Sapphic Erotica
+  - SapphiX
+  - Sperm Swap
+  - Tamed Teens
++ #### PervCity | ✓ - **Title or Actor**
+  - Anal Overdose
+  - Banging Beauties
+  - Chocolate BJs
+  - DP Diva
+  - Oral Overdose
+  - Perv City
+  - Up Her Asshole
++ #### PJGirls | ✅
++ #### PKJ Media | ✓ - **Title only**
+  - My POV Fam
+  - Perverted POV
+  - Peter's Kingdom
+  - Raw White Meat
+  - Sluts Around Town
++ #### Playboy Plus | ✅
++ #### PlumperPass | ✅
++ #### Pornbox | ✅
++ #### PornCZ | ✓ - **Title or Actor**
+  - Amateri Premium
+  - Amateur From Bohemia
+  - Boys Fuck MILFs
+  - Chloe Lamour
+  - Czech Anal Sex
+  - Czech Bi Porn
+  - Czech Boobs
+  - Czech Deviant
+  - Czech Escort Girls
+  - Czech Executor
+  - Czech Gay City
+  - Czech Gypsies
+  - Czech Hitchhikers
+  - Czech Real Dolls
+  - Czech Sex Casting
+  - Czech Sex Party
+  - Czech Shemale
+  - Dellia Twins
+  - Dick On Trip
+  - Fucking Office
+  - Fucking Street
+  - Girls Take Away
+  - Horny Doctor
+  - Horny Girls CZ
+  - Hunter POV
+  - Lady Dee
+  - Public From Bohemia
+  - Retro Porn CZ
+  - Sex In Taxi
+  - Sex With Muslims
+  - Susan Ayn
+  - Teen From Bohemia
+  - VR Porn CZ
++ #### Porndoe Premium | ✅
+  - Badtime Stories
+  - Carne Del Mercado
+  - Casting Alla Italiana
+  - Casting Francais
+  - Chicas Loca
+  - Crowd Bondage
+  - Deutschland Report
+  - Exposed Casting
+  - Fucked In Traffic
+  - Hausfrau Ficken
+  - Her Big Ass
+  - La Cochonne
+  - La Novice
+  - Las Folladoras
+  - Los Consoladores
+  - Operacion Limpieza
+  - PinUp Sex
+  - Porndoepedia
+  - Reife Swinger
+  - Scambisti Maturi
+  - Sextape Germany
+  - Special Feet Force
+  - Trans Bella
+  - Trans Taboo
+  - Tu Venganza
+  - XXX Omas
++ #### PornPros | ✅ - **Title only — must match the slug in the scene URL**
+  - 18 Years Old
+  - 40oz Bounce
+  - Anal4K
+  - Asians Exploited
+  - BAEB
+  - BBC POVD
+  - BBCPie
+  - Bikini Smash
+  - Caged Sex
+  - Casting Couch-X
+  - Cock Competition
+  - Creepy Pa
+  - Cruelty Party
+  - Cum Disgrace
+  - Cum4K
+  - Cumshot Surprise
+  - Deep Throat Love
+  - Disgraced 18
+  - Double Trouble
+  - Euro Humpers
+  - Exotic4k
+  - Exploited Cheerleaders
+  - Facials Galore
+  - Facials4K
+  - FantasyHD
+  - Freaks Of Boobs
+  - Freaks Of Cock
+  - Game On
+  - Girl Scout Sex
+  - GirlCum
+  - Glory Hole 4K
+  - Holed
+  - Jurassic Cock
+  - Kinky Sluts 4K
+  - Lubed
+  - Massage Creep
+  - Milf Humiliation
+  - Mom4K
+  - MomCum
+  - My Very First Time
+  - NannySpy
+  - Passion Fuck
+  - Passion-HD
+  - Pimp Parade
+  - PornPlus
+  - POVD
+  - Property Exploits
+  - PureMature
+  - Real ExGirlfriends
+  - RV Adventures
+  - School of Cock
+  - Sexercise
+  - Shady Pi
+  - Shower 4K
+  - SpyFam
+  - Squirt Bomb
+  - Squirt Disgrace
+  - Strip Club Tryouts
+  - Strippers 4K
+  - TeenBFF
+  - Throat Creampies
+  - Tiny4k
+  - Waxxxed
+  - WetVR
+  - Zoom POV
++ #### Pornstar Platinum | ✅
++ #### PornWorld | ✅
+  - 1ByDay
+  - Cherry Jul
+  - DDF Babes
+  - DDF Busty
+  - DDF Xtreme
+  - DDFNetwork
+  - Euro Girls on Girls
+  - Euro Teen Erotica
+  - Eve Angel Official
+  - Hairy Twatter
+  - Hands on Hardcore
+  - Hot Legs and Feet
+  - House of Taboo
+  - Only Blowjob
+  - Sandys Fantasies
+  - Sex Video Casting
++ #### POVR | ✓
++ #### Private | ✅
+  - Anal Introductions
+  - Blacks on Sluts
+  - I Confess Files
+  - Mission Ass Possible
+  - Private Fetish
+  - Private MILFs
+  - Private Stars
+  - Russian Fake Agent
+  - Russian Teen Ass
+  - Sex on the beach
+  - Tight and Teen
++ #### Project1Service | ✅
+  - Babes
+    - Babes Unleashed
+    - Black is Better
+    - Elegant Anal
+    - Office Obsession
+    - Stepmom Lessons
+  - BangBros
+    - Ass Parade
+    - AvaSpice
+    - Back Room Facials
+    - Backroom MILF
+    - Ball Honeys
+    - Bang Bus
+    - Bang Casting
+    - Bang POV
+    - Bang Tryouts
+    - BangBros 18
+    - BangBros Angels
+    - BangBros Clips
+    - BangBros Remastered
+    - Big Mouthfuls
+    - Big Tit Creampie
+    - Big Tits Round Asses
+    - BlowJob Fridays
+    - Blowjob Ninjas
+    - Boob Squad
+    - Brown Bunnies
+    - Can He Score
+    - Chongas
+    - Colombia Fuck Fest
+    - Dirty World Tour
+    - Dorm Invasion
+    - Facial Fest
+    - Fuck Team Five
+    - Glory Hole Loads
+    - Latina Rampage
+    - Living With Anna
+    - Magical Feet
+    - MILF Lessons
+    - Milf Soup
+    - Mom Is Horny
+    - Monsters of Cock
+    - Mr Anal
+    - Mr CamelToe
+    - My Dirty Maid
+    - My Life In Brazil
+    - Newbie Black
+    - Party of 3
+    - Pawg
+    - Penny Show
+    - Porn Star Spa
+    - Power Munch
+    - Public Bang
+    - Slutty White Girls
+    - Stepmom Videos
+    - Street Ranger
+    - Tugjobs
+    - Working Latinas
+  - Bi Empire
+  - Blacks On Moms
+  - Brazzers
+    - Asses In Public
+    - Baby Got Boobs
+    - Big Butts like it big
+    - Big Tits at School
+    - Big Tits at Work
+    - Big Tits in Sports
+    - Big Tits in Uniform
+    - Big Wet Butts
+    - Brazzers Exxtra
+    - Busty and Real
+    - Busty Z
+    - Butts and Blacks
+    - CFNM Clothed Female Male Nude
+    - Day With a Pornstar
+    - Dirty Masseur
+    - Doctor Adventures
+    - Hot and Mean
+    - Hot Chicks Big Asses
+    - Milfs Like It Big
+    - Mommy Got Boobs
+    - Moms in Control
+    - Pornstars Like It Big
+    - Racks and Blacks
+    - Real Wife Stories
+    - Shes Gonna Squirt
+    - Teens Like It Big
+    - Teens Like It Black
+    - ZZ Series
+  - Deviant Hardcore
+  - Deviante
+  - Digital Playground
+  - Dilfed
+  - Doe Girls
+  - Erito
+  - Erotic Spice
+  - FakeHub
+    - Fake Agent
+    - Fake Agent UK
+    - Fake Cop
+    - Fake Driving School
+    - Fake Hospital
+    - Fake Hostel
+    - Fake Taxi
+    - Fakehub Originals
+    - Female Agent
+    - Female Fake Taxi
+    - Public Agent
+  - Family Hookups
+  - Family Sinners
+  - Filthy Family
+  - Forgive Me Father
+  - Gilfed
+  - Girl Grind
+  - HentaiPros
+  - Kinky Spa
+  - Lesbea
+  - Lets Doe It
+    - A Girl Knows
+    - Bitches Abroad
+    - Bums Besuch
+    - Bums Buero
+    - Bums Bus
+    - Doe Projects
+    - Her Limit
+    - Horny Hostel
+    - Kinky Inlaws
+    - Latina MILF
+    - My Naughty Album
+    - Porno Academie
+    - Quest for Orgasm
+    - Relaxxxed
+    - Scam Angels
+    - The White Boxxx
+    - Xchimera
+    - XXX Shades
+  - Look At Her Now
+  - Love Her Ass
+  - Mia Khalifa
+  - Mile High Media
+    - Doghouse Digital
+    - Mile High
+    - Reality Junkies
+    - Sweet Sinner
+    - Sweetheart Video
+  - Milfed
+  - Mofos
+    - Busted Babysitters
+    - Don't Break Me
+    - Ebony Sex Tapes
+    - Girls Gone Pink
+    - I Know That Girl
+    - Latina Sex Tapes
+    - Let's Try Anal
+    - LPI
+    - Milfs Like It Black
+    - Mofos B Sides
+    - Mofos Lab
+    - Pervs On Patrol
+    - Pornstar Vote
+    - Project RV
+    - Public Pick-Ups
+    - Real Slut Party
+    - Share My BF
+    - Shes a Freak
+    - Stranded Teens
+    - The Sex Scout
+  - My GF
+  - Pretty Dirty Teens
+  - Property Sex
+  - Reality Kings
+    - 40 Inch Plus
+    - 8th Street Latinas
+    - Bad Tow Truck
+    - Big Naturals
+    - Big Tits Boss
+    - Bikini Crashers
+    - Black GFs
+    - Captain Stabbin
+    - CFNM Secret
+    - Crazy Asian GFs
+    - Crazy College GFs
+    - Cum Fiesta
+    - Cum Girls
+    - Dangerous Dongs
+    - Dare Dorm
+    - Euro Sex Parties
+    - Extreme Asses
+    - Extreme Naturals
+    - First Time Auditions
+    - Flower Tucci
+    - GF Leaks
+    - GF Revenge
+    - Girls of Naked
+    - Happy Tugs
+    - HD Love
+    - Horny Birds
+    - Hot Bush
+    - Hot Girls Game
+    - In the VIP
+    - Lil Humpers
+    - Mike in Brazil
+    - Mikes Apartment
+    - Milf Hunter
+    - Milf Next Door
+    - Moms Bang Teens
+    - Moms Lick Teens
+    - Money Talks
+    - Monster Curves
+    - No Faces
+    - Pure 18
+    - Real Orgasms
+    - Reckless in Miami
+    - RK Prime
+    - Round and Brown
+    - Saturday Night Latinas
+    - See My Wife
+    - Sneaky Sex
+    - Street BlowJobs
+    - Team Squirt
+    - Teens Love Huge Cocks
+    - Top Shelf Pussy
+    - Tranny Surprise
+    - VIP Crew
+    - We Live Together
+    - Wives in Pantyhose
+    - Work Me Harder
+  - Sex Selector
+  - Sex Working
+  - SexyHub
+    - Dane Jones
+    - Fitness Rooms
+    - Girlfriends.xxx
+    - Massage Rooms
+    - Mom XXX
+  - She Will Cheat
+  - Squirted
+  - TransAngels
+  - Transsensual
+  - True Amateurs
+  - Twistys
+    - Mom Knows Best
+    - Turning Twistys
+    - TwistysHard
+    - When Girls Play
+  - Virtual Porn
+  - Why Not Bi
+  - XXXPawn
++ #### Puba | ✓
++ #### Puffy Network | ✓
+  - Euro Babe Facials
+  - Simply Anal
+  - We Like To Suck
+  - Wet and Pissy
+  - Wet and Puffy
++ #### PureCFNM | ❌ - **ActressID with Title Search**
+  - Amateur CFNM
+  - CFNMGames
+  - Girls Abuse Guys
+  - Hey Little Dick
+  - Lady Voyeurs
++ #### Putalocura | ✅
++ #### QueenSnake | ❌ - **Exact Title Only**
+  - QueenSect
++ #### Radical Cash | ✅
+  - 2 Girls 1 Camera
+  - AltErotic
+  - Amazing Films
+  - Bemefi
+  - Benefit Monkey
+  - Big Gulp Girls
+  - BJ Raw
+  - BlackBullChallenge
+  - BoppingBabes
+  - Cannon Prod
+  - Come Inside
+  - Cougar Season
+  - Dark Shade
+  - Deepthroat Sirens
+  - Dick HD Daily
+  - Dire Desires
+  - Divine-DD
+  - DownblouseJerk
+  - Facials Forever
+  - FreakMobMedia
+  - GotFilled
+  - Hard Werk
+  - Hoby Buchanon
+  - Inserted
+  - JAV888
+  - LegendaryX
+  - Lezkey
+  - LingerieTales
+  - Lucid Flix
+  - Nick Marxx
+  - Passion POV
+  - Pounded Petite
+  - POV Perv
+  - Purity VR
+  - Queer Crush
+  - RealBikiniGirls
+  - Ricky's Room
+  - S3XUS
+  - Sexy Modern Bull
+  - She's Brand New
+  - SIDECHICK
+  - Top Web Models
+  - UpskirtJerk
+  - VRHush
+  - WankItNow
+  - XFul
+  - Yes Girlz
+  - Z Filmz Originals
++ #### Radical Cash Other | ✅
+  - Gonzo Living
+    - Milf Gonzo
+    - Teen Gonzo
+  - Hitzefrei
+    - CityCheck
+    - Cuff em All
+    - Family Affairs
+    - fANALarm
+    - Fuck On Arrival
+    - Milf Hunters
+    - Patti's Anal
+    - Unleashed
+  - PurgatoryX
+  - ToughLoveX - **Actor Name Only or Title Only**
++ #### Reality Lovers | ✅
++ #### ReidMyLips | ❌ - **Direct URL**
++ #### Reptyle | ✅
+  - Family Strokes
+    - Ask Your Mother
+    - Black Step Dad
+    - Dad Crush
+    - Family Strokes Features
+    - Foster Tapes
+    - Not My Grandpa
+    - Perv Mom
+    - Perv Nana
+    - Sis Loves Me
+    - Tiny Sis
+  - FreeUse
+    - Freaky Fembots
+    - FreeUse Fantasy
+    - FreeUse MILF
+    - FreeUse Singles
+    - Use POV
+  - MYLF
+    - Anal Mom
+    - BBC Paradise
+    - Blue Collar Babes
+    - Full Of JOI
+    - Got MYLF
+    - Hijab MYLFs
+    - Hookup Pad
+    - Lone MILF
+    - MILF Body
+    - Milfty
+    - Mom Drips
+    - Mom Shoot
+    - Mommy's Little Man
+    - MYLF After Dark
+    - MYLF Blows
+    - MYLF Boss
+    - MYLF Features
+    - MYLF of the Month
+    - MYLF Singles
+    - Mylfdom
+    - Mylfed
+    - MylfWood
+    - New MYLFs
+    - Oye Mami
+    - Secrets
+    - Shag Street
+    - Stay Home MILF
+    - Tiger Moms
+  - Pervz
+    - Charmed
+    - MILF Taxi
+    - Perv Doctor
+    - Perv Driver
+    - Perv Massage
+    - Perv Principal
+    - Perv Singles
+    - Perv Therapy
+    - Pervz Features
+    - Shoplyfter
+    - Shoplyfter MYLF
+  - Swappz
+    - Daughter Swap
+    - Mom Swap
+    - Sis Swap
+  - TeamSkeet
+    - After Dark
+    - Anal Euro
+    - Bad MILFs
+    - BFFs
+    - Black Valley Girls
+    - Brace Faced
+    - Brat Tamer
+    - Breeding Material
+    - CFNM Teens
+    - Ciao Bella
+    - Daddy Pounds
+    - Dyked
+    - Exxxtra Small
+    - Ginger Patch
+    - Glowupz
+    - Her Freshman Year
+    - Hijab Hookup
+    - I Made Porn
+    - Innocent High
+    - Kissing Sis
+    - Latina Team
+    - Little Asians
+    - Lust HD
+    - Messy Jessy
+    - Mormon Girlz
+    - My Babysitters Club
+    - My Dirty Uncle
+    - My First
+    - MYLF Classics
+    - MYLF Labs
+    - MYLF X Bang
+    - MYLF X BJ Raw
+    - MYLF X CamSoda
+    - MYLF X Chad Alva
+    - MYLF X Dee Siren
+    - MYLF X Elegant Raw
+    - MYLF X EvilAngel
+    - MYLF X Fucking Awesome
+    - MYLF X Hussie Pass
+    - MYLF X James Deen
+    - MYLF X Joybear
+    - MYLF X Karups Older Women
+    - MYLF X Lady Fyre
+    - MYLF X Little Puck
+    - MYLF X Mandy Flores
+    - MYLF X Manko88
+    - MYLF X Marie McCray
+    - MYLF X MariskaX
+    - MYLF X Mindi Mink
+    - MYLF X Miss Lexa
+    - MYLF X Owen Gray
+    - MYLF X Paytons Place
+    - MYLF X PurgatoryX
+    - MYLF X SinfulXXX
+    - MYLF X SpankMonster
+    - MYLF X Steve Holmes
+    - MYLF X Teamskeet
+    - MYLF X ToughLoveX
+    - Our Little Secret
+    - Oye Loca
+    - Passport Bros
+    - Petite Teens 18
+    - POV Life
+    - Reptyle Classics
+    - Reptyle Labs
+    - Rub A Teen
+    - Self Desire
+    - Sex and Grades
+    - She's New
+    - Solo Interviews
+    - Spanish 18
+    - Stay Home POV
+    - Step Siblings
+    - TeamSkeet AllStars
+    - TeamSkeet Classics
+    - TeamSkeet Extras
+    - TeamSkeet Features
+    - TeamSkeet Labs
+    - TeamSkeet Singles
+    - TeamSkeet VIP
+    - TeamSkeet X Avery Black
+    - TeamSkeet X BAEB
+    - TeamSkeet X Banana Fever
+    - TeamSkeet X Bang
+    - TeamSkeet X BJ Raw
+    - TeamSkeet X Bratty Foot Girls
+    - TeamSkeet X BritStudioXXX
+    - TeamSkeet X CamSoda
+    - TeamSkeet X Club Sweethearts
+    - TeamSkeet X Cum Kitchen
+    - TeamSkeet X DocTayTay
+    - TeamSkeet X Erotique TV Live
+    - TeamSkeet X Eva Elfie
+    - TeamSkeet X EvilAngel
+    - TeamSkeet X Fit18
+    - TeamSkeet X Flora Rodgers
+    - TeamSkeet X Fucking Awesome
+    - TeamSkeet X GrandDadz
+    - TeamSkeet X Harmony Films
+    - TeamSkeet X Herb Collins
+    - TeamSkeet X Hussie Pass
+    - TeamSkeet X Impure Desire
+    - TeamSkeet X James Deen
+    - TeamSkeet X JavHub
+    - TeamSkeet X Jonathan Jordan
+    - TeamSkeet X Joy Bear
+    - TeamSkeet X Kriss Kiss
+    - TeamSkeet X Layna Landry
+    - TeamSkeet X LunaXJames
+    - TeamSkeet X Luxury Girl
+    - TeamSkeet X Mickey Mod
+    - TeamSkeet X Molly RedWolf
+    - TeamSkeet X OG
+    - TeamSkeet X OZ Fellatio Queens
+    - TeamSkeet X POV Perv
+    - TeamSkeet X POVGod
+    - TeamSkeet X PurgatoryX
+    - TeamSkeet X Reislin
+    - TeamSkeet X Riley Cyriis
+    - TeamSkeet X Screampies
+    - TeamSkeet X Slut Inspection
+    - TeamSkeet X SpankMonster
+    - TeamSkeet X Sweetie Fox
+    - TeamSkeet X ToughLoveX
+    - TeamSkeet X YoungBusty
+    - Teen Curves
+    - Teen JOI
+    - Teen Pies
+    - Teens Do Porn
+    - Teens Love Anal
+    - Teens Love Black Cocks
+    - Teens Love Money
+    - Teeny Black
+    - The Loft
+    - The Real Workout
+    - Thickumz
+    - This Girl Sucks
+    - Titty Attack
+    - Tomboyz
++ #### Romero Multimedia | ✓
+  - Defeated Sex Fight
+  - Defeated XXX
+  - Freeze
+  - Futanari XXX
+  - Goonblins
+  - Hentaied
+  - Parasited
+  - Plants vs Cunts
+  - Voodooed
+  - Vored
++ #### Screwbox | ✓
++ #### ScrewMeToo | ✅
++ #### Sex Like Real | ✅
++ #### SexMex | ✅
++ #### Sicflics | ✅
++ #### SinsLife | ✓
++ #### SinX | ✓
+  - Fully Clothed Pissing
+  - Golden Shower Power
+  - Pissing In Action
+  - Slime Wave
++ #### Spizoo | ✓
+  - Cream Her
+  - DR. Daddy POV
+  - First Class POV
+  - Goth Girlfriends
+  - Intimate Lesbians
+  - Jessica Jaymes XXX
+  - Mr. Lucky LIFE
+  - Mr. Lucky POV
+  - Mr. Lucky RAW
+  - Porn Goes Pro
+  - Pornstar Tease
+  - Raw Attack
+  - The Stripper Experience
++ #### StasyQ | ❌ - **SceneID**
++ #### Step Secrets | ✅ - **Date Add**
++ #### Stepped Up Media | ✅ - **Actor only**
+  - All Anal
+  - Anal Only
+  - Dirty Auditions
+  - Nympho
+  - Swallowed
+  - True Anal
++ #### Strapon Cum | ❌ - **Direct URL**
++ #### Strike3 | ✅ - **Impersonate Required**
+  - Blacked
+  - Blacked RAW
+  - Deeper
+  - Milfy
+  - Slayed
+  - Tushy
+  - Tushy RAW
+  - Vixen
+  - Wifey
++ #### Swallow Bay | ❌ - **Direct URL**
++ #### Teen Mega World | ✅
+  - 18 First Sex
+  - About Girls Love
+  - Anal-Angels
+  - Anal-Beauty
+  - ATMovs
+  - Beauty 4K
+  - BeautyAngels
+  - Coeds Reality
+  - Creampie Angels
+  - Dirty Coach
+  - Dirty Doctor
+  - el Porno Latino
+  - ExGfBox
+  - First BGG
+  - Fuck Studies
+  - Gag N Gape
+  - Home Teen Vids
+  - Home Toy Teens
+  - Lolly Hardcore
+  - No Boring
+  - Nubile Girls HD
+  - NylonsX
+  - Old-n-Young
+  - Private Teen Video
+  - Raw Couples
+  - Solo Teen Girls
+  - Squirting Virgin
+  - Teen Sex Mania
+  - Teen Sex Movs
+  - Teen Stars Only
+  - Teens 3 Some
+  - TMWPOV
+  - TmwVRnet
+  - Tricky Masseur
+  - Watch Me Fucked
+  - WOW Orgasms
+  - X-Angels
++ #### TeenCoreClub | ✅
+  - Anal Checkups
+  - Analyzed Girls
+  - Ass Teen Mouth
+  - Bang Teen Pussy
+  - Brutal Invasion
+  - Cumoholic Teens
+  - Defiled 18
+  - Double Teamed Teens
+  - Dream Teens HD
+  - Drilled Chicks
+  - Fab Sluts
+  - Girls Got Cream
+  - Hardcore Youth
+  - Jerk-Off Pass
+  - Little Hellcat
+  - Make Teen Gape
+  - Nylon Spunk Junkies
+  - Nylon Sweeties
+  - Seductive 18
+  - She Got Six
+  - Spear Teen Pussy
+  - Spermatino
+  - Teach My Ass
+  - Teen Anal Casting
+  - Teen Core Club
+  - Teen Core Zine
+  - Teen Drillers
+  - Teens Go Porn
+  - Teens Natural Way
+  - Teens Try Blacks
+  - Try Teens
+  - We Need New Talents
+  - White Teens Black Cocks
+  - X Core Club
+  - Young Throats
++ #### Teeny Taboo | ✅
++ #### The Score Group | ✅
+  - /amateur-videos/
+    - Naughty Mag
+  - /bbw-videos/
+    - XL Girls
+  - /big-boob-scenes/
+    - ScorelandTwo
+  - /big-boob-videos/
+    - Scoreland
+  - /big-booty-videos/
+    - Bootylicious Mag
+  - /classic-boob-videos/
+    - Score Classics
+  - /foot-fetish-videos/
+    - Leg Sex
+  - /hd-porn-scenes/
+    - Porn Mega Load
+  - /porn-videos/
+    - ScoreVideos
+  - /videos/
+    - Big Boob Bundle
+    - Christy Marks
+  - /xxx-granny-videos/
+    - 60 Plus MILFS
+  - /xxx-milf-videos/
+    - 50 Plus MILFS
+  - /xxx-teen-videos/
+    - 18 Eighteen
++ #### Thick Cash | ✓ - **Actor only, Date Add**
+  - Breed Me
+  - Ebony Tugs
+  - Family Lust
+  - MilfAF
+  - Over 40 Handjobs
+  - Shady Spa
+  - Teen Tugs
++ #### TwoTGirls | ✓ - **Title only**
++ #### Ultrafilms | ✓
++ #### Unzip VR | ✅
+  - Blow VR
+  - VR Bangers
+  - VR Conk
+  - VRB Gay
+  - VRB Trans
++ #### VIP4K | ✅
+  - Black 4k
+  - Bride 4K
+  - Cuck 4K
+  - Daddy 4k
+  - Debt 4k
+  - Dyke 4K
+  - Fist 4k
+  - Hunt 4k
+  - Ignore 4K
+  - Loan 4k
+  - Mature 4k
+  - Mommy 4K
+  - Old 4k
+  - Pie 4k
+  - Rim 4k
+  - Serve 4K
+  - Shame 4k
+  - Sis
+  - Stuck 4k
+  - Tutor 4k
++ #### VIPissy | ✓
++ #### VirtualRealPorn | ❌ - **Direct URL**
++ #### VirtualTaboo | ✓ - **Title only**
++ #### Vivid Network | ✅ - **Title only for DVDs**
+  - Vivid
++ #### VNA Network | ✅
+  - All Anal All the Time
+  - Angelina Castro Live
+  - Bobbi Eden Live
+  - Carmen Valentina
+  - Charlee Chase Live
+  - Deauxma Live
+  - Eva Lin Live
+  - Foxxed Up
+  - Fucked Feet
+  - Gabby Quinteros
+  - Girl Girl Mania
+  - Its Cleo Live
+  - Jelena Jensen
+  - Julia Ann Live
+  - Kayla Paige Live
+  - Kendra James
+  - Kimber Lee Live
+  - Kink305
+  - Maggie Green Live
+  - Maxine X
+  - Natalia Starr
+  - Nikki Benz
+  - Nina Kayy
+  - Penny Pax Live
+  - POV Mania
+  - Puma Swede XXX
+  - Rachel Storms XXX
+  - Rome Major
+  - Rubber Doll
+  - Samantha Grace
+  - Sara Jay
+  - Sex My Wife
+  - Shanda Fay
+  - Siri
+  - Sophie Dee Live
+  - Sunny Lane Live
+  - Tasha Reign
+  - Vicky at Home
+  - VNA Live
+  - Women By Julia Ann
++ #### VogoV | ✓ - **Title only**
++ #### VR Latina | ✅
++ #### VRAllure | ❌ - **Direct URL**
++ #### VRPFilms | ✅
++ #### WakeUpNFuck | ✓ - **Title or Actor Name**
++ #### Wankz | ✓
+  - 4K Desire
+  - All Interracial
+  - Bang My Stepmom
+  - Big Tits Like Big Dicks
+  - Blow Patrol
+  - Bubbly Massage
+  - Cougar Sex Club
+  - Ebony Internal
+  - Escort Trick
+  - Exploited 18
+  - Handjob Harry
+  - I am Eighteen
+  - Lesbian Sistas
+  - Make Them Gag
+  - Matrix Models
+  - My Milf Boss
+  - Not So Innocent Teens
+  - Rap Video Auditions
+  - Real Blowjob Auditions
+  - Round Juicy Butts
+  - Schoolgirl Internal
+  - Service Whores
+  - Sex For Grades
+  - Spoiled Slut
+  - Swallow For Cash
+  - Tight Holes Big Poles
+  - Wank My Wood
+  - Wankz TV
+  - Whale Tailn
+  - Wild Massage
+  - XXX At Work
+  - Young Dirty Lesbians
+  - Young Sluts Hardcore
++ #### WankzVR | ✅
+  - MilfVR
++ #### Watch4Beauty | ✓ - **Title or Actor Name, Date Add**
++ #### We Are Hairy | ✅
++ #### WoodmanCastingX | ✓ - **actress**
++ #### WowNetwork | ✅
+  - 18 Only Girls
+  - Wow Girls
+  - WowPorn
++ #### X-Art | ✅
++ #### XConfessions | ✓
+  - LustCinema
++ #### Xev Unleashed | ✅
++ #### Xillimite | ✓ - **Title only, Date Add**
++ #### XVirtual | ✓ - **Title only, Date Add**
