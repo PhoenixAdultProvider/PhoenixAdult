@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+import httpx
+import respx
+
+from app.clients.base import SearchContext
+from app.clients.networks.spizoo import SpizooClient
+from app.registry import find_site
+
+SITE = find_site('Spizoo')
+assert SITE is not None
+
+
+def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
+    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
+
+
+@respx.mock
+async def test_search() -> None:
+    url = 'https://www.spizoo.com/search.php?query=%22cool%20scene%22'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text='<div class="model-update row"><a href="/v/7"></a><h3>Cool Scene 4K</h3><div><h4>date</h4>March 4, 2021</div></div>',
+        )
+    )
+    results = await SpizooClient().search(_ctx())
+    assert len(results) == 1
+    assert results[0].title == 'Cool Scene'  # ' 4K' stripped
+    assert results[0].scene_url == 'https://www.spizoo.com/v/7'
+    assert results[0].display_date == '2021-03-04'  # h4 heading excluded from date text
+
+
+@respx.mock
+async def test_detail() -> None:
+    url = 'https://www.spizoo.com/v/7'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text="""<html><body>
+              <h1>Cool Scene</h1>
+              <i id="site" value="First Class POV"></i>
+              <p class="description">A summary.</p>
+              <p class="date">2021-03-04 10:00:00</p>
+              <div class="categories-holder"><a>Anal, Teen</a></div>
+              <div><h3>Pornstars:</h3><a href="/model/jane">Jane.Doe</a></div>
+              <section id="scene"><video id="the-video" poster="https://cdn/p.jpg"></video></section>
+            </body></html>""",
+        )
+    )
+    respx.get('https://www.spizoo.com/model/jane').mock(
+        return_value=httpx.Response(200, text='<div class="model-bio-pic"><img src="https://cdn/jane.jpg" /></div>')
+    )
+    detail = await SpizooClient().fetch_scene_detail(url, SITE)
+    assert detail is not None
+    assert detail.title == 'Cool Scene'
+    assert detail.summary == 'A summary.'
+    assert detail.studio == 'Spizoo'
+    assert detail.tagline == 'First Class POV'  # inline i#site value
+    assert detail.release_date == '2021-03-04'  # head[:10]
+    assert detail.genres == ['anal', 'teen']  # split on comma, lowered
+    assert detail.actors[0].name == 'JaneDoe'  # dots stripped
+    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
+    assert detail.raw_image_urls == ['https://cdn/p.jpg']
