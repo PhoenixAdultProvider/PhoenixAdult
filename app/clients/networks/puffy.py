@@ -1,0 +1,116 @@
+from __future__ import annotations
+
+from typing import Any
+
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.utils.helpers.helpers import absolute_url, iso_date
+
+STUDIO = 'Puffy Network'
+_SEARCH_CARD = '//div[@style="position:relative; background:black;"]'
+
+
+class PuffyClient(Client):
+    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
+        base = ctx.site_info.base_url.rstrip('/')
+        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
+        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
+        if not loaded:
+            return None
+        sources = list(loaded['sel'].xpath(_SEARCH_CARD))
+        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return (source.xpath('(.//a)[1]/@title').get() or '').strip()
+
+    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
+        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        return absolute_url(href, loaded.site.base_url) if href else ''
+
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return loaded.ctx.search_date
+
+    # ── Detail field hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        return (scene.sel.xpath('(//div/section[1]/div[2]/h2/span)[1]').xpath('string(.)').get() or '').strip() or None
+
+    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        all_text = (scene.sel.xpath('(//div/section[3]/div[2])[1]').xpath('string(.)').get() or '').strip()
+        if not all_text:
+            return None
+        tags = (scene.sel.xpath('(//div/section[3]/div[2]/p)[1]').xpath('string(.)').get() or '').strip()
+        summary = all_text.replace(tags, '') if tags else all_text
+        return summary.split('Show more...')[0].strip() or None
+
+    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+        return STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+        return scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+        return [scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        raw = (scene.sel.xpath('(//div/section[2]/dl/dt[2])[1]').xpath('string(.)').get() or '').replace('Released on:', '').strip()
+        if raw:
+            return iso_date(raw)
+        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+
+    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        genres: list[str] = []
+        for a in scene.sel.xpath('//div/section[3]/div[2]/p/a'):
+            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            if g and g not in genres:
+                genres.append(g)
+        cast = len(scene.sel.xpath('//div/section[2]/dl/dd[1]/a'))
+        if cast == 3 and 'Threesome' not in genres:
+            genres.append('Threesome')
+        elif cast == 4 and 'Foursome' not in genres:
+            genres.append('Foursome')
+        elif cast > 4 and 'Orgy' not in genres:
+            genres.append('Orgy')
+        return genres or None
+
+    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+        assert scene.sel is not None
+        base = scene.site.base_url
+        actors: list[ActorResult] = []
+        seen: set[str] = set()
+        for el in scene.sel.xpath('//div/section[2]/dl/dd[1]/a'):
+            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            href = (el.xpath('@href').get() or '').strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            photo = ''
+            if href:
+                page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
+                raw = (page['sel'].xpath('(//div/section[1]/div/div[1]/img)[1]/@src').get() or '').strip() if page else ''
+                if raw:
+                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+            actors.append(ActorResult(name=name, photo_url=photo))
+        return actors or None
+
+    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        base = scene.site.base_url
+        images: list[str] = []
+
+        parts = scene.url.split('-video-')
+        if len(parts) > 1:
+            cover = parts[1]
+            host = scene.site.name.lower().replace(' ', '')
+            images.append(f'https://media.{host}.com/videos/video-{cover}cover/hd.jpg')
+
+        for raw in scene.sel.xpath('//div[contains(@id,"pics")]//img/@src').getall():
+            if not raw:
+                continue
+            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            if abs_url not in images:
+                images.append(abs_url)
+        return images or None

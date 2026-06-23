@@ -1,0 +1,66 @@
+{
+  "default": {
+    "search_results": "div[contains(@class,\"model-update\") and contains(@class,\"row\")]",
+    "search_title": "h3",
+    "search_date": "div[h4[contains(.,\"date\")]]",
+    "detail_title": "h1",
+    "actor_container": "*[h3[contains(.,\"Pornstars:\")]]/a",
+    "model_photo": [["div[contains(@class,\"model-bio-pic\")]//img", "src"], ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]]
+  },
+  "rawattack": {
+    "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
+    "search_title": "h3",
+    "search_date": "div[h4[contains(.,\"date\")]]//p",
+    "detail_title": "h1",
+    "actor_container": "div[h3[contains(.,\"playmates\")]]/a",
+    "model_photo": [["div[contains(@class,\"model-bio-pic\")]//img", "src"], ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]]
+  },
+  "mrluckypov": {
+    "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
+    "search_title": "h3",
+    "search_date": "div[h4[contains(.,\"date\")]]",
+    "detail_title": "h1",
+    "actor_container": "div[h3[contains(.,\"Girls\")]]/a",
+    "model_photo": [["div[contains(@class,\"model-bio-pic\")]//img", "src"], ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]]
+  },
+  "mrluckyraw": {
+    "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
+    "search_title": "h3",
+    "search_date": "div[h4[contains(.,\"date\")]]//p",
+    "detail_title": "h1",
+    "actor_container": "*[h3[contains(.,\"Pornstars:\")]]/a",
+    "model_photo": [["div[contains(@class,\"model-bio-pic\")]//img", "src"], ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]]
+  },
+  "mrluckylife": {
+    "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
+    "search_title": "h3//a",
+    "search_date": "",
+    "detail_title": "h2",
+    "actor_container": "div[h2[contains(.,\"GIRLS\")]]//a",
+    "model_photo": [["div[contains(@class,\"model-thumbnail\")]//img", "src"]]
+  },
+  "creamher": {
+    "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
+    "search_title": "h3//a",
+    "search_date": "",
+    "detail_title": "h1",
+    "actor_container": "div[h2[contains(.,\"Pornstars\")]]//a",
+    "model_photo": [["div[contains(@class,\"model-thumbnail\")]//img", "src"]]
+  },
+  "drdaddypov": {
+    "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
+    "search_title": "h3//a",
+    "search_date": "",
+    "detail_title": "h1",
+    "actor_container": "div[h2[contains(.,\"Girls\")]]//a",
+    "model_photo": [["div[contains(@class,\"model-thumbnail\")]//img", "src"]]
+  },
+  "gothgirlfriends": {
+    "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
+    "search_title": "h3//a",
+    "search_date": "",
+    "detail_title": "h1",
+    "actor_container": "div[h2[contains(.,\"Pornstars\")]]//a",
+    "model_photo": [["div[contains(@class,\"model-thumbnail\")]//img", "src"]]
+  }
+}

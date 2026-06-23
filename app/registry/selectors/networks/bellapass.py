@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from app.models.scraper_config import ScraperConfig
+from app.registry.site_info import ContentType, SearchMethod, SiteInfo
+
+PROVIDER_NAME = 'BellaPass'
+PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
+PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
+PROVIDER_SEARCH_NOTES = 'Title or Slug'
+PROVIDER_SEARCH_PATH = '/search.php?query={query}'
+
+_ALIASES: list[str] = json.loads((Path(__file__).parent / '_data' / 'json' / 'bellapass_aliases.json').read_text(encoding='utf-8'))
+
+
+def _site(name: str, host: str, aliases: list[str] | None = None) -> SiteInfo:
+    return SiteInfo(
+        name=name,
+        provider_name=PROVIDER_NAME,
+        base_url=f'https://{host}',
+        search_path=PROVIDER_SEARCH_PATH,
+        content_type=PROVIDER_CONTENT_TYPE,
+        aliases=aliases or [],
+        search_method=PROVIDER_SEARCH_METHOD,
+        search_notes=PROVIDER_SEARCH_NOTES,
+        scraper_config=ScraperConfig(type='bellapass'),
+    )
+
+
+BELLAPASS_SITES: list[SiteInfo] = [
+    _site('BellaPass', 'bellapass.com', _ALIASES),
+    _site('Hussie Pass', 'hussiepass.com'),
+    _site('Babe Archives', 'babearchives.com'),
+    _site('See Him Fuck', 'seehimfuck.com'),
+]

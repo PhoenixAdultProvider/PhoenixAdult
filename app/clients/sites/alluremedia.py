@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any
+from urllib.parse import quote
+
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.registry import ResolvedSiteInfo
+from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, pack_cur_id
+
+STUDIO = 'Allure Media'
+_DATA = Path(__file__).parent / '_data' / 'json'
+_TABLES: dict[str, Any] = json.loads((_DATA / 'alluremedia_tables.json').read_text(encoding='utf-8'))
+_CENSORED: dict[str, str] = _TABLES['censoredWords']
+_SCENE_ACTORS: list[str] = _TABLES['sceneActors']
+
+_USEIMAGE_RE = re.compile(r'useimage\s*=\s*"([^"]+)"')
+_SETID_RE = re.compile(r'setid:\s*"([^"]+)"')
+_GALLERY_RE = re.compile(r'(.*/contentthumbs/)(\d+)/(\d+)/(\d+)-\d+x\.jpg', re.IGNORECASE)
+
+
+def _search_url_for(site: ResolvedSiteInfo, query: str) -> str:
+    return site.base_url.rstrip('/') + site.search_path.replace('{query}', quote(query))
+
+
+def _ptx_srcs(script: str, key: str) -> list[str]:
+    return re.findall(rf'ptx\["{key}"\]\[\d+\]\s*=\s*\{{[^}}]*?src:\s*"([^"]+)"', script)
+
+
+class AllureMediaClient(Client):
+    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+        search_url = _search_url_for(ctx.site_info, ctx.title)
+        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
+        if not loaded:
+            return []
+
+        swallow_salon = ctx.site_info.name == 'Swallow Salon'
+        results: list[SearchResult] = []
+        for card in loaded['sel'].xpath('//div[contains(@class,"update_details")]'):
+            if swallow_salon:
+                anchor = card.xpath('(.//a)[2]')
+                title = (anchor.xpath('string(.)').get() or '').strip()
+                href = (anchor.xpath('@href').get() or '').strip()
+            else:
+                title = (card.xpath('(.//div[contains(@class,"update_title")]//a)[1]').xpath('string(.)').get() or '').strip()
+                href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
+            if not title or not href:
+                continue
+            raw_date = (card.xpath('(.//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
+            date = iso_date(raw_date, '%m/%d/%Y') if raw_date else None
+            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            results.append(
+                build_search_result(
+                    title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
+                )
+            )
+        return results
+
+    # ── Detail field hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        return (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or None
+
+    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        return (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or None
+
+    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+        return STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+        return scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+        return [scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        raw = (scene.sel.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+        return iso_date(raw) or None
+
+    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        genres: list[str] = []
+        for el in scene.sel.xpath('//span[contains(@class,"update_tags")]//a'):
+            g = decensor((el.xpath('string(.)').get() or '').strip(), _CENSORED).lower()
+            if g and g not in genres:
+                genres.append(g)
+        if 'Amateur' not in genres:
+            genres.append('Amateur')
+        return genres or None
+
+    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+        assert scene.sel is not None
+        base = scene.site.base_url
+        title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        summary = (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
+
+        actors: list[ActorResult] = []
+        seen: set[str] = set()
+        for el in scene.sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
+            name = (el.xpath('string(.)').get() or '').strip()
+            href = (el.xpath('@href').get() or '').strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            photo = ''
+            if href:
+                page = await self.fetch_and_load(
+                    href if href.startswith('http') else absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}'
+                )
+                img = (
+                    (page['sel'].xpath('(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src').get() or '').strip()
+                    if page
+                    else ''
+                )
+                photo = (img if img.startswith('http') else absolute_url(img, base)) if img else ''
+            actors.append(ActorResult(name=name, photo_url=photo.replace('1x', '3x')))
+
+        for name in _SCENE_ACTORS:
+            if (name in title or name in summary) and name not in seen:
+                seen.add(name)
+                actors.append(ActorResult(name=name))
+        return actors or None
+
+    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        base = scene.site.base_url.rstrip('/')
+        coll = self.image_collector(lambda u: u if u.startswith('http') else base + (u if u.startswith('/') else '/' + u))
+        title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+
+        df_script = scene.sel.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
+        use_image = _USEIMAGE_RE.search(df_script)
+        if use_image:
+            coll['push'](use_image.group(1))
+
+        set_id = _SETID_RE.search(df_script)
+        if set_id:
+            search_page = await self.fetch_and_load(
+                _search_url_for(scene.site, title), FetchCtx(capture=scene.capture), f'[{scene.site.name}] set-target lookup'
+            )
+            if search_page:
+                node = search_page['sel'].xpath(f'(//*[@id="set-target-{set_id.group(1)}"])[1]')
+                coll['push'](node.xpath('@src').get() or '')
+                for i in range(7):
+                    coll['push'](node.xpath(f'@src{i}_1x').get() or '')
+
+        thumbs: list[str] = []
+        for selector, attrs in (
+            ('//div[contains(@class,"photo_gallery_block")]//img', ('src',)),
+            ('//div[contains(@class,"columns") and contains(@class,"mb")]//img', ('src0_2x', 'src')),
+        ):
+            for el in scene.sel.xpath(selector):
+                src = next((v for a in attrs if (v := el.xpath(f'@{a}').get())), '')
+                if src:
+                    thumbs.append(src)
+        last_thumb = thumbs[-1] if thumbs else ''
+        gallery = _GALLERY_RE.match(last_thumb)
+        if gallery:
+            path_prefix, xx, yy, file_id = gallery.groups()
+            id_prefix = file_id[: len(file_id) - (len(xx) + len(yy))]
+            count = int(yy)
+            for n in range(max(1, count - 20), count + 1):
+                nn = str(n).zfill(2)
+                coll['push'](f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
+
+        photos_href = ''
+        for a in scene.sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
+            if (a.xpath('string(.)').get() or '').strip() == 'Photos':
+                photos_href = (a.xpath('@href').get() or '').strip()
+                break
+        photos_url = (photos_href if photos_href.startswith('http') else absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
+        scene.raw_image_referer = photos_url or scene.url
+
+        if photos_url:
+            photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
+            if photos_page:
+                ptx = photos_page['sel'].xpath('//script[contains(.,"var ptx")]').xpath('string(.)').get() or ''
+                for u in _ptx_srcs(ptx, '1600'):
+                    coll['push'](u)
+                for u in _ptx_srcs(ptx, 'jpg'):
+                    coll['push'](u)
+
+        images: list[str] = coll['list']
+        return images or None

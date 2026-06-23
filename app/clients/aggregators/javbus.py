@@ -1,0 +1,182 @@
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.registry import ResolvedSiteInfo
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, title_distance_score
+
+_SEARCH_SURFACES = (('Censored', 'search/'), ('Uncensored', 'uncensored/search/'))
+
+
+def _javbus_id(url: str) -> str:
+    return [p for p in url.split('?')[0].split('/') if p][-1] if [p for p in url.split('?')[0].split('/') if p] else ''
+
+
+def _derive_cover_thumb(cover_url: str) -> str:
+    filename = cover_url.split('/')[-1]
+    code = filename.split('.')[0].split('_')[0] if filename else ''
+    if not code:
+        return ''
+    host = '/'.join(cover_url.split('/')[:-2])
+    if not host:
+        return ''
+    thumb = f'{host}/thumb/{code}.jpg'
+    if len(re.findall(r'/images\.', thumb)) == 1:
+        thumb = thumb.replace('/thumb/', '/thumbs/')
+    return thumb
+
+
+class JavBusClient(Client):
+    def __init__(self) -> None:
+        super().__init__({'Cookie': 'existmag=all; dv=1'})
+
+    def image_rule(self, site: ResolvedSiteInfo) -> Any:
+        return 'aspect'
+
+    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+        base = ctx.site_info.base_url.rstrip('/')
+        parts = ctx.title.strip().split()
+        javid = f'{parts[0]}-{parts[1]}' if len(parts) > 1 and re.fullmatch(r'\d+', parts[1]) else None
+        encoded = javid or ctx.encoded
+
+        results: list[SearchResult] = []
+        seen: set[str] = set()
+
+        for label, sub in _SEARCH_SURFACES:
+            search_url = f'{base}/en/{sub}{encoded}'
+            loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
+            if not loaded:
+                continue
+            for el in loaded['sel'].xpath('//a[contains(@class,"movie-box")]'):
+                title = re.sub(r'\s+', ' ', ''.join(el.xpath('(.//span)[1]/text()').getall())).strip()
+                jav_id = (el.xpath('(.//date)[1]/text()').get() or '').strip()
+                href = (el.xpath('@href').get() or '').strip()
+                if not title or not href:
+                    continue
+                scene_url = absolute_url(href, base)
+                if scene_url in seen:
+                    continue
+                seen.add(scene_url)
+                score = title_distance_score(javid.lower(), jav_id.lower()) if javid else title_distance_score(ctx.title.lower(), title.lower())
+                results.append(
+                    build_search_result(
+                        title=f'[{label}][{jav_id}] {title}',
+                        scene_url=scene_url,
+                        query=ctx.title,
+                        score=score,
+                        thumb_url=(el.xpath('(.//img/@src)[1]').get() or '').strip() or None,
+                    )
+                )
+
+        if javid:
+            direct_url = f'{base}/en/{javid}'
+            loaded = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'GET {direct_url} (direct)')
+            if loaded and direct_url not in seen:
+                jav_title = re.sub(r' - JavBus$', '', (loaded['sel'].xpath('(//head//title)[1]/text()').get() or '').strip())
+                if jav_title:
+                    seen.add(direct_url)
+                    results.append(build_search_result(title=f'[Direct][{javid}] {jav_title}', scene_url=direct_url, query=ctx.title, score=100))
+        return results
+
+    # ── Field hooks ───────────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        studio = (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip()
+        jav_title = re.sub(r' - JavBus$', '', (scene.sel.xpath('(//head//title)[1]/text()').get() or '').strip())
+        if not jav_title:
+            return None
+        id_digits = re.sub(r'[-_ ]', '', _javbus_id(scene.url))
+        if id_digits and re.fullmatch(r'\d+', id_digits):
+            return f'[{studio}] {jav_title}'.strip()
+        sp = jav_title.find(' ')
+        jid = jav_title if sp < 0 else jav_title[:sp]
+        rest = '' if sp < 0 else jav_title[sp + 1 :]
+        return f'[{jid}] {rest}'.strip()
+
+    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        return (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip() or None
+
+    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        label = (scene.sel.xpath('(//p//a[contains(@href,"/label/")])[1]/text()').get() or '').strip()
+        if label:
+            return label
+        series = (scene.sel.xpath('(//p//a[contains(@href,"/series/")])[1]/text()').get() or '').strip()
+        return f'Series: {series}' if series else None
+
+    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        label = (scene.sel.xpath('(//p//a[contains(@href,"/label/")])[1]/text()').get() or '').strip()
+        if label:
+            return [label]
+        studio = (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip()
+        return [studio] if studio else None
+
+    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+        assert scene.sel is not None
+        raw = ''
+        for p in scene.sel.xpath('//div[contains(@class,"col-md-3") and contains(@class,"info")]//p'):
+            t = p.xpath('string(.)').get() or ''
+            if re.search(r'Release Date', t, re.IGNORECASE):
+                raw = re.sub(r'.*Release Date:\s*', '', t, flags=re.IGNORECASE).strip()
+        if raw and raw != '0000-00-00':
+            iso = iso_date(raw)
+            if iso:
+                return iso
+        return scene.scene_date or None
+
+    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        genres: list[str] = []
+        for el in scene.sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]'):
+            g = (el.xpath('normalize-space(.)').get() or '').lower().strip()
+            if g and g not in genres:
+                genres.append(g)
+        return genres or None
+
+    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+        assert scene.sel is not None
+        out: list[ActorResult] = []
+        for el in scene.sel.xpath('//a[contains(@class,"avatar-box")]'):
+            name = (el.xpath('(.//img/@title)[1]').get() or '').strip()
+            if not name:
+                continue
+            photo = (el.xpath('(.//img/@src)[1]').get() or '').strip()
+            if photo:
+                photo = absolute_url(photo, scene.site.base_url)
+            if photo.split('/')[-1] == 'nowprinting.gif':
+                photo = ''
+            out.append(ActorResult(name=name, photo_url=photo))
+        return out or None
+
+    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+        assert scene.sel is not None
+        director = (scene.sel.xpath('(//p//a[contains(@href,"/director/")])[1]/text()').get() or '').strip()
+        return [ActorResult(name=director)] if director else None
+
+    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+        assert scene.sel is not None
+        base = scene.site.base_url.rstrip('/')
+        out: list[str] = []
+
+        def push(raw: str) -> None:
+            if not raw or re.search(r'nowprinting', raw, re.IGNORECASE):
+                return
+            abs_url = absolute_url(raw, base)
+            if abs_url not in out:
+                out.append(abs_url)
+
+        for href in scene.sel.xpath('//a[contains(@href,"/cover/")]/@href').getall():
+            push(href)
+        for href in scene.sel.xpath('//a[contains(@class,"sample-box")]/@href').getall():
+            push(href)
+        cover_raw = (scene.sel.xpath('(//a[contains(@href,"/cover/")]/@href)[1]').get() or '') or (
+            scene.sel.xpath('(//img[contains(@src,"/sample/")]/@src)[1]').get() or ''
+        )
+        if cover_raw:
+            push(_derive_cover_thumb(absolute_url(cover_raw, base)))
+        return out or None

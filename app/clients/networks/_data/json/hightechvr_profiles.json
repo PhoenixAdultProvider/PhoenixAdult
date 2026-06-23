@@ -1,0 +1,35 @@
+{
+  "SexBabesVR": {
+    "summary": "//div[contains(@class,\"sbvr-scene-about__prose\")]/div",
+    "genres": "//ul[contains(@class,\"sbvr-scene-about__chips\")]//a",
+    "actors": "//div[contains(@class,\"video-detail__description--author\")]//a",
+    "actor_photo": "//img[contains(@class,\"cover-picture\")]",
+    "release_date": "//div[contains(@class,\"video-detail__description--container\")]//time",
+    "date_attr": "datetime",
+    "gallery": "//a[contains(@data-fancybox,\"gallery\")]//img",
+    "gallery_attr": "src",
+    "poster": "//dl8-video"
+  },
+  "StasyQ VR": {
+    "summary": "//div[contains(@class,\"video-info\")]/p",
+    "genres": "//div[contains(@class,\"my-2\") and contains(@class,\"lh-lg\")]//a",
+    "actors": "//div[contains(@class,\"model-one-inner\") and contains(@class,\"js-trigger-lazy-item\")]//a",
+    "actor_photo": "//div[contains(@class,\"model-one-inner\")]//img",
+    "release_date": "//div[contains(@class,\"video-meta-date\")]",
+    "date_attr": "",
+    "gallery": "//div[contains(@class,\"video-gallery\")]//div//figure//a",
+    "gallery_attr": "href",
+    "poster": "//div[contains(@class,\"splash-screen\") and contains(@class,\"fullscreen-message\") and contains(@class,\"is-visible\")] | //dl8-video"
+  },
+  "RealJamVR": {
+    "summary": "//div[contains(@class,\"opacity-75\") and contains(@class,\"my-2\")]",
+    "genres": "//div[contains(@class,\"my-2\") and contains(@class,\"lh-lg\")]//a",
+    "actors": "//div[contains(@class,\"scene-view\") and contains(@class,\"mx-auto\")]/a",
+    "actor_photo": "//div[contains(@class,\"col-12\") and contains(@class,\"col-lg-4\") and contains(@class,\"pe-lg-0\")]//img",
+    "release_date": "//div[contains(@class,\"ms-4\") and contains(@class,\"text-nowrap\")]",
+    "date_attr": "",
+    "gallery": "//img[contains(@class,\"img-thumb\")]",
+    "gallery_attr": "src",
+    "poster": "//div[contains(@class,\"splash-screen\") and contains(@class,\"fullscreen-message\") and contains(@class,\"is-visible\")] | //dl8-video"
+  }
+}

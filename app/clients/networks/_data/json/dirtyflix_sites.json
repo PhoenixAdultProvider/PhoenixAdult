@@ -1,0 +1,30 @@
+{
+  "Trick Your GF": {
+    "tour_key": 7,
+    "search_pages": 4,
+    "search_title_xp": ".//a[contains(@class,\"link\")]",
+    "detail_summary_xp": ".//div[contains(@class,\"description\")]",
+    "genres": ["Girlfriend", "Revenge"]
+  },
+  "Make Him Cuckold": {
+    "tour_key": 9,
+    "search_pages": 4,
+    "search_title_xp": ".//a[contains(@class,\"link\")]",
+    "detail_summary_xp": ".//div[contains(@class,\"description\")]",
+    "genres": ["Cuckold"]
+  },
+  "She Is Nerdy": {
+    "tour_key": 10,
+    "search_pages": 13,
+    "search_title_xp": ".//a[contains(@class,\"title\")]",
+    "detail_summary_xp": ".//div[contains(@class,\"description\")]",
+    "genres": ["Glasses", "Nerd"]
+  },
+  "Tricky Agent": {
+    "tour_key": 11,
+    "search_pages": 3,
+    "search_title_xp": ".//h3",
+    "detail_summary_xp": ".//div[contains(@class,\"text\")]",
+    "genres": ["Agent", "Casting"]
+  }
+}

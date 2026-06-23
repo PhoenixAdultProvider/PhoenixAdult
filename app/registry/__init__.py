@@ -1,1 +1,111 @@
+from __future__ import annotations
 
+import dataclasses
+import re
+
+from app.models.provider_info import PlexMediaType, ProviderInfo
+from app.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
+from app.registry.site_info import ContentType, ResolvedSiteInfo, SiteInfo
+
+__all__ = [
+    'ContentType',
+    'SiteInfo',
+    'ResolvedSiteInfo',
+    'PROVIDER_DEFINITIONS',
+    'DEFAULT_PROVIDER_ID',
+    'SITE_DEFINITIONS',
+    'normalize_site_key',
+    'get_all_providers',
+    'get_provider',
+    'find_site',
+    'get_sites_for_provider',
+    'find_site_provider',
+    'plex_media_type_id',
+    'media_type_route_slug',
+    'provider_mount_path',
+]
+
+PROVIDER_DEFINITIONS: list[ProviderInfo] = [
+    ProviderInfo(
+        id='phoenixadult',
+        plex_identifier='tv.plex.agents.custom.myprovider.phoenixadult',
+        title='PhoenixAdult',
+        version='1.0.0',
+        media_type='movie',
+    ),
+]
+
+DEFAULT_PROVIDER_ID = PROVIDER_DEFINITIONS[0].id
+
+SITE_DEFINITIONS: list[SiteInfo] = [*_SELECTOR_SITES]
+
+
+def normalize_site_key(token: str) -> str:
+    return re.sub(r'[.\-_\s]+', '', token.lower())
+
+
+def _build_tables(
+    providers: list[ProviderInfo], sites: list[SiteInfo]
+) -> tuple[dict[str, ProviderInfo], dict[str, ResolvedSiteInfo], dict[str, list[ResolvedSiteInfo]]]:
+    provider_by_id = {p.id: p for p in providers}
+
+    resolved: list[ResolvedSiteInfo] = []
+    for site in sites:
+        data = dataclasses.asdict(site)
+        data['provider_id'] = site.provider_id or DEFAULT_PROVIDER_ID
+        data['scraper_config'] = site.scraper_config  # keep the instance, not a dict
+        resolved.append(ResolvedSiteInfo(**data))
+
+    for site in resolved:
+        if site.provider_id not in provider_by_id:
+            raise ValueError(f'Site "{site.name}" references unknown providerId "{site.provider_id}".')
+
+    site_by_token: dict[str, ResolvedSiteInfo] = {}
+    for site in resolved:
+        for token in [site.name, *site.aliases]:
+            key = normalize_site_key(token)
+            if key in site_by_token:
+                raise ValueError(f'Registry conflict: token "{key}" claimed by both "{site_by_token[key].name}" and "{site.name}".')
+            site_by_token[key] = site
+
+    sites_by_provider: dict[str, list[ResolvedSiteInfo]] = {p.id: [] for p in providers}
+    for site in resolved:
+        sites_by_provider[site.provider_id].append(site)
+
+    return provider_by_id, site_by_token, sites_by_provider
+
+
+provider_by_id, site_by_token, sites_by_provider = _build_tables(PROVIDER_DEFINITIONS, SITE_DEFINITIONS)
+
+
+def get_all_providers() -> list[ProviderInfo]:
+    return PROVIDER_DEFINITIONS
+
+
+def get_provider(provider_id: str) -> ProviderInfo | None:
+    return provider_by_id.get(provider_id)
+
+
+def find_site(token: str) -> ResolvedSiteInfo | None:
+    return site_by_token.get(normalize_site_key(token))
+
+
+def get_sites_for_provider(provider_id: str) -> list[ResolvedSiteInfo]:
+    return sites_by_provider.get(provider_id, [])
+
+
+def find_site_provider(token: str) -> ProviderInfo | None:
+    site = find_site(token)
+    return provider_by_id.get(site.provider_id) if site else None
+
+
+def plex_media_type_id(media_type: PlexMediaType) -> int:
+    return {'movie': 1, 'show': 2, 'season': 3, 'episode': 4}[media_type]
+
+
+def media_type_route_slug(media_type: PlexMediaType) -> str:
+    return {'movie': 'movies', 'show': 'tvshows', 'season': 'tvshows', 'episode': 'tvshows'}[media_type]
+
+
+def provider_mount_path(provider: ProviderInfo) -> str:
+    return f'/{provider.namespace or provider.id}/{media_type_route_slug(provider.media_type)}'

@@ -1,0 +1,156 @@
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any
+from urllib.parse import quote
+
+from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.registry import ResolvedSiteInfo
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+
+_LIST_QUERY = (
+    'content.load?_method=content.load&tz=1&limit=512&transitParameters[v1]=OhUOlmasXD&transitParameters[v2]=OhUOlmasXD&transitParameters[preset]=videos'
+)
+_MODEL_QUERY = 'model.getModelContent?_method=model.getModelContent&tz=1&limit=25&transitParameters[contentId]='
+
+_AH_RE = re.compile(r'"ah".?:.?"([0-9a-zA-Z()@:,/!+\-.$_=\\\']*)"')
+_AET_RE = re.compile(r'"aet".?:([0-9]+)')
+_ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
+
+_DATA = Path(__file__).parent / '_data' / 'json'
+_LEAD_ACTORS: dict[str, str] = json.loads((_DATA / 'modelcentro_actors.json').read_text(encoding='utf-8'))
+
+
+def _detail_query(scene_id: int) -> str:
+    return (
+        'content.load?_method=content.load&tz=1'
+        f'&filter[id][fields][0]=id&filter[id][values][0]={scene_id}'
+        '&limit=1&transitParameters[v1]=ykYa8ALmUD&transitParameters[preset]=scene'
+    )
+
+
+def _api_date(raw: str | None) -> str:
+    if not raw:
+        return ''
+    return (raw[:10] if _ISO_PREFIX_RE.match(raw) else iso_date(raw)) or ''
+
+
+def _collection_items(collection: Any) -> list[Any]:
+    if isinstance(collection, list):
+        return collection
+    if isinstance(collection, dict):
+        return list(collection.values())
+    return []
+
+
+class ModelCentroClient(Client):
+    async def _get_api_token(self, page_url: str, capture: list[RawCaptureEntry] | None) -> str | None:
+        loaded = await self.fetch_and_load(page_url, FetchCtx(capture=capture), f'GET {page_url} (token)')
+        if not loaded:
+            return None
+        html = loaded['html']
+        ah = _AH_RE.search(html)
+        aet = _AET_RE.search(html)
+        if not ah or not aet:
+            return None
+        return ''.join(reversed(ah.group(1))) + '/' + aet.group(1) + '/'
+
+    def _quote_token(self, token: str) -> str:
+        return quote(token, safe="-_.!~*'()").replace('%2F', '/')
+
+    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+        base = ctx.site_info.base_url.rstrip('/')
+        api_base = base + ctx.site_info.search_path
+
+        scene_id = int(ctx.scene_id) if ctx.scene_id else None
+        query = ctx.title.strip() or ctx.title
+
+        token = await self._get_api_token(f'{base}/videos/', ctx.capture)
+        if not token:
+            return []
+
+        list_url = f'{api_base}{self._quote_token(token)}{_LIST_QUERY}'
+        body = await self.fetch_json(list_url, FetchCtx(capture=ctx.capture))
+        scenes = _collection_items(body.get('response', {}).get('collection') if isinstance(body, dict) else None)
+
+        results: list[SearchResult] = []
+        for scene in scenes:
+            if not isinstance(scene, dict) or scene.get('id') is None or not scene.get('title'):
+                continue
+            sid = scene['id']
+            sites = (scene.get('sites') or {}).get('collection') or {}
+            date = _api_date((sites.get(str(sid)) or {}).get('publishDate'))
+            art = [r.get('url', '') for r in ((scene.get('_resources') or {}).get('base') or []) if r.get('url')]
+            payload = {'id': sid, 'title': scene['title'], 'releaseDate': date, 'art': art}
+            results.append(
+                build_search_result(
+                    title=scene['title'].strip(),
+                    scene_url=f'{base}/scene/{sid}/',
+                    query=query,
+                    display_date=date or None,
+                    search_date=ctx.search_date,
+                    score=100 if scene_id == sid else None,
+                    cur_id=pack_cur_id([json.dumps(payload)]),
+                )
+            )
+        return results
+
+    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+        try:
+            parsed = json.loads(payload)
+        except (ValueError, TypeError):
+            return None
+        sid = parsed['id']
+        search_title = parsed.get('title', '')
+        search_date = parsed.get('releaseDate', '')
+        art = parsed.get('art') or []
+        base = site.base_url.rstrip('/')
+        api_base = base + site.search_path
+        capture = ctx.capture if ctx else None
+
+        token = await self._get_api_token(f'{base}/scene/{sid}/{quote(search_title)}', capture)
+        if not token:
+            return None
+        quoted = self._quote_token(token)
+
+        body = await self.fetch_json(f'{api_base}{quoted}{_detail_query(sid)}', FetchCtx(capture=capture))
+        scenes = _collection_items(body.get('response', {}).get('collection') if isinstance(body, dict) else None)
+        if not scenes:
+            return None
+        scene = scenes[0]
+
+        sites = (scene.get('sites') or {}).get('collection') or {}
+        date = _api_date((sites.get(str(sid)) or {}).get('publishDate')) or search_date
+
+        tags_are_actors = site.name == 'Jerk Off With Me'
+        tag_aliases = [alias for alias in ((t.get('alias') or '').strip() for t in _collection_items((scene.get('tags') or {}).get('collection'))) if alias]
+
+        model_body = await self.fetch_json(f'{api_base}{quoted}{_MODEL_QUERY}{sid}', FetchCtx(capture=capture))
+        actor_names: list[str] = []
+        for entry in _collection_items(model_body.get('response', {}).get('collection') if isinstance(model_body, dict) else None):
+            for model in _collection_items((entry.get('modelId') or {}).get('collection')):
+                name = (model.get('stageName') or '').strip()
+                if name:
+                    actor_names.append(name)
+        if tags_are_actors:
+            actor_names.extend(alias.replace('-', ' ') for alias in tag_aliases)
+        lead = _LEAD_ACTORS.get(site.name)
+        if lead:
+            actor_names.append(lead)
+
+        actors = [ActorResult(name=n) for n in dict.fromkeys(actor_names)]
+
+        return SceneDetail(
+            title=(scene.get('title') or search_title or '').strip(),
+            summary=(scene.get('description') or '').strip(),
+            studio=site.name,
+            tagline=site.name,
+            collections=[site.name],
+            release_date=date or None,
+            genres=[] if tags_are_actors else tag_aliases,
+            actors=actors,
+            raw_image_urls=art,
+            scene_url=f'{base}/scene/{sid}/',
+        )
