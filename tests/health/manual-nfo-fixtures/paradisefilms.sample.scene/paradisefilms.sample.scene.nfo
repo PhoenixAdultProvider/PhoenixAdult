@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<movie>
+  <title>Sample Scene</title>
+  <originaltitle>Sample Scene</originaltitle>
+  <set>Sample Series</set>
+  <year>2024</year>
+  <plot>This is a checked-in sample plot used by the site-health pipeline to verify the Manual NFO scraper end-to-end without touching the network.</plot>
+  <outline>Sample outline.</outline>
+  <tagline>Sample tagline</tagline>
+  <runtime>30</runtime>
+  <releasedate>2024-04-01</releasedate>
+  <studio>Paradise Films</studio>
+  <id>99999</id>
+  <genre>Brunette</genre>
+  <genre>Solo</genre>
+  <actor>
+    <name>Sample Actress</name>
+    <role>Lead</role>
+  </actor>
+</movie>
