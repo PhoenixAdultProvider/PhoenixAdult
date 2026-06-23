@@ -32,6 +32,9 @@ _base.setLevel(_LEVEL_MAP.get(config.log_level, logging.INFO))
 _base.propagate = False
 
 if not _base.handlers:
+    from app.utils.logging.redaction import RedactionFilter
+
+    _base.addFilter(RedactionFilter())
     _fmt = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
     _console = logging.StreamHandler()
     _console.setFormatter(_fmt)

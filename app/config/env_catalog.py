@@ -54,6 +54,16 @@ ENV_CATALOG: list[EnvVarSpec] = [
         requires_restart=True,
     ),
     EnvVarSpec(
+        'LOG_REDACT_HOSTS',
+        'Redact hosts, IPs & secrets in logs',
+        'Replace URL hosts, IP addresses and secret query values (?token=…, ?apikey=…) in the log output with '
+        '***REDACTED*** — keeps logs safe to paste into bug reports. Defaults to ON when NODE_ENV=production and '
+        'OFF otherwise; set this to override either way.',
+        'Logging',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
         'IMAGE_DIR', 'Local image directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
     ),
     EnvVarSpec(
