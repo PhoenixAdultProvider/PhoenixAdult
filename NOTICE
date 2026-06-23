@@ -1,0 +1,33 @@
+PhoenixAdult Provider
+Copyright (C) 2026 PhoenixAdult Provider contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this
+program. If not, see <https://www.gnu.org/licenses/>. The full text is in the
+LICENSE file.
+
+
+Attribution / provenance
+------------------------
+This project is a FastAPI evolution and partial port of the Plex
+"PhoenixAdult.bundle" metadata agent. The upstream it follows:
+
+  - PAhelper/PhoenixAdult.bundle (the version this port is based on)
+    https://github.com/PAhelper/PhoenixAdult.bundle
+
+which, per GitHub's fork graph, belongs to a fork network rooted at:
+
+  - SwissPlexCode/PhoenixAdult.bundle
+    https://github.com/SwissPlexCode/PhoenixAdult.bundle
+
+These upstream repositories ship no explicit license. This NOTICE credits them
+as the origin of the scraper logic being ported; the GPL-3.0-or-later terms in
+the LICENSE file cover this project's own source code.

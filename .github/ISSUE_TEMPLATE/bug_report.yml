@@ -1,0 +1,124 @@
+name: Bug report
+description: A scene didn't match, metadata is wrong, or the agent itself misbehaves
+title: '[Bug] <one-line summary>'
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you file
+
+        ⚠️ **This is a public GitHub repository. No adult content of any kind in your issue.**
+
+        Specifically — **do not include**:
+        - Screenshots of scene pages, posters, thumbnails, or cast photos
+        - Image attachments, GIFs, or video clips of any media content
+        - Links that resolve to images hosted on adult sites (i.e. don't paste a poster URL — the *page* URL is fine)
+        - Cast/performer details beyond what's already in the scene's public metadata text
+
+        URLs and filenames are text and are fine to share. The visual content those URLs *resolve to* is not.
+
+        Issues that include media content will be edited or closed. Repeated violations may lead to the repository being restricted under GitHub's content policy.
+
+        ---
+
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      description: Which site / sub-site is affected? Use the name as it appears in the registry, e.g. `CzechVR` or `Trick Your GF`.
+      placeholder: CzechVR
+    validations:
+      required: true
+
+  - type: input
+    id: filename
+    attributes:
+      label: Filename (as Plex sees it)
+      description: The video filename — extension optional. Substitute the scene title with `<placeholder>` if you'd rather not share it.
+      placeholder: czechvr.21.12.31.470.scene-title.mp4
+    validations:
+      required: true
+
+  - type: input
+    id: scene_url
+    attributes:
+      label: Scene URL (page link only)
+      description: |
+        URL of the *scene page* on the upstream site — text only. **Do not** paste an image / poster / thumbnail URL.
+      placeholder: https://czechvr.com/detail-470-anal-party-part-1/
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should the agent have returned (title, studio, date, cast names)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: |
+        What did it actually return? Field-by-field is most useful (e.g. "title wrong: returned X, expected Y").
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log excerpt
+      description: |
+        Paste the agent's log for this match attempt. **Redact** anything sensitive (your username, FQDNs, API keys, IP addresses).
+      render: text
+      placeholder: |
+        [CzechVR] search query="..." searchDate=2021-12-31
+        [CzechVR] keyword search → https://...
+        [CzechVR] ... 0 result(s)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: env
+    attributes:
+      label: How are you running the agent?
+      options:
+        - Docker (compose)
+        - Docker (manual)
+        - Native
+        - WSL
+        - Other (specify in extra context)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Agent version / commit
+      description: From `pyproject.toml` `version` or the commit SHA you're running.
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Extra context (optional)
+      description: Anything else that might help — recent changes you made, related issues, etc.
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: My issue contains no images, video clips, or other media content.
+          required: true
+        - label: I've redacted any personal info (API keys, IPs, usernames, FQDNs).
+          required: true
+        - label: I've searched existing open and closed issues and this isn't a duplicate.
+          required: true
+        - label: I'm running the latest version (or have noted which version I'm on above).
+          required: true

@@ -1,0 +1,16 @@
+services:
+  phoenixadult:
+    build: .
+    image: phoenixadult-provider:latest
+    container_name: phoenixadult-provider
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: "3000"
+    volumes:
+      - ./local:/app/local
+      - ./logs:/app/logs
+      - ./env.overrides.json:/app/env.overrides.json

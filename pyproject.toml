@@ -1,0 +1,70 @@
+[project]
+name = "phoenixadult-provider"
+version = "1.0.0"
+description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx2>=2.0",
+    "parsel>=1.9",
+    "Pillow>=11.0",
+    "python-dotenv>=1.0",
+    "python-slugify>=8.0",
+    "rapidfuzz>=3.10",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+    "pytest-httpx2>=1.0",  # respx-based mocking for httpx2 (Starlette TestClient + app clients)
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+# Optional: enables ACTOR_CACHE_FACE_ENABLE (face-detection headshot cropping).
+# `pip install -e ".[face]"`. Absent -> the feature no-ops gracefully.
+face = [
+    "opencv-python-headless>=4.8",
+    "numpy>=1.24",
+]
+# Optional: enables the Playwright bypass backend (for sites behind JS / AWS-WAF
+# challenges FlareSolverr can't solve). `pip install -e ".[playwright]"` then
+# `playwright install chromium`. Absent -> the backend reports unavailable and is skipped.
+playwright = [
+    "playwright>=1.40",
+]
+# Optional: enables the Impersonate bypass backend (curl_cffi TLS-fingerprint
+# impersonation) for Cloudflare-fingerprint-blocked sites. `pip install -e ".[impersonate]"`.
+impersonate = [
+    "curl_cffi>=0.7",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+app = ["**/*.html", "**/*.json"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

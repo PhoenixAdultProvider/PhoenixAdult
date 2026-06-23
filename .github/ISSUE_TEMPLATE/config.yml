@@ -1,0 +1,9 @@
+# Force everyone through the bug-report template so the
+# no-media-content acknowledgement isn't skippable. Discussions
+# are a better venue for general questions anyway.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/<owner>/PhoenixAdult/discussions
+    about: For general questions, naming-convention help, or "is this site supported?" — please use Discussions, not Issues.
