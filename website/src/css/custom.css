@@ -1,0 +1,58 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #2e8555;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/*
+ * Site-health page: hide the right TOC and widen the content column so the
+ * 14-column summary table fits without a horizontal scrollbar, while keeping
+ * the article visually centered on the page like every other doc.
+ *
+ * Targeted via Docusaurus's auto-applied `.docs-doc-id-<id>` wrapper class so
+ * `docs/site-health.md` doesn't need frontmatter (which GitHub would render
+ * as a metadata table at the top of the file).
+ */
+.docs-doc-id-site-health .theme-doc-toc-desktop {
+  display: none;
+}
+/* Cap the doc column wider than the default ~960px so the table fits; auto
+   margins keep it centered within the main content area. */
+.docs-doc-id-site-health .col[class*='docItemCol_'] {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Table sizes to its content but won't overflow the column. */
+.docs-doc-id-site-health article table {
+  display: table;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
