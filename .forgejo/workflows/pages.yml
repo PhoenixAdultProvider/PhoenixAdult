@@ -20,7 +20,7 @@ on:
 
 jobs:
   build-deploy:
-    runs-on: codeberg-medium
+    runs-on: codeberg-small
     container:
       image: node:26-bookworm
     steps:
