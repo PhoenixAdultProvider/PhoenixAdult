@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.app_factory import create_app
-from app.registry import DEFAULT_PROVIDER_ID, get_all_providers, provider_mount_path
+from app.registry import get_all_providers, provider_mount_path
 
 
 @pytest.fixture
@@ -16,15 +16,6 @@ def test_health(client: TestClient) -> None:
     r = client.get('/health')
     assert r.status_code == 200
     assert r.json() == {'status': 'ok'}
-
-
-def test_providers_endpoint(client: TestClient) -> None:
-    r = client.get('/providers')
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data) == 1
-    assert data[0]['id'] == DEFAULT_PROVIDER_ID
-    assert isinstance(data[0]['sites'], list)
 
 
 def test_provider_capability_declaration(client: TestClient) -> None:

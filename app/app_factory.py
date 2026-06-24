@@ -2,17 +2,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI, Request, Response
 
 from app.config import config
 from app.config.env import env
-from app.registry import (
-    get_all_providers,
-    get_sites_for_provider,
-    provider_mount_path,
-)
+from app.registry import get_all_providers, provider_mount_path
 from app.routes import actor_cache_routes, dev_routes, env_routes, image_routes, metadata_cache_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
@@ -21,7 +16,6 @@ from app.utils.logging.uvicorn_logging import configure_uvicorn_logging
 
 def _log_startup_banner() -> None:
     logger.info(f'Plex Metadata Provider running on port {config.port}')
-    logger.info(f'Diagnostics: {config.base_url}/providers')
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 
@@ -78,24 +72,10 @@ def create_app() -> FastAPI:
     if not env.is_production:
         app.include_router(dev_routes.router, prefix='/dev')
 
-    # ── Health / diagnostics ─────────────────────────────────────────────────
+    # ── Health ───────────────────────────────────────────────────────────────
     @app.get('/health')
     async def health() -> dict[str, str]:
         return {'status': 'ok'}
-
-    @app.get('/providers')
-    async def providers() -> list[dict[str, Any]]:
-        return [
-            {
-                'id': p.id,
-                'title': p.title,
-                'mediaType': p.media_type,
-                'plexIdentifier': p.plex_identifier,
-                'url': provider_mount_path(p),
-                'sites': [{'name': s.name, 'aliases': s.aliases, 'contentType': s.content_type} for s in get_sites_for_provider(p.id)],
-            }
-            for p in get_all_providers()
-        ]
 
     return app
 

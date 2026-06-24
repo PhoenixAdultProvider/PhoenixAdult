@@ -38,7 +38,6 @@ NODE_ENV=development uvicorn app.main:app --reload --port 3000
 ```
 
 - Health: `GET /health`
-- Providers: `GET /providers`
 - Config UI: `GET /config` (loopback or `ADMIN_TOKEN`)
 - Dev UI: `GET /dev` (non-production, loopback or `ADMIN_TOKEN`)
 - Actor-cache review: `GET /actor-cache` — browse/manage cached actor headshots and gender tags (needs `ACTOR_CACHE_ENABLE`)
