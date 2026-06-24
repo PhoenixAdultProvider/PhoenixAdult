@@ -122,3 +122,317 @@ When iterating on a scraper it's often fastest to watch it live:
    legitimately have none — note it).
 5. If something's off, expand the capture panel to see the exact HTML the scraper
    saw and re-check your XPath. See [dev-ui.md](./dev-ui.md).
+
+## Protocol per scraper
+
+1. **Search** — type a known scene title/for that network into the filename box; pick the network in the site dropdown; press Enter. Confirm at least one result row.
+2. **Detail** — click the top result. Confirm `title`, `releaseDate`, and `summary` populate.
+3. **Images** — confirm at least one image URL appears; open it in a new tab to verify it loads.
+4. **Actors + genres** — confirm both populate. Some networks legitimately skip actors (filename-only, direct-URL); note "N/A" in that case.
+5. **Collections** — populated only when the legacy did. Don't fail on missing.
+
+## Legend
+
+**Status:** ✅ passes smoke test · ⬜ not yet tested · ⚠️ partial — see notes · ❌ broken or removed — see notes
+
+**Method** (from the registry registration): `enhanced` = title + + date + · `limited` = title / · `exact` = or direct-URL only
+
+## Progress
+
+**12** ✅ passing · **3** ❌ removed · **159** ⬜ remaining — **174** total
+
+## Providers
+
+### #
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ✅ | 5K Porn | limited | |
+
+### A
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ✅ | Abby Winters | enhanced | |
+| ✅ | Adult Empire | enhanced | |
+| ✅ | Adult Empire Cash | |
+| ✅ | Adult Prime | enhanced | |
+| ✅ | Allure Media | limited | |
+| ✅ | ALS Angels | exact | |
+| ✅ | AmourAngels | exact | |
+| ✅ | AnalVids | enhanced | |
+| ❌ | Angela White | — | Removed: site no longer exists |
+| ❌ | ArchAngel | — | Removed: site changes |
+| ❌ | ATKGirlfriends | — | Removed: paywall |
+
+### B
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ✅ | BaDoink VR | enhanced | |
+| ⬜ | BAMVisions | limited | |
+| ⬜ | Bang! | limited | |
+| ⬜ | Bel Ami Online | exact | |
+| ⬜ | BellaPass | limited | slug |
+| ⬜ | Bellesa | enhanced | |
+| ⬜ | Black PayBack | limited | |
+| ⬜ | BlurredMedia | enhanced | |
+| ⬜ | Bound Honeys | limited | |
+| ⬜ | Brand New Amateurs | limited | |
+
+### C
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Caramel Cash | exact | |
+| ⬜ | Caribbeancom | exact | |
+| ⬜ | Cherry Pimps | enhanced | |
+| ⬜ | Clips4Sale | exact | |
+| ⬜ | ClubFilly | exact | |
+| ⬜ | Colette | enhanced | |
+| ⬜ | Couples Cinema | enhanced | |
+| ⬜ | Cumbizz | exact | |
+| ⬜ | CumLouder | exact | |
+| ✅ | Czech Authentic Videos | limited | |
+| ⬜ | CzechVR | enhanced | |
+
+### D
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | DarkRoomVR | limited | |
+| ⬜ | Data18 Porn Database | enhanced | |
+| ⬜ | Deranged Dollars | enhanced | |
+| ⬜ | Desperate Amateurs | limited | |
+| ⬜ | DickDrainers | enhanced | |
+| ⬜ | Dirty Flix | enhanced | |
+| ⬜ | Dirty Hard Drive | enhanced | |
+| ⬜ | Dorcel Vision | limited | |
+
+### E
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Evolved Fights Network | enhanced | |
+| ⬜ | Explicite Art | limited | |
+
+### F
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | FAKings | enhanced | |
+| ⬜ | Family Therapy | enhanced | |
+| ⬜ | Femdom Empire | enhanced | |
+| ⬜ | Femjoy | enhanced | |
+| ⬜ | Finishes The Job | limited | |
+| ⬜ | First Anal Quest | enhanced | |
+| ⬜ | First Time Videos | enhanced | |
+| ⬜ | Fitting-Room | exact | |
+| ⬜ | FuckingAwesome | enhanced | |
+| ⬜ | FuelVirtual | enhanced | |
+| ⬜ | Full Porn Network | limited | |
+
+### G
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Gamma | enhanced | |
+| ⬜ | GASM | enhanced | |
+| ⬜ | Girls Rimming | enhanced | |
+| ⬜ | GirlsOutWest | enhanced | |
+| ⬜ | Grooby | enhanced | |
+
+### H
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Heavy on Hotties | enhanced | |
+| ⬜ | Hegre | enhanced | |
+| ⬜ | High-Tech VR | exact | |
+| ⬜ | Holly Randall Productions | limited | |
+| ⬜ | HoloGirlsVR | enhanced | |
+| ⬜ | HotwifeXXX | enhanced | |
+| ⬜ | HuCows | enhanced | |
+
+### I
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | InterracialPass | enhanced | |
+| ⬜ | Intersec | enhanced | |
+| ⬜ | InTheCrack | limited | |
+
+### J
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Jacquie Et Michel TV | enhanced | |
+| ⬜ | JavBus | enhanced | |
+| ⬜ | JAVDatabase | enhanced | |
+| ⬜ | JAVLibrary | enhanced | |
+| ⬜ | Jesse Loads Monster Facials | enhanced | |
+| ⬜ | Jules Jordan | enhanced | |
+| ⬜ | JVR Porn | enhanced | |
+
+### K
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Karups | enhanced | |
+| ⬜ | Kelly Madison | enhanced | |
+| ⬜ | Killergram | exact | |
+| ⬜ | Kin8tengoku | enhanced | |
+| ⬜ | Kink | enhanced | |
+
+### L
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | LittleCaprice | enhanced | |
+| ⬜ | LoveHerFilms | enhanced | |
+| ⬜ | Lust Reality | enhanced | |
+| ⬜ | Lustomic | exact | |
+
+### M
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | ManyVids | exact | |
+| ⬜ | Marc Dorcel | enhanced | |
+| ⬜ | Meana Wolf | limited | |
+| ⬜ | Melena Maria Rya | exact | |
+| ⬜ | Melone Challenge | enhanced | |
+| ⬜ | MetadataAPI | enhanced | |
+| ⬜ | MetArt Network | enhanced | |
+| ⬜ | MissaX | limited | |
+| ⬜ | ModelCentro Network | enhanced | |
+| ⬜ | Mom Comes First | enhanced | |
+| ⬜ | Mom POV | enhanced | |
+| ⬜ | My Dirty Hobby | enhanced | |
+
+### N
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Naughty America | enhanced | |
+| ⬜ | Naughty America Other Sites | limited | |
+| ⬜ | Network 18 | limited | |
+| ⬜ | New Sensations | enhanced | |
+| ⬜ | Nubiles | enhanced | |
+| ⬜ | NVG Network | exact | |
+
+### P
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Penthouse Gold | enhanced | |
+| ⬜ | Perfect Gonzo | enhanced | |
+| ⬜ | PervCity | limited | |
+| ⬜ | PJGirls | enhanced | |
+| ⬜ | PKJ Media | limited | |
+| ⬜ | Playboy Plus | enhanced | |
+| ⬜ | PlumperPass | enhanced | |
+| ⬜ | Pornbox | enhanced | |
+| ⬜ | PornCZ | limited | |
+| ⬜ | Porndoe Premium | enhanced | |
+| ⬜ | PornPros | enhanced | |
+| ⬜ | Pornstar Platinum | enhanced | |
+| ⬜ | PornWorld | enhanced | |
+| ⬜ | POVR | limited | |
+| ⬜ | Private | enhanced | |
+| ⬜ | Project1Service | enhanced | |
+| ⬜ | Puba | limited | |
+| ⬜ | Puffy Network | limited | |
+| ⬜ | PureCFNM | exact | |
+| ⬜ | Putalocura | enhanced | |
+
+### Q
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | QueenSnake | exact | |
+
+### R
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Radical Cash | enhanced | |
+| ⬜ | Radical Cash Other | enhanced | |
+| ⬜ | Reality Lovers | enhanced | |
+| ⬜ | ReidMyLips | exact | |
+| ⬜ | Reptyle | enhanced | |
+| ⬜ | Romero Multimedia | limited | |
+
+### S
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Screwbox | limited | |
+| ⬜ | ScrewMeToo | enhanced | |
+| ⬜ | Sex Like Real | enhanced | |
+| ⬜ | SexMex | enhanced | |
+| ⬜ | Sicflics | enhanced | |
+| ⬜ | SinsLife | limited | |
+| ⬜ | SinX | limited | |
+| ⬜ | Spizoo | limited | |
+| ⬜ | StasyQ | exact | |
+| ⬜ | Step Secrets | enhanced | |
+| ⬜ | Stepped Up Media | enhanced | |
+| ⬜ | Strapon Cum | exact | |
+| ✅ | Strike3 | enhanced | |
+| ⬜ | Swallow Bay | exact | |
+
+### T
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Teen Mega World | enhanced | |
+| ⬜ | TeenCoreClub | enhanced | |
+| ⬜ | Teeny Taboo | enhanced | |
+| ⬜ | The Score Group | enhanced | |
+| ⬜ | Thick Cash | limited | |
+| ⬜ | TwoTGirls | limited | |
+
+### U
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | Ultrafilms | limited | |
+| ⬜ | Unzip VR | enhanced | |
+
+### V
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | VIP4K | enhanced | |
+| ⬜ | VIPissy | limited | |
+| ⬜ | VirtualRealPorn | exact | |
+| ⬜ | VirtualTaboo | limited | |
+| ⬜ | Vivid Network | enhanced | |
+| ⬜ | VNA Network | enhanced | |
+| ⬜ | VogoV | limited | |
+| ⬜ | VR Latina | enhanced | |
+| ⬜ | VRAllure | exact | |
+| ⬜ | VRPFilms | enhanced | |
+
+### W
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | WakeUpNFuck | limited | |
+| ⬜ | Wankz | limited | |
+| ⬜ | WankzVR | enhanced | |
+| ⬜ | Watch4Beauty | limited | |
+| ⬜ | We Are Hairy | enhanced | |
+| ⬜ | WoodmanCastingX | limited | |
+| ⬜ | WowNetwork | enhanced | |
+
+### X
+
+| | Provider | Method | Notes |
+|---|---|---|---|
+| ⬜ | X-Art | enhanced | |
+| ⬜ | XConfessions | limited | |
+| ⬜ | Xev Unleashed | enhanced | |
+| ⬜ | Xillimite | limited | |
+| ⬜ | XVirtual | limited | |
