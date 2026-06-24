@@ -15,7 +15,7 @@ def _flag(name: str, default: str) -> str:
 class _Env:
     @property
     def is_production(self) -> bool:
-        return os.environ.get('NODE_ENV') == 'production'
+        return os.environ.get('NODE_ENV', 'production').strip().lower() not in {'development', 'dev', 'test', 'local'}
 
     @property
     def log_dir(self) -> str:

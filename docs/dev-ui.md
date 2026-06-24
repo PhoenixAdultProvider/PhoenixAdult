@@ -13,11 +13,12 @@ In a real deployment the route disappears.
 
 ## Getting started
 
-Start the dev server with auto-reload:
+Start the dev server with auto-reload. The `/dev` UI is only mounted outside
+production, and production is now the default — so set `NODE_ENV=development`:
 
 ```bash
-uvicorn app.main:app --reload --port 3000
-# or: python -m app.main
+NODE_ENV=development uvicorn app.main:app --reload --port 3000
+# or: NODE_ENV=development python -m app.main
 ```
 
 Open `http://localhost:3000/dev` in a browser. The page is a single scrollable

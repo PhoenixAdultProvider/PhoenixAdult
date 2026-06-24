@@ -131,6 +131,7 @@ Push-Location $ProjectRoot
 try {
   Write-Host "[agent] uvicorn app.main:app --reload --port $Port ..." -ForegroundColor Cyan
   $env:PORT = "$Port"
+  $env:NODE_ENV = 'development'  # dev launcher — keep the /dev UI available
   & $PyExe -m uvicorn app.main:app --reload --port $Port
 } finally {
   Pop-Location
