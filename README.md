@@ -32,8 +32,9 @@ python -m venv .venv
 pip install -e ".[dev]"
 cp .env.example .env
 
-uvicorn app.main:app --reload --port 3000
-# or: python -m app.main
+# .env.example ships NODE_ENV=production; set development for local work + the /dev UI.
+NODE_ENV=development uvicorn app.main:app --reload --port 3000
+# or: NODE_ENV=development python -m app.main
 ```
 
 - Health: `GET /health`

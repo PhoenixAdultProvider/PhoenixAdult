@@ -691,7 +691,7 @@ docs/DESIGN.md               # this document
 tests/                       # pytest + respx unit / client / selector / health fixtures
 ```
 
-**Useful commands:** `uvicorn app.main:app --reload` (dev) · `python -m app.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
+**Useful commands:** `NODE_ENV=development uvicorn app.main:app --reload` (dev) · `python -m app.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
 
 ---
 
