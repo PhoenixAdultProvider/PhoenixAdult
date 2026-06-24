@@ -8,6 +8,19 @@ from typing import Any
 
 from app.config import config
 from app.config.env import env
+from app.utils.logging.context import current_request_id
+
+# Stamp the current per-request id onto every log record so the formatter can show it.
+_old_factory = logging.getLogRecordFactory()
+
+
+def _record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+    record = _old_factory(*args, **kwargs)
+    record.request_id = current_request_id()
+    return record
+
+
+logging.setLogRecordFactory(_record_factory)
 
 # Map the legacy winston levels onto stdlib logging.
 _LEVEL_MAP = {
@@ -35,7 +48,7 @@ if not _base.handlers:
     from app.utils.logging.redaction import RedactionFilter
 
     _base.addFilter(RedactionFilter())
-    _fmt = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
+    _fmt = logging.Formatter('%(asctime)s  (%(request_id)s) [%(levelname)s] (%(module)s:%(lineno)d): %(message)s')
     _console = logging.StreamHandler()
     _console.setFormatter(_fmt)
     _base.addHandler(_console)
@@ -61,7 +74,8 @@ class _Logger:
                 meta = {**b, **meta}
         if meta:
             message = f'{message} {json.dumps(meta, default=str)}'
-        _base.log(level, message)
+        # stacklevel=3 skips _emit + the level method so module/lineno resolve to the real caller.
+        _base.log(level, message, stacklevel=3)
 
     def error(self, a: Any, b: Any = None, **meta: Any) -> None:
         self._emit(logging.ERROR, a, b, **meta)

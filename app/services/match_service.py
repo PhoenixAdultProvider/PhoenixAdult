@@ -11,6 +11,7 @@ from app.models.provider_info import ProviderInfo
 from app.registry import find_site
 from app.routes.scraper_router import ScraperRouter
 from app.utils.helpers.helpers import format_duration
+from app.utils.logging.context import with_request_id
 from app.utils.logging.logger import logger
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
@@ -35,6 +36,7 @@ class MatchService:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
 
+    @with_request_id
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
         is_manual = req.manual == 1
         include_adult = req.includeAdult == 1
