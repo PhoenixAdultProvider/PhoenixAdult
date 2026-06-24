@@ -67,6 +67,15 @@ def test_filter_redacts_uvicorn_access_client_addr(monkeypatch):
     assert rec.args[1:] == ('GET', '/health', '1.1', 200)
 
 
+def test_filter_redacts_ipv6_uvicorn_access_client_addr(monkeypatch):
+    # IPv6 client_addr is "<addr>:<port>"; the glued port must not defeat redaction.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
+    args = ('2001:db8:7a3c:f19e:4b62:8d05:1ce7:9f4a:0', 'GET', '/x', '1.1', 200)
+    rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
+    RedactionFilter().filter(rec)
+    assert rec.args[0] == '***REDACTED***:0'
+
+
 def test_filter_redacts_token_in_uvicorn_access_path(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     args = ('127.0.0.1:54321', 'GET', '/config?token=abc123', '1.1', 200)

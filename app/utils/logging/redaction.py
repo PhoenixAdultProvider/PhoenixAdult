@@ -43,6 +43,13 @@ def redact(text: str) -> str:
     return text
 
 
+def redact_client_addr(addr: str) -> str:
+    # uvicorn's client_addr is "host:port"; a glued :port defeats the IP boundary
+    # checks, so split it off, redact the host, and rejoin.
+    host, sep, port = addr.rpartition(':')
+    return redact(host) + sep + port if sep else redact(addr)
+
+
 class RedactionFilter(logging.Filter):
     """Scrubs URL hosts, IP literals and secret query values from log records when LOG_REDACT_HOSTS is on."""
 
@@ -53,7 +60,7 @@ class RedactionFilter(logging.Filter):
             # uvicorn.access formats from a fixed args tuple: (client_addr, method, path, http_ver, status).
             if record.name.startswith('uvicorn.access') and isinstance(record.args, tuple) and len(record.args) >= 3:
                 args = list(record.args)
-                args[0] = redact(str(args[0]))  # client IP
+                args[0] = redact_client_addr(str(args[0]))  # client host:port
                 args[2] = redact(str(args[2]))  # request path (?token=…)
                 record.args = tuple(args)
             else:
