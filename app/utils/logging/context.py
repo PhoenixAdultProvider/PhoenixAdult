@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
-import functools
 import uuid
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Iterator
 
-# Per-request id (Plex-agent-kit style: a short hex tag for log isolation). The
-# default keeps the log column aligned when no request scope is active.
-_NO_REQUEST = '-----'
-_request_id: contextvars.ContextVar[str] = contextvars.ContextVar('request_id', default=_NO_REQUEST)
+# Shared log layout: "<ts>  (<id>) [LEVEL] (module:lineno): message".
+LOG_FORMAT = '%(asctime)s  (%(request_id)s) [%(levelname)s] (%(module)s:%(lineno)d): %(message)s'
+
+# A short hex id for this process run — the default for logs not tied to an
+# external request (startup, lifespan, uvicorn server lines). Changes on restart.
+SESSION_ID = uuid.uuid4().hex[:5]
+
+# Per-request id (Plex-agent-kit style) — overrides SESSION_ID for the duration
+# of one HTTP request so its logs (match/metadata + scrapers + access line) share it.
+_request_id: contextvars.ContextVar[str] = contextvars.ContextVar('request_id', default=SESSION_ID)
 
 
 def current_request_id() -> str:
@@ -28,14 +33,3 @@ def request_id_scope(value: str | None = None) -> Iterator[str]:
         yield rid
     finally:
         _request_id.reset(token)
-
-
-def with_request_id[**P, R](fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
-    """Decorate an async entry point so all of its logs share one request id."""
-
-    @functools.wraps(fn)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        with request_id_scope():
-            return await fn(*args, **kwargs)
-
-    return wrapper

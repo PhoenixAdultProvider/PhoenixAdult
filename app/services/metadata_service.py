@@ -8,7 +8,6 @@ from app.registry import find_site
 from app.routes.scraper_router import ScraperRouter
 from app.services import metadata_cache
 from app.utils.http.ssrf_guard import ensure_fetchable_url
-from app.utils.logging.context import with_request_id
 from app.utils.logging.logger import logger
 
 
@@ -17,7 +16,6 @@ class MetadataService:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
 
-    @with_request_id
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
         logger.info(provider.id, f'Update ratingKey={rating_key}')
 

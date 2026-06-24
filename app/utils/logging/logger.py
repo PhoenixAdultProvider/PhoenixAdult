@@ -8,7 +8,7 @@ from typing import Any
 
 from app.config import config
 from app.config.env import env
-from app.utils.logging.context import current_request_id
+from app.utils.logging.context import LOG_FORMAT, current_request_id
 
 # Stamp the current per-request id onto every log record so the formatter can show it.
 _old_factory = logging.getLogRecordFactory()
@@ -48,7 +48,7 @@ if not _base.handlers:
     from app.utils.logging.redaction import RedactionFilter
 
     _base.addFilter(RedactionFilter())
-    _fmt = logging.Formatter('%(asctime)s  (%(request_id)s) [%(levelname)s] (%(module)s:%(lineno)d): %(message)s')
+    _fmt = logging.Formatter(LOG_FORMAT)
     _console = logging.StreamHandler()
     _console.setFormatter(_fmt)
     _base.addHandler(_console)

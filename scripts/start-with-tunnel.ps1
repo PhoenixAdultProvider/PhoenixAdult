@@ -26,6 +26,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# ── Logging (matches the provider format: "<ts>  (<id>) [LEVEL] (src:line): msg") ──
+$SessionId = -join (1..5 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+$LogSource = [IO.Path]::GetFileNameWithoutExtension($PSCommandPath)
+
+function Write-Log {
+  param(
+    [Parameter(Mandatory)][string]$Message,
+    [ValidateSet('INFO', 'WARN', 'ERROR')][string]$Level = 'INFO'
+  )
+  $ts    = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss,fff')
+  $line  = (Get-PSCallStack)[1].ScriptLineNumber
+  $color = switch ($Level) { 'ERROR' { 'Red' } 'WARN' { 'Yellow' } default { 'Cyan' } }
+  Write-Host ("{0}  ({1}) [{2}] ({3}:{4}): {5}" -f $ts, $SessionId, $Level, $LogSource, $line, $Message) -ForegroundColor $color
+}
+
 # ── Paths ────────────────────────────────────────────────────────────────────
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ToolsDir    = Join-Path $ProjectRoot "tools"
@@ -45,29 +60,29 @@ if (Test-Path $VenvPy) {
   $PyExe = (Get-Command python -ErrorAction SilentlyContinue).Source
   if (-not $PyExe) { $PyExe = (Get-Command py -ErrorAction SilentlyContinue).Source }
   if (-not $PyExe) {
-    Write-Host "[agent] No Python interpreter found (.venv missing and python/py not on PATH)." -ForegroundColor Red
+    Write-Log -Level ERROR -Message "No Python interpreter found (.venv missing and python/py not on PATH)."
     exit 1
   }
-  Write-Host "[agent] .venv not found - using $PyExe" -ForegroundColor Yellow
+  Write-Log -Level WARN -Message ".venv not found - using $PyExe"
 }
 
 # ── 1. Ensure cloudflared.exe is present ─────────────────────────────────────
 if (-not (Test-Path $CfdExe)) {
-  Write-Host "[tunnel] cloudflared.exe not found - downloading..." -ForegroundColor Cyan
+  Write-Log "cloudflared.exe not found - downloading..."
   $url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
   try {
     Invoke-WebRequest -Uri $url -OutFile $CfdExe -UseBasicParsing
   } catch {
-    Write-Host "[tunnel] FAILED to download cloudflared: $_" -ForegroundColor Red
+    Write-Log -Level ERROR -Message "Failed to download cloudflared: $_"
     exit 1
   }
-  Write-Host "[tunnel] Saved to $CfdExe" -ForegroundColor Green
+  Write-Log "Saved cloudflared to $CfdExe"
 }
 
 # ── 2. Start cloudflared as a background process ─────────────────────────────
 Remove-Item $CfdOut, $CfdErr -ErrorAction SilentlyContinue
 
-Write-Host "[tunnel] Opening quick tunnel to http://localhost:$Port ..." -ForegroundColor Cyan
+Write-Log "Opening quick tunnel to http://localhost:$Port ..."
 $cfdProc = Start-Process `
   -FilePath  $CfdExe `
   -ArgumentList @("tunnel", "--no-autoupdate", "--url", "http://localhost:$Port") `
@@ -77,7 +92,7 @@ $cfdProc = Start-Process `
   -WindowStyle Hidden
 
 # ── 3. Wait for the trycloudflare URL to show up in cloudflared's log ────────
-Write-Host "[tunnel] Waiting up to $WaitSeconds s for a tunnel URL..." -ForegroundColor Cyan
+Write-Log "Waiting up to $WaitSeconds s for a tunnel URL..."
 $tunnelUrl = $null
 $deadline  = (Get-Date).AddSeconds($WaitSeconds)
 
@@ -92,19 +107,19 @@ while ((Get-Date) -lt $deadline -and -not $tunnelUrl) {
 }
 
 if (-not $tunnelUrl) {
-  Write-Host "[tunnel] Timed out waiting for URL. cloudflared logs:" -ForegroundColor Red
+  Write-Log -Level ERROR -Message "Timed out waiting for URL. cloudflared logs:"
   if (Test-Path $CfdErr) { Get-Content $CfdErr | Select-Object -Last 20 | ForEach-Object { Write-Host "  $_" } }
   Stop-Process -Id $cfdProc.Id -Force -ErrorAction SilentlyContinue
   exit 1
 }
 
-Write-Host "[tunnel] Tunnel URL: $tunnelUrl" -ForegroundColor Green
+Write-Log "Tunnel URL: $tunnelUrl"
 
 # ── 4. Update PHOENIX_BASE_URL in .env (atomic write, preserves other keys) ──────────
 if (Test-Path $EnvFile) {
   $envLines = Get-Content $EnvFile
 } else {
-  Write-Host "[tunnel] .env missing - creating from .env.example template" -ForegroundColor Yellow
+  Write-Log -Level WARN -Message ".env missing - creating from .env.example template"
   if (Test-Path (Join-Path $ProjectRoot ".env.example")) {
     Copy-Item (Join-Path $ProjectRoot ".env.example") $EnvFile
     $envLines = Get-Content $EnvFile
@@ -124,19 +139,19 @@ $newLines = $envLines | ForEach-Object {
 }
 if (-not $found) { $newLines += "PHOENIX_BASE_URL=$tunnelUrl" }
 Set-Content -Path $EnvFile -Value $newLines -Encoding UTF8
-Write-Host "[tunnel] .env updated -> PHOENIX_BASE_URL=$tunnelUrl" -ForegroundColor Green
+Write-Log ".env updated -> PHOENIX_BASE_URL=$tunnelUrl"
 
 # ── 5. Start the agent in foreground; clean up tunnel on exit ────────────────
 Push-Location $ProjectRoot
 try {
-  Write-Host "[agent] uvicorn app.main:app --reload --port $Port ..." -ForegroundColor Cyan
+  Write-Log "Starting uvicorn app.main:app --reload --port $Port ..."
   $env:PORT = "$Port"
   $env:NODE_ENV = 'development'  # dev launcher — keep the /dev UI available
   & $PyExe -m uvicorn app.main:app --reload --port $Port
 } finally {
   Pop-Location
   if ($cfdProc -and -not $cfdProc.HasExited) {
-    Write-Host "[cleanup] Stopping cloudflared (PID $($cfdProc.Id))" -ForegroundColor Yellow
+    Write-Log -Level WARN -Message "Stopping cloudflared (PID $($cfdProc.Id))"
     Stop-Process -Id $cfdProc.Id -Force -ErrorAction SilentlyContinue
   }
 }

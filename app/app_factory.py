@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 
 from app.config import config
 from app.config.env import env
@@ -11,6 +11,7 @@ from app.registry import get_all_providers, provider_mount_path
 from app.routes import actor_cache_routes, dev_routes, env_routes, image_routes, metadata_cache_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
+from app.utils.logging.request_context import RequestContextMiddleware
 from app.utils.logging.uvicorn_logging import configure_uvicorn_logging
 
 
@@ -40,15 +41,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan)
 
-    @app.middleware('http')
-    async def request_logging(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        # Don't log /config bodies — they can carry secret values being saved.
-        logger.http(
-            f'{request.method} {request.url.path}',
-            language=request.headers.get('x-plex-language'),
-            country=request.headers.get('x-plex-country'),
-        )
-        return await call_next(request)
+    # Per-request id + access logging (don't log /config bodies — they carry secrets).
+    app.add_middleware(RequestContextMiddleware)
 
     # ── Dynamic provider routes ──────────────────────────────────────────────
     for provider in get_all_providers():

@@ -2,31 +2,20 @@ from __future__ import annotations
 
 import logging
 
-from app.utils.logging.context import current_request_id, request_id_scope, with_request_id
+from app.utils.logging.context import SESSION_ID, current_request_id, request_id_scope
 from app.utils.logging.logger import logger
 
 
-def test_default_request_id_outside_scope():
-    assert current_request_id() == '-----'
+def test_default_is_session_id_not_dashes():
+    assert current_request_id() == SESSION_ID
+    assert len(SESSION_ID) == 5 and SESSION_ID != '-----'
 
 
-def test_scope_sets_and_resets():
+def test_scope_sets_and_resets_to_session():
     with request_id_scope('abc12') as rid:
         assert rid == 'abc12'
         assert current_request_id() == 'abc12'
-    assert current_request_id() == '-----'
-
-
-async def test_decorator_generates_5char_id_and_resets():
-    seen = {}
-
-    @with_request_id
-    async def op() -> None:
-        seen['id'] = current_request_id()
-
-    await op()
-    assert len(seen['id']) == 5 and seen['id'] != '-----'
-    assert current_request_id() == '-----'  # reset after the call
+    assert current_request_id() == SESSION_ID
 
 
 def test_record_carries_request_id_and_real_caller():
@@ -47,9 +36,41 @@ def test_record_carries_request_id_and_real_caller():
     assert rec.module == 'test_log_context'
 
 
-def test_two_requests_get_distinct_ids():
+def test_two_scopes_get_distinct_ids():
     ids = []
     for _ in range(2):
         with request_id_scope() as rid:
             ids.append(rid)
     assert ids[0] != ids[1]
+
+
+def test_middleware_shares_id_across_endpoint_and_access_log():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.utils.logging.request_context import RequestContextMiddleware
+
+    captured: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.emit = captured.append  # type: ignore[method-assign]
+    base = logging.getLogger('phoenixadult')
+    base.addHandler(handler)
+
+    app = FastAPI()
+    app.add_middleware(RequestContextMiddleware)
+
+    @app.get('/ping')
+    async def ping() -> dict[str, bool]:
+        logger.info('inside endpoint')
+        return {'ok': True}
+
+    try:
+        TestClient(app).get('/ping')
+    finally:
+        base.removeHandler(handler)
+
+    endpoint = [r.request_id for r in captured if 'inside endpoint' in r.getMessage()]
+    access = [r.request_id for r in captured if '/ping' in r.getMessage()]
+    assert endpoint and access
+    assert endpoint[0] == access[0]  # one id spans the endpoint and its access line
+    assert endpoint[0] != SESSION_ID  # a real per-request id, not the process default
