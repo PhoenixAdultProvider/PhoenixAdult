@@ -52,12 +52,28 @@
 .docs-doc-id-scraper-test-plan article table {
   display: table;
   width: 100%;
+  /* Fixed layout so every A–Z table shares identical column widths,
+     independent of each table's own content. */
+  table-layout: fixed;
 }
-.docs-doc-id-scraper-test-plan article th:first-child,
-.docs-doc-id-scraper-test-plan article td:first-child {
+.docs-doc-id-scraper-test-plan article th,
+.docs-doc-id-scraper-test-plan article td {
+  overflow-wrap: break-word;
+}
+.docs-doc-id-scraper-test-plan article th:nth-child(1),
+.docs-doc-id-scraper-test-plan article td:nth-child(1) {
   width: 3rem;
   text-align: center;
 }
+.docs-doc-id-scraper-test-plan article th:nth-child(2),
+.docs-doc-id-scraper-test-plan article td:nth-child(2) {
+  width: 32%;
+}
+.docs-doc-id-scraper-test-plan article th:nth-child(3),
+.docs-doc-id-scraper-test-plan article td:nth-child(3) {
+  width: 7rem;
+}
+/* The 4th column (Notes) absorbs the remaining width. */
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
