@@ -10,6 +10,9 @@ TOKEN = 'devtoken'
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    # The /dev UI is only mounted outside production; pin it so an ambient
+    # NODE_ENV=production in the developer's .env can't 404 these tests.
+    monkeypatch.setenv('NODE_ENV', 'development')
     # TestClient's client host is not loopback, so the admin token is required.
     monkeypatch.setenv('ADMIN_TOKEN', TOKEN)
     return TestClient(create_app())
@@ -20,6 +23,7 @@ def test_dev_requires_auth(client: TestClient) -> None:
 
 
 def test_dev_open_when_token_blank(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('NODE_ENV', 'development')
     # No ADMIN_TOKEN configured → auth disabled, admin surfaces open to all.
     monkeypatch.delenv('ADMIN_TOKEN', raising=False)
     open_client = TestClient(create_app())

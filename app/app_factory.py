@@ -16,7 +16,7 @@ from app.registry import (
 from app.routes import actor_cache_routes, dev_routes, env_routes, image_routes, metadata_cache_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
-from app.utils.logging.redaction import install_uvicorn_redaction
+from app.utils.logging.uvicorn_logging import configure_uvicorn_logging
 
 
 def _log_startup_banner() -> None:
@@ -38,7 +38,7 @@ def _log_startup_banner() -> None:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    install_uvicorn_redaction()
+    configure_uvicorn_logging()
     _log_startup_banner()
     yield
 

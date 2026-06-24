@@ -65,10 +65,3 @@ class RedactionFilter(logging.Filter):
         except Exception:
             pass
         return True
-
-
-def install_uvicorn_redaction() -> None:
-    for name in ('uvicorn', 'uvicorn.error', 'uvicorn.access'):
-        lg = logging.getLogger(name)
-        if not any(isinstance(f, RedactionFilter) for f in lg.filters):
-            lg.addFilter(RedactionFilter())
