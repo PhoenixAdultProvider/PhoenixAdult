@@ -55,10 +55,10 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'LOG_REDACT_HOSTS',
-        'Redact hosts, IPs & secrets in logs',
-        'Replace URL hosts, IP addresses and secret query values (?token=…, ?apikey=…) in the log output with '
-        '***REDACTED*** — keeps logs safe to paste into bug reports. Defaults to ON when NODE_ENV=production and '
-        'OFF otherwise; set this to override either way.',
+        'Redact the server host in logs',
+        'IP addresses and secret query values (?token=…, ?apikey=…) are ALWAYS redacted in logs (they never appear, '
+        'in any environment). This flag additionally redacts the server’s own host/FQDN (from PHOENIX_BASE_URL). '
+        'Defaults to ON when NODE_ENV=production and OFF otherwise (so you can see your own URL while testing).',
         'Logging',
         'boolean',
         default_value='false',

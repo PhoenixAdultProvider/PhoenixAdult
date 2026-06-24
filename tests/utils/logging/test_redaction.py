@@ -8,22 +8,33 @@ from app.utils.logging.redaction import RedactionFilter, redact
 
 
 def test_redact_own_host_keeps_scheme_and_path(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
     assert redact('Config UI: https://my-tunnel.example.com/config?lang=en') == 'Config UI: https://***REDACTED***/config?lang=en'
 
 
 def test_redact_leaves_scraped_hosts_untouched(monkeypatch):
     # Scraped target sites must stay visible — only the server's own host is redacted.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
     assert redact('Requesting GET "https://czechcasting.com/video/lucie-1484/"') == 'Requesting GET "https://czechcasting.com/video/lucie-1484/"'
 
 
 def test_redact_own_host_not_confused_with_lookalike(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://example.com')
     assert redact('https://notexample.com/x and https://example.community/y') == 'https://notexample.com/x and https://example.community/y'
 
 
+def test_own_host_not_redacted_when_flag_off(monkeypatch):
+    # The server's own FQDN stays visible in dev (flag off) — only IPs/tokens are forced.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
+    assert redact('Config UI: https://my-tunnel.example.com/config') == 'Config UI: https://my-tunnel.example.com/config'
+
+
 def test_no_own_host_when_base_url_localhost(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'http://localhost:3000')
     assert redact('http://plex.example.com:32400/config') == 'http://plex.example.com:32400/config'
 
@@ -62,18 +73,23 @@ def _record(name: str, msg: str, args=None) -> logging.LogRecord:
     return logging.LogRecord(name, logging.INFO, __file__, 0, msg, args, None)
 
 
-def test_filter_off_when_flag_disabled(monkeypatch):
+def test_filter_redacts_ip_even_when_flag_off(monkeypatch):
+    # IPs are PII — redacted regardless of LOG_REDACT_HOSTS.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     rec = _record('phoenixadult', 'host http://10.0.0.1/x')
     RedactionFilter().filter(rec)
-    assert rec.getMessage() == 'host http://10.0.0.1/x'
-
-
-def test_filter_redacts_when_enabled(monkeypatch):
-    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
-    rec = _record('phoenixadult', 'host http://10.0.0.1/x')
-    RedactionFilter().filter(rec)
     assert rec.getMessage() == 'host http://***REDACTED***/x'
+
+
+def test_filter_redacts_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
+    # Reproduces the reported leak: client IP + token in an access log must be
+    # redacted even in dev (flag off). 203.0.113.0/24 is TEST-NET-3 (docs only).
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    args = ('203.0.113.157:0', 'GET', '/actor-cache?token=deadbeefcafe', '1.1', 200)
+    rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
+    RedactionFilter().filter(rec)
+    assert rec.args[0] == '***REDACTED***:0'
+    assert rec.args[2] == '/actor-cache?token=***REDACTED***'
 
 
 def test_filter_redacts_uvicorn_access_client_addr(monkeypatch):

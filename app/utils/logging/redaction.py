@@ -37,8 +37,6 @@ _NON_SENSITIVE_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', '::1'}
 
 
 def _own_host() -> str | None:
-    # The server's own FQDN/host (from PHOENIX_BASE_URL) is the only host worth
-    # redacting — scraped target sites are public and needed for debugging.
     host = urlsplit(os.environ.get('PHOENIX_BASE_URL') or '').hostname
     if not host or host in _NON_SENSITIVE_HOSTS:
         return None
@@ -47,9 +45,10 @@ def _own_host() -> str | None:
 
 def redact(text: str) -> str:
     text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
-    own = _own_host()
-    if own:
-        text = re.sub(rf'(?i)(?<![\w.-]){re.escape(own)}(?![\w-])', MASK, text)
+    if env.log_redact_hosts:
+        own = _own_host()
+        if own:
+            text = re.sub(rf'(?i)(?<![\w.-]){re.escape(own)}(?![\w-])', MASK, text)
     text = _IPV6.sub(MASK, text)
     text = _IPV4.sub(MASK, text)
     return text
@@ -63,11 +62,9 @@ def redact_client_addr(addr: str) -> str:
 
 
 class RedactionFilter(logging.Filter):
-    """Scrubs URL hosts, IP literals and secret query values from log records when LOG_REDACT_HOSTS is on."""
+    """Always scrubs IP literals + secret query values; the server's own host only when LOG_REDACT_HOSTS is on."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if not env.log_redact_hosts:
-            return True
         try:
             # uvicorn.access formats from a fixed args tuple: (client_addr, method, path, http_ver, status).
             if record.name.startswith('uvicorn.access') and isinstance(record.args, tuple) and len(record.args) >= 3:
