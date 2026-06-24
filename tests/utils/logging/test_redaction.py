@@ -7,8 +7,25 @@ import pytest
 from app.utils.logging.redaction import RedactionFilter, redact
 
 
-def test_redact_url_host_keeps_scheme_and_path():
-    assert redact('http://plex.example.com:32400/config?lang=en') == 'http://***REDACTED***/config?lang=en'
+def test_redact_own_host_keeps_scheme_and_path(monkeypatch):
+    monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
+    assert redact('Config UI: https://my-tunnel.example.com/config?lang=en') == 'Config UI: https://***REDACTED***/config?lang=en'
+
+
+def test_redact_leaves_scraped_hosts_untouched(monkeypatch):
+    # Scraped target sites must stay visible — only the server's own host is redacted.
+    monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
+    assert redact('Requesting GET "https://czechcasting.com/video/lucie-1484/"') == 'Requesting GET "https://czechcasting.com/video/lucie-1484/"'
+
+
+def test_redact_own_host_not_confused_with_lookalike(monkeypatch):
+    monkeypatch.setenv('PHOENIX_BASE_URL', 'https://example.com')
+    assert redact('https://notexample.com/x and https://example.community/y') == 'https://notexample.com/x and https://example.community/y'
+
+
+def test_no_own_host_when_base_url_localhost(monkeypatch):
+    monkeypatch.setenv('PHOENIX_BASE_URL', 'http://localhost:3000')
+    assert redact('http://plex.example.com:32400/config') == 'http://plex.example.com:32400/config'
 
 
 def test_redact_ipv4():
@@ -24,7 +41,8 @@ def test_redact_leaves_plain_text_untouched():
 
 
 def test_redact_query_token():
-    assert redact('http://h.example/config?token=s3cret&x=1') == 'http://***REDACTED***/config?token=***REDACTED***&x=1'
+    # Host left intact (not the server's own host); only the token value is masked.
+    assert redact('http://h.example/config?token=s3cret&x=1') == 'http://h.example/config?token=***REDACTED***&x=1'
 
 
 def test_redact_query_token_in_bare_path():

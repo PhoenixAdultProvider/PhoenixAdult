@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
+from urllib.parse import urlsplit
 
 from app.config.env import env
 
 MASK = '***REDACTED***'
-
-# Host (+ optional port) of any http(s) URL — scheme and path/query are kept so
-# log lines stay debuggable (e.g. http://***REDACTED***/config?token=…).
-_URL_HOST = re.compile(r'(?i)(https?://)([^/\s?#]+)')
 
 # Sensitive query-string values (e.g. ?token=…&apikey=…) — value masked, name kept.
 _QUERY_SECRET = re.compile(r'(?i)\b(token|api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret|password|passwd|pwd)=([^&\s"\'#]+)')
@@ -35,9 +33,23 @@ _IPV6 = re.compile(
 )
 
 
+_NON_SENSITIVE_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', '::1'}
+
+
+def _own_host() -> str | None:
+    # The server's own FQDN/host (from PHOENIX_BASE_URL) is the only host worth
+    # redacting — scraped target sites are public and needed for debugging.
+    host = urlsplit(os.environ.get('PHOENIX_BASE_URL') or '').hostname
+    if not host or host in _NON_SENSITIVE_HOSTS:
+        return None
+    return host
+
+
 def redact(text: str) -> str:
     text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
-    text = _URL_HOST.sub(r'\1' + MASK, text)
+    own = _own_host()
+    if own:
+        text = re.sub(rf'(?i)(?<![\w.-]){re.escape(own)}(?![\w-])', MASK, text)
     text = _IPV6.sub(MASK, text)
     text = _IPV4.sub(MASK, text)
     return text
