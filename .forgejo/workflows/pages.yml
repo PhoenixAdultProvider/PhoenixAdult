@@ -1,0 +1,48 @@
+name: Deploy docs to Codeberg Pages
+
+# Builds the Docusaurus site in website/ and force-pushes the static output to
+# the `pages` branch, which Codeberg serves at
+# https://phoenixadultprovider.codeberg.page/PhoenixAdult/
+#
+# Requires (one-time setup):
+#   1. Repo → Settings → Actions enabled.
+#   2. A Codeberg access token with `write:repository`, added as the Actions
+#      secret CODEBERG_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - '.forgejo/workflows/pages.yml'
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: codeberg-medium
+    container:
+      image: node:26-bookworm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: website
+
+      - name: Build site
+        run: npm run build
+        working-directory: website
+
+      - name: Publish to pages branch
+        working-directory: website/build
+        env:
+          CODEBERG_TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+        run: |
+          git init -q
+          git config user.name 'codeberg-ci'
+          git config user.email 'ci@codeberg.invalid'
+          git add -A
+          git commit -q -m "Deploy ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${CODEBERG_TOKEN}@codeberg.org/PhoenixAdultProvider/PhoenixAdult.git" HEAD:pages

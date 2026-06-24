@@ -11,13 +11,13 @@ const config: Config = {
     v4: true,
   },
 
-  // GitHub Pages URL: https://phoenixadultprovider.github.io/PAProvider/
-  url: 'https://phoenixadultprovider.github.io',
-  baseUrl: '/PAProvider/',
+  // Codeberg Pages URL: https://phoenixadultprovider.codeberg.page/PhoenixAdult/
+  url: 'https://phoenixadultprovider.codeberg.page',
+  baseUrl: '/PhoenixAdult/',
 
   organizationName: 'PhoenixAdultProvider',
-  projectName: 'PAProvider',
-  deploymentBranch: 'gh-pages',
+  projectName: 'PhoenixAdult',
+  deploymentBranch: 'pages',
   trailingSlash: false,
 
   onBrokenLinks: 'warn',
@@ -43,7 +43,7 @@ const config: Config = {
           exclude: ['site-health-details.md', 'site-health-new.md', 'site-health-new-details.md'],
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/PhoenixAdultProvider/PAProvider/edit/main/',
+          editUrl: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult/_edit/main/docs/',
         },
         blog: false,
         theme: { customCss: './src/css/custom.css' },
@@ -58,8 +58,8 @@ const config: Config = {
       items: [
         { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
         {
-          href: 'https://github.com/PhoenixAdultProvider/PAProvider',
-          label: 'GitHub',
+          href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult',
+          label: 'Codeberg',
           position: 'right',
         },
       ],
@@ -78,8 +78,8 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            { label: 'GitHub', href: 'https://github.com/PhoenixAdultProvider/PAProvider' },
-            { label: 'Issues', href: 'https://github.com/PhoenixAdultProvider/PAProvider/issues' },
+            { label: 'Codeberg', href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult' },
+            { label: 'Issues', href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult/issues' },
           ],
         },
       ],
