@@ -33,8 +33,8 @@ pip install -e ".[dev]"
 cp .env.example .env
 
 # .env.example ships NODE_ENV=production; set development for local work + the /dev UI.
-NODE_ENV=development uvicorn app.main:app --reload --port 3000
-# or: NODE_ENV=development python -m app.main
+# Outside production this auto-reloads on change; PORT (default 3000) sets the port.
+NODE_ENV=development python -m app.main
 ```
 
 - Health: `GET /health`
@@ -73,7 +73,7 @@ override `load_scene_context` + the per-field `fetch_*` hooks (`fetch_title`,
 It downloads `cloudflared.exe` on first run, opens an ephemeral
 `https://*.trycloudflare.com` quick tunnel to `http://localhost:3000`, writes
 that URL into `.env` as `PHOENIX_BASE_URL`, then starts the app
-(`uvicorn app.main:app --reload`). Ctrl+C tears the tunnel down.
+(`python -m app.main`, which auto-reloads in dev). Ctrl+C tears the tunnel down.
 
 ```bash
 pwsh -ExecutionPolicy Bypass -File scripts/start-with-tunnel.ps1

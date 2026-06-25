@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from app.config.env import env
-from app.utils.logging.context import LOG_FORMAT
+from app.utils.logging.context import LOG_FORMAT, SESSION_ID
 from app.utils.logging.redaction import RedactionFilter
 
 
@@ -12,6 +13,46 @@ class StartupAddressFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         return not (env.is_production and isinstance(record.msg, str) and record.msg.startswith('Uvicorn running on'))
+
+
+class ProviderFormatter(logging.Formatter):
+    """Provider log format for uvicorn lines, with a request_id default so it also
+    works in the reloader process (where the record factory isn't installed)."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        if not hasattr(record, 'request_id'):
+            record.request_id = SESSION_ID
+        return super().format(record)
+
+
+# A uvicorn log_config applied at process startup (passed to uvicorn.run in main.py).
+# Unlike configure_uvicorn_logging() — which runs in the lifespan, too late for the
+# reloader process and the pre-startup lines — this is in effect from the first line.
+UVICORN_LOG_CONFIG: dict[str, Any] = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'redaction': {'()': 'app.utils.logging.redaction.RedactionFilter'},
+        'startup_address': {'()': 'app.utils.logging.uvicorn_logging.StartupAddressFilter'},
+    },
+    'formatters': {
+        'provider': {'()': 'app.utils.logging.uvicorn_logging.ProviderFormatter', 'fmt': LOG_FORMAT},
+    },
+    'handlers': {
+        'default': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'provider',
+            'filters': ['startup_address', 'redaction'],
+            'stream': 'ext://sys.stderr',
+        },
+    },
+    'loggers': {
+        'uvicorn': {'handlers': ['default'], 'level': 'INFO', 'propagate': False},
+        'uvicorn.error': {'level': 'INFO', 'propagate': True},
+        # Silenced — RequestContextMiddleware emits the access line in-scope instead.
+        'uvicorn.access': {'handlers': [], 'level': 'CRITICAL', 'propagate': False},
+    },
+}
 
 
 def configure_uvicorn_logging() -> None:

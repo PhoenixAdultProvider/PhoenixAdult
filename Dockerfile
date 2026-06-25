@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir .
 COPY app ./app
 
 EXPOSE 3000
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["python", "-m", "app.main"]

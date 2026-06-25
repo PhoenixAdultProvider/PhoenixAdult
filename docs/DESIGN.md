@@ -643,7 +643,7 @@ flowchart LR
   proc -->|HTTPS| net
 ```
 
-Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run it with `uvicorn app.main:app --reload` (or `python -m app.main`, which calls `uvicorn.run`). Restart is supervised: `POST /config/api/restart` sends `SIGTERM` to its own PID and relies on a process supervisor to relaunch. FlareSolverr is an optional sidecar.
+Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run it with `python -m app.main` (it calls `uvicorn.run`, auto-reloading outside production). Restart is supervised: `POST /config/api/restart` sends `SIGTERM` to its own PID and relies on a process supervisor to relaunch. FlareSolverr is an optional sidecar.
 
 ---
 
@@ -691,7 +691,7 @@ docs/DESIGN.md               # this document
 tests/                       # pytest + respx unit / client / selector / health fixtures
 ```
 
-**Useful commands:** `NODE_ENV=development uvicorn app.main:app --reload` (dev) · `python -m app.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
+**Useful commands:** `NODE_ENV=development python -m app.main` (dev, auto-reload) · `python -m app.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
 
 ---
 

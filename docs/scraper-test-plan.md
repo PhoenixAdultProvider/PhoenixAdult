@@ -115,7 +115,7 @@ comparison rules.
 
 When iterating on a scraper it's often fastest to watch it live:
 
-1. `NODE_ENV=development uvicorn app.main:app --reload` → open `http://localhost:3000/dev`.
+1. `NODE_ENV=development python -m app.main` → open `http://localhost:3000/dev`.
 2. Type a known filename for the site, press Enter — confirm ≥1 result.
 3. Click the top result — confirm `title`, `release_date`, `summary` populate.
 4. Confirm ≥1 image URL appears and opens; confirm actors + genres (some sites
