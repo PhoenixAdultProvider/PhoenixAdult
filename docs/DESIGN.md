@@ -793,4 +793,4 @@ flowchart LR
 
 ---
 
-*Diagrams render on GitHub (Mermaid). Update them alongside the code they model — a stale model is worse than none.*
+*Diagrams render in the repo's Markdown viewer (Mermaid — supported on both GitHub and Codeberg). Update them alongside the code they model — a stale model is worse than none.*

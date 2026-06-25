@@ -2,6 +2,15 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+// Host-agnostic: defaults target Codeberg Pages (the live deploy). Override these
+// env vars to build the same config for another host (e.g. GitHub Pages).
+const repoUrl = process.env.DOCS_REPO_URL ?? 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult';
+const repoLabel = process.env.DOCS_REPO_LABEL ?? 'Codeberg';
+const siteUrl = process.env.DOCS_SITE_URL ?? 'https://phoenixadultprovider.codeberg.page';
+const siteBaseUrl = process.env.DOCS_BASE_URL ?? '/PhoenixAdult/';
+// Forgejo/Codeberg edit path is /_edit/<branch>/; GitHub uses /edit/<branch>/.
+const editUrl = process.env.DOCS_EDIT_URL ?? `${repoUrl}/_edit/main/docs/`;
+
 const config: Config = {
   title: 'PhoenixAdult',
   tagline: 'A Plex metadata provider for adult content (FastAPI / Python)',
@@ -11,9 +20,8 @@ const config: Config = {
     v4: true,
   },
 
-  // Codeberg Pages URL: https://phoenixadultprovider.codeberg.page/PhoenixAdult/
-  url: 'https://phoenixadultprovider.codeberg.page',
-  baseUrl: '/PhoenixAdult/',
+  url: siteUrl,
+  baseUrl: siteBaseUrl,
 
   organizationName: 'PhoenixAdultProvider',
   projectName: 'PhoenixAdult',
@@ -43,7 +51,7 @@ const config: Config = {
           exclude: ['site-health-details.md', 'site-health-new.md', 'site-health-new-details.md'],
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          editUrl: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult/_edit/main/docs/',
+          editUrl,
         },
         blog: false,
         theme: { customCss: './src/css/custom.css' },
@@ -58,8 +66,8 @@ const config: Config = {
       items: [
         { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
         {
-          href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult',
-          label: 'Codeberg',
+          href: repoUrl,
+          label: repoLabel,
           position: 'right',
         },
       ],
@@ -78,8 +86,8 @@ const config: Config = {
         {
           title: 'Project',
           items: [
-            { label: 'Codeberg', href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult' },
-            { label: 'Issues', href: 'https://codeberg.org/PhoenixAdultProvider/PhoenixAdult/issues' },
+            { label: repoLabel, href: repoUrl },
+            { label: 'Issues', href: `${repoUrl}/issues` },
           ],
         },
       ],

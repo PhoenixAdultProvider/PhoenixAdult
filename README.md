@@ -10,7 +10,7 @@ Users self-host the provider on their own hardware to enrich Plex libraries with
 
 **Issues, pull requests, and discussions in this repository must remain text-only.** Do not attach or link to screenshots, posters, thumbnails, cast photos, or any other media content from adult-industry sites. URLs to scene pages are text and may be shared; the images those URLs resolve to may not. See the [bug-report template](.github/ISSUE_TEMPLATE/bug_report.yml) for what's appropriate to include in a report.
 
-Contributors who repeatedly include media content in issues will be blocked. The project complies with GitHub's [Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies) regarding sexually obscene content — content of that kind is explicitly **out of scope** for this repository.
+Contributors who repeatedly include media content in issues will be blocked. The project complies with the acceptable-use policies of the hosts it's published on (e.g. GitHub's [Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies)) regarding sexually obscene content — content of that kind is explicitly **out of scope** for this repository.
 
 ## File Naming
 The agent will try to match your file automatically, usually based on the filename. You can assist it by renaming your video appropriately.

@@ -31,8 +31,17 @@ The site is published to **Codeberg Pages** at
 push to `main` that touches `website/` or `docs/`, it builds the site and
 force-pushes the static output to the `pages` branch, which Codeberg serves.
 
-`url` / `baseUrl` / `editUrl` in `docusaurus.config.ts` are set for that URL. The
-`pages` branch is generated — never edit it by hand.
+`docusaurus.config.ts` is **host-agnostic**: it defaults to the Codeberg Pages URL
+above but reads these env vars so the same config can build for another host (e.g.
+GitHub Pages) without edits — the `pages` branch is generated, never edit it by hand:
+
+| Env var | Default (Codeberg) | GitHub Pages example |
+| --- | --- | --- |
+| `DOCS_SITE_URL` | `https://phoenixadultprovider.codeberg.page` | `https://phoenixadultprovider.github.io` |
+| `DOCS_BASE_URL` | `/PhoenixAdult/` | `/PhoenixAdult/` |
+| `DOCS_REPO_URL` | `https://codeberg.org/PhoenixAdultProvider/PhoenixAdult` | `https://github.com/PhoenixAdultProvider/PhoenixAdult` |
+| `DOCS_REPO_LABEL` | `Codeberg` | `GitHub` |
+| `DOCS_EDIT_URL` | `…/_edit/main/docs/` (Forgejo) | `…/edit/main/docs/` (GitHub) |
 
 One-time setup on the repo:
 
