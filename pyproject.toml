@@ -48,7 +48,7 @@ impersonate = [
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["**/*.html", "**/*.json"]
+app = ["**/*.html", "**/*.json", "**/*.svg", "**/*.ico"]
 
 [tool.ruff]
 line-length = 160

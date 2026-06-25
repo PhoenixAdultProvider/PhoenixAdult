@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from app.config import config
 from app.config.env import env
@@ -70,6 +72,17 @@ def create_app() -> FastAPI:
     @app.get('/health')
     async def health() -> dict[str, str]:
         return {'status': 'ok'}
+
+    # ── Favicon (silences the browser's /favicon.ico request) ────────────────
+    _html_dir = Path(__file__).parent / 'routes' / 'html'
+
+    @app.get('/favicon.ico', include_in_schema=False)
+    async def favicon_ico() -> FileResponse:
+        return FileResponse(_html_dir / 'favicon.ico', media_type='image/x-icon')
+
+    @app.get('/favicon.svg', include_in_schema=False)
+    async def favicon_svg() -> FileResponse:
+        return FileResponse(_html_dir / 'favicon.svg', media_type='image/svg+xml')
 
     return app
 

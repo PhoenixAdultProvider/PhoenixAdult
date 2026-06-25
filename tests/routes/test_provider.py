@@ -18,6 +18,15 @@ def test_health(client: TestClient) -> None:
     assert r.json() == {'status': 'ok'}
 
 
+def test_favicon_routes(client: TestClient) -> None:
+    ico = client.get('/favicon.ico')
+    assert ico.status_code == 200
+    assert ico.headers['content-type'] == 'image/x-icon'
+    svg = client.get('/favicon.svg')
+    assert svg.status_code == 200
+    assert 'image/svg+xml' in svg.headers['content-type']
+
+
 def test_provider_capability_declaration(client: TestClient) -> None:
     mount = provider_mount_path(get_all_providers()[0])
     r = client.get(mount)
