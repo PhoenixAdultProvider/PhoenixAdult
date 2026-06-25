@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from app.config.env import env
-from app.utils.logging.context import LOG_FORMAT, SESSION_ID
+from app.utils.logging.context import AlignedFormatter
 from app.utils.logging.redaction import RedactionFilter
 
 
@@ -13,16 +13,6 @@ class StartupAddressFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         return not (env.is_production and isinstance(record.msg, str) and record.msg.startswith('Uvicorn running on'))
-
-
-class ProviderFormatter(logging.Formatter):
-    """Provider log format for uvicorn lines, with a request_id default so it also
-    works in the reloader process (where the record factory isn't installed)."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        if not hasattr(record, 'request_id'):
-            record.request_id = SESSION_ID
-        return super().format(record)
 
 
 # A uvicorn log_config applied at process startup (passed to uvicorn.run in main.py).
@@ -36,7 +26,7 @@ UVICORN_LOG_CONFIG: dict[str, Any] = {
         'startup_address': {'()': 'app.utils.logging.uvicorn_logging.StartupAddressFilter'},
     },
     'formatters': {
-        'provider': {'()': 'app.utils.logging.uvicorn_logging.ProviderFormatter', 'fmt': LOG_FORMAT},
+        'provider': {'()': 'app.utils.logging.context.AlignedFormatter'},
     },
     'handlers': {
         'default': {
@@ -73,7 +63,7 @@ def configure_uvicorn_logging() -> None:
         err.addFilter(StartupAddressFilter())
 
     # uvicorn.error has no handlers and propagates to the 'uvicorn' logger.
-    fmt = logging.Formatter(LOG_FORMAT)
+    fmt = AlignedFormatter()
     for handler in logging.getLogger('uvicorn').handlers:
         handler.setFormatter(fmt)
 
