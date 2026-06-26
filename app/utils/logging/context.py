@@ -20,7 +20,7 @@ SESSION_ID = uuid.uuid4().hex[:5]
 #   "<ts>  (<id>) <[LEVEL] padded> <(module:line) padded>: message"
 _LOG_FORMAT = '%(asctime)s  (%(request_id)s) %(levelfield)s %(locfield)s: %(message)s'
 _LEVEL_NAME_WIDTH = 8  # widest level name, "CRITICAL" — name is left-padded inside the brackets
-_LOCATION_WIDTH = 30  # widest module (~24) + ":line" + parens
+_LOCATION_WIDTH = 28  # widest "module:line" content — left-padded inside the parens
 
 
 class AlignedFormatter(logging.Formatter):
@@ -35,7 +35,8 @@ class AlignedFormatter(logging.Formatter):
         if not hasattr(record, 'request_id'):
             record.request_id = SESSION_ID
         record.levelfield = f'[{record.levelname:<{_LEVEL_NAME_WIDTH}}]'
-        record.locfield = f'({record.module}:{record.lineno})'.ljust(_LOCATION_WIDTH)
+        location = f'{record.module}:{record.lineno}'
+        record.locfield = f'({location:<{_LOCATION_WIDTH}})'
         return super().format(record)
 
 # Per-request id (Plex-agent-kit style) — overrides SESSION_ID for the duration
