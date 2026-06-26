@@ -22,12 +22,17 @@ def _record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
 
 logging.setLogRecordFactory(_record_factory)
 
+# Dedicated HTTP level (between INFO and WARNING) so request lines tag as [HTTP] and
+# still show at the default info threshold.
+HTTP = 25
+logging.addLevelName(HTTP, 'HTTP')
+
 # Map the legacy winston levels onto stdlib logging.
 _LEVEL_MAP = {
     'error': logging.ERROR,
     'warn': logging.WARNING,
     'info': logging.INFO,
-    'http': logging.INFO,
+    'http': HTTP,
     'verbose': logging.DEBUG,
     'debug': logging.DEBUG,
     'silly': logging.DEBUG,
@@ -87,7 +92,7 @@ class _Logger:
         self._emit(logging.INFO, a, b, **meta)
 
     def http(self, a: Any, b: Any = None, **meta: Any) -> None:
-        self._emit(logging.INFO, a, b, **meta)
+        self._emit(HTTP, a, b, **meta)
 
     def verbose(self, a: Any, b: Any = None, **meta: Any) -> None:
         self._emit(logging.DEBUG, a, b, **meta)

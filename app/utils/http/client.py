@@ -14,7 +14,7 @@ def _proxy_url() -> str | None:
 
 
 async def _log_request(request: httpx2.Request) -> None:
-    logger.info(f'Requesting {request.method.upper()} "{request.url}"')
+    logger.http(f'Requesting {request.method.upper()} "{request.url}"')
 
 
 def make_http(extra_headers: dict[str, str] | None = None) -> httpx2.AsyncClient:
