@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import logging
+import os
 import uuid
 from collections.abc import Iterator
 
@@ -35,7 +36,12 @@ class AlignedFormatter(logging.Formatter):
         if not hasattr(record, 'request_id'):
             record.request_id = SESSION_ID
         record.levelfield = f'[{record.levelname:<{_LEVEL_NAME_WIDTH}}]'
-        location = f'{record.module}:{record.lineno}'
+        module = record.module
+        if module == '__init__':  # disambiguate package __init__.py by its folder
+            folder = os.path.basename(os.path.dirname(record.pathname))
+            if folder:
+                module = f'{folder}/{module}'
+        location = f'{module}:{record.lineno}'
         record.locfield = f'({location:<{_LOCATION_WIDTH}})'
         return super().format(record)
 
