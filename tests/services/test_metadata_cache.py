@@ -132,3 +132,60 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
     assert mc.purge(key) is True
     assert mc.read('Brazzers', 'curid123') is None
     assert mc.purge(key) is False  # already gone
+
+
+async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.metadata_service import MetadataService
+    from app.utils.people.types import PersonLookupContext, PhotoHit
+
+    monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
+    monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')  # no IAFD lookup
+
+    photos = {
+        'Mandingo': PhotoHit(url='https://cdn.example/mandingo.jpg', gender='male'),
+        'Greg Lansky': PhotoHit(url='https://cdn.example/greg.jpg', gender='male'),
+        'Jane Producer': PhotoHit(url='https://cdn.example/jane.jpg', gender='female'),
+    }
+
+    async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
+        return photos.get(name, PhotoHit(url=''))
+
+    monkeypatch.setattr('app.utils.people.find_photo', fake_find_photo)
+
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'id',
+                'size': 1,
+                'Metadata': [
+                    {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T',
+                     'Role': [
+                         {'tag': 'Mandingo'},  # missing thumb -> should backfill
+                         {'tag': 'Kira Noir', 'thumb': '/images/local/actor.kira-noir_female.jpg'},  # has thumb -> untouched
+                     ],
+                     'Director': [{'tag': 'Greg Lansky'}],  # missing thumb -> should backfill
+                     'Producer': [{'tag': 'Jane Producer'}],  # missing thumb -> should backfill
+                     },
+                ],
+            }
+        }
+    )
+    changed = await MetadataService()._backfill_people_images(resp, 'TestSite')
+    assert changed is True
+    md = resp.MediaContainer.Metadata[0]
+    assert md.Role is not None
+    assert md.Role[0].tag == 'Mandingo' and md.Role[0].thumb and 'mandingo.jpg' in md.Role[0].thumb
+    assert md.Role[1].thumb == '/images/local/actor.kira-noir_female.jpg'
+    assert md.Director is not None and md.Director[0].thumb and 'greg.jpg' in md.Director[0].thumb
+    assert md.Producer is not None and md.Producer[0].thumb and 'jane.jpg' in md.Producer[0].thumb
+
+
+async def test_backfill_noop_when_all_thumbs_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.metadata_service import MetadataService
+
+    resp = PlexMetadataResponse.model_validate(
+        {'MediaContainer': {'identifier': 'id', 'size': 1, 'Metadata': [
+            {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Role': [{'tag': 'A', 'thumb': '/images/local/a.jpg'}]},
+        ]}}
+    )
+    assert await MetadataService()._backfill_people_images(resp, 'TestSite') is False
