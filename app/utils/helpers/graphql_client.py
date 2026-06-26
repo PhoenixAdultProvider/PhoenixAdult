@@ -19,12 +19,12 @@ class GraphQLClient(Client):
         try:
             data = json.loads(text)
         except ValueError as err:
-            logger.warn('graphql', f'{tag} → invalid JSON: {err}')
+            logger.warn('graphql', f'{tag} -> invalid JSON: {err}')
             return None
         if capture_sink is not None and capture_label is not None:
             capture_sink.append(RawCaptureEntry(capture_label, 'json', data))
         if isinstance(data, dict) and data.get('errors'):
-            logger.warn('graphql', f'{tag} → GraphQL errors: {json.dumps(data["errors"])[:300]}')
+            logger.warn('graphql', f'{tag} -> GraphQL errors: {json.dumps(data["errors"])[:300]}')
         return data.get('data') if isinstance(data, dict) else None
 
     async def graphql(
@@ -44,17 +44,17 @@ class GraphQLClient(Client):
         try:
             r = await self.http.post(endpoint, content=body, headers=headers)
         except httpx2.HTTPError as err:
-            logger.warn('graphql', f'{tag} → request failed: {err}')
+            logger.warn('graphql', f'{tag} -> request failed: {err}')
             r = None
 
         if r is not None:
             content_type = r.headers.get('content-type', '')
             if r.status_code < 400 and 'json' in content_type.lower():
-                logger.debug('graphql', f'{tag} → HTTP {r.status_code} ({len(r.text)}B)')
+                logger.debug('graphql', f'{tag} -> HTTP {r.status_code} ({len(r.text)}B)')
                 return self._envelope(r.text, tag, capture_label, capture_sink)
             # An anti-bot/Cloudflare block answers a GraphQL POST with an HTML 4xx page.
             snippet = ' '.join(r.text.split())[:160]
-            logger.warn('graphql', f'{tag} → HTTP {r.status_code} ({content_type or "?"}, {len(r.text)}B) non-JSON: {snippet}')
+            logger.warn('graphql', f'{tag} -> HTTP {r.status_code} ({content_type or "?"}, {len(r.text)}B) non-JSON: {snippet}')
             if not bypass_ok:
                 if capture_sink is not None and capture_label is not None:
                     capture_sink.append(RawCaptureEntry(capture_label, 'html', r.text))
@@ -65,10 +65,10 @@ class GraphQLClient(Client):
         # Retry the POST through the bypass chain. Impersonate (curl_cffi) is tried
         # first: it beats Cloudflare's TLS fingerprint AND forwards our Referer (which
         # FlareSolverr drops), so it carries the header Cloudflare needs.
-        logger.info('graphql', f'{tag} → retrying POST via bypass')
+        logger.info('graphql', f'{tag} -> retrying POST via bypass')
         resp = await bypass_post(endpoint, body, {'Content-Type': 'application/json', **(headers or {})})
         if not resp or resp.status >= 400:
-            logger.warn('graphql', f'{tag} → bypass failed (status={resp.status if resp else "none"})')
+            logger.warn('graphql', f'{tag} -> bypass failed (status={resp.status if resp else "none"})')
             return None
-        logger.info('graphql', f'{tag} → recovered via bypass ({resp.status}, {len(resp.body)}B)')
+        logger.info('graphql', f'{tag} -> recovered via bypass ({resp.status}, {len(resp.body)}B)')
         return self._envelope(resp.body, tag, capture_label, capture_sink)
