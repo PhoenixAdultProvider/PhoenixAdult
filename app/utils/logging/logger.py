@@ -8,7 +8,7 @@ from typing import Any
 
 from app.config import config
 from app.config.env import env
-from app.utils.logging.context import AlignedFormatter, current_request_id
+from app.utils.logging.context import HTTP, AlignedFormatter, current_request_id
 
 # Stamp the current per-request id onto every log record so the formatter can show it.
 _old_factory = logging.getLogRecordFactory()
@@ -21,11 +21,6 @@ def _record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
 
 
 logging.setLogRecordFactory(_record_factory)
-
-# Dedicated HTTP level (between INFO and WARNING) so request lines tag as [HTTP] and
-# still show at the default info threshold.
-HTTP = 25
-logging.addLevelName(HTTP, 'HTTP')
 
 # Map the legacy winston levels onto stdlib logging.
 _LEVEL_MAP = {
