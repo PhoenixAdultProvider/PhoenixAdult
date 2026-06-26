@@ -264,7 +264,7 @@
         const date = e.date ? esc(e.date) : '<span class="blank">—</span>';
         const tagline = e.tagline ? esc(e.tagline) : '<span class="blank">—</span>';
         const year = e.year ? esc(e.year) : '<span class="blank">—</span>';
-        const key = JSON.stringify(e.key);
+        const key = esc(JSON.stringify(e.key));
         return `<tr>
           <td class="thumb-cell">${thumb}</td>
           <td>${cached}</td>
