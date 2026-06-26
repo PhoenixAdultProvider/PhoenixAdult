@@ -27,6 +27,17 @@ def test_title_case_manual_correction() -> None:
     assert title_case('bday party') == 'B-Day Party'  # no-space form via MANUAL_CORRECTIONS
 
 
+def test_title_case_honorifics_get_a_period() -> None:
+    assert title_case('mr big') == 'Mr. Big'
+    assert title_case('dr love') == 'Dr. Love'
+    assert title_case('mrs robinson') == 'Mrs. Robinson'
+    assert title_case('sgt slaughter') == 'Sgt. Slaughter'
+    assert title_case('st patrick') == 'St. Patrick'
+    assert title_case('Mr. Smith') == 'Mr. Smith'  # already has a period — no double
+    assert title_case('professor x') == 'Professor X'  # full word, not the "prof" abbreviation
+    assert title_case('1st time') == '1st Time'  # "st" inside a word is untouched
+
+
 def test_title_case_trailing_article_rotation() -> None:
     assert title_case('dog, the') == 'The Dog'
 

@@ -27,6 +27,11 @@ CONTRACTION_EXCEPTIONS = {'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'}
 
 SYMBOLS = ['-', '/', '.', '+', '\'']
 
+HONORIFICS = {
+    'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
+    'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
+}
+
 SymbolTreatment = Literal['compound', 'initials_or_acronym', 'contraction']
 SYMBOL_RULES: dict[str, tuple[bool, SymbolTreatment]] = {
     '-': (True, 'compound'), '/': (True, 'compound'), '.': (True, 'initials_or_acronym'),
@@ -51,6 +56,9 @@ MANUAL_CORRECTIONS: dict[str, str] = {
 MAX_TITLE_LENGTH = 1000
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
+
+# A standalone honorific not already followed by a period (Mr -> Mr.).
+_HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
 
 
 def _strip_non_word(s: str) -> str:
@@ -285,6 +293,8 @@ class _TitleCaseEngine:
         output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
         # Fix "a/A" → "an/An" before vowel-initial words
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
+        # Honorific titles get a trailing period (Mr -> Mr.); skip if one already follows
+        output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
         # Scraper-specific phrase corrections
         for phrase, replacement in SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
