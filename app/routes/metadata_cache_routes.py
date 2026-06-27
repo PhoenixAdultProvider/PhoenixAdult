@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.config.env import env
 from app.routes.env_auth import env_auth_guard
-from app.services import metadata_cache
+from app.utils import cache as metadata_cache
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
 

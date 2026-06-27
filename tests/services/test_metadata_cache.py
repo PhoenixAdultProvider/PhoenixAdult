@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from app.models.metadata import PlexMetadataResponse
-from app.services import metadata_cache as mc
+from app.utils import cache as mc
 
 
 def _resp(
@@ -135,7 +135,6 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
 
 
 async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.services.metadata_service import MetadataService
     from app.utils.people.types import PersonLookupContext, PhotoHit
 
     monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
@@ -158,19 +157,23 @@ async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.Mon
                 'identifier': 'id',
                 'size': 1,
                 'Metadata': [
-                    {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T',
-                     'Role': [
-                         {'tag': 'Mandingo'},  # missing thumb -> should backfill
-                         {'tag': 'Kira Noir', 'thumb': '/images/local/actor.kira-noir_female.jpg'},  # has thumb -> untouched
-                     ],
-                     'Director': [{'tag': 'Greg Lansky'}],  # missing thumb -> should backfill
-                     'Producer': [{'tag': 'Jane Producer'}],  # missing thumb -> should backfill
-                     },
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'Role': [
+                            {'tag': 'Mandingo'},  # missing thumb -> should backfill
+                            {'tag': 'Kira Noir', 'thumb': '/images/local/actor.kira-noir_female.jpg'},  # has thumb -> untouched
+                        ],
+                        'Director': [{'tag': 'Greg Lansky'}],  # missing thumb -> should backfill
+                        'Producer': [{'tag': 'Jane Producer'}],  # missing thumb -> should backfill
+                    },
                 ],
             }
         }
     )
-    changed = await MetadataService()._backfill_people_images(resp, 'TestSite')
+    changed = await mc.backfill_people_images(resp, 'TestSite')
     assert changed is True
     md = resp.MediaContainer.Metadata[0]
     assert md.Role is not None
@@ -181,11 +184,15 @@ async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.Mon
 
 
 async def test_backfill_noop_when_all_thumbs_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.services.metadata_service import MetadataService
-
     resp = PlexMetadataResponse.model_validate(
-        {'MediaContainer': {'identifier': 'id', 'size': 1, 'Metadata': [
-            {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Role': [{'tag': 'A', 'thumb': '/images/local/a.jpg'}]},
-        ]}}
+        {
+            'MediaContainer': {
+                'identifier': 'id',
+                'size': 1,
+                'Metadata': [
+                    {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Role': [{'tag': 'A', 'thumb': '/images/local/a.jpg'}]},
+                ],
+            }
+        }
     )
-    assert await MetadataService()._backfill_people_images(resp, 'TestSite') is False
+    assert await mc.backfill_people_images(resp, 'TestSite') is False

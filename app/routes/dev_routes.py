@@ -16,7 +16,7 @@ from app.models.metadata import PlexMetadataResponse
 from app.registry import find_site, get_all_providers, get_sites_for_provider
 from app.routes.env_auth import env_auth_guard
 from app.routes.scraper_router import ScraperRouter
-from app.services import metadata_cache
+from app.utils import cache as metadata_cache
 from app.utils.logging.log_capture import begin_capture
 from app.utils.logging.orchestrator_logs import (
     log_detail_summary,
@@ -295,13 +295,18 @@ async def dev_metadata(request: Request) -> JSONResponse:
     # without touching the source (only when METADATA_CACHE_ENABLE is on).
     cached = metadata_cache.read(site.name, cur_id)
     if cached is not None:
-        md = (cached.get('MediaContainer', {}).get('Metadata') or [{}])[0]
+        response = PlexMetadataResponse.model_validate(cached)
+        backfilled = await metadata_cache.backfill_people_images(response, site.name)
+        if backfilled:
+            await metadata_cache.write(site.name, cur_id, response)
+        md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
         steps.append(
             {
                 'step': '5. Fetch metadata',
                 'ok': True,
                 'data': {
                     'servedFrom': 'snapshot',
+                    'backfilled': backfilled,
                     'title': md.get('title'),
                     'summary': md.get('summary'),
                     'tagline': md.get('tagline'),

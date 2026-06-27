@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -12,10 +13,11 @@ import httpx2
 
 from app.config import config
 from app.config.env import env
-from app.models.metadata import PlexMetadataResponse
+from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.helpers.helpers import slugify
 from app.utils.logging.logger import logger
+from app.utils.people import PeopleManager, to_plex_roles
 
 _IMG_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
@@ -291,3 +293,64 @@ def purge(key: str) -> bool:
             del _index[leaf]
     logger.info('meta-cache', f'purged snapshot {key}')
     return True
+
+
+# ── People-image backfill ─────────────────────────────────────────────────────
+
+
+async def backfill_people_images(response: PlexMetadataResponse, site_name: str) -> bool:
+    """Retry resolving headshots for cached cast / director / producer entries with no thumb.
+
+    Best-effort (never breaks a cache serve) and self-healing — once an image is
+    found the snapshot is re-written, so only still-imageless people retry. Shared
+    by the live agent (MetadataService) and the /dev metadata flow.
+    """
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return False
+
+    people = PeopleManager()
+    # (entries on the snapshot, how to enqueue one, the resolve_all() output key)
+    groups: list[tuple[list[PlexRole], Callable[[PlexRole], None], str]] = [
+        (md.Role or [], lambda r: people.add_actor(r.tag, '', r.gender or ''), 'actors'),  # type: ignore[arg-type]
+        (md.Director or [], lambda r: people.add_director(r.tag, ''), 'directors'),
+        (md.Producer or [], lambda r: people.add_producer(r.tag, ''), 'producers'),
+    ]
+
+    missing: list[str] = []
+    for entries, add, key in groups:
+        for r in entries:
+            if not r.thumb and r.tag:
+                add(r)
+                missing.append(f'{key}:{r.tag}')
+    if not missing:
+        logger.debug('meta-cache', f'backfill skip "{md.title}": all cast/crew already have thumbs')
+        return False
+    logger.debug('meta-cache', f'backfill "{md.title}" ({site_name}): {len(missing)} imageless -> {", ".join(missing)}')
+
+    try:
+        resolved = await people.resolve_all(studio=md.studio or '', site_name=site_name)
+    except Exception as err:  # noqa: BLE001 — backfill must never break the serve
+        logger.warn('meta-cache', f'people-image backfill failed: {err}')
+        return False
+
+    changed = False
+    for entries, _, key in groups:
+        roles = to_plex_roles(resolved[key], config.base_url)
+        by_tag = {p.tag: p for p in roles if p.thumb}
+        logger.debug(
+            'meta-cache',
+            f'backfill {key}: resolved {len(roles)} ({", ".join(p.tag for p in roles) or "none"}); with-thumb -> {", ".join(sorted(by_tag)) or "none"}',
+        )
+        for r in entries:
+            if not r.thumb and r.tag:
+                if r.tag in by_tag:
+                    resolved_role = by_tag[r.tag]
+                    r.thumb = resolved_role.thumb
+                    r.gender = r.gender or resolved_role.gender
+                    changed = True
+                else:
+                    logger.debug('meta-cache', f'backfill {key}: no thumb resolved for "{r.tag}"')
+    logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
+    return changed
