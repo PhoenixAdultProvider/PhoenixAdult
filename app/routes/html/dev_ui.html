@@ -560,25 +560,23 @@
       if (meta.releaseDate)   fields.push(field('Released', esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
       if (meta.summary)       fields.push(field('Summary', '<span style="font-size:0.82rem;line-height:1.5;color:#94a3b8">' + esc(meta.summary) + '</span>'));
       if (meta.genres?.length)      fields.push(field('Genres', tags(meta.genres)));
-      if (meta.actors?.length) {
-        const actorCards = meta.actors.map((a) => {
-          const border = a.gender === 'male'
-            ? '#1e3a8a'
-            : a.gender === 'female'
-              ? '#831843'
-              : a.gender === 'trans'
-                ? '#581c87'
-                : '#374151';
-          const genderSuffix = a.gender ? ' <span>(' + esc(a.gender) + ')</span>' : '';
-          const avatar = a.photoURL
-            ? `<img class="actor-avatar" style="border:2px solid ${border}" src="${esc(a.photoURL)}" alt="${esc(a.name)}" loading="lazy" onerror="this.outerHTML='<div class=actor-avatar-ph>👤</div>'">`
-            : '<div class="actor-avatar-ph">👤</div>';
-          return `<div class="actor-card">${avatar}<span class="actor-name">${esc(a.name)}${genderSuffix}</span></div>`;
-        }).join('');
-        fields.push(field('Actors', '<div class="actor-cards">' + actorCards + '</div>'));
-      }
-      if (meta.directors?.length) fields.push(field('Directors', tags(meta.directors)));
-      if (meta.producers?.length) fields.push(field('Producers', tags(meta.producers)));
+      const personCards = (people) => '<div class="actor-cards">' + people.map((p) => {
+        const border = p.gender === 'male'
+          ? '#1e3a8a'
+          : p.gender === 'female'
+            ? '#831843'
+            : p.gender === 'trans'
+              ? '#581c87'
+              : '#374151';
+        const genderSuffix = p.gender ? ' <span>(' + esc(p.gender) + ')</span>' : '';
+        const avatar = p.photoURL
+          ? `<img class="actor-avatar" style="border:2px solid ${border}" src="${esc(p.photoURL)}" alt="${esc(p.name)}" loading="lazy" onerror="this.outerHTML='<div class=actor-avatar-ph>👤</div>'">`
+          : '<div class="actor-avatar-ph">👤</div>';
+        return `<div class="actor-card">${avatar}<span class="actor-name">${esc(p.name)}${genderSuffix}</span></div>`;
+      }).join('') + '</div>';
+      if (meta.actors?.length)    fields.push(field('Actors', personCards(meta.actors)));
+      if (meta.directors?.length) fields.push(field('Directors', personCards(meta.directors)));
+      if (meta.producers?.length) fields.push(field('Producers', personCards(meta.producers)));
       if (meta.collections?.length) fields.push(field('Collections', tags(meta.collections)));
 
       const rawCount = meta.rawImageCount != null ? meta.rawImageCount : meta.images.length;

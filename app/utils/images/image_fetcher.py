@@ -9,6 +9,7 @@ import httpx2
 from PIL import Image
 
 from app.config.env import env
+from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.http.ssrf_guard import is_blocked_hostname
 from app.utils.logging.logger import logger
 
@@ -96,6 +97,21 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
             except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
                 last_err = err
                 logger.debug(f'fetchImage retry: Referer="{referer or "(none)"}" failed for {url}: {err}')
+
+    if payload is None:
+        # Cloudflare-gated hosts (e.g. IAFD headshots) 403 the plain client — retry the
+        # binary fetch via curl_cffi impersonation. Send Referer/Cookie only; a UA
+        # override would break the impersonated TLS fingerprint and get 403'd again.
+        hdrs: dict[str, str] = {}
+        ref = next((r for r in referers if r), None)
+        if ref:
+            hdrs['Referer'] = _sanitize_header(ref)
+        if cookie_header:
+            hdrs['Cookie'] = _sanitize_header(cookie_header)
+        got = await impersonate_get_bytes(url, hdrs or None)
+        if got is not None:
+            logger.debug(f'fetchImage: impersonate fetched {url}')
+            payload = got
 
     if payload is None:
         raise last_err or ValueError(f'All Referer attempts failed for {url}')
