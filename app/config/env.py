@@ -97,22 +97,22 @@ class _Env:
         return os.environ.get('REQBIN_API_KEY')
 
     @property
-    def actor_cache_dir(self) -> str:
-        return os.environ.get('ACTOR_CACHE_DIR') or str(_cwd() / 'local' / 'images' / 'people')
+    def people_cache_dir(self) -> str:
+        return os.environ.get('PEOPLE_CACHE_DIR') or str(_cwd() / 'local' / 'images' / 'people')
 
     @property
-    def actor_cache_enabled(self) -> bool:
-        return _flag('ACTOR_CACHE_ENABLE', 'true') != 'false'
+    def people_cache_enabled(self) -> bool:
+        return _flag('PEOPLE_CACHE_ENABLE', 'true') != 'false'
 
     @property
-    def actor_cache_replace_enabled(self) -> bool:
-        return _flag('ACTOR_CACHE_REPLACE_ENABLE', 'false') == 'true'
+    def people_cache_replace_enabled(self) -> bool:
+        return _flag('PEOPLE_CACHE_REPLACE_ENABLE', 'false') == 'true'
 
     @property
-    def actor_cache_face_enabled(self) -> bool:
-        # Off by default. When on (and actor caching is enabled), cached headshots
+    def people_cache_face_enabled(self) -> bool:
+        # Off by default. When on (and people caching is enabled), cached headshots
         # are face-detected and cropped to head+shoulders. Requires opencv-python-headless.
-        return _flag('ACTOR_CACHE_FACE_ENABLE', 'false') == 'true'
+        return _flag('PEOPLE_CACHE_FACE_ENABLE', 'false') == 'true'
 
     @property
     def metadata_cache_enabled(self) -> bool:
@@ -126,8 +126,8 @@ class _Env:
         return os.environ.get('METADATA_CACHE_DIR') or str(_cwd() / 'local' / 'cache')
 
     @property
-    def actor_source_order_raw(self) -> str | None:
-        return os.environ.get('ACTOR_SOURCE_ORDER')
+    def people_source_order_raw(self) -> str | None:
+        return os.environ.get('PEOPLE_SOURCE_ORDER')
 
     @property
     def gender_detect_enabled(self) -> bool:

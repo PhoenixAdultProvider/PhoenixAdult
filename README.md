@@ -40,7 +40,7 @@ NODE_ENV=development python -m app.main
 - Health: `GET /health`
 - Config UI: `GET /config` (loopback or `ADMIN_TOKEN`)
 - Dev UI: `GET /dev` (non-production, loopback or `ADMIN_TOKEN`)
-- Actor-cache review: `GET /actor-cache` — browse/manage cached actor headshots and gender tags (needs `ACTOR_CACHE_ENABLE`)
+- People-cache review: `GET /people-cache` — browse/manage cached cast & crew headshots (actors, directors, producers) and gender tags (needs `PEOPLE_CACHE_ENABLE`)
 - Metadata-cache review: `GET /metadata-cache` — sortable/filterable table of frozen scene snapshots, with per-row purge (needs `METADATA_CACHE_ENABLE`)
 - Plex agent mount: `/<provider>/movies` (e.g. `/phoenixadult/movies`)
 

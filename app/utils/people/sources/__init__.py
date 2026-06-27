@@ -31,7 +31,7 @@ _BY_NAME = {s.name.lower(): s for s in ALL_SOURCES}
 
 
 def _configured_order() -> list[PersonSource]:
-    raw = env.actor_source_order_raw
+    raw = env.people_source_order_raw
     if not raw:
         return ALL_SOURCES
     ordered = [_BY_NAME[t.strip().lower()] for t in raw.split(',') if t.strip().lower() in _BY_NAME]

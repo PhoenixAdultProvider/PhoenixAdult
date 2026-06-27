@@ -27,3 +27,8 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)
+    # impersonate_get_bytes() (binary image fetch) calls curl_cffi directly, escaping
+    # the order pin above — mark the backend unavailable so it can't reach the network.
+    from app.utils.http.impersonate import impersonate_backend
+
+    monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)

@@ -137,7 +137,7 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
 async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.utils.people.types import PersonLookupContext, PhotoHit
 
-    monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')  # no IAFD lookup
 
     photos = {

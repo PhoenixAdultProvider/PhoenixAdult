@@ -85,11 +85,11 @@ def test_filter_redacts_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
     # Reproduces the reported leak: client IP + token in an access log must be
     # redacted even in dev (flag off). 203.0.113.0/24 is TEST-NET-3 (docs only).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
-    args = ('203.0.113.157:0', 'GET', '/actor-cache?token=deadbeefcafe', '1.1', 200)
+    args = ('203.0.113.157:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
     assert rec.args[0] == '***REDACTED***:0'
-    assert rec.args[2] == '/actor-cache?token=***REDACTED***'
+    assert rec.args[2] == '/people-cache?token=***REDACTED***'
 
 
 def test_filter_redacts_uvicorn_access_client_addr(monkeypatch):

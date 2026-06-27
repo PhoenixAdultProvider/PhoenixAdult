@@ -25,7 +25,7 @@ FREEONES_BIO = """<html><body>
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'false')
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
 
 
 @respx.mock

@@ -51,3 +51,29 @@ class _ImpersonateBackend:
 
 
 impersonate_backend = _ImpersonateBackend()
+
+
+async def impersonate_get_bytes(url: str, headers: dict[str, str] | None = None, timeout_ms: int = 30_000) -> tuple[bytes, str] | None:
+    """Fetch binary content (e.g. a Cloudflare-gated image) via curl_cffi TLS
+    impersonation; returns (bytes, content_type) on a 2xx image response, else None.
+    The bypass chain's BypassResponse is text-only, so binary fetches use this."""
+    if not impersonate_backend.is_available():
+        return None
+    try:
+        from curl_cffi.requests import AsyncSession
+    except ImportError:
+        return None
+    try:
+        async with AsyncSession() as session:
+            r = await session.get(url, headers=headers or None, impersonate=_IMPERSONATE, timeout=timeout_ms / 1000, allow_redirects=True)
+    except Exception as err:  # noqa: BLE001 - any curl_cffi failure → no bytes
+        logger.warn('bypass:Impersonate', f'binary GET {url} failed: {err}')
+        return None
+    if not 200 <= r.status_code < 300:
+        logger.debug('bypass:Impersonate', f'binary GET {url} -> {r.status_code}')
+        return None
+    content_type = r.headers.get('content-type', '')
+    if not content_type.lower().startswith('image/'):
+        logger.debug('bypass:Impersonate', f'binary GET {url} non-image content-type {content_type!r}')
+        return None
+    return r.content, content_type

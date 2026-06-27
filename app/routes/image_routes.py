@@ -46,7 +46,7 @@ async def local_image(filename: str) -> Response:
     if file_path.exists():
         return FileResponse(file_path)
 
-    cached = _safe_path(env.actor_cache_dir, filename)
+    cached = _safe_path(env.people_cache_dir, filename)
     if cached and cached.exists():
         return FileResponse(cached)
 

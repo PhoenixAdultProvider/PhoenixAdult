@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from app.config import config
 from app.config.env import env
 from app.registry import get_all_providers, provider_mount_path
-from app.routes import actor_cache_routes, dev_routes, env_routes, image_routes, metadata_cache_routes
+from app.routes import dev_routes, env_routes, image_routes, metadata_cache_routes, people_cache_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
 from app.utils.logging.request_context import RequestContextMiddleware
@@ -25,7 +25,7 @@ def _log_startup_banner() -> None:
     # Admin surfaces — include the token in the link so it works through a tunnel.
     qs = f'?token={env.admin_token}' if env.admin_token else ''
     logger.info(f'  Config UI:      {config.base_url}/config{qs}')
-    logger.info(f'  Actor cache:    {config.base_url}/actor-cache{qs}')
+    logger.info(f'  People cache:   {config.base_url}/people-cache{qs}')
     logger.info(f'  Metadata cache: {config.base_url}/metadata-cache{qs}')
     if not env.is_production:
         logger.info(f'  Dev UI:         {config.base_url}/dev{qs}')
@@ -58,8 +58,8 @@ def create_app() -> FastAPI:
     # ── Runtime config UI ────────────────────────────────────────────────────
     app.include_router(env_routes.router, prefix='/config')
 
-    # ── Actor image cache review UI (admin-guarded) ──────────────────────────
-    app.include_router(actor_cache_routes.router, prefix='/actor-cache')
+    # ── People image cache review UI (admin-guarded) ─────────────────────────
+    app.include_router(people_cache_routes.router, prefix='/people-cache')
 
     # ── Snapshot metadata cache review UI (admin-guarded) ────────────────────
     app.include_router(metadata_cache_routes.router, prefix='/metadata-cache')

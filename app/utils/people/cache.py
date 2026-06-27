@@ -9,6 +9,7 @@ import httpx2
 
 from app.config import config
 from app.config.env import env
+from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.images import face_crop, face_crop_log
 from app.utils.logging.logger import logger
 from app.utils.people.generic import generic_image_url
@@ -17,16 +18,16 @@ from app.utils.people.types import Gender, Role
 _VALID_EXT = {'.jpg', '.jpeg', '.png', '.webp', '.tbn', '.jfif'}
 
 
-def actor_cache_dir() -> str:
-    return env.actor_cache_dir
+def people_cache_dir() -> str:
+    return env.people_cache_dir
 
 
 def cache_enabled() -> bool:
-    return env.actor_cache_enabled
+    return env.people_cache_enabled
 
 
 def cache_replace_enabled() -> bool:
-    return env.actor_cache_replace_enabled
+    return env.people_cache_replace_enabled
 
 
 def _slug(name: str) -> str:
@@ -79,7 +80,7 @@ def _rebuild_index(directory: str) -> dict[str, str]:
 
 def _get_index() -> dict[str, str]:
     global _cached_dir, _cached_sig, _cached_index
-    directory = actor_cache_dir()
+    directory = people_cache_dir()
     sig = _dir_signature(directory)
     if _cached_dir == directory and _cached_sig == sig:
         return _cached_index
@@ -123,10 +124,33 @@ def _ext_for(content_type: str, upstream_url: str) -> str:
     return ext if ext in _VALID_EXT else ''
 
 
+async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
+    """Image bytes for the cache. Plain client first; fall back to curl_cffi
+    impersonation for Cloudflare-gated hosts (e.g. IAFD headshots 403 a plain GET)."""
+    try:
+        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+            resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
+            resp.raise_for_status()
+            content_type = resp.headers.get('content-type', 'image/jpeg')
+            if content_type.lower().startswith('image/'):
+                return resp.content, content_type
+            logger.debug('people-cache', f'plain fetch returned non-image ({content_type}) for {url}; trying impersonate')
+    except (httpx2.HTTPError, OSError) as err:
+        logger.debug('people-cache', f'plain fetch failed {url}: {err}; trying impersonate')
+    # NB: don't pass a User-Agent — curl_cffi must keep its impersonated UA, or the
+    # UA/TLS-fingerprint mismatch gets Cloudflare-403'd (e.g. IAFD headshots).
+    got = await impersonate_get_bytes(url, headers)
+    if got:
+        logger.debug('people-cache', f'impersonate fetched {url}')
+        return got
+    logger.warn('people-cache', f'fetch failed {url} (plain + impersonate)')
+    return None
+
+
 async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, headers: dict[str, str] | None = None) -> dict[str, str] | None:
     if not cache_enabled():
         return None
-    directory = actor_cache_dir()
+    directory = people_cache_dir()
     os.makedirs(directory, exist_ok=True)
 
     if not cache_replace_enabled():
@@ -134,15 +158,10 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
         if existing:
             return existing
 
-    try:
-        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
-            resp = await client.get(upstream_url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
-            resp.raise_for_status()
-            data = resp.content
-            content_type = resp.headers.get('content-type', 'image/jpeg')
-    except (httpx2.HTTPError, OSError) as err:
-        logger.warn('people-cache', f'fetch failed {upstream_url}: {err}')
+    fetched = await _download_image(upstream_url, headers)
+    if not fetched:
         return None
+    data, content_type = fetched
 
     if len(data) > 20 * 1024 * 1024:
         logger.warn('people-cache', f'image too large {upstream_url}')
@@ -157,7 +176,7 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     # generic/default placeholder; runs off-thread; the cropper emits JPEG and
     # returns None to mean "keep the original".
     orig_ext = ext
-    face_on = env.actor_cache_face_enabled and not _is_generic(upstream_url)
+    face_on = env.people_cache_face_enabled and not _is_generic(upstream_url)
     cropped = False
     if face_on:
         out = await asyncio.to_thread(face_crop.crop_to_headshot, data)
@@ -192,8 +211,8 @@ def _is_generic(url: str) -> bool:
 
 async def restore_original(filename: str) -> bool:
     """Re-fetch an image's upstream original and write it UNCROPPED, replacing the
-    cropped cache file. Backs the /actor-cache 'use original' action."""
-    directory = actor_cache_dir()
+    cropped cache file. Backs the /people-cache 'use original' action."""
+    directory = people_cache_dir()
     entry = next((e for e in face_crop_log.recent(directory) if e.get('filename') == filename), None)
     if not entry:
         return False
@@ -232,11 +251,10 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     served URL) need to report the corrected gender."""
     if new_gender not in _GENDERS:
         return None
-    directory = actor_cache_dir()
-    entry = next((e for e in face_crop_log.recent(directory) if e.get('filename') == filename), None)
-    if not entry:
-        return None
-    root = str(entry.get('base', '')).split('_', 1)[0]  # gender-less role.slug
+    directory = people_cache_dir()
+    stem = Path(filename).stem  # role.slug[_gender] — parse the base off the name, not the crop log
+    head, _, tail = stem.rpartition('_')
+    root = head if (tail in ('male', 'female', 'trans') and head) else stem  # gender-less role.slug
     if not root:
         return None
     ext = Path(filename).suffix

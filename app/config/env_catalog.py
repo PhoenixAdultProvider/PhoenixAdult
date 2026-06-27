@@ -8,7 +8,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 
 # fmt: off
 ENV_GROUP_ORDER = [
-    'Logging', 'Images', 'Manual NFO', 'Actor cache & sources', 'Gender handling',
+    'Logging', 'Images', 'Manual NFO', 'People cache & sources', 'Gender handling',
     'Web search', 'HTTP bypass', 'Data18 enrichment', 'MetadataAPI', 'Misc',
 ]
 
@@ -87,26 +87,26 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='manual',
     ),
     EnvVarSpec(
-        'ACTOR_CACHE_DIR',
-        'Actor cache directory',
+        'PEOPLE_CACHE_DIR',
+        'People cache directory',
         'On-disk cache for downloaded actor / director / producer headshots.',
-        'Actor cache & sources',
+        'People cache & sources',
         'string',
         default_value='./local/images/people',
     ),
     EnvVarSpec(
-        'ACTOR_CACHE_ENABLE',
-        'Enable actor cache',
+        'PEOPLE_CACHE_ENABLE',
+        'Enable people cache',
         'When off, photo URLs are re-resolved on every scene refresh.',
-        'Actor cache & sources',
+        'People cache & sources',
         'boolean',
         default_value='true',
     ),
     EnvVarSpec(
-        'ACTOR_CACHE_REPLACE_ENABLE',
+        'PEOPLE_CACHE_REPLACE_ENABLE',
         'Force re-fetch cached photos',
         'When on, ignores existing cached photos and re-fetches every time.',
-        'Actor cache & sources',
+        'People cache & sources',
         'boolean',
         default_value='false',
     ),
@@ -116,7 +116,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'When on, each scraped scene’s metadata + images are snapshotted under the metadata '
         'cache dir and served cache-first on later requests — offline-safe protection against '
         'the source site going down or changing anti-scrape. Manage/purge at /metadata-cache.',
-        'Actor cache & sources',
+        'People cache & sources',
         'boolean',
         default_value='false',
     ),
@@ -124,32 +124,32 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'METADATA_CACHE_DIR',
         'Metadata cache directory',
         'On-disk location for metadata snapshots (text + images).',
-        'Actor cache & sources',
+        'People cache & sources',
         'string',
         default_value='./local/cache',
     ),
     EnvVarSpec(
-        'ACTOR_CACHE_FACE_ENABLE',
+        'PEOPLE_CACHE_FACE_ENABLE',
         'Face-crop cached photos',
-        'When on (and the actor cache is enabled), cached headshots are face-detected '
+        'When on (and people caching is enabled), cached headshots are face-detected '
         'and cropped to head + shoulders for Plex’s circular card. Requires '
         'opencv-python-headless (pip install "opencv-python-headless"); no-ops if absent. '
-        'Generic/default placeholder images are never cropped. Review/undo crops at /actor-cache.',
-        'Actor cache & sources',
+        'Generic/default placeholder images are never cropped. Review/undo crops at /people-cache.',
+        'People cache & sources',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
-        'ACTOR_SOURCE_ORDER',
-        'Actor source order',
-        'Priority order of actor-photo lookup sources. Drag to reorder; IAFD requires FlareSolverr.',
-        'Actor cache & sources',
+        'PEOPLE_SOURCE_ORDER',
+        'People source order',
+        'Priority order of headshot lookup sources. Drag to reorder; IAFD needs a bypass backend (Impersonate).',
+        'People cache & sources',
         'list',
         options=['Local Storage', 'AdultDVDEmpire', 'Freeones', 'IAFD', 'Indexxx', 'Boobpedia', 'Babes and Stars', 'Babepedia', 'JAVBus', 'JAVDatabase'],
         default_value='Local Storage,AdultDVDEmpire,Freeones,IAFD,Indexxx,Boobpedia,Babes and Stars,Babepedia',
     ),
     EnvVarSpec(
-        'ADULT_EMPIRE_LOGIN_TOKEN', 'Adult Empire login token', 'Session token for the AdultDVDEmpire actor-photo source.', 'Actor cache & sources', 'secret'
+        'ADULT_EMPIRE_LOGIN_TOKEN', 'Adult Empire login token', 'Session token for the AdultDVDEmpire actor-photo source.', 'People cache & sources', 'secret'
     ),
     EnvVarSpec(
         'GENDER_DETECT_ENABLE',

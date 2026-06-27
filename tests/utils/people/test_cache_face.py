@@ -11,10 +11,10 @@ from app.utils.people.generic import generic_image_url
 
 @respx.mock
 async def test_crop_applied_and_logged(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_DIR', str(tmp_path))
-    monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('ACTOR_CACHE_FACE_ENABLE', 'true')
-    monkeypatch.setenv('ACTOR_CACHE_REPLACE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_FACE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_REPLACE_ENABLE', 'true')
     monkeypatch.setattr(face_crop, 'crop_to_headshot', lambda _data: b'CROPPEDJPEGBYTES')
 
     url = 'https://cdn.example/jane.webp'
@@ -30,9 +30,9 @@ async def test_crop_applied_and_logged(tmp_path: pytest.TempPathFactory, monkeyp
 
 @respx.mock
 async def test_generic_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_DIR', str(tmp_path))
-    monkeypatch.setenv('ACTOR_CACHE_FACE_ENABLE', 'true')
-    monkeypatch.setenv('ACTOR_CACHE_REPLACE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_FACE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_REPLACE_ENABLE', 'true')
     called = {'v': False}
 
     def _spy(_data: bytes) -> bytes:
@@ -50,7 +50,7 @@ async def test_generic_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch
 
 @respx.mock
 async def test_restore_original(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     d = str(tmp_path)
     (tmp_path / 'actor.jane-doe_female.jpg').write_bytes(b'CROPPED')
     face_crop_log.record(
@@ -73,8 +73,8 @@ async def test_restore_original(tmp_path: pytest.TempPathFactory, monkeypatch: p
 
 
 def test_set_gender_renames_and_relogs(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_DIR', str(tmp_path))
-    monkeypatch.setenv('ACTOR_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'true')
     d = str(tmp_path)
     (tmp_path / 'actor.jane-doe_female.jpg').write_bytes(b'IMG')
     face_crop_log.record(
@@ -97,6 +97,6 @@ def test_set_gender_renames_and_relogs(tmp_path: pytest.TempPathFactory, monkeyp
 
 
 def test_set_gender_rejects_bad_value(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ACTOR_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     assert cache.set_gender('actor.jane-doe_female.jpg', 'other') is None  # invalid
     assert cache.set_gender('nonexistent.jpg', 'male') is None  # not in log
