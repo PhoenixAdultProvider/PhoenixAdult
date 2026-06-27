@@ -53,6 +53,11 @@ def recent(directory: str) -> list[dict[str, Any]]:
     return list(reversed(_load(directory)))  # newest first
 
 
+def remove(directory: str, filename: str) -> None:
+    entries = [e for e in _load(directory) if e.get('filename') != filename]
+    _save(directory, entries)
+
+
 def update(directory: str, match_filename: str, **changes: Any) -> None:
     entries = _load(directory)
     for e in entries:

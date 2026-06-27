@@ -216,14 +216,12 @@ async def restore_original(filename: str) -> bool:
     entry = next((e for e in face_crop_log.recent(directory) if e.get('filename') == filename), None)
     if not entry:
         return False
-    try:
-        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
-            resp = await client.get(entry['upstream_url'], headers={'User-Agent': 'Mozilla/5.0'})
-            resp.raise_for_status()
-            data = resp.content
-    except (httpx2.HTTPError, OSError) as err:
-        logger.warn('people-cache', f'restore fetch failed {entry["upstream_url"]}: {err}')
+    # Plain client first, then curl_cffi impersonation — IAFD headshots are Cloudflare-403'd.
+    fetched = await _download_image(entry['upstream_url'], None)
+    if not fetched:
+        logger.warn('people-cache', f'restore fetch failed {entry["upstream_url"]} (plain + impersonate)')
         return False
+    data, _ = fetched
 
     root = Path(directory).resolve()
     target_name = f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}'
@@ -238,6 +236,27 @@ async def restore_original(filename: str) -> bool:
     _invalidate_index()
     face_crop_log.update(directory, filename, filename=target_name, cropped=False)
     logger.info('people-cache', f'restored original for {target_name}')
+    return True
+
+
+def purge(filename: str) -> bool:
+    """Delete a cached image from disk and drop its crop-log entry. Backs the
+    /people-cache 'Purge' button."""
+    directory = people_cache_dir()
+    root = Path(directory).resolve()
+    target = (root / filename).resolve()
+    if root not in target.parents:  # path-traversal guard
+        return False
+    if not target.exists():
+        return False
+    try:
+        target.unlink()
+    except OSError as err:
+        logger.warn('people-cache', f'purge failed {filename}: {err}')
+        return False
+    _invalidate_index()
+    face_crop_log.remove(directory, filename)
+    logger.info('people-cache', f'purged {filename}')
     return True
 
 

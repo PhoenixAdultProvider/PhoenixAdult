@@ -96,6 +96,21 @@ def test_set_gender_renames_and_relogs(tmp_path: pytest.TempPathFactory, monkeyp
     assert cache.lookup_cached('Jane Doe', 'actor')['gender'] == ''  # type: ignore[index]
 
 
+def test_purge_deletes_file_and_log(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    d = str(tmp_path)
+    (tmp_path / 'actor.jane-doe_female.jpg').write_bytes(b'IMG')
+    face_crop_log.record(
+        d, name='Jane Doe', filename='actor.jane-doe_female.jpg', base='actor.jane-doe_female', orig_ext='.jpg', upstream_url='https://x/j.jpg', cropped=True
+    )
+
+    assert cache.purge('actor.jane-doe_female.jpg') is True
+    assert not (tmp_path / 'actor.jane-doe_female.jpg').exists()
+    assert face_crop_log.recent(d) == []
+    assert cache.purge('actor.jane-doe_female.jpg') is False  # already gone
+    assert cache.purge('../escape.jpg') is False  # path-traversal guard
+
+
 def test_set_gender_rejects_bad_value(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     assert cache.set_gender('actor.jane-doe_female.jpg', 'other') is None  # invalid

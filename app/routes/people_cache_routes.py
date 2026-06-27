@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.routes.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
-from app.utils.people.cache import people_cache_dir, restore_original, set_gender
+from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
 
@@ -98,16 +98,18 @@ def _card(entry: dict[str, Any]) -> str:
     local_src = f'/images/local/{quote(filename)}'
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
+    fn = html.escape(filename, quote=True)
     if upstream:
         upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
-        btn = (
-            f'<button class="restore" onclick="restore({html.escape(filename, quote=True)!r})">Use original</button>'
+        restore_btn = (
+            f'<button class="restore" onclick="restore({fn!r})">Use original</button>'
             if cropped
             else '<button class="restore" disabled>Original kept</button>'
         )
     else:
         upstream_fig = ''
-        btn = '<button class="restore" disabled>No upstream recorded</button>'
+        restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
+    purge_btn = f'<button class="purge" onclick="purge({fn!r})">Purge</button>'
     return f"""<div class="card {gcss}">
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{ts}</span></div>
       <div class="imgs">
@@ -115,7 +117,7 @@ def _card(entry: dict[str, Any]) -> str:
         {upstream_fig}
       </div>
       {_gender_buttons(filename, str(entry.get('gender', '')))}
-      {btn}
+      <div class="actions">{restore_btn}{purge_btn}</div>
     </div>"""
 
 
@@ -152,7 +154,9 @@ async def page(request: Request) -> HTMLResponse:
       .g.gf.active{{background:#db2777}} .g.gm.active{{background:#2563eb}} .g.gn.active{{background:#64748b}}
       button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}}
       button:disabled{{cursor:default;opacity:.7}}
-      button.restore{{background:#2563eb}} button.restore:disabled{{background:#334155;color:#94a3b8;opacity:1}}
+      .actions{{display:flex;gap:8px}}
+      button.restore{{background:#2563eb;flex:1}} button.restore:disabled{{background:#334155;color:#94a3b8;opacity:1}}
+      button.purge{{background:#b91c1c;flex:0 0 90px}}
     </style></head><body>
     <h1>People image cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
@@ -174,6 +178,11 @@ async def page(request: Request) -> HTMLResponse:
         const j = await post('/people-cache/gender', {{filename, gender}});
         if(j.ok) location.reload(); else alert('Set gender failed');
       }}
+      async function purge(filename){{
+        if(!confirm('Delete '+filename+' from the local cache?')) return;
+        const j = await post('/people-cache/purge', {{filename}});
+        if(j.ok) location.reload(); else alert('Purge failed');
+      }}
     </script></body></html>"""
     return HTMLResponse(body)
 
@@ -189,6 +198,18 @@ async def restore(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
     ok = await restore_original(filename)
     return JSONResponse({'ok': ok})
+
+
+@router.post('/purge')
+async def purge_file(request: Request) -> JSONResponse:
+    try:
+        data = await request.json()
+    except (ValueError, TypeError):
+        data = {}
+    filename = str(data.get('filename', '')) if isinstance(data, dict) else ''
+    if not filename:
+        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+    return JSONResponse({'ok': purge(filename)})
 
 
 @router.post('/gender')
