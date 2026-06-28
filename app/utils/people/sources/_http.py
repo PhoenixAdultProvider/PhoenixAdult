@@ -24,6 +24,7 @@ _PERIOD_FIXES: list[tuple[str, str]] = [
     (r'^dr%20', 'Dr%2E%20'),
     (r'%20st%20', '%20St.%20'),
     (r'^j%20', 'J%2E%20'),
+    (r'^wc%20', 'W%2EC%2E%20'),
 ]
 
 

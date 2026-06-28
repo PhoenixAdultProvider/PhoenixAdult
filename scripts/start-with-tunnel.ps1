@@ -26,9 +26,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# ── Logging (matches the provider format: "<ts>  (<id>) [LEVEL] (src:line): msg") ──
-$SessionId = -join (1..5 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
-$LogSource = [IO.Path]::GetFileNameWithoutExtension($PSCommandPath)
+# ── Logging (matches the provider AlignedFormatter so the message colon aligns):
+#   "<ts>  (<id>) [LEVEL←8→] (src:line←28→): msg"  — widths from context.py.
+$SessionId      = -join (1..5 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+$LogSource      = [IO.Path]::GetFileNameWithoutExtension($PSCommandPath)
+$LevelNameWidth = 8
+$LocationWidth  = 28
 
 function Write-Log {
   param(
@@ -38,7 +41,9 @@ function Write-Log {
   $ts    = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss,fff')
   $line  = (Get-PSCallStack)[1].ScriptLineNumber
   $color = switch ($Level) { 'ERROR' { 'Red' } 'WARN' { 'Yellow' } default { 'Cyan' } }
-  Write-Host ("{0}  ({1}) [{2}] ({3}:{4}): {5}" -f $ts, $SessionId, $Level, $LogSource, $line, $Message) -ForegroundColor $color
+  $lvl   = '[{0}]' -f $Level.PadRight($LevelNameWidth)
+  $loc   = '({0})' -f ('{0}:{1}' -f $LogSource, $line).PadRight($LocationWidth)
+  Write-Host ("{0}  ({1}) {2} {3}: {4}" -f $ts, $SessionId, $lvl, $loc, $Message) -ForegroundColor $color
 }
 
 # ── Paths ────────────────────────────────────────────────────────────────────
