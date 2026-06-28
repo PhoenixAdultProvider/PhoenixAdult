@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
-
-_TAG_RE = re.compile(r'<[^>]+>')
+from app.utils.helpers.html_helpers import strip_tags
 
 
 class UnzipVRClient(Client):
@@ -43,7 +41,7 @@ class UnzipVRClient(Client):
         return (self._item(scene).get('title') or '').strip() or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return _TAG_RE.sub('', self._item(scene).get('description') or '').strip() or None
+        return strip_tags(self._item(scene).get('description')) or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'Unzip VR'

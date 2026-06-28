@@ -40,6 +40,14 @@ def append_year_param(url: str, param_name: str, year: int | None = None, search
     return f'{url}{sep}{param_name}={y}'
 
 
+_TAG_RE = re.compile(r'<[^>]+>')
+
+
+def strip_tags(html: str | None) -> str:
+    """Remove HTML tags and trim. Does not collapse internal whitespace."""
+    return _TAG_RE.sub('', html or '').strip()
+
+
 def script_match(script_text: str, pattern: re.Pattern[str] | str) -> str:
     compiled = re.compile(pattern) if isinstance(pattern, str) else pattern
     m = compiled.search(script_text)

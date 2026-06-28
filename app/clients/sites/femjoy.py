@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
@@ -14,8 +13,7 @@ from app.utils.helpers.helpers import (
     pack_cur_id,
     title_distance_score,
 )
-
-_HTML_TAG_RE = re.compile(r'<[^>]+>')
+from app.utils.helpers.html_helpers import strip_tags
 
 
 @dataclass
@@ -87,7 +85,7 @@ class FemjoyClient(Client):
         return self._extra(scene).result.get('title') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return _HTML_TAG_RE.sub('', self._extra(scene).result.get('long_description') or '').strip() or None
+        return strip_tags(self._extra(scene).result.get('long_description')) or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return scene.site.name

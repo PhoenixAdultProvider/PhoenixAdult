@@ -10,10 +10,10 @@ from app.clients.base import ActorResult, Client, RawCaptureEntry, SceneContext,
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, slugify
+from app.utils.helpers.html_helpers import strip_tags
 from app.utils.logging.logger import logger
 
 _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
-_TAG_RE = re.compile(r'<[^>]+>')
 _DATA18_PROVIDERS = ['TeamSkeet', 'MYLF', 'Family Strokes', 'Pervz', 'FreeUse', 'Swappz']
 
 
@@ -22,7 +22,7 @@ def _normalize(s: str) -> str:
 
 
 def _strip_tags(html: str) -> str:
-    s = _TAG_RE.sub('', html).strip()
+    s = strip_tags(html)
     if s and s[-1] not in '.!?':
         s += '.'
     return s
