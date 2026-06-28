@@ -7,6 +7,7 @@ from typing import Any, Literal
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 _HOUSE_ACTORS = ['Rocco Siffredi', 'Peter North']
 _SEARCH_DISABLED = {'Tera Patrick'}
@@ -47,10 +48,10 @@ class GammaEntClient(Client):
             out: list[dict[str, str]] = []
             for row in sel.xpath('//div[contains(@class,"tlcDetails")]'):
                 a = row.xpath('(.//a)[1]')
-                href = (a.xpath('@href').get() or '').strip()
+                href = first_attr(a, '@href')
                 if not href:
                     continue
-                title = (a.xpath('string(.)').get() or '').strip().replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ')
+                title = first_string(a).replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ')
                 date_raw = (
                     row.xpath('(.//div[contains(@class,"tlcSpecs")]//span[contains(@class,"tlcSpecsDate")]//span[contains(@class,"tlcDetailsValue")])[1]')
                     .xpath('string(.)')
@@ -100,7 +101,7 @@ class GammaEntClient(Client):
         assert scene.sel is not None
         sel = scene.sel
         title = (
-            (sel.xpath('(//meta[@name="twitter:title"])[1]/@content').get() or '').strip()
+            first_attr(sel, '(//meta[@name="twitter:title"])[1]/@content')
             or (sel.xpath('(//h3[contains(@class,"dvdTitle")])[1]').xpath('string(.)').get() or '').strip()
             or (sel.xpath('(//h1[contains(@class,"sceneTitle")])[1]').xpath('string(.)').get() or '').strip()
             or (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
@@ -120,7 +121,7 @@ class GammaEntClient(Client):
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         sel = scene.sel
-        summary = (sel.xpath('(//meta[@name="twitter:description"])[1]/@content').get() or '').strip()
+        summary = first_attr(sel, '(//meta[@name="twitter:description"])[1]/@content')
         if not summary:
             show_more = (
                 sel.xpath('(//div[contains(@class,"sceneDesc") and contains(@class,"bioToRight") and contains(@class,"showMore")])[1]').xpath('string(.)').get()
@@ -159,7 +160,7 @@ class GammaEntClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres = [g for g in ((a.xpath('normalize-space(.)').get() or '').strip().lower() for a in scene.sel.xpath(_GENRE_SEL)) if g]
+        genres = [g for g in (first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath(_GENRE_SEL)) if g]
         return genres or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
@@ -171,7 +172,7 @@ class GammaEntClient(Client):
         directors = [
             ActorResult(name=n)
             for n in (
-                (a.xpath('normalize-space(.)').get() or '').strip()
+                first_attr(a, 'normalize-space(.)')
                 for a in scene.sel.xpath(
                     '//div[contains(@class,"sceneCol") and contains(@class,"sceneColDirectors")]//a | //ul[contains(@class,"directedBy")]//li//a'
                 )
@@ -199,7 +200,7 @@ class GammaEntClient(Client):
             push(pic.group(1).replace('\\', ''))
         push(sel.xpath('(//img[contains(@class,"sceneImage")])[1]/@src').get())
 
-        photo_href = (sel.xpath('(//a[contains(@class,"GA_Track_Action_Pictures")])[1]/@href').get() or '').strip()
+        photo_href = first_attr(sel, '(//a[contains(@class,"GA_Track_Action_Pictures")])[1]/@href')
         if photo_href:
             photo = await self.fetch_and_load(absolute_url(photo_href, base), None, 'photo page')
             if photo:
@@ -234,8 +235,8 @@ class GammaEntClient(Client):
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(_ACTOR_SEL):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name and href:
                 refs.append((name, href))
 
@@ -243,8 +244,8 @@ class GammaEntClient(Client):
             mobile = await self.fetch_and_load(scene.url.replace('www', 'm'), None, 'mobile page')
             if mobile:
                 for el in mobile['sel'].xpath('//a[contains(@class,"pornstarName")] | //a[contains(@class,"pornstarImageLink")]'):
-                    name = (el.xpath('normalize-space(.)').get() or '').strip()
-                    href = (el.xpath('@href').get() or '').strip()
+                    name = first_attr(el, 'normalize-space(.)')
+                    href = first_attr(el, '@href')
                     if name and href:
                         refs.append((name, href))
 

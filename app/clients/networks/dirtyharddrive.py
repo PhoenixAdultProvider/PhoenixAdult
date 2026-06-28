@@ -6,6 +6,7 @@ import httpx2
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, title_distance_score
+from app.utils.helpers.html_helpers import first_attr, first_string
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
@@ -68,7 +69,7 @@ class DirtyHardDriveClient(Client):
         if not spans:
             return None
         last = spans[-1]
-        actor_name = (last.xpath('string(.)').get() or '').strip()
+        actor_name = first_string(last)
         href = (last.xpath('(.//a)[1]/@href').get() or last.xpath('@href').get() or '').strip()
 
         if not actor_name and href:
@@ -81,7 +82,7 @@ class DirtyHardDriveClient(Client):
         if href:
             page = await self.fetch_and_load(absolute_url(href, scene.site.base_url), None, f'[{scene.site.name}] actor')
             if page:
-                raw = (page['sel'].xpath('(//div[@id="global-model-img"]//img)[1]/@src').get() or '').strip()
+                raw = first_attr(page['sel'], '(//div[@id="global-model-img"]//img)[1]/@src')
                 if raw:
                     photo = absolute_url(raw, scene.site.base_url)
         return [ActorResult(name=actor_name, photo_url=photo)]

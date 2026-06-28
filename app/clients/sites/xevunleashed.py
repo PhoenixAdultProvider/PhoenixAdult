@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Xev Unleashed'
 _XEV_PHOTO = 'https://xevunleashed.com/content//contentthumbs/00/01/1-set-2x.jpg'
@@ -48,7 +48,7 @@ class XevUnleashedClient(Client):
         if loaded:
             for row in loaded['sel'].xpath('//div[contains(@class,"updateItem")]'):
                 raw_title = first_text(row, './/h4')
-                href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
+                href = first_attr(row, '(.//a/@href)[1]')
                 if not raw_title or not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)

@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from app.utils.processors.title_case import title_case
 
 _SLUG_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'dickdrainers_slug_actors')
@@ -27,7 +27,7 @@ class DickDrainersClient(Client):
         if loaded:
             for card in loaded['sel'].xpath(_CARD_XP):
                 raw_title = first_text(card, './/h4')
-                href = (card.xpath('(.//h4//a/@href)[1]').get() or '').strip()
+                href = first_attr(card, '(.//h4//a/@href)[1]')
                 if not raw_title or not href:
                     continue
                 scene_url = absolute_url(href, base)
@@ -46,7 +46,7 @@ class DickDrainersClient(Client):
             raw_title = first_text(detail['sel'], '//h3')
             if not raw_title:
                 continue
-            raw_date = (detail['sel'].xpath('(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]').get() or '').strip()
+            raw_date = first_attr(detail['sel'], '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
             date = iso_date(raw_date) if raw_date else None
             results.append(self._result(raw_title, scene_url, ctx, date))
 
@@ -92,14 +92,14 @@ class DickDrainersClient(Client):
         if scene.scene_date:
             return iso_date(scene.scene_date) or scene.scene_date
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]').get() or '').strip()
+        raw = first_attr(scene.sel, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
         return iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
-            raw = (a.xpath('normalize-space(.)').get() or '').strip()
+            raw = first_attr(a, 'normalize-space(.)')
             if not raw:
                 continue
             g = title_case(raw, site_name=scene.site.name)
@@ -119,17 +119,17 @@ class DickDrainersClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for li in items:
-            name = (li.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(li, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
-            href = (li.xpath('(.//a/@href)[1]').get() or '').strip()
+            href = first_attr(li, '(.//a/@href)[1]')
             photo = ''
             if href:
                 actor_url = absolute_url(href, scene.site.base_url)
                 actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if actor_page:
-                    raw = (actor_page['sel'].xpath('(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]').get() or '').strip()
+                    raw = first_attr(actor_page['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
                     photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

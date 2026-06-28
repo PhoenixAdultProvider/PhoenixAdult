@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'Teen Mega World'
@@ -25,7 +26,7 @@ class TeenMegaWorldClient(Client):
         return (source.xpath('(.//a[contains(@class,"thumb__title-link")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a[contains(@class,"thumb__title-link")])[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a[contains(@class,"thumb__title-link")])[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -74,15 +75,15 @@ class TeenMegaWorldClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//a[contains(@class,"video-actor-link") and contains(@class,"actor__link")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-                raw = (page['sel'].xpath('(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

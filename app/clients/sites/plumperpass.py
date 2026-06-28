@@ -8,7 +8,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -113,7 +113,7 @@ class PlumperPassClient(Client):
         tag_links = scene.sel.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
         if tag_links:
             for a in tag_links:
-                g = (a.xpath('normalize-space(.)').get() or '').strip()
+                g = first_attr(a, 'normalize-space(.)')
                 if g and g not in genres:
                     genres.append(g)
         else:
@@ -135,14 +135,14 @@ class PlumperPassClient(Client):
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//h3[contains(@class,"releases")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(f'{base}/t1/{href}', FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (loaded['sel'].xpath('(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]').get() or '').strip() if loaded else ''
+                raw = first_attr(loaded['sel'], '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]') if loaded else ''
                 photo = (raw if raw.startswith('http') else f'{base}/t1/{raw}') if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

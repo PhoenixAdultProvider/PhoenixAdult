@@ -8,9 +8,11 @@ from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
 if TYPE_CHECKING:
-    from parsel import Selector
+    from parsel import Selector, SelectorList
 
     from app.registry import ResolvedSiteInfo
+
+    Node = Selector | SelectorList[Selector]
 
 
 async def web_search_urls(query: str, site: ResolvedSiteInfo, include: list[str] | None = None, exclude: list[str] | None = None) -> list[str]:
@@ -58,6 +60,18 @@ def first_text(node: Selector, xpath: str) -> str:
     """Normalized text of the first element matching the XPath ('' if none)."""
     nodes = node.xpath(xpath)
     return (nodes[0].xpath('normalize-space(.)').get() or '').strip() if nodes else ''
+
+
+def first_attr(node: Node, xpath: str) -> str:
+    """Raw value of the first XPath match, trimmed ('' if none). For attributes/text
+    where you want the value as-is (use first_text for normalize-space element text)."""
+    return (node.xpath(xpath).get() or '').strip()
+
+
+def first_string(node: Node, xpath: str = 'string(.)') -> str:
+    """Trimmed string() of a node (concatenated descendant text, internal whitespace
+    preserved — unlike first_text's normalize-space). Defaults to the node itself."""
+    return (node.xpath(xpath).get() or '').strip()
 
 
 def meta_content(node: Selector, key: str) -> str:

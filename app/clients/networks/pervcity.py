@@ -6,7 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'PervCity'
 _SHARED_BASE = 'https://pervcity.com'
@@ -29,7 +29,7 @@ class PervCityClient(Client):
             if loaded:
                 for card in loaded['sel'].xpath('//div[@class="videoBlock"]'):
                     title = (card.xpath('(.//h2 | .//h3)[1]').xpath('string(.)').get() or '').strip()
-                    href = (card.xpath('(.//h2//a | .//h3//a)[1]/@href').get() or '').strip()
+                    href = first_attr(card, '(.//h2//a | .//h3//a)[1]/@href')
                     if not title or not href:
                         continue
                     scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -91,8 +91,8 @@ class PervCityClient(Client):
         seen: set[str] = set()
         crawled_date: str | None = None
         for el in sel.xpath('//h2/span/a | //h3/span/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -100,7 +100,7 @@ class PervCityClient(Client):
             if href:
                 page = await self._fetch_actor_page(href, site.base_url, capture)
                 if page is not None:
-                    photo = (page.xpath('(//div[@class="starPic"]//img | //div[@class="bioBPic"]//img)[1]/@src').get() or '').strip()
+                    photo = first_attr(page, '(//div[@class="starPic"]//img | //div[@class="bioBPic"]//img)[1]/@src')
                     if not fallback:
                         crawled_date = self._crawl_date(page, clean_scene) or crawled_date
             actors.append(ActorResult(name=name, photo_url=photo))

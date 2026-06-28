@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 
 _HERO_TITLE_XP = '//section[contains(@class,"login-banner") and contains(@class,"parallax")]//h1'
@@ -75,7 +75,7 @@ class VRPFilmsClient(Client):
         entries: list[ActorResult] = []
         for el in scene.sel.xpath('//a[contains(@class,"starring_contain")]'):
             name = first_text(el, './/div[contains(@class,"col-xs-12") and contains(@class,"video-star-title")]//h3')
-            style = (el.xpath('(.//div[contains(@class,"starring_image")]/@style)[1]').get() or '').strip()
+            style = first_attr(el, '(.//div[contains(@class,"starring_image")]/@style)[1]')
             entries.append(ActorResult(name=name, photo_url=_url_from_style(style)))
         return self.dedup_people(entries)
 
@@ -92,7 +92,7 @@ class VRPFilmsClient(Client):
             if abs_url not in images:
                 images.append(abs_url)
 
-        bg_style = (scene.sel.xpath('(//section[contains(@class,"login-banner") and contains(@class,"parallax")]/@style)[1]').get() or '').strip()
+        bg_style = first_attr(scene.sel, '(//section[contains(@class,"login-banner") and contains(@class,"parallax")]/@style)[1]')
         push(_url_from_style(bg_style))
         for href in scene.sel.xpath('//div[contains(@class,"col-md-12") and contains(@class,"gallery-body")]//div//div//div//a[@href]/@href').getall():
             push(href)

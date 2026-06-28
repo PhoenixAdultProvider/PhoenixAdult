@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Cherry Pimps'
 _SEARCH_PAGES = 2
@@ -72,7 +73,7 @@ class CherryPimpsClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath(_DETAIL_GENRES_XP):
-            g = (el.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(el, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         count = len(scene.sel.xpath(_DETAIL_ACTORS_XP))
@@ -89,15 +90,15 @@ class CherryPimpsClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(_DETAIL_ACTORS_XP):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip()
             if not name or name in seen:
                 continue
             seen.add(name)
-            photo = (el.xpath('(.//img)[1]/@src0_1x').get() or '').strip()
+            photo = first_attr(el, '(.//img)[1]/@src0_1x')
             if not photo:
-                href = (el.xpath('@href').get() or '').strip()
+                href = first_attr(el, '@href')
                 if href:
                     actor_url = absolute_url(href, scene.site.base_url)
                     page = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {name}')

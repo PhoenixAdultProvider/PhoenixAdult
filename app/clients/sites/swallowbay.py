@@ -5,7 +5,7 @@ import re
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, meta_content
+from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 STUDIO = 'Swallow Bay'
 _SLUG_RE = re.compile(r"[\s']")
@@ -75,7 +75,7 @@ class SwallowBayClient(Client):
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for el in scene.sel.xpath(_MODELS_XP):
-            name = (el.xpath('@title').get() or '').strip()
+            name = first_attr(el, '@title')
             photo = ''
             if name:
                 photo = (scene.sel.xpath(f'(//div[contains(@class,"content-models-photos")]//a[@title="{name}"]//span//img/@src)[1]').get() or '').strip()

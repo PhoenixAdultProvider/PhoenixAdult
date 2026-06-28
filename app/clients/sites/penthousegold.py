@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _H1_XP = '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//h1'
 _UPLOAD_XP = '(//meta[@itemprop="uploadDate"]/@content)[1]'
@@ -22,10 +22,10 @@ class PenthouseGoldClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//div[contains(@class,"scene")]'):
                 anchor = card.xpath('(.//a[@data-track="TITLE_LINK"])[1]')
-                href = (anchor.xpath('@href').get() or '').strip()
+                href = first_attr(anchor, '@href')
                 if '/scenes/' not in href:
                     continue
-                title = (anchor.xpath('normalize-space(.)').get() or '').strip()
+                title = first_attr(anchor, 'normalize-space(.)')
                 if not title:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -93,7 +93,7 @@ class PenthouseGoldClient(Client):
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         values: list[str | None] = [
-            (a.xpath('normalize-space(.)').get() or '').strip().lower() for a in scene.sel.xpath('//ul[contains(@class,"scene-tags")]//li//a')
+            first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"scene-tags")]//li//a')
         ]
         return self.dedup_strings(values)
 
@@ -102,14 +102,14 @@ class PenthouseGoldClient(Client):
         entries: list[ActorResult] = []
         for card in scene.sel.xpath('//ul[@id="featured_pornstars"]//div[contains(@class,"model")]'):
             name = first_text(card, './/h3')
-            raw = (card.xpath('(.//img/@src)[1]').get() or '').strip()
+            raw = first_attr(card, '(.//img/@src)[1]')
             photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[@id="trailer_player_finished"]//img/@src)[1]').get() or '').strip()
+        raw = first_attr(scene.sel, '(//div[@id="trailer_player_finished"]//img/@src)[1]')
         if not raw:
             return []
         return [absolute_url(raw, scene.site.base_url)]

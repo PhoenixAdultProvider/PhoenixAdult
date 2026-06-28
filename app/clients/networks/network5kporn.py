@@ -7,6 +7,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = '5Kporn'
 _COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
@@ -47,7 +48,7 @@ class Network5KPClient(Client):
         # also hits nested `ep-*` wrappers and duplicates every card.
         for el in sel.xpath(f'//div[{_cls("ep")}]'):
             title = (el.xpath('(.//h3[contains(@class,"ep-title")])[1]').xpath('string(.)').get() or '').strip()
-            scene_url = (el.xpath('(.//a)[1]/@href').get() or '').strip()
+            scene_url = first_attr(el, '(.//a)[1]/@href')
             if not title or not scene_url or scene_url in seen:
                 continue
             seen.add(scene_url)
@@ -88,12 +89,12 @@ class Network5KPClient(Client):
 
         actors: list[ActorResult] = []
         for a in sel.xpath('//h5[contains(.,"Starring")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or not href:
                 continue
             page = await self.fetch_and_load(href, FetchCtx(capture=capture), f'GET {href} (actor)')
-            photo = (page['sel'].xpath('(//img[contains(@class,"model-image")])[1]/@src').get() or '').strip() if page else ''
+            photo = first_attr(page['sel'], '(//img[contains(@class,"model-image")])[1]/@src') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
 
         raw_images: list[str] = []

@@ -10,6 +10,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -77,7 +78,7 @@ class Data18EmpireClient(Client):
             if not loaded:
                 continue
             sel = loaded['sel']
-            title = _swap_article((sel.xpath('(//h1[contains(@class,"description")])[1]/text()').get() or '').strip())
+            title = _swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'))
             if not title:
                 continue
             url_id = re.sub(r'.*/', '', movie_url)
@@ -138,14 +139,14 @@ class Data18EmpireClient(Client):
 
     def _studio(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"studio")]//a)[1]/text()').get() or '').strip()
+        return first_attr(scene.sel, '(//div[contains(@class,"studio")]//a)[1]/text()')
 
     def _tagline_raw(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
         studio = self._studio(scene)
-        tagline = (scene.sel.xpath('(//p[contains(.,"A scene from")]//a)[1]/text()').get() or '').strip()
+        tagline = first_attr(scene.sel, '(//p[contains(.,"A scene from")]//a)[1]/text()')
         if not tagline:
-            raw = (scene.sel.xpath('(//a[@data-label="Series List"]//h2)[1]/text()').get() or '').strip()
+            raw = first_attr(scene.sel, '(//a[@data-label="Series List"]//h2)[1]/text()')
             tagline = re.sub(rf'\({re.escape(studio)}\)', '', raw.replace('Series:', '')).strip()
         return _swap_article(tagline) if tagline else studio
 
@@ -153,7 +154,7 @@ class Data18EmpireClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = _swap_article((scene.sel.xpath('(//h1[contains(@class,"description")])[1]/text()').get() or '').strip())
+        title = _swap_article(first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()'))
         if not title:
             return None
         scene_num = self._packed(scene).get('sceneNum')
@@ -204,14 +205,14 @@ class Data18EmpireClient(Client):
             idx = (packed['sceneNum'] or 1) - 1
             if idx < len(rows):
                 for a in rows[idx].xpath('.//div[contains(@class,"scene-cast-list")]//a'):
-                    name = (a.xpath('normalize-space(.)').get() or '').strip()
+                    name = first_attr(a, 'normalize-space(.)')
                     add(name, performer_photo(name))
         else:
             cast = sel.xpath('//div[contains(@class,"video-performer")]//a//span//span')
             if not cast:
                 cast = sel.xpath('//div[contains(@class,"performers")]//a')
             for el in cast:
-                name = (el.xpath('normalize-space(.)').get() or '').strip()
+                name = first_attr(el, 'normalize-space(.)')
                 add(name, performer_photo(name))
         return actors
 
@@ -220,7 +221,7 @@ class Data18EmpireClient(Client):
         directors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//div[contains(@class,"director")]//a'):
-            raw = (a.xpath('normalize-space(.)').get() or '').strip()
+            raw = first_attr(a, 'normalize-space(.)')
             name = raw.split(':')[-1].strip() if ':' in raw else raw
             if name and name != 'Unknown' and name not in seen:
                 seen.add(name)
@@ -249,7 +250,7 @@ class Data18EmpireClient(Client):
             for img_src in Selector(text=noscript).xpath('//img/@src').getall():
                 add(img_src)
 
-        gallery_href = (sel.xpath('(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]').get() or '').strip()
+        gallery_href = first_attr(sel, '(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]')
         if gallery_href:
             gallery_url = gallery_href if gallery_href.startswith('http') else base + gallery_href
             gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')

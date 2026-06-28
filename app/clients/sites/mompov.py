@@ -6,7 +6,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 def _holder_date(scope: Selector) -> str | None:
@@ -18,8 +18,8 @@ def _holder_date(scope: Selector) -> str | None:
         return None
     month = (spans[0].xpath('normalize-space(.)').get() or '')[:3]
     inner = spans[0].xpath('.//span')
-    year = (inner[0].xpath('normalize-space(.)').get() or '').strip() if inner else ''
-    day = (spans[1].xpath('normalize-space(.)').get() or '').strip() if len(spans) > 1 else ''
+    year = first_attr(inner[0], 'normalize-space(.)') if inner else ''
+    day = first_attr(spans[1], 'normalize-space(.)') if len(spans) > 1 else ''
     if month and day and year:
         return iso_date(f'{month} {day} {year}', '%b %d %Y')
     return None
@@ -39,7 +39,7 @@ class MomPOVClient(Client):
         return first_text(source, './/div[contains(@class,"title_holder")]//h1//a')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//div[contains(@class,"title_holder")]//h1//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//div[contains(@class,"title_holder")]//h1//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -51,7 +51,7 @@ class MomPOVClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//a[contains(@class,"title")]') or (scene.sel.xpath('//meta[@property="og:title"]/@content').get() or '').strip() or None
+        return first_text(scene.sel, '//a[contains(@class,"title")]') or first_attr(scene.sel, '//meta[@property="og:title"]/@content') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
@@ -81,7 +81,7 @@ class MomPOVClient(Client):
         first_div = scene.sel.xpath('//div[@id="inner_content"]/div')
         if not first_div:
             return []
-        raw = (first_div[0].xpath('(.//a//img/@src)[1]').get() or '').strip()
+        raw = first_attr(first_div[0], '(.//a//img/@src)[1]')
         if not raw:
             return []
         return [absolute_url(raw, scene.site.base_url)]

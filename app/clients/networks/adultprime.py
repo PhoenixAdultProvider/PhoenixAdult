@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Adult Prime'
 
@@ -80,14 +81,14 @@ class AdultPrimeClient(Client):
                 continue
             for li in loaded['sel'].xpath('//ul[@id="studio-videos-container"]/li'):
                 title = (li.xpath('(.//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
-                gallery_id = (li.xpath('.//div[contains(@class,"overlay") and contains(@class,"inline-preview")]/@data-id').get() or '').strip()
+                gallery_id = first_attr(li, './/div[contains(@class,"overlay") and contains(@class,"inline-preview")]/@data-id')
                 if not title or not gallery_id:
                     continue
                 scene_url = f'{base}/studios/video/{gallery_id}'
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
-                date_raw = (li.xpath('(.//span[contains(@class,"releasedate")])[1]/text()').get() or '').strip()
+                date_raw = first_attr(li, '(.//span[contains(@class,"releasedate")])[1]/text()')
                 release = iso_date(date_raw) if date_raw else None
                 results.append(
                     build_search_result(
@@ -108,7 +109,7 @@ class AdultPrimeClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        summary = (scene.sel.xpath('string((//p[contains(@class,"description")])[1])').get() or '').strip()
+        summary = first_attr(scene.sel, 'string((//p[contains(@class,"description")])[1])')
         if not summary:
             return None
         low = summary.lower()
@@ -147,7 +148,7 @@ class AdultPrimeClient(Client):
         base = scene.site.base_url.rstrip('/')
         names: list[str] = []
         for a in scene.sel.xpath(f'{_info_line_xp("Performer")}/a'):
-            n = (a.xpath('normalize-space(.)').get() or '').strip()
+            n = first_attr(a, 'normalize-space(.)')
             if n and n not in names:
                 names.append(n)
         actors: list[ActorResult] = []

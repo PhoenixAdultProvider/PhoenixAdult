@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify, title_distance_score
+from app.utils.helpers.html_helpers import first_attr, first_string
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'GASM'
@@ -41,8 +42,8 @@ class GasmClient(Client):
         results: list[SearchResult] = []
         for row in loaded['sel'].xpath('//div[contains(@class,"results_item")]'):
             a = row.xpath('(.//a[contains(@class,"post_title")])[1]')
-            title = (a.xpath('string(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            title = first_string(a)
+            href = first_attr(a, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -93,13 +94,13 @@ class GasmClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        out = [g for g in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//a[contains(@href,"/search?s=")]')) if g]
+        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"/search?s=")]')) if g]
         return out or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         out = [
-            ActorResult(name=n) for n in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//a[contains(@href,"models/")]')) if n
+            ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"models/")]')) if n
         ]
         return out or None
 

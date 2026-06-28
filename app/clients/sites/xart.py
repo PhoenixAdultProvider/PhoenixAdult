@@ -6,7 +6,7 @@ from typing import Any
 import app.utils.images.fansite_adapters  # noqa: F401 - registers the fansite adapters
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -37,8 +37,8 @@ class XartClient(Client):
 
         if loaded:
             for a in loaded['sel'].xpath('//a[contains(@href,"videos")]'):
-                title = (a.xpath('(.//img[contains(@src,"videos")]/@alt)[1]').get() or '').strip()
-                href = (a.xpath('@href').get() or '').strip()
+                title = first_attr(a, '(.//img[contains(@src,"videos")]/@alt)[1]')
+                href = first_attr(a, '@href')
                 if not title or not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -112,14 +112,14 @@ class XartClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//h2//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = re.sub(r'^http:', 'https:', (el.xpath('@href').get() or '').strip())
+            name = first_attr(el, 'normalize-space(.)')
+            href = re.sub(r'^http:', 'https:', first_attr(el, '@href'))
             if not name or not href or name in seen:
                 continue
             seen.add(name)
             actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = (page['sel'].xpath('(//img[contains(@class,"info-img")]/@src)[1]').get() or '').strip() if page else ''
+            photo = first_attr(page['sel'], '(//img[contains(@class,"info-img")]/@src)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -155,7 +155,7 @@ class XartClient(Client):
         title = await self.fetch_title(scene) or ''
         actor_names: list[str] = []
         for el in scene.sel.xpath('//h2//a'):
-            n = (el.xpath('normalize-space(.)').get() or '').strip()
+            n = first_attr(el, 'normalize-space(.)')
             if n and n not in actor_names:
                 actor_names.append(n)
 

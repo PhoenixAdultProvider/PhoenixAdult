@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
@@ -116,7 +117,7 @@ class NVGClient(Client):
                 sel = loaded['sel']
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
                 summary = (sel.xpath('(//div[contains(@class,"the-content")]/p)[1]').xpath('string(.)').get() or '').strip()
-                poster = (sel.xpath('(//video)[1]/@poster').get() or '').strip()
+                poster = first_attr(sel, '(//video)[1]/@poster')
             # Legacy merge: prefer the page-data fluid src when the mysqlId resolves.
             if video_id.isdigit():
                 scene = await self._get_page_data(int(video_id), capture, base)

@@ -10,6 +10,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneCo
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import title_case
@@ -43,7 +44,7 @@ def _result_type_for(href: str) -> str:
 
 
 def _studio(sel: Any) -> str:
-    return (sel.xpath('(//li[contains(.,"Studio:")]//a)[1]/text()').get() or '').strip()
+    return first_attr(sel, '(//li[contains(.,"Studio:")]//a)[1]/text()')
 
 
 def _scene_rows(sel: Any) -> list[dict[str, Any]]:
@@ -51,7 +52,7 @@ def _scene_rows(sel: Any) -> list[dict[str, Any]]:
     seen: set[str] = set()
     kept: list[dict[str, str]] = []
     for row in rows:
-        scene_title = (row.xpath('(.//a)[1]/text()').get() or '').strip()
+        scene_title = first_attr(row, '(.//a)[1]/text()')
         if not scene_title or scene_title in seen:
             continue
         seen.add(scene_title)
@@ -283,7 +284,7 @@ class AdultEmpireClient(Client):
 
     async def fetch_tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        series = (scene.sel.xpath('(//h2//a[@label="Series"])[1]/text()').get() or '').strip()
+        series = first_attr(scene.sel, '(//h2//a[@label="Series"])[1]/text()')
         if not series:
             return None
         parts = series.split('"')
@@ -353,7 +354,7 @@ class AdultEmpireClient(Client):
         directors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(f'{_CAST_LI}[*[contains(.,"Director")]]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
                 directors.append(ActorResult(name=name))
@@ -373,8 +374,8 @@ class AdultEmpireClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         images: list[str] = []
-        cover = (scene.sel.xpath('(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]').get() or '').strip()
-        cover_href = (scene.sel.xpath('(//div[contains(@class,"boxcover-container")]//a/@href)[1]').get() or '').strip()
+        cover = first_attr(scene.sel, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
+        cover_href = first_attr(scene.sel, '(//div[contains(@class,"boxcover-container")]//a/@href)[1]')
         if cover:
             images.append(cover)
         if cover_href:

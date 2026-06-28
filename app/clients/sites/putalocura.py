@@ -7,7 +7,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -141,10 +141,10 @@ class PutalocuraClient(Client):
             return []
         models: list[dict[str, str]] = []
         for anchor in loaded['sel'].xpath('//div[contains(@class,"c-boxlist__box--image")]/parent::a'):
-            name = (anchor.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(anchor, 'normalize-space(.)')
             if not name:
                 continue
-            raw = (anchor.xpath('(.//img/@src)[1]').get() or '').strip()
+            raw = first_attr(anchor, '(.//img/@src)[1]')
             models.append({'name': name, 'photoURL': absolute_url(raw, base) if raw else ''})
         return models
 

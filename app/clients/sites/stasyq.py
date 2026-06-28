@@ -5,7 +5,7 @@ import re
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'StasyQ'
 _COOKIE = {'Cookie': 'lang=en'}
@@ -69,7 +69,7 @@ class StasyQClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//section[contains(@class,"content-section")]//div[contains(@class,"release-card__model")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))

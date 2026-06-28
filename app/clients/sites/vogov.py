@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _HARDCODED_DIRECTOR = 'Markus Dupree'
 
@@ -20,10 +20,10 @@ class VogoVClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('(.//a[contains(@class,"video-post-main")]//img/@alt)[1]').get() or '').strip()
+        return first_attr(source, '(.//a[contains(@class,"video-post-main")]//img/@alt)[1]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a[contains(@class,"video-post-main")]/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a[contains(@class,"video-post-main")]/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -73,8 +73,8 @@ class VogoVClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//div[contains(@class,"info-video-models")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -83,7 +83,7 @@ class VogoVClient(Client):
                 url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
-                    photo = (page['sel'].xpath('(//div[contains(@class,"m-images")]//img/@src)[1]').get() or '').strip()
+                    photo = first_attr(page['sel'], '(//div[contains(@class,"m-images")]//img/@src)[1]')
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 

@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 # `div.update` cards must match the class token exactly (updateTitle, updateDescription, etc. all contain "update").
 _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " update ")]'
@@ -25,7 +25,7 @@ class BoundHoneysClient(Client):
         return first_text(source, './/div[contains(@class,"updateTitle")]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//div[contains(@class,"updateTitle")]//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//div[contains(@class,"updateTitle")]//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -54,8 +54,8 @@ class BoundHoneysClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[contains(@class,"updateModelsList")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
@@ -63,7 +63,7 @@ class BoundHoneysClient(Client):
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
-                raw = (actor_page['sel'].xpath('(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]').get() or '').strip()
+                raw = first_attr(actor_page['sel'], '(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]')
                 photo = absolute_url(raw, scene.site.base_url) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
@@ -72,7 +72,7 @@ class BoundHoneysClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//div[contains(@class,"updateCategoriesList")]//a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         n = len(await self.fetch_actors(scene) or [])

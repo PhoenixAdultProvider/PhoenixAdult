@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.processors.title_case import title_case
 
 _CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " item ")]'
@@ -25,7 +25,7 @@ class ScrewboxClient(Client):
         return first_text(source, './/h4//a')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     # ── Detail field hooks ────────────────────────────────────────────────────
@@ -59,22 +59,22 @@ class ScrewboxClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(f'({_INFO_LI})[1]//a'):
-            name = title_case((el.xpath('normalize-space(.)').get() or '').strip())
+            name = title_case(first_attr(el, 'normalize-space(.)'))
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (loaded['sel'].xpath('(//img[contains(@class,"model_bio_thumb")]/@src0_1x)[1]').get() or '').strip() if loaded else ''
+                raw = first_attr(loaded['sel'], '(//img[contains(@class,"model_bio_thumb")]/@src0_1x)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"fakeplayer")]//img/@src0_1x)[1]').get() or '').strip()
+        raw = first_attr(scene.sel, '(//div[contains(@class,"fakeplayer")]//img/@src0_1x)[1]')
         if not raw:
             return []
         return [absolute_url(raw, scene.site.base_url)]

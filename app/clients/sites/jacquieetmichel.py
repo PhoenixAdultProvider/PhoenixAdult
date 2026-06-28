@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _ACTORS: dict[str, list[str]] = load_site_json(__file__, 'jacquieetmichel_actors')
 
@@ -20,7 +20,7 @@ class JacquieEtMichelClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//a[contains(@class,"content-card--video")]'):
                 title = first_text(card, './/h2[contains(@class,"content-card__title")]')
-                href = (card.xpath('@href').get() or '').strip()
+                href = first_attr(card, '@href')
                 if not title or not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -103,7 +103,7 @@ class JacquieEtMichelClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//video/@poster)[1]').get() or '').strip()
+        raw = first_attr(scene.sel, '(//video/@poster)[1]')
         if not raw:
             return []
         return [absolute_url(raw, scene.site.base_url)]

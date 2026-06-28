@@ -7,7 +7,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, join_url
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 
@@ -23,10 +23,10 @@ class XillimiteClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('(.//img/@alt)[1]').get() or '').strip()
+        return first_attr(source, '(.//img/@alt)[1]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -66,8 +66,8 @@ class XillimiteClient(Client):
         base = scene.site.base_url.rstrip('/')
         entries: list[ActorResult] = []
         for img in scene.sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//a[contains(@class,"movies")]//img'):
-            name = (img.xpath('@alt').get() or '').strip()
-            data_src = (img.xpath('@data-src').get() or '').strip()
+            name = first_attr(img, '@alt')
+            data_src = first_attr(img, '@data-src')
             photo = join_url(data_src, base) if data_src else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)

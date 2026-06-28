@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 
 STUDIO = 'TwoTGirls'
@@ -36,7 +36,7 @@ class TwoTGirlsClient(Client):
         seen: set[str] = set()
         for row in loaded['sel'].xpath('//article'):
             title = first_text(row, './/h2')
-            href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
+            href = first_attr(row, '(.//a/@href)[1]')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -78,7 +78,7 @@ class TwoTGirlsClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('//p[contains(@class,"video-tags")]//a'):
-            t = (el.xpath('normalize-space(.)').get() or '').strip()
+            t = first_attr(el, 'normalize-space(.)')
             if t and t not in genres:
                 genres.append(t)
         count = len(scene.sel.xpath('//p[contains(@class,"video-date")]//a'))
@@ -93,8 +93,8 @@ class TwoTGirlsClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//p[contains(@class,"video-date")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -103,7 +103,7 @@ class TwoTGirlsClient(Client):
                 url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
-                    raw = (page['sel'].xpath('(//div[contains(@class,"col-md-4")]//img/@src)[1]').get() or '').strip()
+                    raw = first_attr(page['sel'], '(//div[contains(@class,"col-md-4")]//img/@src)[1]')
                     if raw:
                         photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

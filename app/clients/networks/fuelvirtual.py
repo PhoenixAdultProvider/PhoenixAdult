@@ -4,6 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
@@ -30,8 +31,8 @@ class FuelVirtualClient(Client):
         results: list[SearchResult] = []
         for row in loaded['sel'].xpath('//div[@align="left"]'):
             a = row.xpath('(.//td[@valign="top"])[2]//a[1]')
-            title = (a.xpath('string(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            title = first_string(a)
+            href = first_attr(a, '@href')
             if not title or not href:
                 continue
             date_raw = (row.xpath('(.//span[@class="date"])[1]').xpath('string(.)').get() or '').replace('Added', '').strip()
@@ -67,7 +68,7 @@ class FuelVirtualClient(Client):
         genres = [
             g
             for g in (
-                (a.xpath('normalize-space(.)').get() or '').strip()
+                first_attr(a, 'normalize-space(.)')
                 for a in scene.sel.xpath('//td[contains(@class,"plaintext")]//a[contains(@class,"model_category_link")]')
             )
             if g
@@ -92,7 +93,7 @@ class FuelVirtualClient(Client):
         db_names = _actors_for_scene(scene.site.name, m.group(1)) if m else None
         if db_names is not None:
             return [ActorResult(name=n) for n in db_names]
-        actors = [ActorResult(name=name) for name in ((a.xpath('normalize-space(.)').get() or '').strip() for a in actor_els) if name]
+        actors = [ActorResult(name=name) for name in (first_attr(a, 'normalize-space(.)') for a in actor_els) if name]
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

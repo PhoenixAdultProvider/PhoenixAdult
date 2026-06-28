@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Thick Cash'
 
@@ -66,7 +66,7 @@ class ThickCashOtherClient(Client):
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         entries = [
-            ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip())
+            ActorResult(name=first_attr(a, 'normalize-space(.)'))
             for a in scene.sel.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')
         ]
         return self.dedup_people(entries) or None

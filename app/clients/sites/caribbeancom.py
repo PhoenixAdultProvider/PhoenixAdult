@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _UPLOAD_DATE_RE = re.compile(r'(\d{4})/(\d{2})/(\d{2})')
 
@@ -76,7 +76,7 @@ class CaribbeancomClient(Client):
         if constructed != scene.url:
             images.append(constructed)
         for el in scene.sel.xpath('//img[contains(@class,"gallery-image")]'):
-            src = (el.xpath('@src').get() or '').strip()
+            src = first_attr(el, '@src')
             if not src:
                 continue
             abs_url = absolute_url(src, scene.site.base_url)

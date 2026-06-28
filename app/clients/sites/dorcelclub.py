@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _FIXED_GENRES: list[str] = load_site_json(__file__, 'dorcelclub_fixed_genres')
 
@@ -52,7 +52,7 @@ class DorcelClubClient(Client):
         # (1) Direct scene cards.
         for card in sel.xpath(_SCENE_CARD_XP):
             title = first_text(card, './/div[contains(@class,"textual")]/a')
-            href = (card.xpath('(.//a[contains(@class,"title")]/@href)[1]').get() or '').strip()
+            href = first_attr(card, '(.//a[contains(@class,"title")]/@href)[1]')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -61,7 +61,7 @@ class DorcelClubClient(Client):
         # (2) Movie cards — the movie is a result and its sub-scenes are appended.
         for card in sel.xpath(_MOVIE_CARD_XP):
             movie_title = first_text(card, './h2')
-            movie_href = (card.xpath('@href').get() or '').strip()
+            movie_href = first_attr(card, '@href')
             if not movie_title or not movie_href:
                 continue
             movie_url = absolute_url(movie_href, ctx.site_info.base_url)
@@ -72,7 +72,7 @@ class DorcelClubClient(Client):
                 continue
             for scene in movie_page['sel'].xpath(_MOVIE_SUBSCENE_XP):
                 scene_title = first_text(scene, './/div[contains(@class,"textual")]/a')
-                scene_href = (scene.xpath('(.//a[contains(@class,"title")]/@href)[1]').get() or '').strip()
+                scene_href = first_attr(scene, '(.//a[contains(@class,"title")]/@href)[1]')
                 if not scene_title or not scene_href:
                     continue
                 scene_url = absolute_url(scene_href, ctx.site_info.base_url)
@@ -134,7 +134,7 @@ class DorcelClubClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in els:
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -156,7 +156,7 @@ class DorcelClubClient(Client):
                 images.append(cleaned)
 
         if _is_movie_url(scene.url):
-            cover = (scene.sel.xpath('(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]').get() or '').strip()
+            cover = first_attr(scene.sel, '(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]')
             if cover:
                 add(cover)
         for raw in scene.sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():

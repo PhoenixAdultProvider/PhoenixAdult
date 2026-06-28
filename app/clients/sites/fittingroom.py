@@ -6,7 +6,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, meta_content
+from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 _COLLECTIONS: dict[str, str] = load_site_json(__file__, 'fittingroom_collections')
 
@@ -89,7 +89,7 @@ class FittingRoomClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        actor_name = (scene.sel.xpath('(//a[contains(@class,"model")]//img/@alt)[1]').get() or '').strip()
+        actor_name = first_attr(scene.sel, '(//a[contains(@class,"model")]//img/@alt)[1]')
         genres: list[str] = []
         for raw in scene.sel.xpath('//meta[@property="video:tag"]/@content').getall():
             raw = (raw or '').strip()

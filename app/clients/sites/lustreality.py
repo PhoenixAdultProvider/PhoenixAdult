@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -77,15 +77,15 @@ class LustRealityClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//a[contains(@href,"/pornstars/model/")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (loaded['sel'].xpath('(//div[contains(@class,"u-ratio--model-poster")]//img/@data-src)[1]').get() or '').strip() if loaded else ''
+                raw = first_attr(loaded['sel'], '(//div[contains(@class,"u-ratio--model-poster")]//img/@data-src)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

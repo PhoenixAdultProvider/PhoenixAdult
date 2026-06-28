@@ -15,6 +15,7 @@ from app.clients.base import (
 from app.registry import ResolvedSiteInfo
 from app.utils.cookies.site_cookies import get_site_cookies
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 _SESSION_COOKIES: dict[str, str] = load_site_json(__file__, 'blurredmedia_session_cookies')
 
@@ -48,7 +49,7 @@ class BlurredMediaClient(Client):
         return (source.xpath('(.//h3[contains(@class,"video__title")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -93,7 +94,7 @@ class BlurredMediaClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//time[contains(@class,"video__date")])[1]/@datetime').get() or '').strip()
+        raw = first_attr(scene.sel, '(//time[contains(@class,"video__date")])[1]/@datetime')
         return iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
@@ -107,7 +108,7 @@ class BlurredMediaClient(Client):
         entries: list[ActorResult] = []
         for fig in scene.sel.xpath('//section[@name="modelsBio"]/article/figure'):
             name = (fig.xpath('(.//p//a)[1]').xpath('string(.)').get() or '').strip()
-            raw = (fig.xpath('(.//img)[1]/@src').get() or '').strip()
+            raw = first_attr(fig, '(.//img)[1]/@src')
             entries.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
         return self.dedup_people(entries) or None
 

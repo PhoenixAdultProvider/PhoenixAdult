@@ -4,6 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, slugify
+from app.utils.helpers.html_helpers import first_attr
 
 _PROFILES: dict[str, dict[str, str]] = load_site_json(__file__, 'hightechvr_profiles')
 _SEXBABES_RE = re.compile(r'videos_screenshots/(.+?)/\d+x\d+/')
@@ -82,8 +83,8 @@ class HighTechVRClient(Client):
         base = scene.site.base_url.rstrip('/')
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(p['actors']):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name:
                 refs.append((name, href))
         actors: list[ActorResult] = []
@@ -119,7 +120,7 @@ class HighTechVRClient(Client):
 
         poster_el = scene.sel.xpath(f'({p["poster"]})[1]')
         if poster_el:
-            poster_attr = (poster_el.xpath('@poster').get() or '').strip()
+            poster_attr = first_attr(poster_el, '@poster')
             if poster_attr:
                 push(poster_attr)
             else:

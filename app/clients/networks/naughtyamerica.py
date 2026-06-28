@@ -8,6 +8,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
+from app.utils.helpers.html_helpers import first_attr
 
 _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
@@ -62,8 +63,8 @@ class NaughtyAmericaClient(Client):
         for idx in range(2, pagination):
             for card in page_sel.xpath(_CARD_XP):
                 anchor = card.xpath('(.//a[contains(@href,"/scene/")])[1]')
-                href = (anchor.xpath('@href').get() or '').strip()
-                raw_title = (anchor.xpath('@title').get() or '').strip()
+                href = first_attr(anchor, '@href')
+                raw_title = first_attr(anchor, '@title')
                 if not href or not raw_title:
                     continue
                 path = _scene_path(href)
@@ -135,12 +136,12 @@ class NaughtyAmericaClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        names = [n for n in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//div[contains(@class,"performer-list")]//a')) if n]
+        names = [n for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"performer-list")]//a')) if n]
         actors: list[ActorResult] = []
         for name in names:
             slug = name.lower().replace(' ', '-').replace("'", '')
             page = await self._paced(f'{_SCENE_BASE}/pornstar/{slug}', None, f'GET pornstar {slug}')
-            raw = (page['sel'].xpath('(//img[contains(@class,"performer-pic")])[1]/@data-src').get() or '').strip() if page else ''
+            raw = first_attr(page['sel'], '(//img[contains(@class,"performer-pic")])[1]/@data-src') if page else ''
             actors.append(ActorResult(name=name, photo_url=to_https(raw) if raw else ''))
         return actors or None
 

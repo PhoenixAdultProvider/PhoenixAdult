@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, title_distance_score
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _NON_ALNUM_RE = re.compile(r'[^a-z0-9]', re.IGNORECASE)
 _SUBSITE_RE = re.compile(r'scene/(.*?)/')
@@ -29,7 +29,7 @@ class FinishesTheJobClient(Client):
         return first_text(source, './/h3[@itemprop="name"]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -39,7 +39,7 @@ class FinishesTheJobClient(Client):
 
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         title = first_text(source, './/h3[@itemprop="name"]')
-        footer_href = (source.xpath('(.//div[contains(@class,"card-footer")]//a/@href)[1]').get() or '').strip()
+        footer_href = first_attr(source, '(.//div[contains(@class,"card-footer")]//a/@href)[1]')
         m = _SUBSITE_RE.search(footer_href)
         sub_site = m.group(1) if m else ''
         bad_subsite = _norm(sub_site) != _norm(loaded.site.name)
@@ -95,7 +95,7 @@ class FinishesTheJobClient(Client):
         title = first_text(scene.sel, '//span[@itemprop="name"]').lower()
         if title:
             for el in scene.sel.xpath('//div[contains(@class,"first-set")]//img'):
-                alt = (el.xpath('@alt').get() or '').strip().lower()
+                alt = first_attr(el, '@alt').lower()
                 if alt == title:
                     push(el.xpath('@src').get() or '')
         return images

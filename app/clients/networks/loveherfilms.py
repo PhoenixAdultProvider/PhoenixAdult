@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'LoveHerFilms'
 _DATE_FMT = '%B %d, %Y'
@@ -20,10 +21,10 @@ class LoveHerFilmsClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('(.//a)[1]/@title').get() or '').strip()
+        return first_attr(source, '(.//a)[1]/@title')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -60,7 +61,7 @@ class LoveHerFilmsClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//div[contains(@class,"video-tags")]/a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         if 'Foot Sex' not in genres:
@@ -79,8 +80,8 @@ class LoveHerFilmsClient(Client):
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
         for a in scene.sel.xpath('//div[contains(@class,"featured")]/a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if name:
                 refs.append((name, href))
         actors: list[ActorResult] = []
@@ -93,7 +94,7 @@ class LoveHerFilmsClient(Client):
             if href:
                 url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, None, f'[{scene.site.name}] actor {name}')
-                raw = (page['sel'].xpath('(//div[contains(@class,"picture")]//img)[1]/@src0_3x').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//div[contains(@class,"picture")]//img)[1]/@src0_3x') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

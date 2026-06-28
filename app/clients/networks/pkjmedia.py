@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'PKJ Media'
 
@@ -21,10 +22,10 @@ class PKJMediaClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('normalize-space(.)').get() or '').strip()
+        return first_attr(source, 'normalize-space(.)')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -61,7 +62,7 @@ class PKJMediaClient(Client):
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         entries = [
-            ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip()) for a in scene.sel.xpath('//div[contains(@class,"brxe-post-meta")]//span/a')
+            ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[contains(@class,"brxe-post-meta")]//span/a')
         ]
         return self.dedup_people(entries) or None
 

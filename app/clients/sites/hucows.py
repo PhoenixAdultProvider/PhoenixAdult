@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _FIXED_GENRES: list[str] = load_site_json(__file__, 'hucows_fixed_genres')
 
@@ -27,7 +27,7 @@ class HucowsClient(Client):
         return first_text(source, '(.//h1|.//h2)')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[2]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[2]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -62,7 +62,7 @@ class HucowsClient(Client):
         assert scene.sel is not None
         genres = list(_FIXED_GENRES)
         for a in scene.sel.xpath('//a[@rel="category tag"]'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         return genres

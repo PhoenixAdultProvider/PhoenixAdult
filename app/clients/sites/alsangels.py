@@ -6,6 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 _VIDEO_TYPES = ['masturbation', 'photoshoot', 'interview', 'girl-girl action', 'pov lapdance']
 # Unanchored (matches the legacy re.search): scene IDs may have a trailing
@@ -48,7 +49,7 @@ class AlsAngelsClient(Client):
         for row in loaded['sel'].xpath('//tr'):
             if not match_row(row):
                 continue
-            thumb = (row.xpath('(.//td[contains(@class,"videothumbnail")]//a//img)[1]/@src').get() or '').strip()
+            thumb = first_attr(row, '(.//td[contains(@class,"videothumbnail")]//a//img)[1]/@src')
             mid = _THUMB_RE.search(thumb)
             if not mid:
                 continue
@@ -146,7 +147,7 @@ class AlsAngelsClient(Client):
         assert scene.sel is not None
         ex = self._ex(scene)
         base = scene.site.base_url.rstrip('/')
-        photo = (scene.sel.xpath('(//*[@id="modelbioheadshot"]//img)[1]/@src').get() or '').strip()
+        photo = first_attr(scene.sel, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
         if photo.startswith('..'):
             photo = photo.replace('..', base)
         return [ActorResult(name=ex['model_name'], photo_url=photo, gender='female')] if ex.get('model_name') else None

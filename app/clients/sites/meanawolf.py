@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _LI_XP = '//div[contains(@class,"videoContent")]//ul/li'
 
@@ -18,12 +18,12 @@ class MeanaWolfClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"videoBlock")]'):
             anchor = card.xpath('(.//p/a)[1]')
-            title = (anchor.xpath('normalize-space(.)').get() or '').strip()
-            href = (anchor.xpath('@href').get() or '').strip()
+            title = first_attr(anchor, 'normalize-space(.)')
+            href = first_attr(anchor, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
-            poster = (card.xpath('(.//img[contains(@class,"video_placeholder")]/@src)[1]').get() or '').strip()
+            poster = first_attr(card, '(.//img[contains(@class,"video_placeholder")]/@src)[1]')
             results.append(
                 build_search_result(
                     title=title,
@@ -79,14 +79,14 @@ class MeanaWolfClient(Client):
         assert scene.sel is not None
         actors: list[ActorResult] = []
         for el in scene.sel.xpath(f'({_LI_XP})[3]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (loaded['sel'].xpath('(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]').get() or '').strip() if loaded else ''
+                raw = first_attr(loaded['sel'], '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import append_year_param, first_text, meta_content
+from app.utils.helpers.html_helpers import append_year_param, first_attr, first_text, meta_content
 
 _DIRECTOR = ActorResult(
     name='Petter Hegre',
@@ -42,11 +42,11 @@ class HegreClient(Client):
 
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item")]'):
-            href = (card.xpath('(.//a/@href)[1]').get() or '').strip()
+            href = first_attr(card, '(.//a/@href)[1]')
             if not href or not ('/films/' in href or '/massage/' in href):
                 continue
             scene_url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'
-            title = (card.xpath('(.//img/@alt)[1]').get() or '').strip()
+            title = first_attr(card, '(.//img/@alt)[1]')
             if not title:
                 continue
             raw_date = first_text(card, '(.//div[contains(@class,"details")]/span)[last()]')
@@ -95,7 +95,7 @@ class HegreClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//a[contains(@class,"tag")]'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip().lower()
+            g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         count = len(scene.sel.xpath('//a[contains(@class,"record-model")]'))
@@ -111,8 +111,8 @@ class HegreClient(Client):
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for a in scene.sel.xpath('//a[contains(@class,"record-model")]'):
-            name = (a.xpath('@title').get() or '').strip()
-            raw = (a.xpath('(.//img/@src)[1]').get() or '').strip()
+            name = first_attr(a, '@title')
+            raw = first_attr(a, '(.//img/@src)[1]')
             entries.append(ActorResult(name=name, photo_url=raw.replace('240x', '480x') if raw else ''))
         return self.dedup_people(entries)
 

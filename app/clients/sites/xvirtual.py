@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, strip_query
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class XVirtualClient(Client):
@@ -21,7 +21,7 @@ class XVirtualClient(Client):
         return first_text(source, './/h2')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)

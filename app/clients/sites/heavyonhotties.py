@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 _RELEASED_XP = '//span[contains(@class,"released") and contains(@class,"title")]//strong'
 
@@ -82,7 +82,7 @@ class HeavyOnHottiesClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('normalize-space((//div[contains(@class,"video_text")])[1])').get() or '').strip() or None
+        return first_attr(scene.sel, 'normalize-space((//div[contains(@class,"video_text")])[1])') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'Heavy on Hotties'
@@ -103,8 +103,8 @@ class HeavyOnHottiesClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//span[contains(@class,"feature") and contains(@class,"title")]//a[contains(@href,"models")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
@@ -112,7 +112,7 @@ class HeavyOnHottiesClient(Client):
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
-                raw = (actor_page['sel'].xpath('(//div[h1]//img/@src)[1]').get() or '').strip()
+                raw = first_attr(actor_page['sel'], '(//div[h1]//img/@src)[1]')
                 photo = _lift_scheme(raw) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

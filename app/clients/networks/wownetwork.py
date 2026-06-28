@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'WowNetwork'
 _SEARCH_PAGES = 5
@@ -23,8 +24,8 @@ class WowNetworkClient(Client):
             found = 0
             for el in loaded['sel'].xpath('//article[contains(@class,"thumb-block")]'):
                 anchor = el.xpath('(.//a)[1]')
-                title = (anchor.xpath('@title').get() or '').strip()
-                href = (anchor.xpath('@href').get() or '').strip()
+                title = first_attr(anchor, '@title')
+                href = first_attr(anchor, '@href')
                 if not title or not href:
                     continue
                 found += 1
@@ -32,7 +33,7 @@ class WowNetworkClient(Client):
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
-                image = (el.xpath('(.//img)[1]/@src').get() or '').strip()
+                image = first_attr(el, '(.//img)[1]/@src')
                 image_packed = self.encode(image) if image else ''
                 results.append(
                     build_search_result(
@@ -67,7 +68,7 @@ class WowNetworkClient(Client):
         raw = (scene.sel.xpath('(//div[@id="video-date"])[1]').xpath('string(.)').get() or '').replace('Date:', '').strip()
         if raw:
             return iso_date(raw)
-        meta = (scene.sel.xpath('(//meta[@property="article:published_time"])[1]/@content').get() or '').strip()
+        meta = first_attr(scene.sel, '(//meta[@property="article:published_time"])[1]/@content')
         if meta:
             return iso_date(meta.split('T')[0])
         packed_date = scene.scene_date.split('|')[0].strip() if scene.scene_date else ''
@@ -84,7 +85,7 @@ class WowNetworkClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip()) for a in scene.sel.xpath('//div[@id="video-actors"]//a')]
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[@id="video-actors"]//a')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
@@ -97,6 +98,6 @@ class WowNetworkClient(Client):
                     coll['push'](self.decode(b64))
                 except (ValueError, TypeError):
                     pass
-        coll['push']((scene.sel.xpath('(//meta[@property="og:image"])[1]/@content').get() or '').strip())
+        coll['push'](first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
         images: list[str] = coll['list']
         return images or None

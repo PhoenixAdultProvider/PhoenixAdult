@@ -7,7 +7,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Sicflics'
 _ACTOR_SPLIT_RE = re.compile(r"['?]")
@@ -30,8 +30,8 @@ class SicflicsClient(Client):
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch) -> list[SearchResult]:
         title = first_text(source, './/div[contains(@class,"vidtitle")]/p[1]')
-        img_url = (source.xpath('(.//div[contains(@class,"vidthumb")]//a[contains(@class,"diagrad")]//img/@src)[1]').get() or '').strip()
-        scene_id = (source.xpath('(.//a[@data-movie]/@data-movie)[1]').get() or '').strip()
+        img_url = first_attr(source, '(.//div[contains(@class,"vidthumb")]//a[contains(@class,"diagrad")]//img/@src)[1]')
+        scene_id = first_attr(source, '(.//a[@data-movie]/@data-movie)[1]')
         if not title or not scene_id:
             return []
         desc_raw = first_text(source, './/div[contains(@class,"collapse")]/p')

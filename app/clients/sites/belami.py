@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_XP = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTitle")]'
 _RELEASED_XP = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelReleased")]'
@@ -66,7 +66,7 @@ class BelAmiClient(Client):
         genres: list[str] = []
         tags_xp = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTags")]//a'
         for a in scene.sel.xpath(tags_xp):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         actor_count = len(scene.sel.xpath(_ACTORS_XP))
@@ -83,11 +83,11 @@ class BelAmiClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(_ACTORS_XP):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
-            photo = (a.xpath('(.//img/@src)[1]').get() or '').strip()
+            photo = first_attr(a, '(.//img/@src)[1]')
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 

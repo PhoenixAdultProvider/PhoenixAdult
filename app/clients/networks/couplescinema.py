@@ -4,6 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, title_distance_score
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Couples Cinema'
 _YEAR_RE = re.compile(r'^\d{4}$')
@@ -40,12 +41,12 @@ class CouplesCinemaClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"Post")]'):
             title = (card.xpath('(.//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
-            href = (card.xpath('(.//a[contains(@class,"media")])[1]/@href').get() or '').strip()
+            href = first_attr(card, '(.//a[contains(@class,"media")])[1]/@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
             studio = (card.xpath('(.//span[contains(@class,"source")])[1]').xpath('string(.)').get() or '').strip()
-            cover = (card.xpath('(.//a[contains(@class,"media")]//img[contains(@class,"image")])[1]/@src').get() or '').strip()
+            cover = first_attr(card, '(.//a[contains(@class,"media")]//img[contains(@class,"image")])[1]/@src')
             cover_packed = self.encode(cover) if cover else ''
 
             score: float = 10 + title_distance_score(ctx.title, title)
@@ -109,7 +110,7 @@ class CouplesCinemaClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('string(.)').get() or '').strip()) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
+        entries = [ActorResult(name=first_string(a)) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

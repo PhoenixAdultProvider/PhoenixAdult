@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Porndoe Premium'
 _TITLE_SEL = './/div[@class="-g-vc-item-title"]//a'
@@ -70,7 +71,7 @@ class PorndoePremiumClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[@class="-mvd-grid-actors"]//span/a[@title]'):
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if not href:
                 continue
             page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
@@ -80,7 +81,7 @@ class PorndoePremiumClient(Client):
             if not name or name in seen:
                 continue
             seen.add(name)
-            raw = (page['sel'].xpath('(//div[@class="-api-poster-item"]//img)[1]/@src').get() or '').strip()
+            raw = first_attr(page['sel'], '(//div[@class="-api-poster-item"]//img)[1]/@src')
             photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None

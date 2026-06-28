@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _DIGITS_RE = re.compile(r'\d')
 
@@ -27,7 +27,7 @@ class InTheCrackClient(Client):
         for li in index['sel'].xpath('//ul[contains(@class,"collectionGridLayout")]/li'):
             name = first_text(li, './/span').lower()
             if model in name:
-                model_link = (li.xpath('(.//a/@href)[1]').get() or '').strip()
+                model_link = first_attr(li, '(.//a/@href)[1]')
                 break
         if not model_link:
             return []
@@ -41,7 +41,7 @@ class InTheCrackClient(Client):
         results: list[SearchResult] = []
         for li in model_page['sel'].xpath('//ul[contains(@class,"Models")]/li'):
             title = first_text(li, './/figure/p[1]').replace('Collection:', '').strip()
-            href = (li.xpath('(.//a/@href)[1]').get() or '').strip()
+            href = first_attr(li, '(.//a/@href)[1]')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)

@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 _SEARCH_DATE_XP = (
     './/span[@class="update_thumb_date"] | .//span[@class="date"] | .//div[contains(@class,"updateDetails")]/p/span[2] | .//div[contains(@class,"update_date")]'
@@ -25,7 +26,7 @@ class MissaXClient(Client):
         return (source.xpath('(.//h4//a | .//p[@class="thumb-title"] | ./a[./preceding-sibling::a])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -34,7 +35,7 @@ class MissaXClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _cast_names(self, sel: Any) -> list[str]:
-        return [n for n in ((a.xpath('normalize-space(.)').get() or '').strip() for a in sel.xpath(_CAST_XP)) if n]
+        return [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath(_CAST_XP)) if n]
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
@@ -95,15 +96,15 @@ class MissaXClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(_CAST_XP):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = (page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

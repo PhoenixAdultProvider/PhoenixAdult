@@ -7,6 +7,7 @@ from urllib.parse import quote, urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
@@ -81,7 +82,7 @@ class BangClient(Client):
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
         if loaded:
             for el in loaded['sel'].xpath('//div[contains(@class,"movie-preview") or contains(@class,"video_container")]'):
-                href = (el.xpath('(.//a[contains(@class,"group")])[1]/@href').get() or '').strip()
+                href = first_attr(el, '(.//a[contains(@class,"group")])[1]/@href')
                 if not href:
                     continue
                 if 'dvd' in href:
@@ -122,7 +123,7 @@ class BangClient(Client):
         for el in scene.sel.xpath('//p[contains(.,"eries:")]//a'):
             href = el.xpath('@href').get() or ''
             if 'originals' in href or 'videos' in href:
-                return _bangify((el.xpath('normalize-space(.)').get() or '').strip())
+                return _bangify(first_attr(el, 'normalize-space(.)'))
         return ''
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
@@ -139,8 +140,8 @@ class BangClient(Client):
         desc = (scene.sel.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
         if desc:
             return desc
-        meta = (scene.sel.xpath('(//meta[@name="description"])[1]/@content').get() or '').strip()
-        og = (scene.sel.xpath('(//meta[@property="og:description"])[1]/@content').get() or '').strip()
+        meta = first_attr(scene.sel, '(//meta[@name="description"])[1]/@content')
+        og = first_attr(scene.sel, '(//meta[@property="og:description"])[1]/@content')
         return meta or og or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
@@ -169,7 +170,7 @@ class BangClient(Client):
         genres = [
             g
             for g in (
-                (a.xpath('normalize-space(.)').get() or '').strip()
+                first_attr(a, 'normalize-space(.)')
                 for a in scene.sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]')
             )
             if g
@@ -183,8 +184,8 @@ class BangClient(Client):
         if scene_els:
             actors: list[ActorResult] = []
             for el in scene_els:
-                name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or (el.xpath('normalize-space(.)').get() or '').strip()
-                img = (el.xpath('(ancestor::div[1]/parent::*//img)[1]/@src').get() or '').strip()
+                name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or first_attr(el, 'normalize-space(.)')
+                img = first_attr(el, '(ancestor::div[1]/parent::*//img)[1]/@src')
                 photo = img if img and 'placeholder' not in img else ''
                 if name:
                     actors.append(ActorResult(name=name, photo_url=photo))
@@ -192,8 +193,8 @@ class BangClient(Client):
 
         dvd_actors: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href:
                 continue
             loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), None, 'actor')
@@ -231,14 +232,14 @@ class BangClient(Client):
 
         # XPath fallback (full URLs kept, per the image-URL policy).
         if not out:
-            og = (scene.sel.xpath('(//meta[@property="og:image"])[1]/@content').get() or '').strip()
+            og = first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content')
             if og:
                 out.append(og)
             for poster in scene.sel.xpath('//video/@poster').getall():
                 if poster:
                     out.append(poster)
             for el in scene.sel.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
-                src = (el.xpath('@src').get() or '').strip()
+                src = first_attr(el, '@src')
                 if src:
                     out.append(src)
                 srcset = el.xpath('@srcset').get() or ''

@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_FIXES: dict[str, str] = load_site_json(__file__, 'sexmex_title_fixes')
 _TITLE_KEYWORDS: list[str] = load_site_json(__file__, 'sexmex_title_keywords')
@@ -46,7 +46,7 @@ class SexMexClient(Client):
         return first_text(source, './/h5')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -60,9 +60,9 @@ class SexMexClient(Client):
     def _actor_names(self, scene: LoadedScene) -> list[str]:
         assert scene.sel is not None
         return [
-            (a.xpath('normalize-space(.)').get() or '').strip()
+            first_attr(a, 'normalize-space(.)')
             for a in scene.sel.xpath('//p[@class]//a')
-            if (a.xpath('normalize-space(.)').get() or '').strip()
+            if first_attr(a, 'normalize-space(.)')
         ]
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
@@ -102,13 +102,13 @@ class SexMexClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//p[@class]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
             actor_page = await self.fetch_and_load(f'{base}/tour/{href}', FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = (actor_page['sel'].xpath('(//img/@src)[1]').get() or '').strip() if actor_page else ''
+            photo = first_attr(actor_page['sel'], '(//img/@src)[1]') if actor_page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 

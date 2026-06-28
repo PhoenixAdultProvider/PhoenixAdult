@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import first_string, web_search_urls
 from app.utils.searchengines import web_search_available
 
 STUDIO = 'Caramel Cash'
@@ -98,7 +98,7 @@ class CaramelCashClient(Client):
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         entries = [
-            ActorResult(name=(a.xpath('string(.)').get() or '').strip())
+            ActorResult(name=first_string(a))
             for a in scene.sel.xpath('//section[contains(@class,"content-sec") and contains(@class,"backdrop")]//div[contains(@class,"main__models")]//a')
         ]
         return self.dedup_people(entries) or None

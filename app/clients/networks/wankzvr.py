@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 
 class WankzVRClient(Client):
@@ -43,7 +44,7 @@ class WankzVRClient(Client):
         for card in loaded['sel'].xpath('//ul[contains(@class,"cards-list")]//li'):
             texts = card.xpath('(.//div[contains(@class,"card__footer")]//div[contains(@class,"card__h")])[1]/text()').getall()
             title = next((t.strip() for t in texts if t.strip()), '')
-            href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
+            href = first_attr(card, '(.//a)[1]/@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -86,15 +87,15 @@ class WankzVRClient(Client):
         base = scene.site.base_url
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"detail__models")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 if page:
-                    srcset = (page['sel'].xpath('(//div[contains(@class,"person__avatar")]//source)[2]/@srcset').get() or '').strip()
+                    srcset = first_attr(page['sel'], '(//div[contains(@class,"person__avatar")]//source)[2]/@srcset')
                     well_formed = len(page['sel'].xpath('/html/*')) == 2
                     if srcset and well_formed:
                         photo = srcset.replace('.webp', '.jpg')
@@ -103,7 +104,7 @@ class WankzVRClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@property="og:image"])[1]/@content').get() or '').strip()
+        raw = first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content')
         if not raw:
             return None
         return [raw.replace('cover', 'hero').replace('medium.jpg', 'large.jpg')]

@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, join_url, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Jules Jordan'
 
@@ -41,8 +42,8 @@ class JulesJordanClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//div[contains(@class,"grid-item")]'):
                 a = card.xpath('(.//a)[1]')
-                href = (a.xpath('@href').get() or '').strip()
-                title = (a.xpath('(.//img)[1]/@alt').get() or '').strip()
+                href = first_attr(a, '@href')
+                title = first_attr(a, '(.//img)[1]/@alt')
                 if not href or not title:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -91,7 +92,7 @@ class JulesJordanClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//span[contains(text(),"Categories")]//a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip().lower()
+            g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         return genres or None
@@ -106,16 +107,16 @@ class JulesJordanClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in anchors:
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 actor_url = absolute_url(href, base)
                 page = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')
-                raw = (page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
@@ -133,7 +134,7 @@ class JulesJordanClient(Client):
             if abs_url not in images:
                 images.append(abs_url)
 
-        push((scene.sel.xpath('(//video[@id="video-player"])[1]/@poster').get() or '').strip())
+        push(first_attr(scene.sel, '(//video[@id="video-player"])[1]/@poster'))
 
         title = (scene.sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip()
         if title:

@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_SUFFIX = ' - Sex Movies Featuring Melena Maria Rya'
 
@@ -49,7 +49,7 @@ class MelenaMariaRyaClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('//meta[@name="description"]/@content').get() or '').strip() or None
+        return first_attr(scene.sel, '//meta[@name="description"]/@content') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'Melena Maria Rya'

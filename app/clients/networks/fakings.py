@@ -7,6 +7,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'FAKings'
@@ -29,7 +30,7 @@ class FAKingsClient(Client):
             if not loaded:
                 continue
             for row in loaded['sel'].xpath('//div[@class="zona-listado2"]'):
-                href = (row.xpath('(.//*[@href])[1]/@href').get() or '').strip()
+                href = first_attr(row, '(.//*[@href])[1]/@href')
                 if not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -72,8 +73,8 @@ class FAKingsClient(Client):
         assert scene.sel is not None
         refs: list[tuple[str, str]] = []
         for a in scene.sel.xpath('(//strong[contains(.,"Actr")])[1]/following-sibling::a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if name and href:
                 refs.append((name, absolute_url(href, scene.site.base_url)))
         return refs
@@ -106,7 +107,7 @@ class FAKingsClient(Client):
         genres = [
             g
             for g in (
-                (a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('(//strong[contains(.,"Categori")])[1]/following-sibling::a')
+                first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('(//strong[contains(.,"Categori")])[1]/following-sibling::a')
             )
             if g
         ]
@@ -117,7 +118,7 @@ class FAKingsClient(Client):
         actors: list[ActorResult] = []
         for name, href in self._actor_refs(scene):
             page = await self._load_model(scene, href)
-            raw = (page['sel'].xpath('(//div[@class="zona-imagen"]//img[@class])[1]/@src').get() or '').strip() if page else ''
+            raw = first_attr(page['sel'], '(//div[@class="zona-imagen"]//img[@class])[1]/@src') if page else ''
             actors.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
         return actors or None
 
@@ -128,9 +129,9 @@ class FAKingsClient(Client):
             if not page:
                 continue
             for row in page['sel'].xpath('//div[@class="zona-listado2"]'):
-                row_href = (row.xpath('(.//*[@href])[1]/@href').get() or '').strip()
+                row_href = first_attr(row, '(.//*[@href])[1]/@href')
                 if row_href and absolute_url(row_href, base) == scene.url:
-                    poster = (row.xpath('(.//img[@class])[1]/@src').get() or '').strip()
+                    poster = first_attr(row, '(.//img[@class])[1]/@src')
                     if poster:
                         return [absolute_url(poster, base)]
         return None

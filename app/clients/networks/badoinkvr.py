@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'BaDoink VR'
 
@@ -39,7 +40,7 @@ class BadoinkVrClient(Client):
             if loaded:
                 title = (loaded['sel'].xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip()
                 if title:
-                    thumb = (loaded['sel'].xpath('(//img[contains(@class,"video-image")])[1]/@src').get() or '').strip()
+                    thumb = first_attr(loaded['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
                     return [build_search_result(title=title, scene_url=url, query=ctx.title, score=100, thumb_url=thumb or None)]
 
         # Search page.
@@ -56,11 +57,11 @@ class BadoinkVrClient(Client):
         for el in loaded['sel'].xpath('//div[contains(@class,"tile-grid-item")]'):
             a = el.xpath('(.//a[contains(@class,"video-card-title")])[1]')
             title_attr = (a.xpath('@title').get() or a.xpath('string(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            href = first_attr(a, '@href')
             if not title_attr or not href:
                 continue
             abs_href = absolute_url(href, ctx.site_info.base_url)
-            date_raw = (el.xpath('(.//span[contains(@class,"video-card-upload-date")])[1]/@content').get() or '').strip()
+            date_raw = first_attr(el, '(.//span[contains(@class,"video-card-upload-date")])[1]/@content')
             release = iso_date(date_raw)
             if ctx.search_date and release:
                 score: float = date_distance_score(ctx.search_date, release)
@@ -90,12 +91,12 @@ class BadoinkVrClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//p[@itemprop="uploadDate"])[1]/@content').get() or '').strip()
+        raw = first_attr(scene.sel, '(//p[@itemprop="uploadDate"])[1]/@content')
         return iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres = [g for g in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//a[contains(@class,"video-tag")]')) if g]
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@class,"video-tag")]')) if g]
         return genres or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
@@ -103,27 +104,27 @@ class BadoinkVrClient(Client):
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//a[contains(@class,"video-actor-link")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name and href:
                 refs.append((name, absolute_url(href, base)))
         actors: list[ActorResult] = []
         for name, href in refs:
             loaded = await self.fetch_and_load(href, None, f'GET {href} (actor)')
             # Full resolved photo URL (no ?-strip), per the image-URL policy.
-            photo = (loaded['sel'].xpath('(//img[contains(@class,"girl-details-photo")])[1]/@src').get() or '').strip() if loaded else ''
+            photo = first_attr(loaded['sel'], '(//img[contains(@class,"girl-details-photo")])[1]/@src') if loaded else ''
             actors.append(ActorResult(name=name, photo_url=photo, gender='female'))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         out: list[str] = []
-        video_img = (scene.sel.xpath('(//img[contains(@class,"video-image")])[1]/@src').get() or '').strip()
+        video_img = first_attr(scene.sel, '(//img[contains(@class,"video-image")])[1]/@src')
         if video_img:
             out.append(video_img)
 
         # Gallery synthesis: `<base>_1.jpg` … `<base>_<count+1>.jpg`.
-        gallery_big = (scene.sel.xpath('(//div[contains(@class,"gallery-item")])[1]/@data-big-image').get() or '').strip()
+        gallery_big = first_attr(scene.sel, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
         if gallery_big:
             base_img = re.sub(r'_\d+\.jpg.*$', '', gallery_big)
             base_img = re.sub(r'\.jpg.*$', '', base_img)

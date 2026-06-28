@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'PornCZ'
 _DOLLS_SITE = 'Czech Real Dolls'
@@ -24,11 +25,11 @@ class PornCZClient(Client):
         return (source.xpath('(.//div[contains(@class,"card-body")]/a)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//div[contains(@class,"card-body")]/a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//div[contains(@class,"card-body")]/a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_thumb_url(self, source: Any, loaded: LoadedSearch) -> str | None:
-        thumb = (source.xpath('(.//div[contains(@class,"card__img")]//img)[1]/@data-src').get() or '').strip()
+        thumb = first_attr(source, '(.//div[contains(@class,"card__img")]//img)[1]/@data-src')
         if not thumb:
             return None
         return absolute_url(thumb, loaded.site.base_url)
@@ -54,7 +55,7 @@ class PornCZClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@property="video:release_date"])[1]/@content').get() or '').strip()
+        raw = first_attr(scene.sel, '(//meta[@property="video:release_date"])[1]/@content')
         if raw:
             return iso_date(raw, '%d.%m.%Y')
         return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
@@ -74,8 +75,8 @@ class PornCZClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[contains(@class,"mini-avatars")]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -84,7 +85,7 @@ class PornCZClient(Client):
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 if page:
-                    raw = (page['sel'].xpath('(//img[contains(@class,"actor-img")])[1]/@data-src').get() or '').strip()
+                    raw = first_attr(page['sel'], '(//img[contains(@class,"actor-img")])[1]/@data-src')
                     if raw and 'blank' not in raw:
                         photo = absolute_url(raw, base)
                     gender = (page['sel'].xpath('(//div[contains(@class,"model-info__item")]//span[i])[1]').xpath('string(.)').get() or '').lower().strip()

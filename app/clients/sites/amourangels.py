@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_XP = '//td[contains(@class,"blox-bg")]//td[2]//b'
 _DATE_CELL_XP = '//td[contains(@class,"blox-bg")]//td[2]'
@@ -66,8 +66,8 @@ class AmourAngelsClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//td[contains(@class,"modinfo")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or not href:
                 continue
             actor_url = absolute_url(href, scene.site.base_url)
@@ -90,7 +90,7 @@ class AmourAngelsClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//td[contains(@class,"noisebg")]//div//img'):
-            src = (el.xpath('@src').get() or '').strip()
+            src = first_attr(el, '@src')
             if not src:
                 continue
             abs_url = absolute_url(src, scene.site.base_url)

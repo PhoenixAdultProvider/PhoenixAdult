@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class CumbizzClient(Client):
@@ -51,7 +51,7 @@ class CumbizzClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//span[contains(@class,"label-primary")]/a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip().lower()
+            g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         return genres

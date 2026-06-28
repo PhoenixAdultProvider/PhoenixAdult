@@ -15,6 +15,7 @@ from app.clients.base import (
 )
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, date_distance_score, iso_date, load_site_json, title_distance_score
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Dirty Flix'
 _TOUR_HOST = 'https://dirtyflix.com'
@@ -62,7 +63,7 @@ class DirtyFlixClient(Client):
             if not loaded:
                 break
             for row in loaded['sel'].xpath('//div[contains(@class,"movie-block")]'):
-                img_src = (row.xpath('(.//li//img)[1]/@src').get() or '').strip()
+                img_src = first_attr(row, '(.//li//img)[1]/@src')
                 m = _SCENE_ID_RE.search(img_src)
                 if not m:
                     continue
@@ -119,13 +120,13 @@ class DirtyFlixClient(Client):
         if not loaded:
             return None
         for row in loaded['sel'].xpath('//div[contains(@class,"movie-block")]'):
-            img_src = (row.xpath('(.//li//img)[1]/@src').get() or '').strip()
+            img_src = first_attr(row, '(.//li//img)[1]/@src')
             if f'tour_thumbs/{scene_id}/' not in img_src:
                 continue
             return {
                 'title': (row.xpath(f'({cfg["search_title_xp"]})[1]').xpath('string(.)').get() or '').strip(),
                 'summary': (row.xpath(f'({cfg["detail_summary_xp"]})[1]').xpath('string(.)').get() or '').strip(),
-                'poster': (row.xpath('(.//img)[1]/@src').get() or '').strip(),
+                'poster': first_attr(row, '(.//img)[1]/@src'),
             }
         return None
 

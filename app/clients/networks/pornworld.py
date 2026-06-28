@@ -6,6 +6,7 @@ from datetime import date
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'PornWorld'
 _PER_PAGE = 99
@@ -56,7 +57,7 @@ class PornWorldClient(Client):
 
         if not sel.xpath('//h1[contains(@class,"section__title")]'):
             title = _clean_title((sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip())
-            href = (sel.xpath('(//a[contains(@class,"__pagination_button--more")])[1]/@href').get() or '').strip()
+            href = first_attr(sel, '(//a[contains(@class,"__pagination_button--more")])[1]/@href')
             if title and href:
                 return [
                     build_search_result(
@@ -66,8 +67,8 @@ class PornWorldClient(Client):
 
         results: list[SearchResult] = []
         for a in sel.xpath('//div[contains(@class,"card-scene")]//div[contains(@class,"card-scene__text")]/a'):
-            title = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            title = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not title or not href:
                 continue
             results.append(
@@ -106,7 +107,7 @@ class PornWorldClient(Client):
             results: list[SearchResult] = []
             for card in loaded['sel'].xpath('//div[contains(@class,"card-scene")]'):
                 title = (card.xpath('(.//div[contains(@class,"card-scene__text")]/a)[1]').xpath('string(.)').get() or '').strip()
-                href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
+                href = first_attr(card, '(.//a)[1]/@href')
                 if not title or not href:
                     continue
                 scene_date_text = (card.xpath('(.//div[contains(@class,"label--time")])[2]').xpath('string(.)').get() or '').strip()
@@ -164,7 +165,7 @@ class PornWorldClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip()) for a in scene.sel.xpath('//h1[contains(@class,"watch__title")]//a')]
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//h1[contains(@class,"watch__title")]//a')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

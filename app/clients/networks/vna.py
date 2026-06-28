@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'VNA Network'
@@ -108,7 +109,7 @@ class VNAClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        poster = (scene.sel.xpath('(//center//img)[1]/@src').get() or '').strip()
+        poster = first_attr(scene.sel, '(//center//img)[1]/@src')
         if not poster:
             return None
         abs_url = poster if poster.startswith('http') else f'{base}/{poster}'

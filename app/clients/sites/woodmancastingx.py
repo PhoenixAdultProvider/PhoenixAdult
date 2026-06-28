@@ -6,7 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Woodman Casting X'
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
@@ -33,10 +33,10 @@ class WoodmanCastingXClient(Client):
         results: list[SearchResult] = []
         seen: set[str] = set()
         for a in data['sel'].xpath('//div[contains(@class,"items")]//a[contains(@class,"scene")]'):
-            href = (a.xpath('@href').get() or '').strip()
+            href = first_attr(a, '@href')
             if not href or href.startswith('http'):
                 continue
-            raw_title = (a.xpath('(.//img/@alt)[1]').get() or '').strip()
+            raw_title = first_attr(a, '(.//img/@alt)[1]')
             if not raw_title:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -80,7 +80,7 @@ class WoodmanCastingXClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        trailing = (scene.sel.xpath('(//span[contains(.,"Published")]/following-sibling::text())[1]').get() or '').strip()
+        trailing = first_attr(scene.sel, '(//span[contains(.,"Published")]/following-sibling::text())[1]')
         raw = trailing.lstrip(':').strip()
         if raw:
             parsed = iso_date(raw)
@@ -107,7 +107,7 @@ class WoodmanCastingXClient(Client):
                 if not name or name in seen:
                     continue
                 seen.add(name)
-                src = (a.xpath('(.//img/@src)[1]').get() or '').strip()
+                src = first_attr(a, '(.//img/@src)[1]')
                 photo = (absolute_url(src, base)) if src else ''
                 actors.append(ActorResult(name=name, photo_url=photo))
             return actors

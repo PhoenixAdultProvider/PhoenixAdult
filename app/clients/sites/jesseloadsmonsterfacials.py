@@ -9,6 +9,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
 _ACTORS: dict[str, list[str]] = load_site_json(__file__, 'jesseloads_actors')
@@ -67,7 +68,7 @@ class JesseLoadsMonsterFacialsClient(Client):
             summary = _WS_RE.sub(' ', node.xpath('normalize-space((.//td[@height="105" or @height="90"])[1])').get() or '').strip()
             if not summary:
                 continue
-            poster = (node.xpath('(.//img[contains(@src,"tour")][@width="400"]/@src)[1]').get() or '').strip()
+            poster = first_attr(node, '(.//img[contains(@src,"tour")][@width="400"]/@src)[1]')
             if not poster:
                 continue
 

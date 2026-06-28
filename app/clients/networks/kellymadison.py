@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Kelly Madison Productions'
 _NATS_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w'
@@ -45,7 +46,7 @@ class KellyMadisonClient(Client):
         return (source.xpath('(.//h3)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -57,7 +58,7 @@ class KellyMadisonClient(Client):
         if not scene_id:
             return None
         episode_id = (source.xpath('(.//span[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').split('#')[-1].strip()
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         scene_url = absolute_url(href, loaded.site.base_url) if href else ''
         search_id = scene_url.rstrip('/').split('/')[-1]
         return 100 if scene_id in (episode_id, search_id) else None
@@ -107,8 +108,8 @@ class KellyMadisonClient(Client):
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name and href:
                 refs.append((name, href))
         actors: list[ActorResult] = []
@@ -119,7 +120,7 @@ class KellyMadisonClient(Client):
             seen.add(name)
             actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {name}')
-            raw = (page['sel'].xpath('(//div[contains(@class,"one")]//img)[1]/@src').get() or '').strip() if page else ''
+            raw = first_attr(page['sel'], '(//div[contains(@class,"one")]//img)[1]/@src') if page else ''
             photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None

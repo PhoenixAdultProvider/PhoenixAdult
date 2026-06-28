@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PlayboyPlusClient(Client):
@@ -18,7 +18,7 @@ class PlayboyPlusClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[@id="search-results-gallery"]//li[contains(@class,"item")]'):
             title = first_text(card, './/h3[contains(@class,"title")]')
-            href = (card.xpath('(.//a[contains(@class,"cardLink")]/@href)[1]').get() or '').strip()
+            href = first_attr(card, '(.//a[contains(@class,"cardLink")]/@href)[1]')
             if not title or not href:
                 continue
             url = href if href.startswith('http') else base + href

@@ -7,7 +7,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_string, web_search_urls
 from app.utils.searchengines import web_search_available
 
 STUDIO = 'Score Group'
@@ -62,8 +62,8 @@ class ScoreGroupClient(Client):
             ]
 
         anchor = source.xpath('(.//a[contains(@class,"title")])[1]')
-        raw_title = (anchor.xpath('string(.)').get() or '').strip()
-        href = (anchor.xpath('@href').get() or '').strip().split('?')[0]
+        raw_title = first_string(anchor)
+        href = first_attr(anchor, '@href').split('?')[0]
         if not raw_title or not href:
             return []
         scene_url = absolute_url(href, loaded.site.base_url)
@@ -75,7 +75,7 @@ class ScoreGroupClient(Client):
                 'date': ctx.search_date,
                 'title': raw_title,
                 'actors': (source.xpath('(.//small[contains(@class,"i-model")])[1]').xpath('string(.)').get() or '').strip(),
-                'img': (source.xpath('(.//img)[1]/@src').get() or '').strip(),
+                'img': first_attr(source, '(.//img)[1]/@src'),
             }
         )
         return [
@@ -126,7 +126,7 @@ class ScoreGroupClient(Client):
             return _clean_title(packed['title'])
         raw = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            names = [n for n in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//div//span[@class="value"]/a')) if n]
+            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div//span[@class="value"]/a')) if n]
             raw = ' and '.join(names)
         return _clean_title(raw) or None if raw else None
 
@@ -174,8 +174,8 @@ class ScoreGroupClient(Client):
 
         base = scene.site.base_url
         for el in scene.sel.xpath('//div//span[@class="value"]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip().split('?')[0]
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href').split('?')[0]
             if not name or name.lower() == 'extra' or name in seen:
                 continue
             seen.add(name)
@@ -183,7 +183,7 @@ class ScoreGroupClient(Client):
             photo = ''
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-                photo = (page['sel'].xpath('(//div[contains(@class,"item-img")]//img)[1]/@src').get() or '').strip() if page else ''
+                photo = first_attr(page['sel'], '(//div[contains(@class,"item-img")]//img)[1]/@src') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):

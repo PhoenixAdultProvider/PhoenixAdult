@@ -6,13 +6,14 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Killergram'
 _TITLE_RE = re.compile(r'/models/([\w ]+)/\1_([\w ]+)/')
 
 
 def _extract_title(sel: Any) -> str:
-    src = (sel.xpath('(//img[@id="episode_001"])[1]/@src').get() or '').strip()
+    src = first_attr(sel, '(//img[@id="episode_001"])[1]/@src')
     m = _TITLE_RE.search(src)
     return m.group(2).strip() if m else ''
 
@@ -93,7 +94,7 @@ class KillergramClient(Client):
             if 'starring' not in (span.xpath('string(.)').get() or '').lower():
                 continue
             for a in span.xpath('../span[contains(@class,"modelstarring")]//a'):
-                name = (a.xpath('normalize-space(.)').get() or '').strip()
+                name = first_attr(a, 'normalize-space(.)')
                 if name and name not in seen:
                     seen.add(name)
                     actors.append(ActorResult(name=name))

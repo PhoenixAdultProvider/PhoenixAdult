@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_XP = '//div[contains(@class,"fltWrap")]/h1/span'
 _DESC_PREFIX = re.compile(r'^Description:\s*')
@@ -85,7 +85,7 @@ class ClubFillyClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//ul[@id="lstSceneFocus"]/li/img'):
-            src = (el.xpath('@src').get() or '').strip()
+            src = first_attr(el, '@src')
             if not src:
                 continue
             abs_url = absolute_url(src, scene.site.base_url)

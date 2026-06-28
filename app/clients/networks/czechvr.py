@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr, first_string
 from app.utils.processors.similarity import compare_string
 
 STUDIO = 'CzechVR'
@@ -39,7 +40,7 @@ class CzechVRClient(Client):
         return (source.xpath('(.//div[contains(@class,"nazev")]//h2//a)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -54,7 +55,7 @@ class CzechVRClient(Client):
         return 80 - compare_string(scene_id, cur).levenshtein
 
     async def fetch_search_thumb_url(self, source: Any, loaded: LoadedSearch) -> str | None:
-        thumb = (source.xpath('(.//img)[1]/@data-src').get() or '').strip()
+        thumb = first_attr(source, '(.//img)[1]/@data-src')
         if not thumb:
             return None
         datasrc = _CDN_RE.sub('/cdn-cgi/image//', thumb)
@@ -104,9 +105,9 @@ class CzechVRClient(Client):
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"modelky")]//a'):
-            entries.append(ActorResult(name=(el.xpath('string(.)').get() or '').strip()))
+            entries.append(ActorResult(name=first_string(el)))
         for el in scene.sel.xpath('(//div[contains(@class,"nazev")])[1]//div[contains(@class,"featuring")]//a'):
-            entries.append(ActorResult(name=(el.xpath('string(.)').get() or '').strip()))
+            entries.append(ActorResult(name=first_string(el)))
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

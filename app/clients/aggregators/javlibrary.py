@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, title_distance_score
-from app.utils.helpers.html_helpers import meta_content
+from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
@@ -72,8 +72,8 @@ class JavLibraryClient(Client):
             cards = loaded['sel'].xpath('//div[contains(@class,"video")]')
             if cards:
                 for card in cards:
-                    title = (card.xpath('(.//a/@title)[1]').get() or '').strip()
-                    href = (card.xpath('(.//a/@href)[1]').get() or '').strip()
+                    title = first_attr(card, '(.//a/@title)[1]')
+                    href = first_attr(card, '(.//a/@href)[1]')
                     if not title or not href:
                         continue
                     jav_id = title.split(' ')[0]
@@ -92,7 +92,7 @@ class JavLibraryClient(Client):
                 detail = await self.fetch_and_load(candidate_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {candidate_url}')
                 if not detail:
                     continue
-                post_title = (detail['sel'].xpath('(//h3[contains(@class,"post-title") and contains(@class,"text")]//a)[1]/text()').get() or '').strip()
+                post_title = first_attr(detail['sel'], '(//h3[contains(@class,"post-title") and contains(@class,"text")]//a)[1]/text()')
                 if not post_title:
                     continue
                 title = ' '.join(post_title.split(' ')[1:])
@@ -185,7 +185,7 @@ class JavLibraryClient(Client):
             if raw and raw not in images:
                 images.append(raw)
 
-        poster = (scene.sel.xpath('(//img[@id="video_jacket_img"]/@src)[1]').get() or '').strip()
+        poster = first_attr(scene.sel, '(//img[@id="video_jacket_img"]/@src)[1]')
         if poster and 'https' not in poster:
             poster = f'https:{poster}'
         push(poster)

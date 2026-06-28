@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, meta_content
+from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 
 class UltrafilmsClient(Client):
@@ -22,15 +22,15 @@ class UltrafilmsClient(Client):
         if not loaded:
             return
         for row in loaded['sel'].xpath('//main//article[@data-video-uid]'):
-            title = (row.xpath('(.//a)[1]/@title').get() or '').strip()
-            href = (row.xpath('(.//a)[1]/@href').get() or '').strip()
+            title = first_attr(row, '(.//a)[1]/@title')
+            href = first_attr(row, '(.//a)[1]/@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
             if scene_url in seen:
                 continue
             seen.add(scene_url)
-            poster_url = (row.xpath('(.//img/@data-src)[1]').get() or '').strip()
+            poster_url = first_attr(row, '(.//img/@data-src)[1]')
             results.append(
                 build_search_result(
                     title=title,

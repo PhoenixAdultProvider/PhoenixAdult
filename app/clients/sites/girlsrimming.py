@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import meta_content, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, meta_content, web_search_urls
 
 _ID_SEPARATOR = ' Id '
 _WORD_RE = re.compile(r'\w\S*')
@@ -29,7 +29,7 @@ class GirlsRimmingClient(Client):
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page or page['html'].strip() == 'Page not found':
                 continue
-            title = (page['sel'].xpath('(//h2[contains(@class,"title")]/text())[1]').get() or '').strip()
+            title = first_attr(page['sel'], '(//h2[contains(@class,"title")]/text())[1]')
             if not title:
                 continue
             date = ctx.search_date
@@ -49,7 +49,7 @@ class GirlsRimmingClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h2[contains(@class,"title")]/text())[1]').get() or '').strip() or None
+        return first_attr(scene.sel, '(//h2[contains(@class,"title")]/text())[1]') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
@@ -112,7 +112,7 @@ class GirlsRimmingClient(Client):
                     break
         if not page:
             return ''
-        raw = (page['sel'].xpath('(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]').get() or '').strip()
+        raw = first_attr(page['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
         return join_url(raw, base) if raw else ''
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

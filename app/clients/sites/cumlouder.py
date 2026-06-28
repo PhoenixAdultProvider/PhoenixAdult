@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, relative_iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class CumLouderClient(Client):
@@ -21,7 +21,7 @@ class CumLouderClient(Client):
         return first_text(source, './/h2')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -54,7 +54,7 @@ class CumLouderClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//ul[contains(@class,"tags")]/li/a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         actor_count = len(scene.sel.xpath('//a[contains(@class,"pornstar-link")]'))
@@ -75,7 +75,7 @@ class CumLouderClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//div[contains(@class,"box-video-html5")]/video'):
-            raw = (el.xpath('@lazy').get() or '').strip()
+            raw = first_attr(el, '@lazy')
             if not raw:
                 continue
             abs_url = absolute_url(raw, scene.site.base_url)

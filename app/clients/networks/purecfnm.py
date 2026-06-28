@@ -6,6 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'PureCFNM'
 _GENRES: dict[str, list[str]] = load_site_json(__file__, 'purecfnm_genres')
@@ -34,9 +35,9 @@ class PureCFNMClient(Client):
             raw_date = (block.xpath('(.//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
             date = (iso_date(raw_date) or '') if raw_date else ''
             actors = [
-                n for n in ((a.xpath('normalize-space(.)').get() or '').strip() for a in block.xpath('.//span[contains(@class,"tour_update_models")]//a')) if n
+                n for n in (first_attr(a, 'normalize-space(.)') for a in block.xpath('.//span[contains(@class,"tour_update_models")]//a')) if n
             ]
-            poster = (block.xpath('(.//div[contains(@class,"update_image")]//a//img)[1]/@src').get() or '').strip()
+            poster = first_attr(block, '(.//div[contains(@class,"update_image")]//a//img)[1]/@src')
             packed = pack_cur_id([json.dumps({'title': title, 'summary': summary, 'release_date': date, 'actors': actors, 'poster': poster})])
             results.append(
                 build_search_result(

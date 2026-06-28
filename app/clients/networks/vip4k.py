@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'VIP4K'
 _GENRES: dict[str, list[str]] = load_site_json(__file__, 'vip4k_genres')
@@ -34,8 +35,8 @@ class VIP4KClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item__description")]'):
             anchor = card.xpath('(.//a[contains(@class,"item__title")])[1]')
-            raw_title = (anchor.xpath('string(.)').get() or '').strip()
-            href = (anchor.xpath('@href').get() or '').strip()
+            raw_title = first_string(anchor)
+            href = first_attr(anchor, '@href')
             if not raw_title or not href:
                 continue
             scene_url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'

@@ -6,6 +6,7 @@ from typing import Any, Literal, cast
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 
 STUDIO = 'Adult Empire Cash'
@@ -38,15 +39,15 @@ def _upgrade_image(src: str) -> str:
 
 def _row_title_href(row: Any, variant: Variant) -> tuple[str, str]:
     if variant == 'imgFullFluid':
-        title = (row.xpath('.//img[contains(@class,"img-full-fluid")]/@title').get() or '').strip()
-        href = (row.xpath('.//article[contains(@class,"scene-update")]/a/@href').get() or '').strip()
+        title = first_attr(row, './/img[contains(@class,"img-full-fluid")]/@title')
+        href = first_attr(row, './/article[contains(@class,"scene-update")]/a/@href')
     elif variant == 'sceneTitleP':
         raw = row.xpath('(.//a[@class="scene-title"]/p)[1]/text()').get() or ''
         title = raw.split(' | ')[0].strip()
-        href = (row.xpath('.//a[@class="scene-title"]/@href').get() or '').strip()
+        href = first_attr(row, './/a[@class="scene-title"]/@href')
     else:
-        title = (row.xpath('(.//a[@class="scene-title"]/h6)[1]/text()').get() or '').strip()
-        href = (row.xpath('.//a[@class="scene-title"]/@href').get() or '').strip()
+        title = first_attr(row, '(.//a[@class="scene-title"]/h6)[1]/text()')
+        href = first_attr(row, './/a[@class="scene-title"]/@href')
     return title, href
 
 
@@ -95,7 +96,7 @@ class AdultEmpireCashClient(Client):
             direct_url = f'{base}/{ctx.scene_id}/{slugify(ctx.title)}.html'
             loaded = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'GET {direct_url}')
             if loaded:
-                title = (loaded['sel'].xpath('(//h1[@class="description"])[1]/text()').get() or '').strip()
+                title = first_attr(loaded['sel'], '(//h1[@class="description"])[1]/text()')
                 if title:
                     results.append(build_search_result(title=title, scene_url=direct_url, query=ctx.title, score=100))
 
@@ -109,7 +110,7 @@ class AdultEmpireCashClient(Client):
                 if not title or not href:
                     continue
                 abs_url = absolute_url(href, ctx.site_info.base_url)
-                date_raw = (row.xpath('(.//span[@class="date"])[1]/text()').get() or '').strip()
+                date_raw = first_attr(row, '(.//span[@class="date"])[1]/text()')
                 date_iso = iso_date(date_raw, _DATE_FMT) if date_raw else None
                 results.append(
                     build_search_result(
@@ -130,22 +131,22 @@ class AdultEmpireCashClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h1[@class="description"])[1]/text()').get() or '').strip() or None
+        return first_attr(scene.sel, '(//h1[@class="description"])[1]/text()') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@class="synopsis"]/p)[1]/text()').get() or '').strip() or None
+        return first_attr(scene.sel, '(//div[@class="synopsis"]/p)[1]/text()') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return _studio_for(scene.site.name)
 
     async def fetch_tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@class="studio"]//span)[2]/text()').get() or '').strip() or None
+        return first_attr(scene.sel, '(//div[@class="studio"]//span)[2]/text()') or None
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[@class="release-date"])[1]/text()').get() or '').strip()
+        raw = first_attr(scene.sel, '(//div[@class="release-date"])[1]/text()')
         return iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
@@ -153,7 +154,7 @@ class AdultEmpireCashClient(Client):
         xp = _GENRE_XPATH_OVERRIDES.get(scene.site.name, _DEFAULT_GENRE_XPATH)
         genres: list[str] = []
         for a in scene.sel.xpath(xp):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g:
                 genres.extend(p.strip() for p in g.split('/') if p.strip())
         return genres or None
@@ -163,13 +164,13 @@ class AdultEmpireCashClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for img in scene.sel.xpath('//div[@class="video-performer"]//img'):
-            name = (img.xpath('@title').get() or '').strip()
-            photo = (img.xpath('@data-bgsrc').get() or '').strip()
+            name = first_attr(img, '@title')
+            photo = first_attr(img, '@data-bgsrc')
             if name and name.lower() not in seen:
                 seen.add(name.lower())
                 actors.append(ActorResult(name=name, photo_url=photo))
         for a in scene.sel.xpath('(//div[contains(@class,"video-performer-container")])[2]/a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if name and name.lower() not in seen:
                 seen.add(name.lower())
                 actors.append(ActorResult(name=name))

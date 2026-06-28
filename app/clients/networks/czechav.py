@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, title_distance_score
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Czech Authentic Videos'
 _CASTING_HOST = 'czechcasting.com'
@@ -23,12 +24,12 @@ class CzechAVClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//*[contains(@class,"search-item")][.//h2]'):
             a = card.xpath('(.//a[.//h2])[1]')
-            title = (a.xpath('string(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            title = first_string(a)
+            href = first_attr(a, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
-            thumb = (card.xpath('(.//img)[1]/@src').get() or '').strip()
+            thumb = first_attr(card, '(.//img)[1]/@src')
 
             m = _TRAILING_ID_RE.search(scene_url.rstrip('/'))
             search_id = int(m.group(1)) if m else 0
@@ -58,8 +59,8 @@ class CzechAVClient(Client):
         ps = scene.sel.xpath('//div[contains(@class,"read-more")]//p')
         if not ps:
             return None
-        second = (ps[1].xpath('string(.)').get() or '').strip() if len(ps) > 1 else ''
-        first = (ps[0].xpath('string(.)').get() or '').strip()
+        second = first_string(ps[1]) if len(ps) > 1 else ''
+        first = first_string(ps[0])
         return second or first or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
@@ -90,7 +91,7 @@ class CzechAVClient(Client):
             return None
         age = (scene.sel.xpath('(//span[@class="age"])[1]').xpath('string(.)').get() or '').strip()
         full_name = f'{name} {age}' if age else name
-        photo = (scene.sel.xpath('(//div[contains(@class,"gallery")]//a)[1]/@href').get() or '').strip()
+        photo = first_attr(scene.sel, '(//div[contains(@class,"gallery")]//a)[1]/@href')
         return [ActorResult(name=full_name, photo_url=photo)]
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

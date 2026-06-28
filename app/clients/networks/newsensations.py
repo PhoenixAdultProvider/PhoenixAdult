@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
@@ -92,7 +93,7 @@ class NewSensationsClient(Client):
         genres: list[str] = []
         if self._is_dvd(scene):
             for a in scene.sel.xpath('//div[@class="textLink"]//a'):
-                g = (a.xpath('normalize-space(.)').get() or '').strip()
+                g = first_attr(a, 'normalize-space(.)')
                 if g and g not in genres:
                     genres.append(g)
         else:
@@ -112,15 +113,15 @@ class NewSensationsClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(xp):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = (page['sel'].xpath('(//div[@class="modelBioPic"]/img)[1]/@src0_3x').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//div[@class="modelBioPic"]/img)[1]/@src0_3x') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

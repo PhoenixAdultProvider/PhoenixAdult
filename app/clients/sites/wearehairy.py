@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json, to_https
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'We Are Hairy'
 _FIXED_GENRES: list[str] = load_site_json(__file__, 'wearehairy_fixed_genres')
@@ -24,7 +24,7 @@ class WeAreHairyClient(Client):
         return first_text(source, './/p[contains(@class,"title")]//a')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//div[contains(@class,"top")]//p//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//div[contains(@class,"top")]//p//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -67,7 +67,7 @@ class WeAreHairyClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('//div[contains(@class,"tagline")]//p//a'):
-            t = (el.xpath('normalize-space(.)').get() or '').strip()
+            t = first_attr(el, 'normalize-space(.)')
             if t and t not in genres:
                 genres.append(t)
         for g in _FIXED_GENRES:

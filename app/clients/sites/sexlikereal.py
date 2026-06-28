@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
 _STUDIO_CLASS = '_euacs6n160'
 _SUMMARY_CLASS = '_s1jg1wcd75'
@@ -35,7 +35,7 @@ class SexLikeRealClient(Client):
             title = first_text(loaded['sel'], '//h1')
             if not title:
                 continue
-            raw = (loaded['sel'].xpath('(//time/@datetime)[1]').get() or '').strip()
+            raw = first_attr(loaded['sel'], '(//time/@datetime)[1]')
             date = iso_date(raw) if raw else None
             results.append(
                 build_search_result(
@@ -60,7 +60,7 @@ class SexLikeRealClient(Client):
         assert scene.sel is not None
         parts: list[str] = []
         for p in scene.sel.xpath(f'//p[contains(@class,"{_SUMMARY_CLASS}")]'):
-            t = (p.xpath('normalize-space(.)').get() or '').strip()
+            t = first_attr(p, 'normalize-space(.)')
             if t and 'Video specifications' not in t:
                 parts.append(t)
         return '\n'.join(parts) or None
@@ -93,8 +93,8 @@ class SexLikeRealClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(f'//a[contains(@class,"{_ACTOR_CLASS}")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)

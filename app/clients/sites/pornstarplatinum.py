@@ -6,7 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PornstarPlatinumClient(Client):
@@ -21,12 +21,12 @@ class PornstarPlatinumClient(Client):
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch) -> list[SearchResult]:
         anchor = source.xpath('(.//div[contains(@class,"item-content")]//h3//a)[1]')
-        title = (anchor.xpath('normalize-space(.)').get() or '').strip()
-        href = (anchor.xpath('@href').get() or '').strip()
+        title = first_attr(anchor, 'normalize-space(.)')
+        href = first_attr(anchor, '@href')
         if not title or not href:
             return []
         scene_url = absolute_url(href, loaded.site.base_url)
-        poster = (source.xpath('(.//div[contains(@class,"item-header")]//a//img/@rel)[1]').get() or '').strip()
+        poster = first_attr(source, '(.//div[contains(@class,"item-header")]//a//img/@rel)[1]')
         date = iso_date(first_text(source, './/span[contains(@class,"content-date")]'))
         actor = first_text(source, './/span[contains(@class,"marker") and contains(@class,"left")]')
         packed = json.dumps({'url': scene_url, 'title': title, 'releaseDate': date or '', 'poster': poster, 'actor': actor})

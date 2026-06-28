@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Spizoo'
 _PROFILES: dict[str, dict[str, Any]] = load_site_json(__file__, 'spizoo_profiles')
@@ -41,7 +42,7 @@ class SpizooClient(Client):
         seen: set[str] = set()
         for row in loaded['sel'].xpath(f'//{p["search_results"]}'):
             raw_title = (row.xpath(f'(.//{p["search_title"]})[1]').xpath('string(.)').get() or '').strip()
-            href = (row.xpath('(.//a)[1]/@href').get() or '').strip()
+            href = first_attr(row, '(.//a)[1]/@href')
             if not raw_title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -73,7 +74,7 @@ class SpizooClient(Client):
         p = self._profile(scene.site.name)
         raw = (scene.sel.xpath(f'(//{p["detail_title"]})[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            raw = (scene.sel.xpath('(//video)[1]/@data-video').get() or '').strip()
+            raw = first_attr(scene.sel, '(//video)[1]/@data-video')
         return _strip_4k(raw) or None if raw else None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
@@ -94,7 +95,7 @@ class SpizooClient(Client):
 
     def _tagline(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        inline = (scene.sel.xpath('(//i[@id="site"])[1]/@value').get() or '').strip()
+        inline = first_attr(scene.sel, '(//i[@id="site"])[1]/@value')
         if inline:
             return inline
         return scene.site.name if 'Spizoo' not in scene.site.name else STUDIO
@@ -135,7 +136,7 @@ class SpizooClient(Client):
         seen: set[str] = set()
         for el in scene.sel.xpath(f'//{p["actor_container"]}'):
             name = (el.xpath('string(.)').get() or '').replace('.', '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)

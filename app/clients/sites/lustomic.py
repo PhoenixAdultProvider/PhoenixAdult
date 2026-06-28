@@ -4,6 +4,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 
 def _sibling_text(sel: Selector, alt: str, tag: str) -> str:
@@ -77,7 +78,7 @@ class LustomicClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]'):
-            href = (a.xpath('@href').get() or '').strip()
+            href = first_attr(a, '@href')
             if href and href not in images:
                 images.append(href)
         return images

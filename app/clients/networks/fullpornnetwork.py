@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'Full Porn Network'
@@ -66,7 +67,7 @@ class FullPornNetworkClient(Client):
 
         def harvest(sel: Any) -> None:
             for el in sel.xpath('//div[contains(@class,"latest-updates")]//div[@data-setid]'):
-                href = (el.xpath('(.//a[@class="updateimg"])[1]/@href').get() or '').strip()
+                href = first_attr(el, '(.//a[@class="updateimg"])[1]/@href')
                 if not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -83,7 +84,7 @@ class FullPornNetworkClient(Client):
             if not loaded:
                 continue
             harvest(loaded['sel'])
-            next_href = (loaded['sel'].xpath('(//a[contains(@class,"pagenav")])[1]/@href').get() or '').strip()
+            next_href = first_attr(loaded['sel'], '(//a[contains(@class,"pagenav")])[1]/@href')
             if next_href:
                 nxt = await self.fetch_and_load(absolute_url(next_href, ctx.site_info.base_url), FetchCtx(capture=ctx.capture), 'GET model page 2')
                 if nxt:
@@ -122,7 +123,7 @@ class FullPornNetworkClient(Client):
         out = [
             g
             for g in (
-                (a.xpath('normalize-space(.)').get() or '').strip()
+                first_attr(a, 'normalize-space(.)')
                 for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/categories/")]')
             )
             if g
@@ -134,8 +135,8 @@ class FullPornNetworkClient(Client):
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
         for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/models/")]'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if name and href:
                 refs.append((name, absolute_url(href, base)))
         if not refs:
@@ -143,7 +144,7 @@ class FullPornNetworkClient(Client):
         actors: list[ActorResult] = []
         for name, href in refs:
             page = await self.fetch_and_load(href, None, f'GET {href} (model)')
-            raw = (page['sel'].xpath('(//img[@alt="model"])[1]/@src0_3x').get() or '').strip() if page else ''
+            raw = first_attr(page['sel'], '(//img[@alt="model"])[1]/@src0_3x') if page else ''
             actors.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
         return actors or None
 

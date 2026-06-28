@@ -4,6 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Karups'
 _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)\b', re.IGNORECASE)
@@ -31,7 +32,7 @@ class KarupsClient(Client):
         )
         if not search_loaded:
             return []
-        model_href = (search_loaded['sel'].xpath('(//div[contains(@class,"item-inside")]//a)[1]/@href').get() or '').strip()
+        model_href = first_attr(search_loaded['sel'], '(//div[contains(@class,"item-inside")]//a)[1]/@href')
         if not model_href:
             return []
 
@@ -44,7 +45,7 @@ class KarupsClient(Client):
         results: list[SearchResult] = []
         for card in model_loaded['sel'].xpath('//div[contains(@class,"listing-videos")]//div[contains(@class,"item")]'):
             title = (card.xpath(f'(.//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip()
-            href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
+            href = first_attr(card, '(.//a)[1]/@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -103,14 +104,14 @@ class KarupsClient(Client):
         base = scene.site.base_url
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//span[contains(@class,"models")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = (page['sel'].xpath('(//div[contains(@class,"model-thumb")]//img)[1]/@src').get() or '').strip() if page else ''
+                raw = first_attr(page['sel'], '(//div[contains(@class,"model-thumb")]//img)[1]/@src') if page else ''
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

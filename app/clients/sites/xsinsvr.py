@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling::span//a[contains(@class,"tiny-link")]'
 
@@ -23,7 +23,7 @@ class XSinsVRClient(Client):
         return first_text(source, './/a[contains(@class,"tn-video-name")]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a[contains(@class,"tn-video-media")]/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a[contains(@class,"tn-video-media")]/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -72,8 +72,8 @@ class XSinsVRClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(_ACTOR_XP):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -82,7 +82,7 @@ class XSinsVRClient(Client):
                 url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
-                    raw = (page['sel'].xpath('(//div[contains(@class,"model-header__photo")]//img/@src)[1]').get() or '').strip()
+                    raw = first_attr(page['sel'], '(//div[contains(@class,"model-header__photo")]//img/@src)[1]')
                     if raw:
                         photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))

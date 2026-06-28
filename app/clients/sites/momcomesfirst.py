@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.processors.title_case import title_case
 
 _ACTORS: set[str] = set(load_site_json(__file__, 'momcomesfirst_actors'))
@@ -25,7 +25,7 @@ class MomComesFirstClient(Client):
         return first_text(source, './/h2')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//h2//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//h2//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -43,7 +43,7 @@ class MomComesFirstClient(Client):
         assert scene.sel is not None
         parts: list[str] = []
         for p in scene.sel.xpath('//div[contains(@class,"entry-content")]//p'):
-            t = (p.xpath('normalize-space(.)').get() or '').strip()
+            t = first_attr(p, 'normalize-space(.)')
             if t and 'starring' not in t.lower():
                 parts.append(t)
         return '\n'.join(parts) or None
@@ -63,7 +63,7 @@ class MomComesFirstClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
-            g = title_case((a.xpath('normalize-space(.)').get() or '').strip())
+            g = title_case(first_attr(a, 'normalize-space(.)'))
             if g and g.lower() not in _ACTORS and g not in genres:
                 genres.append(g)
         return genres
@@ -72,7 +72,7 @@ class MomComesFirstClient(Client):
         assert scene.sel is not None
         names: list[str] = []
         for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
-            g = title_case((a.xpath('normalize-space(.)').get() or '').strip())
+            g = title_case(first_attr(a, 'normalize-space(.)'))
             if g and g.lower() in _ACTORS:
                 names.append(g)
 

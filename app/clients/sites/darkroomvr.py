@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _READ_LESS_RE = re.compile(r'\s*Read less\s*$', re.IGNORECASE)
 
@@ -24,7 +24,7 @@ class DarkRoomVRClient(Client):
         return first_text(source, './/div[contains(@class,"video-card__title")]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -69,8 +69,8 @@ class DarkRoomVRClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[contains(@class,"video-info__text")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
@@ -78,7 +78,7 @@ class DarkRoomVRClient(Client):
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
-                raw = (actor_page['sel'].xpath('(//img[contains(@class,"pornstar-detail__picture")]/@src)[1]').get() or '').strip()
+                raw = first_attr(actor_page['sel'], '(//img[contains(@class,"pornstar-detail__picture")]/@src)[1]')
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

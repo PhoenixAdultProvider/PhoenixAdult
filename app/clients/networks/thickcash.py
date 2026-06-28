@@ -6,6 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Thick Cash'
 _GENRES: dict[str, list[str]] = load_site_json(__file__, 'thickcash_genres')
@@ -33,7 +34,7 @@ class ThickCashClient(Client):
             summary = (block.xpath('(.//p)[1]').xpath('string(.)').get() or '').strip()
             raw_date = (block.xpath('(.//h4)[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
             date = (iso_date(raw_date) or '') if raw_date else ''
-            poster = (block.xpath('(.//*[@src])[1]/@src').get() or '').strip()
+            poster = first_attr(block, '(.//*[@src])[1]/@src')
             packed = pack_cur_id([json.dumps({'title': title, 'summary': summary, 'release_date': date or ctx.search_date, 'poster': poster})])
             results.append(
                 build_search_result(

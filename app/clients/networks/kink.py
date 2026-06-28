@@ -4,6 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 _VIEWING_COOKIE = 'viewing-preferences=straight%2Cgay'
 _BR_RE = re.compile(r'<br\s*/?>', re.IGNORECASE)
@@ -50,8 +51,8 @@ class KinkClient(Client):
 
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"shoot-card") and contains(@class,"scene")]'):
-            title = (card.xpath('(.//img)[1]/@alt').get() or '').strip()
-            href = (card.xpath('(.//a[contains(@class,"shoot-link")])[1]/@href').get() or '').strip()
+            title = first_attr(card, '(.//img)[1]/@alt')
+            href = first_attr(card, '(.//a[contains(@class,"shoot-link")])[1]/@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -135,7 +136,7 @@ class KinkClient(Client):
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(xp):
             name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if name:
                 refs.append((name, href))
         people: list[ActorResult] = []
@@ -149,7 +150,7 @@ class KinkClient(Client):
                 url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, None, f'[{scene.site.name}] {name}')
                 if page:
-                    photo = (page['sel'].xpath('(//div[contains(@class,"biography-container")]//img)[1]/@src').get() or '').strip()
+                    photo = first_attr(page['sel'], '(//div[contains(@class,"biography-container")]//img)[1]/@src')
             people.append(ActorResult(name=name, photo_url=photo))
         return people
 

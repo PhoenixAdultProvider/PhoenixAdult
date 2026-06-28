@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_LINK_XP = '(.//a[contains(@class,"update_title")])[2]'
 _ADDED_PREFIX = re.compile(r'^Added:\s*', re.IGNORECASE)
@@ -72,8 +72,8 @@ class DesperateAmateursClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//a[starts-with(@href,"sets")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
@@ -81,7 +81,7 @@ class DesperateAmateursClient(Client):
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
-                raw = (actor_page['sel'].xpath('(//img[contains(@class,"thumbs")]/@src)[1]').get() or '').strip()
+                raw = first_attr(actor_page['sel'], '(//img[contains(@class,"thumbs")]/@src)[1]')
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
@@ -90,7 +90,7 @@ class DesperateAmateursClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//div[contains(@class,"gal")]//img'):
-            raw = (el.xpath('@src').get() or '').strip()
+            raw = first_attr(el, '@src')
             if not raw:
                 continue
             abs_url = absolute_url(raw, scene.site.base_url)

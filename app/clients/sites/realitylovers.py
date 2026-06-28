@@ -4,7 +4,7 @@ import httpx2
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 
 
@@ -75,18 +75,18 @@ class RealityLoversClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        values: list[str | None] = [(a.xpath('normalize-space(.)').get() or '').strip().lower() for a in scene.sel.xpath('//span[@itemprop="keywords"]//a')]
+        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//span[@itemprop="keywords"]//a')]
         return self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//span[@itemprop="actors"]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(href, FetchCtx(capture=scene.capture), f'GET {href} (actor)')
                 srcset = (loaded['sel'].xpath('(//img[contains(@class,"girlDetails-posterImage")]/@srcset)[1]').get() or '') if loaded else ''

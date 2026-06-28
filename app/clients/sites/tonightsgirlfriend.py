@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id, strip_query
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Naughty America'
 TAGLINE = "Tonight's Girlfriend"
@@ -37,7 +37,7 @@ class TonightsGirlfriendClient(Client):
                 actor_names = [n for n in (a.xpath('normalize-space(.)').get() or '' for a in row.xpath('.//span[contains(@class,"scene-actors")]//a')) if n]
                 if not actor_names:
                     continue
-                href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
+                href = first_attr(row, '(.//a/@href)[1]')
                 if not href:
                     continue
                 scene_url = (absolute_url(href, base)).split('?')[0]
@@ -98,8 +98,8 @@ class TonightsGirlfriendClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(f'{_GREY_XP}//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -109,7 +109,7 @@ class TonightsGirlfriendClient(Client):
                 abs_url = absolute_url(actor_url, scene.site.base_url)
                 page = await self.fetch_and_load(abs_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
-                    src = (page['sel'].xpath('(//div[contains(@class,"performer-details")]//img/@src)[1]').get() or '').strip()
+                    src = first_attr(page['sel'], '(//div[contains(@class,"performer-details")]//img/@src)[1]')
                     if src:
                         photo = _https(src)
             actors.append(ActorResult(name=name, photo_url=photo))
@@ -122,7 +122,7 @@ class TonightsGirlfriendClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        src = (scene.sel.xpath('(//img[contains(@class,"playcard")]/@src)[1]').get() or '').strip()
+        src = first_attr(scene.sel, '(//img[contains(@class,"playcard")]/@src)[1]')
         if not src:
             return []
         poster = _https(src)
@@ -139,7 +139,7 @@ class TonightsGirlfriendClient(Client):
         assert scene.sel is not None
         names: list[str] = []
         for a in scene.sel.xpath(f'{_GREY_XP}//a'):
-            n = (a.xpath('normalize-space(.)').get() or '').strip()
+            n = first_attr(a, 'normalize-space(.)')
             if n and n not in names:
                 names.append(n)
         return names
@@ -147,7 +147,7 @@ class TonightsGirlfriendClient(Client):
     def _male_actor_names(self, scene: LoadedScene, linked: list[str]) -> list[str]:
         assert scene.sel is not None
         nodes = scene.sel.xpath(_GREY_XP)
-        info = (nodes[0].xpath('normalize-space(.)').get() or '').strip() if nodes else ''
+        info = first_attr(nodes[0], 'normalize-space(.)') if nodes else ''
         if not info:
             return []
         for name in linked:

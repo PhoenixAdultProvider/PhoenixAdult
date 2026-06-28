@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Romero Multimedia'
 _FULLSTORY_ONLY = {'Freeze', 'Plants vs Cunts'}
@@ -37,12 +38,12 @@ class RomeroClient(Client):
         return (source.xpath('(.//h2)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         h2s = source.xpath('.//h2')
-        raw = (h2s[1].xpath('string(.)').get() or '').strip().split('&nbsp')[-1].strip() if len(h2s) > 1 else ''
+        raw = first_string(h2s[1]).split('&nbsp')[-1].strip() if len(h2s) > 1 else ''
         if not raw:
             raw = (source.xpath('(.//div[@class="entry-date"])[1]').xpath('string(.)').get() or '').strip()
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
@@ -51,7 +52,7 @@ class RomeroClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@itemprop="name"]/@content | //h1/text())[1]').get() or '').strip()
+        raw = first_attr(scene.sel, '(//meta[@itemprop="name"]/@content | //h1/text())[1]')
         return _clean_detail_title(raw) or None if raw else None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
@@ -64,7 +65,7 @@ class RomeroClient(Client):
             )
         parts: list[str] = []
         for el in paras:
-            text = (el.xpath('string(.)').get() or '').strip()
+            text = first_string(el)
             if text and text != '\xa0':
                 parts.append(text)
         return '\n'.join(parts).strip() or None
@@ -98,12 +99,12 @@ class RomeroClient(Client):
             links = scene.sel.xpath('//div[contains(@class,"tagsmodels")]//a')
         else:
             links = scene.sel.xpath('//div[contains(@class,"tagsmodels")][./img[@alt="model icon"]]//a')
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip()) for a in links]
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in links]
         return self.dedup_people(entries) or None
 
     async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '').strip()) for a in scene.sel.xpath('//div[contains(@class,"director")]//a')]
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[contains(@class,"director")]//a')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

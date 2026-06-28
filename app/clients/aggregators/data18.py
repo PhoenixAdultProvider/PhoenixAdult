@@ -9,6 +9,7 @@ from dateutil import parser as date_parser
 from parsel import Selector
 
 from app.config.env import env
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 
@@ -144,13 +145,13 @@ class Data18Client:
                 title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
                 if not title_node:
                     continue
-                title_raw = (title_node[0].xpath('normalize-space(.)').get() or '').strip()
+                title_raw = first_attr(title_node[0], 'normalize-space(.)')
                 title_clean = re.sub(r'\W', '', title_raw).lower()
 
                 span = a.xpath('.//span[contains(@class,"gen11")]')
                 date_raw = _direct_text(span[0]) if span else ''
                 search_date = _parse_date(date_raw) if date_raw and date_raw != 'unknown' else None
-                provider = (a.xpath('.//span[contains(@class,"gen11")]//i[1]/text()').get() or '').strip()
+                provider = first_attr(a, './/span[contains(@class,"gen11")]//i[1]/text()')
 
                 network_data = _ScoreInputs(title=query_clean, date=scene_date, provider=providers)
                 data18_data = _ScoreInputs(title=title_clean, date=search_date, provider=provider)
@@ -269,8 +270,8 @@ class Data18Client:
                 title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
                 if not title_node:
                     continue
-                title_raw = (title_node[0].xpath('normalize-space(.)').get() or '').strip()
-                provider = (a.xpath('.//span[contains(@class,"gen11")]//i[1]/text()').get() or '').strip()
+                title_raw = first_attr(title_node[0], 'normalize-space(.)')
+                provider = first_attr(a, './/span[contains(@class,"gen11")]//i[1]/text()')
                 span = a.xpath('.//span[contains(@class,"gen11")]')
                 date_raw = _direct_text(span[0]) if span else ''
                 release_date = self._iso(_parse_date(date_raw)) if date_raw and date_raw != 'unknown' else None

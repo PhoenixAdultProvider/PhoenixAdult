@@ -7,6 +7,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Private'
 _SUPPORTED_LANGS = {'en', 'de', 'fr', 'es', 'nl'}
@@ -39,8 +40,8 @@ class PrivateClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//ul[@id="search_results"]//li[@class="card"]'):
             anchor = card.xpath('(.//h3/a)[1]')
-            title = (anchor.xpath('string(.)').get() or '').strip()
-            href = (anchor.xpath('@href').get() or '').strip()
+            title = first_string(anchor)
+            href = first_attr(anchor, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -89,7 +90,7 @@ class PrivateClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@itemprop="description"])[1]/@content').get() or '').strip() or None
+        return first_attr(scene.sel, '(//meta[@itemprop="description"])[1]/@content') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return STUDIO
@@ -102,14 +103,14 @@ class PrivateClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@itemprop="uploadDate"])[1]/@content').get() or '').strip()
+        raw = first_attr(scene.sel, '(//meta[@itemprop="uploadDate"])[1]/@content')
         return (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//li[@class="tag-tags"]//a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip().lower()
+            g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         return genres or None
@@ -119,11 +120,11 @@ class PrivateClient(Client):
         base = scene.site.base_url
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//li[@class="tag-models"]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
                 srcset = (page['sel'].xpath('(//img[@srcset])[1]/@srcset').get() or '') if page else ''
@@ -148,7 +149,7 @@ class PrivateClient(Client):
                 for href in gallery['sel'].xpath('//a/@href').getall():
                     coll['push'](href)
 
-        content_url = (scene.sel.xpath('(//meta[@itemprop="contentURL"])[1]/@content').get() or '').strip()
+        content_url = first_attr(scene.sel, '(//meta[@itemprop="contentURL"])[1]/@content')
         j = content_url.rfind('upload/')
         k = content_url.rfind('trailers/')
         if j >= 0 and k >= 0:

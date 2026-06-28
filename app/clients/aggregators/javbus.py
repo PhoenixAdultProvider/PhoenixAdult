@@ -6,6 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query, title_distance_score
+from app.utils.helpers.html_helpers import first_attr
 
 _SEARCH_SURFACES = (('Censored', 'search/'), ('Uncensored', 'uncensored/search/'))
 
@@ -51,8 +52,8 @@ class JavBusClient(Client):
                 continue
             for el in loaded['sel'].xpath('//a[contains(@class,"movie-box")]'):
                 title = re.sub(r'\s+', ' ', ''.join(el.xpath('(.//span)[1]/text()').getall())).strip()
-                jav_id = (el.xpath('(.//date)[1]/text()').get() or '').strip()
-                href = (el.xpath('@href').get() or '').strip()
+                jav_id = first_attr(el, '(.//date)[1]/text()')
+                href = first_attr(el, '@href')
                 if not title or not href:
                     continue
                 scene_url = absolute_url(href, base)
@@ -66,7 +67,7 @@ class JavBusClient(Client):
                         scene_url=scene_url,
                         query=ctx.title,
                         score=score,
-                        thumb_url=(el.xpath('(.//img/@src)[1]').get() or '').strip() or None,
+                        thumb_url=first_attr(el, '(.//img/@src)[1]') or None,
                     )
                 )
 
@@ -74,7 +75,7 @@ class JavBusClient(Client):
             direct_url = f'{base}/en/{javid}'
             loaded = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'GET {direct_url} (direct)')
             if loaded and direct_url not in seen:
-                jav_title = re.sub(r' - JavBus$', '', (loaded['sel'].xpath('(//head//title)[1]/text()').get() or '').strip())
+                jav_title = re.sub(r' - JavBus$', '', first_attr(loaded['sel'], '(//head//title)[1]/text()'))
                 if jav_title:
                     seen.add(direct_url)
                     results.append(build_search_result(title=f'[Direct][{javid}] {jav_title}', scene_url=direct_url, query=ctx.title, score=100))
@@ -84,8 +85,8 @@ class JavBusClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        studio = (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip()
-        jav_title = re.sub(r' - JavBus$', '', (scene.sel.xpath('(//head//title)[1]/text()').get() or '').strip())
+        studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
+        jav_title = re.sub(r' - JavBus$', '', first_attr(scene.sel, '(//head//title)[1]/text()'))
         if not jav_title:
             return None
         id_digits = re.sub(r'[-_ ]', '', _javbus_id(scene.url))
@@ -98,22 +99,22 @@ class JavBusClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip() or None
+        return first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()') or None
 
     async def fetch_tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        label = (scene.sel.xpath('(//p//a[contains(@href,"/label/")])[1]/text()').get() or '').strip()
+        label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
             return label
-        series = (scene.sel.xpath('(//p//a[contains(@href,"/series/")])[1]/text()').get() or '').strip()
+        series = first_attr(scene.sel, '(//p//a[contains(@href,"/series/")])[1]/text()')
         return f'Series: {series}' if series else None
 
     async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        label = (scene.sel.xpath('(//p//a[contains(@href,"/label/")])[1]/text()').get() or '').strip()
+        label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
             return [label]
-        studio = (scene.sel.xpath('(//p//a[contains(@href,"/studio/")])[1]/text()').get() or '').strip()
+        studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
         return [studio] if studio else None
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
@@ -142,10 +143,10 @@ class JavBusClient(Client):
         assert scene.sel is not None
         out: list[ActorResult] = []
         for el in scene.sel.xpath('//a[contains(@class,"avatar-box")]'):
-            name = (el.xpath('(.//img/@title)[1]').get() or '').strip()
+            name = first_attr(el, '(.//img/@title)[1]')
             if not name:
                 continue
-            photo = (el.xpath('(.//img/@src)[1]').get() or '').strip()
+            photo = first_attr(el, '(.//img/@src)[1]')
             if photo:
                 photo = absolute_url(photo, scene.site.base_url)
             if photo.split('/')[-1] == 'nowprinting.gif':
@@ -155,7 +156,7 @@ class JavBusClient(Client):
 
     async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        director = (scene.sel.xpath('(//p//a[contains(@href,"/director/")])[1]/text()').get() or '').strip()
+        director = first_attr(scene.sel, '(//p//a[contains(@href,"/director/")])[1]/text()')
         return [ActorResult(name=director)] if director else None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

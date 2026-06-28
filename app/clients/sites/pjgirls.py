@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PJGirlsClient(Client):
@@ -21,7 +21,7 @@ class PJGirlsClient(Client):
         return first_text(source, './/h2')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -64,14 +64,14 @@ class PJGirlsClient(Client):
         assert scene.sel is not None
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('(//div[contains(@class,"info")]/h3)[3]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (loaded['sel'].xpath('(//div[contains(@class,"image")]//img/@src)[1]').get() or '').strip() if loaded else ''
+                raw = first_attr(loaded['sel'], '(//div[contains(@class,"image")]//img/@src)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

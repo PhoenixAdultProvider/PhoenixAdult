@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 _PAYWALL_HOST = 'join.hollyrandall.com'
 
@@ -18,8 +19,8 @@ class HollyRandallClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item-video")]'):
             anchor = card.xpath('(.//div[contains(@class,"item-thumb")]/a)[1]')
-            title = (anchor.xpath('@title').get() or '').strip()
-            href = (anchor.xpath('@href').get() or '').strip()
+            title = first_attr(anchor, '@title')
+            href = first_attr(anchor, '@href')
             if not title or not href or _PAYWALL_HOST in href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)

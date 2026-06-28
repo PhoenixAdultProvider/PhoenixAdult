@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Perfect Gonzo'
 _SUMMARY_DIV = 'col-sm-8 col-md-8 no-padding-side'
@@ -23,10 +24,10 @@ class PerfectGonzoClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('(.//a)[1]/@title').get() or '').strip()
+        return first_attr(source, '(.//a)[1]/@title')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -65,7 +66,7 @@ class PerfectGonzoClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath(f'//div[@class="{_TAGS_DIV}"]//a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip().lower()
+            g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         return genres or None
@@ -76,13 +77,13 @@ class PerfectGonzoClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
             page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-            raw = (page['sel'].xpath('(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src').get() or '').strip() if page else ''
+            raw = first_attr(page['sel'], '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src') if page else ''
             photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None

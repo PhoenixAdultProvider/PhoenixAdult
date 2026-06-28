@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class HoloGirlsVRClient(Client):
@@ -40,8 +40,8 @@ class HoloGirlsVRClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"memVid")]'):
             anchor = card.xpath('(.//div[contains(@class,"memVidTitle")]/a)[1]')
-            title = (anchor.xpath('@title').get() or '').strip()
-            href = (anchor.xpath('@href').get() or '').strip()
+            title = first_attr(anchor, '@title')
+            href = first_attr(anchor, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -91,7 +91,7 @@ class HoloGirlsVRClient(Client):
         entries: list[ActorResult] = []
         for card in scene.sel.xpath('//div[contains(@class,"col-md-3")]'):
             name = first_text(card, './/div[contains(@class,"vidpage-mobilePad")]//a//strong')
-            raw = (card.xpath('(.//img[contains(@class,"imgHover")]/@src)[1]').get() or '').strip()
+            raw = first_attr(card, '(.//img[contains(@class,"imgHover")]/@src)[1]')
             photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)

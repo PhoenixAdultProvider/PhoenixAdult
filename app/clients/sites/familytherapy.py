@@ -9,6 +9,7 @@ from app.clients.sites.clips4sale import Clips4SaleClient
 from app.models.scraper_config import ScraperConfig
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, unpack_cur_id
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Family Therapy'
 _C4S_STUDIO_ID = '81593'
@@ -43,8 +44,8 @@ class FamilyTherapyClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//article'):
                 a = card.xpath('(.//h2//a)[1]')
-                title = (a.xpath('string(.)').get() or '').strip()
-                href = (a.xpath('@href').get() or '').strip()
+                title = first_string(a)
+                href = first_attr(a, '@href')
                 if not title or not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -102,7 +103,7 @@ class FamilyTherapyClient(Client):
 
         genres: list[str] = []
         for el in sel.xpath('//a[@rel="category tag"]'):
-            g = (el.xpath('string(.)').get() or '').strip()
+            g = first_string(el)
             if g and g not in genres:
                 genres.append(g)
 

@@ -8,7 +8,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _FULLTITLE_RE = re.compile(r'content/(.*)/')
 
@@ -31,7 +31,7 @@ class ScrewMeTooClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"fsp")]//article'):
             title = first_text(card, './/h4')
-            href = (card.xpath('(.//*[@href]/@href)[1]').get() or '').strip()
+            href = first_attr(card, '(.//*[@href]/@href)[1]')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -62,8 +62,8 @@ class ScrewMeTooClient(Client):
         actors: list[ActorResult] = []
         last_model_sel: Selector | None = None
         for el in loaded['sel'].xpath('//a[contains(@title,"Model Bio")]'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href:
                 continue
             model_url = absolute_url(href, site.base_url)
@@ -71,7 +71,7 @@ class ScrewMeTooClient(Client):
             photo = ''
             if model:
                 last_model_sel = model['sel']
-                raw = (model['sel'].xpath('(//div[contains(@class,"model-contr-colone")]//*[@src]/@src)[1]').get() or '').strip()
+                raw = first_attr(model['sel'], '(//div[contains(@class,"model-contr-colone")]//*[@src]/@src)[1]')
                 photo = (absolute_url(raw, site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
 

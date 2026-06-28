@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
 _TITLE_FIXES: dict[str, str] = load_site_json(__file__, 'blackpayback_title_fixes')
 
@@ -82,7 +82,7 @@ class BlackPayBackClient(Client):
         for row in studio['sel'].xpath('//table[@id="studio"]/tbody/tr'):
             row_title = (row.xpath('(.//a)[1]/text()').get() or '').split('(')[0].strip()
             if row_title.lower() == title.lower():
-                iafd_href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
+                iafd_href = first_attr(row, '(.//a/@href)[1]')
                 break
         if not iafd_href:
             return None, []
@@ -94,10 +94,10 @@ class BlackPayBackClient(Client):
         release_date = (iso_date(raw_date, '%b %d, %Y') or iso_date(raw_date)) if raw_date else None
         actors: list[ActorResult] = []
         for a in iafd['sel'].xpath('//div[contains(@class,"castbox")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if not name:
                 continue
-            photo = (a.xpath('(.//img/@src)[1]').get() or '').strip()
+            photo = first_attr(a, '(.//img/@src)[1]')
             actors.append(ActorResult(name=name, photo_url=photo))
         return release_date, actors
 

@@ -5,6 +5,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'New Sensations'
@@ -25,7 +26,7 @@ class NewSensationsOtherClient(Client):
         return (source.xpath('(.//a)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -48,17 +49,17 @@ class NewSensationsOtherClient(Client):
         last_actor_page: Any = None
         seen: set[str] = set()
         for el in loaded['sel'].xpath('//span[@class="update_models"]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
             if not name or name in seen:
                 continue
             seen.add(name)
             photo = ''
-            href = (el.xpath('@href').get() or '').strip()
+            href = first_attr(el, '@href')
             if href:
                 page = await self.fetch_and_load(absolute_url(href, site.base_url), FetchCtx(capture=capture), f'GET {href} (actor)')
                 if page:
                     last_actor_page = page['sel']
-                    raw = (page['sel'].xpath('(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]/img)[1]/@src0_1x').get() or '').strip()
+                    raw = first_attr(page['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]/img)[1]/@src0_1x')
                     if raw:
                         photo = absolute_url(raw, site.base_url)
             actors.append(ActorResult(name=name, photo_url=photo))

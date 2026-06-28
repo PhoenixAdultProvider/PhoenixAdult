@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.similarity import compare_string
 
 STUDIO = 'Wankz'
@@ -23,7 +24,7 @@ class WankzClient(Client):
         return (source.xpath('(.//div[contains(@class,"title-wrapper")]//a[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//a)[1]/@href')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
@@ -66,7 +67,7 @@ class WankzClient(Client):
         entries = [
             ActorResult(
                 name=(el.xpath('(.//span)[1]').xpath('string(.)').get() or '').strip(),
-                photo_url=(el.xpath('(.//img)[1]/@src').get() or '').strip(),
+                photo_url=first_attr(el, '(.//img)[1]/@src'),
             )
             for el in scene.sel.xpath('//div[contains(@class,"actors")]//a[contains(@class,"model")]')
         ]

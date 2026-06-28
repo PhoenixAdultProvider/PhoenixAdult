@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from app.utils.helpers.html_helpers import first_attr, first_string
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Deranged Dollars'
@@ -68,7 +69,7 @@ class DerangedDollarsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        out = [g for g in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//p[contains(@class,"tags")]//a')) if g]
+        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[contains(@class,"tags")]//a')) if g]
         return out or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
@@ -117,11 +118,11 @@ class DerangedDollarsClient(Client):
             if not loaded:
                 continue
             for el in loaded['sel'].xpath('//div[contains(@class,"item")]'):
-                raw = (el.xpath('string(.)').get() or '').strip()
+                raw = first_string(el)
                 if not raw:
                     continue
                 name = raw.split(':', 1)[1].strip() if ':' in raw else raw
-                photo_rel = (el.xpath('(.//img)[1]/@src').get() or '').strip()
+                photo_rel = first_attr(el, '(.//img)[1]/@src')
                 photo = absolute_url(photo_rel, scene.site.base_url) if photo_rel else ''
                 entries.append((name, name, photo))
         return entries

@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, load_site_json, strip_query
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Joymii'
 TAGLINE = 'Step Secrets'
@@ -26,7 +26,7 @@ class StepSecretsClient(Client):
         return first_text(source, './/a[contains(@class,"color-title")]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -70,7 +70,7 @@ class StepSecretsClient(Client):
             if not name or name in seen:
                 continue
             seen.add(name)
-            raw = (page['sel'].xpath('(//div[contains(@class,"model-about")]//img/@src)[1]').get() or '').strip()
+            raw = first_attr(page['sel'], '(//div[contains(@class,"model-about")]//img/@src)[1]')
             photo = strip_query(raw) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, meta_content
+from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 UMBRELLA_STUDIO = 'Dorcel Vision'
 _YEAR_RE = re.compile(r'\d{4}')
@@ -26,8 +26,8 @@ class DorcelVisionClient(Client):
             return []
         results: list[SearchResult] = []
         for el in loaded['sel'].xpath('//a[contains(@class,"movies")]'):
-            title = (el.xpath('(.//img/@alt)[1]').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            title = first_attr(el, '(.//img/@alt)[1]')
+            href = first_attr(el, '@href')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -73,7 +73,7 @@ class DorcelVisionClient(Client):
             if not name or name in seen:
                 continue
             seen.add(name)
-            photo_raw = (card.xpath('(.//img/@data-src)[1]').get() or '').strip()
+            photo_raw = first_attr(card, '(.//img/@data-src)[1]')
             photo = absolute_url(photo_raw, scene.site.base_url) if photo_raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors

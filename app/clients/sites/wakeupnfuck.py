@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _CARD_XP = '//a[contains(@class,"scene") and contains(@class,"item") and contains(@class,"light_background")]'
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
@@ -29,7 +29,7 @@ class WakeUpNFuckClient(Client):
         return f'{title} [{actors}]' if actors else title
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('@href').get() or '').strip()
+        href = first_attr(source, '@href')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -74,7 +74,7 @@ class WakeUpNFuckClient(Client):
         entries: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"starring")]//a[contains(@class,"item")]'):
             name = first_text(el, './/p')
-            src = (el.xpath('(.//img/@src)[1]').get() or '').strip()
+            src = first_attr(el, '(.//img/@src)[1]')
             photo = (absolute_url(src, base)) if src else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)

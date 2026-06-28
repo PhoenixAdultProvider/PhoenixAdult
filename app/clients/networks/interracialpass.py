@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 _STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'interracialpass_studios')
 _TITLE_SELECTORS: dict[str, str] = load_site_json(__file__, 'interracialpass_title_selectors')
@@ -43,8 +44,8 @@ class InterracialPassClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//div[contains(@class,"item-video")]'):
                 a = card.xpath('(.//a)[1]')
-                title = (a.xpath('@title').get() or '').strip()
-                href = (a.xpath('@href').get() or '').strip()
+                title = first_attr(a, '@title')
+                href = first_attr(a, '@href')
                 if not title or not href:
                     continue
                 scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -100,7 +101,7 @@ class InterracialPassClient(Client):
             name = (li.xpath('(.//span)[1]').xpath('string(.)').get() or '').strip()
             if not name:
                 continue
-            raw = (li.xpath('(.//img)[1]/@src0_3x').get() or '').strip()
+            raw = first_attr(li, '(.//img)[1]/@src0_3x')
             photo = (raw if raw.startswith('http') else base + raw) if raw else ''
             if is_bbc and name == 'Twins':
                 actors.append(ActorResult(name='Joey White', photo_url=photo))

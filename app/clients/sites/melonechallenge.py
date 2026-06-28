@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -60,7 +60,7 @@ class MeloneChallengeClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//figure//img'):
-            raw = (el.xpath('@src').get() or '').strip()
+            raw = first_attr(el, '@src')
             if not raw:
                 continue
             abs_url = absolute_url(raw, scene.site.base_url)

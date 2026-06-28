@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 
 _DATE_FMT = '%Y %B %d'
 _ROSTER: set[str] = set(load_site_json(__file__, 'queensnake_actors'))
@@ -74,7 +75,7 @@ class QueenSnakeClient(Client):
         assert scene.sel is not None
         genres = ['BDSM', 'S&M']
         for a in scene.sel.xpath('//div[@class="contentPreviewTags"]//a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         return genres
@@ -84,7 +85,7 @@ class QueenSnakeClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//div[@class="contentPreviewTags"]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if not name or name in seen or not _is_qs_actor(name):
                 continue
             seen.add(name)

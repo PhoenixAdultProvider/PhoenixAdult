@@ -6,7 +6,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_XP = '//p[contains(@class,"sub_title")]'
 
@@ -49,7 +49,7 @@ class Kin8tengokuClient(Client):
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if loaded:
             for card in loaded['sel'].xpath('//div[contains(@class,"movie_list")]'):
-                href = (card.xpath('(.//div[contains(@class,"movielisttext03")]//a/@href)[1]').get() or '').strip()
+                href = first_attr(card, '(.//div[contains(@class,"movielisttext03")]//a/@href)[1]')
                 if not href:
                     continue
                 scene_url = href if href.startswith('http') else base + href
@@ -97,7 +97,7 @@ class Kin8tengokuClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath('//tr[contains(.,"Model")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))

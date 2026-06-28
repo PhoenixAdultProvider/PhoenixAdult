@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
-from app.utils.helpers.html_helpers import first_text, meta_content
+from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 from app.utils.logging.logger import logger
 
 STUDIO = 'VRAllure'
@@ -25,7 +25,7 @@ class VRAllureClient(Client):
         title = first_text(loaded['sel'], _TITLE_XP)
         if not title:
             return []
-        canonical = (loaded['sel'].xpath('(//link[@rel="canonical"]/@href)[1]').get() or '').strip()
+        canonical = first_attr(loaded['sel'], '(//link[@rel="canonical"]/@href)[1]')
         scene_url = canonical or search_url
         date_raw = first_text(loaded['sel'], _DATE_XP)
         date = iso_date(date_raw) if date_raw else None
@@ -79,8 +79,8 @@ class VRAllureClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(_ACTOR_LINK_XP):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)

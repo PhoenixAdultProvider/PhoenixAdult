@@ -4,7 +4,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, script_match, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_text, script_match, web_search_urls
 
 
 class ExpliciteArtClient(Client):
@@ -71,7 +71,7 @@ class ExpliciteArtClient(Client):
         assert scene.sel is not None
         links: list[tuple[str, str]] = []
         for a in scene.sel.xpath('//div[contains(@class,"player-info-row")]//a'):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
             href = a.xpath('@href').get() or ''
             if name and href:
                 links.append((name, href))

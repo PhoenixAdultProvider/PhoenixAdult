@@ -8,11 +8,12 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.similarity import compare_string
 
 
 def _parse_ld(sel: Selector) -> dict[str, Any] | None:
-    text = (sel.xpath('(//script[@type="application/ld+json"])[1]/text()').get() or '').strip()
+    text = first_attr(sel, '(//script[@type="application/ld+json"])[1]/text()')
     if not text:
         return None
     try:
@@ -32,12 +33,12 @@ class POVRClient(Client):
 
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"thumbnail-wrap")]/div'):
-            title = (card.xpath('normalize-space((.//h6[contains(@class,"thumbnail__title")])[1])').get() or '').strip()
-            href = (card.xpath('(.//a[contains(@class,"thumbnail__link")]/@href)[1]').get() or '').strip()
+            title = first_attr(card, 'normalize-space((.//h6[contains(@class,"thumbnail__title")])[1])')
+            href = first_attr(card, '(.//a[contains(@class,"thumbnail__link")]/@href)[1]')
             if not title or not href:
                 continue
             url = absolute_url(href, ctx.site_info.base_url)
-            sub_site = (card.xpath('normalize-space((.//a[contains(@class,"thumbnail__footer-link")])[1])').get() or '').strip()
+            sub_site = first_attr(card, 'normalize-space((.//a[contains(@class,"thumbnail__footer-link")])[1])')
 
             site_dist = compare_string(sub_site.lower().replace('originals', ''), ctx.site_info.name.lower()).levenshtein
             title_dist = compare_string(ctx.title.lower(), title.lower()).levenshtein
@@ -98,7 +99,7 @@ class POVRClient(Client):
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         values: list[str | None] = [
-            (a.xpath('normalize-space(.)').get() or '').strip().lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')
+            first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')
         ]
         return self.dedup_strings(values)
 

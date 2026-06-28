@@ -9,6 +9,7 @@ from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, 
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
 from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score, to_https
+from app.utils.helpers.html_helpers import first_attr, first_string
 from app.utils.logging.logger import logger
 
 STUDIO = 'Nubiles'
@@ -78,7 +79,7 @@ class NubilesClient(Client):
                 seen = {r.cur_id for r in results}
                 for el in sel.xpath('//div[contains(@class,"content-grid-item")]'):
                     title_a = el.xpath('(.//span[@class="title"]/a)[1]')
-                    link_raw = (title_a.xpath('@href').get() or '').strip()
+                    link_raw = first_attr(title_a, '@href')
                     raw_title = title_a.xpath('string(.)').get() or ''
                     parts = [p.strip() for p in raw_title.split('-')]
                     display_title = f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]
@@ -121,7 +122,7 @@ class NubilesClient(Client):
         if block:
             return block.split('Show More')[0].strip()
         paragraphs = [
-            (p.xpath('string(.)').get() or '').strip()
+            first_string(p)
             for p in scene.sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')
         ]
         return '\n\n'.join(p for p in paragraphs if p).strip()
@@ -153,7 +154,7 @@ class NubilesClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//div[@class="categories"]/a'):
-            g = (a.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(a, 'normalize-space(.)')
             lc = g.lower()
             if g and '.com' not in lc and '.xxx' not in lc:
                 genres.append(g)
@@ -164,8 +165,8 @@ class NubilesClient(Client):
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"content-pane-performer")]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href:
                 continue
             actors.append(await self._fetch_actor(name, href if href.startswith('http') else base + href, scene.site.base_url))
@@ -182,14 +183,14 @@ class NubilesClient(Client):
         sel = await self._get(profile_url, base_url, None, f'GET {profile_url} (actor)')
         if sel is None:
             return ActorResult(name=name)
-        photo = to_https((sel.xpath('(//div[contains(@class,"model-profile")]//img)[1]/@src').get() or '').strip())
+        photo = to_https(first_attr(sel, '(//div[contains(@class,"model-profile")]//img)[1]/@src'))
         gender = 'female' if sel.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
         return ActorResult(name=name, photo_url=photo, gender=gender)
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         out: list[str] = []
-        poster = (scene.sel.xpath('(//video)[1]/@poster').get() or '').strip()
+        poster = first_attr(scene.sel, '(//video)[1]/@poster')
         if poster:
             out.append(to_https(poster))
 
@@ -208,7 +209,7 @@ class NubilesClient(Client):
     def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
         for a in sel.xpath('//div[contains(@class,"content-pane-related-links")]/a'):
             if 'Pic' in (a.xpath('string(.)').get() or ''):
-                href = (a.xpath('@href').get() or '').strip()
+                href = first_attr(a, '@href')
                 if href:
                     return href if href.startswith('http') else base + href
         poster = (sel.xpath('(//video)[1]/@poster').get() or sel.xpath('(//div[@class="fake-video-player"]/img)[1]/@src').get() or '').strip()

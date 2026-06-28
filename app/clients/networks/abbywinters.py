@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 
 STUDIO = 'Abby Winters'
@@ -44,7 +45,7 @@ class AbbyWintersClient(Client):
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
         if not loaded:
             return []
-        total_raw = (loaded['sel'].xpath('(//span[@id="browse-total-count"])[1]/text()').get() or '').strip()
+        total_raw = first_attr(loaded['sel'], '(//span[@id="browse-total-count"])[1]/text()')
         if total_raw.isdigit() and int(total_raw) == 0:
             return []
 
@@ -146,7 +147,7 @@ class AbbyWintersClient(Client):
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         genres = [
-            g for g in ((a.xpath('normalize-space(.)').get() or '').strip() for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g
+            g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g
         ]
         return genres or None
 
@@ -156,15 +157,15 @@ class AbbyWintersClient(Client):
         refs: list[tuple[str, str]] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//tr[contains(.,"Scene")]//a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name and href and name not in seen:
                 seen.add(name)
                 refs.append((name, absolute_url(href, base)))
         actors: list[ActorResult] = []
         for name, href in refs:
             page = await self.fetch_and_load(href, None, f'GET {href} (actor)')
-            photo = (page['sel'].xpath('(//img[contains(@class,"img-responsive")]/@src)[1]').get() or '').strip() if page else ''
+            photo = first_attr(page['sel'], '(//img[contains(@class,"img-responsive")]/@src)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 

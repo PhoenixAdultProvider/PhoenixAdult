@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
 _GALLERY_FIXES: dict[str, str] = load_site_json(__file__, 'colette_gallery_fixes')
 
@@ -89,8 +89,8 @@ class ColetteClient(Client):
         assert scene.sel is not None
         links: list[tuple[str, str]] = []
         for el in scene.sel.xpath(_CAST_XP):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if name and href:
                 links.append((name, href))
 

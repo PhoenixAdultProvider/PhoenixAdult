@@ -5,7 +5,7 @@ import json
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class BrandNewAmateursClient(Client):
@@ -18,8 +18,8 @@ class BrandNewAmateursClient(Client):
 
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item-video")]'):
-            title = (card.xpath('(.//div[contains(@class,"item-thumb")]//a/@title)[1]').get() or '').strip()
-            href = (card.xpath('(.//div[contains(@class,"item-thumb")]//a/@href)[1]').get() or '').strip()
+            title = first_attr(card, '(.//div[contains(@class,"item-thumb")]//a/@title)[1]')
+            href = first_attr(card, '(.//div[contains(@class,"item-thumb")]//a/@href)[1]')
             if not title or not href:
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
@@ -76,7 +76,7 @@ class BrandNewAmateursClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        poster = (scene.sel.xpath('(//meta[contains(@name,"twitter:image")]/@content)[1]').get() or '').strip()
+        poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
         if not poster:
             return []
         return [absolute_url(poster, scene.site.base_url)]
@@ -91,7 +91,7 @@ class BrandNewAmateursClient(Client):
         name = first_text(model['sel'], '//h3')
         if not name:
             return []
-        photo = (model['sel'].xpath('(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]').get() or '').strip()
+        photo = first_attr(model['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
         if photo and not photo.startswith('http'):
             photo = absolute_url(photo, scene.site.base_url)
         return [ActorResult(name=name, photo_url=photo)]

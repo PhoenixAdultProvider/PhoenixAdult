@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'SinX'
 _ANCHOR = './/div[contains(@class,"video_item--content")]//a'
@@ -76,7 +77,7 @@ class SinXClient(Client):
         entries: list[ActorResult] = []
         for fig in figures:
             name = (fig.xpath('(.//h4)[1]').xpath('string(.)').get() or '').strip()
-            photo = (fig.xpath('(.//img)[1]/@src').get() or '').strip() if single else ''
+            photo = first_attr(fig, '(.//img)[1]/@src') if single else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries) or None
 

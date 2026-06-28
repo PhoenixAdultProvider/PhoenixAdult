@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import decensor, iso_date, load_site_json, title_distance_score
-from app.utils.helpers.html_helpers import meta_content
+from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.processors.title_case import title_case
 
@@ -23,7 +23,7 @@ _LABEL_XP = ' | '.join(f'//{t}' for t in _LABELS)
 def _label_text_value(sel: Any, label: str) -> str:
     target = label.strip()
     for el in sel.xpath(_LABEL_XP):
-        if (el.xpath('normalize-space(.)').get() or '').strip() != target:
+        if first_attr(el, 'normalize-space(.)') != target:
             continue
         for node in el.xpath('following-sibling::text()').getall():
             txt = str(node).strip()
@@ -35,9 +35,9 @@ def _label_text_value(sel: Any, label: str) -> str:
 def _label_link_value(sel: Any, label: str) -> str:
     target = label.strip()
     for el in sel.xpath(_LABEL_XP):
-        if (el.xpath('normalize-space(.)').get() or '').strip() != target:
+        if first_attr(el, 'normalize-space(.)') != target:
             continue
-        return (el.xpath('following-sibling::span[1]//a[1]/text()').get() or '').strip()
+        return first_attr(el, 'following-sibling::span[1]//a[1]/text()')
     return ''
 
 
@@ -65,12 +65,12 @@ class JAVDatabaseClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture, extra={'search_javid': search_javid, 'base': base})
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        raw_title = (source.xpath('(.//div[contains(@class,"mt-auto")]//a)[1]/text()').get() or '').strip()
-        jav_id = (source.xpath('(.//p//a[contains(@class,"cut-text")])[1]/text()').get() or '').strip()
+        raw_title = first_attr(source, '(.//div[contains(@class,"mt-auto")]//a)[1]/text()')
+        jav_id = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/text()')
         return f'[{jav_id}] {raw_title}' if raw_title else ''
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//p//a[contains(@class,"cut-text")])[1]/@href').get() or '').strip()
+        href = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/@href')
         if not href:
             return ''
         base = loaded.extra['base']
@@ -85,7 +85,7 @@ class JAVDatabaseClient(Client):
         search_javid = loaded.extra['search_javid']
         if not search_javid:
             return None
-        jav_id = (source.xpath('(.//p//a[contains(@class,"cut-text")])[1]/text()').get() or '').strip()
+        jav_id = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/text()')
         return title_distance_score(search_javid.lower(), jav_id.lower())
 
     # ── Detail field hooks ────────────────────────────────────────────────────
@@ -125,10 +125,10 @@ class JAVDatabaseClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath(_LABEL_XP):
-            if (el.xpath('normalize-space(.)').get() or '').strip() != 'Genre(s):':
+            if first_attr(el, 'normalize-space(.)') != 'Genre(s):':
                 continue
             for a in el.xpath('following-sibling::*//a'):
-                g = (a.xpath('normalize-space(.)').get() or '').strip()
+                g = first_attr(a, 'normalize-space(.)')
                 if g and g not in genres:
                     genres.append(decensor(g, _CENSORED))
         return genres
@@ -150,7 +150,7 @@ class JAVDatabaseClient(Client):
 
         candidates: list[dict[str, str]] = []
         for card in scene.sel.xpath('(//h4[contains(.,"Actress/Idols")])[1]/..//div[contains(@class,"card-body")]'):
-            name = (card.xpath('(.//a[contains(@class,"cut-text")])[1]/text()').get() or '').strip()
+            name = first_attr(card, '(.//a[contains(@class,"cut-text")])[1]/text()')
             if not name:
                 continue
             if correction_lower is not None and name.lower() not in correction_lower:

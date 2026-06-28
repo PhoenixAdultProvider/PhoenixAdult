@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'VIPissy'
 _SEARCH_ROW_XP = '//div[contains(@style,"position:relative") and contains(@style,"background:black")]'
@@ -29,10 +29,10 @@ class VIPissyClient(Client):
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return (source.xpath('(.//a/@title)[1]').get() or '').strip()
+        return first_attr(source, '(.//a/@title)[1]')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
+        href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
         return absolute_url(href, loaded.site.base_url)
@@ -80,7 +80,7 @@ class VIPissyClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath(_TAGS_LINK_XP):
-            t = (el.xpath('normalize-space(.)').get() or '').strip().lower()
+            t = first_attr(el, 'normalize-space(.)').lower()
             if t and t not in genres:
                 genres.append(t)
         count = len(scene.sel.xpath(_ACTORS_XP))
@@ -95,8 +95,8 @@ class VIPissyClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in scene.sel.xpath(_ACTORS_XP):
-            name = (a.xpath('normalize-space(.)').get() or '').strip()
-            href = (a.xpath('@href').get() or '').strip()
+            name = first_attr(a, 'normalize-space(.)')
+            href = first_attr(a, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)

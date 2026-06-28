@@ -7,6 +7,7 @@ from urllib.parse import quote
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Allure Media'
 _TABLES: dict[str, Any] = load_site_json(__file__, 'alluremedia_tables')
@@ -38,11 +39,11 @@ class AllureMediaClient(Client):
         for card in loaded['sel'].xpath('//div[contains(@class,"update_details")]'):
             if swallow_salon:
                 anchor = card.xpath('(.//a)[2]')
-                title = (anchor.xpath('string(.)').get() or '').strip()
-                href = (anchor.xpath('@href').get() or '').strip()
+                title = first_string(anchor)
+                href = first_attr(anchor, '@href')
             else:
                 title = (card.xpath('(.//div[contains(@class,"update_title")]//a)[1]').xpath('string(.)').get() or '').strip()
-                href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
+                href = first_attr(card, '(.//a)[1]/@href')
             if not title or not href:
                 continue
             raw_date = (card.xpath('(.//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
@@ -83,7 +84,7 @@ class AllureMediaClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('//span[contains(@class,"update_tags")]//a'):
-            g = decensor((el.xpath('string(.)').get() or '').strip(), _CENSORED).lower()
+            g = decensor(first_string(el), _CENSORED).lower()
             if g and g not in genres:
                 genres.append(g)
         if 'Amateur' not in genres:
@@ -99,8 +100,8 @@ class AllureMediaClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
-            name = (el.xpath('string(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_string(el)
+            href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
             seen.add(name)
@@ -110,7 +111,7 @@ class AllureMediaClient(Client):
                     absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}'
                 )
                 img = (
-                    (page['sel'].xpath('(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src').get() or '').strip()
+                    first_attr(page['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src')
                     if page
                     else ''
                 )
@@ -166,8 +167,8 @@ class AllureMediaClient(Client):
 
         photos_href = ''
         for a in scene.sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
-            if (a.xpath('string(.)').get() or '').strip() == 'Photos':
-                photos_href = (a.xpath('@href').get() or '').strip()
+            if first_string(a) == 'Photos':
+                photos_href = first_attr(a, '@href')
                 break
         photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
         scene.raw_image_referer = photos_url or scene.url

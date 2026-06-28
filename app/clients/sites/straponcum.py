@@ -6,7 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Strapon Cum'
 _WS_RE = re.compile(r'\s+')
@@ -23,7 +23,7 @@ def _date_from_clock(node: Any) -> str | None:
     parents = node.xpath('.//i[contains(@class,"fa-clock")]/..')
     if not parents:
         return None
-    trail = (parents[0].xpath('normalize-space(.)').get() or '').strip()
+    trail = first_attr(parents[0], 'normalize-space(.)')
     parts = trail.split('•')
     if len(parts) < 2:
         return None
@@ -97,7 +97,7 @@ class StraponCumClient(Client):
         assert scene.sel is not None
         genres: list[str] = list(_FIXED_GENRES)
         for el in scene.sel.xpath('//div[contains(@class,"tag-cloud")]//a'):
-            g = (el.xpath('normalize-space(.)').get() or '').strip()
+            g = first_attr(el, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         count = len(scene.sel.xpath(_ACTOR_XP))
@@ -115,21 +115,21 @@ class StraponCumClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath(_ACTOR_XP):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            href = (el.xpath('@href').get() or '').strip()
+            name = first_attr(el, 'normalize-space(.)')
+            href = first_attr(el, '@href')
             if not name or not href or name in seen:
                 continue
             seen.add(name)
             actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = (page['sel'].xpath('(//img[starts-with(@id,"set-target")]/@data-src0_1x)[1]').get() or '').strip() if page else ''
+            photo = first_attr(page['sel'], '(//img[starts-with(@id,"set-target")]/@data-src0_1x)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        scene_id = (scene.sel.xpath('(//div[contains(@class,"trailer")]//img/@alt)[1]').get() or '').strip()
+        scene_id = first_attr(scene.sel, '(//div[contains(@class,"trailer")]//img/@alt)[1]')
         if not scene_id:
             return []
         return [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]
