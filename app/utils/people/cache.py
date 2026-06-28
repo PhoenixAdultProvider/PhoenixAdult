@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx2
 
-from app.config import config
+from app.config import config, people_image_base
 from app.config.env import env
 from app.utils.fs.paths import safe_join
 from app.utils.http.client import make_http
@@ -111,7 +111,7 @@ def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
     gender = parse_person_filename(filename)[2]
     from urllib.parse import quote
 
-    return {'served_url': f'{config.base_url}/images/local/{quote(filename)}', 'gender': gender}
+    return {'served_url': f'{people_image_base()}/images/local/{quote(filename)}', 'gender': gender}
 
 
 def _ext_for(content_type: str, upstream_url: str) -> str:
@@ -198,7 +198,7 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
         face_crop_log.record(directory, name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
     from urllib.parse import quote
 
-    return {'served_url': f'{config.base_url}/images/local/{quote(filename)}', 'gender': gender}
+    return {'served_url': f'{people_image_base()}/images/local/{quote(filename)}', 'gender': gender}
 
 
 def _is_generic(url: str) -> bool:

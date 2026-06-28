@@ -138,6 +138,11 @@ class _Env:
         return os.environ.get('PEOPLE_SOURCE_ORDER')
 
     @property
+    def people_image_url_raw(self) -> str:
+        # How actor/director/producer image links are addressed: baseurl | localhost | localipv4 | localipv6.
+        return _flag('PEOPLE_IMAGE_URL', 'baseurl')
+
+    @property
     def gender_detect_enabled(self) -> bool:
         return _flag('GENDER_DETECT_ENABLE', 'true') != 'false'
 

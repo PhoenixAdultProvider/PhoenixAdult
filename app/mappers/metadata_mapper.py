@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 
 from app.clients.base import SceneDetail, SearchResult
-from app.config import config
+from app.config import config, people_image_base
 from app.models.metadata import (
     PlexCollection,
     PlexGenre,
@@ -104,9 +104,10 @@ class MetadataMapper:
                 people.add_producer(pr.name, pr.photo_url)
         resolved = await people.resolve_all(studio=detail.studio, site_name=detail.studio, referers=referers, cookies=cookies)
 
-        plex_actors = to_plex_roles(resolved['actors'], config.base_url, referers, cookies)
-        plex_directors = to_plex_roles(resolved['directors'], config.base_url, referers, cookies)
-        plex_producers = to_plex_roles(resolved['producers'], config.base_url, referers, cookies)
+        people_base = people_image_base()
+        plex_actors = to_plex_roles(resolved['actors'], people_base, referers, cookies)
+        plex_directors = to_plex_roles(resolved['directors'], people_base, referers, cookies)
+        plex_producers = to_plex_roles(resolved['producers'], people_base, referers, cookies)
 
         effective_date = detail.release_date or fallback_date
         year = int(effective_date[0:4]) if effective_date else None

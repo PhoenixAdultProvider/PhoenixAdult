@@ -158,6 +158,20 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='Local Storage,AdultDVDEmpire,Freeones,IAFD,Indexxx,Boobpedia,Babes and Stars,Babepedia',
     ),
     EnvVarSpec(
+        'PEOPLE_IMAGE_URL',
+        'People image address',
+        'Which base URL actor/director/producer image links use. Plex re-requests these periodically '
+        'and does not keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images '
+        'break — a stable local address is more durable. baseurl = the configured PHOENIX_BASE_URL '
+        '(tunnel/FQDN); localhost = loopback (Plex on this same machine); localipv4/localipv6 = this '
+        "machine's LAN address (Plex elsewhere on the network). Metadata (poster/art) images always use "
+        'baseurl. A metadata refresh in Plex is needed to pick up changed image URLs.',
+        'People cache & sources',
+        'enum',
+        options=['baseurl', 'localhost', 'localipv4', 'localipv6'],
+        default_value='baseurl',
+    ),
+    EnvVarSpec(
         'ADULT_EMPIRE_LOGIN_TOKEN', 'Adult Empire login token', 'Session token for the AdultDVDEmpire actor-photo source.', 'People cache & sources', 'secret'
     ),
     EnvVarSpec(

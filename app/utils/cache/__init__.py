@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 import httpx2
 
-from app.config import config
+from app.config import config, people_image_base
 from app.config.env import env
 from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
@@ -329,7 +329,7 @@ async def backfill_people_images(response: PlexMetadataResponse, site_name: str)
 
     changed = False
     for entries, _, key in groups:
-        roles = to_plex_roles(resolved[key], config.base_url)
+        roles = to_plex_roles(resolved[key], people_image_base())
         by_tag = {p.tag: p for p in roles if p.thumb}
         logger.debug(
             'meta-cache',
