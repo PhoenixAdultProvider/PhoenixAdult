@@ -124,6 +124,11 @@ def format_duration(ms: int | None) -> str | None:
 # ── URLs ──────────────────────────────────────────────────────────────────────
 
 
+def to_https(raw: str) -> str:
+    """Upgrade a protocol-relative URL (//host/x) to https; pass anything else through."""
+    return f'https:{raw}' if raw.startswith('//') else raw
+
+
 def absolute_url(u: str, base_url: str) -> str:
     if not u:
         return ''

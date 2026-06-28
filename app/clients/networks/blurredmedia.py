@@ -19,10 +19,6 @@ from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 _SESSION_COOKIES: dict[str, str] = load_site_json(__file__, 'blurredmedia_session_cookies')
 
 
-def _abs(raw: str, base_url: str) -> str:
-    return raw if raw.startswith('http') else absolute_url(raw, base_url)
-
-
 __testing__ = {'SESSION_COOKIES': _SESSION_COOKIES}
 
 
@@ -53,7 +49,7 @@ class BlurredMediaClient(Client):
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
         href = (source.xpath('(.//a)[1]/@href').get() or '').strip()
-        return _abs(href, loaded.site.base_url) if href else ''
+        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         tok = (source.xpath('(.//p[contains(@class,"video__stats")])[1]').xpath('string(.)').get() or '').split('|')[0].strip()
@@ -112,13 +108,13 @@ class BlurredMediaClient(Client):
         for fig in scene.sel.xpath('//section[@name="modelsBio"]/article/figure'):
             name = (fig.xpath('(.//p//a)[1]').xpath('string(.)').get() or '').strip()
             raw = (fig.xpath('(.//img)[1]/@src').get() or '').strip()
-            entries.append(ActorResult(name=name, photo_url=_abs(raw, base) if raw else ''))
+            entries.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: _abs(raw, base))
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
             '//div[contains(@class,"loading-video")]//img/@src',
             '//ul[contains(@class,"thumbnails__gallery")]//li//a/@href',

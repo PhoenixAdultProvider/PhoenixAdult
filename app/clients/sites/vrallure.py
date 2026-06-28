@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
 from app.utils.helpers.html_helpers import first_text
 from app.utils.logging.logger import logger
 
@@ -10,16 +10,6 @@ _TITLE_XP = '//h1[contains(@class,"latest-scene-title")]'
 _DATE_XP = '//p[contains(@class,"publish-date")]'
 _ACTOR_LINK_XP = '//p[contains(@class,"model-name")]//a[contains(@href,"/models/")]'
 _ACTOR_PHOTO_XP = '//img[@id="model-thumbnail"]/@src'
-
-
-def _with_https(raw: str) -> str:
-    if not raw:
-        return ''
-    if raw.startswith('http'):
-        return raw
-    if raw.startswith('//'):
-        return f'https:{raw}'
-    return raw
 
 
 class VRAllureClient(Client):
@@ -99,7 +89,7 @@ class VRAllureClient(Client):
                 url = href if href.startswith('http') else absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
-                    photo = _with_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip())
+                    photo = to_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip())
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -112,7 +102,7 @@ class VRAllureClient(Client):
             if raw and raw not in images:
                 images.append(raw)
 
-        push(_with_https((scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '').strip()))
+        push(to_https((scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '').strip()))
         for href in scene.sel.xpath(f'{_ACTOR_LINK_XP}/@href').getall():
             href = (href or '').strip()
             if not href:
@@ -120,5 +110,5 @@ class VRAllureClient(Client):
             url = href if href.startswith('http') else absolute_url(href, base)
             page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-art {url}')
             if page:
-                push(_with_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()))
+                push(to_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()))
         return images

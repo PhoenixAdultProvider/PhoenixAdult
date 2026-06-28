@@ -37,14 +37,6 @@ def _title_from(sel: Any, primary: str) -> str:
     return t
 
 
-def _abs(href: str, base_url: str) -> str:
-    if href.startswith('http'):
-        return href
-    if href.startswith('//'):
-        return f'https:{href}'
-    return absolute_url(href, base_url)
-
-
 __testing__ = {'strip_punct': _strip_punct, 'studio_for': _studio_for, 'title_selector_for': _title_selector_for}
 
 
@@ -65,7 +57,7 @@ class BellaPassClient(Client):
                 time = (el.xpath('(.//div[contains(@class,"time")])[1]/text()').get() or '').strip()
                 if not href or not re.match(r'^\d[\d:]*$', time):
                     continue
-                abs_url = _abs(href, ctx.site_info.base_url)
+                abs_url = absolute_url(href, ctx.site_info.base_url)
                 if abs_url not in candidates:
                     candidates.append(abs_url)
 
@@ -151,7 +143,7 @@ class BellaPassClient(Client):
             name = _strip_punct((el.xpath('normalize-space(.)').get() or '').strip())
             href = (el.xpath('@href').get() or '').strip()
             if name:
-                refs.append((name, _abs(href, scene.site.base_url)))
+                refs.append((name, absolute_url(href, scene.site.base_url)))
         actors: list[ActorResult] = []
         for name, actor_url in refs:
             loaded = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')

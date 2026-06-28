@@ -7,7 +7,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
 
 _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
@@ -17,10 +17,6 @@ STUDIO = 'Naughty America'
 _PACE_SECONDS = 2.0
 
 _CARD_XP = '//div[contains(@class,"scene-item")] | //div[@class="scene-grid-item"]'
-
-
-def _https(raw: str) -> str:
-    return f'https:{raw}' if raw.startswith('//') else raw
 
 
 def _scene_path(href: str) -> str:
@@ -145,12 +141,12 @@ class NaughtyAmericaClient(Client):
             slug = name.lower().replace(' ', '-').replace("'", '')
             page = await self._paced(f'{_SCENE_BASE}/pornstar/{slug}', None, f'GET pornstar {slug}')
             raw = (page['sel'].xpath('(//img[contains(@class,"performer-pic")])[1]/@data-src').get() or '').strip() if page else ''
-            actors.append(ActorResult(name=name, photo_url=_https(raw) if raw else ''))
+            actors.append(ActorResult(name=name, photo_url=to_https(raw) if raw else ''))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(_https)
+        coll = self.image_collector(to_https)
         xpaths = (
             '//a[@class="play-trailer"]/picture[1]//source[contains(@data-srcset,"jpg")]/@data-srcset',
             '//dl8-video/@poster[contains(.,"jpg")]',

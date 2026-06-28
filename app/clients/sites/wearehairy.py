@@ -3,21 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json, to_https
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'We Are Hairy'
 _FIXED_GENRES: list[str] = load_site_json(__file__, 'wearehairy_fixed_genres')
-
-
-def _with_https(raw: str) -> str:
-    if not raw:
-        return ''
-    if raw.startswith('http'):
-        return raw
-    if raw.startswith('//'):
-        return f'https:{raw}'
-    return raw
 
 
 class WeAreHairyClient(Client):
@@ -107,7 +97,7 @@ class WeAreHairyClient(Client):
         assert scene.sel is not None
         images: list[str] = []
         for src in scene.sel.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
-            url = _with_https((src or '').strip())
+            url = to_https((src or '').strip())
             if url and url not in images:
                 images.append(url)
         return images

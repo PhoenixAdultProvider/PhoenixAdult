@@ -22,12 +22,6 @@ def _added_date(sel: Any, scope_xp: str) -> str | None:
     return iso_date(raw) if raw else None
 
 
-def _abs(href: str, base_url: str) -> str:
-    if href.startswith('//'):
-        return f'https:{href}'
-    return absolute_url(href, base_url)
-
-
 class GroobyClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         if not web_search_available():
@@ -97,7 +91,7 @@ class GroobyClient(Client):
             name = (el.xpath('normalize-space(.)').get() or '').strip()
             href = (el.xpath('@href').get() or '').strip()
             if name and href:
-                refs.append((name, _abs(href, base)))
+                refs.append((name, absolute_url(href, base)))
         actors: list[ActorResult] = []
         for name, href in refs:
             page = await self.fetch_and_load(href, None, f'GET {href} (actor)')
