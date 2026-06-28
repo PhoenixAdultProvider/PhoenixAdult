@@ -17,11 +17,11 @@ from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
 from app.utils.helpers.helpers import slugify
+from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 
-_IMG_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
 _index: dict[str, str] | None = None
@@ -129,7 +129,7 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
 
 def _ext_of(url: str) -> str:
     suffix = Path(urlsplit(url).path).suffix.lower()
-    return suffix if suffix in _IMG_EXT else '.jpg'
+    return suffix if suffix in IMAGE_EXTS else '.jpg'
 
 
 def _origin(url: str) -> str:

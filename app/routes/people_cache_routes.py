@@ -12,11 +12,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.routes import read_json_body
 from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
+from app.utils.images.ext import IMAGE_EXTS
 from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
 
-_IMG_EXT = {'.jpg', '.jpeg', '.png', '.webp', '.tbn', '.jfif', '.gif'}
 _ROLES = ('actor', 'director', 'producer')
 # gender key -> (css suffix, label)
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female')]
@@ -46,7 +46,7 @@ def _list_people(directory: str) -> list[dict[str, Any]]:
     by_file = {e.get('filename'): e for e in face_crop_log.recent(directory)}
     out: list[dict[str, Any]] = []
     for f in dirp.iterdir():
-        if not f.is_file() or f.suffix.lower() not in _IMG_EXT:
+        if not f.is_file() or f.suffix.lower() not in IMAGE_EXTS:
             continue
         parsed = _parse_filename(f.name)
         if not parsed:

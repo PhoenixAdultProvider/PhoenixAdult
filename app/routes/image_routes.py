@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from app.config.env import env
 from app.utils.fs.paths import safe_join
 from app.utils.http.ssrf_guard import assert_fetchable_url
+from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_image
 from app.utils.logging.logger import logger
@@ -17,7 +18,6 @@ router = APIRouter()
 # short and `images` doesn't appear in the path: GET /cache/<studio>/<sub>/<hash>/<file>.
 cache_router = APIRouter()
 
-_ALLOWED_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
 
 
@@ -27,7 +27,7 @@ def _read_multi(request: Request, key: str) -> list[str]:
 
 @router.get('/local/{filename}')
 async def local_image(filename: str) -> Response:
-    if Path(filename).suffix.lower() not in _ALLOWED_EXT:
+    if Path(filename).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
 
     file_path = safe_join(env.image_dir, filename)
@@ -46,7 +46,7 @@ async def local_image(filename: str) -> Response:
 @cache_router.get('/cache/{splat:path}')
 async def cached_metadata_image(splat: str) -> Response:
     # Serves images frozen by the snapshot cache (<studio>/<sub>/<hash>/images/<file>).
-    if Path(splat).suffix.lower() not in _ALLOWED_EXT:
+    if Path(splat).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
     file_path = safe_join(env.metadata_cache_dir, splat)
     if not file_path or not file_path.exists():
@@ -59,7 +59,7 @@ async def manual_nfo_image(splat: str) -> Response:
     segments = [s for s in splat.split('/') if s]
     if not segments:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
-    if Path(segments[-1]).suffix.lower() not in _ALLOWED_EXT:
+    if Path(segments[-1]).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
     file_path = safe_join(env.manual_nfo_path, *segments)
     if not file_path:

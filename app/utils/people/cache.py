@@ -12,11 +12,10 @@ from app.config.env import env
 from app.utils.fs.paths import safe_join
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.images import face_crop, face_crop_log
+from app.utils.images.ext import IMAGE_EXTS
 from app.utils.logging.logger import logger
 from app.utils.people.generic import generic_image_url
 from app.utils.people.types import Gender, Role
-
-_VALID_EXT = {'.jpg', '.jpeg', '.png', '.webp', '.tbn', '.jfif'}
 
 
 def people_cache_dir() -> str:
@@ -119,10 +118,10 @@ def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
 def _ext_for(content_type: str, upstream_url: str) -> str:
     from_ct = content_type.split('/')[1].split(';')[0].lower() if '/' in content_type else ''
     ext = f'.{"jpg" if from_ct == "jpeg" else from_ct}' if from_ct else ''
-    if not ext or ext not in _VALID_EXT:
+    if not ext or ext not in IMAGE_EXTS:
         tail = upstream_url.split('.')[-1].split('?')[0].lower() if '.' in upstream_url else ''
         ext = f'.{tail}'
-    return ext if ext in _VALID_EXT else ''
+    return ext if ext in IMAGE_EXTS else ''
 
 
 async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
