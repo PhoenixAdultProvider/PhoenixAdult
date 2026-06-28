@@ -6,6 +6,7 @@ import re
 import httpx2
 
 from app.models.metadata import PlexRole
+from app.utils.http.headers import image_request_headers
 from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people.cache import cache_enabled, cache_photo, cache_replace_enabled, lookup_cached
@@ -74,12 +75,7 @@ class _ResolveCtx:
 
 
 def _image_headers(ctx: _ResolveCtx) -> dict[str, str]:
-    headers: dict[str, str] = {}
-    if ctx.referers:
-        headers['Referer'] = ctx.referers[0]
-    if ctx.cookies:
-        headers['Cookie'] = '; '.join(ctx.cookies)
-    return headers
+    return image_request_headers(ctx.referers, ctx.cookies)
 
 
 class PeopleManager:

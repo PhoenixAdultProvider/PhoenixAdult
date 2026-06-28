@@ -15,7 +15,7 @@ from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.logging.logger import logger
 from app.utils.people.generic import generic_image_url
-from app.utils.people.types import Gender, Role
+from app.utils.people.types import Gender, Role, parse_person_filename
 
 
 def people_cache_dir() -> str:
@@ -107,9 +107,7 @@ def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
     filename = _get_index().get(key)
     if not filename:
         return None
-    parsed = Path(filename).stem
-    tail = parsed.split('_')[-1] if '_' in parsed else ''
-    gender: Gender = tail if tail in ('male', 'female', 'trans') else ''  # type: ignore[assignment]
+    gender = parse_person_filename(filename)[2]
     from urllib.parse import quote
 
     return {'served_url': f'{config.base_url}/images/local/{quote(filename)}', 'gender': gender}
@@ -266,9 +264,8 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     if new_gender not in _GENDERS:
         return None
     directory = people_cache_dir()
-    stem = Path(filename).stem  # role.slug[_gender] — parse the base off the name, not the crop log
-    head, _, tail = stem.rpartition('_')
-    root = head if (tail in ('male', 'female', 'trans') and head) else stem  # gender-less role.slug
+    role, slug, _ = parse_person_filename(filename)  # role.slug[_gender] — base off the name
+    root = f'{role}.{slug}' if role else slug  # gender-less role.slug
     if not root:
         return None
     ext = Path(filename).suffix

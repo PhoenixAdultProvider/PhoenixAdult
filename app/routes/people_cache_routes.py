@@ -14,6 +14,7 @@ from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
+from app.utils.people.types import parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
 
@@ -25,15 +26,9 @@ _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-produc
 
 def _parse_filename(filename: str) -> tuple[str, str, str] | None:
     """(role, display_name, gender) from `role.slug[_gender].ext`; None if not a person file."""
-    stem = Path(filename).stem
-    role, sep, rest = stem.partition('.')
-    if not sep or role not in _ROLES or not rest:
+    role, slug, gender = parse_person_filename(filename)
+    if role not in _ROLES or not slug:
         return None
-    head, _, tail = rest.rpartition('_')
-    if tail in ('male', 'female', 'trans') and head:
-        slug, gender = head, tail
-    else:
-        slug, gender = rest, ''
     return role, slug.replace('-', ' ').title(), gender
 
 

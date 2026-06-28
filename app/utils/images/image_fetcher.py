@@ -10,6 +10,7 @@ from PIL import Image
 
 from app.config.env import env
 from app.utils.http.client import DEFAULT_UA
+from app.utils.http.headers import sanitize_header
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.http.ssrf_guard import is_blocked_hostname
 from app.utils.logging.logger import logger
@@ -38,10 +39,6 @@ def _max_bytes() -> int:
     return raw if raw > 0 else _DEFAULT_MAX_BYTES
 
 
-def _sanitize_header(value: str) -> str:
-    return value.replace('\r', '').replace('\n', '').replace('\0', '')
-
-
 def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
     if configured:
         return [*configured, None]
@@ -58,9 +55,9 @@ def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
 async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, cookie: str | None) -> tuple[bytes, str]:
     headers = {'User-Agent': DEFAULT_UA}
     if referer:
-        headers['Referer'] = _sanitize_header(referer)
+        headers['Referer'] = sanitize_header(referer)
     if cookie:
-        headers['Cookie'] = _sanitize_header(cookie)
+        headers['Cookie'] = sanitize_header(cookie)
 
     resp = await client.get(url, headers=headers)
     for redirect in resp.history:
@@ -105,9 +102,9 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
         hdrs: dict[str, str] = {}
         ref = next((r for r in referers if r), None)
         if ref:
-            hdrs['Referer'] = _sanitize_header(ref)
+            hdrs['Referer'] = sanitize_header(ref)
         if cookie_header:
-            hdrs['Cookie'] = _sanitize_header(cookie_header)
+            hdrs['Cookie'] = sanitize_header(cookie_header)
         got = await impersonate_get_bytes(url, hdrs or None)
         if got is not None:
             logger.debug(f'fetchImage: impersonate fetched {url}')
