@@ -45,6 +45,7 @@ class AlignedFormatter(logging.Formatter):
         record.locfield = f'({location:<{_LOCATION_WIDTH}})'
         return super().format(record)
 
+
 # Per-request id (Plex-agent-kit style) — overrides SESSION_ID for the duration
 # of one HTTP request so its logs (match/metadata + scrapers + access line) share it.
 _request_id: contextvars.ContextVar[str] = contextvars.ContextVar('request_id', default=SESSION_ID)

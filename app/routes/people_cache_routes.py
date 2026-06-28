@@ -102,9 +102,7 @@ def _card(entry: dict[str, Any]) -> str:
     if upstream:
         upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
         restore_btn = (
-            f'<button class="restore" onclick="restore({fn!r})">Use original</button>'
-            if cropped
-            else '<button class="restore" disabled>Original kept</button>'
+            f'<button class="restore" onclick="restore({fn!r})">Use original</button>' if cropped else '<button class="restore" disabled>Original kept</button>'
         )
     else:
         upstream_fig = ''
