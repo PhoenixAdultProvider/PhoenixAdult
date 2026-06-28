@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Data18 Porn Database'
@@ -10,7 +10,7 @@ PROVIDER_SEARCH_NOTES = ''
 
 
 def _data18_scenes(name: str) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url='https://data18.com',
@@ -18,7 +18,7 @@ def _data18_scenes(name: str) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='data18scenes'),
+        scraper_type='data18scenes',
         cache_layout='aggregator',  # database spanning many studios+sub-sites → data18scenes/<studio>/<sub-site>
     )
 

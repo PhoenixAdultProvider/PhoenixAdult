@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Holly Randall'
@@ -9,7 +9,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = ''
 
 HOLLYRANDALL_SITES: list[SiteInfo] = [
-    SiteInfo(
+    make_site(
         name=PROVIDER_NAME,
         provider_name='Holly Randall Productions',
         base_url='https://hollyrandall.com',
@@ -17,6 +17,6 @@ HOLLYRANDALL_SITES: list[SiteInfo] = [
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='hollyrandall'),
+        scraper_type='hollyrandall',
     ),
 ]

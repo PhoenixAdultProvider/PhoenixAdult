@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Abby Winters'
@@ -14,7 +14,7 @@ PROVIDER_SEARCH_NOTES = 'Actor only'
 _ALIASES: list[str] = json.loads((Path(__file__).parent / '_data' / 'json' / 'abbywinters_aliases.json').read_text(encoding='utf-8'))
 
 ABBYWINTERS_SITES: list[SiteInfo] = [
-    SiteInfo(
+    make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,
         base_url='https://www.abbywinters.com',
@@ -24,6 +24,6 @@ ABBYWINTERS_SITES: list[SiteInfo] = [
         search_notes=PROVIDER_SEARCH_NOTES,
         aliases=_ALIASES,
         image_referers=['baseurl'],
-        scraper_config=ScraperConfig(type='abbywinters'),
+        scraper_type='abbywinters',
     ),
 ]
