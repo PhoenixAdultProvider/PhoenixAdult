@@ -46,6 +46,8 @@ NODE_ENV=development python -m app.main
 
 The two cache surfaces are admin-guarded the same way as `/config` and `/dev` (loopback or `ADMIN_TOKEN`). They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
 
+See the [configuration document](./docs/configuration.md) for every environment variable — with defaults and detailed usage — and the two ways to set them (`.env` at boot vs the runtime Config UI).
+
 Lint / type-check / test:
 
 ```bash
