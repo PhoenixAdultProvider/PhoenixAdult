@@ -37,10 +37,10 @@ def _clean_name(raw: str) -> str:
 
 
 def _studio_index_for(studio: str, site_name: str) -> str | None:
-    s1 = studio.lower()
-    s2 = site_name.lower()
+    s1 = studio.replace(' ', '').lower()
+    s2 = site_name.replace(' ', '').lower()
     for idx, names in ACTORS_STUDIO_INDEXES.items():
-        lc = [n.lower() for n in names]
+        lc = [n.replace(' ', '').lower() for n in names]
         if s1 in lc or s2 in lc:
             return idx
     return None
