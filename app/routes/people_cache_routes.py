@@ -9,7 +9,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from app.routes.env_auth import env_auth_guard
+from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
 

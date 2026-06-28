@@ -24,7 +24,7 @@ from app.config.env_overrides import (
     is_overridden,
     set_override,
 )
-from app.routes.env_auth import env_auth_guard
+from app.utils.auth.env_auth import env_auth_guard
 from app.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])

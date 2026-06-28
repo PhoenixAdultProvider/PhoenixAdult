@@ -14,9 +14,9 @@ from app.clients.base import RawCaptureEntry, SceneContext, SearchContext
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMetadataResponse
 from app.registry import find_site, get_all_providers, get_sites_for_provider
-from app.routes.env_auth import env_auth_guard
 from app.routes.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
+from app.utils.auth.env_auth import env_auth_guard
 from app.utils.logging.log_capture import begin_capture
 from app.utils.logging.orchestrator_logs import (
     log_detail_summary,
