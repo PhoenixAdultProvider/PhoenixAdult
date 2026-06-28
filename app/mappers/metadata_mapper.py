@@ -114,6 +114,19 @@ class MetadataMapper:
 
         collections = detail.collections if detail.collections else [detail.studio]
 
+        # Where each image in the response is actually served from (debug-only; URLs go
+        # through the redaction filter, so IP literals are always scrubbed). People images
+        # use people_base (often a local address); poster/art/Image use base_url.
+        logger.debug('images', f'people image base -> {people_base}')
+        for label, url in (('thumb', thumb), ('art', art)):
+            if url:
+                logger.debug('images', f'{label} -> {url}')
+        for img in images_proxied:
+            logger.debug('images', f'image[{img.type}] -> {img.url}')
+        for r in (*plex_actors, *plex_directors, *plex_producers):
+            if r.thumb:
+                logger.debug('images', f'person "{r.tag}" -> {r.thumb}')
+
         return PlexMetadata(
             type='movie',
             ratingKey=rating_key,

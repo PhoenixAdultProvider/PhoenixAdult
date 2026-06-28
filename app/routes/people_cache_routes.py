@@ -9,6 +9,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.config import people_image_base
+from app.config.env import env
 from app.routes import read_json_body
 from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
@@ -124,6 +126,8 @@ async def page(request: Request) -> HTMLResponse:
     warn = '' if face_crop.available() else '<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>'
     empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>'
     summary = ' · '.join(f'{counts[r]} {r}{"s" if counts[r] != 1 else ""}' for r in _ROLES)
+    img_base = html.escape(people_image_base())
+    img_opt = html.escape(env.people_image_url_raw)
     cards = '\n'.join(_card(e) for e in entries) or empty
     body = f"""<!doctype html><html><head><meta charset="utf-8"><title>People image cache</title>
     <style>
@@ -154,7 +158,8 @@ async def page(request: Request) -> HTMLResponse:
     </style></head><body>
     <h1>People image cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
-      "Use original" re-downloads the upstream image and replaces the crop (Plex may need a refresh).</div>
+      "Use original" re-downloads the upstream image and replaces the crop (Plex may need a refresh).
+      <br>Serving people images via <code>PEOPLE_IMAGE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
     <div class="grid">{cards}</div>
     <script>
