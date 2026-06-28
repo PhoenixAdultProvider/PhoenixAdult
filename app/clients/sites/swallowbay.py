@@ -5,7 +5,7 @@ import re
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_text, meta_content
 
 STUDIO = 'Swallow Bay'
 _SLUG_RE = re.compile(r"[\s']")
@@ -28,7 +28,7 @@ class SwallowBayClient(Client):
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct-URL {slug}')
         if not loaded:
             return []
-        title = (loaded['sel'].xpath('(//meta[@name="twitter:image:alt"]/@content)[1]').get() or '').strip()
+        title = meta_content(loaded['sel'], 'twitter:image:alt')
         if not title:
             return []
         return [build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))]
@@ -46,7 +46,7 @@ class SwallowBayClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@name="twitter:image:alt"]/@content)[1]').get() or '').strip() or None
+        return meta_content(scene.sel, 'twitter:image:alt') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
@@ -84,5 +84,5 @@ class SwallowBayClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        poster = (scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '').strip()
+        poster = meta_content(scene.sel, 'og:image')
         return [poster] if poster else []

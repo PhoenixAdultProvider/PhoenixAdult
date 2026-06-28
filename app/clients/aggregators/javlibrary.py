@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, title_distance_score
+from app.utils.helpers.html_helpers import meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
@@ -79,9 +80,9 @@ class JavLibraryClient(Client):
                     scene_url = f'{base}/en{href.split(".")[-1]}'
                     add(scene_url, jav_id, title, title_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
             else:
-                og_url = (loaded['sel'].xpath('(//meta[@property="og:url"]/@content)[1]').get() or '').strip()
+                og_url = meta_content(loaded['sel'], 'og:url')
                 if '?v=jav' in og_url:
-                    og = (loaded['sel'].xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip()
+                    og = meta_content(loaded['sel'], 'og:title')
                     if og:
                         add(og_url.replace('//www', 'https://www'), og.split(' ')[0], og, 100)
 
@@ -96,7 +97,7 @@ class JavLibraryClient(Client):
                     continue
                 title = ' '.join(post_title.split(' ')[1:])
                 jav_id = (detail['sel'].xpath('(//td[contains(.,"ID:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
-                og_url = (detail['sel'].xpath('(//meta[@property="og:url"]/@content)[1]').get() or '').strip()
+                og_url = meta_content(detail['sel'], 'og:url')
                 scene_url = (og_url or candidate_url).replace('//www', 'https://www')
                 add(scene_url, jav_id, title, title_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
         except Exception as err:  # noqa: BLE001
@@ -111,11 +112,11 @@ class JavLibraryClient(Client):
 
     def _og_jav_id(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip().split(' ')[0]
+        return meta_content(scene.sel, 'og:title').split(' ')[0]
 
     def _og_title_parts(self, scene: LoadedScene) -> tuple[str, str]:
         assert scene.sel is not None
-        og = (scene.sel.xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip()
+        og = meta_content(scene.sel, 'og:title')
         if not og:
             return '', ''
         jav_id = og.split(' ')[0]

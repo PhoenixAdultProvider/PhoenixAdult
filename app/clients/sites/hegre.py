@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import append_year_param, first_text
+from app.utils.helpers.html_helpers import append_year_param, first_text, meta_content
 
 _DIRECTOR = ActorResult(
     name='Petter Hegre',
@@ -67,7 +67,7 @@ class HegreClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip() or None
+        return meta_content(scene.sel, 'og:title') or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
@@ -121,7 +121,7 @@ class HegreClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@name="twitter:image"]/@content)[1]').get() or '').strip()
+        raw = meta_content(scene.sel, 'twitter:image')
         if not raw:
             return []
         images: list[str] = []

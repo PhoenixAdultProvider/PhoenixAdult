@@ -5,6 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import decensor, iso_date, load_site_json, title_distance_score
+from app.utils.helpers.html_helpers import meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.processors.title_case import title_case
 
@@ -91,7 +92,7 @@ class JAVDatabaseClient(Client):
 
     def _jav_id(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip()
+        return meta_content(scene.sel, 'og:title')
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None

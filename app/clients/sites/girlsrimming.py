@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import web_search_urls
+from app.utils.helpers.html_helpers import meta_content, web_search_urls
 
 _ID_SEPARATOR = ' Id '
 _WORD_RE = re.compile(r'\w\S*')
@@ -53,7 +53,7 @@ class GirlsRimmingClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@name="description"]/@content)[1]').get() or '').strip() or None
+        return meta_content(scene.sel, 'description') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'Girls Rimming'

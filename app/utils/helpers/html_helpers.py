@@ -58,3 +58,9 @@ def first_text(node: Selector, xpath: str) -> str:
     """Normalized text of the first element matching the XPath ('' if none)."""
     nodes = node.xpath(xpath)
     return (nodes[0].xpath('normalize-space(.)').get() or '').strip() if nodes else ''
+
+
+def meta_content(node: Selector, key: str) -> str:
+    """Content of the first <meta property=KEY> or <meta name=KEY> ('' if none).
+    Covers OpenGraph (og:*) and Twitter-card (twitter:*) tags interchangeably."""
+    return (node.xpath(f'(//meta[@property="{key}" or @name="{key}"]/@content)[1]').get() or '').strip()

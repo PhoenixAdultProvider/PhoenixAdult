@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_text, meta_content, web_search_urls
 
 _TRAILER_P_XP = '//div[contains(@class,"trailer") and contains(@class,"topSpace")]//div//p'
 _CAST_XP = _TRAILER_P_XP + '//a'
@@ -24,7 +24,7 @@ class GirlsOutWestClient(Client):
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page or page['html'].strip() == 'Page not found':
                 continue
-            title = (page['sel'].xpath('(//meta[@name="twitter:title"]/@content)[1]').get() or '').strip()
+            title = meta_content(page['sel'], 'twitter:title')
             if not title:
                 continue
             date = self._date_from(page['sel'])
@@ -51,7 +51,7 @@ class GirlsOutWestClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//meta[@name="twitter:title"]/@content)[1]').get() or '').strip() or None
+        return meta_content(scene.sel, 'twitter:title') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'GirlsOutWest'

@@ -6,7 +6,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_text, meta_content
 
 _COLLECTIONS: dict[str, str] = load_site_json(__file__, 'fittingroom_collections')
 
@@ -36,7 +36,7 @@ class FittingRoomClient(Client):
         title = _extract_title(loaded['sel'])
         if not title:
             return []
-        date = (loaded['sel'].xpath('(//meta[@property="video:release_date"]/@content)[1]').get() or '').strip()
+        date = meta_content(loaded['sel'], 'video:release_date')
         return [
             build_search_result(
                 title=title,
@@ -65,7 +65,7 @@ class FittingRoomClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        date = (scene.sel.xpath('(//meta[@property="video:release_date"]/@content)[1]').get() or '').strip()
+        date = meta_content(scene.sel, 'video:release_date')
         return iso_date(date) if date else None
 
     async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:

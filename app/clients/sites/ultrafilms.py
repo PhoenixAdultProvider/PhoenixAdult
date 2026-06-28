@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_text, meta_content
 
 
 class UltrafilmsClient(Client):
@@ -82,7 +82,7 @@ class UltrafilmsClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').strip()
+        raw = meta_content(scene.sel, 'article:published_time')
         if raw:
             parsed = iso_date(raw)
             if parsed:

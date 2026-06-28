@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
-from app.utils.helpers.html_helpers import first_text, web_search_urls
+from app.utils.helpers.html_helpers import first_text, meta_content, web_search_urls
 
 
 def _title_or_text(node: Any) -> str:
@@ -31,7 +31,7 @@ class VRLatinaClient(Client):
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not loaded:
                 continue
-            title = (loaded['sel'].xpath('(//meta[@property="og:title"]/@content)[1]').get() or '').strip()
+            title = meta_content(loaded['sel'], 'og:title')
             if not title:
                 continue
             results.append(

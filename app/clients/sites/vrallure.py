@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_text, meta_content
 from app.utils.logging.logger import logger
 
 STUDIO = 'VRAllure'
@@ -102,7 +102,7 @@ class VRAllureClient(Client):
             if raw and raw not in images:
                 images.append(raw)
 
-        push(to_https((scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '').strip()))
+        push(to_https(meta_content(scene.sel, 'og:image')))
         for href in scene.sel.xpath(f'{_ACTOR_LINK_XP}/@href').getall():
             href = (href or '').strip()
             if not href:

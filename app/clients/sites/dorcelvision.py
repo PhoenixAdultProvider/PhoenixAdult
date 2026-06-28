@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from app.utils.helpers.html_helpers import first_text
+from app.utils.helpers.html_helpers import first_text, meta_content
 
 UMBRELLA_STUDIO = 'Dorcel Vision'
 _YEAR_RE = re.compile(r'\d{4}')
@@ -42,7 +42,7 @@ class DorcelVisionClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        meta = (scene.sel.xpath('(//meta[@name="twitter:description"]/@content)[1]').get() or '').strip()
+        meta = meta_content(scene.sel, 'twitter:description')
         return meta or first_text(scene.sel, '//div[@id="summaryList"]') or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
