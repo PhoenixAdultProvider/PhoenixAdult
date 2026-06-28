@@ -72,6 +72,9 @@ class MetadataService:
 
         await metadata_cache.write(site.name, cur_id, response)
 
-        filter_male_actors(response)  # live path already drops at resolution; this is a no-op safeguard
+        # Filter AFTER the cache write so the snapshot keeps male actors (cached for faster
+        # future gender resolution); only the served response hides them.
+        if removed := filter_male_actors(response):
+            logger.info(provider.id, f'Male-actor filter: hid {removed} actor(s) from ratingKey={rating_key}')
         log_served_images(response)
         return response

@@ -133,9 +133,9 @@ class PeopleManager:
         async with self._sem:
             resolved = await self._resolve_photo(display, entry, role, ctx)
 
-        if role == 'actor' and gender_enabled() and resolved.gender == 'male':
-            logger.info('people', f'skipping male actor "{display}"')
-            return []
+        # Male actors are always resolved + cached (caching their image/gender speeds up
+        # future scenes); the male-actor filter is applied at serve time, not here, so it
+        # also covers already-cached snapshots. See filter_male_actors.
         return [resolved]
 
     async def _detect_gender(self, name: str, role: Role, gender: Gender) -> Gender:
@@ -221,9 +221,10 @@ def _is_male_role(role: PlexRole) -> bool:
 
 
 def filter_male_actors(response: PlexMetadataResponse) -> int:
-    """Drop male actors from the served Role list when the male-actor filter is on.
-    Non-destructive: mutates the in-memory response only, so a cached snapshot keeps
-    every actor on disk while male actors aren't served. Returns the number removed."""
+    """Drop male actors from the served Role list when the male-actor filter (GENDER_ENABLE)
+    is on. The only place male actors are hidden: they're always resolved and cached (faster
+    future gender resolution) and filtered out only when serving. Non-destructive — mutates
+    the in-memory response only, so snapshots keep every actor on disk. Returns count removed."""
     if not gender_enabled():
         return 0
     removed = 0

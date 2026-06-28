@@ -40,12 +40,14 @@ async def test_skip_name() -> None:
     assert res['actors'] == []
 
 
-async def test_gender_drop(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_male_actor_resolved_not_dropped_at_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Male actors are always resolved + cached (faster future gender resolution); they are
+    # hidden at serve time by filter_male_actors, not dropped here.
     monkeypatch.setenv('GENDER_ENABLE', 'true')
     pm = PeopleManager()
     pm.add_actor('John Q Smith', '', 'male')
     res = await pm.resolve_all(studio='', site_name='')
-    assert res['actors'] == []
+    assert [a.gender for a in res['actors']] == ['male']
 
 
 def _response_with_roles(roles: list[dict[str, str]]) -> Any:

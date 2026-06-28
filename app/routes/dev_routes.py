@@ -355,8 +355,9 @@ async def dev_metadata(request: Request) -> JSONResponse:
         # Freeze a snapshot for next time (no-op unless METADATA_CACHE_ENABLE).
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
         snapshot_saved = await metadata_cache.write(site.name, cur_id, response)
+        filter_male_actors(response)  # hide male actors from the preview (after the write — snapshot keeps them)
 
-        roles = metadata.Role or []
+        roles = response.MediaContainer.Metadata[0].Role or []
         directors = metadata.Director or []
         producers = metadata.Producer or []
         collections = metadata.Collection or []
