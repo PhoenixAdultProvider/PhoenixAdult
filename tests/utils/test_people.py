@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 import respx
@@ -44,6 +46,39 @@ async def test_gender_drop(monkeypatch: pytest.MonkeyPatch) -> None:
     pm.add_actor('John Q Smith', '', 'male')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'] == []
+
+
+def _response_with_roles(roles: list[dict[str, str]]) -> Any:
+    from app.models.metadata import PlexMetadataResponse
+
+    return PlexMetadataResponse.model_validate(
+        {'MediaContainer': {'identifier': 'id', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Role': roles}]}}
+    )
+
+
+def test_filter_male_actors_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('GENDER_ENABLE', 'false')
+    from app.utils.people import filter_male_actors
+
+    resp = _response_with_roles([{'tag': 'A', 'gender': 'male'}, {'tag': 'B', 'gender': 'female'}])
+    assert filter_male_actors(resp) == 0
+    assert [r.tag for r in resp.MediaContainer.Metadata[0].Role] == ['A', 'B']
+
+
+def test_filter_male_actors_drops_male_by_field_and_filename(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('GENDER_ENABLE', 'true')
+    from app.utils.people import filter_male_actors
+
+    resp = _response_with_roles(
+        [
+            {'tag': 'Male Field', 'gender': 'male'},
+            {'tag': 'Female', 'gender': 'female'},
+            {'tag': 'Male Filename', 'thumb': '/images/local/actor.male-filename_male.jpg'},
+            {'tag': 'Unknown', 'gender': ''},
+        ]
+    )
+    assert filter_male_actors(resp) == 2
+    assert [r.tag for r in resp.MediaContainer.Metadata[0].Role] == ['Female', 'Unknown']
 
 
 async def test_generic_fallback(monkeypatch: pytest.MonkeyPatch) -> None:

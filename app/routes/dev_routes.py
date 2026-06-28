@@ -25,6 +25,7 @@ from app.utils.logging.orchestrator_logs import (
     log_update_header,
     log_update_provider,
 )
+from app.utils.people import filter_male_actors
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
@@ -300,6 +301,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
         backfilled = await metadata_cache.backfill_people_images(response, site.name)
         if backfilled:
             await metadata_cache.write(site.name, cur_id, response)
+        filter_male_actors(response)  # serve-time filter (after any cache write); mirrors MetadataService
         md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
         steps.append(
             {

@@ -185,7 +185,8 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'GENDER_ENABLE',
         'Drop male actors',
-        'When on, male actors are dropped from the Plex cast list entirely.',
+        'When on, male actors are hidden from the served Plex cast list. Applied at serve time, '
+        'so it also re-filters already-cached scenes (snapshots keep every actor on disk).',
         'Gender handling',
         'boolean',
         default_value='false',

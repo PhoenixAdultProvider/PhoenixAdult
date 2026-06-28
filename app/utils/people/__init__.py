@@ -5,7 +5,7 @@ import re
 
 import httpx2
 
-from app.models.metadata import PlexRole
+from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.utils.http.client import make_http
 from app.utils.http.headers import image_request_headers
 from app.utils.images.proxy import proxy_url
@@ -21,6 +21,7 @@ from app.utils.people.types import (
     PersonLookupContext,
     ResolvedPerson,
     Role,
+    parse_person_filename,
 )
 from app.utils.processors.title_case import title_case
 
@@ -212,4 +213,27 @@ def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[st
     return [PlexRole(tag=p.name, thumb=_proxy_photo(base_url, p.photo, referers, cookies), gender=p.gender or None) for p in people]
 
 
-__all__ = ['PeopleManager', 'to_plex_roles', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']
+def _is_male_role(role: PlexRole) -> bool:
+    gender = (role.gender or '').lower()
+    if not gender and role.thumb and '/images/local/' in role.thumb:
+        gender = parse_person_filename(role.thumb.rsplit('/', 1)[-1])[2]  # gender lives in the cache filename
+    return gender == 'male'
+
+
+def filter_male_actors(response: PlexMetadataResponse) -> int:
+    """Drop male actors from the served Role list when the male-actor filter is on.
+    Non-destructive: mutates the in-memory response only, so a cached snapshot keeps
+    every actor on disk while male actors aren't served. Returns the number removed."""
+    if not gender_enabled():
+        return 0
+    removed = 0
+    for md in response.MediaContainer.Metadata:
+        if not md.Role:
+            continue
+        kept = [r for r in md.Role if not _is_male_role(r)]
+        removed += len(md.Role) - len(kept)
+        md.Role = kept
+    return removed
+
+
+__all__ = ['PeopleManager', 'to_plex_roles', 'filter_male_actors', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']

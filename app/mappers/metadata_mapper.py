@@ -11,6 +11,7 @@ from app.models.metadata import (
     PlexImage,
     PlexMatchResult,
     PlexMetadata,
+    PlexMetadataResponse,
 )
 from app.registry import ResolvedSiteInfo
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -114,19 +115,6 @@ class MetadataMapper:
 
         collections = detail.collections if detail.collections else [detail.studio]
 
-        # Where each image in the response is actually served from (debug-only; URLs go
-        # through the redaction filter, so IP literals are always scrubbed). People images
-        # use people_base (often a local address); poster/art/Image use base_url.
-        logger.debug('images', f'people image base -> {people_base}')
-        for label, url in (('thumb', thumb), ('art', art)):
-            if url:
-                logger.debug('images', f'{label} -> {url}')
-        for img in images_proxied:
-            logger.debug('images', f'image[{img.type}] -> {img.url}')
-        for r in (*plex_actors, *plex_directors, *plex_producers):
-            if r.thumb:
-                logger.debug('images', f'person "{r.tag}" -> {r.thumb}')
-
         return PlexMetadata(
             type='movie',
             ratingKey=rating_key,
@@ -146,3 +134,20 @@ class MetadataMapper:
             Image=images_proxied,
             Collection=[PlexCollection(tag=tag) for tag in collections],
         )
+
+
+def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
+    """Debug-log where each image in the served response points. Fires for both cached
+    and freshly-scraped responses; URLs pass through the redaction filter, so IP literals
+    are always scrubbed. People images use people_image_base(); poster/art use base_url."""
+    logger.debug(label, f'people image base -> {people_image_base()}')
+    for md in response.MediaContainer.Metadata:
+        if md.thumb:
+            logger.debug(label, f'thumb -> {md.thumb}')
+        if md.art:
+            logger.debug(label, f'art -> {md.art}')
+        for img in md.Image or []:
+            logger.debug(label, f'image[{img.type}] -> {img.url}')
+        for r in (*(md.Role or []), *(md.Director or []), *(md.Producer or [])):
+            if r.thumb:
+                logger.debug(label, f'person "{r.tag}" -> {r.thumb}')

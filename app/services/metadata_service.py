@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import SceneContext
-from app.mappers.metadata_mapper import MetadataMapper
+from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
 from app.models.provider_info import ProviderInfo
 from app.registry import find_site
@@ -9,6 +9,7 @@ from app.routes.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger
+from app.utils.people import filter_male_actors
 from app.utils.plex.rating_key import parse_rating_key
 
 
@@ -40,6 +41,10 @@ class MetadataService:
             if await metadata_cache.backfill_people_images(response, site.name):
                 await metadata_cache.write(site.name, cur_id, response)
                 logger.info(provider.id, f'Backfilled missing cast/crew image(s) for ratingKey={rating_key}')
+            # Filter AFTER any cache write so the snapshot keeps every actor on disk.
+            if removed := filter_male_actors(response):
+                logger.info(provider.id, f'Male-actor filter: hid {removed} cached actor(s) from ratingKey={rating_key}')
+            log_served_images(response)
             logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
             return response
 
@@ -67,4 +72,6 @@ class MetadataService:
 
         await metadata_cache.write(site.name, cur_id, response)
 
+        filter_male_actors(response)  # live path already drops at resolution; this is a no-op safeguard
+        log_served_images(response)
         return response

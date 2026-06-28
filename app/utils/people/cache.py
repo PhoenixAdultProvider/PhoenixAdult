@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx2
 
-from app.config import config, people_image_base
+from app.config import people_image_base
 from app.config.env import env
 from app.utils.fs.paths import safe_join
 from app.utils.http.client import make_http
