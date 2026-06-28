@@ -147,7 +147,7 @@ class _Env:
         return _flag('GENDER_DETECT_ENABLE', 'true') != 'false'
 
     @property
-    def GENDER_SKIP_MALE_ENABLEd(self) -> bool:
+    def gender_skip_male_enabled(self) -> bool:
         return _flag('GENDER_SKIP_MALE_ENABLE', 'false') == 'true'
 
     @property
