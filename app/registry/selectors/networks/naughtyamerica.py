@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Naughty America'
@@ -79,7 +79,7 @@ _NAMES = [
 
 
 def _site(name: str) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=PROVIDER_BASE_URL,
@@ -87,7 +87,7 @@ def _site(name: str) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='naughtyamerica'),
+        scraper_type='naughtyamerica',
     )
 
 

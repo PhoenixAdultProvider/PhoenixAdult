@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Reptyle'
@@ -16,7 +16,7 @@ _ALIASES: dict[str, list[str]] = json.loads((Path(__file__).parent / '_data' / '
 
 
 def _site(name: str, base_url: str) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=base_url,
@@ -25,7 +25,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
         aliases=_ALIASES.get(name, []),
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='reptyle', data18_enrichment=True),
+        scraper_type='reptyle', data18_enrichment=True,
     )
 
 

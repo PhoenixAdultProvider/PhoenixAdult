@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = '5K Porn'
@@ -13,7 +13,7 @@ _IMAGE_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
 
 
 def _site(name: str) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=PROVIDER_BASE_URL,
@@ -23,7 +23,7 @@ def _site(name: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         image_referers=['sceneURL'],
         image_cookies=[_IMAGE_COOKIE],
-        scraper_config=ScraperConfig(type='5kporn', data18_enrichment=True),
+        scraper_type='5kporn', data18_enrichment=True,
     )
 
 

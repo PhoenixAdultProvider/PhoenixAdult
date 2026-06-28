@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Teen Mega World'
@@ -12,7 +12,7 @@ _SHARED_HOST = 'teenmegaworld.net'
 
 
 def _site(name: str, host: str = _SHARED_HOST) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=f'https://{host}',
@@ -20,7 +20,7 @@ def _site(name: str, host: str = _SHARED_HOST) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='teenmegaworld'),
+        scraper_type='teenmegaworld',
     )
 
 

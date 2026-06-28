@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Porndoe Premium'
@@ -11,7 +11,7 @@ PROVIDER_SEARCH_PATH = '/search.en.html?q={query}'
 
 
 def _site(name: str, base_url: str) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=base_url,
@@ -19,7 +19,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='porndoepremium'),
+        scraper_type='porndoepremium',
     )
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Gamma'
@@ -16,7 +16,7 @@ _ALIASES: dict[str, list[str]] = json.loads((Path(__file__).parent / '_data' / '
 
 
 def _site(sub_group: str, base_url: str, name: str, aliases: list[str] | None = None) -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         sub_group=sub_group,
@@ -26,7 +26,7 @@ def _site(sub_group: str, base_url: str, name: str, aliases: list[str] | None = 
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         aliases=aliases or [],
-        scraper_config=ScraperConfig(type='gammaentother'),
+        scraper_type='gammaentother',
     )
 
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'High-Tech VR'
@@ -9,7 +9,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'exact'
 
 
 def _site(name: str, host: str, search_path: str, search_notes: str = '') -> SiteInfo:
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=f'https://{host}',
@@ -17,7 +17,7 @@ def _site(name: str, host: str, search_path: str, search_notes: str = '') -> Sit
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=search_notes,
-        scraper_config=ScraperConfig(type='hightechvr'),
+        scraper_type='hightechvr',
     )
 
 

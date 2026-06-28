@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.models.scraper_config import ScraperConfig
+from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'Intersec'
@@ -12,7 +12,7 @@ PROVIDER_SEARCH_NOTES = 'Actor Only'
 
 def _site(name: str, domain: str) -> SiteInfo:
     search_path = f'/iod/home.php?d={domain}&s={{query}}' if domain else '/iod/home.php?s={query}'
-    return SiteInfo(
+    return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=PROVIDER_BASE_URL,
@@ -20,7 +20,7 @@ def _site(name: str, domain: str) -> SiteInfo:
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_config=ScraperConfig(type='intersec'),
+        scraper_type='intersec',
     )
 
 
