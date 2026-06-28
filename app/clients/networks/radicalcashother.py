@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import web_search_urls
 
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
@@ -76,7 +76,7 @@ class RadicalCashOtherClient(Client):
                 )
 
         for raw in await web_search_urls(ctx.title, ctx.site_info, include=['/view/', '/model/'], exclude=['photoset']):
-            url = raw.split('?')[0].replace('dev.', '')
+            url = strip_query(raw).replace('dev.', '')
             if '/model/' in url:
                 actor_page = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model crawl {url}')
                 if not actor_page:

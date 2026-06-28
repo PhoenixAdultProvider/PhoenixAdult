@@ -151,6 +151,11 @@ def to_https(raw: str) -> str:
     return f'https:{raw}' if raw.startswith('//') else raw
 
 
+def strip_query(url: str | None) -> str:
+    """Drop the query string (everything from '?' on); '' for falsy input."""
+    return (url or '').split('?')[0]
+
+
 def absolute_url(u: str, base_url: str) -> str:
     if not u:
         return ''

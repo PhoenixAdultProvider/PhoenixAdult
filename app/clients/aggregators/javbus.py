@@ -5,13 +5,13 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query, title_distance_score
 
 _SEARCH_SURFACES = (('Censored', 'search/'), ('Uncensored', 'uncensored/search/'))
 
 
 def _javbus_id(url: str) -> str:
-    return [p for p in url.split('?')[0].split('/') if p][-1] if [p for p in url.split('?')[0].split('/') if p] else ''
+    return [p for p in strip_query(url).split('/') if p][-1] if [p for p in strip_query(url).split('/') if p] else ''
 
 
 def _derive_cover_thumb(cover_url: str) -> str:

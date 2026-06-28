@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
@@ -59,7 +59,7 @@ class BangClient(Client):
                 found = []
                 logger.warn(ctx.site_info.name, f'web search failed: {err}')
             for raw in found:
-                url = raw.split('?')[0]
+                url = strip_query(raw)
                 if 'com/video/' not in url or 'index.php/' in url or url in seen:
                     continue
                 seen.add(url)

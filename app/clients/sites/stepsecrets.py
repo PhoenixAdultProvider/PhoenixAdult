@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, load_site_json
+from app.utils.helpers.helpers import absolute_url, load_site_json, strip_query
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'Joymii'
@@ -71,7 +71,7 @@ class StepSecretsClient(Client):
                 continue
             seen.add(name)
             raw = (page['sel'].xpath('(//div[contains(@class,"model-about")]//img/@src)[1]').get() or '').strip()
-            photo = raw.split('?')[0] if raw else ''
+            photo = strip_query(raw) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 

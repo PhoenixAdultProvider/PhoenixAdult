@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'Naughty America'
@@ -104,7 +104,7 @@ class TonightsGirlfriendClient(Client):
                 continue
             seen.add(name)
             photo = ''
-            actor_url = href.split('?')[0]
+            actor_url = strip_query(href)
             if actor_url:
                 abs_url = actor_url if actor_url.startswith('http') else absolute_url(actor_url, scene.site.base_url)
                 page = await self.fetch_and_load(abs_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')

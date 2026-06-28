@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, strip_query
 from app.utils.helpers.html_helpers import first_text
 
 
@@ -63,7 +63,7 @@ class XVirtualClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            url = raw.split('?')[0]
+            url = strip_query(raw)
             if not url:
                 return
             abs_url = url if url.startswith('http') else absolute_url(url, scene.site.base_url)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import web_search_urls
 from app.utils.searchengines import web_search_available
 
@@ -37,7 +37,7 @@ class CaramelCashClient(Client):
 
         if web_search_available():
             for u in await web_search_urls(ctx.title, ctx.site_info, include=['video/', 'videos/'], exclude=['/page/']):
-                clean = u.split('?')[0]
+                clean = strip_query(u)
                 if clean not in candidates:
                     candidates.append(clean)
 

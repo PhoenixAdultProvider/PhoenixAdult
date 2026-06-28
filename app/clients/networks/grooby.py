@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Grooby'
@@ -28,7 +28,7 @@ class GroobyClient(Client):
             return []
         host = urlsplit(ctx.site_info.base_url).netloc
         try:
-            candidates = [u.split('?')[0] for u in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/trailers/')]
+            candidates = [strip_query(u) for u in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/trailers/')]
         except Exception:  # noqa: BLE001 - best-effort
             return []
 

@@ -7,7 +7,7 @@ import httpx2
 
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.logging.logger import logger
 
 _TOKEN_RE = re.compile(r'\.access_token="([^"]+)"')
@@ -23,10 +23,6 @@ def _token_origin(base_url: str) -> str:
 
 def _slugify_title(s: str) -> str:
     return s.lower().replace(' ', '-')
-
-
-def _strip_query(url: str | None) -> str:
-    return (url or '').split('?')[0]
 
 
 def _full_name(person: dict[str, Any] | None) -> str:
@@ -182,7 +178,7 @@ class XConfessionsClient(Client):
             if not name or name in seen:
                 continue
             seen.add(name)
-            actors.append(ActorResult(name=name, photo_url=_strip_query(p.get('poster_image'))))
+            actors.append(ActorResult(name=name, photo_url=strip_query(p.get('poster_image'))))
         return actors
 
     async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
@@ -194,7 +190,7 @@ class XConfessionsClient(Client):
         name = _full_name(producer)
         if not name or not isinstance(producer, dict):
             return None
-        return [ActorResult(name=name, photo_url=_strip_query(producer.get('poster_image')))]
+        return [ActorResult(name=name, photo_url=strip_query(producer.get('poster_image')))]
 
     # Legacy set `rating = data.rating * 2`; SceneDetail has no rating slot, so
     # the rating is dropped (parity with the TS port).
@@ -208,10 +204,10 @@ class XConfessionsClient(Client):
                 images.append(raw)
 
         if d.get('poster_picture'):
-            push(_strip_query(d['poster_picture']))
+            push(strip_query(d['poster_picture']))
         elif d.get('banner_image_mobile'):
-            push(_strip_query(d['banner_image_mobile']))
+            push(strip_query(d['banner_image_mobile']))
         for a in d.get('album') or []:
             if a.get('path'):
-                push(_strip_query(a['path']))
+                push(strip_query(a['path']))
         return images
