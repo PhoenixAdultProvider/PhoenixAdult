@@ -5,20 +5,13 @@ from typing import Literal
 
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date
+from app.utils.helpers.helpers import api_date, build_search_result
 
 _CAP_RE = re.compile(r'\b\w')
-_ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
 
 
 def _capitalize(s: str) -> str:
     return _CAP_RE.sub(lambda m: m.group().upper(), s)
-
-
-def _api_date(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    return raw[:10] if _ISO_PREFIX_RE.match(raw) else iso_date(raw)
 
 
 class MetArtClient(Client):
@@ -44,7 +37,7 @@ class MetArtClient(Client):
             scene_url = f'{api}/movie?name={name_slug}&date={date_slug}'
             results.append(
                 build_search_result(
-                    title=it['name'], scene_url=scene_url, query=ctx.title, display_date=_api_date(it.get('publishedAt')), search_date=ctx.search_date
+                    title=it['name'], scene_url=scene_url, query=ctx.title, display_date=api_date(it.get('publishedAt')), search_date=ctx.search_date
                 )
             )
         return results
@@ -82,7 +75,7 @@ class MetArtClient(Client):
             summary=d.get('description') or '',
             studio='MetArt',
             tagline=site.name,
-            release_date=_api_date(d.get('publishedAt')) or fallback_date or None,
+            release_date=api_date(d.get('publishedAt')) or fallback_date or None,
             collections=[site.name],
             genres=genres,
             actors=actors,

@@ -1,25 +1,14 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
 
 _TAG_RE = re.compile(r'<[^>]+>')
-
-
-def _epoch_date(value: Any) -> str | None:
-    try:
-        ts = int(value)
-    except (ValueError, TypeError):
-        return None
-    if ts > 1e11:  # milliseconds
-        ts //= 1000
-    return datetime.fromtimestamp(ts, tz=UTC).strftime('%Y-%m-%d')
 
 
 class UnzipVRClient(Client):
@@ -66,7 +55,7 @@ class UnzipVRClient(Client):
         return [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return _epoch_date(self._item(scene).get('publishedAt'))
+        return epoch_date(self._item(scene).get('publishedAt'))
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         genres = [(c.get('name') or '').strip() for c in (self._item(scene).get('categories') or [])]

@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import api_date, build_search_result, load_site_json, pack_cur_id
 
 _LIST_QUERY = (
     'content.load?_method=content.load&tz=1&limit=512&transitParameters[v1]=OhUOlmasXD&transitParameters[v2]=OhUOlmasXD&transitParameters[preset]=videos'
@@ -16,7 +16,6 @@ _MODEL_QUERY = 'model.getModelContent?_method=model.getModelContent&tz=1&limit=2
 
 _AH_RE = re.compile(r'"ah".?:.?"([0-9a-zA-Z()@:,/!+\-.$_=\\\']*)"')
 _AET_RE = re.compile(r'"aet".?:([0-9]+)')
-_ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
 
 _LEAD_ACTORS: dict[str, str] = load_site_json(__file__, 'modelcentro_actors')
 
@@ -27,12 +26,6 @@ def _detail_query(scene_id: int) -> str:
         f'&filter[id][fields][0]=id&filter[id][values][0]={scene_id}'
         '&limit=1&transitParameters[v1]=ykYa8ALmUD&transitParameters[preset]=scene'
     )
-
-
-def _api_date(raw: str | None) -> str:
-    if not raw:
-        return ''
-    return (raw[:10] if _ISO_PREFIX_RE.match(raw) else iso_date(raw)) or ''
 
 
 def _collection_items(collection: Any) -> list[Any]:
@@ -79,7 +72,7 @@ class ModelCentroClient(Client):
                 continue
             sid = scene['id']
             sites = (scene.get('sites') or {}).get('collection') or {}
-            date = _api_date((sites.get(str(sid)) or {}).get('publishDate'))
+            date = api_date((sites.get(str(sid)) or {}).get('publishDate')) or ''
             art = [r.get('url', '') for r in ((scene.get('_resources') or {}).get('base') or []) if r.get('url')]
             payload = {'id': sid, 'title': scene['title'], 'releaseDate': date, 'art': art}
             results.append(
@@ -120,7 +113,7 @@ class ModelCentroClient(Client):
         scene = scenes[0]
 
         sites = (scene.get('sites') or {}).get('collection') or {}
-        date = _api_date((sites.get(str(sid)) or {}).get('publishDate')) or search_date
+        date = api_date((sites.get(str(sid)) or {}).get('publishDate')) or search_date
 
         tags_are_actors = site.name == 'Jerk Off With Me'
         tag_aliases = [alias for alias in ((t.get('alias') or '').strip() for t in _collection_items((scene.get('tags') or {}).get('collection'))) if alias]

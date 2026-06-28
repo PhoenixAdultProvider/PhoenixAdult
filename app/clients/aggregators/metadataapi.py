@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import re
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date
+from app.utils.helpers.helpers import api_date, build_search_result
 
 _API_BASE = 'https://api.theporndb.net'
 
@@ -14,12 +13,6 @@ _API_BASE = 'https://api.theporndb.net'
 def _auth_headers() -> dict[str, str]:
     token = env.metadata_api_token
     return {'Accept': 'application/json', 'Authorization': f'Bearer {token}'} if token else {}
-
-
-def _api_date(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    return raw[:10] if re.match(r'^\d{4}-\d{2}-\d{2}', raw) else iso_date(raw)
 
 
 class MetadataAPIClient(Client):
@@ -40,7 +33,7 @@ class MetadataAPIClient(Client):
                     title=s.get('title') or '',
                     scene_url=f'{_API_BASE}/scenes/{scene_id}',
                     query=ctx.title,
-                    display_date=_api_date(s.get('date')),
+                    display_date=api_date(s.get('date')),
                     search_date=ctx.search_date,
                 )
             )
@@ -91,7 +84,7 @@ class MetadataAPIClient(Client):
             studio=studio,
             tagline=studio,
             collections=collections or None,
-            release_date=_api_date(d.get('date')) or fallback_date or None,
+            release_date=api_date(d.get('date')) or fallback_date or None,
             genres=genres,
             actors=actors,
             raw_image_urls=raw_images,

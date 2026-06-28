@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
@@ -78,6 +78,28 @@ def iso_date(raw: str, fmt: str | None = None, is_filename: bool = False) -> str
     except (ValueError, OverflowError):
         return None
     return f'{d.year:04d}-{d.month:02d}-{d.day:02d}'
+
+
+_ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
+
+
+def api_date(raw: str | None) -> str | None:
+    """An already-ISO date (YYYY-MM-DD…) is trimmed to its date prefix; anything else
+    goes through iso_date. Common shape for JSON-API publishedAt/date fields."""
+    if not raw:
+        return None
+    return raw[:10] if _ISO_PREFIX_RE.match(raw) else iso_date(raw)
+
+
+def epoch_date(value: Any) -> str | None:
+    """Unix timestamp (seconds, or milliseconds if > 1e11) → YYYY-MM-DD; None if unparsable."""
+    try:
+        ts = int(value)
+    except (ValueError, TypeError):
+        return None
+    if ts > 1e11:  # milliseconds
+        ts //= 1000
+    return datetime.fromtimestamp(ts, tz=UTC).strftime('%Y-%m-%d')
 
 
 _RELATIVE_AGO_RE = re.compile(r'(\d+|a|an)\s+(minute|hour|day|week|month|year)s?\s*ago\b')

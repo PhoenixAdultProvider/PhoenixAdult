@@ -1,26 +1,15 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
 
 STUDIO = 'Bellesa'
 _API = '/api/rest/v1'
-
-
-def _epoch_date(value: Any) -> str | None:
-    try:
-        ts = int(value)
-    except (ValueError, TypeError):
-        return None
-    if ts > 1e11:
-        ts //= 1000
-    return datetime.fromtimestamp(ts, tz=UTC).strftime('%Y-%m-%d')
 
 
 class BellesaClient(Client):
@@ -44,7 +33,7 @@ class BellesaClient(Client):
             video = data[0] if isinstance(data, list) and data else None
             if not isinstance(video, dict) or not video.get('title'):
                 return []
-            date = _epoch_date(video.get('posted_on'))
+            date = epoch_date(video.get('posted_on'))
             return [
                 build_search_result(
                     title=str(video['title']).strip(),
@@ -65,7 +54,7 @@ class BellesaClient(Client):
             vid = v.get('id')
             if not title or vid is None:
                 continue
-            date = _epoch_date(v.get('posted_on'))
+            date = epoch_date(v.get('posted_on'))
             results.append(
                 build_search_result(
                     title=title, scene_url=str(vid), query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([str(vid), date or ''])
@@ -118,7 +107,7 @@ class BellesaClient(Client):
         return [t] if t else None
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return _epoch_date(self._v(scene).get('posted_on')) or scene.scene_date
+        return epoch_date(self._v(scene).get('posted_on')) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         raw = self._v(scene).get('tags')
