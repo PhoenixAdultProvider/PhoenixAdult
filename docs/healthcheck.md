@@ -9,8 +9,8 @@ python -m scripts.site_health retry      # only sites whose last run failed
 ```
 
 Output lands at [`docs/site-health.md`](./site-health.md) (summary grid) and
-[`docs/site-health-details.md`](./site-health-details.md) (per-site expected-vs-actual
-tables). Each site gets a row in the summary grid with one icon per field type.
+`docs/site-health-details.md` (per-site expected-vs-actual tables, generated locally and
+not committed). Each site gets a row in the summary grid with one icon per field type.
 
 `new` and `retry` merge their fresh rows back into the existing report in place,
 preserving the other sites without re-running them. Useful flags: `--output <path>`,
