@@ -29,6 +29,14 @@ class _Env:
         return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
 
     @property
+    def log_redact_token(self) -> bool:
+        # Off by default: secret query values (?token=…) are only masked when this is on.
+        raw = os.environ.get('LOG_REDACT_TOKEN')
+        if raw is None or raw.strip() == '':
+            return False
+        return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
+
+    @property
     def https_proxy(self) -> str | None:
         return os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy') or os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
 

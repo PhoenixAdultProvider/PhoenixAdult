@@ -27,7 +27,7 @@ def test_redact_own_host_not_confused_with_lookalike(monkeypatch):
 
 
 def test_own_host_not_redacted_when_flag_off(monkeypatch):
-    # The server's own FQDN stays visible in dev (flag off) — only IPs/tokens are forced.
+    # The server's own FQDN stays visible in dev (flag off) — only IPs are always forced.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
     assert redact('Config UI: https://my-tunnel.example.com/config') == 'Config UI: https://my-tunnel.example.com/config'
@@ -51,21 +51,31 @@ def test_redact_leaves_plain_text_untouched():
     assert redact('Plex Metadata Provider running on port 3000') == 'Plex Metadata Provider running on port 3000'
 
 
-def test_redact_query_token():
+def test_redact_query_token(monkeypatch):
     # Host left intact (not the server's own host); only the token value is masked.
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     assert redact('http://h.example/config?token=s3cret&x=1') == 'http://h.example/config?token=***REDACTED***&x=1'
 
 
-def test_redact_query_token_in_bare_path():
+def test_redact_query_token_in_bare_path(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     assert redact('/config?token=abc123') == '/config?token=***REDACTED***'
 
 
+def test_token_not_redacted_when_flag_off(monkeypatch):
+    # Off by default — the token stays visible so it can be copied from the log while testing.
+    monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
+    assert redact('/config?token=abc123') == '/config?token=abc123'
+
+
 @pytest.mark.parametrize('name', ['apikey', 'api_key', 'access_token', 'auth_token', 'secret', 'password', 'pwd'])
-def test_redact_secret_param_names(name):
+def test_redact_secret_param_names(monkeypatch, name):
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     assert redact(f'/x?{name}=zzz') == f'/x?{name}=***REDACTED***'
 
 
-def test_redact_does_not_mask_author_param():
+def test_redact_does_not_mask_author_param(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     assert redact('/x?author=jane') == '/x?author=jane'
 
 
@@ -82,9 +92,10 @@ def test_filter_redacts_ip_even_when_flag_off(monkeypatch):
 
 
 def test_filter_redacts_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
-    # Reproduces the reported leak: client IP + token in an access log must be
-    # redacted even in dev (flag off). 203.0.113.0/24 is TEST-NET-3 (docs only).
+    # Client IP is always redacted (even with LOG_REDACT_HOSTS off); the token only
+    # when LOG_REDACT_TOKEN is on. 203.0.113.0/24 is TEST-NET-3 (docs only).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     args = ('203.0.113.157:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
@@ -112,6 +123,7 @@ def test_filter_redacts_ipv6_uvicorn_access_client_addr(monkeypatch):
 
 def test_filter_redacts_token_in_uvicorn_access_path(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     args = ('127.0.0.1:54321', 'GET', '/config?token=abc123', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
@@ -125,3 +137,13 @@ def test_flag_truthy_values(monkeypatch, flag):
 
     monkeypatch.setenv('LOG_REDACT_HOSTS', flag)
     assert env.log_redact_hosts is True
+
+
+def test_log_redact_token_default_off_truthy_on(monkeypatch):
+    from app.config.env import env
+
+    monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
+    assert env.log_redact_token is False
+    for flag in ('1', 'yes', 'on', 'TRUE'):
+        monkeypatch.setenv('LOG_REDACT_TOKEN', flag)
+        assert env.log_redact_token is True

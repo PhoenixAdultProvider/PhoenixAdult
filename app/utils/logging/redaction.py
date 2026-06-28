@@ -44,7 +44,8 @@ def _own_host() -> str | None:
 
 
 def redact(text: str) -> str:
-    text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
+    if env.log_redact_token:
+        text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
     if env.log_redact_hosts:
         own = _own_host()
         if own:
@@ -62,7 +63,7 @@ def redact_client_addr(addr: str) -> str:
 
 
 class RedactionFilter(logging.Filter):
-    """Always scrubs IP literals + secret query values; the server's own host only when LOG_REDACT_HOSTS is on."""
+    """Always scrubs IP literals; secret query values only when LOG_REDACT_TOKEN is on; the server's own host only when LOG_REDACT_HOSTS is on."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:
