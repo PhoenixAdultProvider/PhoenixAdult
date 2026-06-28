@@ -68,8 +68,7 @@ class FuelVirtualClient(Client):
         genres = [
             g
             for g in (
-                first_attr(a, 'normalize-space(.)')
-                for a in scene.sel.xpath('//td[contains(@class,"plaintext")]//a[contains(@class,"model_category_link")]')
+                first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//td[contains(@class,"plaintext")]//a[contains(@class,"model_category_link")]')
             )
             if g
         ]

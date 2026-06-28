@@ -14,7 +14,6 @@ def _capitalize(s: str) -> str:
 
 
 class MetArtClient(Client):
-
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         api = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path
         url = f'{api}/search-results?query[contentType]=movies&searchPhrase={ctx.encoded}'

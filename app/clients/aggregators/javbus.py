@@ -31,7 +31,6 @@ class JavBusClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'existmag=all; dv=1'})
 
-
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')
         parts = ctx.title.strip().split()

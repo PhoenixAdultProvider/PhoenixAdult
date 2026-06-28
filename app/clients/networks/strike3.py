@@ -32,7 +32,6 @@ class Strike3Client(GraphQLClient):
         self._pace_lock = asyncio.Lock()
         self._last_fetch = 0.0
 
-
     async def _gql(self, endpoint: str, query: str, variables: dict[str, Any], base_url: str, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         async with self._pace_lock:
             delta = time.monotonic() - self._last_fetch

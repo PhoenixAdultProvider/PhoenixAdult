@@ -32,7 +32,6 @@ _BR_RE = re.compile(r'<\s*/?\s*br\s*/?\s*>', re.IGNORECASE)
 
 
 class GammaEntClient(Client):
-
     # ── Search ────────────────────────────────────────────────────────────────
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:

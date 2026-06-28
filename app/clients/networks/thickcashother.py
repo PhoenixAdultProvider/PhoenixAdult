@@ -65,10 +65,7 @@ class ThickCashOtherClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [
-            ActorResult(name=first_attr(a, 'normalize-space(.)'))
-            for a in scene.sel.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')
-        ]
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

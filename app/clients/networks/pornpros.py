@@ -96,10 +96,7 @@ class PornProsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         genres = self.dedup_strings(
-            [
-                str(g).replace('_', ' ').replace('-', ' ').strip()
-                for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
-            ]
+            [str(g).replace('_', ' ').replace('-', ' ').strip() for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]]
         )
         return genres or None
 

@@ -169,10 +169,7 @@ class BangClient(Client):
         assert scene.sel is not None
         genres = [
             g
-            for g in (
-                first_attr(a, 'normalize-space(.)')
-                for a in scene.sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]')
-            )
+            for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]'))
             if g
         ]
         return genres or None

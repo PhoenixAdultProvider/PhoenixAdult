@@ -30,7 +30,6 @@ def _actor_overrides(scene_id: str) -> list[ActorResult]:
 
 
 class GammaEntOtherClient(Client):
-
     # ── Search (Algolia) ────────────────────────────────────────────────────────
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:

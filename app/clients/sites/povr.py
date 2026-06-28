@@ -98,9 +98,7 @@ class POVRClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        values: list[str | None] = [
-            first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')
-        ]
+        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')]
         return self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:

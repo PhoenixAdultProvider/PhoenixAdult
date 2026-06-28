@@ -26,7 +26,6 @@ _SITE_CONFIG: dict[str, dict[str, Any]] = {
 
 
 class Network18Client(GraphQLClient):
-
     async def _gql(self, site_name: str, base_url: str, query: str, variable: str, value: Any, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         cfg = _SITE_CONFIG[site_name]
         headers = {'argonath-api-key': cfg['api_key'], 'Referer': base_url}

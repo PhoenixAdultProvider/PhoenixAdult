@@ -78,4 +78,3 @@ async def test_detail() -> None:
     assert detail.actors[0].photo_url == 'https://images-fame.gammacdn.com/actors/a/jane.jpg'
     # scene picture inserted at the front
     assert detail.raw_image_urls[0] == 'https://images-fame.gammacdn.com/movies//p/cover.jpg'
-

@@ -23,7 +23,8 @@ def _site(name: str, base_url: str) -> SiteInfo:
         aliases=_ALIASES.get(name, []),
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='reptyle', data18_enrichment=True,
+        scraper_type='reptyle',
+        data18_enrichment=True,
     )
 
 

@@ -22,7 +22,8 @@ def _site(name: str, base_url: str) -> SiteInfo:
         aliases=_ALIASES.get(name, []),
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
-        scraper_type='project1service', data18_enrichment=True,
+        scraper_type='project1service',
+        data18_enrichment=True,
         cache_layout='aggregator',  # aggregator of networks with sub-brands → project1service/<studio>/<sub-site>
     )
 

@@ -59,11 +59,7 @@ class SexMexClient(Client):
 
     def _actor_names(self, scene: LoadedScene) -> list[str]:
         assert scene.sel is not None
-        return [
-            first_attr(a, 'normalize-space(.)')
-            for a in scene.sel.xpath('//p[@class]//a')
-            if first_attr(a, 'normalize-space(.)')
-        ]
+        return [first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[@class]//a') if first_attr(a, 'normalize-space(.)')]
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None

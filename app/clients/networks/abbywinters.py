@@ -146,9 +146,7 @@ class AbbyWintersClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres = [
-            g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g
-        ]
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g]
         return genres or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:

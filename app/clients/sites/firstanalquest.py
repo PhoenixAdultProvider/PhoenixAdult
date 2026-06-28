@@ -59,10 +59,7 @@ class FirstAnalQuestClient(Client):
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         genres = self.dedup_strings(
-            [
-                first_attr(a, 'normalize-space(.)')
-                for a in scene.sel.xpath('//div[contains(@class,"media-body")]//ul[contains(.,"Categories")]//a')
-            ]
+            [first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"media-body")]//ul[contains(.,"Categories")]//a')]
         )
         if 'porn-movie' not in scene.url:
             count = len(scene.sel.xpath(_MODELS_XP))

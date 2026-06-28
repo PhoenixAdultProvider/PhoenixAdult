@@ -99,9 +99,7 @@ class GasmClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        out = [
-            ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"models/")]')) if n
-        ]
+        out = [ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"models/")]')) if n]
         return out or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

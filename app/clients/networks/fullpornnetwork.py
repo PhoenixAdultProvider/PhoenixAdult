@@ -122,10 +122,7 @@ class FullPornNetworkClient(Client):
         assert scene.sel is not None
         out = [
             g
-            for g in (
-                first_attr(a, 'normalize-space(.)')
-                for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/categories/")]')
-            )
+            for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/categories/")]'))
             if g
         ]
         return out or None

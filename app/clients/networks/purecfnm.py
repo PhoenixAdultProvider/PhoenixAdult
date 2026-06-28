@@ -34,9 +34,7 @@ class PureCFNMClient(Client):
             summary = (block.xpath('(.//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip()
             raw_date = (block.xpath('(.//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
             date = (iso_date(raw_date) or '') if raw_date else ''
-            actors = [
-                n for n in (first_attr(a, 'normalize-space(.)') for a in block.xpath('.//span[contains(@class,"tour_update_models")]//a')) if n
-            ]
+            actors = [n for n in (first_attr(a, 'normalize-space(.)') for a in block.xpath('.//span[contains(@class,"tour_update_models")]//a')) if n]
             poster = first_attr(block, '(.//div[contains(@class,"update_image")]//a//img)[1]/@src')
             packed = pack_cur_id([json.dumps({'title': title, 'summary': summary, 'release_date': date, 'actors': actors, 'poster': poster})])
             results.append(

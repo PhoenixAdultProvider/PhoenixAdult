@@ -19,7 +19,8 @@ def _site(name: str, base_url: str, search_path_prefix: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         sub_group=search_path_prefix,
-        scraper_type='nubiles', data18_enrichment=True,
+        scraper_type='nubiles',
+        data18_enrichment=True,
     )
 
 

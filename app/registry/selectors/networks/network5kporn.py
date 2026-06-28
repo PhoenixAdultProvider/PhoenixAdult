@@ -23,7 +23,8 @@ def _site(name: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         image_referers=['sceneURL'],
         image_cookies=[_IMAGE_COOKIE],
-        scraper_type='5kporn', data18_enrichment=True,
+        scraper_type='5kporn',
+        data18_enrichment=True,
     )
 
 

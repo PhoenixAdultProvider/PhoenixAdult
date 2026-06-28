@@ -107,14 +107,8 @@ class AllureMediaClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                page = await self.fetch_and_load(
-                    absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}'
-                )
-                img = (
-                    first_attr(page['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src')
-                    if page
-                    else ''
-                )
+                page = await self.fetch_and_load(absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
+                img = first_attr(page['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src') if page else ''
                 photo = (absolute_url(img, base)) if img else ''
             actors.append(ActorResult(name=name, photo_url=photo.replace('1x', '3x')))
 
