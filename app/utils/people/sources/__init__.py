@@ -12,7 +12,7 @@ from app.utils.people.sources.indexxx import indexxx_source
 from app.utils.people.sources.javBus import jav_bus_source
 from app.utils.people.sources.javDatabase import jav_database_source
 from app.utils.people.sources.localStorage import local_storage_source
-from app.utils.people.types import PersonLookupContext, PersonSource, PhotoHit
+from app.utils.people.types import Gender, PersonLookupContext, PersonSource, PhotoHit
 
 ALL_SOURCES: list[PersonSource] = [
     local_storage_source,
@@ -41,13 +41,20 @@ def _configured_order() -> list[PersonSource]:
 
 
 async def find_photo(actor_name: str, ctx: PersonLookupContext) -> PhotoHit:
+    found_gender: Gender = ''
     for source in _configured_order():
         try:
             hit = await source.find(actor_name, ctx)
-            if hit and hit.url:
+            if not hit:
+                continue
+            found_gender = found_gender or hit.gender  # a urlless hit (e.g. IAFD placeholder) still pins gender
+            if hit.url:
                 logger.info('people', f'{actor_name} -> {source.name}')
-                return PhotoHit(url=hit.url, gender=hit.gender or '')
+                return PhotoHit(url=hit.url, gender=hit.gender or found_gender)
         except Exception as err:  # noqa: BLE001 - one source failing shouldn't abort the chain
             logger.warn('people', f'{source.name} threw for {actor_name}: {err}')
-    logger.debug('people', f'{actor_name} not found in any source')
-    return PhotoHit(url='', gender='')
+    if found_gender:
+        logger.debug('people', f'{actor_name}: no image found, gender={found_gender} (silhouette fallback)')
+    else:
+        logger.debug('people', f'{actor_name} not found in any source')
+    return PhotoHit(url='', gender=found_gender)

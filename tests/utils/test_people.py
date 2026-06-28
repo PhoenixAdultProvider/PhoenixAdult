@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import httpx
 import pytest
+import respx
 
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.people.data import ACTORS_REPLACE, ACTORS_STUDIO_INDEXES
@@ -51,6 +53,55 @@ async def test_generic_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'][0].gender == 'female'
     assert res['actors'][0].photo.endswith('.jpg')
+
+
+async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A director with no input gender, found by a source that knows the gender but
+    # has no image (IAFD placeholder), still gets the gendered silhouette.
+    import app.utils.people.sources as sources
+    from app.utils.people.types import PhotoHit
+
+    class _GenderOnly:
+        name = 'GenderOnly'
+
+        async def find(self, _name: str, _ctx: object) -> PhotoHit:
+            return PhotoHit(url='', gender='male')
+
+    monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'true')
+    monkeypatch.setattr(sources, '_configured_order', lambda: [_GenderOnly()])
+    pm = PeopleManager()
+    pm.add_director('Ken Shiro', '')
+    res = await pm.resolve_all(studio='', site_name='')
+    assert res['directors'][0].gender == 'male'
+    assert res['directors'][0].photo.endswith('.jpg')
+
+
+@respx.mock
+async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The gendered silhouette is cached under the person so the next lookup is a
+    # local-cache hit rather than another full source-chain run.
+    import app.utils.people.sources as sources
+    from app.utils.people.types import PhotoHit
+
+    class _GenderOnly:
+        name = 'GenderOnly'
+
+        async def find(self, _name: str, _ctx: object) -> PhotoHit:
+            return PhotoHit(url='', gender='male')
+
+    monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('GENERIC_MALE_URL', 'https://cdn.example/silhouette-m.jpg')
+    monkeypatch.setattr(sources, '_configured_order', lambda: [_GenderOnly()])
+    respx.get('https://cdn.example/silhouette-m.jpg').mock(return_value=httpx.Response(200, content=b'SILHOUETTE', headers={'content-type': 'image/jpeg'}))
+
+    pm = PeopleManager()
+    pm.add_director('Ken Shiro', '')
+    res = await pm.resolve_all(studio='', site_name='')
+
+    assert res['directors'][0].photo.endswith('/images/local/director.ken-shiro_male.jpg')
+    assert (tmp_path / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'
 
 
 def test_to_plex_roles_proxies_photo() -> None:

@@ -204,8 +204,8 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
 
 
 def _is_generic(url: str) -> bool:
-    # The generic/default placeholder is served as a raw URL and normally never
-    # reaches the cache; guard anyway so it's never face-cropped.
+    # The silhouette placeholder IS cached (speeds future lookups) but must never be
+    # face-cropped — a generic head would crop to garbage.
     return bool(url) and url in {generic_image_url('female'), generic_image_url('male')}
 
 

@@ -182,9 +182,15 @@ class PeopleManager:
                 else:
                     photo = found.url
 
-        # 6d — generic fallback
+        # 6d — generic fallback. Cache the silhouette under this person too, so the
+        # next lookup is a local-cache hit instead of re-running the whole source chain.
         if not photo and generic_image_enabled() and gender in ('male', 'female'):
-            photo = generic_image_url(gender)
+            generic_url = generic_image_url(gender)
+            if cache_enabled():
+                cached = await cache_photo(generic_url, name, role, gender)
+                photo = cached['served_url'] if cached else generic_url
+            else:
+                photo = generic_url
 
         label = role.capitalize()
         if photo:

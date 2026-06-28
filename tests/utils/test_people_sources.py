@@ -4,13 +4,14 @@ import httpx
 import pytest
 import respx
 
+import app.utils.people.sources as people_sources
 from app.utils.people.sources import find_photo
 from app.utils.people.sources.babepedia import babepedia_source
 from app.utils.people.sources.boobpedia import boobpedia_source
 from app.utils.people.sources.freeones import freeones_source
 from app.utils.people.sources.indexxx import indexxx_source
 from app.utils.people.sources.javBus import jav_bus_source
-from app.utils.people.types import PersonLookupContext
+from app.utils.people.types import PersonLookupContext, PhotoHit
 
 CTX = PersonLookupContext(role='actor')
 
@@ -92,3 +93,18 @@ async def test_find_photo_uses_first_hit() -> None:
     respx.route(method='GET', url__regex=r'freeones\.com/.+/bio').mock(return_value=httpx.Response(200, text=FREEONES_BIO))
     hit = await find_photo('Jane Doe', CTX)
     assert hit.url == 'https://cdn.example.com/jane.jpg'
+
+
+async def test_find_photo_keeps_gender_without_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A source that identifies the person but has no usable image (e.g. IAFD
+    # rejecting a placeholder headshot) must still propagate the gender so the
+    # resolver can fall back to the gendered silhouette.
+    class _GenderOnly:
+        name = 'GenderOnly'
+
+        async def find(self, _name: str, _ctx: PersonLookupContext) -> PhotoHit:
+            return PhotoHit(url='', gender='male')
+
+    monkeypatch.setattr(people_sources, '_configured_order', lambda: [_GenderOnly()])
+    hit = await find_photo('Ken Shiro', CTX)
+    assert hit.url == '' and hit.gender == 'male'

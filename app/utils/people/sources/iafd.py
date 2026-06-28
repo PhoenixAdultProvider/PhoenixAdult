@@ -81,8 +81,10 @@ class _IafdSource:
 
         img = Selector(text=resp.body).xpath('(//div[@id="headshot"]//img/@src)[1]').get() or ''
         if not img or 'nophoto' in img or 'th_iafd_ad' in img:
-            logger.debug('iafd', f'rejected placeholder image for "{actor_name}"')
-            return None
+            # No usable headshot, but the person was found — keep the gender so the
+            # resolver can still fall back to the gendered silhouette.
+            logger.debug('iafd', f'rejected placeholder image for "{actor_name}" (keeping gender={gender})')
+            return PhotoHit(url='', gender=gender)
         logger.debug('iafd', f'matched "{actor_name}" → {img} (gender={gender})')
         return PhotoHit(url=img, gender=gender)
 
