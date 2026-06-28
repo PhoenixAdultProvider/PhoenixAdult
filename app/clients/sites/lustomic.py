@@ -76,9 +76,5 @@ class LustomicClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        images: list[str] = []
-        for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]'):
-            href = first_attr(a, '@href')
-            if href and href not in images:
-                images.append(href)
+        images = self.dedup_strings([first_attr(a, '@href') for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]')])
         return images

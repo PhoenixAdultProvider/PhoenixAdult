@@ -128,11 +128,12 @@ class JavBusClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for el in scene.sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]'):
-            g = (el.xpath('normalize-space(.)').get() or '').lower().strip()
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings(
+            [
+                (el.xpath('normalize-space(.)').get() or '').lower().strip()
+                for el in scene.sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]')
+            ]
+        )
         return genres or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:

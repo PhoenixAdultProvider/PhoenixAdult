@@ -146,11 +146,7 @@ class AdultPrimeClient(Client):
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        names: list[str] = []
-        for a in scene.sel.xpath(f'{_info_line_xp("Performer")}/a'):
-            n = first_attr(a, 'normalize-space(.)')
-            if n and n not in names:
-                names.append(n)
+        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath(f"{_info_line_xp('Performer')}/a")])
         actors: list[ActorResult] = []
         for name in names:
             q = quote(name, safe='').replace('%20', '+')

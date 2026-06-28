@@ -77,9 +77,5 @@ class StasyQClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        out: list[str] = []
-        for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall():
-            h = (href or '').strip()
-            if h and h not in out:
-                out.append(h)
+        out = self.dedup_strings([(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()])
         return out

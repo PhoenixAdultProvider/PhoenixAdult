@@ -160,11 +160,7 @@ class XConfessionsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         d = self._data(scene)
-        genres: list[str] = []
-        for t in d.get('tags') or []:
-            name = (t.get('title') or '').strip()
-            if name and name not in genres:
-                genres.append(name)
+        genres = self.dedup_strings([(t.get('title') or '').strip() for t in d.get('tags') or []])
         hay = f'{(d.get("title") or "").lower()} {(d.get("synopsis_clean") or "").lower()}'
         if (d.get('is_compilation') or 'compilation' in hay) and 'Compilation' not in genres:
             genres.append('Compilation')

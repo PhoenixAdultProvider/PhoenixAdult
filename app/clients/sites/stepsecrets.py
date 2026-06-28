@@ -77,11 +77,7 @@ class StepSecretsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        images: list[str] = []
-        for src in scene.sel.xpath('//video/@poster').getall():
-            s = (src or '').strip()
-            if s and s not in images:
-                images.append(s)
+        images = self.dedup_strings([(src or '').strip() for src in scene.sel.xpath('//video/@poster').getall()])
         for src in scene.sel.xpath('//div[@id="photoCarousel"]//img/@src').getall():
             s = (src or '').strip()
             if s and s not in images:

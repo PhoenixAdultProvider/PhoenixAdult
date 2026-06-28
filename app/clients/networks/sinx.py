@@ -56,11 +56,12 @@ class SinXClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for a in scene.sel.xpath('//div[contains(@class,"tags-wrap")]//a'):
-            g = (a.xpath('string(.)').get() or '').split('#')[-1].strip()
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings(
+            [
+                (a.xpath('string(.)').get() or '').split('#')[-1].strip()
+                for a in scene.sel.xpath('//div[contains(@class,"tags-wrap")]//a')
+            ]
+        )
         cast = len(scene.sel.xpath('//figure[contains(@class,"girls-item")]'))
         if cast == 3 and 'Threesome' not in genres:
             genres.append('Threesome')

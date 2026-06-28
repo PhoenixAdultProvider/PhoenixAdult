@@ -101,11 +101,7 @@ class FamilyTherapyClient(Client):
         date_raw = (sel.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
         release_date = iso_date(date_raw, '%b %d, %Y') or fallback_date or None
 
-        genres: list[str] = []
-        for el in sel.xpath('//a[@rel="category tag"]'):
-            g = first_string(el)
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings([first_string(el) for el in sel.xpath('//a[@rel="category tag"]')])
 
         actors: list[ActorResult] = []
         seen: set[str] = set()

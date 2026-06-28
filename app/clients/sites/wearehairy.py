@@ -65,11 +65,7 @@ class WeAreHairyClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for el in scene.sel.xpath('//div[contains(@class,"tagline")]//p//a'):
-            t = first_attr(el, 'normalize-space(.)')
-            if t and t not in genres:
-                genres.append(t)
+        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//div[contains(@class,"tagline")]//p//a')])
         for g in _FIXED_GENRES:
             if g not in genres:
                 genres.append(g)

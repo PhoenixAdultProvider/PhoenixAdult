@@ -59,11 +59,7 @@ class LoveHerFilmsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for a in scene.sel.xpath('//div[contains(@class,"video-tags")]/a'):
-            g = first_attr(a, 'normalize-space(.)')
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"video-tags")]/a')])
         if 'Foot Sex' not in genres:
             genres.append('Foot Sex')
         cast = len(scene.sel.xpath('//div[contains(@class,"featured")]/a'))

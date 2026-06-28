@@ -110,11 +110,12 @@ class KinkClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for a in scene.sel.xpath('//a[contains(@href,"/tag/")]'):
-            g = (a.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings(
+            [
+                (a.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
+                for a in scene.sel.xpath('//a[contains(@href,"/tag/")]')
+            ]
+        )
         cast = len(scene.sel.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
         if cast == 3 and 'Threesome' not in genres:
             genres.append('Threesome')

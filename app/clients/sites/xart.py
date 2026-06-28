@@ -153,11 +153,7 @@ class XartClient(Client):
         harvest(scene.sel)
 
         title = await self.fetch_title(scene) or ''
-        actor_names: list[str] = []
-        for el in scene.sel.xpath('//h2//a'):
-            n = first_attr(el, 'normalize-space(.)')
-            if n and n not in actor_names:
-                actor_names.append(n)
+        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//h2//a')])
 
         if title and actor_names:
 

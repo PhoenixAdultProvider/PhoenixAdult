@@ -95,11 +95,12 @@ class PornProsClient(Client):
         return d or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        genres: list[str] = []
-        for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]:
-            name = str(g).replace('_', ' ').replace('-', ' ').strip()
-            if name and name not in genres:
-                genres.append(name)
+        genres = self.dedup_strings(
+            [
+                str(g).replace('_', ' ').replace('-', ' ').strip()
+                for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
+            ]
+        )
         return genres or None
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:

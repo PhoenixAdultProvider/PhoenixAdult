@@ -137,11 +137,7 @@ class TonightsGirlfriendClient(Client):
 
     def _linked_actor_names(self, scene: LoadedScene) -> list[str]:
         assert scene.sel is not None
-        names: list[str] = []
-        for a in scene.sel.xpath(f'{_GREY_XP}//a'):
-            n = first_attr(a, 'normalize-space(.)')
-            if n and n not in names:
-                names.append(n)
+        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath(f'{_GREY_XP}//a')])
         return names
 
     def _male_actor_names(self, scene: LoadedScene, linked: list[str]) -> list[str]:
@@ -152,9 +148,5 @@ class TonightsGirlfriendClient(Client):
             return []
         for name in linked:
             info = info.replace(f'{name},', '').strip()
-        out: list[str] = []
-        for part in info.split(','):
-            t = part.strip()
-            if t and t not in out:
-                out.append(t)
+        out = self.dedup_strings([part.strip() for part in info.split(',')])
         return out

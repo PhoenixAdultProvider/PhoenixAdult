@@ -71,11 +71,7 @@ class CherryPimpsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        genres: list[str] = []
-        for el in scene.sel.xpath(_DETAIL_GENRES_XP):
-            g = first_attr(el, 'normalize-space(.)')
-            if g and g not in genres:
-                genres.append(g)
+        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath(_DETAIL_GENRES_XP)])
         count = len(scene.sel.xpath(_DETAIL_ACTORS_XP))
         if count == 3 and 'Threesome' not in genres:
             genres.append('Threesome')
