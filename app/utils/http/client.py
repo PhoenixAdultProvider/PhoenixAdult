@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx2
 
 from app.config.env import env
@@ -17,14 +19,16 @@ async def _log_request(request: httpx2.Request) -> None:
     logger.http(f'Requesting {request.method.upper()} "{request.url}"')
 
 
-def make_http(extra_headers: dict[str, str] | None = None) -> httpx2.AsyncClient:
-    headers = {'User-Agent': DEFAULT_UA, **(extra_headers or {})}
-    proxy = _proxy_url()
-    return httpx2.AsyncClient(
-        timeout=15.0,
-        headers=headers,
-        verify=False,
-        follow_redirects=True,
-        proxy=proxy,
-        event_hooks={'request': [_log_request]},
-    )
+def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> httpx2.AsyncClient:
+    """An AsyncClient with the default UA, HTTPS_PROXY support and request logging.
+    Pass overrides (e.g. timeout=, max_redirects=) to tune per call site."""
+    opts: dict[str, Any] = {
+        'timeout': 15.0,
+        'headers': {'User-Agent': DEFAULT_UA, **(extra_headers or {})},
+        'verify': False,
+        'follow_redirects': True,
+        'proxy': _proxy_url(),
+        'event_hooks': {'request': [_log_request]},
+    }
+    opts.update(overrides)
+    return httpx2.AsyncClient(**opts)

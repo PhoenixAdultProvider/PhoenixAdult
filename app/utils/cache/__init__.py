@@ -17,6 +17,7 @@ from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
 from app.utils.helpers.helpers import slugify
+from app.utils.http.client import make_http
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
@@ -177,7 +178,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     shutil.rmtree(tmp_dir, ignore_errors=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
     try:
-        async with httpx2.AsyncClient(timeout=20.0, verify=False, follow_redirects=True) as client:
+        async with make_http(timeout=20.0) as client:
 
             def _relativize(u: str) -> str:
                 # Strip our own base_url so stored links survive a base_url/tunnel change.

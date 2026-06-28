@@ -10,6 +10,7 @@ import httpx2
 from app.config import config
 from app.config.env import env
 from app.utils.fs.paths import safe_join
+from app.utils.http.client import make_http
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
@@ -126,7 +127,7 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
     """Image bytes for the cache. Plain client first; fall back to curl_cffi
     impersonation for Cloudflare-gated hosts (e.g. IAFD headshots 403 a plain GET)."""
     try:
-        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+        async with make_http() as client:
             resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
             resp.raise_for_status()
             content_type = resp.headers.get('content-type', 'image/jpeg')

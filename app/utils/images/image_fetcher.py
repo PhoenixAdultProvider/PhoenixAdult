@@ -9,7 +9,7 @@ import httpx2
 from PIL import Image
 
 from app.config.env import env
-from app.utils.http.client import DEFAULT_UA
+from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.http.headers import sanitize_header
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.http.ssrf_guard import is_blocked_hostname
@@ -86,7 +86,7 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
     last_err: Exception | None = None
     payload: tuple[bytes, str] | None = None
 
-    async with httpx2.AsyncClient(timeout=10.0, verify=False, follow_redirects=True, max_redirects=3) as client:
+    async with make_http(timeout=10.0, max_redirects=3) as client:
         for referer in referers:
             try:
                 payload = await _get_once(client, url, referer, cookie_header)

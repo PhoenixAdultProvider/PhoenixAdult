@@ -5,12 +5,12 @@ from urllib.parse import quote
 
 import httpx2
 
-from app.utils.http.client import DEFAULT_UA
+from app.utils.http.client import make_http
 from app.utils.processors.similarity import compare_string
 
 
 def make_source_http() -> httpx2.AsyncClient:
-    return httpx2.AsyncClient(timeout=12.0, verify=False, follow_redirects=True, headers={'User-Agent': DEFAULT_UA})
+    return make_http(timeout=12.0)
 
 
 def encode_name(name: str) -> str:

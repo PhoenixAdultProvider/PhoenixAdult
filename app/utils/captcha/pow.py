@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 import httpx2
 
 from app.utils.cookies.site_cookies import parse_set_cookie
-from app.utils.http.client import DEFAULT_UA
+from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.logging.logger import logger
 
 _HOST_CACHE_TTL = 30 * 60  # seconds
@@ -50,7 +50,7 @@ async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
     gallery_url = f'{base}/video/gallery'
 
     try:
-        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+        async with make_http() as client:
             get_resp = await client.get(gallery_url, headers=_BASE_HEADERS)
     except httpx2.HTTPError as err:
         logger.warn('pow', f'GET {gallery_url} failed: {err}')
@@ -101,7 +101,7 @@ async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
         post_headers['Cookie'] = cookie_header
 
     try:
-        async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
+        async with make_http() as client:
             post_resp = await client.post(verify_url, content=json.dumps(payload), headers=post_headers)
     except httpx2.HTTPError as err:
         logger.warn('pow', f'POST {verify_url} failed: {err}')

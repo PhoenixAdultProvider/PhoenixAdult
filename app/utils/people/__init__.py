@@ -6,6 +6,7 @@ import re
 import httpx2
 
 from app.models.metadata import PlexRole
+from app.utils.http.client import make_http
 from app.utils.http.headers import image_request_headers
 from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
@@ -59,7 +60,7 @@ def _apply_alias_tables(name: str, studio: str, site_name: str) -> str:
 
 async def _head_is_ok(url: str, headers: dict[str, str]) -> bool:
     try:
-        async with httpx2.AsyncClient(timeout=8.0, verify=False, follow_redirects=True) as client:
+        async with make_http(timeout=8.0) as client:
             r = await client.head(url, headers=headers)
             return 200 <= r.status_code < 300
     except httpx2.HTTPError:
