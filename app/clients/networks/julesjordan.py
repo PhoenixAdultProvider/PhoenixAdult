@@ -4,19 +4,13 @@ from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, join_url, pack_cur_id
 
 STUDIO = 'Jules Jordan'
 
 
 def _desc_row(sel: Any, label: str) -> str:
     return (sel.xpath(f'(//div[contains(@class,"player-scene-description")]//span[contains(text(),"{label}")]/..)[1]').xpath('string(.)').get() or '').strip()
-
-
-def _abs_with_slash(raw: str, base: str) -> str:
-    if raw.startswith('http'):
-        return raw
-    return base + (raw if raw.startswith('/') else f'/{raw}')
 
 
 class JulesJordanClient(Client):
@@ -135,7 +129,7 @@ class JulesJordanClient(Client):
         def push(raw: str) -> None:
             if not raw:
                 return
-            abs_url = _abs_with_slash(raw, base)
+            abs_url = join_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 

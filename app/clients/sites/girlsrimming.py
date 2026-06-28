@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import web_search_urls
 
 _ID_SEPARATOR = ' Id '
@@ -12,12 +12,6 @@ _WORD_RE = re.compile(r'\w\S*')
 
 def _py_title(s: str) -> str:
     return _WORD_RE.sub(lambda m: m.group(0)[0].upper() + m.group(0)[1:].lower(), s)
-
-
-def _join(base_url: str, raw: str) -> str:
-    if raw.startswith('http'):
-        return raw
-    return f'{base_url}{"" if raw.startswith("/") else "/"}{raw}'
 
 
 class GirlsRimmingClient(Client):
@@ -119,7 +113,7 @@ class GirlsRimmingClient(Client):
         if not page:
             return ''
         raw = (page['sel'].xpath('(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]').get() or '').strip()
-        return _join(base, raw) if raw else ''
+        return join_url(raw, base) if raw else ''
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
@@ -128,7 +122,7 @@ class GirlsRimmingClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = _join(scene.site.base_url, raw)
+            abs_url = join_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

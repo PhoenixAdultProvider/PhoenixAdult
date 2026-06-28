@@ -3,17 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_text, web_search_urls
 
 _TRAILER_P_XP = '//div[contains(@class,"trailer") and contains(@class,"topSpace")]//div//p'
 _CAST_XP = _TRAILER_P_XP + '//a'
-
-
-def _join(base_url: str, raw: str) -> str:
-    if raw.startswith('http'):
-        return raw
-    return f'{base_url}{"" if raw.startswith("/") else "/"}{raw}'
 
 
 class GirlsOutWestClient(Client):
@@ -94,12 +88,12 @@ class GirlsOutWestClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = _join(scene.site.base_url, href)
+            actor_url = join_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
                 raw = (actor_page['sel'].xpath('(//div[contains(@class,"profilePic")]//img/@src0_3x)[1]').get() or '').strip()
-                photo = _join(scene.site.base_url, raw) if raw else ''
+                photo = join_url(raw, scene.site.base_url) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -110,7 +104,7 @@ class GirlsOutWestClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = _join(scene.site.base_url, raw)
+            abs_url = join_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

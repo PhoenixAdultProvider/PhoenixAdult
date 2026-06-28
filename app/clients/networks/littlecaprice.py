@@ -4,17 +4,11 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date, join_url, load_site_json
 
 STUDIO = 'LittleCaprice'
 
 _CATEGORY_TAGLINES: dict[str, str] = load_site_json(__file__, 'littlecaprice_category_taglines')
-
-
-def _abs_with_slash(raw: str, base: str) -> str:
-    if raw.startswith('http'):
-        return raw
-    return base + (raw if raw.startswith('/') else f'/{raw}')
 
 
 class LittleCapriceClient(Client):
@@ -151,7 +145,7 @@ class LittleCapriceClient(Client):
         def push(raw: str) -> None:
             if not raw:
                 return
-            abs_url = _abs_with_slash(raw, base)
+            abs_url = join_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 

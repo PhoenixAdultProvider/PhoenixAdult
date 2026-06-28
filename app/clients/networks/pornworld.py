@@ -5,7 +5,7 @@ import re
 from datetime import date
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
 
 STUDIO = 'PornWorld'
 _PER_PAGE = 99
@@ -23,12 +23,6 @@ def _iso_date_obj(raw: str) -> date | None:
         return date.fromisoformat(raw.strip())
     except ValueError:
         return None
-
-
-def _abs(href: str, base: str) -> str:
-    if href.startswith('http'):
-        return href
-    return base + (href if href.startswith('/') else f'/{href}')
 
 
 class PornWorldClient(Client):
@@ -66,7 +60,7 @@ class PornWorldClient(Client):
             if title and href:
                 return [
                     build_search_result(
-                        title=title, scene_url=_abs(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([_abs(href, base)])
+                        title=title, scene_url=join_url(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([join_url(href, base)])
                     )
                 ]
 
@@ -78,7 +72,7 @@ class PornWorldClient(Client):
                 continue
             results.append(
                 build_search_result(
-                    title=title, scene_url=_abs(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([_abs(href, base)])
+                    title=title, scene_url=join_url(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([join_url(href, base)])
                 )
             )
         return results
@@ -125,12 +119,12 @@ class PornWorldClient(Client):
                 results.append(
                     build_search_result(
                         title=title,
-                        scene_url=_abs(href, base),
+                        scene_url=join_url(href, base),
                         query=ctx.title,
                         display_date=scene_date_text,
                         search_date=ctx.search_date,
                         score=100 - days_diff * 10,
-                        cur_id=pack_cur_id([x for x in (_abs(href, base), scene_date_text) if x]),
+                        cur_id=pack_cur_id([x for x in (join_url(href, base), scene_date_text) if x]),
                     )
                 )
             return results

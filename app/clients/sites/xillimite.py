@@ -6,16 +6,10 @@ from typing import Any
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, join_url
 from app.utils.helpers.html_helpers import first_text
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
-
-
-def _join(base: str, path: str) -> str:
-    if path.startswith('http'):
-        return path
-    return f'{base}{path}' if path.startswith('/') else f'{base}/{path}'
 
 
 class XillimiteClient(Client):
@@ -74,7 +68,7 @@ class XillimiteClient(Client):
         for img in scene.sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//a[contains(@class,"movies")]//img'):
             name = (img.xpath('@alt').get() or '').strip()
             data_src = (img.xpath('@data-src').get() or '').strip()
-            photo = _join(base, data_src) if data_src else ''
+            photo = join_url(data_src, base) if data_src else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)
 
@@ -87,7 +81,7 @@ class XillimiteClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = _join(base, raw.replace('blur9/', '/'))
+            abs_url = join_url(raw.replace('blur9/', '/'), base)
             if abs_url not in images:
                 images.append(abs_url)
 

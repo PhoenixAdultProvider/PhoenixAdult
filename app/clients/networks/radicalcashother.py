@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, strip_query
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import web_search_urls
 
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
@@ -25,12 +25,6 @@ def _profile_key(site_name: str) -> str:
     if site_name == 'ToughLoveX':
         return 'toughlovex'
     return 'hitzefrei'
-
-
-def _abs(href: str, base: str) -> str:
-    if href.startswith('http'):
-        return href
-    return base + (href if href.startswith('/') else f'/{href}')
 
 
 class RadicalCashOtherClient(Client):
@@ -58,7 +52,7 @@ class RadicalCashOtherClient(Client):
                 href = (card.xpath(f'(.//{p["search_link"]})[1]/@href').get() or '').strip()
                 if not title or not href:
                     continue
-                scene_url = _abs(href, base).split('?')[0]
+                scene_url = join_url(href, base).split('?')[0]
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -85,7 +79,7 @@ class RadicalCashOtherClient(Client):
                     href = href.strip()
                     if not href or '/join' in href:
                         continue
-                    scene_url = _abs(href, base).split('?')[0]
+                    scene_url = join_url(href, base).split('?')[0]
                     if scene_url in seen:
                         continue
                     seen.add(scene_url)
@@ -173,7 +167,7 @@ class RadicalCashOtherClient(Client):
             seen.add(name)
             photo = ''
             if href and p['actor_photo_page']:
-                page = await self.fetch_and_load(_abs(href, base), None, f'[{scene.site.name}] actor {name}')
+                page = await self.fetch_and_load(join_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 if page:
                     photo = (page['sel'].xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
             actors.append(ActorResult(name=name, photo_url=photo))

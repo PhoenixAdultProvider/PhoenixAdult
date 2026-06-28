@@ -156,6 +156,15 @@ def strip_query(url: str | None) -> str:
     return (url or '').split('?')[0]
 
 
+def join_url(path: str, base_url: str) -> str:
+    """Prefix base_url when only a path is present; pass already-absolute (http) URLs
+    through. Unlike absolute_url, a protocol-relative //host URL is kept relative to
+    base (not upgraded to https)."""
+    if path.startswith('http'):
+        return path
+    return f'{base_url}{path if path.startswith("/") else f"/{path}"}'
+
+
 def absolute_url(u: str, base_url: str) -> str:
     if not u:
         return ''
