@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
+from app.utils.helpers.helpers import load_site_json
 
 PROVIDER_NAME = 'FAKings'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
-_ALIASES: list[str] = json.loads((Path(__file__).parent / '_data' / 'json' / 'fakings_aliases.json').read_text(encoding='utf-8'))
+_ALIASES: list[str] = load_site_json(__file__, 'fakings_aliases')
 
 FAKINGS_SITES: list[SiteInfo] = [
     make_site(

@@ -20,9 +20,6 @@ __all__ = [
     'find_site',
     'get_sites_for_provider',
     'find_site_provider',
-    'plex_media_type_id',
-    'media_type_route_slug',
-    'provider_mount_path',
 ]
 
 PROVIDER_DEFINITIONS: list[ProviderInfo] = [

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
+from app.utils.helpers.helpers import load_site_json
 
 PROVIDER_NAME = 'BellaPass'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
@@ -12,7 +10,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = 'Title or Slug'
 PROVIDER_SEARCH_PATH = '/search.php?query={query}'
 
-_ALIASES: list[str] = json.loads((Path(__file__).parent / '_data' / 'json' / 'bellapass_aliases.json').read_text(encoding='utf-8'))
+_ALIASES: list[str] = load_site_json(__file__, 'bellapass_aliases')
 
 
 def _site(name: str, host: str, aliases: list[str] | None = None) -> SiteInfo:

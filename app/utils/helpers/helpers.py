@@ -186,17 +186,6 @@ def css_bg_image(style: str | None) -> str:
     return m.group(1).strip() if m else ''
 
 
-def apply_title_split(raw: str, split_on: str | None = None, index: int | None = None) -> str:
-    if not raw or not split_on:
-        return (raw or '').strip()
-    parts = raw.split(split_on)
-    idx = index if index is not None else 0
-    try:
-        return parts[idx].strip()
-    except IndexError:
-        return raw.strip()
-
-
 # ── Scoring + search-result builder ───────────────────────────────────────────
 
 
