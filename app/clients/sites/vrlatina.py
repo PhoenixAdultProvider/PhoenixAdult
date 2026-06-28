@@ -3,18 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
 from app.utils.helpers.html_helpers import first_text, web_search_urls
-
-
-def _with_http(raw: str) -> str:
-    if not raw:
-        return ''
-    if raw.startswith('http'):
-        return raw
-    if raw.startswith('//'):
-        return f'http:{raw}'
-    return raw
 
 
 def _title_or_text(node: Any) -> str:
@@ -111,7 +101,7 @@ class VRLatinaClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            url = _with_http((raw or '').strip())
+            url = to_https((raw or '').strip())
             if url and url not in images:
                 images.append(url)
 

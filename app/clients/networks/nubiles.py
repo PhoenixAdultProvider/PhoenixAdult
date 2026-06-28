@@ -8,7 +8,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
-from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score, to_https
 from app.utils.logging.logger import logger
 
 STUDIO = 'Nubiles'
@@ -27,16 +27,6 @@ _POSTER_SAMPLE_RE = re.compile(r'/videos/([^/]+)/.*sample')
 _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
 
 _SUMMARY_ACTORS: list[str] = load_site_json(__file__, 'nubiles_summary_actors')
-
-
-def _abs(u: str) -> str:
-    if not u:
-        return u
-    if u.startswith(('http://', 'https://')):
-        return u
-    if u.startswith('//'):
-        return f'http:{u}'
-    return u
 
 
 class NubilesClient(Client):
@@ -192,7 +182,7 @@ class NubilesClient(Client):
         sel = await self._get(profile_url, base_url, None, f'GET {profile_url} (actor)')
         if sel is None:
             return ActorResult(name=name)
-        photo = _abs((sel.xpath('(//div[contains(@class,"model-profile")]//img)[1]/@src').get() or '').strip())
+        photo = to_https((sel.xpath('(//div[contains(@class,"model-profile")]//img)[1]/@src').get() or '').strip())
         gender = 'female' if sel.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
         return ActorResult(name=name, photo_url=photo, gender=gender)
 
@@ -201,7 +191,7 @@ class NubilesClient(Client):
         out: list[str] = []
         poster = (scene.sel.xpath('(//video)[1]/@poster').get() or '').strip()
         if poster:
-            out.append(_abs(poster))
+            out.append(to_https(poster))
 
         m = _WATCH_ID_RE.search(scene.url)
         scene_id = m.group(1) if m else ''
@@ -212,7 +202,7 @@ class NubilesClient(Client):
                 for srcset in gsel.xpath('//div[@class="img-wrapper"]//picture/source/@srcset').getall():
                     first = srcset.split(',')[0].strip().split(' ')[0]
                     if first:
-                        out.append(_abs(first))
+                        out.append(to_https(first))
         return out or None
 
     def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
