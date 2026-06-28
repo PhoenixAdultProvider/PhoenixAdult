@@ -5,11 +5,11 @@ from fastapi.responses import JSONResponse
 
 from app.models.media_provider import MediaProviderResponse
 from app.models.provider_info import ProviderInfo
-from app.registry import plex_media_type_id
 from app.routes import plex_json
 from app.services.match_service import MatchRequest, MatchService
 from app.services.metadata_service import MetadataService
 from app.utils.logging.logger import logger
+from app.utils.plex.media_type import plex_media_type_id
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:

@@ -9,12 +9,13 @@ from fastapi.responses import FileResponse
 
 from app.config import config
 from app.config.env import env
-from app.registry import get_all_providers, provider_mount_path
+from app.registry import get_all_providers
 from app.routes import dev_routes, env_routes, image_routes, metadata_cache_routes, people_cache_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
 from app.utils.logging.request_context import RequestContextMiddleware
 from app.utils.logging.uvicorn_logging import configure_uvicorn_logging
+from app.utils.plex.media_type import provider_mount_path
 
 
 def _log_startup_banner() -> None:

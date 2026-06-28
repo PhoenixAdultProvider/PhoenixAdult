@@ -9,6 +9,7 @@ from app.routes.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger
+from app.utils.plex.rating_key import parse_rating_key
 
 
 class MetadataService:
@@ -19,7 +20,7 @@ class MetadataService:
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
         logger.info(provider.id, f'Update ratingKey={rating_key}')
 
-        parsed = self._mapper.parse_rating_key(rating_key)
+        parsed = parse_rating_key(rating_key)
         if not parsed:
             logger.warn(provider.id, f'Unrecognised ratingKey format: {rating_key}')
             return None

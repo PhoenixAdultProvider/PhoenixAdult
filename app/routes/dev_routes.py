@@ -25,6 +25,7 @@ from app.utils.logging.orchestrator_logs import (
     log_update_header,
     log_update_provider,
 )
+from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
 from app.utils.processors.similarity import compare_string
@@ -195,7 +196,7 @@ async def dev_test(request: Request) -> JSONResponse:
                 'displayDate': r.display_date,
                 'thumbUrl': r.thumb_url,
                 'score': r.score if r.score is not None else 80 - compare_string(pieces.query, r.title).levenshtein,
-                'ratingKey': mapper.to_rating_key(r.cur_id, site.name, parsed.date),
+                'ratingKey': to_rating_key(r.cur_id, site.name, parsed.date),
                 'providerId': provider.id,
             }
             for r in raw_results
@@ -241,7 +242,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     log_update_header(provider_id, rating_key)
 
     # Step 1: Parse ratingKey
-    parsed = mapper.parse_rating_key(rating_key)
+    parsed = parse_rating_key(rating_key)
     steps.append(
         {
             'step': '1. Parse ratingKey',

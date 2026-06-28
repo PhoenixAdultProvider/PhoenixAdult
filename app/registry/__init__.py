@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import re
 
-from app.models.provider_info import PlexMediaType, ProviderInfo
+from app.models.provider_info import ProviderInfo
 from app.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
 from app.registry.site_info import ContentType, ResolvedSiteInfo, SiteInfo
 
@@ -97,15 +97,3 @@ def get_sites_for_provider(provider_id: str) -> list[ResolvedSiteInfo]:
 def find_site_provider(token: str) -> ProviderInfo | None:
     site = find_site(token)
     return provider_by_id.get(site.provider_id) if site else None
-
-
-def plex_media_type_id(media_type: PlexMediaType) -> int:
-    return {'movie': 1, 'show': 2, 'season': 3, 'episode': 4}[media_type]
-
-
-def media_type_route_slug(media_type: PlexMediaType) -> str:
-    return {'movie': 'movies', 'show': 'tvshows', 'season': 'tvshows', 'episode': 'tvshows'}[media_type]
-
-
-def provider_mount_path(provider: ProviderInfo) -> str:
-    return f'/{provider.namespace or provider.id}/{media_type_route_slug(provider.media_type)}'

@@ -4,7 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.app_factory import create_app
-from app.registry import get_all_providers, provider_mount_path
+from app.registry import get_all_providers
+from app.utils.plex.media_type import provider_mount_path
 
 
 @pytest.fixture

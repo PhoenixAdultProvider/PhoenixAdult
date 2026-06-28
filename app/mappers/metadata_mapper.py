@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from typing import Any
 
 from app.clients.base import SceneDetail, SearchResult
@@ -21,6 +20,7 @@ from app.utils.images.image_referers import resolve_image_cookies, resolve_image
 from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
+from app.utils.plex.rating_key import to_guid, to_rating_key
 from app.utils.processors.title_case import title_case
 
 
@@ -28,32 +28,16 @@ class MetadataMapper:
     def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None) -> str | None:
         return proxy_url(url, config.base_url, referers, cookies)
 
-    def to_rating_key(self, cur_id: str, site_name: str, date: str | None = None) -> str:
-        normalized = re.sub(r'[^a-z0-9]', '', site_name.lower())
-        date_part = f'.{date.replace("-", "")}' if date else ''
-        return f'scene-{normalized}-{cur_id}{date_part}'
-
-    def parse_rating_key(self, rating_key: str) -> dict[str, str | None] | None:
-        m = re.match(r'^scene-([a-z0-9]+)-([A-Za-z0-9_-]+)(?:\.(\d{8}))?$', rating_key)
-        if not m:
-            return None
-        date_raw = m.group(3)
-        release_date = f'{date_raw[0:4]}-{date_raw[4:6]}-{date_raw[6:8]}' if date_raw else None
-        return {'site_name': m.group(1), 'cur_id': m.group(2), 'release_date': release_date}
-
-    def to_guid(self, rating_key: str, plex_identifier: str) -> str:
-        return f'{plex_identifier}://movie/{rating_key}'
-
     def to_match_result(
         self, raw: SearchResult, site_name: str, score: float, plex_identifier: str, date: str | None = None, scraper_type: str | None = None
     ) -> PlexMatchResult:
-        rating_key = self.to_rating_key(raw.cur_id, site_name, date)
+        rating_key = to_rating_key(raw.cur_id, site_name, date)
         display_date = (raw.display_date or '').strip()
         title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{site_name}]' + (f' {display_date}' if display_date else '')
         return PlexMatchResult(
             type='movie',
             ratingKey=rating_key,
-            guid=self.to_guid(rating_key, plex_identifier),
+            guid=to_guid(rating_key, plex_identifier),
             title=title,
             score=score,
             originallyAvailableAt=date or None,
@@ -132,7 +116,7 @@ class MetadataMapper:
         return PlexMetadata(
             type='movie',
             ratingKey=rating_key,
-            guid=self.to_guid(rating_key, plex_identifier),
+            guid=to_guid(rating_key, plex_identifier),
             title=clean_title,
             summary=detail.summary,
             tagline=detail.tagline,
