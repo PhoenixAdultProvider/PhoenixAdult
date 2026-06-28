@@ -176,7 +176,7 @@ class RadicalCashOtherClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else f'{base}{raw if raw.startswith("/") else "/" + raw}')
+        coll = self.image_collector(lambda raw: join_url(raw, base))
         xpaths = (
             '//div[contains(@class,"photo-wrap")]//a/@href',
             '//div[@id="photo-carousel"]//a/@href',

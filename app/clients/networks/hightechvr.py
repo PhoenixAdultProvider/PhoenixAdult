@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr
 
 _PROFILES: dict[str, dict[str, str]] = load_site_json(__file__, 'hightechvr_profiles')
@@ -95,7 +95,7 @@ class HighTechVRClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'
+                url = join_url(href, base)
                 page = await self.fetch_and_load(url, None, f'[{scene.site.name}] actor {name}')
                 if page:
                     photo = (page['sel'].xpath(f'({p["actor_photo"]})[1]/@src').get() or '').strip()

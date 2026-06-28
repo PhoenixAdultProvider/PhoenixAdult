@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import append_year_param, first_attr, first_text, meta_content
 
 _DIRECTOR = ActorResult(
@@ -45,7 +45,7 @@ class HegreClient(Client):
             href = first_attr(card, '(.//a/@href)[1]')
             if not href or not ('/films/' in href or '/massage/' in href):
                 continue
-            scene_url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'
+            scene_url = join_url(href, base)
             title = first_attr(card, '(.//img/@alt)[1]')
             if not title:
                 continue

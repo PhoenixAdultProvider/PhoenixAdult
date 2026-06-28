@@ -9,7 +9,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search
@@ -239,7 +239,7 @@ class Data18EmpireClient(Client):
             u = (u or '').strip()
             if not u:
                 return
-            abs_url = u if u.startswith('http') else base + ('' if u.startswith('/') else '/') + u
+            abs_url = join_url(u, base)
             if abs_url not in images:
                 images.append(abs_url)
 

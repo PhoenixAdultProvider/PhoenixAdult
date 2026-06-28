@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 _RELEASED_XP = '//span[contains(@class,"released") and contains(@class,"title")]//strong'
@@ -108,7 +108,7 @@ class HeavyOnHottiesClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'
+            actor_url = join_url(href, base)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:

@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'Allure Media'
@@ -127,7 +127,7 @@ class AllureMediaClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda u: u if u.startswith('http') else base + (u if u.startswith('/') else '/' + u))
+        coll = self.image_collector(lambda u: join_url(u, base))
         title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
 
         df_script = scene.sel.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''

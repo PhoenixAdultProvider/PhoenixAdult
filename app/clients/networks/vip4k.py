@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_string
 
 STUDIO = 'VIP4K'
@@ -39,7 +39,7 @@ class VIP4KClient(Client):
             href = first_attr(anchor, '@href')
             if not raw_title or not href:
                 continue
-            scene_url = href if href.startswith('http') else f'{base}{"" if href.startswith("/") else "/"}{href}'
+            scene_url = join_url(href, base)
             raw_date = (card.xpath('(.//div[contains(@class,"item__date")])[1]').xpath('string(.)').get() or '').strip()
             date = (iso_date(raw_date) if raw_date else None) or ctx.search_date
             results.append(
