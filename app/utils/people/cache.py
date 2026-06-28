@@ -9,6 +9,7 @@ import httpx2
 
 from app.config import config
 from app.config.env import env
+from app.utils.fs.paths import safe_join
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.images import face_crop, face_crop_log
 from app.utils.logging.logger import logger
@@ -186,10 +187,9 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     base = _base_name(name, role)
     name_base = f'{base}_{gender}' if gender else base
     filename = f'{name_base}{ext}'
-    root = Path(directory).resolve()
-    filepath = (root / filename).resolve()
     # Defense in depth: never write outside the cache dir even if _slug misses.
-    if filepath != root and root not in filepath.parents:
+    filepath = safe_join(directory, filename)
+    if filepath is None:
         logger.warn('people-cache', f'refusing to write outside cache dir: {filename}')
         return None
 
@@ -223,15 +223,14 @@ async def restore_original(filename: str) -> bool:
         return False
     data, _ = fetched
 
-    root = Path(directory).resolve()
     target_name = f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}'
-    target = (root / target_name).resolve()
-    if target != root and root not in target.parents:
+    target = safe_join(directory, target_name)
+    if target is None:
         return False
     target.write_bytes(data)
     if target_name != filename:
-        old = (root / filename).resolve()
-        if old != target and root in old.parents and old.exists():
+        old = safe_join(directory, filename)
+        if old is not None and old != target and old.exists():
             old.unlink()
     _invalidate_index()
     face_crop_log.update(directory, filename, filename=target_name, cropped=False)
@@ -243,11 +242,8 @@ def purge(filename: str) -> bool:
     """Delete a cached image from disk and drop its crop-log entry. Backs the
     /people-cache 'Purge' button."""
     directory = people_cache_dir()
-    root = Path(directory).resolve()
-    target = (root / filename).resolve()
-    if root not in target.parents:  # path-traversal guard
-        return False
-    if not target.exists():
+    target = safe_join(directory, filename)  # path-traversal guard
+    if target is None or not target.exists():
         return False
     try:
         target.unlink()
@@ -280,10 +276,9 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     new_base = f'{root}_{new_gender}' if new_gender else root
     new_filename = f'{new_base}{ext}'
 
-    root_dir = Path(directory).resolve()
-    src = (root_dir / filename).resolve()
-    dst = (root_dir / new_filename).resolve()
-    if root_dir not in src.parents or root_dir not in dst.parents:
+    src = safe_join(directory, filename)
+    dst = safe_join(directory, new_filename)
+    if src is None or dst is None:
         return None  # path-traversal guard
     if new_filename != filename:
         if not src.exists():

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.config.env import env
+from app.utils.fs.paths import safe_join
 from app.utils.http.ssrf_guard import assert_fetchable_url
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_image
@@ -20,17 +21,6 @@ _ALLOWED_EXT = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tbn', '.jfif'}
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
 
 
-def _safe_path(directory: str, *parts: str) -> Path | None:
-    root = Path(directory).resolve()
-    try:
-        resolved = root.joinpath(*parts).resolve()
-    except (ValueError, OSError):
-        return None
-    if resolved == root or root in resolved.parents:
-        return resolved
-    return None
-
-
 def _read_multi(request: Request, key: str) -> list[str]:
     return [v for v in request.query_params.getlist(key) if v]
 
@@ -40,13 +30,13 @@ async def local_image(filename: str) -> Response:
     if Path(filename).suffix.lower() not in _ALLOWED_EXT:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
 
-    file_path = _safe_path(env.image_dir, filename)
+    file_path = safe_join(env.image_dir, filename)
     if not file_path:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
     if file_path.exists():
         return FileResponse(file_path)
 
-    cached = _safe_path(env.people_cache_dir, filename)
+    cached = safe_join(env.people_cache_dir, filename)
     if cached and cached.exists():
         return FileResponse(cached)
 
@@ -58,7 +48,7 @@ async def cached_metadata_image(splat: str) -> Response:
     # Serves images frozen by the snapshot cache (<studio>/<sub>/<hash>/images/<file>).
     if Path(splat).suffix.lower() not in _ALLOWED_EXT:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
-    file_path = _safe_path(env.metadata_cache_dir, splat)
+    file_path = safe_join(env.metadata_cache_dir, splat)
     if not file_path or not file_path.exists():
         return JSONResponse({'error': 'Image not found'}, status_code=404)
     return FileResponse(file_path)
@@ -71,7 +61,7 @@ async def manual_nfo_image(splat: str) -> Response:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
     if Path(segments[-1]).suffix.lower() not in _ALLOWED_EXT:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
-    file_path = _safe_path(env.manual_nfo_path, *segments)
+    file_path = safe_join(env.manual_nfo_path, *segments)
     if not file_path:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
     if not file_path.exists():

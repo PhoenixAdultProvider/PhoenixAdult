@@ -7,7 +7,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import urlsplit
 
 import httpx2
 
@@ -15,7 +15,9 @@ from app.config import config
 from app.config.env import env
 from app.models.metadata import PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
+from app.utils.fs.paths import safe_join
 from app.utils.helpers.helpers import slugify
+from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 
@@ -125,15 +127,6 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
 # ── Write ────────────────────────────────────────────────────────────────────
 
 
-def _proxy_target(url: str) -> str:
-    """Pull the real upstream URL out of our /images/proxy?url=… wrapper."""
-    if '/images/proxy' in url:
-        qs = parse_qs(urlsplit(url).query)
-        if qs.get('url'):
-            return unquote(qs['url'][0])
-    return url
-
-
 def _ext_of(url: str) -> str:
     suffix = Path(urlsplit(url).path).suffix.lower()
     return suffix if suffix in _IMG_EXT else '.jpg'
@@ -171,9 +164,8 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
 
     scene_hash = _hash(site_name, cur_id)
     rel_path = f'{_rel_dir(site_name, (md0.studio or ""), (md0.tagline or ""))}/{scene_hash}'
-    root = Path(cache_dir()).resolve()
-    final_dir = (root / rel_path).resolve()
-    if root not in final_dir.parents:
+    final_dir = safe_join(cache_dir(), rel_path)
+    if final_dir is None:
         return False
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
@@ -196,7 +188,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
                     return url
                 if '/images/local/' in url:
                     return _relativize(url)  # already-local cached-actor photo
-                target = _proxy_target(url)
+                target = proxy_target(url)
                 name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
                 counter[0] += 1
                 try:
@@ -282,9 +274,8 @@ def entries() -> list[dict[str, Any]]:
 def purge(key: str) -> bool:
     """Remove one snapshot by its relative path ('<studio>/<hash>' or
     '<studio>/<sub-site>/<hash>')."""
-    root = Path(cache_dir()).resolve()
-    target = (root / key).resolve()
-    if root not in target.parents or not target.exists():
+    target = safe_join(cache_dir(), key)
+    if target is None or not target.exists():
         return False
     shutil.rmtree(target, ignore_errors=True)
     if _index is not None:

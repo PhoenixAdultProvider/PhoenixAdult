@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import re
 from typing import Any
-from urllib.parse import quote
 
 from app.clients.base import SceneDetail, SearchResult
 from app.config import config
@@ -19,6 +18,7 @@ from app.utils.genres import NormalizeGenresOptions, normalize_genres
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_dimensions
 from app.utils.images.image_referers import resolve_image_cookies, resolve_image_referers
+from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.processors.title_case import title_case
@@ -26,16 +26,7 @@ from app.utils.processors.title_case import title_case
 
 class MetadataMapper:
     def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None) -> str | None:
-        if not url:
-            return None
-        if url.startswith(f'{config.base_url}/images/proxy'):
-            return url
-        out = f'{config.base_url}/images/proxy?url={quote(url, safe="")}'
-        for r in referers or []:
-            out += f'&referer={quote(r, safe="")}'
-        for c in cookies or []:
-            out += f'&cookie={quote(c, safe="")}'
-        return out
+        return proxy_url(url, config.base_url, referers, cookies)
 
     def to_rating_key(self, cur_id: str, site_name: str, date: str | None = None) -> str:
         normalized = re.sub(r'[^a-z0-9]', '', site_name.lower())

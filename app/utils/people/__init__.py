@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import re
-from urllib.parse import quote
 
 import httpx2
 
 from app.models.metadata import PlexRole
+from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people.cache import cache_enabled, cache_photo, cache_replace_enabled, lookup_cached
 from app.utils.people.data import ACTORS_REPLACE, ACTORS_REPLACE_STUDIOS, ACTORS_STUDIO_INDEXES
@@ -206,16 +206,7 @@ class PeopleManager:
 
 
 def _proxy_photo(base_url: str, photo: str, referers: list[str], cookies: list[str]) -> str | None:
-    if not photo:
-        return None
-    if photo.startswith(f'{base_url}/images/local/') or photo.startswith(f'{base_url}/images/proxy'):
-        return photo
-    out = f'{base_url}/images/proxy?url={quote(photo, safe="")}'
-    for r in referers:
-        out += f'&referer={quote(r, safe="")}'
-    for c in cookies:
-        out += f'&cookie={quote(c, safe="")}'
-    return out
+    return proxy_url(photo, base_url, referers, cookies, passthrough_local=True)
 
 
 def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[str] | None = None, cookies: list[str] | None = None) -> list[PlexRole]:
