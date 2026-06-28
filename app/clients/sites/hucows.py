@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_text
 
-_FIXED_GENRES_DATA = Path(__file__).parent / '_data' / 'json' / 'hucows_fixed_genres.json'
-_FIXED_GENRES: list[str] = json.loads(_FIXED_GENRES_DATA.read_text(encoding='utf-8'))
+_FIXED_GENRES: list[str] = load_site_json(__file__, 'hucows_fixed_genres')
 
 
 class HucowsClient(Client):

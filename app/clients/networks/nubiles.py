@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from parsel import Selector
@@ -10,7 +8,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
-from app.utils.helpers.helpers import iso_date, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score
 from app.utils.logging.logger import logger
 
 STUDIO = 'Nubiles'
@@ -28,8 +26,7 @@ _SHARED_HEADERS = {
 _POSTER_SAMPLE_RE = re.compile(r'/videos/([^/]+)/.*sample')
 _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_SUMMARY_ACTORS: list[str] = json.loads((_DATA / 'nubiles_summary_actors.json').read_text(encoding='utf-8'))
+_SUMMARY_ACTORS: list[str] = load_site_json(__file__, 'nubiles_summary_actors')
 
 
 def _abs(u: str) -> str:

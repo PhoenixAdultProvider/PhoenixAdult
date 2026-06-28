@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_STUDIO_OVERRIDES: dict[str, str] = json.loads((_DATA / 'interracialpass_studios.json').read_text(encoding='utf-8'))
-_TITLE_SELECTORS: dict[str, str] = json.loads((_DATA / 'interracialpass_title_selectors.json').read_text(encoding='utf-8'))
+_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'interracialpass_studios')
+_TITLE_SELECTORS: dict[str, str] = load_site_json(__file__, 'interracialpass_title_selectors')
 
 
 def _studio_for(site_name: str) -> str:

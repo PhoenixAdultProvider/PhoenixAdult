@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
 _LIST_QUERY = (
     'content.load?_method=content.load&tz=1&limit=512&transitParameters[v1]=OhUOlmasXD&transitParameters[v2]=OhUOlmasXD&transitParameters[preset]=videos'
@@ -19,8 +18,7 @@ _AH_RE = re.compile(r'"ah".?:.?"([0-9a-zA-Z()@:,/!+\-.$_=\\\']*)"')
 _AET_RE = re.compile(r'"aet".?:([0-9]+)')
 _ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_LEAD_ACTORS: dict[str, str] = json.loads((_DATA / 'modelcentro_actors.json').read_text(encoding='utf-8'))
+_LEAD_ACTORS: dict[str, str] = load_site_json(__file__, 'modelcentro_actors')
 
 
 def _detail_query(scene_id: int) -> str:

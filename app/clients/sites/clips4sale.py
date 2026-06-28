@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
 STUDIO = 'Clips4Sale'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_STUDIOS: list[dict[str, Any]] = json.loads((_DATA / 'clips4sale_studios.json').read_text(encoding='utf-8'))
+_STUDIOS: list[dict[str, Any]] = load_site_json(__file__, 'clips4sale_studios')
 _REMIX_RE = re.compile(r'window\.__remixContext\s*=\s*(\{.*?\});', re.DOTALL)
 
 _FILE_TYPES = ['mp4', 'wmv', 'avi']

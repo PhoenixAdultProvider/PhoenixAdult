@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
 STUDIO = 'Intersec Interactive'
 _TAGLINE_FALLBACK = 'Intersex'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_TAGLINES: dict[str, str] = json.loads((_DATA / 'intersec_taglines.json').read_text(encoding='utf-8'))
+_TAGLINES: dict[str, str] = load_site_json(__file__, 'intersec_taglines')
 
 
 def _resolve_tagline(link_text: str) -> str:

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import quote, urlsplit
 
@@ -11,7 +9,7 @@ import httpx2
 from app.clients.base import ActorResult, Client, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import iso_date, pack_cur_id
+from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.studio_name import normalize_studio
@@ -20,8 +18,7 @@ from app.utils.processors.title_case import title_case
 _ALGOLIA_APP_ID = 'TSMKFA364Q'
 _IMG_BASE = 'https://images-fame.gammacdn.com'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_ACTOR_DB: dict[str, list[str]] = json.loads((_DATA / 'gammaentother_scene_actors.json').read_text(encoding='utf-8'))
+_ACTOR_DB: dict[str, list[str]] = load_site_json(__file__, 'gammaentother_scene_actors')
 
 _api_key_cache: dict[str, str] = {}
 

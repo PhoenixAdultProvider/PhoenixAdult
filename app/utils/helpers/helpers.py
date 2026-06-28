@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import json
 import re
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 from dateutil import parser as date_parser
@@ -15,6 +17,13 @@ from app.utils.processors.similarity import compare_string
 
 if TYPE_CHECKING:
     from app.clients.base import SearchResult
+
+
+def load_site_json(caller_file: str, name: str) -> Any:
+    """Load a per-site JSON fixture from the caller's sibling _data/json/<name>.json.
+    Pass `__file__` as caller_file and the fixture's bare filename (no .json)."""
+    return json.loads((Path(caller_file).parent / '_data' / 'json' / f'{name}.json').read_text(encoding='utf-8'))
+
 
 # ── curID base64url codec (no padding, matching Node Buffer base64url) ────────
 

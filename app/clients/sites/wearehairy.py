@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'We Are Hairy'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_FIXED_GENRES: list[str] = json.loads((_DATA / 'wearehairy_fixed_genres.json').read_text(encoding='utf-8'))
+_FIXED_GENRES: list[str] = load_site_json(__file__, 'wearehairy_fixed_genres')
 
 
 def _with_https(raw: str) -> str:

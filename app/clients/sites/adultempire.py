@@ -3,21 +3,19 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import title_case
 from app.utils.searchengines import SearchOptions, web_search
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_SCENE_ACTORS: dict[str, list[str]] = json.loads((_DATA / 'adultempire_scene_actors.json').read_text(encoding='utf-8'))
+_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'adultempire_scene_actors')
 _REFERER = 'http://www.data18.empirestores.co'
 _STARRING_ANCHORS = '(//div[contains(.,"Starring")])[1]//a[contains(@label,"Performer") and contains(@href,"/porn-videos/")]'
 _CAST_LI = '//div[.//a[@name="cast"]]//li'

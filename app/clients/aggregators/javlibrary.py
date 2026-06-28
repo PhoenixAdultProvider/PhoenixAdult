@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, title_distance_score
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
 from app.utils.searchengines import SearchOptions, web_search
 
-_TABLES = json.loads((Path(__file__).parent / '_data' / 'json' / 'javlibrary_tables.json').read_text(encoding='utf-8'))
+_TABLES = load_site_json(__file__, 'javlibrary_tables')
 _ACTORS: dict[str, list[str]] = _TABLES['actors']
 _CROSS_SITE: dict[str, str] = _TABLES['crossSite']
 _IGNORE_LIST: list[str] = _TABLES['ignoreList']

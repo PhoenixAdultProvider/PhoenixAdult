@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 
-_FIXED_GENRES_DATA = Path(__file__).parent / '_data' / 'json' / 'dorcelclub_fixed_genres.json'
-_FIXED_GENRES: list[str] = json.loads(_FIXED_GENRES_DATA.read_text(encoding='utf-8'))
+_FIXED_GENRES: list[str] = load_site_json(__file__, 'dorcelclub_fixed_genres')
 
 STUDIO = 'Marc Dorcel'
 _DENSITY_RE = re.compile(r'\s*\d+x\s*$')

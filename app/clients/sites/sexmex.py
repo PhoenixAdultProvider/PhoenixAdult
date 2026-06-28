@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_text
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_TITLE_FIXES: dict[str, str] = json.loads((_DATA / 'sexmex_title_fixes.json').read_text(encoding='utf-8'))
-_TITLE_KEYWORDS: list[str] = json.loads((_DATA / 'sexmex_title_keywords.json').read_text(encoding='utf-8'))
+_TITLE_FIXES: dict[str, str] = load_site_json(__file__, 'sexmex_title_fixes')
+_TITLE_KEYWORDS: list[str] = load_site_json(__file__, 'sexmex_title_keywords')
 
 
 def _apply_title_fixes(raw: str) -> str:

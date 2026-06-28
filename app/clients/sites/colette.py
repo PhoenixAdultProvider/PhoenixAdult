@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text, web_search_urls
 
-_GALLERY_FIXES_DATA = Path(__file__).parent / '_data' / 'json' / 'colette_gallery_fixes.json'
-_GALLERY_FIXES: dict[str, str] = json.loads(_GALLERY_FIXES_DATA.read_text(encoding='utf-8'))
+_GALLERY_FIXES: dict[str, str] = load_site_json(__file__, 'colette_gallery_fixes')
 
 _TITLE_XP = '//div[contains(@class,"row") and contains(@class,"info")]//div//h1'
 _CAST_XP = '//div[contains(@class,"info")]//h2//a'

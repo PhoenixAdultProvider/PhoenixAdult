@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_text
 from app.utils.processors.title_case import title_case
 
-_ACTORS_DATA = Path(__file__).parent / '_data' / 'json' / 'momcomesfirst_actors.json'
-_ACTORS: set[str] = set(json.loads(_ACTORS_DATA.read_text(encoding='utf-8')))
+_ACTORS: set[str] = set(load_site_json(__file__, 'momcomesfirst_actors'))
 
 
 class MomComesFirstClient(Client):

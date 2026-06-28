@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date
+from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_site_json
 
 STUDIO = 'Adult Prime'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_STUDIO_OVERRIDES: dict[str, str] = json.loads((_DATA / 'adultprime_studios.json').read_text(encoding='utf-8'))
-_SKIP_PREFIXES: list[str] = json.loads((_DATA / 'adultprime_skip_prefixes.json').read_text(encoding='utf-8'))
+_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'adultprime_studios')
+_SKIP_PREFIXES: list[str] = load_site_json(__file__, 'adultprime_skip_prefixes')
 
 _EURO_DATE_RE = re.compile(r'(\d{2})\.(\d{2})\.(\d{4})')
 

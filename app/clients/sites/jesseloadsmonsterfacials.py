@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.processors.title_case import title_case
 
-_ACTORS_DATA = Path(__file__).parent / '_data' / 'json' / 'jesseloads_actors.json'
-_ACTORS: dict[str, list[str]] = json.loads(_ACTORS_DATA.read_text(encoding='utf-8'))
+_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'jesseloads_actors')
 _WS_RE = re.compile(r'\s+')
 _NUM_RE = re.compile(r'(\d+)')
 

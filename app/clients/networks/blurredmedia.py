@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import (
@@ -16,10 +14,9 @@ from app.clients.base import (
 )
 from app.registry import ResolvedSiteInfo
 from app.utils.cookies.site_cookies import get_site_cookies
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_SESSION_COOKIES: dict[str, str] = json.loads((_DATA / 'blurredmedia_session_cookies.json').read_text(encoding='utf-8'))
+_SESSION_COOKIES: dict[str, str] = load_site_json(__file__, 'blurredmedia_session_cookies')
 
 
 def _abs(raw: str, base_url: str) -> str:

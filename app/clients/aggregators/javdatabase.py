@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import decensor, iso_date, title_distance_score
+from app.utils.helpers.helpers import decensor, iso_date, load_site_json, title_distance_score
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.processors.title_case import title_case
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_TABLES = json.loads((_DATA / 'javdatabase_tables.json').read_text(encoding='utf-8'))
-_SCENE_ACTORS: dict[str, list[str]] = json.loads((_DATA / 'javdatabase_scene_actors.json').read_text(encoding='utf-8'))
+_TABLES = load_site_json(__file__, 'javdatabase_tables')
+_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'javdatabase_scene_actors')
 _CENSORED: dict[str, str] = _TABLES['censoredWords']
 _ACTOR_CORRECTIONS: dict[str, list[str]] = _TABLES['actorCorrections']
 _CROSS_SITE: dict[str, list[str]] = _TABLES['crossSite']

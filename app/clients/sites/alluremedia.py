@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, load_site_json, pack_cur_id
 
 STUDIO = 'Allure Media'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_TABLES: dict[str, Any] = json.loads((_DATA / 'alluremedia_tables.json').read_text(encoding='utf-8'))
+_TABLES: dict[str, Any] = load_site_json(__file__, 'alluremedia_tables')
 _CENSORED: dict[str, str] = _TABLES['censoredWords']
 _SCENE_ACTORS: list[str] = _TABLES['sceneActors']
 

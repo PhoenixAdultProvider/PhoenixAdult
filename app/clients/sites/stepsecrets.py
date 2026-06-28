@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url
+from app.utils.helpers.helpers import absolute_url, load_site_json
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'Joymii'
 TAGLINE = 'Step Secrets'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_FIXED_GENRES: list[str] = json.loads((_DATA / 'stepsecrets_fixed_genres.json').read_text(encoding='utf-8'))
+_FIXED_GENRES: list[str] = load_site_json(__file__, 'stepsecrets_fixed_genres')
 
 
 class StepSecretsClient(Client):

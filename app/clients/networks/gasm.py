@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify, title_distance_score
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'GASM'
 _DATE_FMT = '%b %d, %Y'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_CHANNELS: dict[str, str] = json.loads((_DATA / 'gasm_channels.json').read_text(encoding='utf-8'))
+_CHANNELS: dict[str, str] = load_site_json(__file__, 'gasm_channels')
 
 
 class GasmClient(Client):

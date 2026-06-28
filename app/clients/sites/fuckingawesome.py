@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_text
 
-_GROUP_GENRES_DATA = Path(__file__).parent / '_data' / 'json' / 'fuckingawesome_group_genres.json'
-_GROUP_GENRES: dict[str, str] = json.loads(_GROUP_GENRES_DATA.read_text(encoding='utf-8'))
+_GROUP_GENRES: dict[str, str] = load_site_json(__file__, 'fuckingawesome_group_genres')
 
 STUDIO = 'FuckingAwesome'
 _ACTOR_XP = '//div[contains(@class,"pornstarnames")]//ul//li//a[contains(@href,"pornstars")]'

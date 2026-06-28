@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 
 STUDIO = 'Kelly Madison Productions'
 _NATS_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_POSTER_TEMPLATES: list[str] = json.loads((_DATA / 'kellymadison_poster_templates.json').read_text(encoding='utf-8'))
+_POSTER_TEMPLATES: list[str] = load_site_json(__file__, 'kellymadison_poster_templates')
 
 
 def _tagline_from_title(title: str, site_name: str) -> str:

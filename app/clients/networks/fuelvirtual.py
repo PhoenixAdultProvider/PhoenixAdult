@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
 _SCENE_ID_RE = re.compile(r'id=(\d+)')
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_ACTOR_DB: dict[str, dict[str, list[str]]] = json.loads((_DATA / 'fuelvirtual_actors.json').read_text(encoding='utf-8'))
+_ACTOR_DB: dict[str, dict[str, list[str]]] = load_site_json(__file__, 'fuelvirtual_actors')
 
 
 def _server_path(site_name: str) -> str:

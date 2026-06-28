@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
 
 STUDIO = 'Femdom Empire'
 _DATE_FMT = '%B %d, %Y'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_MANUAL_MATCHES: dict[str, dict[str, str]] = json.loads((_DATA / 'femdomempire_manual_matches.json').read_text(encoding='utf-8'))
+_MANUAL_MATCHES: dict[str, dict[str, str]] = load_site_json(__file__, 'femdomempire_manual_matches')
 
 
 class FemdomEmpireClient(Client):

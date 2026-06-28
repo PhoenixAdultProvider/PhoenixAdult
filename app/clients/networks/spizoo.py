@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 
 STUDIO = 'Spizoo'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_PROFILES: dict[str, dict[str, Any]] = json.loads((_DATA / 'spizoo_profiles.json').read_text(encoding='utf-8'))
+_PROFILES: dict[str, dict[str, Any]] = load_site_json(__file__, 'spizoo_profiles')
 
 _PROFILE_KEYS = {
     'Raw Attack': 'rawattack',

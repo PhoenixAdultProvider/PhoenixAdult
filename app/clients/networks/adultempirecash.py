@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
-from pathlib import Path
 from typing import Any, Literal, cast
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify
 from app.utils.logging.logger import logger
 
 STUDIO = 'Adult Empire Cash'
@@ -15,9 +13,8 @@ _DATE_FMT = '%b %d, %Y'
 
 Variant = Literal['standard', 'imgFullFluid', 'sceneTitleP']
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_VARIANTS: dict[str, str] = json.loads((_DATA / 'adultempirecash_variants.json').read_text(encoding='utf-8'))
-_STUDIO_OVERRIDES: dict[str, str] = json.loads((_DATA / 'adultempirecash_studios.json').read_text(encoding='utf-8'))
+_VARIANTS: dict[str, str] = load_site_json(__file__, 'adultempirecash_variants')
+_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'adultempirecash_studios')
 
 # Per-subsite genre-source override (XPath). Default reads div.tags; Elegant Angel
 # carries categories under an "Attributes" block instead.

@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from urllib.parse import urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'VNA Network'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_SCENE_ACTORS: dict[str, list[str]] = json.loads((_DATA / 'vna_scene_actors.json').read_text(encoding='utf-8'))
+_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'vna_scene_actors')
 
 
 class VNAClient(Client):

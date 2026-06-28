@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text, web_search_urls
 from app.utils.processors.title_case import title_case
 
-_SLUG_ACTORS_DATA = Path(__file__).parent / '_data' / 'json' / 'dickdrainers_slug_actors.json'
-_SLUG_ACTORS: dict[str, list[str]] = json.loads(_SLUG_ACTORS_DATA.read_text(encoding='utf-8'))
+_SLUG_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'dickdrainers_slug_actors')
 
 _CARD_XP = '//div[contains(@class,"item-video") and contains(@class,"hover")]'
 _SRC0_3X_RE = re.compile(r'src0_3x="([^"]+)"')

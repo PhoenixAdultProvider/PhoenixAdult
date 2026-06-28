@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import web_search_urls
 
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
-_DATA = Path(__file__).parent / '_data' / 'json'
-_PROFILES: dict[str, dict[str, Any]] = json.loads((_DATA / 'radicalcashother_profiles.json').read_text(encoding='utf-8'))
+_PROFILES: dict[str, dict[str, Any]] = load_site_json(__file__, 'radicalcashother_profiles')
 
 
 def _strip_ordinals(s: str) -> str:

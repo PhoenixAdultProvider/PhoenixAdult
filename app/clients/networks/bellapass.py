@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'BellaPass'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_STUDIO_OVERRIDES: dict[str, str] = json.loads((_DATA / 'bellapass_studios.json').read_text(encoding='utf-8'))
-_TITLE_SELECTORS: dict[str, str] = json.loads((_DATA / 'bellapass_title_selectors.json').read_text(encoding='utf-8'))
+_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'bellapass_studios')
+_TITLE_SELECTORS: dict[str, str] = load_site_json(__file__, 'bellapass_title_selectors')
 
 _PUNCT_RE = re.compile(r'\s*[^\w\s]+')
 

@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 
 STUDIO = 'Strapon Cum'
 _WS_RE = re.compile(r'\s+')
 _ACTOR_XP = '//div[contains(@class,"card")]//span[contains(text(),"Featuring:")]/following-sibling::a'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_FIXED_GENRES: list[str] = json.loads((_DATA / 'straponcum_fixed_genres.json').read_text(encoding='utf-8'))
+_FIXED_GENRES: list[str] = load_site_json(__file__, 'straponcum_fixed_genres')
 
 
 def _parse_date(tok: str) -> str | None:

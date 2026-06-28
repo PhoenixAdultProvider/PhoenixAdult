@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 
 STUDIO = 'PKJ Media'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_GENRES: dict[str, list[str]] = json.loads((_DATA / 'pkjmedia_genres.json').read_text(encoding='utf-8'))
+_GENRES: dict[str, list[str]] = load_site_json(__file__, 'pkjmedia_genres')
 
 
 class PKJMediaClient(Client):

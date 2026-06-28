@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 
 STUDIO = 'LittleCaprice'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_CATEGORY_TAGLINES: dict[str, str] = json.loads((_DATA / 'littlecaprice_category_taglines.json').read_text(encoding='utf-8'))
+_CATEGORY_TAGLINES: dict[str, str] = load_site_json(__file__, 'littlecaprice_category_taglines')
 
 
 def _abs_with_slash(raw: str, base: str) -> str:

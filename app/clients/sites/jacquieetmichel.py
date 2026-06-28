@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 
-_ACTORS_DATA = Path(__file__).parent / '_data' / 'json' / 'jacquieetmichel_actors.json'
-_ACTORS: dict[str, list[str]] = json.loads(_ACTORS_DATA.read_text(encoding='utf-8'))
+_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'jacquieetmichel_actors')
 
 _RELEASE_XP = '(//div[contains(@class,"content-detail__infos__row")]//p[contains(@class,"content-detail__description--link")])[2]'
 

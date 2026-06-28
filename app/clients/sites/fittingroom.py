@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 
-_COLLECTIONS_DATA = Path(__file__).parent / '_data' / 'json' / 'fittingroom_collections.json'
-_COLLECTIONS: dict[str, str] = json.loads(_COLLECTIONS_DATA.read_text(encoding='utf-8'))
+_COLLECTIONS: dict[str, str] = load_site_json(__file__, 'fittingroom_collections')
 
 STUDIO = 'Fitting-Room'
 _SCENE_ID_RE = re.compile(r'/(\d+)/1$')

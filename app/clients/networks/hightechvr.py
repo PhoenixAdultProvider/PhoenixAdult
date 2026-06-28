@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, slugify
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_PROFILES: dict[str, dict[str, str]] = json.loads((_DATA / 'hightechvr_profiles.json').read_text(encoding='utf-8'))
+_PROFILES: dict[str, dict[str, str]] = load_site_json(__file__, 'hightechvr_profiles')
 _SEXBABES_RE = re.compile(r'videos_screenshots/(.+?)/\d+x\d+/')
 _STYLE_URL_RE = re.compile(r'url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)')
 

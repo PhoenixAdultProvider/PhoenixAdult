@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 
 _DATE_FMT = '%Y %B %d'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_ROSTER: set[str] = set(json.loads((_DATA / 'queensnake_actors.json').read_text(encoding='utf-8')))
+_ROSTER: set[str] = set(load_site_json(__file__, 'queensnake_actors'))
 
 
 def _is_qs_actor(tag: str) -> bool:

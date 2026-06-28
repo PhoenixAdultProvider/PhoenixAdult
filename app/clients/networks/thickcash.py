@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
 STUDIO = 'Thick Cash'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_GENRES: dict[str, list[str]] = json.loads((_DATA / 'thickcash_genres.json').read_text(encoding='utf-8'))
+_GENRES: dict[str, list[str]] = load_site_json(__file__, 'thickcash_genres')
 
 
 class ThickCashClient(Client):

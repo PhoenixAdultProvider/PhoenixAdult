@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 
 import app.utils.images.fansite_adapters  # noqa: F401 - registers the fansite adapters
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 from app.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
 from app.utils.searchengines import SearchOptions, web_search
 
 STUDIO = 'X-Art'
-_DATA = Path(__file__).parent / '_data' / 'json'
-_MANUAL_MATCHES: dict[str, dict[str, str]] = json.loads((_DATA / 'xart_manual_matches.json').read_text(encoding='utf-8'))
+_MANUAL_MATCHES: dict[str, dict[str, str]] = load_site_json(__file__, 'xart_manual_matches')
 _FANART_SITES = ['XartFan.com', 'HQSluts.com', 'ImagePost.com', 'CoedCherry.com', 'Nude-Gals.com']
 _HARVEST_XPATHS = (
     '//img[@alt="thumb"]/@src',
@@ -25,7 +22,7 @@ _COLUMNS = 'contains(@class,"small-12") and contains(@class,"medium-12") and con
 _TITLE_XP = f'//div[contains(@class,"row") and contains(@class,"info")]//div[{_COLUMNS}]'
 _SUMMARY_XP = f'//div[{_COLUMNS} and contains(@class,"info")]//p'
 
-_overrides = json.loads((_DATA / 'xart_fanart_overrides.json').read_text(encoding='utf-8'))
+_overrides = load_site_json(__file__, 'xart_fanart_overrides')
 register_fanart_overrides(no_match=_overrides.get('noMatch'), bad_match=_overrides.get('badMatch'))
 
 

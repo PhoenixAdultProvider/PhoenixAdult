@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
 from app.utils.searchengines import SearchOptions, web_search, web_search_available, web_search_filtered
 
 STUDIO = 'First Time Videos'
 
-_DATA = Path(__file__).parent / '_data' / 'json'
-_PHOTO_LOOKUP: dict[str, list[str]] = json.loads((_DATA / 'ftv_photo_lookup.json').read_text(encoding='utf-8'))
+_PHOTO_LOOKUP: dict[str, list[str]] = load_site_json(__file__, 'ftv_photo_lookup')
 
 _GENRES: dict[str, list[str]] = {
     'FTVGirls': ['Teen', 'Solo', 'Public'],
