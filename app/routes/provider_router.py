@@ -10,6 +10,7 @@ from app.services.match_service import MatchRequest, MatchService
 from app.services.metadata_service import MetadataService
 from app.utils.logging.logger import logger
 from app.utils.plex.media_type import plex_media_type_id
+from app.utils.plex.responses import empty_media_container
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
@@ -18,17 +19,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
     metadata_service = MetadataService()
 
     def _empty_container() -> JSONResponse:
-        return JSONResponse(
-            {
-                'MediaContainer': {
-                    'offset': 0,
-                    'totalSize': 0,
-                    'identifier': provider.plex_identifier,
-                    'size': 0,
-                    'Metadata': [],
-                }
-            }
-        )
+        return JSONResponse(empty_media_container(provider.plex_identifier))
 
     @router.get('')
     @router.get('/')
