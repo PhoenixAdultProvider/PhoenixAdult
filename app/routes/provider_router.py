@@ -5,12 +5,12 @@ from fastapi.responses import JSONResponse
 
 from app.models.media_provider import MediaProviderResponse
 from app.models.provider_info import ProviderInfo
-from app.routes import plex_json
+from app.routes import plex_json, read_json_body
 from app.services.match_service import MatchRequest, MatchService
 from app.services.metadata_service import MetadataService
 from app.utils.logging.logger import logger
 from app.utils.plex.media_type import plex_media_type_id
-from app.utils.plex.responses import empty_media_container
+from app.utils.plex.responses import empty_media_container, media_container
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
@@ -42,10 +42,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
 
     @router.post('/library/metadata/matches')
     async def match(request: Request) -> JSONResponse:
-        try:
-            body = await request.json()
-        except (ValueError, TypeError):
-            body = {}
+        body = await read_json_body(request)
         language = request.headers.get('x-plex-language')
         try:
             req = MatchRequest(
@@ -73,17 +70,8 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
             if not result:
                 return JSONResponse({'error': 'Not found'}, status_code=404)
             image_list = result.MediaContainer.Metadata[0].Image or []
-            return JSONResponse(
-                {
-                    'MediaContainer': {
-                        'offset': 0,
-                        'totalSize': len(image_list),
-                        'identifier': provider.plex_identifier,
-                        'size': len(image_list),
-                        'Image': [img.model_dump(by_alias=True, exclude_none=True) for img in image_list],
-                    }
-                }
-            )
+            images = [img.model_dump(by_alias=True, exclude_none=True) for img in image_list]
+            return JSONResponse(media_container(provider.plex_identifier, images, key='Image'))
         except Exception:  # noqa: BLE001
             logger.error(provider.id, 'Images error', exc_info=True)
             return JSONResponse({'error': 'Internal server error'}, status_code=500)

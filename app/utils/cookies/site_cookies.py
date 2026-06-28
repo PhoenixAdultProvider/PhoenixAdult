@@ -5,10 +5,10 @@ from urllib.parse import urlsplit
 
 import httpx2
 
+from app.utils.http.client import DEFAULT_UA
 from app.utils.logging.logger import logger
 
 _HOST_CACHE_TTL = 30 * 60  # seconds
-_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
 _COOKIE_CACHE: dict[str, tuple[dict[str, str], float]] = {}
 
@@ -35,7 +35,7 @@ async def get_site_cookies(base_url: str) -> dict[str, str]:
     cookies: dict[str, str] = {}
     try:
         async with httpx2.AsyncClient(timeout=15.0, verify=False, follow_redirects=True) as client:
-            r = await client.get(base_url, headers={'User-Agent': _UA})
+            r = await client.get(base_url, headers={'User-Agent': DEFAULT_UA})
         cookies = parse_set_cookie(r.headers.get_list('set-cookie'))
     except httpx2.HTTPError as err:
         logger.warn('siteCookies', f'GET {base_url} failed: {err}')

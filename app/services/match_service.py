@@ -12,7 +12,7 @@ from app.registry import find_site
 from app.routes.scraper_router import ScraperRouter
 from app.utils.helpers.helpers import format_duration
 from app.utils.logging.logger import logger
-from app.utils.plex.responses import empty_media_container
+from app.utils.plex.responses import empty_media_container, media_container
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
 from app.utils.processors.similarity import compare_string
@@ -96,17 +96,7 @@ class MatchService:
             )
         results.sort(key=lambda r: r.score or 0, reverse=True)
 
-        return PlexMatchResponse.model_validate(
-            {
-                'MediaContainer': {
-                    'offset': 0,
-                    'totalSize': len(results),
-                    'identifier': provider.plex_identifier,
-                    'size': len(results),
-                    'Metadata': results,
-                }
-            }
-        )
+        return PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
 
     def _empty(self, provider: ProviderInfo) -> PlexMatchResponse:
         return PlexMatchResponse.model_validate(empty_media_container(provider.plex_identifier))

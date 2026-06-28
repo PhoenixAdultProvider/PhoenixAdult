@@ -69,7 +69,7 @@ async def manual_nfo_image(splat: str) -> Response:
     return FileResponse(file_path)
 
 
-async def _proxy(request: Request, send_body: bool) -> Response:
+async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -> Response:
     raw_url = request.query_params.get('url')
     if not raw_url:
         return JSONResponse({'error': 'Missing url'}, status_code=400)
@@ -80,34 +80,14 @@ async def _proxy(request: Request, send_body: bool) -> Response:
     try:
         entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'))
     except Exception as err:  # noqa: BLE001
-        logger.warn('proxy', f'502 {target} - {err}')
+        logger.warn('proxy-classified' if classify else 'proxy', f'502 {target} - {err}')
         return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
     headers = {'Content-Length': str(len(entry.data)), 'Cache-Control': _PROXY_CACHE_CONTROL}
-    body = entry.data if send_body else b''
-    return Response(content=body, media_type=entry.content_type, headers=headers)
-
-
-async def _proxy_classified(request: Request, send_body: bool) -> Response:
-    raw_url = request.query_params.get('url')
-    if not raw_url:
-        return JSONResponse({'error': 'Missing url'}, status_code=400)
-    try:
-        target = await assert_fetchable_url(raw_url)
-    except ValueError:
-        return JSONResponse({'error': 'Invalid url'}, status_code=400)
-    try:
-        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'))
-    except Exception as err:  # noqa: BLE001
-        logger.warn('proxy-classified', f'502 {target} - {err}')
-        return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
-    result = classify_image(entry.width, entry.height)
-    if result.image_class == 'unknown':
-        return JSONResponse({'error': 'Image could not be classified as poster or background'}, status_code=404)
-    headers = {
-        'Content-Length': str(len(entry.data)),
-        'Cache-Control': _PROXY_CACHE_CONTROL,
-        'X-Image-Type': result.image_class,
-    }
+    if classify:
+        result = classify_image(entry.width, entry.height)
+        if result.image_class == 'unknown':
+            return JSONResponse({'error': 'Image could not be classified as poster or background'}, status_code=404)
+        headers['X-Image-Type'] = result.image_class
     body = entry.data if send_body else b''
     return Response(content=body, media_type=entry.content_type, headers=headers)
 
@@ -124,9 +104,9 @@ async def proxy_head(request: Request) -> Response:
 
 @router.get('/proxy-classified')
 async def proxy_classified_get(request: Request) -> Response:
-    return await _proxy_classified(request, True)
+    return await _proxy(request, True, classify=True)
 
 
 @router.head('/proxy-classified')
 async def proxy_classified_head(request: Request) -> Response:
-    return await _proxy_classified(request, False)
+    return await _proxy(request, False, classify=True)

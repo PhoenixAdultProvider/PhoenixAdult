@@ -5,13 +5,12 @@ from urllib.parse import quote
 
 import httpx2
 
+from app.utils.http.client import DEFAULT_UA
 from app.utils.processors.similarity import compare_string
-
-_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
 
 def make_source_http() -> httpx2.AsyncClient:
-    return httpx2.AsyncClient(timeout=12.0, verify=False, follow_redirects=True, headers={'User-Agent': _UA})
+    return httpx2.AsyncClient(timeout=12.0, verify=False, follow_redirects=True, headers={'User-Agent': DEFAULT_UA})
 
 
 def encode_name(name: str) -> str:

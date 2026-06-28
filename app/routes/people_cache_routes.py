@@ -9,6 +9,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.routes import read_json_body
 from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
@@ -187,11 +188,8 @@ async def page(request: Request) -> HTMLResponse:
 
 @router.post('/restore')
 async def restore(request: Request) -> JSONResponse:
-    try:
-        data = await request.json()
-    except (ValueError, TypeError):
-        data = {}
-    filename = str(data.get('filename', '')) if isinstance(data, dict) else ''
+    data = await read_json_body(request)
+    filename = str(data.get('filename', ''))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
     ok = await restore_original(filename)
@@ -200,11 +198,8 @@ async def restore(request: Request) -> JSONResponse:
 
 @router.post('/purge')
 async def purge_file(request: Request) -> JSONResponse:
-    try:
-        data = await request.json()
-    except (ValueError, TypeError):
-        data = {}
-    filename = str(data.get('filename', '')) if isinstance(data, dict) else ''
+    data = await read_json_body(request)
+    filename = str(data.get('filename', ''))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
     return JSONResponse({'ok': purge(filename)})
@@ -212,12 +207,7 @@ async def purge_file(request: Request) -> JSONResponse:
 
 @router.post('/gender')
 async def gender(request: Request) -> JSONResponse:
-    try:
-        data = await request.json()
-    except (ValueError, TypeError):
-        data = {}
-    if not isinstance(data, dict):
-        data = {}
+    data = await read_json_body(request)
     filename = str(data.get('filename', ''))
     new_gender = str(data.get('gender', ''))
     if not filename:

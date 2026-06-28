@@ -23,8 +23,8 @@ DEFAULT_SEARCH_TITLE_TRASH = [
 ]
 # fmt: on
 
-_DEFAULT_FEMALE_IMAGE = 'https://t3.ftcdn.net/jpg/00/97/03/72/360_F_97037264_ZZfCG8aa12o7NEZmnhVHGW49VOdfYcxy.jpg'
-_DEFAULT_MALE_IMAGE = 'https://t3.ftcdn.net/jpg/01/13/46/18/240_F_113461869_W12s5AqhOOZF0YT3n3izlwQLzj82MGsj.jpg'
+DEFAULT_FEMALE_IMAGE_URL = 'https://t3.ftcdn.net/jpg/00/97/03/72/360_F_97037264_ZZfCG8aa12o7NEZmnhVHGW49VOdfYcxy.jpg'
+DEFAULT_MALE_IMAGE_URL = 'https://t3.ftcdn.net/jpg/01/13/46/18/240_F_113461869_W12s5AqhOOZF0YT3n3izlwQLzj82MGsj.jpg'
 
 
 @dataclass(frozen=True)
@@ -190,7 +190,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Overrides the built-in female placeholder image.',
         'Gender handling',
         'string',
-        default_value=_DEFAULT_FEMALE_IMAGE,
+        default_value=DEFAULT_FEMALE_IMAGE_URL,
         preview='image',
     ),
     EnvVarSpec(
@@ -199,7 +199,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Overrides the built-in male placeholder image.',
         'Gender handling',
         'string',
-        default_value=_DEFAULT_MALE_IMAGE,
+        default_value=DEFAULT_MALE_IMAGE_URL,
         preview='image',
     ),
     EnvVarSpec(

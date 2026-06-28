@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.config.env import env
+from app.routes import read_json_body
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import env_auth_guard
 
@@ -27,11 +28,8 @@ async def page(request: Request) -> HTMLResponse:
 
 @router.post('/purge')
 async def purge(request: Request) -> JSONResponse:
-    try:
-        data = await request.json()
-    except (ValueError, TypeError):
-        data = {}
-    key = str(data.get('key', '')) if isinstance(data, dict) else ''
+    data = await read_json_body(request)
+    key = str(data.get('key', ''))
     if '/' not in key:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
     ok = metadata_cache.purge(key)

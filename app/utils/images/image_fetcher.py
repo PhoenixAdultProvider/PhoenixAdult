@@ -9,11 +9,11 @@ import httpx2
 from PIL import Image
 
 from app.config.env import env
+from app.utils.http.client import DEFAULT_UA
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.http.ssrf_guard import is_blocked_hostname
 from app.utils.logging.logger import logger
 
-_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 _CACHE_TTL = 60 * 60  # seconds
 
@@ -56,7 +56,7 @@ def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
 
 
 async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, cookie: str | None) -> tuple[bytes, str]:
-    headers = {'User-Agent': _USER_AGENT}
+    headers = {'User-Agent': DEFAULT_UA}
     if referer:
         headers['Referer'] = _sanitize_header(referer)
     if cookie:
