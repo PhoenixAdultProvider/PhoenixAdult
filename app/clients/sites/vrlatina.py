@@ -89,7 +89,7 @@ class VRLatinaClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
                     photo = (page['sel'].xpath('(//div[contains(@class,"model-avatar")]//img/@src)[1]').get() or '').strip()

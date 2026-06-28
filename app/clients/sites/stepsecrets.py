@@ -29,7 +29,7 @@ class StepSecretsClient(Client):
         href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ class StepSecretsClient(Client):
             href = (href or '').strip()
             if not href:
                 continue
-            actor_url = href if href.startswith('http') else absolute_url(href, base)
+            actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_url}')
             if not page:
                 continue

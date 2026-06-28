@@ -36,7 +36,7 @@ class POVRClient(Client):
             href = (card.xpath('(.//a[contains(@class,"thumbnail__link")]/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            url = absolute_url(href, ctx.site_info.base_url)
             sub_site = (card.xpath('normalize-space((.//a[contains(@class,"thumbnail__footer-link")])[1])').get() or '').strip()
 
             site_dist = compare_string(sub_site.lower().replace('originals', ''), ctx.site_info.name.lower()).levenshtein

@@ -81,15 +81,15 @@ class PerfectGonzoClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            page = await self.fetch_and_load(href if href.startswith('http') else absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
+            page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
             raw = (page['sel'].xpath('(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src').get() or '').strip() if page else ''
-            photo = (raw if raw.startswith('http') else absolute_url(raw, base)) if raw else ''
+            photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for poster in scene.sel.xpath('//video/@poster').getall():
             coll['push'](poster)
         for img in scene.sel.xpath('//ul[@class="bxslider_screenshots"]//img'):

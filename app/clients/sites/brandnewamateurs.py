@@ -22,7 +22,7 @@ class BrandNewAmateursClient(Client):
             href = (card.xpath('(.//div[contains(@class,"item-thumb")]//a/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             packed = json.dumps({'sceneURL': scene_url, 'actorURL': actor_url, 'releaseDate': ctx.search_date})
             results.append(
                 build_search_result(
@@ -79,7 +79,7 @@ class BrandNewAmateursClient(Client):
         poster = (scene.sel.xpath('(//meta[contains(@name,"twitter:image")]/@content)[1]').get() or '').strip()
         if not poster:
             return []
-        return [poster if poster.startswith('http') else absolute_url(poster, scene.site.base_url)]
+        return [absolute_url(poster, scene.site.base_url)]
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         actor_url = scene.extra if isinstance(scene.extra, str) else ''

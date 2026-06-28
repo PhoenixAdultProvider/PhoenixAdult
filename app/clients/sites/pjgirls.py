@@ -24,7 +24,7 @@ class PJGirlsClient(Client):
         href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date(first_text(source, '(.//a//div//span)[2]'))
@@ -72,7 +72,7 @@ class PJGirlsClient(Client):
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
                 raw = (loaded['sel'].xpath('(//div[contains(@class,"image")]//img/@src)[1]').get() or '').strip() if loaded else ''
-                photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -83,7 +83,7 @@ class PJGirlsClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

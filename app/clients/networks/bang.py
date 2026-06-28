@@ -90,7 +90,7 @@ class BangClient(Client):
                     title = (el.xpath('(.//a//span)[1]').xpath('string(.)').get() or '').strip()
                 if not title:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)

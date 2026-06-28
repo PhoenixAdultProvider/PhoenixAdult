@@ -66,7 +66,7 @@ class ScoreGroupClient(Client):
         href = (anchor.xpath('@href').get() or '').strip().split('?')[0]
         if not raw_title or not href:
             return []
-        scene_url = href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        scene_url = absolute_url(href, loaded.site.base_url)
         m = _ID_RE.search(scene_url)
         score = 100 if ctx.scene_id and m and m.group(1) == ctx.scene_id else None
         packed = json.dumps(
@@ -182,7 +182,7 @@ class ScoreGroupClient(Client):
             gender = 'male' if '/male-' in href else ''
             photo = ''
             if href:
-                page = await self.fetch_and_load(href if href.startswith('http') else absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
+                page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 photo = (page['sel'].xpath('(//div[contains(@class,"item-img")]//img)[1]/@src').get() or '').strip() if page else ''
             actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
 

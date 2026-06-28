@@ -58,7 +58,7 @@ class CzechVRClient(Client):
         if not thumb:
             return None
         datasrc = _CDN_RE.sub('/cdn-cgi/image//', thumb)
-        return datasrc if datasrc.startswith('http') else absolute_url(datasrc, loaded.site.base_url)
+        return absolute_url(datasrc, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ class CzechVRClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, base))
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
             '//div[@class="foto"]//dl8-video/@poster',
             '//div[contains(@class,"galerka")]//a/@href',

@@ -44,7 +44,7 @@ class HoloGirlsVRClient(Client):
             href = (anchor.xpath('@href').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(
                 build_search_result(
                     title=title,
@@ -92,7 +92,7 @@ class HoloGirlsVRClient(Client):
         for card in scene.sel.xpath('//div[contains(@class,"col-md-3")]'):
             name = first_text(card, './/div[contains(@class,"vidpage-mobilePad")]//a//strong')
             raw = (card.xpath('(.//img[contains(@class,"imgHover")]/@src)[1]').get() or '').strip()
-            photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+            photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)
 
@@ -104,7 +104,7 @@ class HoloGirlsVRClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
 

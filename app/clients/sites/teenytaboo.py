@@ -104,7 +104,7 @@ class TeenyTabooClient(Client):
             s = (src or '').strip()
             if not s:
                 continue
-            abs_url = s if s.startswith('http') else absolute_url(s, base)
+            abs_url = absolute_url(s, base)
             if abs_url not in images:
                 images.append(abs_url)
         return images

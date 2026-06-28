@@ -133,7 +133,7 @@ class LittleCapriceClient(Client):
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
                 raw = (page['sel'].xpath('(//img[contains(@class,"img-poster")])[1]/@src').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 

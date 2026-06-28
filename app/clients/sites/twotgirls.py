@@ -39,7 +39,7 @@ class TwoTGirlsClient(Client):
             href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             if scene_url in seen:
                 continue
             seen.add(scene_url)
@@ -100,12 +100,12 @@ class TwoTGirlsClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
                     raw = (page['sel'].xpath('(//div[contains(@class,"col-md-4")]//img/@src)[1]').get() or '').strip()
                     if raw:
-                        photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                        photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -119,7 +119,7 @@ class TwoTGirlsClient(Client):
             if not raw:
                 return
             upgraded = raw.replace('720p', '1080p')
-            abs_url = upgraded if upgraded.startswith('http') else absolute_url(upgraded, base)
+            abs_url = absolute_url(upgraded, base)
             if abs_url not in images:
                 images.append(abs_url)
 

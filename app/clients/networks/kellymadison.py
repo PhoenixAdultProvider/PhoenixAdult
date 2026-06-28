@@ -117,10 +117,10 @@ class KellyMadisonClient(Client):
             if name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else absolute_url(href, base)
+            actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {name}')
             raw = (page['sel'].xpath('(//div[contains(@class,"one")]//img)[1]/@src').get() or '').strip() if page else ''
-            photo = (raw if raw.startswith('http') else absolute_url(raw, base)) if raw else ''
+            photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 

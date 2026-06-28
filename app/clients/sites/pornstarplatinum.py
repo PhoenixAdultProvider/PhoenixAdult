@@ -25,7 +25,7 @@ class PornstarPlatinumClient(Client):
         href = (anchor.xpath('@href').get() or '').strip()
         if not title or not href:
             return []
-        scene_url = href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        scene_url = absolute_url(href, loaded.site.base_url)
         poster = (source.xpath('(.//div[contains(@class,"item-header")]//a//img/@rel)[1]').get() or '').strip()
         date = iso_date(first_text(source, './/span[contains(@class,"content-date")]'))
         actor = first_text(source, './/span[contains(@class,"marker") and contains(@class,"left")]')

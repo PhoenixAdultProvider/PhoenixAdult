@@ -45,7 +45,7 @@ class JulesJordanClient(Client):
                 title = (a.xpath('(.//img)[1]/@alt').get() or '').strip()
                 if not href or not title:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -113,11 +113,11 @@ class JulesJordanClient(Client):
             photo = ''
             href = (el.xpath('@href').get() or '').strip()
             if href:
-                actor_url = href if href.startswith('http') else absolute_url(href, base)
+                actor_url = absolute_url(href, base)
                 page = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')
                 raw = (page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 

@@ -54,7 +54,7 @@ class KinkClient(Client):
             href = (card.xpath('(.//a[contains(@class,"shoot-link")])[1]/@href').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             raw_date = (card.xpath('(.//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
             date = iso_date(raw_date) if raw_date else ctx.search_date
             results.append(
@@ -146,7 +146,7 @@ class KinkClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, None, f'[{scene.site.name}] {name}')
                 if page:
                     photo = (page['sel'].xpath('(//div[contains(@class,"biography-container")]//img)[1]/@src').get() or '').strip()

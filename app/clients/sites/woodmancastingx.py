@@ -108,7 +108,7 @@ class WoodmanCastingXClient(Client):
                     continue
                 seen.add(name)
                 src = (a.xpath('(.//img/@src)[1]').get() or '').strip()
-                photo = (src if src.startswith('http') else absolute_url(src, base)) if src else ''
+                photo = (absolute_url(src, base)) if src else ''
                 actors.append(ActorResult(name=name, photo_url=photo))
             return actors
         crumb = first_text(scene.sel, '//div[@id="breadcrumb"]//span[contains(@class,"crumb")]')
@@ -124,7 +124,7 @@ class WoodmanCastingXClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 

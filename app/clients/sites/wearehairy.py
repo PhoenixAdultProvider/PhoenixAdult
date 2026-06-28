@@ -27,7 +27,7 @@ class WeAreHairyClient(Client):
         href = (source.xpath('(.//div[contains(@class,"top")]//p//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/p[contains(@class,"short")]').replace('Added:', '').strip()

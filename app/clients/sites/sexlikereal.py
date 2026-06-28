@@ -98,10 +98,10 @@ class SexLikeRealClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            actor_url = absolute_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             src = (actor_page['sel'].xpath(f'(//div[contains(@class,"{_ACTOR_AVATAR_CLASS}")]//img/@src)[1]').get() or '').strip() if actor_page else ''
-            photo = (src if src.startswith('http') else absolute_url(src, scene.site.base_url)) if src else ''
+            photo = (absolute_url(src, scene.site.base_url)) if src else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 

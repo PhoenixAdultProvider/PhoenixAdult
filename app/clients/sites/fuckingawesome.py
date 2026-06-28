@@ -29,7 +29,7 @@ class FuckingAwesomeClient(Client):
         href = (source.xpath('(.//div[contains(@class,"video-title") and contains(@class,"truncate")]/a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/span[contains(@class,"small") and contains(@class,"date")]')
@@ -69,7 +69,7 @@ class FuckingAwesomeClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            actor_url = absolute_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
@@ -102,7 +102,7 @@ class FuckingAwesomeClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 
@@ -111,7 +111,7 @@ class FuckingAwesomeClient(Client):
 
         photos_href = (scene.sel.xpath('(//li[contains(@class,"photos")]//a/@href)[1]').get() or '').strip()
         if photos_href:
-            photos_url = photos_href if photos_href.startswith('http') else absolute_url(photos_href, scene.site.base_url)
+            photos_url = absolute_url(photos_href, scene.site.base_url)
             photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
             if photos_page:
                 for raw in photos_page['sel'].xpath('//div[contains(@class,"my-gallery")]//a/@href').getall():

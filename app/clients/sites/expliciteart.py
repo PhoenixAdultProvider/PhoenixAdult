@@ -24,7 +24,7 @@ class ExpliciteArtClient(Client):
                 href = card.xpath('(.//a/@href)[1]').get() or ''
                 if not title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 results.append(
                     build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url]))
                 )
@@ -78,7 +78,7 @@ class ExpliciteArtClient(Client):
 
         actors: list[ActorResult] = []
         for name, href in links:
-            actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            actor_url = absolute_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo_url = ''
             if actor_page:

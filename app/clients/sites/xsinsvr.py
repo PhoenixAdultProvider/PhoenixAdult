@@ -26,7 +26,7 @@ class XSinsVRClient(Client):
         href = (source.xpath('(.//a[contains(@class,"tn-video-media")]/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -79,12 +79,12 @@ class XSinsVRClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
                     raw = (page['sel'].xpath('(//div[contains(@class,"model-header__photo")]//img/@src)[1]').get() or '').strip()
                     if raw:
-                        photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                        photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -97,7 +97,7 @@ class XSinsVRClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 

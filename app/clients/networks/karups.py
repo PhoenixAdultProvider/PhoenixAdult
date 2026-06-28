@@ -47,7 +47,7 @@ class KarupsClient(Client):
             href = (card.xpath('(.//a)[1]/@href').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             date = iso_date(_de_ordinal((card.xpath(f'(.//span[{_cls("date")}])[1]').xpath('string(.)').get() or '').strip()))
             results.append(
                 build_search_result(
@@ -112,13 +112,13 @@ class KarupsClient(Client):
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
                 raw = (page['sel'].xpath('(//div[contains(@class,"model-thumb")]//img)[1]/@src').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '(//div[contains(@class,"video-player")]//video)[1]/@poster',
             '//img[contains(@class,"poster")]/@src',

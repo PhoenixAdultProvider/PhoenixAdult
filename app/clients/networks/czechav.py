@@ -96,7 +96,7 @@ class CzechAVClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, base))
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
             '//meta[@property="og:image"]/@content',
             '//img[contains(@class,"thumb")]/@src',

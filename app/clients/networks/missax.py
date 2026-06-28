@@ -105,7 +105,7 @@ class MissaXClient(Client):
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
                 raw = (page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
@@ -117,7 +117,7 @@ class MissaXClient(Client):
         def push(raw: str) -> None:
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url and abs_url not in images:
                 images.append(abs_url)
 

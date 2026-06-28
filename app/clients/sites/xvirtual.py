@@ -24,7 +24,7 @@ class XVirtualClient(Client):
         href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ class XVirtualClient(Client):
             url = strip_query(raw)
             if not url:
                 return
-            abs_url = url if url.startswith('http') else absolute_url(url, scene.site.base_url)
+            abs_url = absolute_url(url, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
 

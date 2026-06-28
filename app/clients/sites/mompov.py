@@ -42,7 +42,7 @@ class MomPOVClient(Client):
         href = (source.xpath('(.//div[contains(@class,"title_holder")]//h1//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return _holder_date(source)
@@ -84,4 +84,4 @@ class MomPOVClient(Client):
         raw = (first_div[0].xpath('(.//a//img/@src)[1]').get() or '').strip()
         if not raw:
             return []
-        return [raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)]
+        return [absolute_url(raw, scene.site.base_url)]

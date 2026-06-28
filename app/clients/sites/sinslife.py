@@ -32,7 +32,7 @@ class SinsLifeClient(Client):
         href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 

@@ -68,7 +68,7 @@ class ScrewboxClient(Client):
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
                 raw = (loaded['sel'].xpath('(//img[contains(@class,"model_bio_thumb")]/@src0_1x)[1]').get() or '').strip() if loaded else ''
-                photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -77,4 +77,4 @@ class ScrewboxClient(Client):
         raw = (scene.sel.xpath('(//div[contains(@class,"fakeplayer")]//img/@src0_1x)[1]').get() or '').strip()
         if not raw:
             return []
-        return [raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)]
+        return [absolute_url(raw, scene.site.base_url)]

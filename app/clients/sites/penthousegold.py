@@ -28,7 +28,7 @@ class PenthouseGoldClient(Client):
                 title = (anchor.xpath('normalize-space(.)').get() or '').strip()
                 if not title:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -103,7 +103,7 @@ class PenthouseGoldClient(Client):
         for card in scene.sel.xpath('//ul[@id="featured_pornstars"]//div[contains(@class,"model")]'):
             name = first_text(card, './/h3')
             raw = (card.xpath('(.//img/@src)[1]').get() or '').strip()
-            photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+            photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)
 
@@ -112,4 +112,4 @@ class PenthouseGoldClient(Client):
         raw = (scene.sel.xpath('(//div[@id="trailer_player_finished"]//img/@src)[1]').get() or '').strip()
         if not raw:
             return []
-        return [raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)]
+        return [absolute_url(raw, scene.site.base_url)]

@@ -79,7 +79,7 @@ class CaribbeancomClient(Client):
             src = (el.xpath('@src').get() or '').strip()
             if not src:
                 continue
-            abs_url = src if src.startswith('http') else absolute_url(src, scene.site.base_url)
+            abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

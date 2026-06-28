@@ -30,7 +30,7 @@ class DickDrainersClient(Client):
                 href = (card.xpath('(.//h4//a/@href)[1]').get() or '').strip()
                 if not raw_title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, base)
+                scene_url = absolute_url(href, base)
                 onsite_hrefs.add(scene_url)
                 raw_date = first_text(card, './/div[contains(@class,"date")]')
                 date = iso_date(raw_date) if raw_date else None
@@ -126,11 +126,11 @@ class DickDrainersClient(Client):
             href = (li.xpath('(.//a/@href)[1]').get() or '').strip()
             photo = ''
             if href:
-                actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+                actor_url = absolute_url(href, scene.site.base_url)
                 actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if actor_page:
                     raw = (actor_page['sel'].xpath('(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]').get() or '').strip()
-                    photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                    photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -142,7 +142,7 @@ class DickDrainersClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
 

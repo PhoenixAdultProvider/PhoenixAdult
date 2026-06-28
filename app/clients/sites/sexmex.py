@@ -49,7 +49,7 @@ class SexMexClient(Client):
         href = (source.xpath('(.//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/p[contains(@class,"scene-date")]')
@@ -121,7 +121,7 @@ class SexMexClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = (raw if raw.startswith('http') else absolute_url(raw, base)).split('?')[0]
+            abs_url = (absolute_url(raw, base)).split('?')[0]
             if abs_url and abs_url not in images:
                 images.append(abs_url)
 

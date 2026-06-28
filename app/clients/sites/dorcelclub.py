@@ -55,7 +55,7 @@ class DorcelClubClient(Client):
             href = (card.xpath('(.//a[contains(@class,"title")]/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(card_result(title, scene_url))
 
         # (2) Movie cards — the movie is a result and its sub-scenes are appended.
@@ -64,7 +64,7 @@ class DorcelClubClient(Client):
             movie_href = (card.xpath('@href').get() or '').strip()
             if not movie_title or not movie_href:
                 continue
-            movie_url = movie_href if movie_href.startswith('http') else absolute_url(movie_href, ctx.site_info.base_url)
+            movie_url = absolute_url(movie_href, ctx.site_info.base_url)
             results.append(card_result(f'{movie_title} - Full Movie', movie_url))
 
             movie_page = await self.fetch_and_load(movie_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] movie {movie_title}')
@@ -75,7 +75,7 @@ class DorcelClubClient(Client):
                 scene_href = (scene.xpath('(.//a[contains(@class,"title")]/@href)[1]').get() or '').strip()
                 if not scene_title or not scene_href:
                     continue
-                scene_url = scene_href if scene_href.startswith('http') else absolute_url(scene_href, ctx.site_info.base_url)
+                scene_url = absolute_url(scene_href, ctx.site_info.base_url)
                 results.append(card_result(scene_title, scene_url))
 
         return results

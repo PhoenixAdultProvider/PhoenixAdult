@@ -28,7 +28,7 @@ class MomComesFirstClient(Client):
         href = (source.xpath('(.//h2//a/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date(first_text(source, './/p//span'), '%b %d, %Y')

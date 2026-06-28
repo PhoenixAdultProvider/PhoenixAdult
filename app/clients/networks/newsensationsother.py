@@ -60,7 +60,7 @@ class NewSensationsOtherClient(Client):
                     last_actor_page = page['sel']
                     raw = (page['sel'].xpath('(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]/img)[1]/@src0_1x').get() or '').strip()
                     if raw:
-                        photo = raw if raw.startswith('http') else absolute_url(raw, site.base_url)
+                        photo = absolute_url(raw, site.base_url)
             actors.append(ActorResult(name=name, photo_url=photo))
 
         return LoadedScene(
@@ -115,7 +115,7 @@ class NewSensationsOtherClient(Client):
             trimmed = (raw or '').strip()
             if not trimmed:
                 return
-            abs_url = trimmed if trimmed.startswith('http') else absolute_url(trimmed, base)
+            abs_url = absolute_url(trimmed, base)
             if abs_url not in images:
                 images.append(abs_url)
 

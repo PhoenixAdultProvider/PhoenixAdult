@@ -27,7 +27,7 @@ class FirstAnalQuestClient(Client):
         href = (source.xpath('(.//a[contains(@class,"thumb-img")]/@href)[1]').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/span[contains(@class,"thumb-added")]')
@@ -83,12 +83,12 @@ class FirstAnalQuestClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            actor_url = absolute_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
                 raw = (actor_page['sel'].xpath('(//div[contains(@class,"model-box")]//img/@src)[1]').get() or '').strip()
-                photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -100,7 +100,7 @@ class FirstAnalQuestClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
 

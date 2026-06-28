@@ -32,7 +32,7 @@ class PervCityClient(Client):
                     href = (card.xpath('(.//h2//a | .//h3//a)[1]/@href').get() or '').strip()
                     if not title or not href:
                         continue
-                    scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                    scene_url = absolute_url(href, ctx.site_info.base_url)
                     if scene_url in seen:
                         continue
                     seen.add(scene_url)
@@ -191,7 +191,7 @@ class PervCityClient(Client):
         for raw in scene.sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
         return images or None

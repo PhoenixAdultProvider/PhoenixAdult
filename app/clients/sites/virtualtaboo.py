@@ -24,7 +24,7 @@ class VirtualTabooClient(Client):
         href = (source.xpath('@href').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ class VirtualTabooClient(Client):
             url = (raw or '').strip().split('?')[0]
             if not url:
                 return
-            abs_url = url if url.startswith('http') else absolute_url(url, base)
+            abs_url = absolute_url(url, base)
             if abs_url not in images:
                 images.append(abs_url)
 

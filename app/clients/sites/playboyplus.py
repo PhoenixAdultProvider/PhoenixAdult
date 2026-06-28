@@ -81,7 +81,7 @@ class PlayboyPlusClient(Client):
             u = (raw or '').split('?')[0].strip()
             if not u:
                 return
-            abs_url = u if u.startswith('http') else absolute_url(u, scene.site.base_url)
+            abs_url = absolute_url(u, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
 

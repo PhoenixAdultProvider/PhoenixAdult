@@ -51,7 +51,7 @@ class XevUnleashedClient(Client):
                 href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
                 if not raw_title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url.lower() in seen:
                     continue
                 seen.add(scene_url.lower())
@@ -120,7 +120,7 @@ class XevUnleashedClient(Client):
             raw = (src or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
         return images

@@ -44,7 +44,7 @@ class InTheCrackClient(Client):
             href = (li.xpath('(.//a/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             date = iso_date(first_text(li, './/figure/p[2]').replace('Release Date:', '').strip())
             results.append(
                 build_search_result(
@@ -102,4 +102,4 @@ class InTheCrackClient(Client):
         rel = parts[1].strip()
         if not rel:
             return []
-        return [rel if rel.startswith('http') else absolute_url(rel, scene.site.base_url)]
+        return [absolute_url(rel, scene.site.base_url)]

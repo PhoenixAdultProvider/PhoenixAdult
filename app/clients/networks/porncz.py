@@ -31,7 +31,7 @@ class PornCZClient(Client):
         thumb = (source.xpath('(.//div[contains(@class,"card__img")]//img)[1]/@data-src').get() or '').strip()
         if not thumb:
             return None
-        return thumb if thumb.startswith('http') else absolute_url(thumb, loaded.site.base_url)
+        return absolute_url(thumb, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ class PornCZClient(Client):
                 if page:
                     raw = (page['sel'].xpath('(//img[contains(@class,"actor-img")])[1]/@data-src').get() or '').strip()
                     if raw and 'blank' not in raw:
-                        photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                        photo = absolute_url(raw, base)
                     gender = (page['sel'].xpath('(//div[contains(@class,"model-info__item")]//span[i])[1]').xpath('string(.)').get() or '').lower().strip()
             display = f'{name} (Sex Doll)' if is_dolls and gender == 'female' else name
             actors.append(ActorResult(name=display, photo_url=photo, gender=gender))
@@ -94,7 +94,7 @@ class PornCZClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//a[contains(@class,"gallery-popup")]/@href',
             '//video[contains(@class,"video-player")]/@data-poster',

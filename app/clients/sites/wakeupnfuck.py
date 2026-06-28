@@ -32,7 +32,7 @@ class WakeUpNFuckClient(Client):
         href = (source.xpath('@href').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ class WakeUpNFuckClient(Client):
         for el in scene.sel.xpath('//div[contains(@class,"starring")]//a[contains(@class,"item")]'):
             name = first_text(el, './/p')
             src = (el.xpath('(.//img/@src)[1]').get() or '').strip()
-            photo = (src if src.startswith('http') else absolute_url(src, base)) if src else ''
+            photo = (absolute_url(src, base)) if src else ''
             entries.append(ActorResult(name=name, photo_url=photo))
         return self.dedup_people(entries)
 
@@ -88,7 +88,7 @@ class WakeUpNFuckClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 return
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
 

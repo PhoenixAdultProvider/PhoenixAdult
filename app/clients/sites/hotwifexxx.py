@@ -102,10 +102,10 @@ class HotwifeXXXClient(Client):
             photo = ''
             href = (el.xpath('@href').get() or '').strip()
             if href:
-                actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+                actor_url = absolute_url(href, scene.site.base_url)
                 loaded = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'GET {actor_url} (actor)')
                 raw = (loaded['sel'].xpath('(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]').get() or '').strip() if loaded else ''
-                photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -116,7 +116,7 @@ class HotwifeXXXClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

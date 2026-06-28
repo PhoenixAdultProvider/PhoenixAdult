@@ -70,7 +70,7 @@ class AmourAngelsClient(Client):
             href = (a.xpath('@href').get() or '').strip()
             if not name or not href:
                 continue
-            actor_url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            actor_url = absolute_url(href, scene.site.base_url)
             actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = ''
             if actor_page:
@@ -93,7 +93,7 @@ class AmourAngelsClient(Client):
             src = (el.xpath('@src').get() or '').strip()
             if not src:
                 continue
-            abs_url = src if src.startswith('http') else absolute_url(src, scene.site.base_url)
+            abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

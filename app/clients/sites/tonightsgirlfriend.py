@@ -40,7 +40,7 @@ class TonightsGirlfriendClient(Client):
                 href = (row.xpath('(.//a/@href)[1]').get() or '').strip()
                 if not href:
                     continue
-                scene_url = (href if href.startswith('http') else absolute_url(href, base)).split('?')[0]
+                scene_url = (absolute_url(href, base)).split('?')[0]
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -106,7 +106,7 @@ class TonightsGirlfriendClient(Client):
             photo = ''
             actor_url = strip_query(href)
             if actor_url:
-                abs_url = actor_url if actor_url.startswith('http') else absolute_url(actor_url, scene.site.base_url)
+                abs_url = absolute_url(actor_url, scene.site.base_url)
                 page = await self.fetch_and_load(abs_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
                     src = (page['sel'].xpath('(//div[contains(@class,"performer-details")]//img/@src)[1]').get() or '').strip()

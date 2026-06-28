@@ -29,7 +29,7 @@ class AnalVidsClient(Client):
             if term.get('type') != 'scene' or not term.get('url') or not term.get('name'):
                 continue
             url = term['url']
-            scene_url = url if url.startswith('http') else absolute_url(url, ctx.site_info.base_url)
+            scene_url = absolute_url(url, ctx.site_info.base_url)
             direct_hit = source_id is not None and str(term.get('source_id', '')) == source_id
             results.append(
                 build_search_result(
@@ -92,7 +92,7 @@ class AnalVidsClient(Client):
 
         actors: list[ActorResult] = []
         for name, href in links:
-            url = href if href.startswith('http') else absolute_url(href, scene.site.base_url)
+            url = absolute_url(href, scene.site.base_url)
             loaded = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = (loaded['sel'].xpath('(//div[contains(@class,"model")]//img/@src)[1]').get() or '').strip() if loaded else ''
             actors.append(ActorResult(name=name, photo_url=photo))

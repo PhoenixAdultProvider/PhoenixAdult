@@ -86,7 +86,7 @@ class VRAllureClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
                 if page:
                     photo = to_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip())
@@ -107,7 +107,7 @@ class VRAllureClient(Client):
             href = (href or '').strip()
             if not href:
                 continue
-            url = href if href.startswith('http') else absolute_url(href, base)
+            url = absolute_url(href, base)
             page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-art {url}')
             if page:
                 push(to_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()))

@@ -71,4 +71,4 @@ class PubaClient(Client):
         bg = css_bg_image(style)
         if not bg:
             return []
-        return [bg if bg.startswith('http') else absolute_url(bg, scene.site.base_url)]
+        return [absolute_url(bg, scene.site.base_url)]

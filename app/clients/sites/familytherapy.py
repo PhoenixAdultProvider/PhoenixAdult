@@ -47,7 +47,7 @@ class FamilyTherapyClient(Client):
                 href = (a.xpath('@href').get() or '').strip()
                 if not title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 date = iso_date((card.xpath('(.//p//span)[1]').xpath('string(.)').get() or '').strip())
                 results.append(
                     build_search_result(

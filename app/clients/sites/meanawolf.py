@@ -22,7 +22,7 @@ class MeanaWolfClient(Client):
             href = (anchor.xpath('@href').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             poster = (card.xpath('(.//img[contains(@class,"video_placeholder")]/@src)[1]').get() or '').strip()
             results.append(
                 build_search_result(
@@ -87,7 +87,7 @@ class MeanaWolfClient(Client):
             if href:
                 loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), FetchCtx(capture=scene.capture), f'GET {href} (actor)')
                 raw = (loaded['sel'].xpath('(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]').get() or '').strip() if loaded else ''
-                photo = (raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)) if raw else ''
+                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
@@ -95,4 +95,4 @@ class MeanaWolfClient(Client):
         poster = scene.extra.get('poster', '') if isinstance(scene.extra, dict) else ''
         if not poster:
             return []
-        return [poster if poster.startswith('http') else absolute_url(poster, scene.site.base_url)]
+        return [absolute_url(poster, scene.site.base_url)]

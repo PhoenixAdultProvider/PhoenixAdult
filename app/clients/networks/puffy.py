@@ -92,7 +92,7 @@ class PuffyClient(Client):
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 raw = (page['sel'].xpath('(//div/section[1]/div/div[1]/img)[1]/@src').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
@@ -110,7 +110,7 @@ class PuffyClient(Client):
         for raw in scene.sel.xpath('//div[contains(@id,"pics")]//img/@src').getall():
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, base)
+            abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
         return images or None

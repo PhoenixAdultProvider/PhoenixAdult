@@ -34,7 +34,7 @@ class ScrewMeTooClient(Client):
             href = (card.xpath('(.//*[@href]/@href)[1]').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             date = iso_date(first_text(card, './/div[contains(@class,"fsdate")]//span'))
             results.append(
                 build_search_result(
@@ -66,13 +66,13 @@ class ScrewMeTooClient(Client):
             href = (el.xpath('@href').get() or '').strip()
             if not name or not href:
                 continue
-            model_url = href if href.startswith('http') else absolute_url(href, site.base_url)
+            model_url = absolute_url(href, site.base_url)
             model = await self.fetch_and_load(model_url, FetchCtx(capture=ctx.capture if ctx else None), f'GET {model_url} (actor)')
             photo = ''
             if model:
                 last_model_sel = model['sel']
                 raw = (model['sel'].xpath('(//div[contains(@class,"model-contr-colone")]//*[@src]/@src)[1]').get() or '').strip()
-                photo = (raw if raw.startswith('http') else absolute_url(raw, site.base_url)) if raw else ''
+                photo = (absolute_url(raw, site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
 
         release_date = fallback_date or None
@@ -141,7 +141,7 @@ class ScrewMeTooClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

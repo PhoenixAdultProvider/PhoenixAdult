@@ -142,7 +142,7 @@ class BlackPayBackClient(Client):
             if not m:
                 continue
             raw = m.group(1)
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

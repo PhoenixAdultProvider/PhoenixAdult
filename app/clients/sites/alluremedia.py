@@ -47,7 +47,7 @@ class AllureMediaClient(Client):
                 continue
             raw_date = (card.xpath('(.//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
             date = iso_date(raw_date, '%m/%d/%Y') if raw_date else None
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(
                 build_search_result(
                     title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
@@ -107,14 +107,14 @@ class AllureMediaClient(Client):
             photo = ''
             if href:
                 page = await self.fetch_and_load(
-                    href if href.startswith('http') else absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}'
+                    absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}'
                 )
                 img = (
                     (page['sel'].xpath('(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src').get() or '').strip()
                     if page
                     else ''
                 )
-                photo = (img if img.startswith('http') else absolute_url(img, base)) if img else ''
+                photo = (absolute_url(img, base)) if img else ''
             actors.append(ActorResult(name=name, photo_url=photo.replace('1x', '3x')))
 
         for name in _SCENE_ACTORS:
@@ -169,7 +169,7 @@ class AllureMediaClient(Client):
             if (a.xpath('string(.)').get() or '').strip() == 'Photos':
                 photos_href = (a.xpath('@href').get() or '').strip()
                 break
-        photos_url = (photos_href if photos_href.startswith('http') else absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
+        photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
         scene.raw_image_referer = photos_url or scene.url
 
         if photos_url:

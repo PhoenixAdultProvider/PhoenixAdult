@@ -23,7 +23,7 @@ class JacquieEtMichelClient(Client):
                 href = (card.xpath('@href').get() or '').strip()
                 if not title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -106,4 +106,4 @@ class JacquieEtMichelClient(Client):
         raw = (scene.sel.xpath('(//video/@poster)[1]').get() or '').strip()
         if not raw:
             return []
-        return [raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)]
+        return [absolute_url(raw, scene.site.base_url)]

@@ -81,13 +81,13 @@ class PorndoePremiumClient(Client):
                 continue
             seen.add(name)
             raw = (page['sel'].xpath('(//div[@class="-api-poster-item"]//img)[1]/@src').get() or '').strip()
-            photo = (raw if raw.startswith('http') else absolute_url(raw, base)) if raw else ''
+            photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//picture[@class="-vcc-picture"]//img/@src',
             '//div[@class="swiper-wrapper"]/div/a/div/@data-bg',

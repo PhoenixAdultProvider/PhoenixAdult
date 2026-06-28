@@ -24,7 +24,7 @@ class CumLouderClient(Client):
         href = (source.xpath('@href').get() or '').strip()
         if not href:
             return ''
-        return href if href.startswith('http') else absolute_url(href, loaded.site.base_url)
+        return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ class CumLouderClient(Client):
             raw = (el.xpath('@lazy').get() or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

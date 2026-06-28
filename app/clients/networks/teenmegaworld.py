@@ -81,16 +81,16 @@ class TeenMegaWorldClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                page = await self.fetch_and_load(href if href.startswith('http') else absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
+                page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
                 raw = (page['sel'].xpath('(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//img[@id="video-cover-image"]/@src').getall():
             coll['push'](raw)
         images: list[str] = coll['list']

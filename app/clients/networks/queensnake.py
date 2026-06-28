@@ -93,7 +93,7 @@ class QueenSnakeClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for src in scene.sel.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']

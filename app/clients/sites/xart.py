@@ -41,7 +41,7 @@ class XartClient(Client):
                 href = (a.xpath('@href').get() or '').strip()
                 if not title or not href:
                     continue
-                scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+                scene_url = absolute_url(href, ctx.site_info.base_url)
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
@@ -117,7 +117,7 @@ class XartClient(Client):
             if not name or not href or name in seen:
                 continue
             seen.add(name)
-            actor_url = href if href.startswith('http') else absolute_url(href, base)
+            actor_url = absolute_url(href, base)
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = (page['sel'].xpath('(//img[contains(@class,"info-img")]/@src)[1]').get() or '').strip() if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))

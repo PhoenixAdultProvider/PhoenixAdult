@@ -30,7 +30,7 @@ class DorcelVisionClient(Client):
             href = (el.xpath('@href').get() or '').strip()
             if not title or not href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])))
         return results
 
@@ -88,7 +88,7 @@ class DorcelVisionClient(Client):
             if not raw:
                 return
             stripped = raw.replace('blur9/', '')
-            abs_url = stripped if stripped.startswith('http') else absolute_url(stripped, base)
+            abs_url = absolute_url(stripped, base)
             if abs_url not in images:
                 images.append(abs_url)
 

@@ -122,13 +122,13 @@ class NewSensationsClient(Client):
                 page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
                 raw = (page['sel'].xpath('(//div[@class="modelBioPic"]/img)[1]/@src0_3x').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url))
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         coll['push'](scene.sel.xpath('(//span[@id="trailer_thumb"]//img)[1]/@src').get())
         if self._is_dvd(scene):
             for src in scene.sel.xpath('//div[@class="videoBlock"]//img/@src0_3x').getall():

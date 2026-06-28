@@ -22,7 +22,7 @@ class HollyRandallClient(Client):
             href = (anchor.xpath('@href').get() or '').strip()
             if not title or not href or _PAYWALL_HOST in href:
                 continue
-            scene_url = href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, ctx.site_info.base_url)
             raw_date = card.xpath('normalize-space((.//div[contains(@class,"timeDate")])[1])').get() or ''
             date_tok = raw_date.split('|')[-1].strip()
             date = iso_date(date_tok) if date_tok else None
@@ -109,7 +109,7 @@ class HollyRandallClient(Client):
             raw = (raw or '').strip()
             if not raw:
                 continue
-            abs_url = raw if raw.startswith('http') else absolute_url(raw, scene.site.base_url)
+            abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
         return images

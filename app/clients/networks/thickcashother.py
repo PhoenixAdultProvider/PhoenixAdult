@@ -38,7 +38,7 @@ class ThickCashOtherClient(Client):
                 for href in model_page['sel'].xpath('//div[contains(@class,"model-grid")]//a/@href').getall():
                     href = href.strip()
                     if href:
-                        await add_scene(href if href.startswith('http') else absolute_url(href, ctx.site_info.base_url))
+                        await add_scene(absolute_url(href, ctx.site_info.base_url))
         return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────

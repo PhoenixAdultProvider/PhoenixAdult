@@ -43,7 +43,7 @@ class SicflicsClient(Client):
         packed = json.dumps(
             {
                 'sceneID': scene_id,
-                'imgURL': img_url if img_url.startswith('http') else absolute_url(img_url, loaded.site.base_url),
+                'imgURL': absolute_url(img_url, loaded.site.base_url),
                 'description': description,
             }
         )

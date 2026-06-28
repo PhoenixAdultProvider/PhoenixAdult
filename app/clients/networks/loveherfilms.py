@@ -91,18 +91,18 @@ class LoveHerFilmsClient(Client):
             seen.add(name)
             photo = ''
             if href:
-                url = href if href.startswith('http') else absolute_url(href, base)
+                url = absolute_url(href, base)
                 page = await self.fetch_and_load(url, None, f'[{scene.site.name}] actor {name}')
                 raw = (page['sel'].xpath('(//div[contains(@class,"picture")]//img)[1]/@src0_3x').get() or '').strip() if page else ''
                 if raw:
-                    photo = raw if raw.startswith('http') else absolute_url(raw, base)
+                    photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: raw if raw.startswith('http') else absolute_url(raw, base))
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
             '//meta[@property="og:image"]/@content',
             '//div[contains(@class,"photos")]//a//img/@src',
