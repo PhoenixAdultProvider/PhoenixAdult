@@ -417,6 +417,3 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
         return None
-
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'threshold'

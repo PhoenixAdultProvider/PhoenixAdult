@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Literal
+from typing import Any
 
 from app.clients.base import ActorResult, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
@@ -32,8 +32,6 @@ class Strike3Client(GraphQLClient):
         self._pace_lock = asyncio.Lock()
         self._last_fetch = 0.0
 
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'aspect'
 
     async def _gql(self, endpoint: str, query: str, variables: dict[str, Any], base_url: str, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         async with self._pace_lock:

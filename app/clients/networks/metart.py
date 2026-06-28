@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
 
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
@@ -15,8 +14,6 @@ def _capitalize(s: str) -> str:
 
 
 class MetArtClient(Client):
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'aspect'
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         api = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path

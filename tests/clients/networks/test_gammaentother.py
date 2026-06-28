@@ -79,6 +79,3 @@ async def test_detail() -> None:
     # scene picture inserted at the front
     assert detail.raw_image_urls[0] == 'https://images-fame.gammacdn.com/movies//p/cover.jpg'
 
-
-def test_image_rule() -> None:
-    assert GammaEntOtherClient().image_rule(SITE) == 'aspect'

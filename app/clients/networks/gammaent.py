@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any, Literal
+from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
@@ -32,8 +32,6 @@ _BR_RE = re.compile(r'<\s*/?\s*br\s*/?\s*>', re.IGNORECASE)
 
 
 class GammaEntClient(Client):
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'aspect'
 
     # ── Search ────────────────────────────────────────────────────────────────
 

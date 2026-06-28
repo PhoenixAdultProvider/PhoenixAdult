@@ -23,7 +23,3 @@ class ScraperRouter:
 
     def decode(self, cur_id: str) -> str:
         return b64url_decode(cur_id)
-
-    def image_rule(self, site: ResolvedSiteInfo) -> str:
-        client = get_client(site.scraper_config.type)
-        return client.image_rule(site) if client else 'threshold'

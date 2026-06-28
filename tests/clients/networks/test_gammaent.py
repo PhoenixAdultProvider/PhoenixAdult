@@ -68,6 +68,3 @@ async def test_detail() -> None:
     assert detail.directors is not None and detail.directors[0].name == 'Some Director'
     assert 'https://cdn/og.jpg' in detail.raw_image_urls
 
-
-def test_image_rule() -> None:
-    assert GammaEntClient().image_rule(SITE) == 'aspect'

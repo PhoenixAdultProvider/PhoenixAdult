@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
@@ -33,8 +31,6 @@ class JavBusClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'existmag=all; dv=1'})
 
-    def image_rule(self, site: ResolvedSiteInfo) -> Any:
-        return 'aspect'
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')

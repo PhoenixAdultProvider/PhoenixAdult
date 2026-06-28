@@ -30,8 +30,6 @@ def _actor_overrides(scene_id: str) -> list[ActorResult]:
 
 
 class GammaEntOtherClient(Client):
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'aspect'
 
     # ── Search (Algolia) ────────────────────────────────────────────────────────
 

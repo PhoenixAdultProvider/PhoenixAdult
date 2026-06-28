@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from app.clients.base import ActorResult, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
@@ -26,8 +26,6 @@ _SITE_CONFIG: dict[str, dict[str, Any]] = {
 
 
 class Network18Client(GraphQLClient):
-    def image_rule(self, site: ResolvedSiteInfo) -> Literal['aspect', 'threshold']:
-        return 'aspect'
 
     async def _gql(self, site_name: str, base_url: str, query: str, variable: str, value: Any, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         cfg = _SITE_CONFIG[site_name]

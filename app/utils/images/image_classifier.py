@@ -11,7 +11,6 @@ class ClassifyResult:
     image_class: ImageClass
     orientation: Literal['portrait', 'landscape', 'square']
     aspect: float
-    resolution: int
 
 
 def classify_image(width: int, height: int) -> ClassifyResult:
@@ -23,10 +22,9 @@ def classify_image(width: int, height: int) -> ClassifyResult:
         orientation = 'square'
 
     aspect = height / width if width > 0 else 0.0
-    resolution = width * height
 
     if orientation == 'portrait' and 1.4 <= aspect <= 1.6:
-        return ClassifyResult('coverPoster', orientation, aspect, resolution)
+        return ClassifyResult('coverPoster', orientation, aspect)
     if orientation == 'landscape':
-        return ClassifyResult('background', orientation, aspect, resolution)
-    return ClassifyResult('unknown', orientation, aspect, resolution)
+        return ClassifyResult('background', orientation, aspect)
+    return ClassifyResult('unknown', orientation, aspect)
