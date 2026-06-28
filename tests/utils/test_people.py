@@ -43,7 +43,7 @@ async def test_skip_name() -> None:
 async def test_male_actor_resolved_not_dropped_at_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     # Male actors are always resolved + cached (faster future gender resolution); they are
     # hidden at serve time by filter_male_actors, not dropped here.
-    monkeypatch.setenv('GENDER_ENABLE', 'true')
+    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
     pm = PeopleManager()
     pm.add_actor('John Q Smith', '', 'male')
     res = await pm.resolve_all(studio='', site_name='')
@@ -59,7 +59,7 @@ def _response_with_roles(roles: list[dict[str, str]]) -> Any:
 
 
 def test_filter_male_actors_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('GENDER_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
     from app.utils.people import filter_male_actors
 
     resp = _response_with_roles([{'tag': 'A', 'gender': 'male'}, {'tag': 'B', 'gender': 'female'}])
@@ -68,7 +68,7 @@ def test_filter_male_actors_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_filter_male_actors_drops_male_by_field_and_filename(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('GENDER_ENABLE', 'true')
+    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
     from app.utils.people import filter_male_actors
 
     resp = _response_with_roles(

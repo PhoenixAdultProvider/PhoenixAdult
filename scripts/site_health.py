@@ -358,7 +358,7 @@ async def _main(args: list[str]) -> int:
 def main() -> None:
     args = sys.argv[1:]
     if '--keep-gender-skip' not in args:
-        os.environ['GENDER_ENABLE'] = 'false'
+        os.environ['GENDER_SKIP_MALE_ENABLE'] = 'false'
     if '--keep-flaresolverr' not in args:
         os.environ.pop('FLARESOLVERR_URL', None)
     sys.exit(asyncio.run(_main(args)))

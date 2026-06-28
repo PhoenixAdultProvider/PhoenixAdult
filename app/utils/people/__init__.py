@@ -13,7 +13,7 @@ from app.utils.logging.logger import logger
 from app.utils.people.cache import cache_enabled, cache_photo, cache_replace_enabled, lookup_cached
 from app.utils.people.data import ACTORS_REPLACE, ACTORS_REPLACE_STUDIOS, ACTORS_STUDIO_INDEXES
 from app.utils.people.gender import gender_detect_enabled, iafd_gender_check
-from app.utils.people.generic import gender_enabled, generic_image_enabled, generic_image_url
+from app.utils.people.generic import GENDER_SKIP_MALE_ENABLEd, generic_image_enabled, generic_image_url
 from app.utils.people.sources import find_photo
 from app.utils.people.types import (
     Gender,
@@ -221,11 +221,11 @@ def _is_male_role(role: PlexRole) -> bool:
 
 
 def filter_male_actors(response: PlexMetadataResponse) -> int:
-    """Drop male actors from the served Role list when the male-actor filter (GENDER_ENABLE)
+    """Drop male actors from the served Role list when the male-actor filter (GENDER_SKIP_MALE_ENABLE)
     is on. The only place male actors are hidden: they're always resolved and cached (faster
     future gender resolution) and filtered out only when serving. Non-destructive — mutates
     the in-memory response only, so snapshots keep every actor on disk. Returns count removed."""
-    if not gender_enabled():
+    if not GENDER_SKIP_MALE_ENABLEd():
         return 0
     removed = 0
     for md in response.MediaContainer.Metadata:

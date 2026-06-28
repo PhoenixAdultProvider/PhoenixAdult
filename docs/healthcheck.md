@@ -61,7 +61,7 @@ Any field you don't list is skipped (shown as `—` in the report). A site is "O
 The runner forces a couple of env vars for the duration of the sweep so user
 preferences don't mask real regressions:
 
-- `GENDER_ENABLE` → `false` (so the male-actor skip doesn't drop cast members the
+- `GENDER_SKIP_MALE_ENABLE` → `false` (so the male-actor skip doesn't drop cast members the
   fixtures expect). Pass `--keep-gender-skip` to honour your env value.
 - `FLARESOLVERR_URL` → unset (so checks hit the primary upstream directly; a flaky
   bypass would otherwise paper over a broken scraper). Pass `--keep-flaresolverr`

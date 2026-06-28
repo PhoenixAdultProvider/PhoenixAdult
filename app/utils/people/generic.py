@@ -17,5 +17,5 @@ def generic_image_url(gender: Gender) -> str:
     return ''
 
 
-def gender_enabled() -> bool:
-    return env.gender_enabled
+def GENDER_SKIP_MALE_ENABLEd() -> bool:
+    return env.GENDER_SKIP_MALE_ENABLEd

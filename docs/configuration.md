@@ -131,7 +131,7 @@ refresh in Plex to re-emit the image URLs.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `GENDER_DETECT_ENABLE` · UI | `true` | Query IAFD for each uncached actor and bake the gender into the cached filename. |
-| `GENDER_ENABLE` · UI | `false` | Hide male actors from the served Plex cast list. Applied at **serve time**, so it also re-filters already-cached scenes; actors stay in the snapshot on disk and reappear if you turn it off. |
+| `GENDER_SKIP_MALE_ENABLE` · UI | `false` | Hide male actors from the served Plex cast list. Applied at **serve time**, so it also re-filters already-cached scenes; actors stay in the snapshot on disk and reappear if you turn it off. |
 | `GENERIC_IMAGE_ENABLE` · UI | `true` | Use a generic silhouette when an actor has no resolvable photo. |
 | `GENERIC_FEMALE_URL` · UI | _(built-in)_ | Override the built-in female placeholder image. |
 | `GENERIC_MALE_URL` · UI | _(built-in)_ | Override the built-in male placeholder image. |

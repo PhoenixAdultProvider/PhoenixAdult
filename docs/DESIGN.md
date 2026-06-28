@@ -548,7 +548,7 @@ flowchart TB
   out -.-> note
 ```
 
-`PeopleManager.resolve_all` (`app/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `app/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `app/utils/people/sources/` (10 site-specific XPath sources: `iafd`, `freeones`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javBus`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Gender detection (`iafd_gender_check`, `app/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_ENABLE` drops male actors. IAFD requires a bypass backend.
+`PeopleManager.resolve_all` (`app/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `app/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `app/utils/people/sources/` (10 site-specific XPath sources: `iafd`, `freeones`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javBus`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Gender detection (`iafd_gender_check`, `app/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
 
 ---
 
