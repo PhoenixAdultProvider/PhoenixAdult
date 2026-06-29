@@ -122,7 +122,7 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
         return None
     if not isinstance(loaded, dict):
         return None
-    rebased = _rebase(loaded, config.base_url.rstrip('/'))
+    rebased = _rebase(loaded, config.base_url.rstrip('/'), people_image_base().rstrip('/'))
     return rebased if isinstance(rebased, dict) else None
 
 
@@ -139,14 +139,20 @@ def _origin(url: str) -> str:
     return f'{parts.scheme}://{parts.netloc}/' if parts.scheme and parts.netloc else ''
 
 
-def _rebase(obj: Any, base: str) -> Any:
-    """Resolve host-relative cached image URLs against the live base_url, recursively."""
+def _rebase(obj: Any, base: str, people_base: str) -> Any:
+    """Resolve host-relative cached image URLs against the live bases, recursively.
+    People images (/images/local/) follow PEOPLE_IMAGE_URL (people_base) and are
+    normalized even when a snapshot stored them absolute; other links use base_url."""
     if isinstance(obj, dict):
-        return {k: _rebase(v, base) for k, v in obj.items()}
+        return {k: _rebase(v, base, people_base) for k, v in obj.items()}
     if isinstance(obj, list):
-        return [_rebase(v, base) for v in obj]
-    if isinstance(obj, str) and (obj.startswith('/cache/') or obj.startswith('/images/')):
-        return f'{base}{obj}'
+        return [_rebase(v, base, people_base) for v in obj]
+    if isinstance(obj, str):
+        marker = '/images/local/'
+        if marker in obj:
+            return f'{people_base}{obj[obj.index(marker) :]}'
+        if obj.startswith('/cache/') or obj.startswith('/images/'):
+            return f'{base}{obj}'
     return obj
 
 
@@ -189,7 +195,9 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
                 if not url:
                     return url
                 if '/images/local/' in url:
-                    return _relativize(url)  # already-local cached-actor photo
+                    # Always store host-relative so the People-image base (PEOPLE_IMAGE_URL)
+                    # is re-applied on every serve, whatever base built it.
+                    return url[url.index('/images/local/') :]
                 target = proxy_target(url)
                 name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
                 counter[0] += 1

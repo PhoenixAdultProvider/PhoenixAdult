@@ -104,23 +104,46 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
     assert downloaded and downloaded[0].read_bytes() == b'POSTER'
 
 
-async def test_snapshot_survives_base_url_change(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Image URLs are stored host-relative and rebased onto the live base_url, so a
-    snapshot keeps working after a base_url/tunnel change on restart."""
+@respx.mock
+async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Image URLs are stored host-relative and rebased on every read: metadata images
+    (/cache/) onto base_url, people images (/images/local/) onto PEOPLE_IMAGE_URL's base —
+    so both survive a tunnel change and people images stay reconfigurable (and self-heal
+    if a snapshot stored them absolute)."""
+    import json
+    from pathlib import Path
     from types import SimpleNamespace
 
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER'))
 
-    monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://host-a:1'))
-    resp = _resp(studio='DickDrainers', thumb='http://host-a:1/images/local/jane.jpg')
+    monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-a:1'))
+    monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://10.0.0.5:3000')
+    resp = _resp(
+        studio='DickDrainers',
+        thumb='https://host/images/proxy?url=https%3A%2F%2Fcdn.example%2Fp.jpg',
+        role_thumb='https://tunnel-a:1/images/local/actor.jane_female.jpg',  # absolute, like an old snapshot
+    )
     assert await mc.write('DickDrainers', 's1', resp) is True
 
-    # Restart under a brand-new tunnel host.
-    monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://host-b:2'))
-    cached = mc.read('DickDrainers', 's1')
-    assert cached is not None
-    assert cached['MediaContainer']['Metadata'][0]['thumb'] == 'http://host-b:2/images/local/jane.jpg'
+    # On disk: metadata image -> /cache/ path; people image -> host-relative.
+    raw = json.loads(next(Path(str(tmp_path)).rglob('meta.json')).read_text(encoding='utf-8'))
+    rmd = raw['MediaContainer']['Metadata'][0]
+    assert rmd['thumb'].startswith('/cache/')
+    assert rmd['Role'][0]['thumb'] == '/images/local/actor.jane_female.jpg'
+
+    # Read: metadata follows base_url, people follows the People base.
+    md = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
+    assert md['thumb'].startswith('http://tunnel-a:1/cache/')
+    assert md['Role'][0]['thumb'] == 'http://10.0.0.5:3000/images/local/actor.jane_female.jpg'
+
+    # Change both bases -> both re-point on the next read.
+    monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-b:2'))
+    monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://localhost:3000')
+    md2 = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
+    assert md2['thumb'].startswith('http://tunnel-b:2/cache/')
+    assert md2['Role'][0]['thumb'] == 'http://localhost:3000/images/local/actor.jane_female.jpg'
 
 
 async def test_layout_per_registry_type(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
