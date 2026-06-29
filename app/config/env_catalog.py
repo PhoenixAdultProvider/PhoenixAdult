@@ -56,9 +56,10 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_REDACT_HOSTS',
         'Redact the server host in logs',
-        'IP addresses are ALWAYS redacted in logs (they never appear, in any environment). This flag additionally '
-        'redacts the server’s own host/FQDN (from PHOENIX_BASE_URL). Secret query values are gated separately by '
-        'LOG_REDACT_TOKEN. Defaults to ON when NODE_ENV=production and OFF otherwise (so you can see your own URL while testing).',
+        'Public IP addresses are ALWAYS redacted in logs (a real routable address never appears). This flag '
+        'additionally redacts the server’s own host/FQDN (from PHOENIX_BASE_URL) and private/LAN/loopback IPs — so '
+        'with it OFF you can see your own LAN address (e.g. PEOPLE_IMAGE_URL=localipv4) while testing. Secret query '
+        'values are gated separately by LOG_REDACT_TOKEN. Defaults to ON when NODE_ENV=production and OFF otherwise.',
         'Logging',
         'boolean',
         default_value='false',

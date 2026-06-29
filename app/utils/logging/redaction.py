@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import re
@@ -43,6 +44,20 @@ def _own_host() -> str | None:
     return host
 
 
+def _redact_ip(match: re.Match[str]) -> str:
+    # Public/routable IPs are ALWAYS masked (never leak a real address). Private,
+    # loopback and link-local IPs are masked too unless LOG_REDACT_HOSTS is off — so
+    # you can see your own LAN address (e.g. PEOPLE_IMAGE_URL=localipv4) while debugging.
+    raw = match.group(0)
+    try:
+        addr = ipaddress.ip_address(raw)
+    except ValueError:
+        return MASK
+    if addr.is_private and not env.log_redact_hosts:
+        return raw
+    return MASK
+
+
 def redact(text: str) -> str:
     if env.log_redact_token:
         text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
@@ -50,8 +65,8 @@ def redact(text: str) -> str:
         own = _own_host()
         if own:
             text = re.sub(rf'(?i)(?<![\w.-]){re.escape(own)}(?![\w-])', MASK, text)
-    text = _IPV6.sub(MASK, text)
-    text = _IPV4.sub(MASK, text)
+    text = _IPV6.sub(_redact_ip, text)
+    text = _IPV4.sub(_redact_ip, text)
     return text
 
 
@@ -63,7 +78,8 @@ def redact_client_addr(addr: str) -> str:
 
 
 class RedactionFilter(logging.Filter):
-    """Always scrubs IP literals; secret query values only when LOG_REDACT_TOKEN is on; the server's own host only when LOG_REDACT_HOSTS is on."""
+    """Always scrubs public IP literals; private/loopback IPs and the server's own host
+    only when LOG_REDACT_HOSTS is on; secret query values only when LOG_REDACT_TOKEN is on."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:

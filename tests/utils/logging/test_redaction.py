@@ -39,12 +39,37 @@ def test_no_own_host_when_base_url_localhost(monkeypatch):
     assert redact('http://plex.example.com:32400/config') == 'http://plex.example.com:32400/config'
 
 
-def test_redact_ipv4():
+def test_private_ipv4_masked_when_flag_on(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     assert redact('client 192.168.1.50 connected') == 'client ***REDACTED*** connected'
 
 
-def test_redact_ipv6():
+def test_private_ipv4_shown_when_flag_off(monkeypatch):
+    # A LAN IP (e.g. PEOPLE_IMAGE_URL=localipv4) is visible while debugging.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    assert redact('serving http://10.0.0.5:3000/x') == 'serving http://10.0.0.5:3000/x'
+
+
+def test_public_ipv4_masked_even_when_flag_off(monkeypatch):
+    # 8.8.8.8 = Google public DNS — a well-known, non-PII public IP. Public IPs never leak.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    assert redact('upstream 8.8.8.8 reached') == 'upstream ***REDACTED*** reached'
+
+
+def test_private_ipv6_masked_when_flag_on(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     assert redact('from fe80::1ff:fe23:4567:890a here') == 'from ***REDACTED*** here'
+
+
+def test_link_local_ipv6_shown_when_flag_off(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    assert redact('from fe80::1ff:fe23:4567:890a here') == 'from fe80::1ff:fe23:4567:890a here'
+
+
+def test_public_ipv6_masked_even_when_flag_off(monkeypatch):
+    # 2606:4700:4700::1111 = Cloudflare public DNS — non-PII public IPv6.
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    assert redact('peer 2606:4700:4700::1111 ok') == 'peer ***REDACTED*** ok'
 
 
 def test_redact_leaves_plain_text_untouched():
@@ -83,20 +108,20 @@ def _record(name: str, msg: str, args=None) -> logging.LogRecord:
     return logging.LogRecord(name, logging.INFO, __file__, 0, msg, args, None)
 
 
-def test_filter_redacts_ip_even_when_flag_off(monkeypatch):
-    # IPs are PII — redacted regardless of LOG_REDACT_HOSTS.
+def test_filter_shows_private_ip_when_flag_off(monkeypatch):
+    # Private/LAN IPs are visible with LOG_REDACT_HOSTS off (debugging your own host).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     rec = _record('phoenixadult', 'host http://10.0.0.1/x')
     RedactionFilter().filter(rec)
-    assert rec.getMessage() == 'host http://***REDACTED***/x'
+    assert rec.getMessage() == 'host http://10.0.0.1/x'
 
 
-def test_filter_redacts_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
-    # Client IP is always redacted (even with LOG_REDACT_HOSTS off); the token only
-    # when LOG_REDACT_TOKEN is on. 203.0.113.0/24 is TEST-NET-3 (docs only).
+def test_filter_redacts_public_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
+    # A public client IP is redacted even with LOG_REDACT_HOSTS off; the token only when
+    # LOG_REDACT_TOKEN is on. 8.8.8.8 = Google public DNS (non-PII public stand-in).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
-    args = ('203.0.113.157:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
+    args = ('8.8.8.8:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
     assert rec.args[0] == '***REDACTED***:0'
