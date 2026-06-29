@@ -10,6 +10,52 @@ from app.models.metadata import PlexMetadataResponse
 from app.utils import cache as mc
 
 
+def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Stand in for the current genres.json/actors.json: drop "Drop Me", upper-case the rest;
+    # collapse "Alias A"/"Alias B" onto one canonical name.
+    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: [t.upper() for t in tags if t != 'Drop Me'])
+    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Canonical' if name in ('Alias A', 'Alias B') else name)
+
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'studio': 'S',
+                        'Genre': [{'tag': 'Keep'}, {'tag': 'Drop Me'}],
+                        'Role': [{'tag': 'Alias A'}, {'tag': 'Alias B'}, {'tag': 'Solo'}],
+                    }
+                ],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is True
+    md = resp.MediaContainer.Metadata[0]
+    assert [g.tag for g in (md.Genre or [])] == ['KEEP']  # Drop Me removed, Keep upper-cased
+    assert [r.tag for r in (md.Role or [])] == ['Canonical', 'Solo']  # A+B merged to one, deduped
+
+
+def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Genre': [{'tag': 'Anal'}]}],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is False
+
+
 def _resp(
     *,
     title: str = 'Cool Scene',

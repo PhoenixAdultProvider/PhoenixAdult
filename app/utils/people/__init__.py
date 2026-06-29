@@ -11,7 +11,7 @@ from app.utils.http.headers import image_request_headers
 from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people.cache import cache_enabled, cache_photo, cache_replace_enabled, lookup_cached
-from app.utils.people.data import ACTORS_REPLACE, ACTORS_REPLACE_STUDIOS, ACTORS_STUDIO_INDEXES
+from app.utils.people.data import actor_rules
 from app.utils.people.gender import gender_detect_enabled, iafd_gender_check
 from app.utils.people.generic import gender_skip_male_enabled, generic_image_enabled, generic_image_url
 from app.utils.people.sources import find_photo
@@ -39,21 +39,24 @@ def _clean_name(raw: str) -> str:
 def _studio_index_for(studio: str, site_name: str) -> str | None:
     s1 = studio.replace(' ', '').lower()
     s2 = site_name.replace(' ', '').lower()
-    for idx, names in ACTORS_STUDIO_INDEXES.items():
+    for idx, names in actor_rules().studio_indexes.items():
         lc = [n.replace(' ', '').lower() for n in names]
         if s1 in lc or s2 in lc:
             return idx
     return None
 
 
-def _apply_alias_tables(name: str, studio: str, site_name: str) -> str:
+def apply_name_aliases(name: str, studio: str, site_name: str) -> str:
+    """Canonicalize a performer name through the actors.json alias tables (studio-specific
+    first, then global). Used at resolve time and re-applied to cached scenes on serve."""
+    rules = actor_rules()
     search = name.lower()
     idx = _studio_index_for(studio, site_name)
-    if idx is not None and idx in ACTORS_REPLACE_STUDIOS:
-        for canonical, aliases in ACTORS_REPLACE_STUDIOS[idx].items():
+    if idx is not None and idx in rules.replace_studios:
+        for canonical, aliases in rules.replace_studios[idx].items():
             if canonical.lower() == search or search in [a.lower() for a in aliases]:
                 return canonical
-    for canonical, aliases in ACTORS_REPLACE.items():
+    for canonical, aliases in rules.replace.items():
         if canonical.lower() == search or search in [a.lower() for a in aliases]:
             return canonical
     return name
@@ -123,7 +126,7 @@ class PeopleManager:
         display = re.sub(r'\s+', ' ', title_case(cleaned, type='name', site_name=ctx.site_name)).strip()
         if display in _SKIP_NAMES:
             return []
-        display = _apply_alias_tables(display, ctx.studio, ctx.site_name)
+        display = apply_name_aliases(display, ctx.studio, ctx.site_name)
 
         if ',' in display:
             parts = [p.strip() for p in display.split(',') if p.strip()]
@@ -237,4 +240,4 @@ def filter_male_actors(response: PlexMetadataResponse) -> int:
     return removed
 
 
-__all__ = ['PeopleManager', 'to_plex_roles', 'filter_male_actors', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']
+__all__ = ['PeopleManager', 'to_plex_roles', 'filter_male_actors', 'apply_name_aliases', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']

@@ -13,15 +13,16 @@ import httpx2
 
 from app.config import config, people_image_base
 from app.config.env import env
-from app.models.metadata import PlexMetadataResponse, PlexRole
+from app.models.metadata import PlexGenre, PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
+from app.utils.genres import NormalizeGenresOptions, normalize_genres
 from app.utils.helpers.helpers import slugify
 from app.utils.http.client import make_http
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
-from app.utils.people import PeopleManager, to_plex_roles
+from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
@@ -345,4 +346,40 @@ async def backfill_people_images(response: PlexMetadataResponse, site_name: str)
                 else:
                     logger.debug('meta-cache', f'backfill {key}: no thumb resolved for "{r.tag}"')
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
+    return changed
+
+
+def reapply_text_rules(response: PlexMetadataResponse) -> bool:
+    """Re-run genre normalization + actor alias tables on a cached response using the
+    current genres.json / actors.json (both hot-reload on edit). Mutates in place and
+    returns True if anything changed, so the caller can rewrite the snapshot. It applies
+    new skip/rename/alias rules to what's stored; it can't restore values dropped at the
+    original scrape (those aren't in the snapshot — purge to re-scrape)."""
+    changed = False
+    for md in response.MediaContainer.Metadata:
+        studio = md.studio or ''
+        if md.Genre:
+            old = [g.tag for g in md.Genre]
+            new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio))
+            if new != old:
+                md.Genre = [PlexGenre(tag=t) for t in new]
+                changed = True
+        for attr in ('Role', 'Director', 'Producer'):
+            roles: list[PlexRole] | None = getattr(md, attr)
+            if not roles:
+                continue
+            seen: set[str] = set()
+            kept: list[PlexRole] = []
+            for r in roles:
+                aliased = apply_name_aliases(r.tag, studio, studio)
+                if aliased != r.tag:
+                    r.tag = aliased
+                    changed = True
+                if aliased.lower() in seen:  # an alias collapsed two cast members
+                    changed = True
+                    continue
+                seen.add(aliased.lower())
+                kept.append(r)
+            if len(kept) != len(roles):
+                setattr(md, attr, kept)
     return changed

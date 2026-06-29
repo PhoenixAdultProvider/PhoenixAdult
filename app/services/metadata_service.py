@@ -38,9 +38,12 @@ class MetadataService:
         cached = metadata_cache.read(site.name, cur_id)
         if cached is not None:
             response = PlexMetadataResponse.model_validate(cached)
-            if await metadata_cache.backfill_people_images(response, site.name):
+            changed = await metadata_cache.backfill_people_images(response, site.name)
+            if metadata_cache.reapply_text_rules(response):  # re-apply current genres.json / actors.json
+                changed = True
+            if changed:
                 await metadata_cache.write(site.name, cur_id, response)
-                logger.info(provider.id, f'Backfilled missing cast/crew image(s) for ratingKey={rating_key}')
+                logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
             # Filter AFTER any cache write so the snapshot keeps every actor on disk.
             if removed := filter_male_actors(response):
                 logger.info(provider.id, f'Male-actor filter: hid {removed} cached actor(s) from ratingKey={rating_key}')

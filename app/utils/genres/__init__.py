@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.utils.genres.data import PARTIAL_SKIP, REPLACE_LOOKUP, SKIP_SET
+from app.utils.genres.data import GenreRules, genre_rules
 from app.utils.processors.title_case import title_case
 
 
@@ -16,10 +16,11 @@ def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None
     if not raws:
         return []
     opts = opts or NormalizeGenresOptions()
+    rules = genre_rules()
     seen: set[str] = set()
     out: list[str] = []
     for raw in raws:
-        normalized = _normalize_one(raw, opts)
+        normalized = _normalize_one(raw, opts, rules)
         if not normalized:
             continue
         key = normalized.lower()
@@ -30,7 +31,7 @@ def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None
     return out
 
 
-def _normalize_one(raw: str | None, opts: NormalizeGenresOptions) -> str | None:
+def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRules) -> str | None:
     if raw is None:
         return None
 
@@ -42,16 +43,16 @@ def _normalize_one(raw: str | None, opts: NormalizeGenresOptions) -> str | None:
     lower = cleaned.lower()
 
     # Step 2 — exact-match skip list.
-    if lower in SKIP_SET:
+    if lower in rules.skip_set:
         return None
 
     # Step 3 — substring partial-skip list.
-    for sub in PARTIAL_SKIP:
+    for sub in rules.partial_skip:
         if sub in lower:
             return None
 
     # Step 4 — canonical alias replacement (canonical names are pre-typed).
-    canonical = REPLACE_LOOKUP.get(lower)
+    canonical = rules.replace_lookup.get(lower)
     if canonical:
         return canonical
 
@@ -76,4 +77,4 @@ def _normalize_one(raw: str | None, opts: NormalizeGenresOptions) -> str | None:
     return cased
 
 
-__testing__ = {'REPLACE_LOOKUP': REPLACE_LOOKUP, 'SKIP_SET': SKIP_SET, 'PARTIAL_SKIP': PARTIAL_SKIP}
+__testing__ = {'genre_rules': genre_rules}

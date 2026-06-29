@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from app.utils.people import PeopleManager, to_plex_roles
-from app.utils.people.data import ACTORS_REPLACE, ACTORS_STUDIO_INDEXES
+from app.utils.people.data import actor_rules
 from app.utils.people.types import ResolvedPerson
 
 
@@ -22,8 +22,9 @@ def offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_data_loaded() -> None:
-    assert len(ACTORS_REPLACE) > 300
-    assert len(ACTORS_STUDIO_INDEXES) > 50
+    rules = actor_rules()
+    assert len(rules.replace) > 300
+    assert len(rules.studio_indexes) > 50
 
 
 async def test_alias_resolution() -> None:
