@@ -139,7 +139,9 @@ class MetadataMapper:
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
     """Debug-log where each image in the served response points. Fires for both cached
     and freshly-scraped responses; URLs pass through the redaction filter, so IP literals
-    are always scrubbed. People images use people_image_base(); poster/art use base_url."""
+    are always scrubbed. People images use people_image_base(); poster/art use base_url.
+    At LOG_LEVEL=verbose it also dumps the full response JSON exactly as sent to Plex."""
+    logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
     logger.debug(label, f'people image base -> {people_image_base()}')
     for md in response.MediaContainer.Metadata:
         if md.thumb:
