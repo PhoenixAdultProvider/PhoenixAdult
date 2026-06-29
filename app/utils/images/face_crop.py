@@ -11,6 +11,9 @@ _MODEL_PATH = Path(__file__).parent / '_data' / 'face_detection_yunet_2023mar.on
 _DETECT_SCORE = 0.5
 _CROP_SCORE = 0.6
 _JPEG_QUALITY = 92
+# Where the face centre should sit vertically in the square crop (hair above, shoulders
+# below) — a touch above centre so a circular card frames the face, not the chest.
+_FACE_VPOS = 0.42
 
 _cv2: Any = None
 _np: Any = None
@@ -79,6 +82,7 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
     height, width = img.shape[:2]
     x, y, w, h = box
     cx = x + w / 2.0
+    cy = y + h / 2.0
 
     # Square big enough for hair above + shoulders below, capped to the image.
     side = max(2.8 * h, 2.4 * w)
@@ -87,9 +91,14 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
     if side < 1.3 * h or side < 1.1 * w:
         return None
 
-    left = cx - side / 2.0
-    top = y - 0.6 * h  # leave room for hair
-    left = max(0.0, min(left, width - side))
+    # Sit the face centre at _FACE_VPOS down the square, centred horizontally.
+    top = cy - _FACE_VPOS * side
+    # Head near the top edge (e.g. a full-body shot): don't pin the face to the top of an
+    # over-tall square — shrink the square so the face still lands at _FACE_VPOS.
+    if top < 0:
+        side = min(side, cy / _FACE_VPOS)
+        top = 0.0
+    left = max(0.0, min(cx - side / 2.0, width - side))
     top = max(0.0, min(top, height - side))
 
     x1, y1 = int(round(left)), int(round(top))

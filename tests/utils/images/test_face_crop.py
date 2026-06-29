@@ -25,6 +25,31 @@ def test_crop_no_face_keeps_original() -> None:
     assert crop_to_headshot(_solid_jpeg()) is None
 
 
+def test_headshot_crop_recenters_face_near_top_edge() -> None:
+    # Full-body shot: face near the top edge. The square is shrunk so the face sits at
+    # ~_FACE_VPOS instead of being pinned to the top of an over-tall square.
+    np = pytest.importorskip('numpy')
+    from app.utils.images.face_crop import _headshot_crop
+
+    img = np.zeros((600, 433, 3), dtype=np.uint8)
+    crop = _headshot_crop(np, img, (214, 12, 111, 156))  # box = (x, y, w, h), small y
+    assert crop is not None
+    ch, cw = crop.shape[:2]
+    assert ch == cw  # square
+    assert 195 <= ch <= 235  # ~cy/0.42 ≈ 214, not the full 433 it would pin at the top
+
+
+def test_headshot_crop_keeps_full_square_with_headroom() -> None:
+    # Face with ample headroom -> no shrink; square ≈ 2.8·h capped to the image width.
+    np = pytest.importorskip('numpy')
+    from app.utils.images.face_crop import _headshot_crop
+
+    img = np.zeros((600, 433, 3), dtype=np.uint8)
+    crop = _headshot_crop(np, img, (160, 220, 111, 156))
+    assert crop is not None
+    assert crop.shape[0] >= 420  # ~433, unshrunk
+
+
 def test_log_roundtrip(tmp_path: pytest.TempPathFactory) -> None:
     d = str(tmp_path)
     face_crop_log.record(
