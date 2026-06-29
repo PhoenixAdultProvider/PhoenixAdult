@@ -7,7 +7,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 import httpx2
 
@@ -299,6 +299,17 @@ def purge(key: str) -> bool:
 # ── People-image backfill ─────────────────────────────────────────────────────
 
 
+def _is_stale_local_thumb(thumb: str) -> bool:
+    """True if a cached /images/local/ thumb points at a people-cache file that no longer
+    exists (e.g. purged at /people-cache) — so backfill re-resolves it instead of serving
+    a dead link."""
+    marker = '/images/local/'
+    if marker not in thumb:
+        return False
+    name = Path(unquote(thumb.rsplit(marker, 1)[1].split('?')[0])).name
+    return bool(name) and not (Path(env.people_cache_dir) / name).exists()
+
+
 async def backfill_people_images(response: PlexMetadataResponse, site_name: str) -> bool:
     """Retry resolving headshots for cached cast / director / producer entries with no thumb.
 
@@ -320,9 +331,15 @@ async def backfill_people_images(response: PlexMetadataResponse, site_name: str)
     ]
 
     missing: list[str] = []
+    stale_cleared = False
     for entries, add, key in groups:
         for r in entries:
-            if not r.thumb and r.tag:
+            if not r.tag:
+                continue
+            if r.thumb and _is_stale_local_thumb(r.thumb):
+                r.thumb = None  # cached file was purged — drop the dead link and re-resolve below
+                stale_cleared = True
+            if not r.thumb:
                 add(r)
                 missing.append(f'{key}:{r.tag}')
     if not missing:
@@ -336,7 +353,7 @@ async def backfill_people_images(response: PlexMetadataResponse, site_name: str)
         logger.warn('meta-cache', f'people-image backfill failed: {err}')
         return False
 
-    changed = False
+    changed = stale_cleared  # clearing a purged thumb is itself a change worth persisting
     for entries, _, key in groups:
         roles = to_plex_roles(resolved[key], people_image_base())
         by_tag = {p.tag: p for p in roles if p.thumb}

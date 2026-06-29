@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -203,12 +204,14 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
     assert mc.purge(key) is False  # already gone
 
 
-async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.utils.people.types import PersonLookupContext, PhotoHit
 
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')  # no IAFD lookup
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')  # keep male actors (don't skip Mandingo)
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    (Path(str(tmp_path)) / 'actor.kira-noir_female.jpg').write_bytes(b'x')  # present file -> thumb kept
 
     photos = {
         'Mandingo': PhotoHit(url='https://cdn.example/mandingo.jpg', gender='male'),
@@ -253,7 +256,9 @@ async def test_backfill_actor_images_fills_missing_thumb(monkeypatch: pytest.Mon
     assert md.Producer is not None and md.Producer[0].thumb and 'jane.jpg' in md.Producer[0].thumb
 
 
-async def test_backfill_noop_when_all_thumbs_present(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_noop_when_all_thumbs_present(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    (Path(str(tmp_path)) / 'a.jpg').write_bytes(b'x')  # the referenced cache file exists -> not stale
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -266,3 +271,39 @@ async def test_backfill_noop_when_all_thumbs_present(monkeypatch: pytest.MonkeyP
         }
     )
     assert await mc.backfill_people_images(resp, 'TestSite') is False
+
+
+async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A present /images/local/ thumb whose file was purged is treated as missing and re-resolved.
+    from app.utils.people.types import PersonLookupContext, PhotoHit
+
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))  # empty -> the referenced file is absent
+
+    async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
+        return PhotoHit(url='https://cdn.example/greg-new.jpg', gender='male') if name == 'Greg Lansky' else PhotoHit(url='')
+
+    monkeypatch.setattr('app.utils.people.find_photo', fake_find_photo)
+
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'id',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'Director': [{'tag': 'Greg Lansky', 'thumb': 'http://h/images/local/director.greg-lansky_male.jpg'}],
+                    }
+                ],
+            }
+        }
+    )
+    assert await mc.backfill_people_images(resp, 'TestSite') is True
+    d = resp.MediaContainer.Metadata[0].Director
+    assert d is not None and d[0].thumb and 'greg-new.jpg' in d[0].thumb  # re-downloaded, not the dead link
