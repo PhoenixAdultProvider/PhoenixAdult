@@ -306,8 +306,11 @@ def _is_stale_local_thumb(thumb: str) -> bool:
     marker = '/images/local/'
     if marker not in thumb:
         return False
-    name = Path(unquote(thumb.rsplit(marker, 1)[1].split('?')[0])).name
-    return bool(name) and not (Path(env.people_cache_dir) / name).exists()
+    relpath = unquote(thumb.rsplit(marker, 1)[1].split('?')[0])  # e.g. actors/female/x.jpg
+    if not relpath:
+        return False
+    target = safe_join(env.people_cache_dir, relpath)
+    return target is None or not target.exists()
 
 
 async def backfill_people_images(response: PlexMetadataResponse, site_name: str) -> bool:

@@ -138,8 +138,8 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     pm.add_director('Ken Shiro', '')
     res = await pm.resolve_all(studio='', site_name='')
 
-    assert '/images/local/director.ken-shiro_male.jpg?v=' in res['directors'][0].photo  # cache-busted served URL
-    assert (tmp_path / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
+    assert '/images/local/directors/director.ken-shiro_male.jpg?v=' in res['directors'][0].photo  # subfolder + cache-bust
+    assert (tmp_path / 'directors' / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
 
 
 def test_to_plex_roles_proxies_photo() -> None:

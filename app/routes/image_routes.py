@@ -25,18 +25,19 @@ def _read_multi(request: Request, key: str) -> list[str]:
     return [v for v in request.query_params.getlist(key) if v]
 
 
-@router.get('/local/{filename}')
-async def local_image(filename: str) -> Response:
-    if Path(filename).suffix.lower() not in IMAGE_EXTS:
+@router.get('/local/{filepath:path}')
+async def local_image(filepath: str) -> Response:
+    # :path so people images can live in role/gender subfolders (actors/female/…).
+    if Path(filepath).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
 
-    file_path = safe_join(env.image_dir, filename)
+    file_path = safe_join(env.image_dir, filepath)
     if not file_path:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
     if file_path.exists():
         return FileResponse(file_path)
 
-    cached = safe_join(env.people_cache_dir, filename)
+    cached = safe_join(env.people_cache_dir, filepath)
     if cached and cached.exists():
         return FileResponse(cached)
 

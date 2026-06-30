@@ -15,7 +15,7 @@ from app.routes import read_json_body
 from app.utils.auth.env_auth import env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
-from app.utils.people.cache import people_cache_dir, purge, restore_original, set_gender
+from app.utils.people.cache import _ORIGINALS_DIR, people_cache_dir, purge, restore_original, set_gender
 from app.utils.people.types import parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
@@ -24,6 +24,15 @@ _ROLES = ('actor', 'director', 'producer')
 # gender key -> (css suffix, label)
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female')]
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
+# (subfolder-derived type, tab label) — one view per storage bucket.
+_TABS = [
+    ('directors', 'Directors'),
+    ('producers', 'Producers'),
+    ('actors-female', 'Female Actors'),
+    ('actors-male', 'Male Actors'),
+    ('actors-trans', 'Trans Actors'),
+    ('actors-unknown', 'Unknown Actors'),
+]
 
 
 def _parse_filename(filename: str) -> tuple[str, str, str] | None:
@@ -35,37 +44,45 @@ def _parse_filename(filename: str) -> tuple[str, str, str] | None:
 
 
 def _list_people(directory: str) -> list[dict[str, Any]]:
-    """Every cached headshot on disk (actors + directors + producers), newest first,
-    enriched with crop-log metadata (cropped badge / upstream original) when present."""
-    dirp = Path(directory)
-    if not dirp.exists():
+    """Every cached headshot across the role/gender subfolders, newest first, enriched with
+    each subfolder's crop-log metadata. The originals/ backing store is skipped. Each entry
+    carries its relpath (for the served URL) and a `type` (the tab it belongs to)."""
+    root = Path(directory)
+    if not root.exists():
         return []
-    by_file = {e.get('filename'): e for e in face_crop_log.recent(directory)}
+    subdirs = sorted({f.parent for f in root.rglob('*') if f.is_file() and not f.name.startswith('.') and f.suffix.lower() in IMAGE_EXTS})
     out: list[dict[str, Any]] = []
-    for f in dirp.iterdir():
-        if not f.is_file() or f.suffix.lower() not in IMAGE_EXTS:
+    for sd in subdirs:
+        subpath = sd.relative_to(root).as_posix()
+        if subpath == _ORIGINALS_DIR or subpath.startswith(f'{_ORIGINALS_DIR}/'):
             continue
-        parsed = _parse_filename(f.name)
-        if not parsed:
-            continue
-        role, name, gender = parsed
-        log = by_file.get(f.name, {})
-        try:
-            mtime = f.stat().st_mtime
-        except OSError:
-            mtime = 0.0
-        out.append(
-            {
-                'name': log.get('name') or name,
-                'filename': f.name,
-                'role': role,
-                'gender': gender,
-                'upstream_url': log.get('upstream_url', ''),
-                'cropped': bool(log.get('cropped')),
-                'ts': log.get('ts') or datetime.fromtimestamp(mtime, UTC).strftime('%Y-%m-%d %H:%M:%S'),
-                'mtime': mtime,
-            }
-        )
+        by_file = {e.get('filename'): e for e in face_crop_log.recent(str(sd))}
+        for f in sorted(sd.iterdir()):
+            if not f.is_file() or f.name.startswith('.') or f.suffix.lower() not in IMAGE_EXTS:
+                continue
+            parsed = _parse_filename(f.name)
+            if not parsed:
+                continue
+            role, name, gender = parsed
+            log = by_file.get(f.name, {})
+            try:
+                mtime = f.stat().st_mtime
+            except OSError:
+                mtime = 0.0
+            out.append(
+                {
+                    'name': log.get('name') or name,
+                    'filename': f.name,
+                    'relpath': f'{subpath}/{f.name}',
+                    'type': subpath.replace('/', '-'),
+                    'role': role,
+                    'gender': gender,
+                    'upstream_url': log.get('upstream_url', ''),
+                    'cropped': bool(log.get('cropped')),
+                    'ts': log.get('ts') or datetime.fromtimestamp(mtime, UTC).strftime('%Y-%m-%d %H:%M:%S'),
+                    'mtime': mtime,
+                }
+            )
     out.sort(key=lambda e: e['mtime'], reverse=True)
     return out
 
@@ -93,7 +110,9 @@ def _card(entry: dict[str, Any]) -> str:
     cropped = bool(entry.get('cropped'))
     ts = html.escape(str(entry.get('ts', '')))
     gcss = next(css for key, css, _ in _GENDERS if key == _gender_of(str(entry.get('gender', ''))))
-    local_src = f'/images/local/{quote(filename)}?v={int(entry.get("mtime", 0))}'  # bust the browser cache when the file changes
+    relpath = str(entry.get('relpath', filename))
+    ctype = html.escape(str(entry.get('type', '')), quote=True)
+    local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'  # bust the browser cache when the file changes
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
     fn = html.escape(filename, quote=True)
@@ -106,7 +125,7 @@ def _card(entry: dict[str, Any]) -> str:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
     purge_btn = f'<button class="purge" onclick="purge({fn!r})">Purge</button>'
-    return f"""<div class="card {gcss}">
+    return f"""<div class="card {gcss}" data-type="{ctype}">
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{ts}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
@@ -121,14 +140,18 @@ def _card(entry: dict[str, Any]) -> str:
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
     entries = _list_people(people_cache_dir())
-    counts = {role: sum(1 for e in entries if e['role'] == role) for role in _ROLES}
+    type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
+    default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
     token = html.escape(request.query_params.get('token', ''), quote=True)
     warn = '' if face_crop.available() else '<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>'
-    empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>'
-    summary = ' · '.join(f'{counts[r]} {r}{"s" if counts[r] != 1 else ""}' for r in _ROLES)
+    empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>' if not entries else ''
+    summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
     img_base = html.escape(people_image_base())
     img_opt = html.escape(env.people_image_url_raw)
-    cards = '\n'.join(_card(e) for e in entries) or empty
+    tabs = ''.join(
+        f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
+    )
+    cards = '\n'.join(_card(e) for e in entries)
     body = f"""<!doctype html><html><head><meta charset="utf-8"><title>People image cache</title>
     <style>
       body{{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}}
@@ -155,13 +178,20 @@ async def page(request: Request) -> HTMLResponse:
       .actions{{display:flex;gap:8px}}
       button.restore{{background:#2563eb;flex:1}} button.restore:disabled{{background:#334155;color:#94a3b8;opacity:1}}
       button.purge{{background:#b91c1c;flex:0 0 90px}}
+      .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
+      .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
+      .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
+      .tab .cnt{{opacity:.65;font-size:11px}}
     </style></head><body>
     <h1>People image cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
-      "Use original" re-downloads the upstream image and replaces the crop (Plex may need a refresh).
+      "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>PEOPLE_IMAGE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
+    <div class="tabs">{tabs}</div>
     <div class="grid">{cards}</div>
+    <p class="empty viewempty" style="display:none">No images in this category.</p>
+    {empty}
     <script>
       const TOKEN = {token!r};
       function hdrs(){{ return {{'Content-Type':'application/json', ...(TOKEN?{{'x-admin-token':TOKEN}}:{{}})}}; }}
@@ -182,6 +212,13 @@ async def page(request: Request) -> HTMLResponse:
         const j = await post('/people-cache/purge', {{filename}});
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
+      function showTab(t){{
+        document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+        let n=0;
+        document.querySelectorAll('.card').forEach(c=>{{ const m=c.dataset.type===t; c.style.display=m?'':'none'; if(m)n++; }});
+        const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
+      }}
+      showTab({default_tab!r});
     </script></body></html>"""
     return HTMLResponse(body)
 

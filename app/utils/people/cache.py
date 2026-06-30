@@ -4,7 +4,9 @@ import asyncio
 import hashlib
 import os
 import re
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import httpx2
 
@@ -38,25 +40,44 @@ def _slug(name: str) -> str:
     return re.sub(r'\s+', '-', re.sub(r'\.{2,}', '.', re.sub(r'[/\\]', '-', name))).lower()
 
 
+_ORIGINALS_DIR = 'originals'  # backing store of pre-crop originals (not a browsable role folder)
+
+
 def _base_name(name: str, role: Role) -> str:
     return f'{role}.{_slug(name)}'
 
 
-def _local_url(filename: str, data: bytes | None = None) -> str:
-    """Served URL for a cached people image, with a short content-hash cache-buster: Plex
-    caches images by URL, so without a token a re-cropped/replaced image (same filename)
-    keeps serving Plex's stale copy. The token changes only when the bytes change."""
+def _subdir(role: Role, gender: Gender) -> str:
+    """On-disk subfolder for a person: 'directors' / 'producers', or for actors
+    'actors/<male|female|trans|unknown>' (anything but male/female/trans is 'unknown')."""
+    if role == 'actor':
+        bucket = gender if gender in ('male', 'female', 'trans') else 'unknown'
+        return f'actors/{bucket}'
+    return f'{role}s'
+
+
+def _subdir_for(filename: str) -> str:
+    """The subfolder a cached filename belongs in, derived from its role+gender."""
+    role, _, gender = parse_person_filename(filename)
+    return _subdir(role, gender)  # type: ignore[arg-type]
+
+
+def _local_url(relpath: str, data: bytes | None = None) -> str:
+    """Served URL for a cached people image (relpath = '<subdir>/<filename>'), with a short
+    content-hash cache-buster: Plex caches images by URL, so without a token a re-cropped or
+    replaced image keeps serving the stale copy. The token changes only when the bytes do."""
     from urllib.parse import quote
 
     blob = data
     if blob is None:
-        path = safe_join(people_cache_dir(), filename)
+        path = safe_join(people_cache_dir(), relpath)
         try:
             blob = path.read_bytes() if path is not None else None
         except OSError:
             blob = None
     bust = f'?v={hashlib.sha1(blob).hexdigest()[:8]}' if blob is not None else ''  # noqa: S324 - cache-bust, not security
-    return f'{people_image_base()}/images/local/{quote(filename)}{bust}'
+    quoted = '/'.join(quote(part) for part in relpath.split('/'))
+    return f'{people_image_base()}/images/local/{quoted}{bust}'
 
 
 # ── Index (cache of cache contents) ───────────────────────────────────────────
@@ -66,15 +87,24 @@ _cached_sig: tuple[int, float] | None = None
 _cached_index: dict[str, str] = {}
 
 
+def _served_files(root: Path) -> Iterator[Path]:
+    """Cached served images across the role/gender subfolders — skips the originals/
+    backing store, per-folder .face_crop_log.json, and non-images."""
+    for entry in root.rglob('*'):
+        if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
+            continue
+        if entry.relative_to(root).parts[0] == _ORIGINALS_DIR:
+            continue
+        yield entry
+
+
 def _dir_signature(directory: str) -> tuple[int, float]:
     count = 0
     mtime = 0.0
-    p = Path(directory)
-    if not p.exists():
+    root = Path(directory)
+    if not root.exists():
         return count, mtime
-    for entry in p.iterdir():
-        if not entry.is_file():
-            continue
+    for entry in _served_files(root):
         count += 1
         try:
             m = entry.stat().st_mtime
@@ -87,13 +117,12 @@ def _dir_signature(directory: str) -> tuple[int, float]:
 
 def _rebuild_index(directory: str) -> dict[str, str]:
     idx: dict[str, str] = {}
-    p = Path(directory)
-    if not p.exists():
+    root = Path(directory)
+    if not root.exists():
         return idx
-    for entry in p.iterdir():
-        base = entry.stem  # e.g. "actor.jane-doe_female"
-        key = base.split('_', 1)[0]  # "actor.jane-doe"
-        idx.setdefault(key, entry.name)
+    for entry in _served_files(root):
+        key = entry.stem.split('_', 1)[0]  # "actor.jane-doe"
+        idx.setdefault(key, entry.relative_to(root).as_posix())  # "actors/female/actor.jane-doe_female.jpg"
     return idx
 
 
@@ -123,11 +152,11 @@ def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
     if not cache_enabled():
         return None
     key = _base_name(name, role)
-    filename = _get_index().get(key)
-    if not filename:
+    relpath = _get_index().get(key)
+    if not relpath:
         return None
-    gender = parse_person_filename(filename)[2]
-    return {'served_url': _local_url(filename), 'gender': gender}
+    gender = parse_person_filename(Path(relpath).name)[2]
+    return {'served_url': _local_url(relpath), 'gender': gender}
 
 
 def _ext_for(content_type: str, upstream_url: str) -> str:
@@ -187,10 +216,11 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
         logger.warn('people-cache', f'invalid extension for {upstream_url} (content-type={content_type})')
         return None
 
-    # Optional face-crop (head+shoulders for Plex's circular card). Never crops the
+    # Optional face-crop (tight head crop for Plex's circular card). Never crops the
     # generic/default placeholder; runs off-thread; the cropper emits JPEG and
     # returns None to mean "keep the original".
     orig_ext = ext
+    original = data  # pre-crop bytes, preserved so the user can always go back
     face_on = env.people_cache_face_enabled and not _is_generic(upstream_url)
     cropped = False
     if face_on:
@@ -201,18 +231,29 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     base = _base_name(name, role)
     name_base = f'{base}_{gender}' if gender else base
     filename = f'{name_base}{ext}'
+    subdir = _subdir(role, gender)
+    relpath = f'{subdir}/{filename}'
     # Defense in depth: never write outside the cache dir even if _slug misses.
-    filepath = safe_join(directory, filename)
+    filepath = safe_join(directory, subdir, filename)
     if filepath is None:
-        logger.warn('people-cache', f'refusing to write outside cache dir: {filename}')
+        logger.warn('people-cache', f'refusing to write outside cache dir: {relpath}')
         return None
-
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     filepath.write_bytes(data)
+
+    # Preserve the pre-crop original so "Use original" can restore it offline. Only when we
+    # actually cropped — an uncropped served file already IS the original.
+    if cropped:
+        orig_path = safe_join(directory, _ORIGINALS_DIR, f'{name_base}{orig_ext}')
+        if orig_path is not None:
+            orig_path.parent.mkdir(parents=True, exist_ok=True)
+            orig_path.write_bytes(original)
+
     _invalidate_index()
-    logger.info('people-cache', f'cached {filename}{" (face-cropped)" if cropped else ""}')
-    if face_on:
-        face_crop_log.record(directory, name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
-    return {'served_url': _local_url(filename, data), 'gender': gender}
+    logger.info('people-cache', f'cached {relpath}{" (face-cropped)" if cropped else ""}')
+    # Always record (not just for crops) so every cached image keeps its upstream URL.
+    face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
+    return {'served_url': _local_url(relpath, data), 'gender': gender}
 
 
 def _is_generic(url: str) -> bool:
@@ -221,40 +262,56 @@ def _is_generic(url: str) -> bool:
     return bool(url) and url in {generic_image_url('female'), generic_image_url('male')}
 
 
+def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
+    return next((e for e in face_crop_log.recent(subdir_path) if e.get('filename') == filename), None)
+
+
 async def restore_original(filename: str) -> bool:
-    """Re-fetch an image's upstream original and write it UNCROPPED, replacing the
-    cropped cache file. Backs the /people-cache 'use original' action."""
+    """Replace a cropped cache file with its un-cropped original. Prefers the preserved
+    local original (offline-safe); falls back to re-downloading the upstream. Backs the
+    /people-cache 'Use original' action."""
     directory = people_cache_dir()
-    entry = next((e for e in face_crop_log.recent(directory) if e.get('filename') == filename), None)
+    subdir = _subdir_for(filename)
+    subdir_path = safe_join(directory, subdir)
+    if subdir_path is None:
+        return False
+    entry = _log_entry(str(subdir_path), filename)
     if not entry:
         return False
-    # Plain client first, then curl_cffi impersonation — IAFD headshots are Cloudflare-403'd.
-    fetched = await _download_image(entry['upstream_url'], None)
-    if not fetched:
-        logger.warn('people-cache', f'restore fetch failed {entry["upstream_url"]} (plain + impersonate)')
-        return False
-    data, _ = fetched
+    orig_ext = entry.get('orig_ext') or '.jpg'
 
-    target_name = f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}'
-    target = safe_join(directory, target_name)
+    local = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+    data: bytes | None = local.read_bytes() if local is not None and local.exists() else None
+    if data is None and entry.get('upstream_url'):
+        # IAFD headshots are Cloudflare-403'd — _download_image falls back to impersonation.
+        fetched = await _download_image(entry['upstream_url'], None)
+        data = fetched[0] if fetched else None
+    if data is None:
+        logger.warn('people-cache', f'restore failed for {filename} (no local original or upstream)')
+        return False
+
+    target_name = f'{entry["base"]}{orig_ext}'
+    target = safe_join(directory, subdir, target_name)
     if target is None:
         return False
+    target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
     if target_name != filename:
-        old = safe_join(directory, filename)
+        old = safe_join(directory, subdir, filename)
         if old is not None and old != target and old.exists():
             old.unlink()
     _invalidate_index()
-    face_crop_log.update(directory, filename, filename=target_name, cropped=False)
-    logger.info('people-cache', f'restored original for {target_name}')
+    face_crop_log.update(str(subdir_path), filename, filename=target_name, cropped=False)
+    logger.info('people-cache', f'restored original for {subdir}/{target_name}')
     return True
 
 
 def purge(filename: str) -> bool:
-    """Delete a cached image from disk and drop its crop-log entry. Backs the
-    /people-cache 'Purge' button."""
+    """Delete a cached image (and its preserved original) and drop its crop-log entry.
+    Backs the /people-cache 'Purge' button."""
     directory = people_cache_dir()
-    target = safe_join(directory, filename)  # path-traversal guard
+    subdir = _subdir_for(filename)
+    target = safe_join(directory, subdir, filename)  # path-traversal guard
     if target is None or not target.exists():
         return False
     try:
@@ -262,9 +319,14 @@ def purge(filename: str) -> bool:
     except OSError as err:
         logger.warn('people-cache', f'purge failed {filename}: {err}')
         return False
+    entry = _log_entry(str(target.parent), filename)
+    if entry:  # drop the preserved original too
+        orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
+        if orig is not None and orig.exists():
+            orig.unlink()
     _invalidate_index()
-    face_crop_log.remove(directory, filename)
-    logger.info('people-cache', f'purged {filename}')
+    face_crop_log.remove(str(target.parent), filename)
+    logger.info('people-cache', f'purged {subdir}/{filename}')
     return True
 
 
@@ -272,32 +334,57 @@ _GENDERS = ('', 'male', 'female')
 
 
 def set_gender(filename: str, new_gender: str) -> str | None:
-    """Correct a cached image's gender by renaming its `_<gender>` suffix and
-    refreshing the lookup index. Returns the new filename, or None on failure.
-    The gender lives in the filename, so a rename is all future lookups (and the
-    served URL) need to report the corrected gender."""
+    """Correct a cached actor's gender: rename the `_<gender>` suffix, MOVE the file to the
+    matching actors/<gender> folder (directors/producers stay put), move the preserved
+    original and crop-log entry, and refresh the index. Returns the new filename."""
     if new_gender not in _GENDERS:
         return None
     directory = people_cache_dir()
-    role, slug, _ = parse_person_filename(filename)  # role.slug[_gender] — base off the name
+    role, slug, old_gender = parse_person_filename(filename)  # role.slug[_gender]
     root = f'{role}.{slug}' if role else slug  # gender-less role.slug
     if not root:
         return None
     ext = Path(filename).suffix
     new_base = f'{root}_{new_gender}' if new_gender else root
     new_filename = f'{new_base}{ext}'
+    old_subdir, new_subdir = _subdir(role, old_gender), _subdir(role, new_gender)  # type: ignore[arg-type]
 
-    src = safe_join(directory, filename)
-    dst = safe_join(directory, new_filename)
+    src = safe_join(directory, old_subdir, filename)
+    dst = safe_join(directory, new_subdir, new_filename)
     if src is None or dst is None:
         return None  # path-traversal guard
-    if new_filename != filename:
+    if dst != src:
         if not src.exists():
             return None
-        if dst.exists() and dst != src:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
             dst.unlink()
         src.rename(dst)
+
+    old_log, new_log = str(src.parent), str(dst.parent)
+    entry = _log_entry(old_log, filename)
+    if entry:  # move/rename the preserved original to match the new base
+        orig_ext = entry.get('orig_ext') or '.jpg'
+        old_orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+        new_orig = safe_join(directory, _ORIGINALS_DIR, f'{new_base}{orig_ext}')
+        if old_orig is not None and new_orig is not None and old_orig != new_orig and old_orig.exists():
+            if new_orig.exists():
+                new_orig.unlink()
+            old_orig.rename(new_orig)
+    if old_subdir != new_subdir:
+        face_crop_log.remove(old_log, filename)
+        if entry:
+            face_crop_log.record(
+                new_log,
+                name=entry.get('name', ''),
+                filename=new_filename,
+                base=new_base,
+                orig_ext=entry.get('orig_ext') or '.jpg',
+                upstream_url=entry.get('upstream_url', ''),
+                cropped=bool(entry.get('cropped')),
+            )
+    else:
+        face_crop_log.update(old_log, filename, filename=new_filename, base=new_base)
     _invalidate_index()
-    face_crop_log.update(directory, filename, filename=new_filename, base=new_base)
-    logger.info('people-cache', f'gender set to "{new_gender or "none"}" -> {new_filename}')
+    logger.info('people-cache', f'gender set to "{new_gender or "none"}" -> {new_subdir}/{new_filename}')
     return new_filename
