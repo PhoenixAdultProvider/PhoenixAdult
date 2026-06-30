@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -39,6 +40,23 @@ def _slug(name: str) -> str:
 
 def _base_name(name: str, role: Role) -> str:
     return f'{role}.{_slug(name)}'
+
+
+def _local_url(filename: str, data: bytes | None = None) -> str:
+    """Served URL for a cached people image, with a short content-hash cache-buster: Plex
+    caches images by URL, so without a token a re-cropped/replaced image (same filename)
+    keeps serving Plex's stale copy. The token changes only when the bytes change."""
+    from urllib.parse import quote
+
+    blob = data
+    if blob is None:
+        path = safe_join(people_cache_dir(), filename)
+        try:
+            blob = path.read_bytes() if path is not None else None
+        except OSError:
+            blob = None
+    bust = f'?v={hashlib.sha1(blob).hexdigest()[:8]}' if blob is not None else ''  # noqa: S324 - cache-bust, not security
+    return f'{people_image_base()}/images/local/{quote(filename)}{bust}'
 
 
 # ── Index (cache of cache contents) ───────────────────────────────────────────
@@ -109,9 +127,7 @@ def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
     if not filename:
         return None
     gender = parse_person_filename(filename)[2]
-    from urllib.parse import quote
-
-    return {'served_url': f'{people_image_base()}/images/local/{quote(filename)}', 'gender': gender}
+    return {'served_url': _local_url(filename), 'gender': gender}
 
 
 def _ext_for(content_type: str, upstream_url: str) -> str:
@@ -196,9 +212,7 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     logger.info('people-cache', f'cached {filename}{" (face-cropped)" if cropped else ""}')
     if face_on:
         face_crop_log.record(directory, name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
-    from urllib.parse import quote
-
-    return {'served_url': f'{people_image_base()}/images/local/{quote(filename)}', 'gender': gender}
+    return {'served_url': _local_url(filename, data), 'gender': gender}
 
 
 def _is_generic(url: str) -> bool:
