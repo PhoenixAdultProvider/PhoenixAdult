@@ -461,7 +461,7 @@
     }
 
     async function restartServer() {
-      if (!confirm('Restart the server now? The process will exit; a supervisor must bring it back up.')) return;
+      if (!confirm('Restart the server now? It will reload and the page will reconnect.')) return;
       setStatus('Requesting restart…');
       try {
         await postJSON(api('/config/api/restart'), {});

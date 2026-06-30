@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.config.env import env
 from app.config.env_catalog import (
     ENV_CATALOG,
     ENV_GROUP_ORDER,
@@ -111,15 +112,29 @@ async def api_reset(request: Request) -> JSONResponse:
     return JSONResponse(_build_state())
 
 
+_MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'  # a file the --reload watcher tracks
+
+
 @router.post('/api/restart')
 async def api_restart() -> JSONResponse:
-    logger.warn('config', 'restart requested via config UI — signalling shutdown')
-    # Best-effort: signal self after responding.
+    if not env.is_production:
+        # Dev runs under `uvicorn --reload`. Bumping a watched source file's mtime makes the
+        # reloader restart the worker — exactly like editing a file — which re-reads
+        # env.overrides.json and applies LOG_LEVEL. The reloader stays up, so it actually
+        # comes back (killing the worker would take the reloader down with it).
+        try:
+            _MAIN_PY.touch()
+            logger.warn('config', 'restart requested — bumped app/main.py to trigger the reloader')
+            return JSONResponse({'ok': True, 'method': 'reload'})
+        except OSError as err:
+            logger.warn('config', f'reload trigger failed ({err}); falling back to shutdown')
+    # Production / no reloader: exit and rely on the process supervisor to bring us back.
+    logger.warn('config', 'restart requested via config UI — signalling shutdown (supervisor must restart)')
     try:
         os.kill(os.getpid(), signal.SIGTERM)
     except OSError:
         pass
-    return JSONResponse({'ok': True})
+    return JSONResponse({'ok': True, 'method': 'shutdown'})
 
 
 _CONFIG_HTML = (Path(__file__).parent / 'html' / 'config_ui.html').read_text(encoding='utf-8')

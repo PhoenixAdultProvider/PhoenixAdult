@@ -40,3 +40,27 @@ def test_config_api_state(client: TestClient) -> None:
 def test_config_api_save_rejects_unknown_key(client: TestClient) -> None:
     r = client.post('/config/api/save', params={'token': TOKEN}, json={'updates': {'NOPE': 'x'}})
     assert r.status_code == 400
+
+
+def test_config_api_restart_reloads_in_dev(client: TestClient, tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    from pathlib import Path
+
+    from app.routes import env_routes
+
+    monkeypatch.setenv('NODE_ENV', 'development')
+    sentinel = Path(str(tmp_path)) / 'main.py'
+    sentinel.write_bytes(b'x')
+    monkeypatch.setattr(env_routes, '_MAIN_PY', sentinel)  # bump this instead of the real file
+    r = client.post('/config/api/restart', params={'token': TOKEN})
+    assert r.status_code == 200 and r.json()['method'] == 'reload'  # triggers the reloader, no kill
+
+
+def test_config_api_restart_shuts_down_in_prod(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.routes import env_routes
+
+    monkeypatch.setenv('NODE_ENV', 'production')
+    killed: list[int] = []
+    monkeypatch.setattr(env_routes.os, 'kill', lambda _pid, sig: killed.append(sig))  # don't actually kill the test runner
+    r = client.post('/config/api/restart', params={'token': TOKEN})
+    assert r.status_code == 200 and r.json()['method'] == 'shutdown'
+    assert killed  # signalled the supervisor path

@@ -686,7 +686,7 @@ app/
     processors/              # filename_parser, search_query, similarity, title_case, studio_name, abbreviations
     logging/, genres/, captcha/, cookies/, helpers/
   config/                    # env, env_catalog, env_overrides, __init__
-scripts/                     # generate_sitelist, site_health, fmt_data_json, start-with-tunnel.ps1
+scripts/                     # generate_sitelist, site_health, start-with-tunnel.ps1
 docs/DESIGN.md               # this document
 tests/                       # pytest + respx unit / client / selector / health fixtures
 ```
