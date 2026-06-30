@@ -93,7 +93,7 @@ def _card(entry: dict[str, Any]) -> str:
     cropped = bool(entry.get('cropped'))
     ts = html.escape(str(entry.get('ts', '')))
     gcss = next(css for key, css, _ in _GENDERS if key == _gender_of(str(entry.get('gender', ''))))
-    local_src = f'/images/local/{quote(filename)}'
+    local_src = f'/images/local/{quote(filename)}?v={int(entry.get("mtime", 0))}'  # bust the browser cache when the file changes
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
     fn = html.escape(filename, quote=True)
