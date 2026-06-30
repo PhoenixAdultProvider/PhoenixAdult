@@ -10,7 +10,23 @@ services:
       - .env
     environment:
       PORT: "3000"
+      # Route Cloudflare-challenged requests through the sidecar below.
+      FLARESOLVERR_URL: "http://flaresolverr:8191/"
     volumes:
       - ./local:/app/local
       - ./logs:/app/logs
       - ./env.overrides.json:/app/env.overrides.json
+    depends_on:
+      - flaresolverr
+
+  # Solves Cloudflare/JS challenges for the HTTP-bypass chain. Reachable only on
+  # the internal compose network as http://flaresolverr:8191/ (no host port).
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: phoenixadult-flaresolverr
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: info
+      TZ: UTC
+    expose:
+      - "8191"
