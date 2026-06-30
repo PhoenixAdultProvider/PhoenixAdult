@@ -1,5 +1,5 @@
 [project]
-name = "phoenixadult-provider"
+name = "phoenixadult"
 version = "1.0.0"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }

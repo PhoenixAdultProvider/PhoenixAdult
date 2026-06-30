@@ -31,7 +31,7 @@ install -d -o "$PA_USER" -g "$PA_USER" -m 0750 "$PA_DIR"
 
 # Virtualenv + app (installs PyPI deps from the pinned ref).
 SPEC="git+${PA_REPO}@${PA_REF}"
-[ -z "$PA_EXTRAS" ] || SPEC="phoenixadult-provider[${PA_EXTRAS}] @ git+${PA_REPO}@${PA_REF}"
+[ -z "$PA_EXTRAS" ] || SPEC="phoenixadult[${PA_EXTRAS}] @ git+${PA_REPO}@${PA_REF}"
 sudo -u "$PA_USER" "$PY" -m venv "$PA_DIR/venv"
 sudo -u "$PA_USER" "$PA_DIR/venv/bin/python" -m pip install --upgrade pip wheel
 sudo -u "$PA_USER" "$PA_DIR/venv/bin/pip" install --upgrade "$SPEC"

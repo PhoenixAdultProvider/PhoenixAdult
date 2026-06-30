@@ -1,8 +1,8 @@
 services:
   phoenixadult:
     build: .
-    image: phoenixadult-provider:latest
-    container_name: phoenixadult-provider
+    image: phoenixadult:latest
+    container_name: phoenixadult
     restart: unless-stopped
     ports:
       - "3000:3000"
