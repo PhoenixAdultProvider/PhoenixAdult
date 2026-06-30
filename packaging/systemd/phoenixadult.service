@@ -1,0 +1,35 @@
+[Unit]
+Description=PhoenixAdult Plex metadata provider
+Documentation=https://codeberg.org/PhoenixAdultProvider/PhoenixAdult
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=phoenixadult
+Group=phoenixadult
+
+# Run from the data dir so the app's cwd-relative paths (.env,
+# env.overrides.json, logs/, local/) resolve under it.
+WorkingDirectory=/var/lib/phoenixadult
+Environment=PORT=3000
+EnvironmentFile=-/var/lib/phoenixadult/.env
+ExecStart=/var/lib/phoenixadult/venv/bin/python -m app.main
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/phoenixadult
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target
