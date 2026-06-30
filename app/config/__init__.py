@@ -5,11 +5,13 @@ import socket
 from dataclasses import dataclass
 from functools import lru_cache
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 from app.config.env_overrides import load_overrides
 
-load_dotenv()
+# Search from the cwd (the working/data dir), not this module's install location —
+# otherwise a site-packages install never finds the .env in the data dir.
+load_dotenv(find_dotenv(usecwd=True))
 load_overrides()
 
 
