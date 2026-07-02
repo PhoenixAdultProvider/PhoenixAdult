@@ -475,7 +475,7 @@ def _render_ui(sites: list[dict[str, Any]]) -> str:
         if s['aliases']:
             n = len(s['aliases'])
             noun = 'site' if s['grouped'] else 'alias'
-            plural = '' if n == 1 else 's'
+            plural = '' if n == 1 else 's' if s['grouped'] else 'es'
             chips = ''.join(f'<span class="alias-chip">{html.escape(a)}</span>' for a in s['aliases'])
             alias_cell = f'<details><summary>{n} {noun}{plural}</summary><div class="alias-list">{chips}</div></details>'
         else:
