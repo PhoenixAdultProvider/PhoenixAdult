@@ -63,10 +63,10 @@ def test_log_roundtrip(tmp_path: pytest.TempPathFactory) -> None:
     assert updated[0]['filename'] == 'actor.jane-doe_female.webp' and updated[0]['cropped'] is False
 
 
-def test_log_trims_and_orders(tmp_path: pytest.TempPathFactory) -> None:
+def test_log_keeps_all_and_orders(tmp_path: pytest.TempPathFactory) -> None:
     d = str(tmp_path)
     for i in range(30):
         face_crop_log.record(d, name=f'A{i}', filename=f'f{i}.jpg', base=f'f{i}', orig_ext='.jpg', upstream_url=f'u{i}', cropped=False)
     entries = face_crop_log.recent(d)
-    assert len(entries) == 20  # ring buffer caps at 20
+    assert len(entries) == 30  # full history retained (no cap)
     assert entries[0]['filename'] == 'f29.jpg'  # newest first

@@ -8,7 +8,6 @@ from typing import Any
 from app.utils.logging.logger import logger
 
 _FILE = '.face_crop_log.json'
-_MAX = 20
 
 
 def _path(directory: str) -> Path:
@@ -28,7 +27,7 @@ def _load(directory: str) -> list[dict[str, Any]]:
 
 def _save(directory: str, entries: list[dict[str, Any]]) -> None:
     try:
-        _path(directory).write_text(json.dumps(entries[-_MAX:], indent=2), encoding='utf-8')
+        _path(directory).write_text(json.dumps(entries, indent=2), encoding='utf-8')
     except OSError as err:
         logger.warn('face-crop', f'could not write crop log: {err}')
 
