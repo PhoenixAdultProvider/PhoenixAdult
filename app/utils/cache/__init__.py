@@ -4,9 +4,9 @@ import hashlib
 import json
 import re
 import shutil
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlsplit
 
 import httpx2
@@ -23,6 +23,9 @@ from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
+
+if TYPE_CHECKING:
+    from app.clients.base import SceneDetail
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
@@ -313,29 +316,63 @@ def _is_stale_local_thumb(thumb: str) -> bool:
     return target is None or not target.exists()
 
 
-async def backfill_people_images(response: PlexMetadataResponse, site_name: str) -> bool:
+async def _resolve_and_fill(
+    people: PeopleManager,
+    fill_groups: list[tuple[list[PlexRole], str]],
+    *,
+    studio: str,
+    site_name: str,
+    referers: list[str] | None = None,
+    cookies: list[str] | None = None,
+) -> bool:
+    """Resolve the people enqueued on `people` and copy any newly-found thumb onto a
+    still-imageless snapshot role, matched by canonical tag. True if anything changed."""
+    try:
+        resolved = await people.resolve_all(studio=studio, site_name=site_name, referers=referers, cookies=cookies)
+    except Exception as err:  # noqa: BLE001 — backfill must never break the serve
+        logger.warn('meta-cache', f'people-image backfill resolve failed: {err}')
+        return False
+    changed = False
+    for entries, key in fill_groups:
+        roles = to_plex_roles(resolved[key], people_image_base(), referers or [], cookies or [])
+        by_tag = {p.tag: p for p in roles if p.thumb}
+        for r in entries:
+            if not r.thumb and r.tag and r.tag in by_tag:
+                r.thumb = by_tag[r.tag].thumb
+                r.gender = r.gender or by_tag[r.tag].gender
+                changed = True
+    return changed
+
+
+async def backfill_people_images(
+    response: PlexMetadataResponse,
+    site_name: str,
+    *,
+    fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
+) -> bool:
     """Retry resolving headshots for cached cast / director / producer entries with no thumb.
 
-    Best-effort (never breaks a cache serve) and self-healing — once an image is
-    found the snapshot is re-written, so only still-imageless people retry. Shared
-    by the live agent (MetadataService) and the /dev metadata flow.
+    When `fetch_detail` is given, the scene is re-scraped first so each person's *scene*
+    image is tried before external people sources (mirroring a fresh scrape); people the
+    scene doesn't list still fall back to the sources. Best-effort (never breaks a serve)
+    and self-healing — once an image is found the snapshot is re-written, so only still-
+    imageless people retry. Shared by the live agent (MetadataService) and the /dev flow.
     """
     try:
         md = response.MediaContainer.Metadata[0]
     except (AttributeError, IndexError):
         return False
 
-    people = PeopleManager()
-    # (entries on the snapshot, how to enqueue one, the resolve_all() output key)
-    groups: list[tuple[list[PlexRole], Callable[[PlexRole], None], str]] = [
-        (md.Role or [], lambda r: people.add_actor(r.tag, '', r.gender or ''), 'actors'),  # type: ignore[arg-type]
-        (md.Director or [], lambda r: people.add_director(r.tag, ''), 'directors'),
-        (md.Producer or [], lambda r: people.add_producer(r.tag, ''), 'producers'),
+    # (snapshot entries, role, resolve_all() output key)
+    groups: list[tuple[list[PlexRole], str, str]] = [
+        (md.Role or [], 'actor', 'actors'),
+        (md.Director or [], 'director', 'directors'),
+        (md.Producer or [], 'producer', 'producers'),
     ]
 
     missing: list[str] = []
     stale_cleared = False
-    for entries, add, key in groups:
+    for entries, _role, key in groups:
         for r in entries:
             if not r.tag:
                 continue
@@ -343,36 +380,55 @@ async def backfill_people_images(response: PlexMetadataResponse, site_name: str)
                 r.thumb = None  # cached file was purged — drop the dead link and re-resolve below
                 stale_cleared = True
             if not r.thumb:
-                add(r)
                 missing.append(f'{key}:{r.tag}')
     if not missing:
         logger.debug('meta-cache', f'backfill skip "{md.title}": all cast/crew already have thumbs')
         return False
     logger.debug('meta-cache', f'backfill "{md.title}" ({site_name}): {len(missing)} imageless -> {", ".join(missing)}')
 
-    try:
-        resolved = await people.resolve_all(studio=md.studio or '', site_name=site_name)
-    except Exception as err:  # noqa: BLE001 — backfill must never break the serve
-        logger.warn('meta-cache', f'people-image backfill failed: {err}')
-        return False
-
+    fill_groups = [(entries, key) for entries, _role, key in groups]
     changed = stale_cleared  # clearing a purged thumb is itself a change worth persisting
-    for entries, _, key in groups:
-        roles = to_plex_roles(resolved[key], people_image_base())
-        by_tag = {p.tag: p for p in roles if p.thumb}
-        logger.debug(
-            'meta-cache',
-            f'backfill {key}: resolved {len(roles)} ({", ".join(p.tag for p in roles) or "none"}); with-thumb -> {", ".join(sorted(by_tag)) or "none"}',
-        )
+
+    # Phase 1 — the scene's own images first (mirrors a fresh scrape), when re-fetchable.
+    if fetch_detail is not None:
+        try:
+            detail = await fetch_detail()
+        except Exception as err:  # noqa: BLE001 — a failed re-fetch just means sources-only
+            logger.warn('meta-cache', f'backfill scene re-fetch failed: {err}')
+            detail = None
+        if detail is not None:
+            scene = PeopleManager()
+            for a in detail.actors or []:
+                if a.name:
+                    scene.add_actor(a.name, a.photo_url or '', a.gender or '')  # type: ignore[arg-type]
+            for d in detail.directors or []:
+                if d.name:
+                    scene.add_director(d.name, d.photo_url or '')
+            for pr in detail.producers or []:
+                if pr.name:
+                    scene.add_producer(pr.name, pr.photo_url or '')
+            refs = [detail.raw_image_referer] if detail.raw_image_referer else []
+            cks = [detail.raw_image_cookie] if detail.raw_image_cookie else []
+            if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
+                changed = True
+
+    # Phase 2 — external people sources for anyone still imageless (incl. people the scene omits).
+    sources = PeopleManager()
+    enqueued = False
+    for entries, role, _key in groups:
         for r in entries:
-            if not r.thumb and r.tag:
-                if r.tag in by_tag:
-                    resolved_role = by_tag[r.tag]
-                    r.thumb = resolved_role.thumb
-                    r.gender = r.gender or resolved_role.gender
-                    changed = True
-                else:
-                    logger.debug('meta-cache', f'backfill {key}: no thumb resolved for "{r.tag}"')
+            if r.thumb or not r.tag:
+                continue
+            if role == 'actor':
+                sources.add_actor(r.tag, '', r.gender or '')  # type: ignore[arg-type]
+            elif role == 'director':
+                sources.add_director(r.tag, '')
+            else:
+                sources.add_producer(r.tag, '')
+            enqueued = True
+    if enqueued and await _resolve_and_fill(sources, fill_groups, studio=md.studio or '', site_name=site_name):
+        changed = True
+
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
     return changed
 

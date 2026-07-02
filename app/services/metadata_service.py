@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import SceneContext
+from app.clients.base import SceneContext, SceneDetail
 from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
 from app.models.provider_info import ProviderInfo
@@ -38,7 +38,21 @@ class MetadataService:
         cached = metadata_cache.read(site.name, cur_id)
         if cached is not None:
             response = PlexMetadataResponse.model_validate(cached)
-            changed = await metadata_cache.backfill_people_images(response, site.name)
+
+            async def _fetch_detail() -> SceneDetail | None:
+                # Re-scrape the scene so backfill can try each person's scene image before
+                # the external people sources. Only invoked when someone is imageless.
+                scene_url = self._scraper.decode(cur_id)
+                if not scene_url:
+                    return None
+                try:
+                    await ensure_fetchable_url(scene_url)
+                except ValueError as err:
+                    logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
+                    return None
+                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language))
+
+            changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
             if metadata_cache.reapply_text_rules(response):  # re-apply current genres.json / actors.json
                 changed = True
             if changed:
