@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import socket
 from dataclasses import dataclass
 from functools import lru_cache
@@ -14,6 +15,8 @@ from app.config.env_overrides import load_overrides
 load_dotenv(find_dotenv(usecwd=True))
 load_overrides()
 
+_SCHEME_RE = re.compile(r'^[a-z][a-z0-9+.\-]*://', re.IGNORECASE)
+
 
 @dataclass(frozen=True)
 class _Config:
@@ -22,11 +25,39 @@ class _Config:
     log_level: str
 
 
+def _normalize_base_url(raw: str | None, port: int) -> str:
+    # base_url is emitted verbatim into image/link URLs, so it must be absolute.
+    # Default it from PORT (not a hardcoded :3000); if PHOENIX_BASE_URL is set but
+    # lacks a scheme, assume http:// so it doesn't become a relative path. The port
+    # is deliberately NOT injected into an explicit value — a tunnel/proxy FQDN has
+    # its own (often schemeless-of-port) public address.
+    if not raw or not raw.strip():
+        return f'http://localhost:{port}'
+    value = raw.strip()
+    return value if _SCHEME_RE.match(value) else f'http://{value}'
+
+
+_RAW_BASE_URL = os.environ.get('PHOENIX_BASE_URL')
+_PORT = int(os.environ.get('PORT') or '3000')
+
 config = _Config(
-    port=int(os.environ.get('PORT') or '3000'),
-    base_url=os.environ.get('PHOENIX_BASE_URL') or 'http://localhost:3000',
+    port=_PORT,
+    base_url=_normalize_base_url(_RAW_BASE_URL, _PORT),
     log_level=os.environ.get('LOG_LEVEL') or 'info',
 )
+
+
+def base_url_config_warning() -> str | None:
+    """Startup warning when PHOENIX_BASE_URL is set but malformed (no scheme);
+    None when it's unset or well-formed."""
+    raw = (_RAW_BASE_URL or '').strip()
+    if not raw or _SCHEME_RE.match(raw):
+        return None
+    return (
+        f'PHOENIX_BASE_URL={raw!r} has no scheme; assuming {config.base_url!r}. '
+        'Set a full URL (e.g. http://host:port or https://name.example) so image/link URLs resolve — '
+        'the listen PORT is not injected into it.'
+    )
 
 
 @lru_cache(maxsize=1)

@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from app.config import config
+from app.config import base_url_config_warning, config
 from app.config.env import env
 from app.registry import get_all_providers
 from app.routes import dev_routes, env_routes, image_routes, metadata_cache_routes, people_cache_routes
@@ -32,6 +32,9 @@ def _log_startup_banner() -> None:
         logger.info(f'  Dev UI:         {config.base_url}/dev{qs}')
     if not env.admin_token:
         logger.warn('Admin auth DISABLED (ADMIN_TOKEN is blank) — /config and /dev are open to anyone who can reach this server')
+    base_url_warning = base_url_config_warning()
+    if base_url_warning:
+        logger.warn(base_url_warning)
 
 
 @asynccontextmanager
