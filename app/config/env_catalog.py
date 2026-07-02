@@ -67,8 +67,9 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_REDACT_TOKEN',
         'Redact tokens in logs',
-        'Mask secret query values (?token=…, ?apikey=…, ?password=…) in logs. OFF by default so you can see the admin '
-        'token in URLs while testing; turn ON to keep tokens out of logs. IP addresses are always redacted regardless.',
+        'Mask secret query values (?token=…, ?apikey=…, ?password=…) in logs. Defaults to ON when NODE_ENV=production '
+        '(so tokens stay out of persisted logs) and OFF otherwise, so you can see the admin token in the startup '
+        'banner URL while testing. IP addresses are always redacted regardless.',
         'Logging',
         'boolean',
         default_value='false',

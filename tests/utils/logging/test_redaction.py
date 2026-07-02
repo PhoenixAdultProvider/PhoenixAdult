@@ -164,10 +164,17 @@ def test_flag_truthy_values(monkeypatch, flag):
     assert env.log_redact_hosts is True
 
 
-def test_log_redact_token_default_off_truthy_on(monkeypatch):
+def test_log_redact_token_follows_production_default(monkeypatch):
     from app.config.env import env
 
+    # Unset → tracks the production posture (masked in prod, visible in dev).
     monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
+    monkeypatch.delenv('NODE_ENV', raising=False)
+    assert env.log_redact_token is True
+    monkeypatch.setenv('NODE_ENV', 'development')
+    assert env.log_redact_token is False
+    # Explicit values win over the production default.
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
     assert env.log_redact_token is False
     for flag in ('1', 'yes', 'on', 'TRUE'):
         monkeypatch.setenv('LOG_REDACT_TOKEN', flag)
