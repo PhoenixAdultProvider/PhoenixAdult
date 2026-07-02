@@ -12,6 +12,14 @@ _DETECT_SCORE = 0.5
 _CROP_SCORE = 0.6
 _JPEG_QUALITY = 92
 
+# Head-and-shoulders framing. The square side is a few face-heights tall (or wider
+# for broad faces), placed with a little headroom above the hair so the face sits in
+# the upper half and the shoulders/upper chest fill the lower half.
+_CROP_SIDE_FACES = 3.0  # square side as a multiple of the detected face height
+_CROP_SIDE_WIDTHS = 2.2  # ...or of the face width, whichever is larger
+_CROP_HEADROOM = 0.5  # headroom above the face box, in face-heights
+_CROP_MIN_FACES = 1.8  # below this achievable side the source is already ~a close-up
+
 _cv2: Any = None
 _np: Any = None
 _unavailable_reason: str | None = None
@@ -74,23 +82,25 @@ def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], floa
 
 
 def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | None:
-    """Tight square head crop (hair + face + chin/beard) centred on the face, so a
-    circular card frames the face — not the chest. Returns None when the result would
-    be degenerate or the source is already ~a close-up."""
+    """Square head-and-shoulders crop: a little headroom above the hair, the face in
+    the upper half, and the shoulders/upper chest filling the lower half — so a person
+    card frames the head and some shoulders, not a tight face. Returns None when the
+    result would be degenerate or the source is already ~a close-up."""
     height, width = img.shape[:2]
     x, y, w, h = box
     cx = x + w / 2.0
-    cy = y + h / 2.0
 
-    # Tight square around the head, centred on the face, capped to the image.
-    side = max(1.5 * h, 1.3 * w)
+    # Square a few face-heights tall, capped to the image.
+    side = max(_CROP_SIDE_FACES * h, _CROP_SIDE_WIDTHS * w)
     side = min(side, width, height)
-    # Already ~a close-up (the square barely exceeds the face) -> keep original.
-    if side < 1.3 * h or side < 1.1 * w:
+    # Can't fit head + shoulders (already ~a close-up) -> keep the original.
+    if side < _CROP_MIN_FACES * h:
         return None
 
+    # Centre horizontally on the face; bias downward (headroom above the box, then
+    # extend down into the shoulders) rather than centring on the face.
     left = max(0.0, min(cx - side / 2.0, width - side))
-    top = max(0.0, min(cy - side / 2.0, height - side))
+    top = max(0.0, min(y - _CROP_HEADROOM * h, height - side))
 
     x1, y1 = int(round(left)), int(round(top))
     x2, y2 = min(x1 + int(round(side)), width), min(y1 + int(round(side)), height)
