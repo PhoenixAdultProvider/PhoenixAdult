@@ -213,12 +213,15 @@ async def page(request: Request) -> HTMLResponse:
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
       function showTab(t){{
+        history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
         let n=0;
         document.querySelectorAll('.card').forEach(c=>{{ const m=c.dataset.type===t; c.style.display=m?'':'none'; if(m)n++; }});
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
       }}
-      showTab({default_tab!r});
+      const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
+      const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
+      showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
     </script></body></html>"""
     return HTMLResponse(body)
 
