@@ -226,7 +226,7 @@ def _proxy_photo(base_url: str, photo: str, referers: list[str], cookies: list[s
 def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[str] | None = None, cookies: list[str] | None = None) -> list[PlexRole]:
     referers = referers or []
     cookies = cookies or []
-    return [PlexRole(tag=p.name, thumb=_proxy_photo(base_url, p.photo, referers, cookies), gender=p.gender or None) for p in people]
+    return [PlexRole(tag=p.name, thumb=_proxy_photo(base_url, p.photo, referers, cookies), gender=p.gender or None, order=idx) for idx, p in enumerate(people)]
 
 
 def _is_male_role(role: PlexRole) -> bool:

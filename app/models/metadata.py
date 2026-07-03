@@ -19,6 +19,7 @@ class PlexRole(_Model):
     role: str | None = None
     thumb: str | None = None
     gender: str | None = None
+    order: int | None = None
 
 
 class PlexGenre(_Model):
@@ -36,6 +37,10 @@ class PlexGuid(_Model):
 
 
 class PlexCollection(_Model):
+    tag: str
+
+
+class PlexCountry(_Model):
     tag: str
 
 
@@ -67,13 +72,16 @@ class PlexMatchResponse(_Model):
 class PlexMetadata(_Model):
     type: Literal['movie', 'show', 'season', 'episode']
     ratingKey: str
+    key: str | None = None
     guid: str
     title: str
+    titleSort: str | None = None
     originalTitle: str | None = None
     year: int | None = None
     summary: str | None = None
     tagline: str | None = None
     contentRating: str | None = None
+    isAdult: bool | None = None
     audienceRating: float | None = None
     rating: float | None = None
     duration: int | None = None
@@ -90,6 +98,7 @@ class PlexMetadata(_Model):
     Guid: list[PlexGuid] | None = None
     Rating: list[PlexRating] | None = None
     Collection: list[PlexCollection] | None = None
+    Country: list[PlexCountry] | None = None
 
 
 class _MetadataContainer(_Model):

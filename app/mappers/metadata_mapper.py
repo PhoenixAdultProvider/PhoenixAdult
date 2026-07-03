@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 from app.clients.base import SceneDetail, SearchResult
 from app.config import config, people_image_base
 from app.models.metadata import (
     PlexCollection,
+    PlexCountry,
     PlexGenre,
     PlexImage,
     PlexMatchResult,
@@ -23,6 +25,13 @@ from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.plex.rating_key import to_guid, to_rating_key
 from app.utils.processors.title_case import title_case
+
+_ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
+
+
+def _title_sort(title: str) -> str | None:
+    stripped = _ARTICLE_RE.sub('', title).strip()
+    return stripped if stripped and stripped != title else None
 
 
 class MetadataMapper:
@@ -42,6 +51,7 @@ class MetadataMapper:
             title=title,
             score=score,
             originallyAvailableAt=date or None,
+            year=int(date[0:4]) if date else None,
             contentRating='XXX',
             thumb=self._proxy(raw.thumb_url),
         )
@@ -118,11 +128,19 @@ class MetadataMapper:
         return PlexMetadata(
             type='movie',
             ratingKey=rating_key,
+            key=f'/library/metadata/{rating_key}',
             guid=to_guid(rating_key, plex_identifier),
             title=clean_title,
+            titleSort=_title_sort(clean_title),
+            originalTitle=detail.original_title,
             summary=detail.summary,
             tagline=detail.tagline,
             studio=detail.studio,
+            contentRating='XXX',
+            isAdult=True,
+            rating=detail.rating,
+            audienceRating=detail.audience_rating,
+            duration=detail.duration,
             originallyAvailableAt=effective_date or None,
             year=year,
             thumb=thumb,
@@ -133,6 +151,7 @@ class MetadataMapper:
             Producer=plex_producers or None,
             Image=images_proxied,
             Collection=[PlexCollection(tag=tag) for tag in collections],
+            Country=[PlexCountry(tag=c) for c in detail.countries] if detail.countries else None,
         )
 
 

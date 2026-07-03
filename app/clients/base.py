@@ -93,6 +93,11 @@ class SceneDetail:
     directors: list[ActorResult] | None = None
     producers: list[ActorResult] | None = None
     scene_url: str | None = None
+    original_title: str | None = None
+    duration: int | None = None  # milliseconds
+    countries: list[str] | None = None
+    rating: float | None = None
+    audience_rating: float | None = None
 
 
 # ── Loaded contexts handed to the per-field hooks ─────────────────────────────
