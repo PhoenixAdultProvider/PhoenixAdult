@@ -16,6 +16,17 @@
 #   APPLY_CMD="service phoenixadult restart"   # e.g. set to ':' to skip
 set -eu
 
+# Matches the provider AlignedFormatter: "<ts>  (<id>) LEVEL←8→ src:line←28→: msg".
+_SID=$( (od -An -N3 -tx1 /dev/urandom 2>/dev/null || printf '%s' "$$") | tr -dc 'a-f0-9' | cut -c1-5)
+[ -n "$_SID" ] || _SID=00000
+_SRC="${0##*/}"
+_SRC="${_SRC%.sh}"
+
+log() {  # LEVEL LINE MSG; WARN/ERROR go to stderr
+	_line=$(printf '%s  (%s) %-8s %-28s: %s' "$(date '+%Y-%m-%d %H:%M:%S')" "$_SID" "$1" "${_SRC}:$2" "$3")
+	case $1 in WARN | ERROR) printf '%s\n' "$_line" >&2 ;; *) printf '%s\n' "$_line" ;; esac
+}
+
 PORT="${PORT:-3000}"
 PHOENIXADULT_DIR="${PHOENIXADULT_DIR:-/var/db/phoenixadult}"
 ENV_FILE="${ENV_FILE:-${PHOENIXADULT_DIR}/.env}"
@@ -24,7 +35,7 @@ WAIT="${WAIT:-30}"
 CFD="${CFD:-/usr/local/bin/cloudflared}"
 APPLY_CMD="${APPLY_CMD:-service ${SERVICE} restart}"
 
-[ -x "$CFD" ] || { echo "cloudflared not found at $CFD (pkg install cloudflared)" >&2; exit 1; }
+[ -x "$CFD" ] || { log ERROR "$LINENO" "cloudflared not found at $CFD (pkg install cloudflared)"; exit 1; }
 
 LOG="$(mktemp -t cloudflared)"
 CFD_PID=""
@@ -34,7 +45,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "Opening quick tunnel to http://localhost:${PORT} ..."
+log INFO "$LINENO" "Opening quick tunnel to http://localhost:${PORT} ..."
 "$CFD" tunnel --no-autoupdate --url "http://localhost:${PORT}" >"$LOG" 2>&1 &
 CFD_PID=$!
 
@@ -44,12 +55,12 @@ i=0
 while [ "$i" -lt "$((WAIT * 2))" ]; do
 	url=$(grep -Eo 'https://[a-z0-9][a-z0-9-]+\.trycloudflare\.com' "$LOG" 2>/dev/null | head -n 1 || true)
 	[ -n "$url" ] && break
-	kill -0 "$CFD_PID" 2>/dev/null || { echo "cloudflared exited early:" >&2; tail -n 20 "$LOG" >&2; exit 1; }
+	kill -0 "$CFD_PID" 2>/dev/null || { log ERROR "$LINENO" "cloudflared exited early:"; tail -n 20 "$LOG" >&2; exit 1; }
 	sleep 0.5
 	i=$((i + 1))
 done
-[ -n "$url" ] || { echo "timed out waiting for tunnel URL" >&2; tail -n 20 "$LOG" >&2; exit 1; }
-echo "Tunnel URL: $url"
+[ -n "$url" ] || { log ERROR "$LINENO" "timed out waiting for tunnel URL"; tail -n 20 "$LOG" >&2; exit 1; }
+log INFO "$LINENO" "Tunnel URL: $url"
 
 # Update PHOENIX_BASE_URL in .env, preserving other keys and the file's owner
 # (truncate-in-place rather than replacing the inode).
@@ -58,11 +69,11 @@ tmp="$(mktemp)"
 echo "PHOENIX_BASE_URL=$url" >>"$tmp"
 cat "$tmp" >"$ENV_FILE"
 rm -f "$tmp"
-echo ".env updated -> PHOENIX_BASE_URL=$url"
+log INFO "$LINENO" ".env updated -> PHOENIX_BASE_URL=$url"
 
 # Apply (restart the service so it re-reads .env), then hold the tunnel open.
 sh -c "$APPLY_CMD"
-echo "Tunnel open. Ctrl+C to stop it (the ${SERVICE} service keeps running)."
+log INFO "$LINENO" "Tunnel open. Ctrl+C to stop it (the ${SERVICE} service keeps running)."
 wait "$CFD_PID"
 
 # ---------------------------------------------------------------------------
