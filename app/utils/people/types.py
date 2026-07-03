@@ -50,6 +50,7 @@ class PersonLookupContext:
 class PhotoHit:
     url: str
     gender: Gender = ''
+    source: str = ''
 
 
 class PersonSource(Protocol):

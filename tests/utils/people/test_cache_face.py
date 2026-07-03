@@ -53,6 +53,27 @@ async def test_generic_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch
 
 
 @respx.mock
+async def test_iafd_source_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('PEOPLE_CACHE_FACE_ENABLE', 'true')
+    monkeypatch.setenv('PEOPLE_CACHE_REPLACE_ENABLE', 'true')
+    called = {'v': False}
+
+    def _spy(_data: bytes) -> bytes:
+        called['v'] = True
+        return b'CROP'
+
+    monkeypatch.setattr(face_crop, 'crop_to_headshot', _spy)
+    url = 'https://www.iafd.com/graphics/headshots/jane.jpg'
+    respx.get(url).mock(return_value=httpx.Response(200, content=b'HEADSHOTBYTES', headers={'content-type': 'image/jpeg'}))
+    await cache.cache_photo(url, 'Jane Doe', 'actor', 'female', source='IAFD')
+
+    assert called['v'] is False  # IAFD headshots are already cropped
+    assert (tmp_path / 'actors' / 'female' / 'actor.jane-doe_female.jpg').read_bytes() == b'HEADSHOTBYTES'  # type: ignore[operator]
+    assert not (tmp_path / 'originals').exists()  # type: ignore[operator]
+
+
+@respx.mock
 async def test_restore_uses_preserved_original(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     # No respx route registered -> if restore hit the network it would error; it must use
     # the local original instead.

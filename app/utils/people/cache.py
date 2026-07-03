@@ -191,7 +191,9 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
     return None
 
 
-async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, headers: dict[str, str] | None = None) -> dict[str, str] | None:
+async def cache_photo(
+    upstream_url: str, name: str, role: Role, gender: Gender, headers: dict[str, str] | None = None, source: str = ''
+) -> dict[str, str] | None:
     if not cache_enabled():
         return None
     directory = people_cache_dir()
@@ -221,7 +223,7 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     # returns None to mean "keep the original".
     orig_ext = ext
     original = data  # pre-crop bytes, preserved so the user can always go back
-    face_on = env.people_cache_face_enabled and not _is_generic(upstream_url)
+    face_on = env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES
     cropped = False
     if face_on:
         out = await asyncio.to_thread(face_crop.crop_to_headshot, data)
@@ -254,6 +256,10 @@ async def cache_photo(upstream_url: str, name: str, role: Role, gender: Gender, 
     # Always record (not just for crops) so every cached image keeps its upstream URL.
     face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
     return {'served_url': _local_url(relpath, data), 'gender': gender}
+
+
+# Sources whose images are already tight headshots — cropping again only degrades them.
+_NO_CROP_SOURCES = {'IAFD'}
 
 
 def _is_generic(url: str) -> bool:

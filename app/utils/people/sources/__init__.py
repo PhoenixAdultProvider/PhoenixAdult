@@ -80,7 +80,7 @@ async def find_photo(actor_name: str, ctx: PersonLookupContext) -> PhotoHit:
             found_gender = found_gender or hit.gender  # a urlless hit (e.g. IAFD placeholder) still pins gender
             if hit.url:
                 logger.info('people', f'{actor_name} -> {source.name}')
-                return PhotoHit(url=hit.url, gender=hit.gender or found_gender)
+                return PhotoHit(url=hit.url, gender=hit.gender or found_gender, source=source.name)
         except Exception as err:  # noqa: BLE001 - one source failing shouldn't abort the chain
             logger.warn('people', f'{source.name} threw for {actor_name}: {err}')
     if found_gender:

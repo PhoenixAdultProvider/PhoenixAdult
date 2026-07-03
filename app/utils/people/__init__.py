@@ -187,7 +187,7 @@ class PeopleManager:
             if found.url:
                 gender = await self._detect_gender(name, role, gender)
                 if cache_enabled():
-                    cached = await cache_photo(found.url, name, role, gender)
+                    cached = await cache_photo(found.url, name, role, gender, source=found.source)
                     photo = cached['served_url'] if cached else found.url
                 else:
                     photo = found.url
