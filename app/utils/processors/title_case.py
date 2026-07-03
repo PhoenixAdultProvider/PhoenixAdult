@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from text2digits import text2digits
+
 # fmt: off
 LOWER_EXCEPTIONS = {
     'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
@@ -311,8 +313,63 @@ def title_case(text: str, *, type: str | None = None, site_name: str | None = No
 
 _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
 
+_SEQUENCE_MARKER_RE = re.compile(r'\b(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)(?=\s|$)', re.IGNORECASE)
+_BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
+_AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
+_WORD_RE = re.compile(r'[A-Za-z]+')
+_PURE_NUMBER_RE = re.compile(r'\d+')
+
+_T2D = text2digits.Text2Digits()
+
+
+def _convert_bounded_numbers(text: str) -> str:
+    """Convert spelled-out numbers to digits only where they touch a sequence marker,
+    so "Part One" becomes "Part 1", "First Part" becomes "1 Part", but "Two for One"
+    is left alone. text2digits decides what counts as a number: the longest word run
+    adjacent to the marker that converts to a pure number is replaced in place."""
+    out: list[str] = []
+    pos = 0
+    for m in _SEQUENCE_MARKER_RE.finditer(text):
+        if m.start() < pos:
+            continue
+
+        # Number run ending at the marker ("First Part"); longest suffix wins.
+        replaced = False
+        before = _BEFORE_RUN_RE.search(text[pos : m.start()])
+        if before:
+            window = before.group(1)
+            window_start = pos + before.start(1)
+            for word in _WORD_RE.finditer(window):
+                converted = str(_T2D.convert(window[word.start() :])).strip()
+                if _PURE_NUMBER_RE.fullmatch(converted):
+                    out.append(text[pos : window_start + word.start()])
+                    out.append(converted)
+                    out.append(text[window_start + len(window) : m.end()])
+                    replaced = True
+                    break
+        if not replaced:
+            out.append(text[pos : m.end()])
+        pos = m.end()
+
+        # Number run following the marker ("Part One"); longest prefix wins.
+        after = _AFTER_RUN_RE.match(text, m.end())
+        if after:
+            window = after.group(1)
+            window_start = after.start(1)
+            for word in reversed(list(_WORD_RE.finditer(window))):
+                converted = str(_T2D.convert(window[: word.end()])).strip()
+                if _PURE_NUMBER_RE.fullmatch(converted):
+                    out.append(text[pos:window_start])
+                    out.append(converted)
+                    pos = window_start + word.end()
+                    break
+    out.append(text[pos:])
+    return ''.join(out)
+
 
 def title_sort(title: str) -> str | None:
-    """Sort value with the leading article stripped; None when it wouldn't differ."""
+    """Sort value with the leading article stripped and bounded spelled-out numbers
+    converted to digits; None when it wouldn't differ."""
     stripped = _ARTICLE_RE.sub('', title).strip()
-    return stripped if stripped and stripped != title else None
+    converted = _convert_bounded_numbers(stripped).strip()
+    return converted if converted and converted != title else None

@@ -446,7 +446,7 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
         if md.isAdult is None:
             md.isAdult = True
             changed = True
-        if md.titleSort is None and (sort := title_sort(md.title)):
+        if (sort := title_sort(md.title)) and md.titleSort != sort:
             md.titleSort = sort
             changed = True
         for attr in ('Role', 'Director', 'Producer'):

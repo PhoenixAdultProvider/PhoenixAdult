@@ -2,7 +2,37 @@ from __future__ import annotations
 
 from app.utils.processors.abbreviations import expand_abbreviations
 from app.utils.processors.studio_name import normalize_studio
-from app.utils.processors.title_case import title_case
+from app.utils.processors.title_case import title_case, title_sort
+
+# ── title_sort ────────────────────────────────────────────────────────────────
+
+
+def test_title_sort_strips_leading_article() -> None:
+    assert title_sort('The Cool Scene') == 'Cool Scene'
+    assert title_sort('An Affair') == 'Affair'
+    assert title_sort('Cool Scene') is None  # nothing to change
+
+
+def test_title_sort_converts_bounded_numbers() -> None:
+    assert title_sort('Cool Scene Part One') == 'Cool Scene Part 1'
+    assert title_sort('Cool Scene Part Two') == 'Cool Scene Part 2'
+    assert title_sort('Anthology Vol. Three') == 'Anthology Vol. 3'
+    assert title_sort('Anthology Volume Twenty One') == 'Anthology Volume 21'
+    assert title_sort('Casting Episode Twelve') == 'Casting Episode 12'
+    assert title_sort('Story Chapter Five') == 'Story Chapter 5'
+    assert title_sort('The Affair Scene Two') == 'Affair Scene 2'  # article + number
+    assert title_sort('Saga Part One Hundred And Five') == 'Saga Part 105'  # vocab is text2digits' own
+    assert title_sort('Part One Night Stand') == 'Part 1 Night Stand'  # number run ends where conversion stops being pure
+    assert title_sort('The First Part') == '1 Part'  # number before the marker, in place
+    assert title_sort('Second Scene') == '2 Scene'
+    assert title_sort('One Part Two') == '1 Part 2'  # both sides of one marker
+
+
+def test_title_sort_leaves_unbounded_numbers_alone() -> None:
+    assert title_sort('Two for One') is None
+    assert title_sort('One Night Stand') is None
+    assert title_sort('Two Sisters Part Two') == 'Two Sisters Part 2'  # only the bounded number converts
+
 
 # ── title_case ────────────────────────────────────────────────────────────────
 
