@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
@@ -82,9 +82,11 @@ class NVGClient(Client):
             if page_scene and video_id and str(updates.get('mysqlId')) == video_id:
                 title = (updates.get('short_title') or '').strip()
                 own_date = iso_date(updates.get('release_date') or '') or None
+                score: float = 100
             else:
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
                 own_date = iso_date(sel.xpath('(//meta[@itemprop])[1]/@content').get() or '') or None
+                score = date_distance_score(ctx.search_date, own_date) if ctx.search_date and own_date else title_distance_score(ctx.title, title)
             date = own_date or ctx.search_date or ''
 
             results.append(
@@ -94,7 +96,7 @@ class NVGClient(Client):
                     query=ctx.title,
                     display_date=own_date,
                     search_date=ctx.search_date,
-                    score=100,
+                    score=score,
                     cur_id=pack_cur_id([f'{scene_url}|{date}|{cast_query}|{video_id}']),
                 )
             )

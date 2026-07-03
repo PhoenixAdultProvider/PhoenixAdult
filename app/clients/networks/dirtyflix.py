@@ -88,7 +88,7 @@ class DirtyFlixClient(Client):
                         score=score,
                     )
                 )
-            if any((r.score or 0) >= 80 for r in results):
+            if any((r.score or 0) >= 100 for r in results):
                 break
         return results
 

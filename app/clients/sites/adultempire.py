@@ -80,7 +80,7 @@ def _score_for(
 ) -> float:
     if is_direct_hit:
         return 100
-    base_score = 80 - compare_string(search_vol_num, result_vol_num).levenshtein if is_vol_search and result_vol_num else 80
+    base_score = 100 - compare_string(search_vol_num, result_vol_num).levenshtein if is_vol_search and result_vol_num else 100
     if search_date and on_page_date:
         return base_score - compare_string(search_date, on_page_date).levenshtein
     return base_score - compare_string(query.lower(), title.lower()).levenshtein

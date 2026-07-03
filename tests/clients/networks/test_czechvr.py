@@ -33,7 +33,7 @@ async def test_search_scene_id_score() -> None:
     assert len(results) == 1
     assert results[0].title == '555 - Cool Scene'
     assert results[0].scene_url == 'https://czechvr.com/video/555-cool-scene'
-    assert results[0].score == 80  # exact sceneId match → distance 0
+    assert results[0].score == 100  # exact sceneId match → distance 0
     assert results[0].thumb_url == 'https://cdn/cdn-cgi/image//thumb.jpg'  # cdn-cgi rewrite
 
 

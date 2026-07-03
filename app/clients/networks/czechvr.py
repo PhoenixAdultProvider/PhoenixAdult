@@ -5,9 +5,8 @@ from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, title_distance_score
 from app.utils.helpers.html_helpers import first_attr, first_string
-from app.utils.processors.similarity import compare_string
 
 STUDIO = 'CzechVR'
 _DATE_FMT = '%b %d, %Y'
@@ -52,7 +51,7 @@ class CzechVRClient(Client):
         if not scene_id:
             return None
         cur = (source.xpath('(.//div[contains(@class,"nazev")]//h2//a)[1]').xpath('string(.)').get() or '').strip().split(' -')[0].strip()
-        return 80 - compare_string(scene_id, cur).levenshtein
+        return title_distance_score(scene_id, cur)
 
     async def fetch_search_thumb_url(self, source: Any, loaded: LoadedSearch) -> str | None:
         thumb = first_attr(source, '(.//img)[1]/@data-src')

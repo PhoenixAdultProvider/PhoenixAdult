@@ -32,7 +32,7 @@ async def test_search_scene_id_boost() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://czechmassage.com/video/cool-scene-555/'
-    assert results[0].score == 80  # sceneId matches trailing -555
+    assert results[0].score == 100  # sceneId matches trailing -555
     assert results[0].thumb_url == 'https://cdn/t.jpg'
 
 

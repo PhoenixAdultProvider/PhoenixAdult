@@ -101,7 +101,7 @@ async def test_search_onsite_vol_scoring(monkeypatch: pytest.MonkeyPatch) -> Non
     results = await AdultEmpireClient().search(_ctx(title='Anal Vol 3'))
     assert len(results) >= 1
     assert results[0].title == '[Vol. 3] Anal Compilation [Empire Studios] [Blu-Ray]'
-    assert 0 < (results[0].score or 0) <= 80
+    assert 0 < (results[0].score or 0) <= 100
 
 
 @respx.mock

@@ -49,9 +49,9 @@ class CouplesCinemaClient(Client):
             cover = first_attr(card, '(.//a[contains(@class,"media")]//img[contains(@class,"image")])[1]/@src')
             cover_packed = self.encode(cover) if cover else ''
 
-            score: float = 10 + title_distance_score(ctx.title, title)
-            if studio.lower() == requested:
-                score = min(110, score + 10)
+            score: float = title_distance_score(ctx.title, title)
+            if studio.lower() != requested:
+                score -= 10
 
             # Always pack date + cover segments (legacy parity).
             results.append(

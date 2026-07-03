@@ -10,12 +10,11 @@ from app.models.metadata import PlexMatchResponse
 from app.models.provider_info import ProviderInfo
 from app.registry import find_site
 from app.routes.scraper_router import ScraperRouter
-from app.utils.helpers.helpers import format_duration
+from app.utils.helpers.helpers import format_duration, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.plex.responses import empty_media_container, media_container
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
-from app.utils.processors.similarity import compare_string
 
 
 @dataclass
@@ -90,11 +89,23 @@ class MatchService:
 
         results = []
         for raw in raw_results:
-            score = raw.score if raw.score is not None else 80 - compare_string(pieces.query, raw.title).levenshtein
+            score = raw.score if raw.score is not None else title_distance_score(pieces.query, raw.title)
             results.append(
                 self._mapper.to_match_result(raw, site.name, score, provider.plex_identifier, raw.release_date or None, scraper_type=site.scraper_config.type)
             )
         results.sort(key=lambda r: r.score or 0, reverse=True)
+
+        if not is_manual:
+            perfect = [r for r in results if (r.score or 0) >= 100]
+            if not perfect:
+                logger.info(provider.id, 'Auto match: no perfect (>=100) result — returning empty')
+                return self._empty(provider)
+            top = perfect[0].score or 0
+            tied = [r for r in perfect if (r.score or 0) == top]
+            if len(tied) > 1:
+                logger.info(provider.id, f'Auto match: {len(tied)} results tied at {top} — ambiguous, returning empty')
+                return self._empty(provider)
+            results = tied
 
         return PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
 

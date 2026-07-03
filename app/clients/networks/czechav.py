@@ -34,7 +34,7 @@ class CzechAVClient(Client):
             m = _TRAILING_ID_RE.search(scene_url.rstrip('/'))
             search_id = int(m.group(1)) if m else 0
             if ctx.scene_id and ctx.scene_id.isdigit() and int(ctx.scene_id) == search_id:
-                score: float = 80
+                score: float = 100
             else:
                 score = title_distance_score(ctx.title, title)
 

@@ -17,6 +17,7 @@ from app.registry import find_site, get_all_providers, get_sites_for_provider
 from app.routes.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import env_auth_guard
+from app.utils.helpers.helpers import title_distance_score
 from app.utils.logging.log_capture import begin_capture
 from app.utils.logging.orchestrator_logs import (
     log_detail_summary,
@@ -29,7 +30,6 @@ from app.utils.people import filter_male_actors
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 from app.utils.processors.filename_parser import get_site_name_from_registry
 from app.utils.processors.search_query import build_search_pieces
-from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import title_case
 
 router = APIRouter(dependencies=[Depends(env_auth_guard)])
@@ -196,7 +196,7 @@ async def dev_test(request: Request) -> JSONResponse:
                 'curID': r.cur_id,
                 'displayDate': r.display_date,
                 'thumbUrl': r.thumb_url,
-                'score': r.score if r.score is not None else 80 - compare_string(pieces.query, r.title).levenshtein,
+                'score': r.score if r.score is not None else title_distance_score(pieces.query, r.title),
                 'ratingKey': to_rating_key(r.cur_id, site.name, parsed.date),
                 'providerId': provider.id,
             }

@@ -190,11 +190,11 @@ def css_bg_image(style: str | None) -> str:
 
 
 def title_distance_score(query: str, title: str) -> int:
-    return 80 - compare_string(query, title).levenshtein
+    return 100 - compare_string(query, title).levenshtein
 
 
 def date_distance_score(search_date: str, release_date: str) -> int:
-    return 80 - compare_string(search_date, release_date).levenshtein
+    return 100 - compare_string(search_date, release_date).levenshtein
 
 
 def build_search_result(

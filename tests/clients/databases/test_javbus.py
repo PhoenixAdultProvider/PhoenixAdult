@@ -32,7 +32,7 @@ async def test_search_censored_cards() -> None:
     assert len(results) == 1
     assert results[0].title == '[Censored][XYZ-007] Amazing Scene'
     assert results[0].scene_url == 'https://www.javbus.com/en/XYZ-007'
-    assert results[0].score == 80
+    assert results[0].score == 100
 
 
 @respx.mock

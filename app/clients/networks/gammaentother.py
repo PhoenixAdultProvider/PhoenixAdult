@@ -55,7 +55,7 @@ class GammaEntOtherClient(Client):
                 main_channel = hit.get('mainChannel') or {}
                 sub_site = (main_channel.get('name') or '').strip() or (hit.get('serie_name') or '').strip()
 
-                score: float = 80 if sub_site.replace(' ', '').lower() == site_norm else 79
+                score: float = 100 if sub_site.replace(' ', '').lower() == site_norm else 99
                 if 'BTS' in title_nf:
                     score -= 1
                 for ch in hit.get('channels') or []:

@@ -36,7 +36,7 @@ async def test_search_and_detail_roundtrip() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].release_date == '2021-03-04'
-    assert results[0].score == 80  # date matches exactly
+    assert results[0].score == 100  # date matches exactly
 
     # Detail re-finds the row by sceneID from the packed curID.
     detail = await DirtyFlixClient().fetch_scene_detail(DirtyFlixClient().decode(results[0].cur_id), SITE)
