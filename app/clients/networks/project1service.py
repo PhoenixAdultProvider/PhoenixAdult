@@ -13,7 +13,7 @@ from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, slugify, title_distance_score
+from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, slugify, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
 
@@ -134,7 +134,7 @@ class Project1ServiceClient(Client):
                 if scene_id and scene_id == cur:
                     score: float = 100
                 elif scene_id:
-                    score = title_distance_score(scene_id, cur)
+                    score = sceneid_distance_score(scene_id, cur)
                 elif ctx.search_date and release_date:
                     score = date_distance_score(ctx.search_date, release_date)
                 else:

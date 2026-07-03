@@ -189,8 +189,13 @@ def css_bg_image(style: str | None) -> str:
 # ── Scoring + search-result builder ───────────────────────────────────────────
 
 
-def title_distance_score(query: str, title: str) -> int:
+def sceneid_distance_score(query: str, title: str) -> int:
     return 100 - compare_string(query, title).levenshtein
+
+
+def title_distance_score(query: str, title: str) -> int:
+    CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
+    return 100 - compare_string(CLEAN_RE.sub('', query), CLEAN_RE.sub('', title)).levenshtein
 
 
 def date_distance_score(search_date: str, release_date: str) -> int:

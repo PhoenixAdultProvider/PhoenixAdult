@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, sceneid_distance_score, strip_query, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
 _SEARCH_SURFACES = (('Censored', 'search/'), ('Uncensored', 'uncensored/search/'))
@@ -55,7 +55,7 @@ class JavBusClient(Client):
                 if scene_url in seen:
                     continue
                 seen.add(scene_url)
-                score = title_distance_score(javid.lower(), jav_id.lower()) if javid else title_distance_score(ctx.title.lower(), title.lower())
+                score = sceneid_distance_score(javid.lower(), jav_id.lower()) if javid else title_distance_score(ctx.title.lower(), title.lower())
                 results.append(
                     build_search_result(
                         title=f'[{label}][{jav_id}] {title}',

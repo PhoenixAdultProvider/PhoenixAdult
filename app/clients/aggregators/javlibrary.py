@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
@@ -78,7 +78,7 @@ class JavLibraryClient(Client):
                         continue
                     jav_id = title.split(' ')[0]
                     scene_url = f'{base}/en{href.split(".")[-1]}'
-                    add(scene_url, jav_id, title, title_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
+                    add(scene_url, jav_id, title, sceneid_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
             else:
                 og_url = meta_content(loaded['sel'], 'og:url')
                 if '?v=jav' in og_url:
@@ -99,7 +99,7 @@ class JavLibraryClient(Client):
                 jav_id = (detail['sel'].xpath('(//td[contains(.,"ID:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
                 og_url = meta_content(detail['sel'], 'og:url')
                 scene_url = (og_url or candidate_url).replace('//www', 'https://www')
-                add(scene_url, jav_id, title, title_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
+                add(scene_url, jav_id, title, sceneid_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
         except Exception as err:  # noqa: BLE001
             logger.debug(ctx.site_info.name, f'webSearch fallback: {err}')
         return results

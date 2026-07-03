@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import decensor, iso_date, load_site_json, title_distance_score
+from app.utils.helpers.helpers import decensor, iso_date, load_site_json, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.processors.title_case import title_case
@@ -86,7 +86,7 @@ class JAVDatabaseClient(Client):
         if not search_javid:
             return None
         jav_id = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/text()')
-        return title_distance_score(search_javid.lower(), jav_id.lower())
+        return sceneid_distance_score(search_javid.lower(), jav_id.lower())
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
