@@ -28,7 +28,9 @@ class FemdomEmpireClient(Client):
                 date_raw = (row.xpath('(.//span[@class="date"])[1]').xpath('string(.)').get() or '').strip()
                 date_iso = iso_date(date_raw) if date_raw else None
                 score = date_distance_score(ctx.search_date, date_iso) if ctx.search_date and date_iso else title_distance_score(ctx.title, title)
-                results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, score=score))
+                results.append(
+                    build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=score)
+                )
 
         # Stage 1 — advanced search.
         adv = await self.fetch_and_load(

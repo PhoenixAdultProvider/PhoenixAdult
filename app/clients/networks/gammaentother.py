@@ -70,7 +70,14 @@ class GammaEntOtherClient(Client):
                     score -= compare_string(title.lower(), title_nf.lower()).levenshtein
 
                 results.append(
-                    SearchResult(title=title_nf, scene_url=ctx.site_info.base_url, cur_id=pack_cur_id([f'{cur}|{scene_type}|{release}']), score=score)
+                    SearchResult(
+                        title=title_nf,
+                        scene_url=ctx.site_info.base_url,
+                        cur_id=pack_cur_id([f'{cur}|{scene_type}|{release}']),
+                        release_date=release or ctx.search_date or None,
+                        display_date=release or None,
+                        score=score,
+                    )
                 )
         return results
 

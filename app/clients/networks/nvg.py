@@ -55,12 +55,15 @@ class NVGClient(Client):
             updates = (page_scene or {}).get('updates') or {}
             if updates.get('mysqlId') is not None:
                 sid = updates['mysqlId']
-                date = iso_date(updates.get('release_date') or '') or ctx.search_date or ''
+                own_date = iso_date(updates.get('release_date') or '') or None
+                date = own_date or ctx.search_date or ''
                 results.append(
                     build_search_result(
                         title=(updates.get('short_title') or '').strip(),
                         scene_url=base,
                         query=ctx.title,
+                        display_date=own_date,
+                        search_date=ctx.search_date,
                         score=100,
                         cur_id=pack_cur_id([f'{sid}|{date}|{cast_query}']),
                     )
@@ -78,18 +81,19 @@ class NVGClient(Client):
             updates = (page_scene or {}).get('updates') or {}
             if page_scene and video_id and str(updates.get('mysqlId')) == video_id:
                 title = (updates.get('short_title') or '').strip()
-                date = iso_date(updates.get('release_date') or '') or ''
+                own_date = iso_date(updates.get('release_date') or '') or None
             else:
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
-                date = iso_date(sel.xpath('(//meta[@itemprop])[1]/@content').get() or '') or ''
-            if not date:
-                date = ctx.search_date or ''
+                own_date = iso_date(sel.xpath('(//meta[@itemprop])[1]/@content').get() or '') or None
+            date = own_date or ctx.search_date or ''
 
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
                     query=ctx.title,
+                    display_date=own_date,
+                    search_date=ctx.search_date,
                     score=100,
                     cur_id=pack_cur_id([f'{scene_url}|{date}|{cast_query}|{video_id}']),
                 )

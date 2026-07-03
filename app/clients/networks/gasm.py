@@ -27,8 +27,8 @@ class GasmClient(Client):
             if not title:
                 return []
             date_raw = (loaded['sel'].xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
-            date_iso = (iso_date(date_raw, _DATE_FMT) if date_raw else None) or ctx.search_date
-            return [build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, score=100)]
+            date_iso = iso_date(date_raw, _DATE_FMT) if date_raw else None
+            return [build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=100)]
 
         encoded = slugify(ctx.title).replace('-', '+')
         search_url = base + ctx.site_info.search_path + encoded
@@ -49,7 +49,7 @@ class GasmClient(Client):
             scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=ctx.title, display_date=ctx.search_date, score=title_distance_score(ctx.title, title)
+                    title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=title_distance_score(ctx.title, title)
                 )
             )
         return results

@@ -80,7 +80,12 @@ class DirtyFlixClient(Client):
                     score = title_distance_score(ctx.title, title)
                 results.append(
                     SearchResult(
-                        title=title, scene_url=page_url, cur_id=self.encode(f'{scene_id}|{date_iso}|{page_url}'), release_date=date_iso or None, score=score
+                        title=title,
+                        scene_url=page_url,
+                        cur_id=self.encode(f'{scene_id}|{date_iso}|{page_url}'),
+                        release_date=date_iso or ctx.search_date or None,
+                        display_date=date_iso or None,
+                        score=score,
                     )
                 )
             if any((r.score or 0) >= 80 for r in results):

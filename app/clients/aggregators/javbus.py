@@ -61,6 +61,7 @@ class JavBusClient(Client):
                         title=f'[{label}][{jav_id}] {title}',
                         scene_url=scene_url,
                         query=ctx.title,
+                        search_date=ctx.search_date,
                         score=score,
                         thumb_url=first_attr(el, '(.//img/@src)[1]') or None,
                     )
@@ -73,7 +74,11 @@ class JavBusClient(Client):
                 jav_title = re.sub(r' - JavBus$', '', first_attr(loaded['sel'], '(//head//title)[1]/text()'))
                 if jav_title:
                     seen.add(direct_url)
-                    results.append(build_search_result(title=f'[Direct][{javid}] {jav_title}', scene_url=direct_url, query=ctx.title, score=100))
+                    results.append(
+                        build_search_result(
+                            title=f'[Direct][{javid}] {jav_title}', scene_url=direct_url, query=ctx.title, search_date=ctx.search_date, score=100
+                        )
+                    )
         return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────

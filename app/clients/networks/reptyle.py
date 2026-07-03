@@ -78,7 +78,17 @@ class ReptyleClient(Client):
             return []
         cur, scene_type, scene_json = picked
         composite = f'{cur}|{scene_type}|{url}'
-        return [SearchResult(title=scene_json.get('title') or '', scene_url=url, cur_id=self.encode(composite), thumb_url=scene_json.get('img'))]
+        release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
+        return [
+            SearchResult(
+                title=scene_json.get('title') or '',
+                scene_url=url,
+                cur_id=self.encode(composite),
+                thumb_url=scene_json.get('img'),
+                release_date=release_date or ctx.search_date or None,
+                display_date=release_date,
+            )
+        ]
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         parts = payload.split('|')

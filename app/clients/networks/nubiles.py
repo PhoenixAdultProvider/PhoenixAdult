@@ -67,6 +67,8 @@ class NubilesClient(Client):
                             scene_url=url,
                             cur_id=pack_cur_id([x for x in (scene_id, date) if x]),
                             thumb_url=(sel.xpath('(//video)[1]/@poster').get() or None),
+                            release_date=date or ctx.search_date or None,
+                            display_date=date,
                             score=100,
                         )
                     )
@@ -97,6 +99,8 @@ class NubilesClient(Client):
                             title=display_title,
                             scene_url=link_raw if link_raw.startswith('http') else base + link_raw,
                             cur_id=enc,
+                            release_date=release or ctx.search_date or None,
+                            display_date=release,
                             score=title_distance_score(ctx.title, parts[0]),
                         )
                     )

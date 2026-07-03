@@ -45,7 +45,14 @@ class Network18Client(GraphQLClient):
             images = item.get('images')
             thumb = str(images[0]) if isinstance(images, list) and images else None
             results.append(
-                build_search_result(title=item.get('name', ''), scene_url=item['itemId'], query=ctx.title, cur_id=self.encode(item['itemId']), thumb_url=thumb)
+                build_search_result(
+                    title=item.get('name', ''),
+                    scene_url=item['itemId'],
+                    query=ctx.title,
+                    search_date=ctx.search_date,
+                    cur_id=self.encode(item['itemId']),
+                    thumb_url=thumb,
+                )
             )
         return results
 

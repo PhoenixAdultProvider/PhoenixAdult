@@ -73,7 +73,9 @@ class FTVClient(Client):
             if not title:
                 continue
             score = date_distance_score(ctx.search_date, date_iso) if ctx.search_date and date_iso else title_distance_score(ctx.title, title)
-            results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, score=score))
+            results.append(
+                build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=score)
+            )
         return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────

@@ -66,6 +66,8 @@ class AlsAngelsClient(Client):
                     title=f'{model} {vtype} {release_date}'.strip(),
                     scene_url=f'{base}/profiles/{scene_id}',
                     cur_id=pack_cur_id([scene_id, release_date]),
+                    release_date=release_date or ctx.search_date or None,
+                    display_date=release_date or None,
                     score=100,
                 )
             )

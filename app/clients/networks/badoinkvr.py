@@ -41,7 +41,7 @@ class BadoinkVrClient(Client):
                 title = (loaded['sel'].xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip()
                 if title:
                     thumb = first_attr(loaded['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
-                    return [build_search_result(title=title, scene_url=url, query=ctx.title, score=100, thumb_url=thumb or None)]
+                    return [build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=100, thumb_url=thumb or None)]
 
         # Search page.
         results: list[SearchResult] = []
@@ -67,7 +67,9 @@ class BadoinkVrClient(Client):
                 score: float = date_distance_score(ctx.search_date, release)
             else:
                 score = title_distance_score(query_clean_lower, _title_clean_lower(title_attr))
-            results.append(build_search_result(title=title_attr, scene_url=abs_href, query=ctx.title, score=score))
+            results.append(
+                build_search_result(title=title_attr, scene_url=abs_href, query=ctx.title, display_date=release, search_date=ctx.search_date, score=score)
+            )
         return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
