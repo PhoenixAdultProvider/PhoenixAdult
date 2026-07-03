@@ -128,7 +128,6 @@ class MetadataMapper:
         return PlexMetadata(
             type='movie',
             ratingKey=rating_key,
-            key=f'/library/metadata/{rating_key}',
             guid=to_guid(rating_key, plex_identifier),
             title=clean_title,
             titleSort=_title_sort(clean_title),

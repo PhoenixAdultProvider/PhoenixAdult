@@ -10,7 +10,15 @@ from app.utils import cache as metadata_cache
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger
 from app.utils.people import filter_male_actors
+from app.utils.plex.media_type import provider_mount_path
 from app.utils.plex.rating_key import parse_rating_key
+
+
+def _stamp_keys(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
+    """Serve-time only — never baked into cache snapshots, so the mount path can change."""
+    mount = provider_mount_path(provider)
+    for md in response.MediaContainer.Metadata:
+        md.key = f'{mount}/library/metadata/{md.ratingKey}'
 
 
 class MetadataService:
@@ -61,6 +69,7 @@ class MetadataService:
             # Filter AFTER any cache write so the snapshot keeps every actor on disk.
             if removed := filter_male_actors(response):
                 logger.info(provider.id, f'Male-actor filter: hid {removed} cached actor(s) from ratingKey={rating_key}')
+            _stamp_keys(response, provider)
             log_served_images(response)
             logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
             return response
@@ -93,5 +102,6 @@ class MetadataService:
         # future gender resolution); only the served response hides them.
         if removed := filter_male_actors(response):
             logger.info(provider.id, f'Male-actor filter: hid {removed} actor(s) from ratingKey={rating_key}')
+        _stamp_keys(response, provider)
         log_served_images(response)
         return response
