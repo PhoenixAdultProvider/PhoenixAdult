@@ -153,11 +153,25 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'PEOPLE_SOURCE_ORDER',
         'People source order',
-        'Priority order of headshot lookup sources. Drag to reorder; IAFD needs a bypass backend (Impersonate).',
+        'Priority order of headshot lookup sources. "Scene" is the actor image from the scene page itself — '
+        'remove it to skip the scene image and use only the external sources, or drag it lower to prefer a '
+        'provider over it. Drag to reorder; IAFD needs a bypass backend (Impersonate).',
         'People cache & sources',
         'list',
-        options=['Local Storage', 'AdultDVDEmpire', 'Freeones', 'IAFD', 'Indexxx', 'Boobpedia', 'Babes and Stars', 'Babepedia', 'JAVBus', 'JAVDatabase'],
-        default_value='Local Storage,AdultDVDEmpire,Freeones,IAFD,Indexxx,Boobpedia,Babes and Stars,Babepedia',
+        options=[
+            'Local Storage',
+            'Scene',
+            'AdultDVDEmpire',
+            'Freeones',
+            'IAFD',
+            'Indexxx',
+            'Boobpedia',
+            'Babes and Stars',
+            'Babepedia',
+            'JAVBus',
+            'JAVDatabase',
+        ],
+        default_value='Local Storage,Scene,AdultDVDEmpire,Freeones,IAFD,Indexxx,Boobpedia,Babes and Stars,Babepedia',
     ),
     EnvVarSpec(
         'PEOPLE_IMAGE_URL',

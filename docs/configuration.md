@@ -111,7 +111,7 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `PEOPLE_CACHE_DIR` | `./local/images/people` | On-disk cache for actor / director / producer headshots. |
 | `PEOPLE_CACHE_REPLACE_ENABLE` | `false` | Ignore existing cached photos and re-fetch every time. |
 | `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people-cache`. |
-| `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, AdultDVDEmpire, Freeones, IAFD, Indexxx, Boobpedia, Babes and Stars, Babepedia. |
+| `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. `Scene` is the actor image from the scene page itself — **remove it to skip the scene image** and use only the external providers, or move it lower to prefer a provider over it. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, Scene, AdultDVDEmpire, Freeones, IAFD, Indexxx, Boobpedia, Babes and Stars, Babepedia. |
 | `PEOPLE_IMAGE_URL` | `baseurl` | Which base URL actor/director/producer image links use. Plex re-requests these periodically and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable. See the option table below. Poster/art images always use `PHOENIX_BASE_URL`. |
 | `ADULT_EMPIRE_LOGIN_TOKEN` | _(unset)_ | Session token for the AdultDVDEmpire headshot source. |
 

@@ -142,6 +142,47 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     assert (tmp_path / 'directors' / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
 
 
+@pytest.mark.parametrize(
+    ('order', 'expected'),
+    [
+        (None, (True, True)),  # unset -> scene image first, then providers
+        ('Local Storage', (False, False)),  # set without 'Scene' -> skip the scene image
+        ('Local Storage,Scene,AdultDVDEmpire', (True, True)),  # default shape -> scene before providers
+        ('Scene,Freeones', (True, True)),  # scene ahead of a provider -> first
+        ('Freeones,Scene', (True, False)),  # a provider ahead of scene -> scene is a fallback
+        ('Local Storage,Scene', (True, True)),  # cache isn't a provider -> still scene-first
+    ],
+)
+def test_scene_image_pref(monkeypatch: pytest.MonkeyPatch, order: str | None, expected: tuple[bool, bool]) -> None:
+    from app.utils.people.sources import scene_image_pref
+
+    if order is None:
+        monkeypatch.delenv('PEOPLE_SOURCE_ORDER', raising=False)
+    else:
+        monkeypatch.setenv('PEOPLE_SOURCE_ORDER', order)
+    assert scene_image_pref() == expected
+
+
+@respx.mock
+async def test_scene_image_used_when_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 'Scene' present -> the scene's own actor image is used (HEAD-checked), not skipped.
+    monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Scene,Local Storage')
+    respx.head('https://cdn.example/scene.jpg').mock(return_value=httpx.Response(200))
+    pm = PeopleManager()
+    pm.add_actor('Jane Roe', 'https://cdn.example/scene.jpg', 'female')
+    res = await pm.resolve_all(studio='', site_name='')
+    assert res['actors'][0].photo == 'https://cdn.example/scene.jpg'
+
+
+async def test_scene_image_skipped_when_absent(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 'Scene' absent from a set order -> the scene image is skipped entirely (no HEAD, no use).
+    monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Local Storage')
+    pm = PeopleManager()
+    pm.add_actor('Jane Roe', 'https://cdn.example/scene.jpg', 'female')
+    res = await pm.resolve_all(studio='', site_name='')
+    assert res['actors'][0].photo == ''
+
+
 def test_to_plex_roles_proxies_photo() -> None:
     people = [ResolvedPerson(name='Jane Doe', photo='https://cdn.example.com/j.jpg', gender='female', role='actor')]
     roles = to_plex_roles(people, 'http://localhost:3000')

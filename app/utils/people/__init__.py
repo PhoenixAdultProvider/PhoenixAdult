@@ -14,7 +14,7 @@ from app.utils.people.cache import cache_enabled, cache_photo, cache_replace_ena
 from app.utils.people.data import actor_rules
 from app.utils.people.gender import gender_detect_enabled, iafd_gender_check
 from app.utils.people.generic import gender_skip_male_enabled, generic_image_enabled, generic_image_url
-from app.utils.people.sources import find_photo
+from app.utils.people.sources import find_photo, scene_image_pref
 from app.utils.people.types import (
     Gender,
     PersonInput,
@@ -146,10 +146,28 @@ class PeopleManager:
             return gender
         return await iafd_gender_check(name) or gender
 
+    async def _resolve_scene_photo(self, name: str, entry: PersonInput, role: Role, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
+        """The actor image from the scene page (entry.photo), HEAD-checked and cached with the
+        scene's Referer/Cookie. Returns (photo, gender); ('', gender) when there's nothing usable."""
+        if not entry.photo:
+            return '', gender
+        headers = _image_headers(ctx)
+        if not await _head_is_ok(entry.photo, headers):
+            return '', gender
+        gender = await self._detect_gender(name, role, gender)
+        if not cache_enabled():
+            return entry.photo, gender
+        cached = await cache_photo(entry.photo, name, role, gender, headers)
+        if cached:
+            return cached['served_url'], gender or cached['gender']  # type: ignore[return-value]
+        return '', gender
+
     async def _resolve_photo(self, name: str, entry: PersonInput, role: Role, ctx: _ResolveCtx) -> ResolvedPerson:
         lookup_ctx = PersonLookupContext(role=role, studio=ctx.studio, site_name=ctx.site_name)
         photo = ''
         gender: Gender = entry.gender or ''
+        # Whether/where the scene's own image runs, per the 'Scene' token in PEOPLE_SOURCE_ORDER.
+        use_scene, scene_first = scene_image_pref()
 
         # 6a — local cache
         if cache_enabled() and not cache_replace_enabled():
@@ -158,18 +176,9 @@ class PeopleManager:
                 photo = cached['served_url']
                 gender = gender or cached['gender']  # type: ignore[assignment]
 
-        # 6b — scraped URL: HEAD-check then cache (use scene image Referer/Cookie).
-        if not photo and entry.photo:
-            headers = _image_headers(ctx)
-            if await _head_is_ok(entry.photo, headers):
-                gender = await self._detect_gender(name, role, gender)
-                if cache_enabled():
-                    cached = await cache_photo(entry.photo, name, role, gender, headers)
-                    if cached:
-                        photo = cached['served_url']
-                        gender = gender or cached['gender']  # type: ignore[assignment]
-                else:
-                    photo = entry.photo
+        # 6b — scene image, before the external sources (unless PEOPLE_SOURCE_ORDER puts it later).
+        if not photo and use_scene and scene_first:
+            photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
 
         # 6c — external sources
         if not photo:
@@ -182,6 +191,10 @@ class PeopleManager:
                     photo = cached['served_url'] if cached else found.url
                 else:
                     photo = found.url
+
+        # 6b (fallback) — scene image after the external sources, when ordered that way.
+        if not photo and use_scene and not scene_first:
+            photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
 
         # 6d — generic fallback. Cache the silhouette under this person too, so the
         # next lookup is a local-cache hit instead of re-running the whole source chain.
