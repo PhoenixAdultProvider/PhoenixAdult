@@ -57,6 +57,25 @@ def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) 
     assert mc.reapply_text_rules(resp) is False
 
 
+def test_backfill_metadata_attrs_adds_new_fields() -> None:
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'The Cool Scene', 'Role': [{'tag': 'A'}, {'tag': 'B'}]}],
+            }
+        }
+    )
+    assert mc.backfill_metadata_attrs(resp) is True
+    md = resp.MediaContainer.Metadata[0]
+    assert md.contentRating == 'XXX'
+    assert md.isAdult is True
+    assert md.titleSort == 'Cool Scene'
+    assert [r.order for r in md.Role or []] == [0, 1]
+    assert mc.backfill_metadata_attrs(resp) is False  # idempotent
+
+
 def _resp(
     *,
     title: str = 'Cool Scene',

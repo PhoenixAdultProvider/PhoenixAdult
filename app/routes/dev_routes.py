@@ -300,6 +300,8 @@ async def dev_metadata(request: Request) -> JSONResponse:
         response = PlexMetadataResponse.model_validate(cached)
         backfilled = await metadata_cache.backfill_people_images(response, site.name)
         reapplied = metadata_cache.reapply_text_rules(response)  # re-apply current genres.json / actors.json
+        if metadata_cache.backfill_metadata_attrs(response):
+            backfilled = True
         if backfilled or reapplied:
             await metadata_cache.write(site.name, cur_id, response)
         filter_male_actors(response)  # serve-time filter (after any cache write); mirrors MetadataService

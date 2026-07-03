@@ -307,3 +307,12 @@ def title_case(text: str, *, type: str | None = None, site_name: str | None = No
         return text
     bounded = text[:MAX_TITLE_LENGTH] if len(text) > MAX_TITLE_LENGTH else text
     return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
+
+
+_ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
+
+
+def title_sort(title: str) -> str | None:
+    """Sort value with the leading article stripped; None when it wouldn't differ."""
+    stripped = _ARTICLE_RE.sub('', title).strip()
+    return stripped if stripped and stripped != title else None

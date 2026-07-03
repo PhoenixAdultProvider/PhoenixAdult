@@ -23,6 +23,7 @@ from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
+from app.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
     from app.clients.base import SceneDetail
@@ -430,6 +431,30 @@ async def backfill_people_images(
         changed = True
 
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
+    return changed
+
+
+def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
+    """Add metadata attributes introduced after a snapshot was written (contentRating,
+    isAdult, titleSort, Role order). Mutates in place and returns True if anything
+    changed, so the caller can rewrite the snapshot."""
+    changed = False
+    for md in response.MediaContainer.Metadata:
+        if md.contentRating is None:
+            md.contentRating = 'XXX'
+            changed = True
+        if md.isAdult is None:
+            md.isAdult = True
+            changed = True
+        if md.titleSort is None and (sort := title_sort(md.title)):
+            md.titleSort = sort
+            changed = True
+        for attr in ('Role', 'Director', 'Producer'):
+            roles: list[PlexRole] | None = getattr(md, attr)
+            for idx, r in enumerate(roles or []):
+                if r.order is None:
+                    r.order = idx
+                    changed = True
     return changed
 
 

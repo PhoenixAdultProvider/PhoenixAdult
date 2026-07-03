@@ -73,6 +73,9 @@ class MetadataService:
             changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
             if metadata_cache.reapply_text_rules(response):  # re-apply current genres.json / actors.json
                 changed = True
+            if metadata_cache.backfill_metadata_attrs(response):  # attrs added after the snapshot was written
+                changed = True
+                logger.info(provider.id, f'Backfilled metadata attrs for ratingKey={rating_key}')
             if changed:
                 await metadata_cache.write(site.name, cur_id, response)
                 logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')

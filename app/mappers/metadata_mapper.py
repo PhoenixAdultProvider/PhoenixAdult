@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from typing import Any
 
 from app.clients.base import SceneDetail, SearchResult
@@ -24,14 +23,7 @@ from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.plex.rating_key import to_guid, to_rating_key
-from app.utils.processors.title_case import title_case
-
-_ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
-
-
-def _title_sort(title: str) -> str | None:
-    stripped = _ARTICLE_RE.sub('', title).strip()
-    return stripped if stripped and stripped != title else None
+from app.utils.processors.title_case import title_case, title_sort
 
 
 class MetadataMapper:
@@ -130,7 +122,7 @@ class MetadataMapper:
             ratingKey=rating_key,
             guid=to_guid(rating_key, plex_identifier),
             title=clean_title,
-            titleSort=_title_sort(clean_title),
+            titleSort=title_sort(clean_title),
             originalTitle=detail.original_title,
             summary=detail.summary,
             tagline=detail.tagline,
