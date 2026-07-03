@@ -21,6 +21,16 @@ def _stamp_keys(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
         md.key = f'{mount}/library/metadata/{md.ratingKey}'
 
 
+def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
+    for md in response.MediaContainer.Metadata:
+        logger.info(
+            provider.id,
+            f'Serving ratingKey={md.ratingKey} key={md.key} title="{md.title}" date={md.originallyAvailableAt} '
+            f'genres={len(md.Genre or [])} actors={len(md.Role or [])} images={len(md.Image or [])}',
+        )
+        logger.debug(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
+
+
 class MetadataService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
@@ -72,6 +82,7 @@ class MetadataService:
             _stamp_keys(response, provider)
             log_served_images(response)
             logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
+            _log_served(response, provider)
             return response
 
         scene_url = self._scraper.decode(cur_id)
@@ -104,4 +115,5 @@ class MetadataService:
             logger.info(provider.id, f'Male-actor filter: hid {removed} actor(s) from ratingKey={rating_key}')
         _stamp_keys(response, provider)
         log_served_images(response)
+        _log_served(response, provider)
         return response

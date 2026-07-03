@@ -94,6 +94,8 @@ class MatchService:
                 self._mapper.to_match_result(raw, site.name, score, provider.plex_identifier, raw.release_date or None, scraper_type=site.scraper_config.type)
             )
         results.sort(key=lambda r: r.score or 0, reverse=True)
+        for r in results:
+            logger.debug(provider.id, f'result score={r.score} ratingKey={r.ratingKey} "{r.title}"')
 
         if not is_manual:
             perfect = [r for r in results if (r.score or 0) >= 100]
@@ -106,8 +108,11 @@ class MatchService:
                 logger.info(provider.id, f'Auto match: {len(tied)} results tied at {top} — ambiguous, returning empty')
                 return self._empty(provider)
             results = tied
+            logger.info(provider.id, f'Auto match: serving "{results[0].title}" (score={top})')
 
-        return PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
+        response = PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
+        logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
+        return response
 
     def _empty(self, provider: ProviderInfo) -> PlexMatchResponse:
         return PlexMatchResponse.model_validate(empty_media_container(provider.plex_identifier))
