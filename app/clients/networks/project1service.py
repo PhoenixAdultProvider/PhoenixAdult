@@ -13,7 +13,7 @@ from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import date_distance_score, iso_date, pack_cur_id, slugify, title_distance_score
+from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, slugify, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
 
@@ -129,7 +129,7 @@ class Project1ServiceClient(Client):
                 cur = str(r.get('id'))
                 colls = r.get('collections') or []
                 sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
-                release_date = iso_date(r['dateReleased']) or '' if r.get('dateReleased') else ''
+                release_date = iso_date(r['dateReleased']) if r.get('dateReleased') else None
 
                 if scene_id and scene_id == cur:
                     score: float = 100
@@ -146,12 +146,15 @@ class Project1ServiceClient(Client):
 
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
                 results.append(
-                    SearchResult(
+                    build_search_result(
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
                         scene_url=url,
+                        query=q,
+                        search_date=ctx.search_date,
+                        display_date=release_date,
+                        score=score,
                         cur_id=pack_cur_id([composite]),
                         thumb_url=_best_image_url(r, _DEFAULT_IMAGE_BASE),
-                        score=score,
                     )
                 )
         return results

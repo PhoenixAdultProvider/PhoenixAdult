@@ -48,6 +48,19 @@ async def test_search() -> None:
     assert '[Trailer] Cool Scene' in titles  # trailer type prefixed
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert cool.thumb_url == 'https://image-service-ht.project1content.com/path/p.jpg'
+    assert cool.release_date == '2021-03-04'
+    assert cool.display_date == '2021-03-04'
+
+
+@respx.mock
+async def test_search_date_falls_back_to_filename_date() -> None:
+    _token_head()
+    dateless = {**_RELEASE, 'dateReleased': None}
+    respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [dateless]}))
+    results = await Project1ServiceClient().search(_ctx(search_date='2021-03-04'))
+    cool = next(r for r in results if r.title == 'Cool Scene')
+    assert cool.release_date == '2021-03-04'  # API omitted dateReleased -> filename date used for release_date
+    assert cool.display_date is None  # display_date is the scene's own date only, never the filename date
 
 
 @respx.mock
