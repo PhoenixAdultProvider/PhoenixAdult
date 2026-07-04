@@ -24,7 +24,6 @@ dev = [
     "pytest-cov>=6.0",
     "respx>=0.21",
     "pytest-httpx2>=1.0",  # respx-based mocking for httpx2 (Starlette TestClient + app clients)
-    "pytest-xdist>=3.6",
     "ruff>=0.8",
     "mypy>=1.13",
 ]
