@@ -72,10 +72,11 @@ class _Logger:
             message = str(a)
             if isinstance(b, dict):
                 meta = {**b, **meta}
+        exc_info = meta.pop('exc_info', None)
         if meta:
             message = f'{message} {json.dumps(meta, default=str)}'
         # stacklevel=3 skips _emit + the level method so module/lineno resolve to the real caller.
-        _base.log(level, message, stacklevel=3)
+        _base.log(level, message, stacklevel=3, exc_info=exc_info)
 
     def error(self, a: Any, b: Any = None, **meta: Any) -> None:
         self._emit(logging.ERROR, a, b, **meta)
