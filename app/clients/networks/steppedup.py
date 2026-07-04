@@ -19,9 +19,10 @@ class SteppedUpClient(Client):
         if not raw:
             return None
         try:
-            build_id = json.loads(raw).get('buildId')
-        except (ValueError, TypeError):
+            data = json.loads(raw)
+        except ValueError:
             return None
+        build_id = data.get('buildId') if isinstance(data, dict) else None
         return str(build_id) if build_id else None
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:

@@ -9,7 +9,7 @@ from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMatchResponse
 from app.models.provider_info import ProviderInfo
 from app.registry import find_site
-from app.routes.scraper_router import ScraperRouter
+from app.services.scraper_router import ScraperRouter
 from app.utils.helpers.helpers import format_duration, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.plex.responses import empty_media_container, media_container

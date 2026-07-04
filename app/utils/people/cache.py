@@ -361,7 +361,7 @@ def purge(filename: str) -> bool:
     return True
 
 
-_GENDERS = ('', 'male', 'female')
+_GENDERS = ('', 'male', 'female', 'trans')
 
 
 def set_gender(filename: str, new_gender: str) -> str | None:

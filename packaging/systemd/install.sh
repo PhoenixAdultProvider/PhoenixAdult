@@ -41,10 +41,14 @@ if [ ! -f "$PA_DIR/.env" ]; then
 	install -o "$PA_USER" -g "$PA_USER" -m 0640 "$HERE/phoenixadult.env.sample" "$PA_DIR/.env"
 fi
 
-# Unit.
+# Unit. enable --now is a no-op on an already-running unit, so restart on upgrade.
 install -m 0644 "$HERE/phoenixadult.service" /etc/systemd/system/phoenixadult.service
 systemctl daemon-reload
-systemctl enable --now phoenixadult.service
+if systemctl is-active --quiet phoenixadult.service; then
+	systemctl restart phoenixadult.service
+else
+	systemctl enable --now phoenixadult.service
+fi
 
 echo
 echo "Installed. Status: systemctl status phoenixadult"

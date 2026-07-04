@@ -137,7 +137,7 @@ flowchart TB
 
   subgraph scr["Scraper engine"]
     srt["ScraperRouter<br/>(type → Client via get_client)"]:::c
-    cli["173 dedicated Client subclasses<br/>(scrapers / networks / databases)"]:::c
+    cli["178 dedicated Client subclasses<br/>(sites / networks / aggregators)"]:::c
     base["base Client<br/>(field-hook orchestrator)"]:::c
   end
 
@@ -185,7 +185,7 @@ flowchart TB
 **Key relationships**
 
 - **Routes are thin.** `provider_router` (`app/routes/provider_router.py`) delegates immediately to `MatchService` / `MetadataService`.
-- **`ScraperRouter`** (`app/routes/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`app/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
+- **`ScraperRouter`** (`app/services/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`app/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
 - **`MetadataMapper`** (`app/mappers/metadata_mapper.py`) translates the scraper's `SceneDetail` into Plex's schema and rewrites every image URL through the `/images/proxy` endpoint.
 - **Registry** is static data: providers, sites, and per-site `ScraperConfig` that selects and parameterizes a client.
 
@@ -304,7 +304,7 @@ flowchart LR
 
 ## 6. Scraper client hierarchy (Template Method / field-hook pattern)
 
-The base `Client` (`app/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`app/clients/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
+The base `Client` (`app/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`app/utils/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
 
 ```mermaid
 classDiagram
@@ -323,20 +323,20 @@ classDiagram
     #fetch_and_load(url, ctx) parsel.Selector  bypass-aware
     #fetch_json(url, ctx) Any  bypass-aware
   }
-  class scrapers["app/clients/scrapers/* (93)"] {
+  class sites["app/clients/sites/* (93)"] {
     «per-site XPath flow»
   }
-  class networks["app/clients/networks/* (72)"] {
+  class networks["app/clients/networks/* (77)"] {
     «per-network flow»
   }
-  class databases["app/clients/databases/* (9)"] {
+  class aggregators["app/clients/aggregators/* (9)"] {
     «Data18 / JavBus / MetadataAPI / …»
   }
 
-  Client <|-- scrapers
+  Client <|-- sites
   Client <|-- networks
-  Client <|-- databases
-  note for Client "173 dedicated subclasses registered in CLIENT_REGISTRY; ScraperConfig.type selects one instance."
+  Client <|-- aggregators
+  note for Client "178 dedicated subclasses registered in CLIENT_REGISTRY; ScraperConfig.type selects one instance."
 ```
 
 The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`.
@@ -659,7 +659,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 | Guard / Boundary validation | `ssrf_guard`, `_safe_path`, `env_auth_guard` | trust boundaries |
 | Lazy config accessor | `app/config/env.py` property getters | testability + runtime overrides |
 
-**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/clients/searchengines/`) restores the legacy "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
+**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/utils/searchengines/`) restores the legacy "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
 
 ---
 
@@ -669,15 +669,13 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 app/
   main.py, app_factory.py    # uvicorn entrypoint + FastAPI wiring/bootstrap
   routes/                    # provider_router, image_routes, env_routes, dev_routes,
-                             #   env_auth, scraper_router (+ config_ui.html, dev_ui.html)
-  services/                  # match_service, metadata_service
+                             #   metadata_cache_routes, people_cache_routes (+ html/)
+  services/                  # match_service, metadata_service, scraper_router
   mappers/                   # metadata_mapper
-  clients/                   # base Client (base.py) + 173 dedicated clients:
-                             #   scrapers/ (93), networks/ (72), databases/ (9),
-                             #   helpers/ (graphql_client, html_helpers, image adapters),
-                             #   searchengines/ (google_cse, duckduckgo)
+  clients/                   # base Client (base.py) + 178 dedicated clients:
+                             #   sites/ (93), networks/ (77), aggregators/ (9)
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
-                             #   selectors/ (173 site-definition modules)
+                             #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider
   utils/
     http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin, ssrf_guard

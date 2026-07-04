@@ -33,7 +33,10 @@ class Network5KPClient(Client):
             r = await self.http.get(url)
         except Exception:  # noqa: BLE001 - upstream failure yields no results
             return []
-        body = r.json() if 'json' in r.headers.get('content-type', '') else None
+        try:
+            body = r.json() if 'json' in r.headers.get('content-type', '') else None
+        except ValueError:
+            body = None
         if isinstance(body, dict) and isinstance(body.get('html'), str):
             html = body['html']
         else:

@@ -8,7 +8,7 @@ from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
 from app.models.provider_info import ProviderInfo
 from app.registry import find_site
-from app.routes.scraper_router import ScraperRouter
+from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger

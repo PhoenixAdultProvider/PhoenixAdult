@@ -80,10 +80,11 @@ class FittingRoomClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div/div[contains(.,"Models")]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').lower().strip()
-            if not name or name in seen:
+            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            key = name.lower()
+            if not name or key in seen:
                 continue
-            seen.add(name)
+            seen.add(key)
             actors.append(ActorResult(name=name))
         return actors
 

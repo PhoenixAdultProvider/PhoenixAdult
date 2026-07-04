@@ -22,7 +22,7 @@ router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _ROLES = ('actor', 'director', 'producer')
 # gender key -> (css suffix, label)
-_GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female')]
+_GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
 # (subfolder-derived type, tab label) — one view per storage bucket.
 _TABS = [
@@ -88,7 +88,7 @@ def _list_people(directory: str) -> list[dict[str, Any]]:
 
 
 def _gender_of(gender: str) -> str:
-    return gender if gender in ('male', 'female') else ''
+    return gender if gender in ('male', 'female', 'trans') else ''
 
 
 def _gender_buttons(filename: str, gender: str) -> str:
@@ -162,6 +162,7 @@ async def page(request: Request) -> HTMLResponse:
       .card{{background:#1e2433;border:1px solid #334155;border-left:5px solid #475569;border-radius:8px;padding:12px}}
       .card.gf{{border-left-color:#db2777;background:#241a20}}
       .card.gm{{border-left-color:#2563eb;background:#1a1f2e}}
+      .card.gt{{border-left-color:#9333ea;background:#211a2e}}
       .card.gn{{border-left-color:#64748b}}
       .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px}} .ts{{margin-left:auto;color:#64748b;font-size:12px}}
       .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:#1e3a8a}} .badge.orig{{background:#334155}}
@@ -172,7 +173,7 @@ async def page(request: Request) -> HTMLResponse:
       img{{width:100%;height:170px;object-fit:contain;background:#0b0d12;border-radius:6px}}
       .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#94a3b8}}
       .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}
-      .g.gf.active{{background:#db2777}} .g.gm.active{{background:#2563eb}} .g.gn.active{{background:#64748b}}
+      .g.gf.active{{background:#db2777}} .g.gm.active{{background:#2563eb}} .g.gt.active{{background:#9333ea}} .g.gn.active{{background:#64748b}}
       button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}}
       button:disabled{{cursor:default;opacity:.7}}
       .actions{{display:flex;gap:8px}}
@@ -252,7 +253,7 @@ async def gender(request: Request) -> JSONResponse:
     new_gender = str(data.get('gender', ''))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
-    if new_gender not in ('', 'male', 'female'):
+    if new_gender not in ('', 'male', 'female', 'trans'):
         return JSONResponse({'ok': False, 'error': 'invalid gender'}, status_code=400)
     new_filename = set_gender(filename, new_gender)
     return JSONResponse({'ok': new_filename is not None, 'filename': new_filename})

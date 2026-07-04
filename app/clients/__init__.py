@@ -364,3 +364,15 @@ CLIENT_REGISTRY: dict[str, Client] = {
 
 def get_client(scraper_type: str) -> Client | None:
     return CLIENT_REGISTRY.get(scraper_type)
+
+
+def _assert_registry_consistent() -> None:
+    # A typo'd selector scraper_type otherwise fails only at runtime for that site.
+    from app.registry import SITE_DEFINITIONS
+
+    missing = sorted({s.scraper_config.type for s in SITE_DEFINITIONS} - CLIENT_REGISTRY.keys())
+    if missing:
+        raise RuntimeError(f'selector scraper_type(s) with no registered client: {", ".join(missing)}')
+
+
+_assert_registry_consistent()

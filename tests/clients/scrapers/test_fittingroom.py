@@ -47,6 +47,6 @@ async def test_detail_fields_collection_genres_images() -> None:
     assert detail.release_date == '2021-12-01'
     # video:tag with actor name stripped + lowercased, plus fixed 'Fitting Room'
     assert detail.genres == ['lingerie', 'solo', 'Fitting Room']
-    assert [a.name for a in detail.actors] == ['alice star']
+    assert [a.name for a in detail.actors] == ['Alice Star']
     assert detail.raw_image_urls[0] == 'https://www.fitting-room.com/contents/videos_screenshots/0/777/preview.jpg'
     assert len(detail.raw_image_urls) == 5

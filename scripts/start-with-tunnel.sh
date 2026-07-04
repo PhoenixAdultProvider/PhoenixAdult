@@ -37,7 +37,7 @@ APPLY_CMD="${APPLY_CMD:-service ${SERVICE} restart}"
 
 [ -x "$CFD" ] || { log ERROR "$LINENO" "cloudflared not found at $CFD (pkg install cloudflared)"; exit 1; }
 
-LOG="$(mktemp -t cloudflared)"
+LOG="$(mktemp -t cloudflared.XXXXXX)"
 CFD_PID=""
 cleanup() {
 	[ -n "$CFD_PID" ] && kill "$CFD_PID" 2>/dev/null || true

@@ -114,7 +114,7 @@ def relative_iso_date(raw: str, now: datetime | None = None) -> str | None:
     n = 1 if m.group(1) in ('a', 'an') else int(m.group(1))
     if n < 0:
         return None
-    base = now if now is not None else datetime.now()
+    base = now if now is not None else datetime.now(UTC)
     unit = m.group(2)
     if unit == 'minute':
         d = base - timedelta(minutes=n)

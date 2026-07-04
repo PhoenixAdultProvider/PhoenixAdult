@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 import re
 import socket
+import time
 from dataclasses import dataclass
-from functools import lru_cache
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -60,17 +60,26 @@ def base_url_config_warning() -> str | None:
     )
 
 
-@lru_cache(maxsize=1)
+_LOCAL_IP_TTL = 60.0
+_local_ip_cache: dict[tuple[socket.AddressFamily, str], tuple[float, str]] = {}
+
+
 def _local_ip(family: socket.AddressFamily, probe: str) -> str:
     # No packets are sent — connect() on a UDP socket just picks the local address
-    # the OS would route through to reach `probe`.
+    # the OS would route through to reach `probe`. TTL'd so a DHCP/VPN address
+    # change doesn't keep serving the stale IP for the process lifetime.
+    hit = _local_ip_cache.get((family, probe))
+    if hit and time.monotonic() - hit[0] < _LOCAL_IP_TTL:
+        return hit[1]
     fallback = '127.0.0.1' if family == socket.AF_INET else '::1'
     try:
         with socket.socket(family, socket.SOCK_DGRAM) as s:
             s.connect((probe, 80))
-            return str(s.getsockname()[0])
+            ip = str(s.getsockname()[0])
     except OSError:
-        return fallback
+        ip = fallback
+    _local_ip_cache[(family, probe)] = (time.monotonic(), ip)
+    return ip
 
 
 def people_image_base() -> str:

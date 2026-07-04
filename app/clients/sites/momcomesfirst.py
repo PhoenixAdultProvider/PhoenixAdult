@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
@@ -80,7 +81,7 @@ class MomComesFirstClient(Client):
         if paras:
             last_p = paras[-1].xpath('normalize-space(.)').get() or ''
             if 'starring' in last_p.lower():
-                tail = last_p.split('Starring')[-1].split('*')[0]
+                tail = re.split(r'starring', last_p, maxsplit=1, flags=re.IGNORECASE)[-1].split('*')[0]
                 names.extend(n.strip() for n in tail.split('&'))
 
         actors: list[ActorResult] = []

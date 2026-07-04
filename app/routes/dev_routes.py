@@ -15,7 +15,7 @@ from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMetadataResponse
 from app.registry import find_site, get_all_providers, get_sites_for_provider
 from app.routes import read_json_body
-from app.routes.scraper_router import ScraperRouter
+from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.helpers.helpers import title_distance_score

@@ -113,10 +113,26 @@ def _decode_dims(data: bytes) -> tuple[int, int]:
         return img.size
 
 
+_inflight: dict[str, asyncio.Task[ImageEntry]] = {}
+
+
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
     cached = _cache_get(url)
     if cached:
         return cached
+    # Coalesce concurrent fetches of the same URL (metadata + /images probe the same set).
+    pending = _inflight.get(url)
+    if pending is not None:
+        return await asyncio.shield(pending)
+    task = asyncio.create_task(_fetch_image(url, configured_referers, configured_cookies))
+    _inflight[url] = task
+    try:
+        return await task
+    finally:
+        _inflight.pop(url, None)
+
+
+async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
 
     referers = _referers_for(url, configured_referers)
     cookie_header = '; '.join(configured_cookies) if configured_cookies else None

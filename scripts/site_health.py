@@ -101,7 +101,7 @@ async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
     from app.clients.base import SceneContext, SearchContext
     from app.mappers.metadata_mapper import MetadataMapper
     from app.registry import find_site, get_all_providers
-    from app.routes.scraper_router import ScraperRouter
+    from app.services.scraper_router import ScraperRouter
     from app.utils.processors.filename_parser import get_site_name_from_registry
     from app.utils.processors.search_query import build_search_pieces
 
