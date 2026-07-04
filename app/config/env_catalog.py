@@ -333,12 +333,11 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'SEARCH_TITLE_TRASH',
-        'Search-title junk tokens',
-        'Whole-word release / scene-group tokens stripped from the parsed title before searching.',
+        'Extra search-title junk tokens',
+        'Additional whole-word release / scene-group tokens stripped from the parsed title, appended to the built-in list.',
         'Misc',
         'list',
-        options=list(DEFAULT_SEARCH_TITLE_TRASH),
-        default_value=','.join(DEFAULT_SEARCH_TITLE_TRASH),
+        default_value='',
     ),
     EnvVarSpec(
         'DISABLE_AUTO_MATCH',

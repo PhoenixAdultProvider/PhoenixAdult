@@ -16,7 +16,8 @@ Environment=PORT=3000
 EnvironmentFile=-/var/lib/phoenixadult/.env
 ExecStart=/var/lib/phoenixadult/venv/bin/python -m app.main
 
-Restart=on-failure
+# always: the config-UI "Restart" button exits 0 and must come back up.
+Restart=always
 RestartSec=5
 
 # Hardening.

@@ -1,8 +1,24 @@
 from __future__ import annotations
 
+import pytest
+
 from app.utils.processors.abbreviations import expand_abbreviations
+from app.utils.processors.filename_parser import clean_search_title
 from app.utils.processors.studio_name import normalize_studio
 from app.utils.processors.title_case import title_case, title_sort
+
+# ── clean_search_title ────────────────────────────────────────────────────────
+
+
+def test_search_title_trash_builtins_apply_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('SEARCH_TITLE_TRASH', raising=False)
+    assert clean_search_title('Cool Scene RARBG 1080p') == 'Cool Scene'
+
+
+def test_search_title_trash_env_extends_builtins(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_TITLE_TRASH', 'MYGROUP')
+    assert clean_search_title('Cool Scene RARBG MYGROUP') == 'Cool Scene'
+
 
 # ── title_sort ────────────────────────────────────────────────────────────────
 

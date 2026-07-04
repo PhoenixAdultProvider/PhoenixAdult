@@ -53,8 +53,8 @@ _trash_regex: re.Pattern[str] | None = None
 
 def _trash_re() -> re.Pattern[str] | None:
     global _trash_source, _trash_regex
-    raw = env.search_title_trash_raw
-    tokens = [s.strip() for s in (raw.split(',') if raw is not None else list(DEFAULT_SEARCH_TITLE_TRASH)) if s.strip()]
+    extra = [s.strip() for s in (env.search_title_trash_raw or '').split(',') if s.strip()]
+    tokens = list(dict.fromkeys([*DEFAULT_SEARCH_TITLE_TRASH, *extra]))
     source = '|'.join(tokens)
     if source != _trash_source:
         _trash_source = source

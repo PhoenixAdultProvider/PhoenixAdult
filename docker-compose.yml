@@ -12,10 +12,12 @@ services:
       PORT: "3000"
       # Route Cloudflare-challenged requests through the sidecar below.
       FLARESOLVERR_URL: "http://flaresolverr:8191/"
+      # Keep config-UI overrides inside the mounted data dir (a single-file bind
+      # mount would become a directory on a fresh clone and break config saves).
+      ENV_OVERRIDES_PATH: /app/local/env.overrides.json
     volumes:
       - ./local:/app/local
       - ./logs:/app/logs
-      - ./env.overrides.json:/app/env.overrides.json
     depends_on:
       - flaresolverr
 
