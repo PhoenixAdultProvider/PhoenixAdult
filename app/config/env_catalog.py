@@ -87,6 +87,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='20M',
     ),
     EnvVarSpec(
+        'IMAGE_PROXY_PIN',
+        'Pin proxy fetches to the resolved IP',
+        'SSRF hardening for /images/proxy: each hop is resolved once, validated public, and fetched by pinned IP '
+        '(hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches.',
+        'Images',
+        'boolean',
+        default_value='true',
+    ),
+    EnvVarSpec(
         'MANUAL_NFO_PATH', 'Manual NFO folder', 'Root folder served by the "Manual NFO" scraper.', 'Manual NFO', 'string', default_value='./local/manual'
     ),
     EnvVarSpec(

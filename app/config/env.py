@@ -87,6 +87,10 @@ class _Env:
         return os.environ.get('IMAGE_MAX_BYTES')
 
     @property
+    def image_proxy_pin(self) -> bool:
+        return _flag('IMAGE_PROXY_PIN', 'true') != 'false'
+
+    @property
     def bypass_auto_retry(self) -> bool:
         return _flag('BYPASS_AUTO_RETRY', '') == 'true'
 

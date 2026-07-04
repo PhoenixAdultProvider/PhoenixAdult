@@ -14,6 +14,7 @@ from app.config.env import env
 from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.http.headers import sanitize_header
 from app.utils.http.impersonate import impersonate_get_bytes
+from app.utils.http.pinned_fetch import fetch_pinned
 from app.utils.http.ssrf_guard import is_blocked_hostname
 from app.utils.logging.logger import logger
 
@@ -97,8 +98,11 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
         host = urlsplit(loc).hostname
         if host and is_blocked_hostname(host):
             raise ValueError(f'blocked redirect to {host}')
-    resp.raise_for_status()
+    return _accept_image_response(resp, url)
 
+
+def _accept_image_response(resp: httpx2.Response, url: str) -> tuple[bytes, str]:
+    resp.raise_for_status()
     content_type = resp.headers.get('content-type', '')
     data = resp.content
     if not content_type.lower().startswith('image/'):
@@ -106,6 +110,16 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
     if len(data) > _max_bytes():
         raise ValueError(f'image too large ({len(data)} bytes > {_max_bytes()}) at {url}')
     return data, content_type
+
+
+async def _get_once_pinned(url: str, referer: str | None, cookie: str | None) -> tuple[bytes, str]:
+    headers = {'User-Agent': DEFAULT_UA}
+    if referer:
+        headers['Referer'] = sanitize_header(referer)
+    if cookie:
+        headers['Cookie'] = sanitize_header(cookie)
+    resp = await fetch_pinned(url, headers)
+    return _accept_image_response(resp, url)
 
 
 def _decode_dims(data: bytes) -> tuple[int, int]:
@@ -116,7 +130,7 @@ def _decode_dims(data: bytes) -> tuple[int, int]:
 _inflight: dict[str, asyncio.Task[ImageEntry]] = {}
 
 
-async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
+async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
     cached = _cache_get(url)
     if cached:
         return cached
@@ -124,7 +138,7 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
     pending = _inflight.get(url)
     if pending is not None:
         return await asyncio.shield(pending)
-    task = asyncio.create_task(_fetch_image(url, configured_referers, configured_cookies))
+    task = asyncio.create_task(_fetch_image(url, configured_referers, configured_cookies, pinned))
     _inflight[url] = task
     try:
         return await task
@@ -132,26 +146,36 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
         _inflight.pop(url, None)
 
 
-async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
-
+async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
     referers = _referers_for(url, configured_referers)
     cookie_header = '; '.join(configured_cookies) if configured_cookies else None
     last_err: Exception | None = None
     payload: tuple[bytes, str] | None = None
 
-    async with make_http(timeout=10.0, max_redirects=3) as client:
+    if pinned:
         for referer in referers:
             try:
-                payload = await _get_once(client, url, referer, cookie_header)
+                payload = await _get_once_pinned(url, referer, cookie_header)
                 break
             except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
                 last_err = err
-                logger.debug(f'fetchImage retry: Referer="{referer or "(none)"}" failed for {url}: {err}')
+                logger.debug(f'fetchImage retry (pinned): Referer="{referer or "(none)"}" failed for {url}: {err}')
+    else:
+        async with make_http(timeout=10.0, max_redirects=3) as client:
+            for referer in referers:
+                try:
+                    payload = await _get_once(client, url, referer, cookie_header)
+                    break
+                except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
+                    last_err = err
+                    logger.debug(f'fetchImage retry: Referer="{referer or "(none)"}" failed for {url}: {err}')
 
-    if payload is None:
+    if payload is None and not pinned:
         # Cloudflare-gated hosts (e.g. IAFD headshots) 403 the plain client — retry the
         # binary fetch via curl_cffi impersonation. Send Referer/Cookie only; a UA
         # override would break the impersonated TLS fingerprint and get 403'd again.
+        # Pinned (proxy) fetches never take this path: curl resolves independently,
+        # which would reopen the DNS-rebind hole.
         hdrs: dict[str, str] = {}
         ref = next((r for r in referers if r), None)
         if ref:

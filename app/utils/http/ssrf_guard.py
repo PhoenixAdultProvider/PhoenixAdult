@@ -76,6 +76,26 @@ async def _resolve(host: str) -> list[str]:
     return [info[4][0] for info in infos]
 
 
+async def resolve_public_ip(host: str) -> str:
+    """Resolve `host`, require every address to be public, and return the address to
+    pin the connection to (IPv4 preferred). Raises ValueError on blocked/private."""
+    h = host.strip('[]')
+    if is_blocked_hostname(h):
+        raise ValueError(f'blocked host "{h}"')
+    if _is_ip_literal(h):
+        return h
+    try:
+        resolved = await _resolve(h)
+    except OSError as err:
+        raise ValueError(f'cannot resolve host "{h}"') from err
+    if not resolved:
+        raise ValueError(f'cannot resolve host "{h}"')
+    for address in resolved:
+        if is_private_address(address):
+            raise ValueError(f'host "{h}" resolves to private address {address}')
+    return next((a for a in resolved if ipaddress.ip_address(a).version == 4), resolved[0])
+
+
 async def assert_fetchable_url(raw_url: str) -> str:
     """Validate a user-supplied URL for proxying; returns the URL or raises."""
     parts = urlsplit(raw_url)

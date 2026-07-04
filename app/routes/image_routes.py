@@ -79,7 +79,7 @@ async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -
     except ValueError:
         return JSONResponse({'error': 'Invalid url'}, status_code=400)
     try:
-        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'))
+        entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'), pinned=env.image_proxy_pin)
     except Exception as err:  # noqa: BLE001
         logger.warn('proxy-classified' if classify else 'proxy', f'502 {target} - {err}')
         return JSONResponse({'error': 'Failed to fetch upstream image'}, status_code=502)
