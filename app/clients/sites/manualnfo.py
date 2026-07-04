@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
 
+from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.config import config
 from app.config.env import env
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.logging.logger import logger
 
 _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
@@ -204,6 +206,10 @@ def _is_http(url: str | None) -> bool:
 
 
 class ManualNfoClient(Client):
+    def __init__(self) -> None:
+        super().__init__()
+        self._data18: Data18Client | None = None
+
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         tag = ctx.site_info.name
         basename = ctx.title.strip()
@@ -313,6 +319,21 @@ class ManualNfoClient(Client):
             images.append(poster)
         if fanart and fanart != poster:
             images.append(fanart)
+
+        if scene.site.scraper_config.data18_enrichment and env.data18_enabled and nfo.title:
+            try:
+                self._data18 = self._data18 or Data18Client()
+                date_iso = _nfo_release_date(nfo)
+                date_obj = datetime.fromisoformat(date_iso) if date_iso else None
+                providers = [p for p in (nfo.studio, nfo.set) if p]
+                data18_url = await self._data18.find_scene_url(slugify(nfo.title.replace("'", '')), nfo.title, providers, date_obj)
+                if data18_url:
+                    logger.info(scene.site.name, f'data18 enrichment match: {data18_url}')
+                    for u in await self._data18.fetch_images(data18_url):
+                        if u not in images:
+                            images.append(u)
+            except Exception as err:  # noqa: BLE001 - enrichment is best-effort
+                logger.warn(scene.site.name, f'data18 enrichment failed: {err}')
         return images
 
 

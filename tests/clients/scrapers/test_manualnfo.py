@@ -150,6 +150,43 @@ async def test_detail_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert await ManualNfoClient().fetch_scene_detail('missing.basename', SITE) is None
 
 
+async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    _write_folder(tmp_path, BASENAME)
+    calls: dict[str, object] = {}
+
+    class FakeData18:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> str:
+            calls['providers'] = providers
+            calls['query'] = query
+            return 'https://www.data18.com/scenes/123'
+
+        async def fetch_images(self, scene_url: str) -> list[str]:
+            return ['https://cdn.data18.com/a.jpg', 'https://example.com/poster.jpg']  # second is a duplicate
+
+    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
+    assert detail is not None
+    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg', 'https://cdn.data18.com/a.jpg']
+    assert calls['query'] == 'Naughty Fantasy'
+    assert calls['providers'] == ['Paradise Films', 'Naughty Series']
+
+
+async def test_detail_data18_enrichment_off_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
+    _write_folder(tmp_path, BASENAME)
+
+    def _boom() -> None:
+        raise AssertionError('Data18Client must not be constructed when DATA18_ENABLE is off')
+
+    monkeypatch.setattr(mn_module, 'Data18Client', _boom)
+    detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
+    assert detail is not None
+    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
+
+
 async def test_detail_year_only_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     _write_folder(tmp_path, 'year.only.case', nfo='<?xml version="1.0"?><movie><title>YO</title><year>2019</year></movie>')

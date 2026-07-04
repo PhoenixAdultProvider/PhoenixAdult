@@ -19,5 +19,6 @@ MANUALNFO_SITES: list[SiteInfo] = [
         search_notes=PROVIDER_SEARCH_NOTES,
         aliases=['manual'],
         scraper_type='manualnfo',
+        data18_enrichment=True,
     ),
 ]
