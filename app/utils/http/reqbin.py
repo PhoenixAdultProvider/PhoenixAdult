@@ -48,7 +48,8 @@ class _ReqBinBackend:
             if req.method == 'POST' and req.body is not None:
                 payload['content'] = req.body
             try:
-                async with httpx2.AsyncClient(timeout=70.0, verify=False) as client:
+                # Credentialed third-party API — verify TLS.
+                async with httpx2.AsyncClient(timeout=70.0, verify=True) as client:
                     resp = await client.post('https://api.reqbin.com/api/v1/requests', json=payload, headers=cfg_headers)
                 if 200 <= resp.status_code < 300:
                     data = resp.json()

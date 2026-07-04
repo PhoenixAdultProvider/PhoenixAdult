@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
+import httpx2
+
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import api_date, build_search_result
+from app.utils.http.client import make_http
 
 _API_BASE = 'https://api.theporndb.net'
 
@@ -16,6 +19,13 @@ def _auth_headers() -> dict[str, str]:
 
 
 class MetadataAPIClient(Client):
+    @property
+    def http(self) -> httpx2.AsyncClient:
+        # Credentialed first-party API — verify TLS (the base client leaves it off for scrapers).
+        if self._http is None:
+            self._http = make_http(self._extra_headers, verify=True)
+        return self._http
+
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         url = f'{_API_BASE}/scenes?parse={ctx.encoded}'
         if ctx.ohash:

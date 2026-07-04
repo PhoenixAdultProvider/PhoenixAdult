@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import json
@@ -21,6 +22,7 @@ _DEFAULT_API_BASE = 'https://site-api.project1service.com'
 _DEFAULT_IMAGE_BASE = 'https://image-service-ht.project1content.com/'
 _SEARCH_TYPES = ('scene', 'movie', 'serie', 'trailer')
 _TOKEN_CACHE: dict[str, tuple[str, int]] = {}
+_TOKEN_LOCKS: dict[str, asyncio.Lock] = {}
 _INSTANCE_RE = re.compile(r'instance_token=([^;]+)')
 
 
@@ -81,24 +83,30 @@ class Project1ServiceClient(Client):
         if cached and cached[1] > now:
             return cached[0]
 
-        token: str | None = None
-        try:
-            r = await self.http.head(site.base_url)
-            token = r.cookies.get('instance_token')
-            if not token:
-                for ck in r.headers.get_list('set-cookie'):
-                    m = _INSTANCE_RE.search(ck)
-                    if m:
-                        token = m.group(1)
-                        break
-        except Exception as err:  # noqa: BLE001 - token fetch is best-effort
-            logger.warn(site.name, f'token HEAD failed: {err}')
+        async with _TOKEN_LOCKS.setdefault(host, asyncio.Lock()):
+            now = int(time.time())
+            cached = _TOKEN_CACHE.get(host)
+            if cached and cached[1] > now:
+                return cached[0]
 
-        if not token:
-            return cached[0] if cached else None
-        exp = _parse_jwt_exp(token) or now + 3600
-        _TOKEN_CACHE[host] = (token, exp)
-        return token
+            token: str | None = None
+            try:
+                r = await self.http.head(site.base_url)
+                token = r.cookies.get('instance_token')
+                if not token:
+                    for ck in r.headers.get_list('set-cookie'):
+                        m = _INSTANCE_RE.search(ck)
+                        if m:
+                            token = m.group(1)
+                            break
+            except Exception as err:  # noqa: BLE001 - token fetch is best-effort
+                logger.warn(site.name, f'token HEAD failed: {err}')
+
+            if not token:
+                return cached[0] if cached else None
+            exp = _parse_jwt_exp(token) or now + 3600
+            _TOKEN_CACHE[host] = (token, exp)
+            return token
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         token = await self._get_token(ctx.site_info)

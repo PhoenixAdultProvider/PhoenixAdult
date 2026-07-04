@@ -50,9 +50,9 @@ def _build_tables(
 
     resolved: list[ResolvedSiteInfo] = []
     for site in sites:
-        data = dataclasses.asdict(site)
+        # Field-wise copy (not asdict — that would deep-convert scraper_config).
+        data = {f.name: getattr(site, f.name) for f in dataclasses.fields(site)}
         data['provider_id'] = site.provider_id or DEFAULT_PROVIDER_ID
-        data['scraper_config'] = site.scraper_config  # keep the instance, not a dict
         resolved.append(ResolvedSiteInfo(**data))
 
     for site in resolved:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any, Literal
 from urllib.parse import quote, urlsplit
@@ -21,6 +22,7 @@ _IMG_BASE = 'https://images-fame.gammacdn.com'
 _ACTOR_DB: dict[str, list[str]] = load_site_json(__file__, 'gammaentother_scene_actors')
 
 _api_key_cache: dict[str, str] = {}
+_api_key_locks: dict[str, asyncio.Lock] = {}
 
 SceneType = Literal['scenes', 'movies']
 
@@ -232,21 +234,24 @@ class GammaEntOtherClient(Client):
         host = urlsplit(site.base_url).netloc
         if host in _api_key_cache:
             return _api_key_cache[host]
-        base = site.base_url.rstrip('/')
-        text = ''
-        for path in ('/en/login', '/en'):
-            try:
-                r = await self.http.get(base + path)
-                if r.status_code < 400:
-                    text = r.text
-                    break
-            except httpx2.HTTPError:
-                continue
-        m = re.search(r'"apiKey":"(.*?)"', text)
-        key = m.group(1) if m else ''
-        if key:
-            _api_key_cache[host] = key
-        return key
+        async with _api_key_locks.setdefault(host, asyncio.Lock()):
+            if host in _api_key_cache:
+                return _api_key_cache[host]
+            base = site.base_url.rstrip('/')
+            text = ''
+            for path in ('/en/login', '/en'):
+                try:
+                    r = await self.http.get(base + path)
+                    if r.status_code < 400:
+                        text = r.text
+                        break
+                except httpx2.HTTPError:
+                    continue
+            m = re.search(r'"apiKey":"(.*?)"', text)
+            key = m.group(1) if m else ''
+            if key:
+                _api_key_cache[host] = key
+            return key
 
     async def _algolia(self, site: ResolvedSiteInfo, api_key: str, index_name: str, params: str) -> list[dict[str, Any]]:
         url = f'{site.search_path}?x-algolia-application-id={_ALGOLIA_APP_ID}&x-algolia-api-key={api_key}'
