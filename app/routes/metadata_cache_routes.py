@@ -9,9 +9,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.config.env import env
 from app.routes import read_json_body
 from app.utils import cache as metadata_cache
-from app.utils.auth.env_auth import env_auth_guard
+from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 
-router = APIRouter(dependencies=[Depends(env_auth_guard)])
+router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE = (Path(__file__).parent / 'html' / 'metadata_cache.html').read_text(encoding='utf-8')
 

@@ -33,6 +33,19 @@ def _presented_token(request: Request) -> str | None:
     return None
 
 
+_SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+
+
+async def csrf_guard(request: Request) -> None:
+    # Fetch-metadata check: browsers send Sec-Fetch-Site on every request, so a
+    # drive-by cross-site POST is rejected; non-browser clients (no header) pass.
+    if request.method in _SAFE_METHODS:
+        return
+    sec_fetch_site = request.headers.get('sec-fetch-site')
+    if sec_fetch_site and sec_fetch_site not in ('same-origin', 'none'):
+        raise HTTPException(status_code=403, detail='Cross-site request rejected')
+
+
 async def env_auth_guard(request: Request) -> None:
     token = env.admin_token
     # No token configured → auth disabled entirely (admin surfaces open to all).

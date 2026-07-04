@@ -12,13 +12,13 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.config import people_image_base
 from app.config.env import env
 from app.routes import read_json_body
-from app.utils.auth.env_auth import env_auth_guard
+from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.people.cache import _ORIGINALS_DIR, people_cache_dir, purge, restore_original, set_gender
 from app.utils.people.types import parse_person_filename
 
-router = APIRouter(dependencies=[Depends(env_auth_guard)])
+router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _ROLES = ('actor', 'director', 'producer')
 # gender key -> (css suffix, label)

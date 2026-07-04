@@ -25,10 +25,10 @@ from app.config.env_overrides import (
     is_overridden,
     set_override,
 )
-from app.utils.auth.env_auth import env_auth_guard
+from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.logging.logger import logger
 
-router = APIRouter(dependencies=[Depends(env_auth_guard)])
+router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 
 def _display_value(spec: EnvVarSpec) -> str:
