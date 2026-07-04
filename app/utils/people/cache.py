@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import os
 import re
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -62,20 +63,35 @@ def _subdir_for(filename: str) -> str:
     return _subdir(role, gender)  # type: ignore[arg-type]
 
 
+_bust_cache: dict[str, tuple[float, str]] = {}  # relpath -> (mtime, token)
+
+
+def _bust_token(relpath: str, data: bytes | None) -> str:
+    if data is not None:
+        return hashlib.sha1(data).hexdigest()[:8]  # noqa: S324 - cache-bust, not security
+    path = safe_join(people_cache_dir(), relpath)
+    if path is None:
+        return ''
+    try:
+        mtime = path.stat().st_mtime
+        hit = _bust_cache.get(relpath)
+        if hit and hit[0] == mtime:
+            return hit[1]
+        token = hashlib.sha1(path.read_bytes()).hexdigest()[:8]  # noqa: S324 - cache-bust, not security
+    except OSError:
+        return ''
+    _bust_cache[relpath] = (mtime, token)
+    return token
+
+
 def _local_url(relpath: str, data: bytes | None = None) -> str:
     """Served URL for a cached people image (relpath = '<subdir>/<filename>'), with a short
     content-hash cache-buster: Plex caches images by URL, so without a token a re-cropped or
     replaced image keeps serving the stale copy. The token changes only when the bytes do."""
     from urllib.parse import quote
 
-    blob = data
-    if blob is None:
-        path = safe_join(people_cache_dir(), relpath)
-        try:
-            blob = path.read_bytes() if path is not None else None
-        except OSError:
-            blob = None
-    bust = f'?v={hashlib.sha1(blob).hexdigest()[:8]}' if blob is not None else ''  # noqa: S324 - cache-bust, not security
+    token = _bust_token(relpath, data)
+    bust = f'?v={token}' if token else ''
     quoted = '/'.join(quote(part) for part in relpath.split('/'))
     return f'{people_image_base()}/images/local/{quoted}{bust}'
 
@@ -85,6 +101,8 @@ def _local_url(relpath: str, data: bytes | None = None) -> str:
 _cached_dir: str | None = None
 _cached_sig: tuple[int, float] | None = None
 _cached_index: dict[str, str] = {}
+_sig_checked_at = 0.0
+_SIG_CHECK_INTERVAL = 30.0  # seconds between full-tree signature walks
 
 
 def _served_files(root: Path) -> Iterator[Path]:
@@ -127,9 +145,15 @@ def _rebuild_index(directory: str) -> dict[str, str]:
 
 
 def _get_index() -> dict[str, str]:
-    global _cached_dir, _cached_sig, _cached_index
+    global _cached_dir, _cached_sig, _cached_index, _sig_checked_at
     directory = people_cache_dir()
+    # The signature walk stats every headshot — rate-limit it; mutating paths
+    # call _invalidate_index for an immediate rebuild.
+    now = time.monotonic()
+    if _cached_dir == directory and now - _sig_checked_at < _SIG_CHECK_INTERVAL:
+        return _cached_index
     sig = _dir_signature(directory)
+    _sig_checked_at = now
     if _cached_dir == directory and _cached_sig == sig:
         return _cached_index
     logger.info('people-cache', f'Rebuilding Local Actor Image Index ({directory})')
@@ -140,9 +164,10 @@ def _get_index() -> dict[str, str]:
 
 
 def _invalidate_index() -> None:
-    global _cached_dir, _cached_sig
+    global _cached_dir, _cached_sig, _sig_checked_at
     _cached_dir = None
     _cached_sig = None
+    _sig_checked_at = 0.0
 
 
 # ── Public ─────────────────────────────────────────────────────────────────────
