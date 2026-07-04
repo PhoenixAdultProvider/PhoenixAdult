@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+import unicodedata
 
 from app.models.provider_info import ProviderInfo
 from app.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
@@ -38,7 +39,8 @@ SITE_DEFINITIONS: list[SiteInfo] = [*_SELECTOR_SITES]
 
 
 def normalize_site_key(token: str) -> str:
-    return re.sub(r'[.\-_\s]+', '', token.lower())
+    folded = unicodedata.normalize('NFKD', token).encode('ascii', 'ignore').decode('ascii')
+    return re.sub(r'[^a-z0-9]', '', folded.lower())
 
 
 def _build_tables(

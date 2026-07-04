@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import re
 
+from app.registry import normalize_site_key
+
 
 def to_rating_key(cur_id: str, site_name: str, date: str | None = None) -> str:
-    normalized = re.sub(r'[^a-z0-9]', '', site_name.lower())
     date_part = f'.{date.replace("-", "")}' if date else ''
-    return f'scene-{normalized}-{cur_id}{date_part}'
+    return f'scene-{normalize_site_key(site_name)}-{cur_id}{date_part}'
 
 
 def parse_rating_key(rating_key: str) -> dict[str, str | None] | None:
