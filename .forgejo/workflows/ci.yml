@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: codeberg-small
+    container:
+      image: python:3.13-bookworm
+    steps:
+      - name: Checkout
+        run: |
+          git init -q .
+          git remote add origin "https://codeberg.org/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "${GITHUB_SHA}"
+          git checkout -q FETCH_HEAD
+
+      - name: Install
+        run: pip install -e '.[dev]'
+
+      - name: Format check
+        run: ruff format --check .
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        run: mypy app
+
+      - name: Tests
+        run: pytest -q
