@@ -4,7 +4,7 @@ import asyncio
 import json
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 import httpx2
 from parsel import Selector
@@ -321,37 +321,31 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         if not scene:
             return None
 
-        # asyncio.gather collapses >6 awaitables to list[union] for type checkers;
-        # cast back to the precise per-field tuple the hooks actually return.
-        gathered = cast(
-            tuple[
-                str | None,
-                str | None,
-                str | None,
-                str | None,
-                str | None,
-                list[str] | None,
-                list[ActorResult] | None,
-                list[ActorResult] | None,
-                list[ActorResult] | None,
-                list[str] | None,
-                list[str] | None,
-            ],
-            await asyncio.gather(
-                self.fetch_title(scene),
-                self.fetch_summary(scene),
-                self.fetch_studio(scene),
-                self.fetch_tagline(scene),
-                self.fetch_release_date(scene),
-                self.fetch_genres(scene),
-                self.fetch_actors(scene),
-                self.fetch_directors(scene),
-                self.fetch_producers(scene),
-                self.fetch_collections(scene),
-                self.fetch_image_urls(scene),
-            ),
+        hooks: tuple[tuple[str, Any], ...] = (
+            ('title', self.fetch_title),
+            ('summary', self.fetch_summary),
+            ('studio', self.fetch_studio),
+            ('tagline', self.fetch_tagline),
+            ('release_date', self.fetch_release_date),
+            ('genres', self.fetch_genres),
+            ('actors', self.fetch_actors),
+            ('directors', self.fetch_directors),
+            ('producers', self.fetch_producers),
+            ('collections', self.fetch_collections),
+            ('image_urls', self.fetch_image_urls),
         )
-        (title, summary, studio, tagline, release_date, genres, actors, directors, producers, collections, raw_image_urls) = gathered
+        # One hook failing shouldn't discard the ten that succeeded.
+        gathered = await asyncio.gather(*(fn(scene) for _, fn in hooks), return_exceptions=True)
+        values: list[Any] = []
+        for (name, _), value in zip(hooks, gathered, strict=True):
+            if isinstance(value, BaseException):
+                if not isinstance(value, Exception):
+                    raise value
+                logger.warn(site.name, f'fetch_{name} failed for {scene.url}: {value!r}')
+                values.append(None)
+            else:
+                values.append(value)
+        (title, summary, studio, tagline, release_date, genres, actors, directors, producers, collections, raw_image_urls) = values
 
         return SceneDetail(
             title=title or '',
