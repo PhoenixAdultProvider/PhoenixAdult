@@ -88,9 +88,16 @@ def test_redact_query_token_in_bare_path(monkeypatch):
 
 
 def test_token_not_redacted_when_flag_off(monkeypatch):
-    # Off by default — the token stays visible so it can be copied from the log while testing.
-    monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
     assert redact('/config?token=abc123') == '/config?token=abc123'
+
+
+def test_token_default_follows_production_posture(monkeypatch):
+    monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
+    monkeypatch.setenv('NODE_ENV', 'development')
+    assert redact('/config?token=abc123') == '/config?token=abc123'
+    monkeypatch.setenv('NODE_ENV', 'production')
+    assert redact('/config?token=abc123') == '/config?token=***REDACTED***'
 
 
 @pytest.mark.parametrize('name', ['apikey', 'api_key', 'access_token', 'auth_token', 'secret', 'password', 'pwd'])
