@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import time
+
 from app.clients.base import SceneContext, SceneDetail
 from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
@@ -31,12 +34,42 @@ def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
         logger.debug(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
 
 
+_MEMO_TTL_SECONDS = 60.0
+_MEMO_MAX_ENTRIES = 512
+
+
 class MetadataService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
+        self._memo: dict[tuple[str, str, str], tuple[float, PlexMetadataResponse]] = {}
+        self._inflight: dict[tuple[str, str, str], asyncio.Task[PlexMetadataResponse | None]] = {}
 
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
+        # Plex requests /library/metadata/{key} and .../images back to back; the memo
+        # serves both from one scrape and coalesces concurrent requests in flight.
+        key = (rating_key, provider.id, language or '')
+        hit = self._memo.get(key)
+        if hit and time.monotonic() - hit[0] < _MEMO_TTL_SECONDS:
+            logger.debug(provider.id, f'memo hit for ratingKey={rating_key}')
+            return hit[1]
+        inflight = self._inflight.get(key)
+        if inflight is not None:
+            return await asyncio.shield(inflight)
+        task = asyncio.create_task(self._fetch_metadata(rating_key, provider, language))
+        self._inflight[key] = task
+        try:
+            result = await task
+        finally:
+            self._inflight.pop(key, None)
+        if result is not None:
+            self._memo[key] = (time.monotonic(), result)
+            if len(self._memo) > _MEMO_MAX_ENTRIES:
+                cutoff = time.monotonic() - _MEMO_TTL_SECONDS
+                self._memo = {k: v for k, v in self._memo.items() if v[0] >= cutoff}
+        return result
+
+    async def _fetch_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
         logger.info(provider.id, f'Update ratingKey={rating_key}')
 
         parsed = parse_rating_key(rating_key)
