@@ -8,7 +8,7 @@ on:
 
 jobs:
   gate:
-    runs-on: codeberg-small
+    runs-on: codeberg-tiny
     container:
       image: python:3.13-bookworm
     steps:
