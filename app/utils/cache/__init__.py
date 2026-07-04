@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -32,6 +33,7 @@ _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access den
 
 _index: dict[str, str] | None = None
 _index_dir: str | None = None
+_write_locks: dict[str, asyncio.Lock] = {}
 
 
 def enabled() -> bool:
@@ -179,6 +181,14 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     final_dir = safe_join(cache_dir(), rel_path)
     if final_dir is None:
         return False
+
+    # Concurrent writes for the same scene share {hash}.tmp — serialize them.
+    lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
+    async with lock:
+        return await _write_locked(response, scene_hash, rel_path, final_dir)
+
+
+async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
     data = response.model_dump(by_alias=True, exclude_none=True)
@@ -239,9 +249,8 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
         logger.warn('meta-cache', f'snapshot write failed {rel_path}: {err}')
         return False
 
-    if _index is not None:
-        _index[scene_hash] = rel_path
-    logger.info('meta-cache', f'snapshot saved {rel_path} ({title})')
+    _ensure_index()[scene_hash] = rel_path
+    logger.info('meta-cache', f'snapshot saved {rel_path} ({meta.get("title", "")})')
     return True
 
 
