@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -17,6 +18,7 @@ from app.utils.logging.logger import logger
 
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 _CACHE_TTL = 60 * 60  # seconds
+_CACHE_MAX_TOTAL_BYTES = 256 * 1024 * 1024
 
 
 @dataclass
@@ -28,7 +30,36 @@ class ImageEntry:
     height: int
 
 
-_cache: dict[str, ImageEntry] = {}
+_cache: OrderedDict[str, ImageEntry] = OrderedDict()
+_cache_total_bytes = 0
+
+
+def _cache_get(url: str) -> ImageEntry | None:
+    global _cache_total_bytes
+    entry = _cache.get(url)
+    if entry is None:
+        return None
+    if time.time() - entry.cached_at >= _CACHE_TTL:
+        del _cache[url]
+        _cache_total_bytes -= len(entry.data)
+        return None
+    _cache.move_to_end(url)
+    return entry
+
+
+def _cache_put(url: str, entry: ImageEntry) -> None:
+    global _cache_total_bytes
+    old = _cache.pop(url, None)
+    if old is not None:
+        _cache_total_bytes -= len(old.data)
+    _cache[url] = entry
+    _cache_total_bytes += len(entry.data)
+    now = time.time()
+    for key in [k for k, v in _cache.items() if now - v.cached_at >= _CACHE_TTL]:
+        _cache_total_bytes -= len(_cache.pop(key).data)
+    while _cache_total_bytes > _CACHE_MAX_TOTAL_BYTES and _cache:
+        _, evicted = _cache.popitem(last=False)
+        _cache_total_bytes -= len(evicted.data)
 
 
 def _max_bytes() -> int:
@@ -77,8 +108,8 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
 
 
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
-    cached = _cache.get(url)
-    if cached and time.time() - cached.cached_at < _CACHE_TTL:
+    cached = _cache_get(url)
+    if cached:
         return cached
 
     referers = _referers_for(url, configured_referers)
@@ -121,7 +152,7 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
         width, height = 0, 0
 
     entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height)
-    _cache[url] = entry
+    _cache_put(url, entry)
     return entry
 
 
