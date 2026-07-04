@@ -200,6 +200,7 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
     tmp_dir.mkdir(parents=True, exist_ok=True)
     try:
         async with make_http(timeout=20.0) as client:
+            sem = asyncio.Semaphore(6)
 
             def _relativize(u: str) -> str:
                 # Strip our own base_url so stored links survive a base_url/tunnel change.
@@ -216,7 +217,8 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
                 name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
                 counter[0] += 1
                 try:
-                    resp = await client.get(target, headers={'User-Agent': 'Mozilla/5.0', 'Referer': _origin(target)})
+                    async with sem:
+                        resp = await client.get(target, headers={'User-Agent': 'Mozilla/5.0', 'Referer': _origin(target)})
                     resp.raise_for_status()
                     img_dir = tmp_dir / 'images'
                     img_dir.mkdir(exist_ok=True)
@@ -226,19 +228,19 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
                     logger.debug('meta-cache', f'image download failed {target}: {err}')
                     return _relativize(url)  # best-effort: keep the link, host-relative
 
+            async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
+                obj[key] = await localize(obj.get(key), hint)
+
+            jobs = []
             if meta.get('thumb'):
-                meta['thumb'] = await localize(meta['thumb'], 'poster')
+                jobs.append(_assign(meta, 'thumb', 'poster'))
             if meta.get('art'):
-                meta['art'] = await localize(meta['art'], 'art')
-            for img in meta.get('Image', []):
-                img['url'] = await localize(img.get('url'), 'img')
+                jobs.append(_assign(meta, 'art', 'art'))
+            jobs.extend(_assign(img, 'url', 'img') for img in meta.get('Image', []))
             for role_key in ('Role', 'Director', 'Producer', 'Writer'):
-                for role in meta.get(role_key, []):
-                    if role.get('thumb'):
-                        role['thumb'] = await localize(role['thumb'], 'role')
-            for rating in meta.get('Rating', []):
-                if rating.get('image'):
-                    rating['image'] = await localize(rating['image'], 'rating')
+                jobs.extend(_assign(role, 'thumb', 'role') for role in meta.get(role_key, []) if role.get('thumb'))
+            jobs.extend(_assign(rating, 'image', 'rating') for rating in meta.get('Rating', []) if rating.get('image'))
+            await asyncio.gather(*jobs)
 
         (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
         if final_dir.exists():

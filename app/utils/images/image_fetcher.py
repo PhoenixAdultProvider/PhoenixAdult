@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 import time
 from collections import OrderedDict
@@ -107,6 +108,11 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
     return data, content_type
 
 
+def _decode_dims(data: bytes) -> tuple[int, int]:
+    with Image.open(io.BytesIO(data)) as img:
+        return img.size
+
+
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None) -> ImageEntry:
     cached = _cache_get(url)
     if cached:
@@ -146,8 +152,7 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
 
     data, content_type = payload
     try:
-        with Image.open(io.BytesIO(data)) as img:
-            width, height = img.size
+        width, height = await asyncio.to_thread(_decode_dims, data)
     except Exception:  # noqa: BLE001 - undecodable image still served, just unsized
         width, height = 0, 0
 
