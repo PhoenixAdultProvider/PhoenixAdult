@@ -6,7 +6,9 @@ from app.registry import normalize_site_key
 
 
 def to_rating_key(cur_id: str, site_name: str, date: str | None = None) -> str:
-    date_part = f'.{date.replace("-", "")}' if date else ''
+    cleaned = date.replace('-', '') if date else ''
+    # Only an ISO date survives parse_rating_key's \d{8} round-trip.
+    date_part = f'.{cleaned}' if len(cleaned) == 8 and cleaned.isdigit() else ''
     return f'scene-{normalize_site_key(site_name)}-{cur_id}{date_part}'
 
 

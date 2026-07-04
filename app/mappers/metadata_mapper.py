@@ -26,6 +26,10 @@ from app.utils.plex.rating_key import to_guid, to_rating_key
 from app.utils.processors.title_case import title_case, title_sort
 
 
+def _year_of(date: str | None) -> int | None:
+    return int(date[0:4]) if date and date[0:4].isdigit() else None
+
+
 class MetadataMapper:
     def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None) -> str | None:
         return proxy_url(url, config.base_url, referers, cookies)
@@ -43,7 +47,7 @@ class MetadataMapper:
             title=title,
             score=score,
             originallyAvailableAt=date or None,
-            year=int(date[0:4]) if date else None,
+            year=_year_of(date),
             contentRating='XXX',
             thumb=self._proxy(raw.thumb_url),
         )
@@ -113,7 +117,7 @@ class MetadataMapper:
         plex_producers = to_plex_roles(resolved['producers'], people_base, referers, cookies)
 
         effective_date = detail.release_date or fallback_date
-        year = int(effective_date[0:4]) if effective_date else None
+        year = _year_of(effective_date)
 
         collections = detail.collections if detail.collections else [detail.studio]
 

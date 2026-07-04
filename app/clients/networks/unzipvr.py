@@ -69,7 +69,7 @@ class UnzipVRClient(Client):
             permalink = (m.get('featuredImage') or {}).get('permalink')
             if not permalink and m.get('slug'):
                 page = await self.fetch_json(f'{base}/api/content/v1/models/{m["slug"]}', FetchCtx(capture=scene.capture))
-                permalink = ((page.get('data') or {}).get('item') or {}).get('featuredImage', {}).get('permalink') if isinstance(page, dict) else None
+                permalink = (((page.get('data') or {}).get('item') or {}).get('featuredImage') or {}).get('permalink') if isinstance(page, dict) else None
             photo = f'{base}{permalink}' if permalink else ''
             actors.append(ActorResult(name=name, photo_url=photo, gender='female'))
         return actors or None

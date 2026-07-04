@@ -127,14 +127,14 @@ class NVGClient(Client):
             # Legacy merge: prefer the page-data fluid src when the mysqlId resolves.
             if video_id.isdigit():
                 scene = await self._get_page_data(int(video_id), capture, base)
-                src = (((scene or {}).get('localFile') or {}).get('childImageSharp') or {}).get('fluid', {}).get('src') if scene else None
+                src = ((((scene or {}).get('localFile') or {}).get('childImageSharp') or {}).get('fluid') or {}).get('src') if scene else None
                 if src:
                     poster = src if src.startswith('http') else base + src
         elif head:
             scene = await self._get_page_data(int(head), capture, base) if head.isdigit() else None
             if scene:
                 title = ((scene.get('updates') or {}).get('short_title') or '').strip()
-                src = ((scene.get('localFile') or {}).get('childImageSharp') or {}).get('fluid', {}).get('src')
+                src = (((scene.get('localFile') or {}).get('childImageSharp') or {}).get('fluid') or {}).get('src')
                 if src:
                     poster = src if src.startswith('http') else base + src
 

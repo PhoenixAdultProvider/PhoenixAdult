@@ -46,7 +46,7 @@ class Network18Client(GraphQLClient):
             thumb = str(images[0]) if isinstance(images, list) and images else None
             results.append(
                 build_search_result(
-                    title=item.get('name', ''),
+                    title=item.get('name') or '',
                     scene_url=item['itemId'],
                     query=ctx.title,
                     search_date=ctx.search_date,
@@ -74,7 +74,7 @@ class Network18Client(GraphQLClient):
         if not isinstance(detail, dict):
             return None
 
-        summary = (detail.get('description') or {}).get('long', '').strip()
+        summary = ((detail.get('description') or {}).get('long') or '').strip()
         if summary and summary[-1] not in '!.?':
             summary += '.'
 
@@ -83,7 +83,7 @@ class Network18Client(GraphQLClient):
         raw_images = await self._fetch_image_urls(site, model_id, scene, scene_num, detail.get('galleryCount') or 0, sink)
 
         return SceneDetail(
-            title=detail.get('title', ''),
+            title=detail.get('title') or '',
             summary=summary,
             studio=site.name,
             tagline=site.name,
@@ -94,6 +94,7 @@ class Network18Client(GraphQLClient):
         )
 
     async def _fetch_actors(self, site: ResolvedSiteInfo, talent: list[Any], sink: list[RawCaptureEntry] | None) -> list[ActorResult]:
+        talent = [t for t in talent if isinstance(t, dict) and isinstance(t.get('talent'), dict) and t['talent'].get('talentId')]
         if not talent:
             return []
         paths = [f'/members/models/{t["talent"]["talentId"]}/profile-sm.jpg' for t in talent]
@@ -102,8 +103,8 @@ class Network18Client(GraphQLClient):
         asset_results = (((data or {}).get('asset') or {}).get('batch') or {}).get('result') or []
         actors: list[ActorResult] = []
         for idx, t in enumerate(talent):
-            uri = (asset_results[idx].get('serve') or {}).get('uri', '') if idx < len(asset_results) and isinstance(asset_results[idx], dict) else ''
-            actors.append(ActorResult(name=t['talent']['name'], photo_url=uri, gender='female'))
+            uri = ((asset_results[idx].get('serve') or {}).get('uri') or '') if idx < len(asset_results) and isinstance(asset_results[idx], dict) else ''
+            actors.append(ActorResult(name=t['talent'].get('name') or '', photo_url=uri, gender='female'))
         return actors
 
     async def _fetch_image_urls(

@@ -13,6 +13,12 @@ def test_rating_key_roundtrip() -> None:
     assert parsed['release_date'] == '2024-01-02'
 
 
+def test_rating_key_drops_non_iso_date() -> None:
+    rk = to_rating_key('YWJj', 'Some-Site', 'Jan 2023')
+    assert rk == 'scene-somesite-YWJj'
+    assert parse_rating_key(rk) is not None
+
+
 def test_normalize_site_key_strips_punctuation_and_accents() -> None:
     assert normalize_site_key("Ricky's Room") == 'rickysroom'
     assert normalize_site_key('Rickys Room') == 'rickysroom'

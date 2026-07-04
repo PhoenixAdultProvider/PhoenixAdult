@@ -107,7 +107,7 @@ class ReptyleClient(Client):
         if not isinstance(scene_json, dict):
             return None
 
-        sub_site = (scene_json.get('site') or {}).get('name', '').strip() or site.name
+        sub_site = ((scene_json.get('site') or {}).get('name') or '').strip() or site.name
         title = (scene_json.get('title') or '').strip()
         summary = _strip_tags(scene_json.get('description') or '')
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
@@ -121,7 +121,7 @@ class ReptyleClient(Client):
             photo, gender = '', ''
             if mid:
                 mstate = await self._fetch_initial_state(f'{site.base_url.rstrip("/")}/models/{mid}', capture)
-                entry = (mstate or {}).get('modelsContent', {}).get(mid) if mstate else None
+                entry = ((mstate or {}).get('modelsContent') or {}).get(mid) if mstate else None
                 if isinstance(entry, dict):
                     photo = entry.get('img') or ''
                     gender = entry.get('gender') or ''

@@ -244,5 +244,5 @@ class Project1ServiceClient(Client):
         if not results or not isinstance(results[0], dict):
             return None
         a = results[0]
-        photo = _service_url((((a.get('images') or {}).get('profile') or {}).get('0') or {}).get('xs', {}).get('url'), _DEFAULT_IMAGE_BASE) or ''
-        return ActorResult(name=a.get('name', ''), photo_url=photo, gender=a.get('gender', ''))
+        photo = _service_url(((((a.get('images') or {}).get('profile') or {}).get('0') or {}).get('xs') or {}).get('url'), _DEFAULT_IMAGE_BASE) or ''
+        return ActorResult(name=a.get('name') or '', photo_url=photo, gender=a.get('gender') or '')
