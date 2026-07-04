@@ -20,7 +20,9 @@ jobs:
           git checkout -q FETCH_HEAD
 
       - name: Install
-        run: pip install -e '.[dev]'
+        run: |
+          pip install -q uv
+          uv pip install --system -e '.[dev]'
 
       - name: Format check
         run: ruff format --check .
@@ -32,4 +34,4 @@ jobs:
         run: mypy app
 
       - name: Tests
-        run: pytest -q
+        run: pytest -q --no-cov
