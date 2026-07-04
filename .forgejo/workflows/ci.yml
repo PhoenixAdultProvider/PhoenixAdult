@@ -12,6 +12,9 @@ jobs:
     container:
       # python + node: node is required by the JS cache/checkout actions.
       image: nikolaik/python-nodejs:python3.13-nodejs22
+    env:
+      NODE_OPTIONS: --no-deprecation
+      PIP_ROOT_USER_ACTION: ignore
     steps:
       - name: Checkout
         run: |
