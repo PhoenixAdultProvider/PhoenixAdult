@@ -10,10 +10,11 @@ jobs:
   gate:
     runs-on: codeberg-tiny
     container:
-      # python + node: node is required by the JS cache/checkout actions.
-      image: nikolaik/python-nodejs:python3.13-nodejs26
+      # Big community image — effectively always warm in the runner's docker cache,
+      # unlike the python+node combo image (~570MB cold pull per host) that the
+      # cache action needed. The cache saved ~22s/run and cost ~58s/run; dropped.
+      image: python:3.13-bookworm
     env:
-      NODE_OPTIONS: --no-deprecation
       PIP_ROOT_USER_ACTION: ignore
     steps:
       - name: Checkout
@@ -22,19 +23,6 @@ jobs:
           git remote add origin "https://codeberg.org/${GITHUB_REPOSITORY}.git"
           git fetch -q --depth 1 origin "${GITHUB_SHA}"
           git checkout -q FETCH_HEAD
-
-      # Warm mypy's incremental cache and uv's wheel cache from the last run.
-      - name: Restore caches
-        uses: actions/cache@v4
-        with:
-          path: |
-            .mypy_cache
-            /root/.cache/uv
-            /root/.cache/pip
-          key: gate-${{ hashFiles('pyproject.toml') }}-${{ github.sha }}
-          restore-keys: |
-            gate-${{ hashFiles('pyproject.toml') }}-
-            gate-
 
       - name: Install
         run: |
