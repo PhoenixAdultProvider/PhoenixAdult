@@ -13,6 +13,8 @@ def main() -> None:
     # Outside production, run with --reload. Reload needs an import string (not the
     # app object) so uvicorn can re-import on change.
     reload = not env.is_production
+    # Explicit (not default-reliant): the admin-auth loopback exemption depends on
+    # X-Forwarded-For from the same-host tunnel/proxy rewriting request.client.
     uvicorn.run(
         'app.main:app' if reload else app,
         host='0.0.0.0',
@@ -20,6 +22,8 @@ def main() -> None:
         reload=reload,
         log_config=UVICORN_LOG_CONFIG,
         log_level=log_level,
+        proxy_headers=True,
+        forwarded_allow_ips='127.0.0.1',
     )
 
 
