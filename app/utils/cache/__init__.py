@@ -286,6 +286,7 @@ def entries() -> list[dict[str, Any]]:
                 'title': md.get('title', ''),
                 'studio': md.get('studio', ''),
                 'tagline': md.get('tagline', ''),
+                'collections': [t for t in ((c or {}).get('tag', '') for c in md.get('Collection') or []) if t],
                 'date': md.get('originallyAvailableAt', ''),
                 'thumb': md.get('thumb', ''),
                 'images': len(md.get('Image', [])),

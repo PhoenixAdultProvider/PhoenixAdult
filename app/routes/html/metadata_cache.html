@@ -87,6 +87,10 @@
       <label>Tagline</label>
       <select id="f-tagline" onchange="render()"><option value="">All</option></select>
     </div>
+    <div class="filter-group">
+      <label>Collection</label>
+      <select id="f-collection" onchange="render()"><option value="">All</option></select>
+    </div>
     <button class="reset-btn" onclick="reset()">Reset</button>
     <span class="count-badge" id="count"></span>
   </div>
@@ -141,6 +145,16 @@
       const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; taglineSel.appendChild(o);
     }
 
+    // Populate collection dropdown — an entry can belong to several collections
+    const collections = [...new Set(ALL.flatMap(e => e.collections || []))].sort((a, b) => a.localeCompare(b));
+    const collectionSel = document.getElementById('f-collection');
+    collections.forEach(c => {
+      const o = document.createElement('option'); o.value = c; o.textContent = c; collectionSel.appendChild(o);
+    });
+    if (ALL.some(e => !(e.collections || []).length)) {
+      const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; collectionSel.appendChild(o);
+    }
+
     // Populate Year / Month / Day dropdowns from distinct date parts (+ Blank where applicable)
     const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     function fillDatePart(selId, values, labelFn, hasBlank) {
@@ -177,7 +191,7 @@
     }
 
     function reset() {
-      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline'].forEach(id => { document.getElementById(id).value = ''; });
+      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection'].forEach(id => { document.getElementById(id).value = ''; });
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applyHeaderIndicator();
@@ -195,10 +209,14 @@
       'f-month':   {pred: (e, v) => e.month === v,                                 val: e => e.month},
       'f-day':     {pred: (e, v) => e.day === v,                                   val: e => e.day},
       'f-tagline': {pred: (e, v) => v === '__blank__' ? !e.tagline : e.tagline === v, val: e => e.tagline ? e.tagline : '__blank__'},
+      'f-collection': {
+        pred: (e, v) => v === '__blank__' ? !(e.collections || []).length : (e.collections || []).includes(v),
+        val: e => (e.collections || []).length ? e.collections : ['__blank__'],
+      },
     };
 
     function textPred(e, q) {
-      return !q || [e.title, e.studio, e.tagline, e.date].join(' ').toLowerCase().includes(q);
+      return !q || [e.title, e.studio, e.tagline, e.date, ...(e.collections || [])].join(' ').toLowerCase().includes(q);
     }
 
     // Rows passing the text query + every facet EXCEPT the one named (so a facet
@@ -221,7 +239,7 @@
     function refreshFacets() {
       for (const [id, f] of Object.entries(FACETS)) {
         const sel = document.getElementById(id);
-        const reachable = new Set(rowsExcept(id).map(f.val));
+        const reachable = new Set(rowsExcept(id).flatMap(e => { const v = f.val(e); return Array.isArray(v) ? v : [v]; }));
         for (const opt of sel.options) {
           if (opt.value === '') continue; // "All" always shown
           opt.hidden = !reachable.has(opt.value) && opt.value !== sel.value;
