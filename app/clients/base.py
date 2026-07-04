@@ -177,7 +177,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return None
         bypass = await bypass_get(url, (ctx.headers if ctx else None) or {})
         if not bypass or bypass.status >= 400:
-            logger.debug(f'fetch_and_load {url} → bypass also failed (status={bypass.status if bypass else "none"})')
+            direct_status = direct['status'] if direct else 'error'
+            logger.warn(f'fetch_and_load {url} failed — direct HTTP {direct_status}, bypass status={bypass.status if bypass else "none"}')
             return None
         logger.info(f'fetch_and_load {url} → recovered via bypass ({bypass.status})')
         if ctx and ctx.capture is not None:
@@ -199,7 +200,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return None
         bypass = await bypass_get(url, headers or {})
         if not bypass or bypass.status >= 400:
-            logger.debug(f'fetch_json {url} → bypass also failed (status={bypass.status if bypass else "none"})')
+            logger.warn(f'fetch_json {url} failed — direct and bypass exhausted (bypass status={bypass.status if bypass else "none"})')
             return None
         try:
             parsed = json.loads(bypass.body)
@@ -368,20 +369,18 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else None
-        try:
-            r = await self.http.get(url)
-        except httpx2.HTTPError as err:
-            logger.warn(site.name, f'load_scene_context: {url} failed — {err}')
+        capture = ctx.capture if ctx else None
+        loaded = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {url}')
+        if not loaded:
+            logger.warn(site.name, f'load_scene_context: {url} failed')
             return None
-        if ctx and ctx.capture is not None:
-            ctx.capture.append(RawCaptureEntry(f'GET {url}', 'html', r.text))
         return LoadedScene(
             url=url,
             site=site,
             scene_date=fallback_date or None,
-            capture=ctx.capture if ctx else None,
-            sel=Selector(text=r.text),
-            html=r.text,
+            capture=capture,
+            sel=loaded['sel'],
+            html=loaded['html'],
         )
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
