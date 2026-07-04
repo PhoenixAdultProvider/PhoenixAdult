@@ -299,9 +299,10 @@ def entries() -> list[dict[str, Any]]:
 
 def purge(key: str) -> bool:
     """Remove one snapshot by its relative path ('<studio>/<hash>' or
-    '<studio>/<sub-site>/<hash>')."""
+    '<studio>/<sub-site>/<hash>'). Leaf dirs only — an intermediate studio dir
+    (no meta.json) is refused so one purge can't wipe a whole studio."""
     target = safe_join(cache_dir(), key)
-    if target is None or not target.exists():
+    if target is None or not target.exists() or not (target / 'meta.json').exists():
         return False
     shutil.rmtree(target, ignore_errors=True)
     if _index is not None:

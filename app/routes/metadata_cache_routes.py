@@ -22,7 +22,10 @@ async def page(request: Request) -> HTMLResponse:
     entries = metadata_cache.entries()
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
-    body = _TEMPLATE.replace('__STATE__', state).replace('__TOKEN__', json.dumps(token)).replace('__ENTRIES_JSON__', json.dumps(entries))
+    # Escape `<` so scraped titles / a crafted ?token= can't break out of the <script> block.
+    token_json = json.dumps(token).replace('<', '\\u003c')
+    entries_json = json.dumps(entries).replace('<', '\\u003c')
+    body = _TEMPLATE.replace('__STATE__', state).replace('__TOKEN__', token_json).replace('__ENTRIES_JSON__', entries_json)
     return HTMLResponse(body)
 
 

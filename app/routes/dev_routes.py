@@ -14,11 +14,14 @@ from app.clients.base import RawCaptureEntry, SceneContext, SearchContext
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMetadataResponse
 from app.registry import find_site, get_all_providers, get_sites_for_provider
+from app.routes import read_json_body
 from app.routes.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.helpers.helpers import title_distance_score
+from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.log_capture import begin_capture
+from app.utils.logging.logger import logger
 from app.utils.logging.orchestrator_logs import (
     log_detail_summary,
     log_search_count,
@@ -61,7 +64,7 @@ def _lap_timer() -> Callable[[], int]:
 
 @router.post('/test')
 async def dev_test(request: Request) -> JSONResponse:
-    body = await request.json()
+    body = await read_json_body(request)
     filename = body.get('filename')
     year_override = body.get('yearOverride')
     steps: list[dict[str, Any]] = []
@@ -213,8 +216,9 @@ async def dev_test(request: Request) -> JSONResponse:
                 'durationMs': lap(),
             }
         )
-    except Exception as err:  # noqa: BLE001
-        steps.append({'step': '5. Search results', 'ok': False, 'error': str(err), 'durationMs': lap()})
+    except Exception:  # noqa: BLE001
+        logger.error('dev', 'search step failed', exc_info=True)
+        steps.append({'step': '5. Search results', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()})
 
     return send({'filename': filename, 'steps': steps})
 
@@ -224,7 +228,7 @@ async def dev_test(request: Request) -> JSONResponse:
 
 @router.post('/metadata')
 async def dev_metadata(request: Request) -> JSONResponse:
-    body = await request.json()
+    body = await read_json_body(request)
     rating_key = body.get('ratingKey')
     provider_id = body.get('providerId')
     filename = body.get('filename')
@@ -291,6 +295,11 @@ async def dev_metadata(request: Request) -> JSONResponse:
     scene_url = scraper.decode(cur_id)
     steps.append({'step': '4. Decode identifier', 'ok': bool(scene_url), 'data': {'curID': cur_id, 'sceneURL': scene_url}, 'durationMs': lap()})
     if not scene_url:
+        return send({'ratingKey': rating_key, 'steps': steps})
+    try:
+        await ensure_fetchable_url(scene_url)  # mirror MetadataService's SSRF guard
+    except ValueError as err:
+        steps.append({'step': '4. Decode identifier', 'ok': False, 'error': f'sceneURL blocked: {err}', 'durationMs': lap()})
         return send({'ratingKey': rating_key, 'steps': steps})
 
     # Snapshot cache-first: mirror MetadataService — a frozen snapshot is served
@@ -417,8 +426,9 @@ async def dev_metadata(request: Request) -> JSONResponse:
                 'durationMs': lap(),
             }
         )
-    except Exception as err:  # noqa: BLE001
-        steps.append({'step': '5. Fetch metadata', 'ok': False, 'error': str(err), 'durationMs': lap()})
+    except Exception:  # noqa: BLE001
+        logger.error('dev', 'metadata step failed', exc_info=True)
+        steps.append({'step': '5. Fetch metadata', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()})
 
     return send({'ratingKey': rating_key, 'steps': steps})
 

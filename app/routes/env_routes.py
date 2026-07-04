@@ -25,6 +25,7 @@ from app.config.env_overrides import (
     is_overridden,
     set_override,
 )
+from app.routes import read_json_body
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.logging.logger import logger
 
@@ -73,8 +74,8 @@ async def api_state() -> JSONResponse:
 
 @router.post('/api/save')
 async def api_save(request: Request) -> JSONResponse:
-    body = await request.json()
-    updates = body.get('updates') if isinstance(body, dict) else None
+    body = await read_json_body(request)
+    updates = body.get('updates')
     if not isinstance(updates, dict):
         return JSONResponse({'error': 'Request body must be { updates: { KEY: value, … } }'}, status_code=400)
 
@@ -99,7 +100,12 @@ async def api_save(request: Request) -> JSONResponse:
 
 @router.post('/api/reset')
 async def api_reset(request: Request) -> JSONResponse:
-    body = await request.json()
+    # Not read_json_body: a malformed body must 400, never fall through to
+    # the clear-all branch that an explicit empty body means.
+    try:
+        body = await request.json()
+    except ValueError:
+        return JSONResponse({'error': 'invalid JSON body'}, status_code=400)
     key = body.get('key') if isinstance(body, dict) else None
     if key is None:
         clear_all_overrides()

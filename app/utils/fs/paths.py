@@ -11,9 +11,7 @@ def safe_join(root: str | Path, *parts: str) -> Path | None:
         resolved = base.joinpath(*parts).resolve()
     except (ValueError, OSError):
         return None
-    if resolved == base or base in resolved.parents:
-        return resolved
-    return None
+    return resolved if resolved.is_relative_to(base) else None
 
 
 def is_within(root: str | Path, path: str | Path) -> bool:
@@ -23,4 +21,4 @@ def is_within(root: str | Path, path: str | Path) -> bool:
         target = Path(path).resolve()
     except (ValueError, OSError):
         return False
-    return target == base or base in target.parents
+    return target.is_relative_to(base)

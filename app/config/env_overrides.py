@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 
 from app.config.env_catalog import is_editable_key
@@ -10,6 +11,7 @@ OVERRIDES_PATH = Path(os.environ.get('ENV_OVERRIDES_PATH') or (Path.cwd() / 'env
 
 _overrides: dict[str, str] = {}
 _baseline: dict[str, str | None] = {}
+_persist_lock = threading.Lock()
 
 
 def _snapshot_baseline(key: str) -> None:
@@ -18,7 +20,14 @@ def _snapshot_baseline(key: str) -> None:
 
 
 def _persist() -> None:
-    OVERRIDES_PATH.write_text(json.dumps(_overrides, indent=2) + '\n', encoding='utf-8')
+    # tmp + replace: a crash mid-write must never truncate the overrides file.
+    tmp = OVERRIDES_PATH.parent / f'{OVERRIDES_PATH.name}.tmp'
+    with _persist_lock:
+        try:
+            tmp.write_text(json.dumps(_overrides, indent=2) + '\n', encoding='utf-8')
+            os.replace(tmp, OVERRIDES_PATH)
+        except OSError as err:
+            print(f'[envOverrides] could not write {OVERRIDES_PATH}: {err}')
 
 
 def load_overrides() -> None:
