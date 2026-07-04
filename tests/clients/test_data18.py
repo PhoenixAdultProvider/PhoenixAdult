@@ -37,6 +37,14 @@ async def test_find_scene_url_rejects_low_accuracy() -> None:
 
 
 @respx.mock
+async def test_find_scene_url_retries_with_digit_title() -> None:
+    digit_search = _SEARCH.replace('Some Title', 'World War XXX: Part 2').replace('/scenes/123-some-title', '/scenes/456-ww-xxx-part-2')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=digit_search))
+    url = await Data18Client().find_scene_url(None, 'World War XXX: Part Two', ['BangBros'], datetime(2024, 1, 2))
+    assert url == 'https://www.data18.com/scenes/456-ww-xxx-part-2'
+
+
+@respx.mock
 async def test_fetch_images_poster_only() -> None:
     scene = '<html><div id="galleriesoff"></div><div id="moviewrap"><img src="https://cdn.example/poster.jpg"></div></html>'
     respx.route(method='GET', url__regex=r'data18\.com/scenes/').mock(return_value=httpx.Response(200, text=scene))

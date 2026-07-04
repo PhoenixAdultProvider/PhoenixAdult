@@ -5,7 +5,7 @@ import pytest
 from app.utils.processors.abbreviations import expand_abbreviations
 from app.utils.processors.filename_parser import clean_search_title
 from app.utils.processors.studio_name import normalize_studio
-from app.utils.processors.title_case import title_case, title_sort
+from app.utils.processors.title_case import convert_sequence_numbers, title_case, title_sort
 
 # ── clean_search_title ────────────────────────────────────────────────────────
 
@@ -48,6 +48,12 @@ def test_title_sort_leaves_unbounded_numbers_alone() -> None:
     assert title_sort('Two for One') is None
     assert title_sort('One Night Stand') is None
     assert title_sort('Two Sisters Part Two') == 'Two Sisters Part 2'  # only the bounded number converts
+
+
+def test_convert_sequence_numbers_keeps_articles() -> None:
+    assert convert_sequence_numbers('The Affair Part Two') == 'The Affair Part 2'
+    assert convert_sequence_numbers('World War XXX: Part Two') == 'World War XXX: Part 2'
+    assert convert_sequence_numbers('The Cool Scene') is None  # article alone is not a conversion
 
 
 # ── title_case ────────────────────────────────────────────────────────────────

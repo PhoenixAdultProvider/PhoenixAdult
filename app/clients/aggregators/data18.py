@@ -12,6 +12,7 @@ from app.config.env import env
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
+from app.utils.processors.title_case import convert_sequence_numbers
 
 _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
@@ -127,6 +128,15 @@ class Data18Client:
         if scene_id and scene_id in DATA18_MANUAL_MAPPINGS:
             return f'{_BASE}/scenes/{DATA18_MANUAL_MAPPINGS[scene_id]}'
 
+        url = await self._search_scene_url(query, providers, scene_date)
+        if not url and (alt := convert_sequence_numbers(query)):
+            logger.info('data18', f'no match for "{query}" — retrying as "{alt}"')
+            url = await self._search_scene_url(alt, providers, scene_date)
+        if not url:
+            logger.info('data18', f'no match for "{query}"')
+        return url
+
+    async def _search_scene_url(self, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
         if not clean_query:
             return None

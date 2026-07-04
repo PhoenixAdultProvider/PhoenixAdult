@@ -373,3 +373,10 @@ def title_sort(title: str) -> str | None:
     stripped = _ARTICLE_RE.sub('', title).strip()
     converted = _convert_bounded_numbers(stripped).strip()
     return converted if converted and converted != title else None
+
+
+def convert_sequence_numbers(title: str) -> str | None:
+    """Digit form of marker-bounded spelled-out numbers only (no article strip);
+    None when it wouldn't differ."""
+    converted = _convert_bounded_numbers(title).strip()
+    return converted if converted and converted != title else None
