@@ -79,6 +79,7 @@ def test_title_case_size_code() -> None:
 
 def test_title_case_manual_correction() -> None:
     assert title_case('cant stop') == "Can't Stop"
+    assert title_case('alice vs bob') == 'Alice vs. Bob'
     assert title_case('her b day surprise') == 'Her B-Day Surprise'  # two-word form
     assert title_case('bday party') == 'B-Day Party'  # no-space form via MANUAL_CORRECTIONS
 
