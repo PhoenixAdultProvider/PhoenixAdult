@@ -6,6 +6,10 @@ from typing import Literal
 
 from text2digits import text2digits
 
+_MAX_TITLE_LENGTH = 1000
+
+
+# ── Exceptions ────────────────────────────────────────────────────────────────
 # fmt: off
 _LOWER_EXCEPTIONS = frozenset({
     'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
@@ -18,33 +22,12 @@ _UPPER_EXCEPTIONS = frozenset({
     'avn', 'xtc', 'atv', 'joi', 'rpg', 'wunf', 'uk', 'asap', 'sss', 'nf', 'pawg', 'ama',
 })
 
-_ACRONYMS = frozenset({'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'})
-
-_SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
-
 _NAME_EXCEPTIONS = frozenset({'ai'})
 
 _NAME_EXCEPTION_SITES = frozenset({'JavBus', 'JavLibrary', 'TeamSkeet X JavHub', 'JAVDatabase', 'JAV888'})
 
-_CONTRACTIONS = frozenset({'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'})
 
-_HONORIFICS = frozenset({
-    'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
-    'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
-})
-
-# Roman numerals capped at XX: longer runs collide with real words (MIX, XXX).
-_ROMAN_NUMERALS = frozenset({
-    'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
-    'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
-})
-
-_SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
-
-_SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
-    'strike3': {'a game': 'A Game'},
-}
-
+# ── Corrections ───────────────────────────────────────────────────────────────
 _MANUAL_CORRECTIONS: dict[str, str] = {
     'im': "I'm", 'theyll': "They'll", 'cant': "Can't", 'ive': "I've", 'shes': "She's", 'theyre': "They're",
     'tshirt': 'T-Shirt', 'dont': "Don't", 'wasnt': "Wasn't", 'youre': "You're", 'ill': "I'll", 'whats': "What's",
@@ -54,21 +37,55 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
 }
+
+_SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
+    'strike3': {'a game': 'A Game'},
+}
+
+
+# ── Word-type sets ────────────────────────────────────────────────────────────
+_ACRONYMS = frozenset({'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'})
+
+_CONTRACTIONS = frozenset({'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'})
+
+_HONORIFICS = frozenset({
+    'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
+    'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
+})
+
+# Roman numerals capped at XX: longer runs collide with real words (MIX, XXX).
+# Lone V omitted: ambiguous (5 vs. "versus") — let the site's own form pass through.
+_ROMAN_NUMERALS = frozenset({
+    'I', 'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX', 'X',
+    'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+})
+
+_SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
 # fmt: on
 
-_MAX_TITLE_LENGTH = 1000
+
+# ── Patterns ──────────────────────────────────────────────────────────────────
+_SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
+_CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
+_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
 _ALNUM_RE = re.compile(r'[a-zA-Z0-9]')
-
-# A standalone honorific not already followed by a period (Mr -> Mr.).
+_WORD_RE = re.compile(r'[A-Za-z]+')
+_PURE_NUMBER_RE = re.compile(r'\d+')
+_ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
 _HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
-
-# An opening single quote starting a non-contraction word (post-process re-spacing).
-_CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
 _OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
+_SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
+_BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
+_AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
+_SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
+_SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
+
+_T2D = text2digits.Text2Digits()
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def _strip_non_word(s: str) -> str:
     return _NON_WORD_RE.sub('', s)
 
@@ -81,6 +98,7 @@ def _capitalize(s: str) -> str:
     return s[0].upper() + s[1:] if s else s
 
 
+# ── Title-case engine ─────────────────────────────────────────────────────────
 _TokenKind = Literal['word', 'space', 'symbol', 'punct']
 
 
@@ -294,21 +312,7 @@ def title_case(text: str, *, type: str | None = None, site_name: str | None = No
     return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
 
 
-_ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
-
-_SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
-_BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
-_AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
-_WORD_RE = re.compile(r'[A-Za-z]+')
-_PURE_NUMBER_RE = re.compile(r'\d+')
-
-_T2D = text2digits.Text2Digits()
-
-_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
-_SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
-_SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
-
-
+# ── Sequence numbers ──────────────────────────────────────────────────────────
 def _is_sequence_number(word: str) -> bool:
     if word.isdigit() or word in _ROMAN_NUMERALS:
         return True
@@ -320,16 +324,12 @@ def _sequence_colon(m: re.Match[str]) -> str:
 
 
 def normalize_sequence_separator(title: str) -> str:
-    """Fold the separator before a numbered sequence marker into ': ' —
-    "X - Part 2" / "X Part 2" / "X, Part 2" / "X (Part 2)" all become "X: Part 2"."""
+    """Fold the separator before a numbered sequence marker into ': '"""
     return _SEQ_SEP_RE.sub(_sequence_colon, _SEQ_PAREN_RE.sub(_sequence_colon, title))
 
 
 def _convert_bounded_numbers(text: str) -> str:
-    """Convert spelled-out numbers to digits only where they touch a sequence marker,
-    so "Part One" becomes "Part 1", "First Part" becomes "1 Part", but "Two for One"
-    is left alone. text2digits decides what counts as a number: the longest word run
-    adjacent to the marker that converts to a pure number is replaced in place."""
+    """Convert spelled-out numbers to digits only where they touch a sequence marker"""
     out: list[str] = []
     pos = 0
     for m in _SEQ_MARKER_RE.finditer(text):
