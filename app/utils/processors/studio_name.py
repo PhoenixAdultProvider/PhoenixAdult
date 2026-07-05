@@ -24,6 +24,14 @@ def normalize_studio(name: str, site_name: str = '') -> str:
     if not name:
         return ''
 
+    # The site registry is the first authority on spelling/spacing/casing: any
+    # name or alias it knows resolves to the registered site name verbatim.
+    from app.registry import find_site  # local import to avoid a cycle
+
+    site = find_site(name)
+    if site:
+        return site.name
+
     n = name
     lower = name.lower()
     for alias, full in STUDIO_ALIASES.items():

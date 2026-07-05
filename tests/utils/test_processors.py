@@ -122,6 +122,12 @@ def test_title_case_empty() -> None:
 # ── normalize_studio ──────────────────────────────────────────────────────────
 
 
+def test_studio_registry_is_the_first_authority() -> None:
+    assert normalize_studio('joybear') == 'JoyBear'
+    assert normalize_studio('rickys room') == "Ricky's Room"  # registry casing/punctuation honored
+    assert normalize_studio('RICKYSROOM') == "Ricky's Room"
+
+
 def test_studio_alias() -> None:
     assert normalize_studio('pdt') == 'Pretty Dirty Teens'
 
