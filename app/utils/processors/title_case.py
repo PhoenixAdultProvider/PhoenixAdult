@@ -7,61 +7,66 @@ from typing import Literal
 from text2digits import text2digits
 
 # fmt: off
-LOWER_EXCEPTIONS = {
+_LOWER_EXCEPTIONS = frozenset({
     'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
     'in', 'on', 'by', 'as',  # NOT 'up': it's a verb particle in these titles (Tied Up) and particles capitalize
-}
+})
 
-UPPER_EXCEPTIONS = {
+_UPPER_EXCEPTIONS = frozenset({
     'bbc', 'xxx', 'bbw', 'bf', 'bff', 'bts', 'pov', 'dp', 'gf', 'bj', 'wtf', 'cfnm', 'bwc', 'fm', 'tv',
     'hd', 'milf', 'gilf', 'dilf', 'dtf', 'zz', 'xxxl', 'usa', 'nsa', 'hr', 'ii', 'iii', 'iv', 'bbq',
     'avn', 'xtc', 'atv', 'joi', 'rpg', 'wunf', 'uk', 'asap', 'sss', 'nf', 'pawg', 'ama',
-}
+})
 
-ACRONYMS = {'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'}
+_ACRONYMS = frozenset({'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'})
 
-SIZE_CODES = {'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'}
+_SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
 
-NAME_EXCEPTIONS = {'ai'}
+_NAME_EXCEPTIONS = frozenset({'ai'})
 
-NAME_EXCEPTION_SITES = {'JavBus', 'JavLibrary', 'TeamSkeet X JavHub', 'JAVDatabase', 'JAV888'}
+_NAME_EXCEPTION_SITES = frozenset({'JavBus', 'JavLibrary', 'TeamSkeet X JavHub', 'JAVDatabase', 'JAV888'})
 
-CONTRACTION_EXCEPTIONS = {'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'}
+_CONTRACTIONS = frozenset({'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'})
 
-SYMBOLS = ['-', '/', '.', '+', '\'']
-
-HONORIFICS = {
+_HONORIFICS = frozenset({
     'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
     'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
-}
+})
 
-SymbolTreatment = Literal['compound', 'initials_or_acronym', 'contraction']
-SYMBOL_RULES: dict[str, tuple[bool, SymbolTreatment]] = {
-    '-': (True, 'compound'), '/': (True, 'compound'), '.': (True, 'initials_or_acronym'),
-    '+': (True, 'compound'), '\'': (True, 'contraction'),
-}
+# Roman numerals capped at XX: longer runs collide with real words (MIX, XXX).
+_ROMAN_NUMERALS = frozenset({
+    'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+    'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+})
 
-SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
+_SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
+
+_SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
     'strike3': {'a game': 'A Game'},
 }
 
-MANUAL_CORRECTIONS: dict[str, str] = {
-    'im': 'I\'m', 'theyll': 'They\'ll', 'cant': 'Can\'t', 'ive': 'I\'ve', 'shes': 'She\'s', 'theyre': 'They\'re',
-    'tshirt': 'T-Shirt', 'dont': 'Don\'t', 'wasnt': 'Wasn\'t', 'youre': 'You\'re', 'ill': 'I\'ll', 'whats': 'What\'s',
-    'didnt': 'Didn\'t', 'isnt': 'Isn\'t', 'senor': 'Señor', 'senorita': 'Señorita', 'thats': 'That\'s',
-    'gstring': 'G-String', 'milfs': 'MILFs', 'oreilly': 'O\'Reilly', 'bangbros': 'BangBros', 'bday': 'B-Day',
-    'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': 'Won\'t', 'whos': 'Who\'s', 'shouldnt': 'Shouldn\'t',
-    'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': 'You\'d', 'redwolf': 'RedWolf',
-    'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': 'Coach\'s'
+_MANUAL_CORRECTIONS: dict[str, str] = {
+    'im': "I'm", 'theyll': "They'll", 'cant': "Can't", 'ive': "I've", 'shes': "She's", 'theyre': "They're",
+    'tshirt': 'T-Shirt', 'dont': "Don't", 'wasnt': "Wasn't", 'youre': "You're", 'ill': "I'll", 'whats': "What's",
+    'didnt': "Didn't", 'isnt': "Isn't", 'senor': 'Señor', 'senorita': 'Señorita', 'thats': "That's",
+    'gstring': 'G-String', 'milfs': 'MILFs', 'oreilly': "O'Reilly", 'bangbros': 'BangBros', 'bday': 'B-Day',
+    'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
+    'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
+    'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
 }
 # fmt: on
 
-MAX_TITLE_LENGTH = 1000
+_MAX_TITLE_LENGTH = 1000
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
+_ALNUM_RE = re.compile(r'[a-zA-Z0-9]')
 
 # A standalone honorific not already followed by a period (Mr -> Mr.).
-_HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
+_HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
+
+# An opening single quote starting a non-contraction word (post-process re-spacing).
+_CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
+_OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
 
 
 def _strip_non_word(s: str) -> str:
@@ -69,20 +74,20 @@ def _strip_non_word(s: str) -> str:
 
 
 def _is_alnum(ch: str) -> bool:
-    return bool(re.match(r'[a-zA-Z0-9]', ch))
+    return bool(_ALNUM_RE.match(ch))
 
 
 def _capitalize(s: str) -> str:
     return s[0].upper() + s[1:] if s else s
 
 
-TokenKind = Literal['word', 'space', 'symbol', 'punct']
+_TokenKind = Literal['word', 'space', 'symbol', 'punct']
 
 
 @dataclass
 class _Token:
     text: str
-    kind: TokenKind
+    kind: _TokenKind
     normalized: str | None = None
 
 
@@ -158,31 +163,22 @@ class _TitleCaseEngine:
         if self.clean_site and clean_lower == self.clean_site:
             return self._manual_word_fix(self.site_name)
 
-        symbol = next((s for s in SYMBOLS if s in word), None)
-        if symbol:
-            return self._manual_word_fix(self._handle_symbol_word(word))
-
+        # The tokenizer only lets apostrophes into word tokens, so that is the lone symbol to handle.
         if "'" in word:
-            apos = word.index("'")
-            base = word[:apos]
-            suffix = word[apos + 1 :]
-            clean_suffix = _strip_non_word(suffix).lower()
-            if clean_suffix in CONTRACTION_EXCEPTIONS:
-                base_norm = self._normalize_word(base)
-                return f"{base_norm}'{clean_suffix}"
+            return self._manual_word_fix(self._handle_contraction_word(word))
 
         is_special, special_val = self._is_acronym_or_size(clean_lower, clean_word)
         if is_special:
             assert special_val is not None
             return self._manual_word_fix(special_val)
 
-        if clean_lower in UPPER_EXCEPTIONS:
+        if clean_lower in _UPPER_EXCEPTIONS:
             return self._manual_word_fix(word.upper())
 
-        if clean_word and clean_word == clean_word.upper() and clean_lower not in LOWER_EXCEPTIONS:
+        if clean_word and clean_word == clean_word.upper() and clean_lower not in _LOWER_EXCEPTIONS:
             return self._manual_word_fix(word.upper())
 
-        if clean_lower in LOWER_EXCEPTIONS:
+        if clean_lower in _LOWER_EXCEPTIONS:
             return self._manual_word_fix(word.lower())
 
         has_lower = bool(re.search(r'[a-z]', word))
@@ -193,42 +189,29 @@ class _TitleCaseEngine:
         return self._manual_word_fix(_capitalize(word))
 
     def _is_acronym_or_size(self, clean_lower: str, clean_word: str) -> tuple[bool, str | None]:
-        if clean_lower in NAME_EXCEPTIONS and self.site_name in NAME_EXCEPTION_SITES:
+        if clean_lower in _NAME_EXCEPTIONS and self.site_name in _NAME_EXCEPTION_SITES:
             return False, None
-        if clean_lower in LOWER_EXCEPTIONS:
+        if clean_lower in _LOWER_EXCEPTIONS:
             return False, None
         if self.type == 'name':
             return False, None
-        if clean_lower in SIZE_CODES:
+        if clean_lower in _SIZE_CODES:
             return True, clean_word.upper()
-        if clean_lower in ACRONYMS:
+        if clean_lower in _ACRONYMS:
             return True, clean_word.upper()
         if 2 <= len(clean_word) <= 4 and clean_word == clean_word.upper():
             return True, clean_word.upper()
         return False, None
 
-    def _handle_symbol_word(self, word: str) -> str:
-        symbol = next((s for s in SYMBOLS if s in word), None)
-        if not symbol:
-            return word
-        join, treat_as = SYMBOL_RULES.get(symbol, (True, 'compound'))
-        parts = word.split(symbol)
-        sep = symbol if join else ''
+    def _handle_contraction_word(self, word: str) -> str:
         out: list[str] = []
-        for part in parts:
+        for part in word.split("'"):
             if not part:
                 out.append(part)
                 continue
-            clean = _strip_non_word(part)
-            clean_lower = clean.lower()
-            if treat_as == 'contraction' and clean_lower in CONTRACTION_EXCEPTIONS:
-                norm = part.lower()
-            elif treat_as == 'initials_or_acronym' and len(clean) == 1:
-                norm = clean.upper()
-            else:
-                norm = self._normalize_word(part)
+            norm = part.lower() if _strip_non_word(part).lower() in _CONTRACTIONS else self._normalize_word(part)
             out.append(self._manual_word_fix(norm))
-        return sep.join(out)
+        return "'".join(out)
 
     def _capitalize_first_word(self, tokens: list[_Token]) -> None:
         for token in tokens:
@@ -246,7 +229,7 @@ class _TitleCaseEngine:
         if cached is not None:
             return cached
         clean = _strip_non_word(word).lower()
-        correction = MANUAL_CORRECTIONS.get(clean)
+        correction = _MANUAL_CORRECTIONS.get(clean)
         if correction:
             fixed = re.sub(re.escape(clean), lambda _m: correction, word, count=1, flags=re.IGNORECASE)
             self._manual_cache[word] = fixed
@@ -271,11 +254,7 @@ class _TitleCaseEngine:
         output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
         # Insert a space before an opening single quote (when not a contraction),
         # and capitalize the quoted word; only applies if another quote appears later
-        output = re.sub(
-            r"(?<=\S)('(?!re\b|t\b|s\b|d\b|ll\b|ve\b|m\b|am\b|ed\b)\S+)(?=.*')",
-            lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}',
-            output,
-        )
+        output = _OPEN_QUOTE_RE.sub(lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}', output)
         # Remove spaces after opening punctuation characters
         output = re.sub(r'(?<=[#("\[])\s+', '', output)
         # Add a space after a closing double quote, but only if quotes are balanced
@@ -298,8 +277,11 @@ class _TitleCaseEngine:
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
         # Honorific titles get a trailing period (Mr -> Mr.); skip if one already follows
         output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
+        # Numbered sequence markers get a uniform ': ' separator
+        if self.type == 'title':
+            output = normalize_sequence_separator(output)
         # Scraper-specific phrase corrections
-        for phrase, replacement in SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
+        for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
 
         return output
@@ -308,19 +290,39 @@ class _TitleCaseEngine:
 def title_case(text: str, *, type: str | None = None, site_name: str | None = None, site_id: str | None = None, scraper_type: str | None = None) -> str:
     if not text:
         return text
-    bounded = text[:MAX_TITLE_LENGTH] if len(text) > MAX_TITLE_LENGTH else text
+    bounded = text[:_MAX_TITLE_LENGTH] if len(text) > _MAX_TITLE_LENGTH else text
     return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
 
 
 _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
 
-_SEQUENCE_MARKER_RE = re.compile(r'\b(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)(?=\s|$)', re.IGNORECASE)
+_SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
 _BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
 _AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
 _WORD_RE = re.compile(r'[A-Za-z]+')
 _PURE_NUMBER_RE = re.compile(r'\d+')
 
 _T2D = text2digits.Text2Digits()
+
+_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
+_SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
+_SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
+
+
+def _is_sequence_number(word: str) -> bool:
+    if word.isdigit() or word in _ROMAN_NUMERALS:
+        return True
+    return bool(_PURE_NUMBER_RE.fullmatch(str(_T2D.convert(word.lower())).strip()))
+
+
+def _sequence_colon(m: re.Match[str]) -> str:
+    return f': {m.group("phrase")}' if _is_sequence_number(m.group('num')) else m.group(0)
+
+
+def normalize_sequence_separator(title: str) -> str:
+    """Fold the separator before a numbered sequence marker into ': ' —
+    "X - Part 2" / "X Part 2" / "X, Part 2" / "X (Part 2)" all become "X: Part 2"."""
+    return _SEQ_SEP_RE.sub(_sequence_colon, _SEQ_PAREN_RE.sub(_sequence_colon, title))
 
 
 def _convert_bounded_numbers(text: str) -> str:
@@ -330,7 +332,7 @@ def _convert_bounded_numbers(text: str) -> str:
     adjacent to the marker that converts to a pure number is replaced in place."""
     out: list[str] = []
     pos = 0
-    for m in _SEQUENCE_MARKER_RE.finditer(text):
+    for m in _SEQ_MARKER_RE.finditer(text):
         if m.start() < pos:
             continue
 

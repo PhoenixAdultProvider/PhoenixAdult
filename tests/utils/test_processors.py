@@ -115,6 +115,27 @@ def test_title_case_a_to_an() -> None:
     assert title_case('a big surprise') == 'A Big Surprise'  # no change before consonant
 
 
+def test_title_case_sequence_marker_colon() -> None:
+    assert title_case('Becoming Johnny Sins: Part One') == 'Becoming Johnny Sins: Part One'  # already colon — unchanged
+    assert title_case('Becoming Johnny Sins - Part Two') == 'Becoming Johnny Sins: Part Two'
+    assert title_case('Becoming Johnny Sins Part Three') == 'Becoming Johnny Sins: Part Three'
+    assert title_case('Becoming Johnny Sins, Part 2') == 'Becoming Johnny Sins: Part 2'
+    assert title_case('Becoming Johnny Sins (Part 2)') == 'Becoming Johnny Sins: Part 2'
+    assert title_case('Becoming Johnny Sins-Part 2') == 'Becoming Johnny Sins: Part 2'  # unspaced dash
+    assert title_case('Anthology Vol. 3') == 'Anthology: Vol. 3'
+    assert title_case('Casting Episode Twelve') == 'Casting: Episode Twelve'  # spelled number kept as-is
+    assert title_case('Story Chapter IV') == 'Story: Chapter IV'  # roman numeral
+    assert title_case('The Best Scene 2') == 'The Best: Scene 2'
+
+
+def test_title_case_sequence_marker_requires_number() -> None:
+    assert title_case('Becoming Part of the Family') == 'Becoming Part of the Family'
+    assert title_case('A Part Time Job') == 'A Part Time Job'
+    assert title_case('pov scene') == 'POV Scene'  # marker with nothing after
+    assert title_case('Part Two') == 'Part Two'  # nothing before the marker
+    assert title_case('Awesome Scene XXX') == 'Awesome Scene XXX'  # XXX is not a sequence number here
+
+
 def test_title_case_empty() -> None:
     assert title_case('') == ''
 
