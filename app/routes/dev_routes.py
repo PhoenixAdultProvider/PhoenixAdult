@@ -308,7 +308,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if cached is not None:
         response = PlexMetadataResponse.model_validate(cached)
         backfilled = await metadata_cache.backfill_people_images(response, site.name)
-        reapplied = metadata_cache.reapply_text_rules(response)  # re-apply current genres.json / actors.json
+        reapplied = metadata_cache.reapply_text_rules(response, site.scraper_config.type)  # re-apply current text rules
         if metadata_cache.backfill_metadata_attrs(response):
             backfilled = True
         if backfilled or reapplied:

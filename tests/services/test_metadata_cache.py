@@ -85,6 +85,22 @@ def test_reapply_text_rules_recases_studio_tagline_collections(monkeypatch: pyte
     assert [c.tag for c in md.Collection or []] == ['Word of The Day']  # recased + deduped
 
 
+def test_reapply_text_rules_recases_title_and_titlesort() -> None:
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'the tale of two part 2', 'titleSort': 'stale'}],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is True
+    md = resp.MediaContainer.Metadata[0]
+    assert md.title == 'The Tale of Two: Part 2'
+    assert md.titleSort == 'Tale of Two: Part 2'
+
+
 def test_backfill_metadata_attrs_adds_new_fields() -> None:
     resp = PlexMetadataResponse.model_validate(
         {

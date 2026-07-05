@@ -104,7 +104,7 @@ class MetadataService:
                 return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language))
 
             changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
-            if metadata_cache.reapply_text_rules(response):  # re-apply current genres.json / actors.json
+            if metadata_cache.reapply_text_rules(response, site.scraper_config.type):  # re-apply current text rules
                 changed = True
             if metadata_cache.backfill_metadata_attrs(response):  # attrs added after the snapshot was written
                 changed = True

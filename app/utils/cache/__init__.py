@@ -25,7 +25,7 @@ from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
 from app.utils.processors.studio_name import normalize_studio
-from app.utils.processors.title_case import title_sort
+from app.utils.processors.title_case import title_case, title_sort
 
 if TYPE_CHECKING:
     from app.clients.base import SceneDetail
@@ -472,15 +472,20 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
     return changed
 
 
-def reapply_text_rules(response: PlexMetadataResponse) -> bool:
-    """Re-run genre normalization + actor alias tables on a cached response using the
-    current genres.json / actors.json (both hot-reload on edit). Mutates in place and
+def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None) -> bool:
+    """Re-run the current text rules (title casing, studio/tagline/collection casing,
+    genre normalization, actor alias tables) on a cached response. Mutates in place and
     returns True if anything changed, so the caller can rewrite the snapshot. It applies
-    new skip/rename/alias rules to what's stored; it can't restore values dropped at the
-    original scrape (those aren't in the snapshot — purge to re-scrape)."""
+    new rules to what's stored; it can't restore values dropped at the original scrape
+    (those aren't in the snapshot — purge to re-scrape)."""
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
+        cased_title = title_case(md.title, site_name=studio, scraper_type=scraper_type)
+        if cased_title and cased_title != md.title:
+            md.title = cased_title
+            md.titleSort = title_sort(cased_title)
+            changed = True
         cased_studio = normalize_studio(studio)
         if cased_studio and cased_studio != md.studio:
             md.studio = cased_studio
