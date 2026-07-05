@@ -18,26 +18,21 @@ def _strip(s: str) -> str:
 
 
 _CANONICAL_BY_STRIP = {_strip(s): s for s in CANONICAL_STUDIOS}
+_ALIAS_BY_STRIP = {_strip(a): full for a, full in STUDIO_ALIASES.items()}
 
 
 def normalize_studio(name: str, site_name: str = '') -> str:
     if not name:
         return ''
 
-    # The site registry is the first authority on spelling/spacing/casing: any
-    # name or alias it knows resolves to the registered site name verbatim.
-    from app.registry import find_site  # local import to avoid a cycle
+    # Registry name matches only — alias hits map sub-sites to their network.
+    from app.registry import find_site, normalize_site_key  # local import to avoid a cycle
 
     site = find_site(name)
-    if site:
+    if site and normalize_site_key(site.name) == normalize_site_key(name):
         return site.name
 
-    n = name
-    lower = name.lower()
-    for alias, full in STUDIO_ALIASES.items():
-        if lower == alias.lower():
-            n = full
-            break
+    n = _ALIAS_BY_STRIP.get(_strip(name), name)
 
     canonical = _CANONICAL_BY_STRIP.get(_strip(n))
     if canonical:

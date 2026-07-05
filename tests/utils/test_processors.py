@@ -128,8 +128,15 @@ def test_studio_registry_is_the_first_authority() -> None:
     assert normalize_studio('RICKYSROOM') == "Ricky's Room"
 
 
+def test_studio_registry_alias_must_not_rewrite_subsites() -> None:
+    assert normalize_studio('Big Tits At School') == 'Big Tits at School'
+    assert normalize_studio('big tits at school') == 'Big Tits at School'
+
+
 def test_studio_alias() -> None:
     assert normalize_studio('pdt') == 'Pretty Dirty Teens'
+    assert normalize_studio('P.D.T.') == 'Pretty Dirty Teens'
+    assert normalize_studio('p d t') == 'Pretty Dirty Teens'
 
 
 def test_studio_canonical_snap() -> None:
