@@ -57,6 +57,34 @@ def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) 
     assert mc.reapply_text_rules(resp) is False
 
 
+def test_reapply_text_rules_recases_studio_tagline_collections(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mc, 'normalize_studio', lambda name, site_name='': name.title().replace('Of', 'of'))
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'studio': 'word of the day',
+                        'tagline': 'lady Of the manor',
+                        'Collection': [{'tag': 'word of the day'}, {'tag': 'Word Of The Day'}],
+                    }
+                ],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is True
+    md = resp.MediaContainer.Metadata[0]
+    assert md.studio == 'Word of The Day'
+    assert md.tagline == 'Lady of The Manor'
+    assert [c.tag for c in md.Collection or []] == ['Word of The Day']  # recased + deduped
+
+
 def test_backfill_metadata_attrs_adds_new_fields() -> None:
     resp = PlexMetadataResponse.model_validate(
         {

@@ -23,6 +23,7 @@ from app.utils.images.proxy import proxy_url
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.plex.rating_key import to_guid, to_rating_key
+from app.utils.processors.studio_name import normalize_studio
 from app.utils.processors.title_case import title_case, title_sort
 
 
@@ -119,7 +120,10 @@ class MetadataMapper:
         effective_date = detail.release_date or fallback_date
         year = _year_of(effective_date)
 
-        collections = detail.collections if detail.collections else [detail.studio]
+        # Studio / tagline / collection tags get the canonical-or-title-cased form.
+        studio = normalize_studio(detail.studio)
+        tagline = normalize_studio(detail.tagline) if detail.tagline else detail.tagline
+        collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
 
         return PlexMetadata(
             type='movie',
@@ -129,8 +133,8 @@ class MetadataMapper:
             titleSort=title_sort(clean_title),
             originalTitle=detail.original_title,
             summary=detail.summary,
-            tagline=detail.tagline,
-            studio=detail.studio,
+            tagline=tagline,
+            studio=studio,
             contentRating='XXX',
             isAdult=True,
             rating=detail.rating,

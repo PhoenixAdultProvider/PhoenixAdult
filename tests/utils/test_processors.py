@@ -62,6 +62,10 @@ def test_convert_sequence_numbers_keeps_articles() -> None:
 def test_title_case_lower_exceptions() -> None:
     assert title_case('the quick brown fox') == 'The Quick Brown Fox'
     assert title_case('a tale of two cities') == 'A Tale of Two Cities'
+    assert title_case('girl next door in law') == 'Girl Next Door in Law'
+    assert title_case('caught by mom on camera') == 'Caught by Mom on Camera'
+    assert title_case('dressed as a maid') == 'Dressed as a Maid'
+    assert title_case('tied up at home') == 'Tied Up at Home'  # 'up' is a particle — stays capitalized
 
 
 def test_title_case_upper_and_acronyms() -> None:

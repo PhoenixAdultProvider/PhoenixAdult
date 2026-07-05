@@ -9,6 +9,7 @@ from text2digits import text2digits
 # fmt: off
 LOWER_EXCEPTIONS = {
     'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
+    'in', 'on', 'by', 'as',  # NOT 'up': it's a verb particle in these titles (Tied Up) and particles capitalize
 }
 
 UPPER_EXCEPTIONS = {

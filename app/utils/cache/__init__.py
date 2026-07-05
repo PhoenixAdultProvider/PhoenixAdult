@@ -14,7 +14,7 @@ import httpx2
 
 from app.config import config, people_image_base
 from app.config.env import env
-from app.models.metadata import PlexGenre, PlexMetadataResponse, PlexRole
+from app.models.metadata import PlexCollection, PlexGenre, PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -24,6 +24,7 @@ from app.utils.images.ext import IMAGE_EXTS
 from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
+from app.utils.processors.studio_name import normalize_studio
 from app.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
@@ -480,6 +481,20 @@ def reapply_text_rules(response: PlexMetadataResponse) -> bool:
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
+        cased_studio = normalize_studio(studio)
+        if cased_studio and cased_studio != md.studio:
+            md.studio = cased_studio
+            changed = True
+        if md.tagline:
+            cased_tagline = normalize_studio(md.tagline)
+            if cased_tagline != md.tagline:
+                md.tagline = cased_tagline
+                changed = True
+        if md.Collection:
+            tags = list(dict.fromkeys(normalize_studio(c.tag) for c in md.Collection if c.tag))
+            if tags != [c.tag for c in md.Collection]:
+                md.Collection = [PlexCollection(tag=t) for t in tags]
+                changed = True
         if md.Genre:
             old = [g.tag for g in md.Genre]
             new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio))

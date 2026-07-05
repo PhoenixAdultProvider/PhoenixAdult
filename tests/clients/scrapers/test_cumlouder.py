@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import respx
@@ -52,5 +52,5 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.genres == ['POV', 'HD', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.raw_image_urls == ['https://cdn.cl.com/poster.jpg']
-    expected = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+    expected = (datetime.now(UTC) - timedelta(days=3)).strftime('%Y-%m-%d')
     assert detail.release_date == expected
