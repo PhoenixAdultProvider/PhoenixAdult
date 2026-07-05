@@ -25,12 +25,11 @@ def normalize_studio(name: str, site_name: str = '') -> str:
     if not name:
         return ''
 
-    # Registry name matches only — alias hits map sub-sites to their network.
-    from app.registry import find_site, normalize_site_key  # local import to avoid a cycle
+    from app.registry import canonical_site_display  # local import to avoid a cycle
 
-    site = find_site(name)
-    if site and normalize_site_key(site.name) == normalize_site_key(name):
-        return site.name
+    display = canonical_site_display(name)
+    if display:
+        return display
 
     n = _ALIAS_BY_STRIP.get(_strip(name), name)
 

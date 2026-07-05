@@ -128,9 +128,11 @@ def test_studio_registry_is_the_first_authority() -> None:
     assert normalize_studio('RICKYSROOM') == "Ricky's Room"
 
 
-def test_studio_registry_alias_must_not_rewrite_subsites() -> None:
+def test_studio_registry_alias_serves_subsite_display_form() -> None:
     assert normalize_studio('Big Tits At School') == 'Big Tits at School'
     assert normalize_studio('big tits at school') == 'Big Tits at School'
+    assert normalize_studio('BigTitsAtSchool') == 'Big Tits at School'
+    assert normalize_studio('BIG TITS AT SCHOOL') == 'Big Tits at School'
 
 
 def test_studio_alias() -> None:
