@@ -66,10 +66,11 @@ _SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
 
 # ── Patterns ──────────────────────────────────────────────────────────────────
 _SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
-# "scene" excluded from colon insertion: "Sex Scene 4" is descriptive, not sequential.
+# "scene" only normalizes an explicit separator (- , parens); a bare "Sex Scene 4" is descriptive.
 _SEQ_COLON_MARKERS = r'(?:part|pt\.?|volume|vol\.?|episode|ep\.?|chapter)'
 _CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
-_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_COLON_MARKERS}\s+(?P<num>\w+))'
+_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
+_SEQ_COLON_PHRASE = rf'(?P<phrase>{_SEQ_COLON_MARKERS}\s+(?P<num>\w+))'
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
 _ALNUM_RE = re.compile(r'[a-zA-Z0-9]')
@@ -82,7 +83,8 @@ _SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
 _BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
 _AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
 _SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
-_SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
+_SEQ_SEP_RE = re.compile(rf'(?<=\S)\s*[:,–—-]\s*{_SEQ_PHRASE}', re.IGNORECASE)
+_SEQ_SPACE_RE = re.compile(rf'(?<=[\w\'"])\s+{_SEQ_COLON_PHRASE}', re.IGNORECASE)
 # A spaced initialism run of 3+ letters (B. O. O. T. Y); trailing period optional.
 _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A-Za-z])')
 # "vs"/"vs."/"vs.." → "vs." (idempotent; case-preserving).
@@ -339,7 +341,9 @@ def _sequence_colon(m: re.Match[str]) -> str:
 
 def normalize_sequence_separator(title: str) -> str:
     """Fold the separator before a numbered sequence marker into ': '"""
-    return _SEQ_SEP_RE.sub(_sequence_colon, _SEQ_PAREN_RE.sub(_sequence_colon, title))
+    title = _SEQ_PAREN_RE.sub(_sequence_colon, title)
+    title = _SEQ_SEP_RE.sub(_sequence_colon, title)
+    return _SEQ_SPACE_RE.sub(_sequence_colon, title)
 
 
 def _convert_bounded_numbers(text: str) -> str:
