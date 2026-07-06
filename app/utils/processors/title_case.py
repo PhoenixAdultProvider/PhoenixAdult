@@ -82,6 +82,8 @@ _BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
 _AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
 _SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
 _SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
+# A spaced initialism run of 3+ letters (B. O. O. T. Y); trailing period optional.
+_INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A-Za-z])')
 
 _T2D = text2digits.Text2Digits()
 
@@ -292,6 +294,8 @@ class _TitleCaseEngine:
         output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
         # Remove the space between two initials: "A. B." → "A.B."
         output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
+        # Collapse a spaced initialism of 3+ letters: "A. B. C" → "A.B.C" (keeps any source trailing period)
+        output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
         # Fix "a/A" → "an/An" before vowel-initial words
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
         # Honorific titles get a trailing period (Mr -> Mr.); skip if one already follows
