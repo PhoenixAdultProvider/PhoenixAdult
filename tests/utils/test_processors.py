@@ -139,7 +139,8 @@ def test_title_case_sequence_marker_colon() -> None:
     assert title_case('Casting Episode Twelve') == 'Casting: Episode Twelve'  # spelled number kept as-is
     assert title_case('Story Chapter IV') == 'Story: Chapter IV'  # roman numeral
     assert title_case('Story Chapter V') == 'Story Chapter V'  # lone V is ambiguous — passes through
-    assert title_case('The Best Scene 2') == 'The Best: Scene 2'
+    assert title_case('The Best Scene 2') == 'The Best Scene 2'  # "scene" is descriptive, never a colon marker
+    assert title_case('Anatomy of a Sex Scene 4') == 'Anatomy of a Sex Scene 4'
 
 
 def test_title_case_sequence_marker_requires_number() -> None:

@@ -66,8 +66,10 @@ _SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
 
 # ── Patterns ──────────────────────────────────────────────────────────────────
 _SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
+# "scene" excluded from colon insertion: "Sex Scene 4" is descriptive, not sequential.
+_SEQ_COLON_MARKERS = r'(?:part|pt\.?|volume|vol\.?|episode|ep\.?|chapter)'
 _CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
-_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
+_SEQ_PHRASE = rf'(?P<phrase>{_SEQ_COLON_MARKERS}\s+(?P<num>\w+))'
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
 _ALNUM_RE = re.compile(r'[a-zA-Z0-9]')
