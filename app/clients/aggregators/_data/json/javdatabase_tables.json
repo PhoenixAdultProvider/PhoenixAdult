@@ -1,7 +1,11 @@
 {
+  "actorCorrections": {
+    "CRDD-007": ["Alicia Williams", "Jillian Janson", "Pamela Morrison"],
+    "JUTA-132": ["Rie Matsuo"]
+  },
   "censoredWords": {
-    "A***e": "Abuse",
     "A*****t": "Assault",
+    "A***e": "Abuse",
     "B******y": "Brutally",
     "B***d": "Blood",
     "C***d": "Child",
@@ -22,31 +26,27 @@
     "I****t": "Incest",
     "K**l": "Kill",
     "K*d": "Kid",
-    "M****t": "Molest",
     "M************n": "Mother and Son",
+    "M****t": "Molest",
     "P****h": "Punish",
     "R****g": "Raping",
     "R**e": "Rape",
-    "Sai****": "Saitama",
     "S*********l": "Schoolgirl",
     "S********l": "Schoolgirl",
+    "S******g": "Sleeping",
     "S*****t": "Student",
     "S***e": "Slave",
-    "S******g": "Sleeping",
     "SK**led": "Skilled",
     "SK**lful": "Skillful",
     "SK**ls": "Skills",
+    "Sai****": "Saitama",
     "T******e": "Tentacle",
     "T*****e": "Torture",
     "U*********s": "Unconscious",
+    "V******e": "Violence",
     "V*****e": "Violate",
     "V*****t": "Violent",
-    "V******e": "Violence",
     "Y********l's": "Young Girl's"
-  },
-  "actorCorrections": {
-    "JUTA-132": ["Rie Matsuo"],
-    "CRDD-007": ["Alicia Williams", "Jillian Janson", "Pamela Morrison"]
   },
   "crossSite": {
     "DVAJ-": ["DVAJ-0", "DVAJ-0003", "DVAJ-0013", "DVAJ-0021", "DVAJ-0031", "DVAJ-0039"],
@@ -54,5 +54,5 @@
     "STAR-128_2008-11-06": ["STAR-128"],
     "STAR-134_2008-12-18": ["STAR-134"]
   },
-  "ignoreList": ["SEXY", "MEEL", "SKOT", "SCD", "GDSC"]
+  "ignoreList": ["GDSC", "MEEL", "SCD", "SEXY", "SKOT"]
 }
