@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
-_GROUP_GENRES: dict[str, str] = load_site_json(__file__, 'fuckingawesome_group_genres')
+_GROUP_GENRES: dict[str, str] = {'3': 'Threesome', '4': 'Foursome'}
 
 STUDIO = 'FuckingAwesome'
 _ACTOR_XP = '//div[contains(@class,"pornstarnames")]//ul//li//a[contains(@href,"pornstars")]'

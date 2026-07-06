@@ -4,10 +4,10 @@ import re
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
-_FIXED_GENRES: list[str] = load_site_json(__file__, 'dorcelclub_fixed_genres')
+_FIXED_GENRES: list[str] = ['Blockbuster Movie', 'French porn']
 
 STUDIO = 'Marc Dorcel'
 _DENSITY_RE = re.compile(r'\s*\d+x\s*$')

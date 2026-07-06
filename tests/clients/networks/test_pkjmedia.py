@@ -51,6 +51,6 @@ async def test_detail() -> None:
     assert detail.studio == 'PKJ Media'
     assert detail.tagline == 'My POV Fam'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Pov', 'Family']  # per-site table
+    assert detail.genres == ['Family', 'Pov']  # per-site table
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.raw_image_urls == ['https://www.mypovfam.com/img/p.jpg']

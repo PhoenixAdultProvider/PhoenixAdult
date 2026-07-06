@@ -14,10 +14,10 @@ from app.clients.base import (
 )
 from app.registry import ResolvedSiteInfo
 from app.utils.cookies.site_cookies import get_site_cookies
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
-_SESSION_COOKIES: dict[str, str] = load_site_json(__file__, 'blurredmedia_session_cookies')
+_SESSION_COOKIES: dict[str, str] = {'Hot Guys Fuck': 'SPSI'}
 
 
 __testing__ = {'SESSION_COOKIES': _SESSION_COOKIES}

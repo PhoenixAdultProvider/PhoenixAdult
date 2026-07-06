@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json, to_https
+from app.utils.helpers.helpers import absolute_url, iso_date, to_https
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'We Are Hairy'
-_FIXED_GENRES: list[str] = load_site_json(__file__, 'wearehairy_fixed_genres')
+_FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 
 
 class WeAreHairyClient(Client):

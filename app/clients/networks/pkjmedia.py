@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'PKJ Media'
 
-_GENRES: dict[str, list[str]] = load_site_json(__file__, 'pkjmedia_genres')
+_GENRES: dict[str, list[str]] = {'My POV Fam': ['Family', 'Pov'], 'Perverted POV': ['Pov'], 'Raw White Meat': ['Interracial']}
 
 
 class PKJMediaClient(Client):

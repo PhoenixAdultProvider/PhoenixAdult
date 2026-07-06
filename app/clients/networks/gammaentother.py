@@ -10,7 +10,7 @@ import httpx2
 from app.clients.base import ActorResult, Client, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import iso_date, pack_cur_id
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.studio_name import normalize_studio
@@ -19,7 +19,7 @@ from app.utils.processors.title_case import title_case
 _ALGOLIA_APP_ID = 'TSMKFA364Q'
 _IMG_BASE = 'https://images-fame.gammacdn.com'
 
-_ACTOR_DB: dict[str, list[str]] = load_site_json(__file__, 'gammaentother_scene_actors')
+_ACTOR_DB: dict[str, list[str]] = {'218114': ['Lara Lee']}
 
 _api_key_cache: dict[str, str] = {}
 _api_key_locks: dict[str, asyncio.Lock] = {}

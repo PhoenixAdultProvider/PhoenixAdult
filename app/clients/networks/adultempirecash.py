@@ -15,7 +15,7 @@ _DATE_FMT = '%b %d, %Y'
 Variant = Literal['standard', 'imgFullFluid', 'sceneTitleP']
 
 _VARIANTS: dict[str, str] = load_site_json(__file__, 'adultempirecash_variants')
-_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'adultempirecash_studios')
+_STUDIO_OVERRIDES: dict[str, str] = {'Horny Household': 'Horny Household'}
 
 # Per-subsite genre-source override (XPath). Default reads div.tags; Elegant Angel
 # carries categories under an "Attributes" block instead.

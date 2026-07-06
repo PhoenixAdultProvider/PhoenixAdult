@@ -5,7 +5,7 @@ from app.utils.helpers.helpers import absolute_url, build_search_result, iso_dat
 from app.utils.helpers.html_helpers import first_attr
 
 _STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'interracialpass_studios')
-_TITLE_SELECTORS: dict[str, str] = load_site_json(__file__, 'interracialpass_title_selectors')
+_TITLE_SELECTORS: dict[str, str] = {'BBC Surprise': 'h3', 'Hot Milfs Fuck': 'h1'}
 
 
 def _studio_for(site_name: str) -> str:

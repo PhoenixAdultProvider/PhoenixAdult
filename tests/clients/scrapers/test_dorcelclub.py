@@ -67,7 +67,7 @@ async def test_detail_scene_path() -> None:
     assert detail.studio == 'Marc Dorcel'
     assert detail.collections == ['Dorcel Club', 'Big Movie']
     assert detail.release_date == '2021-11-11'
-    assert detail.genres == ['French porn', 'Blockbuster Movie', 'Threesome']
+    assert detail.genres == ['Blockbuster Movie', 'French porn', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.directors is not None
     assert detail.directors[0].name == 'Jane Doe'

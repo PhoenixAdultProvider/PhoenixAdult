@@ -5,13 +5,17 @@ from typing import Any
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Kelly Madison Productions'
 _NATS_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w'
 
-_POSTER_TEMPLATES: list[str] = load_site_json(__file__, 'kellymadison_poster_templates')
+_POSTER_TEMPLATES: list[str] = [
+    'https://tour-content-cdn.kellymadisonmedia.com/episode/poster_image/{slug}/poster.jpg',
+    'https://tour-content-cdn.kellymadisonmedia.com/episode/episode_thumb_image_1/{slug}/1.jpg',
+    'https://tour-content-cdn.kellymadisonmedia.com/episode/episode_thumb_image_1/{slug}/01.jpg',
+]
 
 
 def _tagline_from_title(title: str, site_name: str) -> str:

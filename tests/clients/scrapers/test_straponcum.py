@@ -55,7 +55,7 @@ async def test_detail() -> None:
     assert detail.tagline == 'Strapon Cum'
     assert detail.collections == ['Strapon Cum']
     assert detail.release_date == '2024-01-05'
-    assert detail.genres == ['Strap-On', 'Lesbian', 'Anal', 'Latex', 'Threesome']
+    assert detail.genres == ['Lesbian', 'Strap-On', 'Anal', 'Latex', 'Threesome']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://cdn/jane.jpg'),
         ('Mary Roe', 'https://cdn/mary.jpg'),

@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
-_TITLE_FIXES: dict[str, str] = load_site_json(__file__, 'blackpayback_title_fixes')
+_TITLE_FIXES: dict[str, str] = {'ARIA CARSON 2': 'Birfday Bitch'}
 
 _IAFD_STUDIO_URL = 'https://www.iafd.com/studio.rme/studio=9856/blackpayback.com.htm'
 _POSTER_RE = re.compile(r'poster="([^"]+)"')

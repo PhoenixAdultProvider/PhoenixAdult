@@ -4,11 +4,11 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
-_TITLE_FIXES: dict[str, str] = load_site_json(__file__, 'sexmex_title_fixes')
-_TITLE_KEYWORDS: list[str] = load_site_json(__file__, 'sexmex_title_keywords')
+_TITLE_FIXES: dict[str, str] = {' Analìa ': ' Analia ', ' Kary ': ' Kari '}
+_TITLE_KEYWORDS: list[str] = ['casting', 'debut', 'mesmerized', 'porn casting', 'pov']
 
 
 def _apply_title_fixes(raw: str) -> str:

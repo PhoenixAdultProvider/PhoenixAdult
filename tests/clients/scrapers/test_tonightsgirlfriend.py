@@ -66,7 +66,7 @@ async def test_detail_linked_plus_residue() -> None:
     assert detail.tagline == "Tonight's Girlfriend"
     assert detail.collections == ["Tonight's Girlfriend"]
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.tg.com/jane.jpg'), ('Mike Jones', '')]
-    assert detail.genres == ['Girlfriend Experience', 'Pornstar', 'Hotel', 'Pornstar Experience']
+    assert detail.genres == ['Girlfriend Experience', 'Hotel', 'Pornstar', 'Pornstar Experience']
     assert detail.raw_image_urls == [
         'https://cdn.tg.com/scenes/abc/scene/image/360x200cdynamic.jpg',
         'https://cdn.tg.com/scenes/abc/scene/vertical/390x590cdynamic.jpg',
@@ -93,7 +93,7 @@ async def test_detail_threesome_bgg() -> None:
     )
     detail = await TonightsGirlfriendClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.genres == ['Girlfriend Experience', 'Pornstar', 'Hotel', 'Pornstar Experience', 'Threesome', 'BGG']
+    assert detail.genres == ['Girlfriend Experience', 'Hotel', 'Pornstar', 'Pornstar Experience', 'Threesome', 'BGG']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Mike Jones']
 
 

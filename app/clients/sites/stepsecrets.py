@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, load_site_json, strip_query
+from app.utils.helpers.helpers import absolute_url, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Joymii'
 TAGLINE = 'Step Secrets'
 
-_FIXED_GENRES: list[str] = load_site_json(__file__, 'stepsecrets_fixed_genres')
+_FIXED_GENRES: list[str] = ['European', 'Glamcore', 'Taboo']
 
 
 class StepSecretsClient(Client):

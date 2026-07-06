@@ -56,7 +56,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Joymii'
     assert detail.tagline == 'Step Secrets'
     assert detail.collections == ['Step Secrets']
-    assert detail.genres == ['European', 'Taboo', 'Glamcore']
+    assert detail.genres == ['European', 'Glamcore', 'Taboo']
     assert [a.name for a in detail.actors] == ['Jane Doe']
     assert detail.actors[0].photo_url == 'https://cdn.example/jane.jpg'  # query stripped
     assert detail.raw_image_urls == ['https://cdn.example/poster.jpg', 'https://cdn.example/p1.jpg', 'https://cdn.example/p2.jpg']

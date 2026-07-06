@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id, strip_query
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Naughty America'
@@ -9,7 +9,7 @@ TAGLINE = "Tonight's Girlfriend"
 MAX_PAGES = 4
 FULL_PAGE_THRESHOLD = 9
 
-_FIXED_GENRES: list[str] = load_site_json(__file__, 'tonightsgirlfriend_fixed_genres')
+_FIXED_GENRES: list[str] = ['Girlfriend Experience', 'Hotel', 'Pornstar', 'Pornstar Experience']
 _GREY_XP = '//p[contains(@class,"grey-performers")]'
 
 

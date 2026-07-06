@@ -9,7 +9,7 @@ from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Adult Prime'
 
-_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'adultprime_studios')
+_STUDIO_OVERRIDES: dict[str, str] = {'Club Sweethearts': 'Club Sweethearts'}
 _SKIP_PREFIXES: list[str] = load_site_json(__file__, 'adultprime_skip_prefixes')
 
 _EURO_DATE_RE = re.compile(r'(\d{2})\.(\d{2})\.(\d{4})')
