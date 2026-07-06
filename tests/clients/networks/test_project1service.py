@@ -82,3 +82,27 @@ async def test_detail() -> None:
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://image-service-ht.project1content.com/a/jane.jpg'
     assert detail.raw_image_urls == ['https://image-service-ht.project1content.com/path/p.jpg']
+
+
+@respx.mock
+async def test_search_forces_brazzers_live_subsite() -> None:
+    _token_head()
+    live = find_site('Brazzers Live')
+    assert live is not None
+    respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
+    ctx = SearchContext(title='cool scene', encoded='cool+scene', search_site='Brazzers Live', site_info=SITE)
+    results = await Project1ServiceClient().search(ctx)
+    cool = next(r for r in results if r.title == 'Cool Scene')
+    assert 'sub=Brazzers Live' in Project1ServiceClient().decode(cool.cur_id)
+
+
+@respx.mock
+async def test_detail_forced_subsite_overrides_tagline_and_collection() -> None:
+    _token_head()
+    respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
+    respx.get(url__startswith=f'{_API}/v1/actors').mock(return_value=httpx.Response(200, json={'result': []}))
+    detail = await Project1ServiceClient().fetch_scene_detail('777|scene|2021-03-04|sub=Brazzers Live', SITE)
+    assert detail is not None
+    assert detail.studio == 'Brazzers'  # network studio unchanged
+    assert detail.tagline == 'Brazzers Live'  # forced from the searched alias
+    assert detail.collections == ['Brazzers Live']

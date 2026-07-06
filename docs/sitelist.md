@@ -1103,7 +1103,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Bi Empire
   - Blacks On Moms
   - Brazzers
-    - Asses In Public
+    - Asses in Public
     - Baby Got Boobs
     - Big Butts like it big
     - Big Tits at School
@@ -1112,8 +1112,9 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Big Tits in Uniform
     - Big Wet Butts
     - Brazzers Exxtra
+    - Brazzers Live
     - Busty and Real
-    - Busty Z
+    - Bustyz
     - Butts and Blacks
     - CFNM Clothed Female Male Nude
     - Day With a Pornstar

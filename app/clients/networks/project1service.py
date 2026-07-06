@@ -21,6 +21,9 @@ from app.utils.processors.title_case import title_case
 _DEFAULT_API_BASE = 'https://site-api.project1service.com'
 _DEFAULT_IMAGE_BASE = 'https://image-service-ht.project1content.com/'
 _SEARCH_TYPES = ('scene', 'movie', 'serie', 'trailer')
+# Sub-brands the upstream API doesn't return a collection for; force the
+# tagline/collection from the searched alias so they don't collapse to the network.
+_FORCED_SUBSITES = {'brazzerslive': 'Brazzers Live'}
 _TOKEN_CACHE: dict[str, tuple[str, int]] = {}
 _TOKEN_LOCKS: dict[str, asyncio.Lock] = {}
 _INSTANCE_RE = re.compile(r'instance_token=([^;]+)')
@@ -123,6 +126,7 @@ class Project1ServiceClient(Client):
             q = q.replace(first_word, '', 1).strip()
 
         match_target_key = _normalize(ctx.search_site or ctx.site_info.name)
+        forced_sub = _FORCED_SUBSITES.get(match_target_key)
         results: list[SearchResult] = []
         for type_ in _SEARCH_TYPES:
             params = f'type={type_}&id={quote(scene_id)}' if scene_id and not q else f'type={type_}&search={quote(q)}'
@@ -153,6 +157,8 @@ class Project1ServiceClient(Client):
                     score -= 10
 
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
+                if forced_sub:
+                    composite += f'|sub={forced_sub}'
                 results.append(
                     build_search_result(
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
@@ -171,6 +177,7 @@ class Project1ServiceClient(Client):
         parts = payload.split('|')
         scene_id = parts[0]
         scene_type = parts[1] if len(parts) > 1 else 'scene'
+        forced_sub = next((p[len('sub=') :] for p in parts[2:] if p.startswith('sub=')), None)
         if not scene_id:
             return None
         token = await self._get_token(site)
@@ -195,6 +202,9 @@ class Project1ServiceClient(Client):
         has_sub = bool(sub_site) and _normalize(sub_site) != _normalize(studio)
         tagline = sub_site if has_sub else None
         collections = [sub_site] if has_sub else [studio]
+        if forced_sub:  # searched alias the API doesn't tag with its own collection
+            tagline = forced_sub
+            collections = [forced_sub]
 
         release_date = iso_date(detail['dateReleased']) if detail.get('dateReleased') else None
         genres = [g for g in ((t.get('name') or '').strip() for t in (detail.get('tags') or []) if isinstance(t, dict)) if g]
@@ -223,7 +233,7 @@ class Project1ServiceClient(Client):
             try:
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
-                providers = [site.name, sub_site]
+                providers = [site.name, forced_sub or sub_site]
                 data18_url = await self._data18.find_scene_url(slugify(title.replace("'", '')), title, providers, date_obj)
                 if data18_url:
                     logger.info(site.name, f'data18 enrichment match: {data18_url}')
