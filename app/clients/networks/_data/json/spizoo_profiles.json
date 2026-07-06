@@ -3,10 +3,7 @@
     "actor_container": "div[h2[contains(.,\"Pornstars\")]]//a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-thumbnail\")]//img",
-        "src"
-      ]
+      ["div[contains(@class,\"model-thumbnail\")]//img", "src"]
     ],
     "search_date": "",
     "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
@@ -16,14 +13,8 @@
     "actor_container": "*[h3[contains(.,\"Pornstars:\")]]/a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src"
-      ],
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src0_1x"
-      ]
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src"],
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]
     ],
     "search_date": "div[h4[contains(.,\"date\")]]",
     "search_results": "div[contains(@class,\"model-update\") and contains(@class,\"row\")]",
@@ -33,10 +24,7 @@
     "actor_container": "div[h2[contains(.,\"Girls\")]]//a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-thumbnail\")]//img",
-        "src"
-      ]
+      ["div[contains(@class,\"model-thumbnail\")]//img", "src"]
     ],
     "search_date": "",
     "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
@@ -46,10 +34,7 @@
     "actor_container": "div[h2[contains(.,\"Pornstars\")]]//a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-thumbnail\")]//img",
-        "src"
-      ]
+      ["div[contains(@class,\"model-thumbnail\")]//img", "src"]
     ],
     "search_date": "",
     "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
@@ -59,10 +44,7 @@
     "actor_container": "div[h2[contains(.,\"GIRLS\")]]//a",
     "detail_title": "h2",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-thumbnail\")]//img",
-        "src"
-      ]
+      ["div[contains(@class,\"model-thumbnail\")]//img", "src"]
     ],
     "search_date": "",
     "search_results": "div[contains(@class,\"result-content\") and contains(@class,\"row\")]",
@@ -72,14 +54,8 @@
     "actor_container": "div[h3[contains(.,\"Girls\")]]/a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src"
-      ],
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src0_1x"
-      ]
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src"],
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]
     ],
     "search_date": "div[h4[contains(.,\"date\")]]",
     "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
@@ -89,14 +65,8 @@
     "actor_container": "*[h3[contains(.,\"Pornstars:\")]]/a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src"
-      ],
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src0_1x"
-      ]
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src"],
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]
     ],
     "search_date": "div[h4[contains(.,\"date\")]]//p",
     "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
@@ -106,14 +76,8 @@
     "actor_container": "div[h3[contains(.,\"playmates\")]]/a",
     "detail_title": "h1",
     "model_photo": [
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src"
-      ],
-      [
-        "div[contains(@class,\"model-bio-pic\")]//img",
-        "src0_1x"
-      ]
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src"],
+      ["div[contains(@class,\"model-bio-pic\")]//img", "src0_1x"]
     ],
     "search_date": "div[h4[contains(.,\"date\")]]//p",
     "search_results": "div[contains(@class,\"category_listing_wrapper_updates\")]",
