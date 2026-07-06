@@ -36,7 +36,6 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
     'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
-    'vs': 'vs.',
 }
 
 _SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
@@ -84,6 +83,10 @@ _SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
 _SEQ_SEP_RE = re.compile(rf'(?<=\S)(?:\s*[:,–—-]\s*|\s+){_SEQ_PHRASE}', re.IGNORECASE)
 # A spaced initialism run of 3+ letters (B. O. O. T. Y); trailing period optional.
 _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A-Za-z])')
+# "vs"/"vs."/"vs.." → "vs." (idempotent; case-preserving).
+_VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
+# Possessive of a word already ending in s drops the extra s: "Jewels's" → "Jewels'".
+_POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
 
 _T2D = text2digits.Text2Digits()
 
@@ -296,6 +299,10 @@ class _TitleCaseEngine:
         output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
         # Collapse a spaced initialism of 3+ letters: "A. B. C" → "A.B.C" (keeps any source trailing period)
         output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
+        # "vs"/"vs." → "vs."
+        output = _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
+        # Possessive of an s-ending word drops the trailing s: "Jewels's" → "Jewels'"
+        output = _POSSESSIVE_S_RE.sub("'", output)
         # Fix "a/A" → "an/An" before vowel-initial words
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
         # Honorific titles get a trailing period (Mr -> Mr.); skip if one already follows

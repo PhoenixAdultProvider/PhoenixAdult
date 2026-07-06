@@ -79,9 +79,21 @@ def test_title_case_size_code() -> None:
 
 def test_title_case_manual_correction() -> None:
     assert title_case('cant stop') == "Can't Stop"
-    assert title_case('alice vs bob') == 'Alice vs. Bob'
     assert title_case('her b day surprise') == 'Her B-Day Surprise'  # two-word form
     assert title_case('bday party') == 'B-Day Party'  # no-space form via MANUAL_CORRECTIONS
+
+
+def test_title_case_vs_normalizes_to_one_period() -> None:
+    assert title_case('alice vs bob') == 'Alice vs. Bob'
+    assert title_case("England vs. Danny's Schlong") == "England vs. Danny's Schlong"  # no double period
+    assert title_case("England vs.. Danny's Schlong") == "England vs. Danny's Schlong"
+
+
+def test_title_case_possessive_s_ending() -> None:
+    assert title_case("Jewels's Jaw-Dropping Anal") == "Jewels' Jaw-Dropping Anal"
+    assert title_case("a girl's best friend") == "A Girl's Best Friend"  # singular non-s untouched
+    assert title_case("the girls' night") == "The Girls' Night"  # plural possessive untouched
+    assert title_case("it's complicated") == "It's Complicated"  # contraction untouched
 
 
 def test_title_case_honorifics_get_a_period() -> None:
