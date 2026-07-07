@@ -75,6 +75,39 @@ async def test_stop_on_empty_page() -> None:
     assert [r.scene_url for r in results] == ['a', 'b']
 
 
+async def test_should_continue_stops_after_page() -> None:
+    client = Client()
+    fetched: list[int] = []
+
+    async def fetch_rows(page: int) -> list[str]:
+        fetched.append(page)
+        return ['perfect'] if page == 1 else ['other']
+
+    results = await client.paginate_search(
+        fetch_rows=fetch_rows,
+        build_row=lambda r: SearchResult(title=r, scene_url=r, cur_id=r, score=100 if r == 'perfect' else 1),
+        max_pages=5,
+        should_continue=lambda out: not any((r.score or 0) >= 100 for r in out),
+    )
+    assert fetched == [1]  # perfect match on page 1 halts pagination
+    assert [r.scene_url for r in results] == ['perfect']
+
+
+async def test_dedup_false_keeps_shared_scene_url() -> None:
+    client = Client()
+
+    async def fetch_rows(page: int) -> list[str] | None:
+        return ['a', 'b'] if page == 1 else None
+
+    results = await client.paginate_search(
+        fetch_rows=fetch_rows,
+        build_row=lambda r: SearchResult(title=r, scene_url='shared', cur_id=r),
+        max_pages=2,
+        dedup=False,
+    )
+    assert [r.cur_id for r in results] == ['a', 'b']  # shared scene_url not collapsed when dedup is off
+
+
 async def test_custom_dedup_key() -> None:
     client = Client()
 

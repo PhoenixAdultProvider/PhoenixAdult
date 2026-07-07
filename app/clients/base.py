@@ -247,15 +247,19 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         max_pages: int,
         full_page: int | None = None,
         stop_on_empty_page: bool = False,
+        should_continue: Callable[[list[SearchResult]], bool] | None = None,
+        dedup: bool = True,
         dedup_key: Callable[[SearchResult], str] | None = None,
     ) -> list[SearchResult]:
         """Drive a paged search so clients don't re-implement the loop each time.
         ``fetch_rows(page)`` returns that page's raw rows (or None to stop, e.g. a
         failed fetch); ``build_row`` maps one row to a SearchResult (or None to skip).
-        Results are deduped by ``dedup_key`` (default scene_url). Pagination stops
-        after ``max_pages``, when ``full_page`` is set and a page returns fewer than
-        that many raw rows (a short final page), or when ``stop_on_empty_page`` is set
-        and a page maps to zero results."""
+        Results are deduped by ``dedup_key`` (default scene_url) unless ``dedup`` is
+        False (for clients whose identity lives in cur_id with a shared scene_url).
+        Pagination stops after ``max_pages``; when ``full_page`` is set and a page
+        returns fewer than that many raw rows; when ``stop_on_empty_page`` is set and
+        a page maps to zero results; or when ``should_continue`` is given and returns
+        False after a page (e.g. a perfect match has been collected)."""
         key = dedup_key or (lambda r: r.scene_url or '')
         seen: set[str] = set()
         out: list[SearchResult] = []
@@ -269,14 +273,17 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                 if result is None:
                     continue
                 built += 1
-                k = key(result)
-                if not k or k in seen:
-                    continue
-                seen.add(k)
+                if dedup:
+                    k = key(result)
+                    if not k or k in seen:
+                        continue
+                    seen.add(k)
                 out.append(result)
             if stop_on_empty_page and built == 0:
                 break
             if full_page is not None and len(rows) < full_page:
+                break
+            if should_continue is not None and not should_continue(out):
                 break
         return out
 

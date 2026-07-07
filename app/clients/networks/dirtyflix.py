@@ -56,41 +56,47 @@ class DirtyFlixClient(Client):
 
         search_base = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path
         title_xp = cfg['search_title_xp']
-        results: list[SearchResult] = []
-        for page in range(1, int(cfg['search_pages']) + 1):
+        page_url = ''
+
+        async def fetch_rows(page: int) -> list[Any] | None:
+            nonlocal page_url
             page_url = search_base if page == 1 else f'{search_base}{page}'
             loaded = await self.fetch_and_load(page_url, FetchCtx(capture=ctx.capture), f'GET {page_url}')
-            if not loaded:
-                break
-            for row in loaded['sel'].xpath('//div[contains(@class,"movie-block")]'):
-                img_src = first_attr(row, '(.//li//img)[1]/@src')
-                m = _SCENE_ID_RE.search(img_src)
-                if not m:
-                    continue
-                scene_id = m.group(1)
-                title = (row.xpath(f'({title_xp})[1]').xpath('string(.)').get() or '').strip()
-                if not title:
-                    continue
-                date_iso = date_by_scene_id.get(scene_id, '')
-                if scene_id in actor_scene_ids:
-                    score: float = 100
-                elif ctx.search_date and date_iso:
-                    score = date_distance_score(ctx.search_date, date_iso)
-                else:
-                    score = title_distance_score(ctx.title, title)
-                results.append(
-                    SearchResult(
-                        title=title,
-                        scene_url=page_url,
-                        cur_id=self.encode(f'{scene_id}|{date_iso}|{page_url}'),
-                        release_date=date_iso or ctx.search_date or None,
-                        display_date=date_iso or None,
-                        score=score,
-                    )
-                )
-            if any((r.score or 0) >= 100 for r in results):
-                break
-        return results
+            return list(loaded['sel'].xpath('//div[contains(@class,"movie-block")]')) if loaded else None
+
+        def build_row(row: Any) -> SearchResult | None:
+            img_src = first_attr(row, '(.//li//img)[1]/@src')
+            m = _SCENE_ID_RE.search(img_src)
+            if not m:
+                return None
+            scene_id = m.group(1)
+            title = (row.xpath(f'({title_xp})[1]').xpath('string(.)').get() or '').strip()
+            if not title:
+                return None
+            date_iso = date_by_scene_id.get(scene_id, '')
+            if scene_id in actor_scene_ids:
+                score: float = 100
+            elif ctx.search_date and date_iso:
+                score = date_distance_score(ctx.search_date, date_iso)
+            else:
+                score = title_distance_score(ctx.title, title)
+            return SearchResult(
+                title=title,
+                scene_url=page_url,
+                cur_id=self.encode(f'{scene_id}|{date_iso}|{page_url}'),
+                release_date=date_iso or ctx.search_date or None,
+                display_date=date_iso or None,
+                score=score,
+            )
+
+        # No dedup: scene_url is the shared page URL; identity lives in cur_id.
+        return await self.paginate_search(
+            fetch_rows=fetch_rows,
+            build_row=build_row,
+            max_pages=int(cfg['search_pages']),
+            dedup=False,
+            should_continue=lambda results: not any((r.score or 0) >= 100 for r in results),
+        )
 
     # ── Detail (search-page-as-detail: re-find the row by sceneID) ──────────────
 
