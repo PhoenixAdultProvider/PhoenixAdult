@@ -109,7 +109,7 @@ class Project1ServiceClient(Client):
         scene_id: str | None = None
         q = ctx.title.strip()
         first_word = q.split()[0] if q.split() else ''
-        if first_word.isdigit():
+        if first_word.isdigit() and int(first_word) >= 1000000:
             scene_id = first_word
             q = q.replace(first_word, '', 1).strip()
 
