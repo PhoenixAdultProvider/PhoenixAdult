@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _TITLE_XP = '//div[@id="body-player-container"]//div//div[contains(@class,"tour-video-title")]'
@@ -23,12 +23,10 @@ class PubaClient(Client):
         if ctx.scene_id:
             candidates.append(f'{stem}show_video.php?galid={ctx.scene_id}')
         host = urlsplit(ctx.site_info.base_url).hostname or ''
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch'):
             for url in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
                 if 'show_video' in url and 'index' not in url and url not in candidates:
                     candidates.append(url)
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         for scene_url in candidates:

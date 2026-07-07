@@ -11,6 +11,7 @@ from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, slugify
 from app.utils.helpers.html_helpers import strip_tags
+from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 
 _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
@@ -136,7 +137,7 @@ class ReptyleClient(Client):
             raw_images.append(scene_json['img'])
 
         if site.scraper_config.data18_enrichment and env.data18_enabled:
-            try:
+            with best_effort(site.name, 'data18 enrichment'):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 sid = scene_json.get('id')
@@ -148,8 +149,6 @@ class ReptyleClient(Client):
                     for u in await self._data18.fetch_images(data18_url):
                         if u not in raw_images:
                             raw_images.append(u)
-            except Exception as err:  # noqa: BLE001 - enrichment is best-effort
-                logger.warn(site.name, f'data18 enrichment failed: {err}')
 
         has_sub = bool(sub_site) and sub_site != site.name
         return SceneDetail(

@@ -8,7 +8,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, Sce
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 _PAGE_DATA_URL = 'https://netvideogirls.com/page-data/home/page-data.json'
@@ -43,11 +43,9 @@ class NVGClient(Client):
 
         urls: list[str] = []
         if web_search_available():
-            try:
+            with best_effort('Net Video Girls', 'webSearch', level='debug'):
                 found = await web_search(SearchOptions(query=cast_query or ctx.title, site=urlparse(base).netloc, num=10))
                 urls = [u for u in found if '/tag/' not in u and '/page/' not in u and '/category/' not in u]
-            except Exception as err:  # noqa: BLE001 - web search is best-effort; fall back to page-data
-                logger.debug('Net Video Girls', f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
 

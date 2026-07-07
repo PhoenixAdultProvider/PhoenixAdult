@@ -9,7 +9,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _SCENE_ID_RE = re.compile(r'(?:(?<=\dpp/)|(?<=\dbbwd/)|(?<=\dhsp/)|(?<=\dbbbj/)|(?<=\dpatp/)|(?<=\dftf/)|(?<=\dbgb/))\d+(?=/)')
@@ -43,15 +43,13 @@ class PlumperPassClient(Client):
         if ctx.scene_id:
             ref_urls.append(refstat(ctx.scene_id))
         host = urlsplit(ctx.site_info.base_url).hostname or ''
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch'):
             for url in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
                 m = _SCENE_ID_RE.search(url)
                 if m and 'content' in url:
                     ref = refstat(m.group(0))
                     if ref not in ref_urls:
                         ref_urls.append(ref)
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         for ref_url in ref_urls:

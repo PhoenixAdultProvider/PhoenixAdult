@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'New Sensations'
@@ -23,7 +23,7 @@ class NewSensationsClient(Client):
         candidates: list[str] = [f'{stem}updates/{slug}.html', f'{stem}updates/{slug}-.html', f'{stem}updates/{slug}-4k.html', f'{stem}dvds/{slug}.html']
         seen = set(candidates)
         if web_search_available():
-            try:
+            with best_effort(ctx.site_info.name, 'webSearch'):
                 found = await web_search(SearchOptions(query=ctx.title, site=urlparse(ctx.site_info.base_url).netloc, num=10))
                 for url in found:
                     is_scene = '/updates/' in url or '/dvds/' in url or '/scenes/' in url
@@ -31,8 +31,6 @@ class NewSensationsClient(Client):
                     if is_scene and is_tour and url not in seen:
                         seen.add(url)
                         candidates.append(url)
-            except Exception as err:  # noqa: BLE001 - web search is best-effort
-                logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         for scene_url in candidates:

@@ -13,6 +13,7 @@ from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, Sea
 from app.config import config
 from app.config.env import env
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 
 _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
@@ -321,7 +322,7 @@ class ManualNfoClient(Client):
             images.append(fanart)
 
         if scene.site.scraper_config.data18_enrichment and env.data18_enabled and nfo.title:
-            try:
+            with best_effort(scene.site.name, 'data18 enrichment'):
                 self._data18 = self._data18 or Data18Client()
                 date_iso = _nfo_release_date(nfo)
                 date_obj = datetime.fromisoformat(date_iso) if date_iso else None
@@ -332,8 +333,6 @@ class ManualNfoClient(Client):
                     for u in await self._data18.fetch_images(data18_url):
                         if u not in images:
                             images.append(u)
-            except Exception as err:  # noqa: BLE001 - enrichment is best-effort
-                logger.warn(scene.site.name, f'data18 enrichment failed: {err}')
         return images
 
 

@@ -15,6 +15,7 @@ from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.single_flight import SingleFlight
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, slugify, title_distance_score
+from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
 
@@ -83,7 +84,7 @@ class Project1ServiceClient(Client):
 
         async def _fetch() -> tuple[str, float] | None:
             token: str | None = None
-            try:
+            with best_effort(site.name, 'token HEAD'):
                 r = await self.http.head(site.base_url)
                 token = r.cookies.get('instance_token')
                 if not token:
@@ -92,8 +93,6 @@ class Project1ServiceClient(Client):
                         if m:
                             token = m.group(1)
                             break
-            except Exception as err:  # noqa: BLE001 - token fetch is best-effort
-                logger.warn(site.name, f'token HEAD failed: {err}')
             if not token:
                 return None  # keep serving any prior token
             return token, float(_parse_jwt_exp(token) or int(time.time()) + 3600)
@@ -219,7 +218,7 @@ class Project1ServiceClient(Client):
                     raw_images.append(u)
 
         if site.scraper_config.data18_enrichment and env.data18_enabled:
-            try:
+            with best_effort(site.name, 'data18 enrichment'):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 providers = [site.name, forced_sub or sub_site]
@@ -229,8 +228,6 @@ class Project1ServiceClient(Client):
                     for u in await self._data18.fetch_images(data18_url):
                         if u not in raw_images:
                             raw_images.append(u)
-            except Exception as err:  # noqa: BLE001 - enrichment is best-effort
-                logger.warn(site.name, f'data18 enrichment failed: {err}')
 
         return SceneDetail(
             title=title,

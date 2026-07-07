@@ -10,7 +10,7 @@ from app.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _RELEASE_DATE_XP = '(//span[contains(.,"Release date")])[1]/following-sibling::a//b[1]/text()'
@@ -64,19 +64,15 @@ class Data18ScenesClient(Client):
             scene_urls.add(f'{base}/scenes/{scene_id}')
 
         candidates = []
-        try:
+        with best_effort(ctx.site_info.name, 'find_candidates'):
             candidates = await self._data18.find_candidates(text or ctx.title, 'scenes', max_pages=50)
-        except Exception as err:  # noqa: BLE001 - discovery failure is non-fatal
-            logger.warn(ctx.site_info.name, f'find_candidates failed: {err}')
 
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
             host = urlsplit(ctx.site_info.base_url).hostname or ''
             for u in await web_search(SearchOptions(query=text or ctx.title, site=host, num=10)):
                 cleaned = u.replace('/content/', '/scenes/').replace('http:', 'https:')
                 if '/scenes/' in cleaned and '.html' not in cleaned:
                     scene_urls.add(cleaned)
-        except Exception as err:  # noqa: BLE001
-            logger.debug(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         seen: set[str] = set()

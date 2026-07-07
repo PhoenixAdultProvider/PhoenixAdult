@@ -9,7 +9,7 @@ from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, Sea
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 
@@ -48,19 +48,15 @@ class Data18MoviesClient(Client):
             movie_urls.add(f'{base}/movies/{scene_id}')
 
         candidates = []
-        try:
+        with best_effort(ctx.site_info.name, 'find_candidates'):
             candidates = await self._data18.find_candidates(text or ctx.title, 'movies')
-        except Exception as err:  # noqa: BLE001
-            logger.warn(ctx.site_info.name, f'find_candidates failed: {err}')
 
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
             host = urlsplit(ctx.site_info.base_url).hostname or ''
             for u in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
                 cleaned = u.split('-')[0].replace('http:', 'https:')
                 if '/movies/' in cleaned and '.html' not in cleaned:
                     movie_urls.add(cleaned)
-        except Exception as err:  # noqa: BLE001
-            logger.debug(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         seen: set[str] = set()

@@ -11,7 +11,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneCo
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _SCENE_GRID_XP = '//div[contains(@class,"item-grid") and contains(@class,"item-grid-scene")]'
@@ -64,13 +64,11 @@ class Data18EmpireClient(Client):
                 for href in search_page['sel'].xpath('//a[contains(@class,"boxcover")]/@href').getall():
                     if 'movies' in href:
                         add_movie(href if href.startswith('http') else base + href)
-            try:
+            with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
                 host = urlsplit(ctx.site_info.base_url).hostname or ''
                 for u in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
                     if '/movies/' in u and '.html' not in u:
                         add_movie(u)
-            except Exception as err:  # noqa: BLE001
-                logger.debug(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         for movie_url in movie_urls:

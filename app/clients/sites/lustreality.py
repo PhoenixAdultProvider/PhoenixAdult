@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _DATE_XP = (
@@ -21,12 +21,10 @@ class LustRealityClient(Client):
         base = ctx.site_info.base_url.rstrip('/')
         candidates = [f'{base}{ctx.site_info.search_path}{slugify(ctx.title)}']
         host = urlsplit(ctx.site_info.base_url).hostname or ''
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch'):
             for url in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
                 if '/scene/' in url and url not in candidates:
                     candidates.append(url)
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
 
         results: list[SearchResult] = []
         for scene_url in candidates:

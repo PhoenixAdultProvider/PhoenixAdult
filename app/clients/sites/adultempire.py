@@ -11,6 +11,7 @@ from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import title_case
@@ -120,12 +121,10 @@ class AdultEmpireClient(Client):
             token = env.adult_empire_login_token
             if token:
                 self.http.cookies.set('etoken', token, domain='www.adultempire.com', path='/')
-            try:
+            with best_effort('AdultEmpire', 'age-confirm handshake', level='debug'):
                 await self.http.get(f'{base}/')  # prime: receive the guest etoken cookie
                 await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
                 logger.debug('AdultEmpire', f'age-confirm handshake done; jar={list(self.http.cookies.keys())}')
-            except Exception as err:  # noqa: BLE001 - best-effort; proceed regardless
-                logger.debug('AdultEmpire', f'age-confirm handshake failed: {err}')
             self._age_confirmed = True
 
     async def _load(self, url: str, capture: list[Any] | None, label: str) -> Any | None:
@@ -168,7 +167,7 @@ class AdultEmpireClient(Client):
                     url = f'{base}/{url_id}'
                     if url not in movie_urls:
                         movie_urls[url] = _result_type_for(href)
-            try:
+            with best_effort(name, 'webSearch', level='debug'):
                 host = urlsplit(ctx.site_info.base_url).hostname or ''
                 web_urls = await web_search(SearchOptions(query=ctx.title, site=host, num=10))
                 added = 0
@@ -179,8 +178,6 @@ class AdultEmpireClient(Client):
                             movie_urls[url] = ''
                             added += 1
                 logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {added} new movie URL(s)')
-            except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-                logger.debug(name, f'webSearch threw: {err}')
 
         logger.debug(name, f'movie URLs to process: {len(movie_urls)}')
         results: list[SearchResult] = []

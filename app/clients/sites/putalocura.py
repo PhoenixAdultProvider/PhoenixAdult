@@ -8,7 +8,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
-from app.utils.logging.logger import logger
+from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _POSTER_RE = re.compile(r'posterImage:\s*"([^"]*)"')
@@ -34,10 +34,8 @@ class PutalocuraClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         host = urlsplit(ctx.site_info.base_url).hostname or ''
         found: list[str] = []
-        try:
+        with best_effort(ctx.site_info.name, 'webSearch'):
             found = await web_search(SearchOptions(query=ctx.title, site=host, num=10, language='enes'))
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
 
         candidates: list[str] = []
         for raw in found:
