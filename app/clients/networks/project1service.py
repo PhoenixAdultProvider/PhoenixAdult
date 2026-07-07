@@ -139,6 +139,7 @@ class Project1ServiceClient(Client):
                     score = date_distance_score(ctx.search_date, release_date)
                 else:
                     score = title_distance_score(q, title)
+
                 if type_ == 'trailer':
                     score -= 10
                 if sub_site and _normalize(sub_site) != match_target_key:

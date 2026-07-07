@@ -190,16 +190,24 @@ def css_bg_image(style: str | None) -> str:
 
 
 def sceneid_distance_score(query: str, title: str) -> int:
-    return 100 - compare_string(query, title).levenshtein
+    score = 100 - compare_string(query, title).levenshtein
+    logger.debug('Scene ID Distance Score', f'Query: {query}, Title: {title}, Score: {score}')
+    return score
 
 
 def title_distance_score(query: str, title: str) -> int:
     CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
-    return 100 - compare_string(CLEAN_RE.sub('', query), CLEAN_RE.sub('', title)).levenshtein
+    cleaned_query = CLEAN_RE.sub('', query)
+    cleaned_title = CLEAN_RE.sub('', title)
+    score = 100 - compare_string(cleaned_query, cleaned_title).levenshtein
+    logger.debug('Title Distance Score', f'Cleaned Query: {cleaned_query}, Cleaned Title: {cleaned_title}, Score: {score}')
+    return score
 
 
 def date_distance_score(search_date: str, release_date: str) -> int:
-    return 100 - compare_string(search_date, release_date).levenshtein
+    score = 100 - compare_string(search_date, release_date).levenshtein
+    logger.debug('Date Distance Score', f'Search Date: {search_date}, Release Date: {release_date}, Score: {score}')
+    return score
 
 
 def build_search_result(
