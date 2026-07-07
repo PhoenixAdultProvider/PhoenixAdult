@@ -64,3 +64,16 @@ async def test_factory_none_serves_stale_then_none() -> None:
     assert await sf.get('k', unavailable) is None  # no prior value -> None
     assert await sf.get('k', ok) == 'cached'
     assert await sf.get('k', unavailable) == 'cached'  # refresh failed -> serve stale
+
+
+async def test_serve_stale_false_returns_none_on_failure() -> None:
+    sf: SingleFlight[str, str] = SingleFlight(serve_stale=False)
+
+    async def ok() -> tuple[str, float]:
+        return 'cached', 0.0  # expires immediately
+
+    async def unavailable() -> tuple[str, float] | None:
+        return None
+
+    assert await sf.get('k', ok) == 'cached'
+    assert await sf.get('k', unavailable) is None  # expired + refresh failed -> None, no stale

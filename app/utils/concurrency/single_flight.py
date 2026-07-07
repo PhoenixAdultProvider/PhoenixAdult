@@ -7,10 +7,12 @@ from collections.abc import Awaitable, Callable
 
 class SingleFlight[K, V]:
     """Coalesce concurrent async misses on a key and cache each value until its own
-    expiry. `factory` returns (value, expires_at_epoch) to cache, or None to reuse
-    the last value even when expired (serve-stale-on-refresh-failure)."""
+    expiry. `factory` returns (value, expires_at_epoch) to cache, or None on failure.
+    With serve_stale (default), a None result reuses the last value even when expired;
+    with serve_stale=False, a None result is returned as-is (no stale-serving)."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, serve_stale: bool = True) -> None:
+        self._serve_stale = serve_stale
         self._cache: dict[K, tuple[V, float]] = {}
         self._locks: dict[K, asyncio.Lock] = {}
 
@@ -24,7 +26,7 @@ class SingleFlight[K, V]:
                 return hit[0]
             produced = await factory()
             if produced is None:
-                return hit[0] if hit else None
+                return hit[0] if hit and self._serve_stale else None
             self._cache[key] = produced
             return produced[0]
 
