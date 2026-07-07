@@ -50,6 +50,7 @@ async def test_search() -> None:
     assert cool.thumb_url == 'https://image-service-ht.project1content.com/path/p.jpg'
     assert cool.release_date == '2021-03-04'
     assert cool.display_date == '2021-03-04'
+    assert cool.subsite == 'Pornstars Like It Big'  # labels the result with the sub-brand, not the network
 
 
 @respx.mock
@@ -94,6 +95,7 @@ async def test_search_forces_brazzers_live_subsite() -> None:
     results = await Project1ServiceClient().search(ctx)
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert 'sub=Brazzers Live' in Project1ServiceClient().decode(cool.cur_id)
+    assert cool.subsite == 'Brazzers Live'  # forced alias labels the result too
 
 
 @respx.mock

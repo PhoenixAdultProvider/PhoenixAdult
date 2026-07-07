@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.clients.base import SearchResult
+from app.mappers.metadata_mapper import MetadataMapper
 from app.registry import find_site, normalize_site_key
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 
@@ -31,3 +33,15 @@ def test_rating_key_site_resolves_back_through_registry() -> None:
     parsed = parse_rating_key(to_rating_key('YWJj', site.name))
     assert parsed is not None
     assert find_site(parsed['site_name'] or '') is site
+
+
+def test_match_result_labels_with_subsite_when_present() -> None:
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj', subsite='Big Tits at School')
+    result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x')
+    assert result.title.endswith('[Big Tits at School]')
+
+
+def test_match_result_falls_back_to_master_site_without_subsite() -> None:
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')
+    result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x')
+    assert result.title.endswith('[Brazzers]')

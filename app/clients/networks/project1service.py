@@ -152,6 +152,7 @@ class Project1ServiceClient(Client):
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
                 if forced_sub:
                     composite += f'|sub={forced_sub}'
+                result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None)
                 results.append(
                     build_search_result(
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
@@ -162,6 +163,7 @@ class Project1ServiceClient(Client):
                         score=score,
                         cur_id=pack_cur_id([composite]),
                         thumb_url=_best_image_url(r, _DEFAULT_IMAGE_BASE),
+                        subsite=result_sub,
                     )
                 )
         return results

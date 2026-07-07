@@ -68,6 +68,7 @@ class SearchResult:
     display_date: str | None = None
     score: float | None = None
     search_url: str | None = None
+    subsite: str | None = None
 
 
 @dataclass
@@ -293,6 +294,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         date = await self.fetch_search_date(source, loaded)
         score = await self.fetch_search_score(source, loaded)
         thumb_url = await self.fetch_search_thumb_url(source, loaded)
+        subsite = await self.fetch_search_subsite(source, loaded)
         return [
             build_search_result(
                 title=title,
@@ -302,6 +304,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                 search_date=loaded.ctx.search_date,
                 score=score,
                 thumb_url=thumb_url,
+                subsite=subsite,
                 cur_id=pack_cur_id([p for p in (scene_url, date) if p]),
             )
         ]
@@ -319,6 +322,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def fetch_search_thumb_url(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return None
+
+    async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
         return None
 
     # ── Shared dedup helpers ─────────────────────────────────────────────────────

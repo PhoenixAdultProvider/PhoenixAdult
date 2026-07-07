@@ -221,6 +221,7 @@ def build_search_result(
     cur_id: str | None = None,
     thumb_url: str | None = None,
     search_url: str | None = None,
+    subsite: str | None = None,
 ) -> SearchResult:
     from app.clients.base import SearchResult  # local import to avoid a cycle
 
@@ -245,6 +246,7 @@ def build_search_result(
         score=computed,
         thumb_url=thumb_url or None,
         search_url=search_url or None,
+        subsite=subsite or None,
     )
 
 

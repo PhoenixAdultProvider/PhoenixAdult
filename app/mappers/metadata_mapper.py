@@ -40,7 +40,8 @@ class MetadataMapper:
     ) -> PlexMatchResult:
         rating_key = to_rating_key(raw.cur_id, site_name, date)
         display_date = (raw.display_date or '').strip()
-        title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{site_name}]' + (f' {display_date}' if display_date else '')
+        label = raw.subsite or site_name  # sub-site when present, else the master site
+        title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{label}]' + (f' {display_date}' if display_date else '')
         return PlexMatchResult(
             type='movie',
             ratingKey=rating_key,
