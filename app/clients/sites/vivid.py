@@ -29,7 +29,8 @@ class VividClient(Client):
                     continue
                 seen.add(scene_url)
                 date = iso_date(hit['release_date']) if hit.get('release_date') else None
-                sub_site = ((hit.get('site') or {}).get('name') or '').strip() or 'DVD'
+                real_sub = ((hit.get('site') or {}).get('name') or '').strip()
+                sub_site = real_sub or 'DVD'  # 'DVD' sentinel packs into cur_id; not a display sub-site
                 poster = hit.get('placard_800') or ''
                 results.append(
                     build_search_result(
@@ -39,6 +40,7 @@ class VividClient(Client):
                         display_date=date,
                         search_date=ctx.search_date,
                         cur_id=pack_cur_id([scene_url, date or '', sub_site, poster]),
+                        subsite=real_sub or None,
                     )
                 )
         return results

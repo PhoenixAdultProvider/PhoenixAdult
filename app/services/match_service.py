@@ -8,7 +8,7 @@ from app.config.env import env
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMatchResponse
 from app.models.provider_info import ProviderInfo
-from app.registry import find_site
+from app.registry import canonical_site_display, find_site
 from app.services.scraper_router import ScraperRouter
 from app.utils.helpers.helpers import format_duration, title_distance_score
 from app.utils.logging.logger import logger
@@ -87,11 +87,20 @@ class MatchService:
 
         logger.info(provider.id, f'Search "{pieces.query}" on {site.name} → {len(raw_results)} result(s)')
 
+        filename_site = canonical_site_display(parsed.site_token)
         results = []
         for raw in raw_results:
             score = raw.score if raw.score is not None else title_distance_score(pieces.query, raw.title)
             results.append(
-                self._mapper.to_match_result(raw, site.name, score, provider.plex_identifier, raw.release_date or None, scraper_type=site.scraper_config.type)
+                self._mapper.to_match_result(
+                    raw,
+                    site.name,
+                    score,
+                    provider.plex_identifier,
+                    raw.release_date or None,
+                    scraper_type=site.scraper_config.type,
+                    filename_site=filename_site,
+                )
             )
         results.sort(key=lambda r: r.score or 0, reverse=True)
         for r in results:

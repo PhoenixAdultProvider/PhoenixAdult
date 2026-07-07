@@ -41,6 +41,7 @@ async def test_search() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].thumb_url == 'https://cdn/p.jpg'
+    assert results[0].subsite == 'Family Strokes'
     assert ReptyleClient().decode(results[0].cur_id) == f'777|moviesContent|{url}'
 
 

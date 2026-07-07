@@ -18,7 +18,7 @@ async def test_search_parses_scene_cards() -> None:
       <div class="scene">
         <a href="/scene/manojob/hand-job/">x</a>
         <h3 itemprop="name">Hand Job</h3>
-        <div class="card-footer"><a href="/scene/manojob/hand-job/">link</a></div>
+        <div class="card-footer"><a href="/scene/manojob/hand-job/">ManoJob</a></div>
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
@@ -26,6 +26,7 @@ async def test_search_parses_scene_cards() -> None:
     assert len(results) == 1
     assert results[0].title == 'Hand Job'
     assert results[0].scene_url == 'https://www.finishesthejob.com/scene/manojob/hand-job/'
+    assert results[0].subsite == 'ManoJob'  # sub-brand from the card-footer link text
 
 
 @respx.mock

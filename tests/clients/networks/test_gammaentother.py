@@ -58,6 +58,7 @@ async def test_search() -> None:
     _mock_common()
     results = await GammaEntOtherClient().search(_ctx())
     assert any(r.title == 'Cool Scene' for r in results)
+    assert next(r for r in results if r.title == 'Cool Scene').subsite == "Mommy's Girl"
     r = next(r for r in results if r.title == 'Cool Scene')
     # cur_id decodes to "123|scenes|2021-03-04"
     assert GammaEntOtherClient().decode(r.cur_id) == '123|scenes|2021-03-04'

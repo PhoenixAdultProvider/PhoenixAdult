@@ -80,6 +80,7 @@ class ReptyleClient(Client):
         cur, scene_type, scene_json = picked
         composite = f'{cur}|{scene_type}|{url}'
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
+        sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
         return [
             SearchResult(
                 title=scene_json.get('title') or '',
@@ -88,6 +89,7 @@ class ReptyleClient(Client):
                 thumb_url=scene_json.get('img'),
                 release_date=release_date or ctx.search_date or None,
                 display_date=release_date,
+                subsite=sub_site or None,
             )
         ]
 

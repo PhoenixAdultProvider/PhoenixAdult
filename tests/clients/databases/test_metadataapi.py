@@ -23,6 +23,7 @@ async def test_search() -> None:
     assert len(results) == 1
     assert results[0].title == 'Some Scene'
     assert results[0].scene_url == 'https://api.theporndb.net/scenes/sc1'
+    assert results[0].subsite == 'Brazzers'
 
 
 @respx.mock

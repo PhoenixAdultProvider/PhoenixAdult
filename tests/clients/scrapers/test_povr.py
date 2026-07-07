@@ -41,6 +41,7 @@ async def test_search_cards() -> None:
     assert len(results) == 1
     assert results[0].title == 'VR Encounter'
     assert results[0].scene_url == 'https://povr.com/scene/vr-encounter'
+    assert results[0].subsite == 'POVR Originals'
 
 
 @respx.mock

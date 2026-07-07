@@ -45,3 +45,15 @@ def test_match_result_falls_back_to_master_site_without_subsite() -> None:
     raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')
     result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x')
     assert result.title.endswith('[Brazzers]')
+
+
+def test_match_result_falls_back_to_filename_site_when_client_has_no_subsite() -> None:
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')  # client supplied no sub-site
+    result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Big Tits at School')
+    assert result.title.endswith('[Big Tits at School]')
+
+
+def test_match_result_client_subsite_beats_filename_site() -> None:
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj', subsite='Real Wife Stories')
+    result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Big Tits at School')
+    assert result.title.endswith('[Real Wife Stories]')

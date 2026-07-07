@@ -34,6 +34,9 @@ class WankzClient(Client):
         title_dist = compare_string(loaded.ctx.title.lower(), title.lower()).levenshtein
         return 80 - (site_dist * 8) // 10 + (20 - (title_dist * 2) // 10)
 
+    async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return (source.xpath('(.//div[contains(@class,"series-container")]//a[contains(@class,"sitename")])[1]').xpath('string(.)').get() or '').strip() or None
+
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:

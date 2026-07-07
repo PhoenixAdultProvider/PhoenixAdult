@@ -28,6 +28,7 @@ async def test_search() -> None:
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://wankz.com/v/7'
     assert results[0].score is not None and results[0].score > 0
+    assert results[0].subsite == 'Wankz TV'
 
 
 @respx.mock

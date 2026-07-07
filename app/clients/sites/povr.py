@@ -52,6 +52,7 @@ class POVRClient(Client):
                     search_date=ctx.search_date,
                     score=score,
                     cur_id=pack_cur_id([x for x in (url, sub_site) if x]),
+                    subsite=sub_site or None,
                 )
             )
         return results

@@ -36,12 +36,20 @@ class MetadataMapper:
         return proxy_url(url, config.base_url, referers, cookies)
 
     def to_match_result(
-        self, raw: SearchResult, site_name: str, score: float, plex_identifier: str, date: str | None = None, scraper_type: str | None = None
+        self,
+        raw: SearchResult,
+        site_name: str,
+        score: float,
+        plex_identifier: str,
+        date: str | None = None,
+        scraper_type: str | None = None,
+        filename_site: str | None = None,
     ) -> PlexMatchResult:
         rating_key = to_rating_key(raw.cur_id, site_name, date)
         display_date = (raw.display_date or '').strip()
-        label = raw.subsite or site_name  # sub-site when present, else the master site
+        label = raw.subsite or filename_site or site_name
         title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{label}]' + (f' {display_date}' if display_date else '')
+
         return PlexMatchResult(
             type='movie',
             ratingKey=rating_key,
@@ -121,7 +129,6 @@ class MetadataMapper:
         effective_date = detail.release_date or fallback_date
         year = _year_of(effective_date)
 
-        # Studio / tagline / collection tags get the canonical-or-title-cased form.
         studio = normalize_studio(detail.studio)
         tagline = normalize_studio(detail.tagline) if detail.tagline else detail.tagline
         collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
@@ -156,12 +163,10 @@ class MetadataMapper:
 
 
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
-    """Debug-log where each image in the served response points. Fires for both cached
-    and freshly-scraped responses; URLs pass through the redaction filter, so IP literals
-    are always scrubbed. People images use people_image_base(); poster/art use base_url.
-    At LOG_LEVEL=verbose it also dumps the full response JSON exactly as sent to Plex."""
+    """Debug-log where each image in the served response points."""
     logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
     logger.debug(label, f'people image base -> {people_image_base()}')
+
     for md in response.MediaContainer.Metadata:
         if md.thumb:
             logger.debug(label, f'thumb -> {md.thumb}')

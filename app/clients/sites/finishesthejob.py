@@ -45,6 +45,9 @@ class FinishesTheJobClient(Client):
         bad_subsite = _norm(sub_site) != _norm(loaded.site.name)
         return title_distance_score(loaded.ctx.title, title) - (10 if bad_subsite else 0)
 
+    async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return first_text(source, '(.//div[contains(@class,"card-footer")]//a)[1]') or None
+
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:

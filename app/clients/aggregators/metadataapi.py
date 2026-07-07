@@ -45,6 +45,7 @@ class MetadataAPIClient(Client):
                     query=ctx.title,
                     display_date=api_date(s.get('date')),
                     search_date=ctx.search_date,
+                    subsite=((s.get('site') or {}).get('name') or '').strip() or None,
                 )
             )
         return results

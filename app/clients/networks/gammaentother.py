@@ -78,6 +78,7 @@ class GammaEntOtherClient(Client):
                         release_date=release or ctx.search_date or None,
                         display_date=release or None,
                         score=score,
+                        subsite=sub_site or None,
                     )
                 )
         return results
