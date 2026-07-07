@@ -6,6 +6,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
+from app.utils.concurrency.coalescer import coalesce_future
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
@@ -65,9 +66,7 @@ class FAKingsClient(Client):
 
     def _load_model(self, scene: LoadedScene, url: str) -> asyncio.Future[dict[str, Any] | None]:
         cache: dict[str, asyncio.Future[dict[str, Any] | None]] = scene.extra['model_cache']
-        if url not in cache:
-            cache[url] = asyncio.ensure_future(self.fetch_and_load(url, None, f'GET {url} (model)'))
-        return cache[url]
+        return coalesce_future(cache, url, lambda: self.fetch_and_load(url, None, f'GET {url} (model)'))
 
     def _actor_refs(self, scene: LoadedScene) -> list[tuple[str, str]]:
         assert scene.sel is not None

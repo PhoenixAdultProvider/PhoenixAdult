@@ -11,6 +11,7 @@ import httpx2
 from PIL import Image
 
 from app.config.env import env
+from app.utils.concurrency.coalescer import Coalescer
 from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.http.headers import sanitize_header
 from app.utils.http.impersonate import impersonate_get_bytes
@@ -127,7 +128,7 @@ def _decode_dims(data: bytes) -> tuple[int, int]:
         return img.size
 
 
-_inflight: dict[str, asyncio.Task[ImageEntry]] = {}
+_coalesce: Coalescer[str, ImageEntry] = Coalescer()
 
 
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
@@ -135,15 +136,7 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
     if cached:
         return cached
     # Coalesce concurrent fetches of the same URL (metadata + /images probe the same set).
-    pending = _inflight.get(url)
-    if pending is not None:
-        return await asyncio.shield(pending)
-    task = asyncio.create_task(_fetch_image(url, configured_referers, configured_cookies, pinned))
-    _inflight[url] = task
-    try:
-        return await task
-    finally:
-        _inflight.pop(url, None)
+    return await _coalesce.run(url, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
 
 
 async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:

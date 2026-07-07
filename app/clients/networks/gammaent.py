@@ -6,6 +6,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
+from app.utils.concurrency.coalescer import coalesce_future
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_string
 
@@ -221,11 +222,8 @@ class GammaEntClient(Client):
 
     def _resolve_actors_cached(self, scene: LoadedScene) -> asyncio.Future[list[ActorResult]]:
         cache: dict[str, Any] = scene.extra if isinstance(scene.extra, dict) else {}
-        if 'actor_task' not in cache:
-            cache['actor_task'] = asyncio.ensure_future(self._resolve_actors(scene))
-            scene.extra = cache
-        task: asyncio.Future[list[ActorResult]] = cache['actor_task']
-        return task
+        scene.extra = cache
+        return coalesce_future(cache, 'actor_task', lambda: self._resolve_actors(scene))
 
     async def _resolve_actors(self, scene: LoadedScene) -> list[ActorResult]:
         assert scene.sel is not None
