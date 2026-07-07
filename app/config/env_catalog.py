@@ -18,7 +18,7 @@ DEFAULT_SEARCH_TITLE_TRASH = [
     'RARBG', 'COM', r'\d{3,4}x\d{3,4}', 'HEVC', r'H\d{3}', 'AVC', r'\dK',
     r'\d{3,4}p', 'TOWN.AG_', 'MP4', 'KLEENEX', 'SD', 'HD',
     'KTR', 'IEVA', 'WRB', 'NBQ', 'ForeverAloneDude', r'X\d{3}', 'SoSuMi',
-    'sexors', 'gush', '3dh', 'lr', 'int', 'WEB', 'WEBRip', 'BluRay', 'BDRip',
+    'sexors', 'gush', '3dh', 'lr', 'int', 'WEBRip', 'BluRay', 'BDRip',
     'HDRip', 'DVDRip', 'AAC', 'DDP', '10bit', 'HDR', 'REMUX', 'AV1',
 ]
 # fmt: on
