@@ -197,8 +197,8 @@ def sceneid_distance_score(query: str, title: str) -> int:
 
 def title_distance_score(query: str, title: str) -> int:
     CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
-    cleaned_query = CLEAN_RE.sub('', query)
-    cleaned_title = CLEAN_RE.sub('', title)
+    cleaned_query = CLEAN_RE.sub('', query).lower()
+    cleaned_title = CLEAN_RE.sub('', title).lower()
     score = 100 - compare_string(cleaned_query, cleaned_title).levenshtein
     logger.debug('Title Distance Score', f'Cleaned Query: {cleaned_query}, Cleaned Title: {cleaned_title}, Score: {score}')
     return score
