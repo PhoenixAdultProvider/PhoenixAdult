@@ -36,6 +36,7 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
     'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
+    'escandalo': 'Escándalo'
 }
 
 _SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {

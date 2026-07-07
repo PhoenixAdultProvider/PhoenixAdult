@@ -19,13 +19,13 @@ _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 _UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
-# Ported verbatim from networkReptyle.py:data18ManualMappings (functional config).
 DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '169646': 'thats-better-than-stealing-it-herfreshmanyear',
     '1313219': 'delicious-firsts-hussiepass',
     '1349311': 'thanksgiving-the-hijab-way-hijabhookups',
     '1341218': 'the-vamp-next-door-momswap',
     '1341212': 'home-for-the-holidays-momswap',
+    '1301931': 'live-and-on-location-brazzersexxtra',
 }
 
 

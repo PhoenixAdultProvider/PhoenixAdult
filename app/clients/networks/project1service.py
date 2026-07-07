@@ -47,6 +47,10 @@ def _normalize(s: str) -> str:
     return re.sub(r'\W', '', s).lower()
 
 
+def _normalize_title(s: str) -> str:
+    return re.sub(r'[^a-zA-Z0-9]', '', s).lower()
+
+
 def _service_url(upstream: str | None, base: str) -> str | None:
     if not upstream:
         return None
@@ -223,7 +227,9 @@ class Project1ServiceClient(Client):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 providers = [site.name, forced_sub or sub_site]
-                data18_url = await self._data18.find_scene_url(slugify(title.replace("'", '')), title, providers, date_obj)
+                sid = slugify(_normalize_title(title)) if title else None
+                mapping_id = (f'{sid}-{_normalize(sub_site)}' if sub_site else str(sid)) if sid is not None else None
+                data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
                 if data18_url:
                     logger.info(site.name, f'data18 enrichment match: {data18_url}')
                     for u in await self._data18.fetch_images(data18_url):
