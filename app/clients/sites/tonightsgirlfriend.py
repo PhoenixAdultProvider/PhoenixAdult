@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -24,41 +26,32 @@ class TonightsGirlfriendClient(Client):
             return []
         base = ctx.site_info.base_url.rstrip('/')
         path = ctx.site_info.search_path
-        results: list[SearchResult] = []
-        seen: set[str] = set()
 
-        for page in range(1, MAX_PAGES + 1):
-            search_url = f'{base}{path}{slug}/?p={page}'
-            loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search page {page} "{ctx.title}"')
-            if not loaded:
-                break
-            rows = list(loaded['sel'].xpath('//div[contains(@class,"panel-body")]'))
-            for row in rows:
-                actor_names = [n for n in (a.xpath('normalize-space(.)').get() or '' for a in row.xpath('.//span[contains(@class,"scene-actors")]//a')) if n]
-                if not actor_names:
-                    continue
-                href = first_attr(row, '(.//a/@href)[1]')
-                if not href:
-                    continue
-                scene_url = (absolute_url(href, base)).split('?')[0]
-                if scene_url in seen:
-                    continue
-                seen.add(scene_url)
-                raw_date = first_text(row, './/span[contains(@class,"scene-date")]')
-                date = iso_date(raw_date) if raw_date else None
-                results.append(
-                    build_search_result(
-                        title=', '.join(actor_names),
-                        scene_url=scene_url,
-                        query=actor_names[0],
-                        display_date=date,
-                        search_date=ctx.search_date,
-                        cur_id=pack_cur_id([scene_url, date or '']),
-                    )
-                )
-            if len(rows) < FULL_PAGE_THRESHOLD:
-                break
-        return results
+        async def fetch_rows(page: int) -> list[Any] | None:
+            url = f'{base}{path}{slug}/?p={page}'
+            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search page {page} "{ctx.title}"')
+            return list(loaded['sel'].xpath('//div[contains(@class,"panel-body")]')) if loaded else None
+
+        def build_row(row: Any) -> SearchResult | None:
+            actor_names = [n for n in (a.xpath('normalize-space(.)').get() or '' for a in row.xpath('.//span[contains(@class,"scene-actors")]//a')) if n]
+            if not actor_names:
+                return None
+            href = first_attr(row, '(.//a/@href)[1]')
+            if not href:
+                return None
+            scene_url = (absolute_url(href, base)).split('?')[0]
+            raw_date = first_text(row, './/span[contains(@class,"scene-date")]')
+            date = iso_date(raw_date) if raw_date else None
+            return build_search_result(
+                title=', '.join(actor_names),
+                scene_url=scene_url,
+                query=actor_names[0],
+                display_date=date,
+                search_date=ctx.search_date,
+                cur_id=pack_cur_id([scene_url, date or '']),
+            )
+
+        return await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=MAX_PAGES, full_page=FULL_PAGE_THRESHOLD)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 

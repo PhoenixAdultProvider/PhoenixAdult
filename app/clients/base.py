@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from abc import ABC
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -236,6 +237,47 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                     continue
                 seen.add(item.scene_url)
                 out.append(item)
+        return out
+
+    async def paginate_search(
+        self,
+        *,
+        fetch_rows: Callable[[int], Awaitable[list[Any] | None]],
+        build_row: Callable[[Any], SearchResult | None],
+        max_pages: int,
+        full_page: int | None = None,
+        stop_on_empty_page: bool = False,
+        dedup_key: Callable[[SearchResult], str] | None = None,
+    ) -> list[SearchResult]:
+        """Drive a paged search so clients don't re-implement the loop each time.
+        ``fetch_rows(page)`` returns that page's raw rows (or None to stop, e.g. a
+        failed fetch); ``build_row`` maps one row to a SearchResult (or None to skip).
+        Results are deduped by ``dedup_key`` (default scene_url). Pagination stops
+        after ``max_pages``, when ``full_page`` is set and a page returns fewer than
+        that many raw rows (a short final page), or when ``stop_on_empty_page`` is set
+        and a page maps to zero results."""
+        key = dedup_key or (lambda r: r.scene_url or '')
+        seen: set[str] = set()
+        out: list[SearchResult] = []
+        for page in range(1, max_pages + 1):
+            rows = await fetch_rows(page)
+            if rows is None:
+                break
+            built = 0
+            for row in rows:
+                result = build_row(row)
+                if result is None:
+                    continue
+                built += 1
+                k = key(result)
+                if not k or k in seen:
+                    continue
+                seen.add(k)
+                out.append(result)
+            if stop_on_empty_page and built == 0:
+                break
+            if full_page is not None and len(rows) < full_page:
+                break
         return out
 
     async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:

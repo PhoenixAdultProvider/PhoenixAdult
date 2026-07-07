@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -12,41 +14,30 @@ class WowNetworkClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')
         slug = ctx.encoded
-        results: list[SearchResult] = []
-        seen: set[str] = set()
 
-        for page_num in range(1, _SEARCH_PAGES + 1):
-            page_url = f'{base}/?s={slug}' if page_num == 1 else f'{base}/page/{page_num}/?s={slug}'
-            loaded = await self.fetch_and_load(page_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search p{page_num} {page_url}')
-            if not loaded:
-                break
+        async def fetch_rows(page: int) -> list[Any] | None:
+            page_url = f'{base}/?s={slug}' if page == 1 else f'{base}/page/{page}/?s={slug}'
+            loaded = await self.fetch_and_load(page_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search p{page} {page_url}')
+            return list(loaded['sel'].xpath('//article[contains(@class,"thumb-block")]')) if loaded else None
 
-            found = 0
-            for el in loaded['sel'].xpath('//article[contains(@class,"thumb-block")]'):
-                anchor = el.xpath('(.//a)[1]')
-                title = first_attr(anchor, '@title')
-                href = first_attr(anchor, '@href')
-                if not title or not href:
-                    continue
-                found += 1
-                scene_url = absolute_url(href, ctx.site_info.base_url)
-                if scene_url in seen:
-                    continue
-                seen.add(scene_url)
-                image = first_attr(el, '(.//img)[1]/@src')
-                image_packed = self.encode(image) if image else ''
-                results.append(
-                    build_search_result(
-                        title=title,
-                        scene_url=scene_url,
-                        query=ctx.title,
-                        search_date=ctx.search_date,
-                        cur_id=pack_cur_id([scene_url, f'{ctx.search_date or ""}|{image_packed}']),
-                    )
-                )
-            if found == 0:
-                break
-        return results
+        def build_row(el: Any) -> SearchResult | None:
+            anchor = el.xpath('(.//a)[1]')
+            title = first_attr(anchor, '@title')
+            href = first_attr(anchor, '@href')
+            if not title or not href:
+                return None
+            scene_url = absolute_url(href, ctx.site_info.base_url)
+            image = first_attr(el, '(.//img)[1]/@src')
+            image_packed = self.encode(image) if image else ''
+            return build_search_result(
+                title=title,
+                scene_url=scene_url,
+                query=ctx.title,
+                search_date=ctx.search_date,
+                cur_id=pack_cur_id([scene_url, f'{ctx.search_date or ""}|{image_packed}']),
+            )
+
+        return await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=_SEARCH_PAGES, stop_on_empty_page=True)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
