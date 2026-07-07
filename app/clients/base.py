@@ -251,15 +251,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         dedup: bool = True,
         dedup_key: Callable[[SearchResult], str] | None = None,
     ) -> list[SearchResult]:
-        """Drive a paged search so clients don't re-implement the loop each time.
-        ``fetch_rows(page)`` returns that page's raw rows (or None to stop, e.g. a
-        failed fetch); ``build_row`` maps one row to a SearchResult (or None to skip).
-        Results are deduped by ``dedup_key`` (default scene_url) unless ``dedup`` is
-        False (for clients whose identity lives in cur_id with a shared scene_url).
-        Pagination stops after ``max_pages``; when ``full_page`` is set and a page
-        returns fewer than that many raw rows; when ``stop_on_empty_page`` is set and
-        a page maps to zero results; or when ``should_continue`` is given and returns
-        False after a page (e.g. a perfect match has been collected)."""
+        """Drive a paged search: fetch each page's rows, map + dedup them, and stop on
+        a short/empty page, the page cap, fetch_rows returning None, or should_continue."""
         key = dedup_key or (lambda r: r.scene_url or '')
         seen: set[str] = set()
         out: list[SearchResult] = []
