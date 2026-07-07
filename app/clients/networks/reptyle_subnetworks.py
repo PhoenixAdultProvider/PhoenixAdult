@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
-_SUBNETWORKS: dict[str, list[str]] = json.loads((Path(__file__).parent / 'json' / 'reptyle_subnetworks.json').read_text(encoding='utf-8'))
+from app.utils.helpers.helpers import load_site_json
+
+_SUBNETWORKS: dict[str, list[str]] = load_site_json(__file__, 'reptyle_subnetworks')
 
 
 def _norm(s: str) -> str:

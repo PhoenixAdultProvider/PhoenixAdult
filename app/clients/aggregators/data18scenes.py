@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 
 from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
-from app.clients.networks._data.reptyle_subnetworks import resolve_reptyle_subnetwork
+from app.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
