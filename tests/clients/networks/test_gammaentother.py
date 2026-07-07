@@ -44,7 +44,7 @@ def _algolia(request: httpx.Request) -> httpx.Response:
 
 
 def _mock_common() -> None:
-    geo_mod._api_key_cache.clear()
+    geo_mod._API_KEYS.clear()
     respx.get('https://www.girlsway.com/en/login').mock(return_value=httpx.Response(200, text='var x = {"apiKey":"KEY"};'))
     respx.route(method='POST', url__regex=r'https://tsmkfa364q-dsn\.algolia\.net/.*').mock(side_effect=_algolia)
 

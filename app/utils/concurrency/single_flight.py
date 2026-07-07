@@ -27,3 +27,7 @@ class SingleFlight[K, V]:
                 return hit[0] if hit else None
             self._cache[key] = produced
             return produced[0]
+
+    def clear(self) -> None:
+        self._cache.clear()
+        self._locks.clear()

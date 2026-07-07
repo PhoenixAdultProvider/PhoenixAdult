@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from typing import Any, Literal
 from urllib.parse import quote, urlsplit
@@ -10,6 +9,7 @@ import httpx2
 from app.clients.base import ActorResult, Client, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
+from app.utils.concurrency.single_flight import SingleFlight
 from app.utils.helpers.helpers import iso_date, pack_cur_id
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
@@ -21,8 +21,7 @@ _IMG_BASE = 'https://images-fame.gammacdn.com'
 
 _ACTOR_DB: dict[str, list[str]] = {'218114': ['Lara Lee']}
 
-_api_key_cache: dict[str, str] = {}
-_api_key_locks: dict[str, asyncio.Lock] = {}
+_API_KEYS: SingleFlight[str, str] = SingleFlight()  # per-host Algolia key; stable, so cached without expiry
 
 SceneType = Literal['scenes', 'movies']
 
@@ -232,11 +231,8 @@ class GammaEntOtherClient(Client):
 
     async def _get_api_key(self, site: ResolvedSiteInfo) -> str:
         host = urlsplit(site.base_url).netloc
-        if host in _api_key_cache:
-            return _api_key_cache[host]
-        async with _api_key_locks.setdefault(host, asyncio.Lock()):
-            if host in _api_key_cache:
-                return _api_key_cache[host]
+
+        async def _fetch() -> tuple[str, float] | None:
             base = site.base_url.rstrip('/')
             text = ''
             for path in ('/en/login', '/en'):
@@ -249,9 +245,9 @@ class GammaEntOtherClient(Client):
                     continue
             m = re.search(r'"apiKey":"(.*?)"', text)
             key = m.group(1) if m else ''
-            if key:
-                _api_key_cache[host] = key
-            return key
+            return (key, float('inf')) if key else None  # don't cache an empty key
+
+        return await _API_KEYS.get(host, _fetch) or ''
 
     async def _algolia(self, site: ResolvedSiteInfo, api_key: str, index_name: str, params: str) -> list[dict[str, Any]]:
         url = f'{site.search_path}?x-algolia-application-id={_ALGOLIA_APP_ID}&x-algolia-api-key={api_key}'
