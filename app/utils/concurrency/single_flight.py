@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+import asyncio
+import time
+from collections.abc import Awaitable, Callable
+
+
+class SingleFlight[K, V]:
+    """Coalesce concurrent async misses on a key and cache each value until its own
+    expiry. `factory` returns (value, expires_at_epoch) to cache, or None to reuse
+    the last value even when expired (serve-stale-on-refresh-failure)."""
+
+    def __init__(self) -> None:
+        self._cache: dict[K, tuple[V, float]] = {}
+        self._locks: dict[K, asyncio.Lock] = {}
+
+    async def get(self, key: K, factory: Callable[[], Awaitable[tuple[V, float] | None]]) -> V | None:
+        hit = self._cache.get(key)
+        if hit and hit[1] > time.time():
+            return hit[0]
+        async with self._locks.setdefault(key, asyncio.Lock()):
+            hit = self._cache.get(key)  # a queued waiter refills while we blocked on the lock
+            if hit and hit[1] > time.time():
+                return hit[0]
+            produced = await factory()
+            if produced is None:
+                return hit[0] if hit else None
+            self._cache[key] = produced
+            return produced[0]

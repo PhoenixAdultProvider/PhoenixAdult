@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import binascii
 import json
@@ -14,6 +13,7 @@ from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
+from app.utils.concurrency.single_flight import SingleFlight
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, slugify, title_distance_score
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
@@ -24,8 +24,7 @@ _SEARCH_TYPES = ('scene', 'movie', 'serie', 'trailer')
 # Sub-brands the upstream API doesn't return a collection for; force the
 # tagline/collection from the searched alias so they don't collapse to the network.
 _FORCED_SUBSITES = {'brazzerslive': 'Brazzers Live'}
-_TOKEN_CACHE: dict[str, tuple[str, int]] = {}
-_TOKEN_LOCKS: dict[str, asyncio.Lock] = {}
+_TOKENS: SingleFlight[str, str] = SingleFlight()  # per-host Instance token, cached to its JWT expiry
 _INSTANCE_RE = re.compile(r'instance_token=([^;]+)')
 
 
@@ -81,17 +80,8 @@ class Project1ServiceClient(Client):
         host = urlsplit(site.base_url).hostname or ''
         if not host:
             return None
-        now = int(time.time())
-        cached = _TOKEN_CACHE.get(host)
-        if cached and cached[1] > now:
-            return cached[0]
 
-        async with _TOKEN_LOCKS.setdefault(host, asyncio.Lock()):
-            now = int(time.time())
-            cached = _TOKEN_CACHE.get(host)
-            if cached and cached[1] > now:
-                return cached[0]
-
+        async def _fetch() -> tuple[str, float] | None:
             token: str | None = None
             try:
                 r = await self.http.head(site.base_url)
@@ -104,12 +94,11 @@ class Project1ServiceClient(Client):
                             break
             except Exception as err:  # noqa: BLE001 - token fetch is best-effort
                 logger.warn(site.name, f'token HEAD failed: {err}')
-
             if not token:
-                return cached[0] if cached else None
-            exp = _parse_jwt_exp(token) or now + 3600
-            _TOKEN_CACHE[host] = (token, exp)
-            return token
+                return None  # keep serving any prior token
+            return token, float(_parse_jwt_exp(token) or int(time.time()) + 3600)
+
+        return await _TOKENS.get(host, _fetch)
 
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         token = await self._get_token(ctx.site_info)
