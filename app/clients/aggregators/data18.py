@@ -125,8 +125,11 @@ class Data18Client:
         return html, Selector(text=html)
 
     async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
-        if scene_id and scene_id in DATA18_MANUAL_MAPPINGS:
-            return f'{_BASE}/scenes/{DATA18_MANUAL_MAPPINGS[scene_id]}'
+        logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date}')
+        if scene_id:
+            data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == scene_id), None)
+            if data18_id:
+                return f'{_BASE}/scenes/{data18_id}'
 
         url = await self._search_scene_url(query, providers, scene_date)
         if not url and (alt := convert_sequence_numbers(query)):

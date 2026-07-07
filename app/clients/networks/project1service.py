@@ -229,7 +229,7 @@ class Project1ServiceClient(Client):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 providers = [site.name, forced_sub or sub_site]
-                sid = slugify(_normalize_title(title)) if title else None
+                sid = slugify(title) if title else None
                 mapping_id = (f'{sid}-{_normalize(sub_site)}' if sub_site else str(sid)) if sid is not None else None
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
                 if data18_url:

@@ -17,8 +17,10 @@ _SEARCH = (
 
 
 async def test_manual_mapping_shortcut() -> None:
-    url = await Data18Client().find_scene_url('169646', 'whatever', [], None)
-    assert url == 'https://www.data18.com/scenes/thats-better-than-stealing-it-herfreshmanyear'
+    # Callers pass the project1-side slug (a dict value); it resolves to the
+    # data18 scene id (the key) used in the URL.
+    url = await Data18Client().find_scene_url('thats-better-than-stealing-it-herfreshmanyear', 'whatever', [], None)
+    assert url == 'https://www.data18.com/scenes/169646'
 
 
 @respx.mock
