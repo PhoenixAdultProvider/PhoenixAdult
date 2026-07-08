@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.clients.base import SceneDetail, SearchResult
 from app.mappers.metadata_mapper import MetadataMapper
 from app.registry import find_site, normalize_site_key
+from app.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 
 
@@ -68,13 +69,14 @@ def test_match_result_client_subsite_beats_filename_site() -> None:
     assert result.title.endswith('[Real Wife Stories]')
 
 
-def test_match_result_persists_filename_subsite_in_rating_key() -> None:
-    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')
+def test_match_result_folds_filename_subsite_into_cur_id() -> None:
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id=pack_cur_id(['3870731|scene']))
     result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Big Tits at School')
-    assert parse_rating_key(result.ratingKey)['subsite'] == 'Big Tits at School'  # type: ignore[index]
-    # A filename that IS the studio isn't persisted (would only echo the studio).
+    payload, sub = split_subsite(b64url_decode(parse_rating_key(result.ratingKey)['cur_id']))  # type: ignore[arg-type]
+    assert payload == '3870731|scene' and sub == 'Big Tits at School'
+    # A filename that IS the studio isn't folded in (would only echo the studio).
     same = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Brazzers')
-    assert parse_rating_key(same.ratingKey)['subsite'] is None  # type: ignore[index]
+    assert split_subsite(b64url_decode(parse_rating_key(same.ratingKey)['cur_id']))[1] is None  # type: ignore[arg-type]
 
 
 async def test_metadata_tagline_chain_scrape_wins() -> None:

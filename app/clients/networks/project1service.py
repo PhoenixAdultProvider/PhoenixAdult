@@ -144,8 +144,6 @@ class Project1ServiceClient(Client):
                     score -= 10
 
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
-                if forced_sub:
-                    composite += f'|sub={forced_sub}'
                 result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None)
 
                 results.append(
@@ -168,7 +166,6 @@ class Project1ServiceClient(Client):
         parts = payload.split('|')
         scene_id = parts[0]
         scene_type = parts[1] if len(parts) > 1 else 'scene'
-        forced_sub = next((p[len('sub=') :] for p in parts[2:] if p.startswith('sub=')), None)
         if not scene_id:
             return None
         token = await self._get_token(site)
@@ -190,12 +187,10 @@ class Project1ServiceClient(Client):
 
         colls = detail.get('collections') or []
         sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
+        # Tier 1 (scraped sub-site) only; the mapper fills tiers 2-3 (filename sub-site / studio).
         has_sub = bool(sub_site) and _normalize(sub_site) != _normalize(studio)
         tagline = sub_site if has_sub else None
         collections = [sub_site] if has_sub else [studio]
-        if forced_sub:  # searched alias the API doesn't tag with its own collection
-            tagline = forced_sub
-            collections = [forced_sub]
 
         release_date = iso_date(detail['dateReleased']) if detail.get('dateReleased') else None
         genres = [g for g in ((t.get('name') or '').strip() for t in (detail.get('tags') or []) if isinstance(t, dict)) if g]
@@ -224,7 +219,7 @@ class Project1ServiceClient(Client):
             with best_effort(site.name, 'data18 enrichment'):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
-                search_sub = sub_site or forced_sub or (ctx.subsite if ctx else None)
+                search_sub = sub_site or (ctx.subsite if ctx else None)
                 providers = [p for p in (site.name, search_sub) if p]
                 mapping_id = mapping_slug(title, search_sub)
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)

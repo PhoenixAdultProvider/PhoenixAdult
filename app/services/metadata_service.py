@@ -10,6 +10,7 @@ from app.registry import find_site
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.concurrency.coalescer import Coalescer
+from app.utils.helpers.helpers import split_subsite
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger
 from app.utils.people import filter_male_actors
@@ -102,6 +103,8 @@ class MetadataService:
             logger.warn(provider.id, f'No site found for siteName "{site_name}" from ratingKey')
             return None
 
+        scene_url, subsite = split_subsite(self._scraper.decode(cur_id))  # sub-site folded into the cur_id at search
+
         cached = None if force else metadata_cache.read(site.name, cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
         if response is not None and metadata_cache.data18_remap_needed(response, site.name, cur_id):
@@ -113,7 +116,6 @@ class MetadataService:
             async def _fetch_detail() -> SceneDetail | None:
                 # Re-scrape the scene so backfill can try each person's scene image before
                 # the external people sources. Only invoked when someone is imageless.
-                scene_url = self._scraper.decode(cur_id)
                 if not scene_url:
                     return None
                 try:
@@ -121,7 +123,7 @@ class MetadataService:
                 except ValueError as err:
                     logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
                     return None
-                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=parsed.get('subsite')))
+                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
 
             changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
             if metadata_cache.reapply_text_rules(response, site.scraper_config.type):  # re-apply current text rules
@@ -141,7 +143,6 @@ class MetadataService:
             _log_served(response, provider)
             return response
 
-        scene_url = self._scraper.decode(cur_id)
         if not scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
             return None
@@ -154,14 +155,12 @@ class MetadataService:
 
         logger.info(provider.id, f'Fetching detail for site="{site.name}" id="{scene_url}"')
 
-        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=parsed.get('subsite')))
+        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
         if not detail:
             logger.warn(provider.id, f'No scene detail returned for site="{site.name}" id="{scene_url}"')
             return None
 
-        metadata = await self._mapper.to_metadata(
-            detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=parsed.get('subsite')
-        )
+        metadata = await self._mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
 
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
 

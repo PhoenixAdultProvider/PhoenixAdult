@@ -81,6 +81,7 @@ class ReptyleClient(Client):
         composite = f'{cur}|{scene_type}|{url}'
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
+        result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None
         return [
             SearchResult(
                 title=scene_json.get('title') or '',
@@ -89,7 +90,7 @@ class ReptyleClient(Client):
                 thumb_url=scene_json.get('img'),
                 release_date=release_date or ctx.search_date or None,
                 display_date=release_date,
-                subsite=sub_site or None,
+                subsite=result_sub,
             )
         ]
 
@@ -143,7 +144,7 @@ class ReptyleClient(Client):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 sid = scene_json.get('id')
-                search_sub = sub_site if sub_site != site.name else (ctx.subsite if ctx else None)
+                search_sub = (sub_site if sub_site != site.name else None) or (ctx.subsite if ctx else None)
                 mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
                 providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)

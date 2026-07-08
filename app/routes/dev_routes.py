@@ -18,7 +18,7 @@ from app.routes import read_json_body
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
-from app.utils.helpers.helpers import title_distance_score
+from app.utils.helpers.helpers import embed_subsite, split_subsite, title_distance_score
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.log_capture import begin_capture
 from app.utils.logging.logger import logger
@@ -192,12 +192,13 @@ async def dev_test(request: Request) -> JSONResponse:
 
         log_search_count(provider.id, site.name, pieces.query, len(raw_results))
 
-        # Mirror MetadataMapper.to_match_result: persist the search-selection sub-site in
-        # the ratingKey so a dev "Update" reproduces the real detail-path fallback.
+        # Mirror MetadataMapper.to_match_result: fold the search-selection sub-site into the
+        # cur_id so a dev "Update" reproduces the real detail-path fallback.
         filename_site = canonical_site_display(parsed.site_token)
 
-        def _rk_sub(sub: str | None) -> str | None:
-            return sub if sub and normalize_site_key(sub) != normalize_site_key(site.name) else None
+        def _rating_key(cur_id: str, sub: str | None) -> str:
+            sub = sub if sub and normalize_site_key(sub) != normalize_site_key(site.name) else None
+            return to_rating_key(embed_subsite(cur_id, sub), site.name, parsed.date)
 
         scored: list[dict[str, Any]] = [
             {
@@ -207,7 +208,7 @@ async def dev_test(request: Request) -> JSONResponse:
                 'displayDate': r.display_date,
                 'thumbUrl': r.thumb_url,
                 'score': r.score if r.score is not None else title_distance_score(pieces.query, r.title),
-                'ratingKey': to_rating_key(r.cur_id, site.name, parsed.date, subsite=_rk_sub(r.subsite or filename_site)),
+                'ratingKey': _rating_key(r.cur_id, r.subsite or filename_site),
                 'providerId': provider.id,
             }
             for r in raw_results
@@ -300,7 +301,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
     # Step 4: Decode sceneURL / videoId
     cur_id = parsed['cur_id'] or ''
-    scene_url = scraper.decode(cur_id)
+    scene_url, subsite = split_subsite(scraper.decode(cur_id))
     steps.append({'step': '4. Decode identifier', 'ok': bool(scene_url), 'data': {'curID': cur_id, 'sceneURL': scene_url}, 'durationMs': lap()})
     if not scene_url:
         return send({'ratingKey': rating_key, 'steps': steps})
@@ -357,7 +358,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     lap()  # reset baseline so the duration reflects the upstream fetch only
     try:
         captures: list[RawCaptureEntry] = []
-        detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=parsed.get('subsite')))
+        detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=subsite))
         if not detail:
             steps.append(
                 {
@@ -371,7 +372,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
             return send({'ratingKey': rating_key, 'steps': steps})
 
         log_detail_summary(provider.id, site.name, detail)
-        metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=parsed.get('subsite'))
+        metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
 
         # Freeze a snapshot for next time (no-op unless METADATA_CACHE_ENABLE).
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})

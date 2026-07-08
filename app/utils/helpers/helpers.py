@@ -41,6 +41,23 @@ def pack_cur_id(head: list[str]) -> str:
     return b64url_encode('|'.join(head))
 
 
+_SUBSITE_SEP = '\x1f'  # unit separator — safe: never appears in a scraper cur_id payload
+
+
+def embed_subsite(cur_id: str, subsite: str | None) -> str:
+    """Fold a sub-site into a (b64url) cur_id so it rides inside the opaque cur_id token
+    and survives Plex's guid round-trip (a rating-key suffix does not). No-op when falsy."""
+    if not subsite:
+        return cur_id
+    return b64url_encode(b64url_decode(cur_id) + _SUBSITE_SEP + subsite)
+
+
+def split_subsite(decoded_cur_id: str) -> tuple[str, str | None]:
+    """Inverse of embed_subsite on a decoded cur_id: (scraper payload, sub-site or None)."""
+    payload, _, sub = decoded_cur_id.partition(_SUBSITE_SEP)
+    return payload, sub or None
+
+
 def unpack_cur_id(encoded: str) -> dict[str, str | None]:
     raw = b64url_decode(encoded)
     pipe = raw.find('|')

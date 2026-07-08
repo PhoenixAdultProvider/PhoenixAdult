@@ -16,6 +16,7 @@ from app.models.metadata import (
 )
 from app.registry import ResolvedSiteInfo, normalize_site_key
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
+from app.utils.helpers.helpers import embed_subsite
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_dimensions
 from app.utils.images.image_referers import resolve_image_cookies, resolve_image_referers
@@ -46,8 +47,8 @@ class MetadataMapper:
         filename_site: str | None = None,
     ) -> PlexMatchResult:
         search_sub = raw.subsite or filename_site  # the sub-site the selected result resolved to
-        rk_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
-        rating_key = to_rating_key(raw.cur_id, site_name, date, subsite=rk_sub)
+        search_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
+        rating_key = to_rating_key(embed_subsite(raw.cur_id, search_sub), site_name, date)
         display_date = (raw.display_date or '').strip()
         label = raw.subsite or filename_site or site_name
         title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{label}]' + (f' {display_date}' if display_date else '')
