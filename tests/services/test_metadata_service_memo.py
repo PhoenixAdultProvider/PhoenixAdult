@@ -19,7 +19,7 @@ def _counting_service() -> tuple[MetadataService, list[int]]:
     svc = MetadataService()
     calls = [0]
 
-    async def fake_fetch(rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse:
+    async def fake_fetch(rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False) -> PlexMetadataResponse:
         calls[0] += 1
         await asyncio.sleep(0)
         return _response()
@@ -55,7 +55,7 @@ async def test_failed_fetch_is_not_memoized() -> None:
     svc = MetadataService()
     calls = [0]
 
-    async def fake_fetch(rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
+    async def fake_fetch(rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False) -> PlexMetadataResponse | None:
         calls[0] += 1
         return None
 
@@ -63,3 +63,21 @@ async def test_failed_fetch_is_not_memoized() -> None:
     assert await svc.get_metadata('rk', PROVIDER) is None
     assert await svc.get_metadata('rk', PROVIDER) is None
     assert calls[0] == 2
+
+
+async def test_triple_refresh_forces_a_fresh_fetch() -> None:
+    svc, calls = _counting_service()
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # miss -> fetch (1), memoized
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # memo hit, but counted (2)
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # 3rd within window -> force, bypass memo -> fetch (2)
+    assert calls[0] == 2
+    # The counter reset after firing, so the next refresh is served from the memo again.
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)
+    assert calls[0] == 2
+
+
+async def test_images_calls_never_force_refresh() -> None:
+    svc, calls = _counting_service()
+    for _ in range(5):  # the /images sidecar passes is_refresh=False
+        await svc.get_metadata('rk', PROVIDER, is_refresh=False)
+    assert calls[0] == 1  # all served from the memo, never forced

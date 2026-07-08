@@ -86,7 +86,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
     async def metadata(rating_key: str, request: Request) -> JSONResponse:
         try:
             language = request.headers.get('x-plex-language')
-            result = await metadata_service.get_metadata(rating_key, provider, language)
+            result = await metadata_service.get_metadata(rating_key, provider, language, is_refresh=True)
             if not result:
                 return JSONResponse({'error': 'Not found'}, status_code=404)
             return plex_json(result)

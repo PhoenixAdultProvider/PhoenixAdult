@@ -111,6 +111,43 @@ def _ensure_index() -> dict[str, str]:
     return _index
 
 
+# ── data18 manual-mapping change detection ────────────────────────────────────
+
+
+def _data18_fingerprint(response: PlexMetadataResponse) -> str:
+    """The data18 manual-mapping URL this scene resolves to (empty if unmapped),
+    recomputed from the snapshot so a mapping edit can be detected on serve."""
+    from app.clients.aggregators.data18 import manual_mapping_url, mapping_slug
+
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return ''
+    return manual_mapping_url(mapping_slug(md.title or '', md.tagline)) or ''
+
+
+def _read_enrich(site_name: str, cur_id: str) -> str:
+    rel_path = _ensure_index().get(_hash(site_name, cur_id))
+    if not rel_path:
+        return ''
+    try:
+        data = json.loads((Path(cache_dir()) / rel_path / 'enrich.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return ''
+    return data.get('data18', '') if isinstance(data, dict) else ''
+
+
+def data18_remap_needed(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:
+    """True if this cached scene's data18 manual mapping was added/changed/removed since
+    it was snapshotted — so the caller re-scrapes to pick up (or drop) data18 images."""
+    if not env.data18_enabled:
+        return False
+    site = find_site(site_name)
+    if not site or not site.scraper_config.data18_enrichment:
+        return False
+    return _data18_fingerprint(response) != _read_enrich(site_name, cur_id)
+
+
 # ── Read ─────────────────────────────────────────────────────────────────────
 
 
@@ -183,13 +220,16 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     if final_dir is None:
         return False
 
+    site = find_site(site_name)
+    fingerprint = _data18_fingerprint(response) if site and site.scraper_config.data18_enrichment else None
+
     # Concurrent writes for the same scene share {hash}.tmp — serialize them.
     lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
     async with lock:
-        return await _write_locked(response, scene_hash, rel_path, final_dir)
+        return await _write_locked(response, scene_hash, rel_path, final_dir, fingerprint)
 
 
-async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
+async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path, fingerprint: str | None = None) -> bool:
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
     data = response.model_dump(by_alias=True, exclude_none=True)
@@ -244,6 +284,10 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
             await asyncio.gather(*jobs)
 
         (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+        if fingerprint is not None:
+            # Records the data18 manual-mapping URL this scene resolves to; a later mapping
+            # edit makes the serve-time fingerprint differ, forcing a re-scrape.
+            (tmp_dir / 'enrich.json').write_text(json.dumps({'data18': fingerprint}), encoding='utf-8')
         if final_dir.exists():
             shutil.rmtree(final_dir, ignore_errors=True)
         tmp_dir.rename(final_dir)

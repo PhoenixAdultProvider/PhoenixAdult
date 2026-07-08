@@ -9,6 +9,7 @@ from dateutil import parser as date_parser
 from parsel import Selector
 
 from app.config.env import env
+from app.utils.helpers.helpers import slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
@@ -26,7 +27,25 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1341218': 'the-vamp-next-door-momswap',
     '1341212': 'home-for-the-holidays-momswap',
     '1301931': 'live-and-on-location-brazzersexxtra',
+    '1165245': 'lets-get-facials-2-brazzersexxtra',
 }
+
+
+def mapping_slug(title: str, sub_site: str | None) -> str | None:
+    """The manual-mapping key a client computes for a scene: slugify(title)[-subsite].
+    Kept here so the cache can reproduce it from a snapshot for change detection."""
+    sid = slugify(title)
+    if not sid:
+        return None
+    return f'{sid}-{re.sub(r"\W", "", sub_site).lower()}' if sub_site else sid
+
+
+def manual_mapping_url(mapping_key: str | None) -> str | None:
+    """The data18 scene URL forced for `mapping_key` (a mapping_slug value), else None."""
+    if not mapping_key:
+        return None
+    data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == mapping_key), None)
+    return f'{_BASE}/scenes/{data18_id}' if data18_id else None
 
 
 @dataclass
@@ -126,10 +145,8 @@ class Data18Client:
 
     async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
         logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date}')
-        if scene_id:
-            data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == scene_id), None)
-            if data18_id:
-                return f'{_BASE}/scenes/{data18_id}'
+        if forced := manual_mapping_url(scene_id):
+            return forced
 
         url = await self._search_scene_url(query, providers, scene_date)
         if not url and (alt := convert_sequence_numbers(query)):

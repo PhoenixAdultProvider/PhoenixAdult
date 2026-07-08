@@ -370,3 +370,31 @@ async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPath
     assert await mc.backfill_people_images(resp, 'TestSite') is True
     d = resp.MediaContainer.Metadata[0].Director
     assert d is not None and d[0].thumb and 'greg-new.jpg' in d[0].thumb  # re-downloaded, not the dead link
+
+
+def _md_resp(title: str, tagline: str) -> PlexMetadataResponse:
+    return PlexMetadataResponse.model_validate(
+        {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'tagline': tagline}]}}
+    )
+
+
+def test_data18_remap_needed_flags_added_or_changed_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # mapping_slug -> a mapped value
+
+    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')  # nothing recorded yet
+    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is True
+
+    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: 'https://www.data18.com/scenes/1301931')
+    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False  # fingerprint already current
+
+    unmapped = _md_resp('Some Unmapped Scene', 'Brazzers Exxtra')
+    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
+    assert mc.data18_remap_needed(unmapped, 'Brazzers', 'cur') is False  # no mapping -> nothing to do
+
+
+def test_data18_remap_needed_off_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'false')
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
+    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
+    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False

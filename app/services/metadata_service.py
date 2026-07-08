@@ -36,6 +36,10 @@ def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
 
 _MEMO_TTL_SECONDS = 60.0
 _MEMO_MAX_ENTRIES = 512
+# Refreshing the same scene this many times inside the window forces a full re-scrape
+# (bypassing the memo and the on-disk snapshot) — an in-Plex "reload from upstream".
+_REFRESH_WINDOW_SECONDS = 60.0
+_REFRESH_FORCE_COUNT = 3
 
 
 class MetadataService:
@@ -44,18 +48,34 @@ class MetadataService:
         self._mapper = MetadataMapper()
         self._memo: dict[tuple[str, str, str], tuple[float, PlexMetadataResponse]] = {}
         self._coalesce: Coalescer[tuple[str, str, str], PlexMetadataResponse | None] = Coalescer()
+        self._refresh_log: dict[tuple[str, str, str], list[float]] = {}
 
-    async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
+    def _force_refresh_due(self, key: tuple[str, str, str]) -> bool:
+        """Count refreshes of one scene; True (and reset) once the threshold is hit inside
+        the window. Only the metadata route calls this — never the /images sidecar."""
+        now = time.monotonic()
+        hits = [t for t in self._refresh_log.get(key, ()) if now - t < _REFRESH_WINDOW_SECONDS]
+        hits.append(now)
+        if len(hits) >= _REFRESH_FORCE_COUNT:
+            self._refresh_log.pop(key, None)
+            return True
+        self._refresh_log[key] = hits
+        return False
+
+    async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, is_refresh: bool = False) -> PlexMetadataResponse | None:
         # Plex requests /library/metadata/{key} and .../images back to back; the memo
         # serves both from one scrape and coalesces concurrent requests in flight.
         key = (rating_key, provider.id, language or '')
+        force = is_refresh and self._force_refresh_due(key)
+        if force:
+            logger.info(provider.id, f'Force refresh ({_REFRESH_FORCE_COUNT}x within {_REFRESH_WINDOW_SECONDS:.0f}s) for ratingKey={rating_key} — re-scraping')
         hit = self._memo.get(key)
-        if hit and time.monotonic() - hit[0] < _MEMO_TTL_SECONDS:
+        if hit and not force and time.monotonic() - hit[0] < _MEMO_TTL_SECONDS:
             logger.debug(provider.id, f'memo hit for ratingKey={rating_key}')
             return hit[1]
 
         async def _run() -> PlexMetadataResponse | None:
-            result = await self._fetch_metadata(rating_key, provider, language)
+            result = await self._fetch_metadata(rating_key, provider, language, force=force)
             if result is not None:
                 self._memo[key] = (time.monotonic(), result)
                 if len(self._memo) > _MEMO_MAX_ENTRIES:
@@ -65,7 +85,7 @@ class MetadataService:
 
         return await self._coalesce.run(key, _run)
 
-    async def _fetch_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None) -> PlexMetadataResponse | None:
+    async def _fetch_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False) -> PlexMetadataResponse | None:
         logger.info(provider.id, f'Update ratingKey={rating_key}')
 
         parsed = parse_rating_key(rating_key)
@@ -82,9 +102,13 @@ class MetadataService:
             logger.warn(provider.id, f'No site found for siteName "{site_name}" from ratingKey')
             return None
 
-        cached = metadata_cache.read(site.name, cur_id)
-        if cached is not None:
-            response = PlexMetadataResponse.model_validate(cached)
+        cached = None if force else metadata_cache.read(site.name, cur_id)
+        response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
+        if response is not None and metadata_cache.data18_remap_needed(response, site.name, cur_id):
+            logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
+            response = None  # fall through to a fresh scrape below
+
+        if response is not None:
 
             async def _fetch_detail() -> SceneDetail | None:
                 # Re-scrape the scene so backfill can try each person's scene image before

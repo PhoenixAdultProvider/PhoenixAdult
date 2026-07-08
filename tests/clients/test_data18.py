@@ -5,7 +5,7 @@ from datetime import datetime
 import httpx
 import respx
 
-from app.clients.aggregators.data18 import Data18Client
+from app.clients.aggregators.data18 import Data18Client, manual_mapping_url, mapping_slug
 
 _SEARCH = (
     '<html>pages: 1'
@@ -21,6 +21,18 @@ async def test_manual_mapping_shortcut() -> None:
     # data18 scene id (the key) used in the URL.
     url = await Data18Client().find_scene_url('thats-better-than-stealing-it-herfreshmanyear', 'whatever', [], None)
     assert url == 'https://www.data18.com/scenes/169646'
+
+
+def test_mapping_slug_matches_the_client_formula() -> None:
+    assert mapping_slug('Delicious Firsts', 'Hussie Pass') == 'delicious-firsts-hussiepass'
+    assert mapping_slug('Solo Scene', None) == 'solo-scene'
+    assert mapping_slug('', 'Whatever') is None
+
+
+def test_manual_mapping_url_resolves_value_to_key() -> None:
+    assert manual_mapping_url('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/1313219'
+    assert manual_mapping_url('not-a-mapped-slug') is None
+    assert manual_mapping_url(None) is None
 
 
 @respx.mock
