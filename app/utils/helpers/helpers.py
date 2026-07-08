@@ -196,11 +196,18 @@ def sceneid_distance_score(query: str, title: str) -> int:
 
 
 def title_distance_score(query: str, title: str) -> int:
+    from app.utils.processors.title_case import convert_sequence_numbers  # local: avoid an import cycle
+
     CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
-    cleaned_query = CLEAN_RE.sub('', query).lower()
-    cleaned_title = CLEAN_RE.sub('', title).lower()
-    score = 100 - compare_string(cleaned_query, cleaned_title).levenshtein
-    logger.debug('Title Distance Score', f'Cleaned Query: {cleaned_query}, Cleaned Title: {cleaned_title}, Score: {score}')
+
+    def _score(q: str, t: str) -> int:
+        return 100 - compare_string(CLEAN_RE.sub('', q).lower(), CLEAN_RE.sub('', t).lower()).levenshtein
+
+    score = _score(query, title)
+    nq, nt = convert_sequence_numbers(query), convert_sequence_numbers(title)
+    if nq or nt:
+        score = max(score, _score(nq or query, nt or title))
+    logger.debug('Title Distance Score', f'Query: {query}, Title: {title}, Score: {score}')
     return score
 
 
