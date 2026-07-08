@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
-from app.clients.base import SearchContext
+import app.clients.networks.project1service as p1_module
+from app.clients.base import SceneContext, SearchContext
 from app.clients.networks.project1service import Project1ServiceClient, _service_url
 from app.registry import find_site
 
@@ -83,6 +85,31 @@ async def test_detail() -> None:
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://image-service-ht.project1content.com/a/jane.jpg'
     assert detail.raw_image_urls == ['https://image-service-ht.project1content.com/path/p.jpg']
+
+
+@respx.mock
+async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    _token_head()
+    release = {**_RELEASE, 'collections': []}  # upstream didn't populate the sub-site
+    respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [release]}))
+    respx.get(url__startswith=f'{_API}/v1/actors').mock(return_value=httpx.Response(200, json={'result': []}))
+    captured: dict[str, object] = {}
+
+    class FakeData18:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+            captured['mapping_id'] = scene_id
+            captured['providers'] = providers
+            return None
+
+        async def fetch_images(self, url: str) -> list[str]:
+            return []
+
+    monkeypatch.setattr(p1_module, 'Data18Client', FakeData18)
+    detail = await Project1ServiceClient().fetch_scene_detail('777|scene|2021-03-04', SITE, SceneContext(subsite='Teens Like It Big'))
+    assert detail is not None
+    assert captured['mapping_id'] == 'cool-scene-teenslikeitbig'  # falls back to the search-selection sub-site
+    assert 'Teens Like It Big' in captured['providers']  # type: ignore[operator]
 
 
 @respx.mock

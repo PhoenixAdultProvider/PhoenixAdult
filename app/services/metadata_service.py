@@ -121,7 +121,7 @@ class MetadataService:
                 except ValueError as err:
                     logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
                     return None
-                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language))
+                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=parsed.get('subsite')))
 
             changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
             if metadata_cache.reapply_text_rules(response, site.scraper_config.type):  # re-apply current text rules
@@ -154,12 +154,14 @@ class MetadataService:
 
         logger.info(provider.id, f'Fetching detail for site="{site.name}" id="{scene_url}"')
 
-        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language))
+        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=parsed.get('subsite')))
         if not detail:
             logger.warn(provider.id, f'No scene detail returned for site="{site.name}" id="{scene_url}"')
             return None
 
-        metadata = await self._mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site)
+        metadata = await self._mapper.to_metadata(
+            detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=parsed.get('subsite')
+        )
 
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
 

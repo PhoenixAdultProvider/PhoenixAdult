@@ -224,8 +224,9 @@ class Project1ServiceClient(Client):
             with best_effort(site.name, 'data18 enrichment'):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
-                providers = [site.name, forced_sub or sub_site]
-                mapping_id = mapping_slug(title, sub_site)
+                search_sub = sub_site or forced_sub or (ctx.subsite if ctx else None)
+                providers = [p for p in (site.name, search_sub) if p]
+                mapping_id = mapping_slug(title, search_sub)
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
                 if data18_url:
                     logger.info(site.name, f'data18 enrichment match: {data18_url}')

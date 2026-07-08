@@ -233,6 +233,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     provider_id = body.get('providerId')
     filename = body.get('filename')
     result_score = body.get('resultScore')
+    force = bool(body.get('force'))  # re-scrape upstream, bypassing the snapshot
     steps: list[dict[str, Any]] = []
 
     if not rating_key or not provider_id:
@@ -304,7 +305,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
     # Snapshot cache-first: mirror MetadataService — a frozen snapshot is served
     # without touching the source (only when METADATA_CACHE_ENABLE is on).
-    cached = metadata_cache.read(site.name, cur_id)
+    cached = None if force else metadata_cache.read(site.name, cur_id)
     if cached is not None:
         response = PlexMetadataResponse.model_validate(cached)
         backfilled = await metadata_cache.backfill_people_images(response, site.name)
@@ -349,7 +350,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     lap()  # reset baseline so the duration reflects the upstream fetch only
     try:
         captures: list[RawCaptureEntry] = []
-        detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures))
+        detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=parsed.get('subsite')))
         if not detail:
             steps.append(
                 {
@@ -363,7 +364,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
             return send({'ratingKey': rating_key, 'steps': steps})
 
         log_detail_summary(provider.id, site.name, detail)
-        metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site)
+        metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=parsed.get('subsite'))
 
         # Freeze a snapshot for next time (no-op unless METADATA_CACHE_ENABLE).
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})

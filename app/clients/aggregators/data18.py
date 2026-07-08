@@ -28,6 +28,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1341212': 'home-for-the-holidays-momswap',
     '1301931': 'live-and-on-location-brazzersexxtra',
     '1165245': 'lets-get-facials-2-brazzersexxtra',
+    '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
 }
 
 

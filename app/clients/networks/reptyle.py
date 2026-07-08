@@ -143,8 +143,9 @@ class ReptyleClient(Client):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 sid = scene_json.get('id')
-                mapping_id = (f'{sid}-{_normalize(sub_site)}' if sub_site else str(sid)) if sid is not None else None
-                providers = [*_DATA18_PROVIDERS, sub_site]
+                search_sub = sub_site if sub_site != site.name else (ctx.subsite if ctx else None)
+                mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
+                providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
                 if data18_url:
                     logger.info(site.name, f'data18 enrichment match: {data18_url}')

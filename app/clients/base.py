@@ -53,6 +53,7 @@ class SearchContext:
 class SceneContext:
     capture: list[RawCaptureEntry] | None = None
     language: str | None = None
+    subsite: str | None = None  # sub-site the search selection resolved to; used for data18 slugging
 
 
 # ── Results ───────────────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ from app.models.metadata import (
     PlexMetadata,
     PlexMetadataResponse,
 )
-from app.registry import ResolvedSiteInfo
+from app.registry import ResolvedSiteInfo, normalize_site_key
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_dimensions
@@ -45,7 +45,9 @@ class MetadataMapper:
         scraper_type: str | None = None,
         filename_site: str | None = None,
     ) -> PlexMatchResult:
-        rating_key = to_rating_key(raw.cur_id, site_name, date)
+        search_sub = raw.subsite or filename_site  # the sub-site the selected result resolved to
+        rk_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
+        rating_key = to_rating_key(raw.cur_id, site_name, date, subsite=rk_sub)
         display_date = (raw.display_date or '').strip()
         label = raw.subsite or filename_site or site_name
         title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{label}]' + (f' {display_date}' if display_date else '')
@@ -69,6 +71,7 @@ class MetadataMapper:
         plex_identifier: str,
         fallback_date: str | None = None,
         site: ResolvedSiteInfo | None = None,
+        filename_site: str | None = None,
     ) -> PlexMetadata:
         clean_title = title_case(detail.title, site_name=detail.studio, scraper_type=site.scraper_config.type if site else None)
         logger.info(f'Artwork found: {len(detail.raw_image_urls)}')
@@ -130,8 +133,15 @@ class MetadataMapper:
         year = _year_of(effective_date)
 
         studio = normalize_studio(detail.studio)
-        tagline = normalize_studio(detail.tagline) if detail.tagline else detail.tagline
-        collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
+        if detail.tagline:  # 1) scraped sub-site
+            tagline = normalize_studio(detail.tagline)
+            collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.tagline]) if c))
+        elif filename_site and normalize_site_key(filename_site) != normalize_site_key(detail.studio):  # 2) filename sub-site
+            tagline = normalize_studio(filename_site)
+            collections = [tagline]
+        else:  # 3) none — blank tagline, collection is the studio
+            tagline = None
+            collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
 
         return PlexMetadata(
             type='movie',

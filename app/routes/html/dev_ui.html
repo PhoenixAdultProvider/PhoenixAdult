@@ -422,6 +422,7 @@
     }
 
     let lastResults = [];
+    let selectedIdx = null;
 
     async function runSearch() {
       const filename = document.getElementById('filename').value.trim();
@@ -480,9 +481,10 @@
       }).join('');
     }
 
-    async function selectResult(idx) {
+    async function selectResult(idx, force = false) {
       const result = lastResults[idx];
       if (!result) return;
+      selectedIdx = idx;
 
       document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
       const card = document.getElementById('card-' + idx);
@@ -507,6 +509,7 @@
             providerId:  result.providerId,
             filename,
             resultScore: result.score,
+            force,
           }),
         });
         const data = await res.json();
@@ -547,11 +550,13 @@
       }
 
       const fields = [];
+      const refreshBtn = ' <button onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot" '
+        + 'style="cursor:pointer;background:#1e3a5f;color:#bfdbfe;border:1px solid #2563eb;border-radius:5px;padding:2px 8px;font-size:0.75rem;font-weight:700">🔄 Fetch upstream</button>';
       if (meta.servedFrom === 'snapshot') {
-        fields.push(field('Source', '<span class="meta-tag" style="background:#064e3b;color:#a7f3d0;border-color:#065f46;font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>'));
+        fields.push(field('Source', '<span class="meta-tag" style="background:#064e3b;color:#a7f3d0;border-color:#065f46;font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>' + refreshBtn));
       } else if (meta.servedFrom === 'live') {
         const snap = !meta.snapshotEnabled ? 'snapshot cache off' : meta.snapshotSaved ? '📦 snapshot saved' : 'snapshot NOT saved (error-looking title or write failed)';
-        fields.push(field('Source', '<span class="meta-tag">live scrape &middot; ' + esc(snap) + '</span>'));
+        fields.push(field('Source', '<span class="meta-tag">live scrape &middot; ' + esc(snap) + '</span>' + refreshBtn));
       }
       if (meta.title)         fields.push(field('Title', esc(meta.title)));
       if (meta.studio)        fields.push(field('Studio (network)', esc(meta.studio)));
