@@ -29,6 +29,13 @@ def test_mapping_slug_matches_the_client_formula() -> None:
     assert mapping_slug('', 'Whatever') is None
 
 
+def test_mapping_slug_strips_apostrophes_to_match_mapping_values() -> None:
+    # Apostrophes are dropped (not turned into a dash) so the slug matches the mapping
+    # values, e.g. "That's" -> "thats", the data18-only exception to the default slugify.
+    assert mapping_slug("That's Better Than Stealing It", 'Her Freshman Year') == 'thats-better-than-stealing-it-herfreshmanyear'
+    assert manual_mapping_url(mapping_slug("That's Better Than Stealing It", 'Her Freshman Year')) == 'https://www.data18.com/scenes/169646'
+
+
 def test_manual_mapping_url_resolves_value_to_key() -> None:
     assert manual_mapping_url('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/1313219'
     assert manual_mapping_url('not-a-mapped-slug') is None

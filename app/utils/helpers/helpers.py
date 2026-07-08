@@ -53,8 +53,8 @@ def unpack_cur_id(encoded: str) -> dict[str, str | None]:
 # ── Slug ──────────────────────────────────────────────────────────────────────
 
 
-def slugify(s: str) -> str:
-    return _slugify(s)
+def slugify(s: str, **kwargs: Any) -> str:
+    return _slugify(s, **kwargs)
 
 
 # ── Dates ─────────────────────────────────────────────────────────────────────

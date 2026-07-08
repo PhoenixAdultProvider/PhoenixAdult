@@ -34,7 +34,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
 def mapping_slug(title: str, sub_site: str | None) -> str | None:
     """The manual-mapping key a client computes for a scene: slugify(title)[-subsite].
     Kept here so the cache can reproduce it from a snapshot for change detection."""
-    sid = slugify(title)
+    sid = slugify(title, replacements=[("'", '')])
     if not sid:
         return None
     return f'{sid}-{re.sub(r"\W", "", sub_site).lower()}' if sub_site else sid

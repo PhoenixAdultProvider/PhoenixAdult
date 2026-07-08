@@ -9,12 +9,12 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import quote, urlsplit
 
-from app.clients.aggregators.data18 import Data18Client
+from app.clients.aggregators.data18 import Data18Client, mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.single_flight import SingleFlight
-from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, slugify, title_distance_score
+from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, title_distance_score
 from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
@@ -229,8 +229,7 @@ class Project1ServiceClient(Client):
                 self._data18 = self._data18 or Data18Client()
                 date_obj = datetime.fromisoformat(release_date) if release_date else None
                 providers = [site.name, forced_sub or sub_site]
-                sid = slugify(title) if title else None
-                mapping_id = (f'{sid}-{_normalize(sub_site)}' if sub_site else str(sid)) if sid is not None else None
+                mapping_id = mapping_slug(title, sub_site)
                 data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
                 if data18_url:
                     logger.info(site.name, f'data18 enrichment match: {data18_url}')
