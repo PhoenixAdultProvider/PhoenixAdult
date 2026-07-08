@@ -22,8 +22,6 @@ from app.utils.processors.title_case import title_case
 _DEFAULT_API_BASE = 'https://site-api.project1service.com'
 _DEFAULT_IMAGE_BASE = 'https://image-service-ht.project1content.com/'
 _SEARCH_TYPES = ('scene', 'movie', 'serie', 'trailer')
-# Sub-brands the upstream API doesn't return a collection for; force the
-# tagline/collection from the searched alias so they don't collapse to the network.
 _FORCED_SUBSITES = {'brazzerslive': 'Brazzers Live'}
 _TOKENS: SingleFlight[str, str] = SingleFlight()  # per-host Instance token, cached to its JWT expiry
 _INSTANCE_RE = re.compile(r'instance_token=([^;]+)')
@@ -45,10 +43,6 @@ def _parse_jwt_exp(token: str) -> int | None:
 
 def _normalize(s: str) -> str:
     return re.sub(r'\W', '', s).lower()
-
-
-def _normalize_title(s: str) -> str:
-    return re.sub(r'[^a-zA-Z0-9]', '', s).lower()
 
 
 def _service_url(upstream: str | None, base: str) -> str | None:
@@ -153,6 +147,7 @@ class Project1ServiceClient(Client):
                 if forced_sub:
                     composite += f'|sub={forced_sub}'
                 result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None)
+
                 results.append(
                     build_search_result(
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
@@ -166,6 +161,7 @@ class Project1ServiceClient(Client):
                         subsite=result_sub,
                     )
                 )
+
         return results
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
@@ -252,9 +248,11 @@ class Project1ServiceClient(Client):
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'
         body = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
+
         results = body.get('result') or [] if isinstance(body, dict) else []
         if not results or not isinstance(results[0], dict):
             return None
         a = results[0]
         photo = _service_url(((((a.get('images') or {}).get('profile') or {}).get('0') or {}).get('xs') or {}).get('url'), _DEFAULT_IMAGE_BASE) or ''
+
         return ActorResult(name=a.get('name') or '', photo_url=photo, gender=a.get('gender') or '')
