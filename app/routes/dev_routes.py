@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from app.clients.base import RawCaptureEntry, SceneContext, SearchContext
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMetadataResponse
-from app.registry import find_site, get_all_providers, get_sites_for_provider
+from app.registry import canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
 from app.routes import read_json_body
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
@@ -192,6 +192,13 @@ async def dev_test(request: Request) -> JSONResponse:
 
         log_search_count(provider.id, site.name, pieces.query, len(raw_results))
 
+        # Mirror MetadataMapper.to_match_result: persist the search-selection sub-site in
+        # the ratingKey so a dev "Update" reproduces the real detail-path fallback.
+        filename_site = canonical_site_display(parsed.site_token)
+
+        def _rk_sub(sub: str | None) -> str | None:
+            return sub if sub and normalize_site_key(sub) != normalize_site_key(site.name) else None
+
         scored: list[dict[str, Any]] = [
             {
                 'title': title_case(r.title, site_name=site.name, scraper_type=site.scraper_config.type),
@@ -200,7 +207,7 @@ async def dev_test(request: Request) -> JSONResponse:
                 'displayDate': r.display_date,
                 'thumbUrl': r.thumb_url,
                 'score': r.score if r.score is not None else title_distance_score(pieces.query, r.title),
-                'ratingKey': to_rating_key(r.cur_id, site.name, parsed.date),
+                'ratingKey': to_rating_key(r.cur_id, site.name, parsed.date, subsite=_rk_sub(r.subsite or filename_site)),
                 'providerId': provider.id,
             }
             for r in raw_results
