@@ -9,7 +9,7 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
@@ -92,10 +92,8 @@ class Data18EmpireClient(Client):
             title = _swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'))
             if not title:
                 continue
-            url_id = _movie_id(movie_url)
             date = _release_date(sel)
-            direct_hit = scene_id != '' and scene_id == url_id
-            score = 100.0 if direct_hit else None
+            score = sceneid_distance_score(scene_id, _movie_id(movie_url)) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,

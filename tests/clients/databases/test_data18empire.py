@@ -147,3 +147,24 @@ def test_is_movie_url_accepts_real_empire_urls() -> None:
     ]
     assert all(d18e_module._is_movie_url(u) for u in accept)
     assert not any(d18e_module._is_movie_url(u) for u in reject)
+
+
+@respx.mock
+async def test_scene_id_scores_via_id_distance(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
+    respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    results = await Data18EmpireClient().search(_ctx())
+    # Empire builds exactly one candidate from the requested id, so it always scores 100.
+    # Title scoring must not be consulted: the movie title does not match the empty query.
+    assert results and all(r.score == 100 for r in results)
+
+
+@respx.mock
+async def test_without_scene_id_scoring_falls_back_to_title(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
+    search_page = '<html><body><a class="boxcover" href="/1234567/big-movie-porn-movies.html"></a></body></html>'
+    respx.get(url__regex=r'.*/Search\?q=.*').mock(return_value=httpx.Response(200, text=search_page))
+    respx.get('https://data18.empirestores.co/1234567/big-movie-porn-movies.html').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    ctx = SearchContext(title='The Big Movie', encoded='The+Big+Movie', search_site=SITE.name, site_info=SITE)
+    results = await Data18EmpireClient().search(ctx)
+    assert results and results[0].score == 100  # exact title match, no id supplied

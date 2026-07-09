@@ -140,3 +140,44 @@ async def test_detail_studio_and_tagline_per_network_shape(page: str, studio: st
     assert detail.studio == studio
     assert detail.tagline == tagline
     assert detail.collections == [tagline or studio]
+
+
+# Two hits: /scenes/1234 has the exact query as its title, /scenes/9999 is the requested id.
+_SEARCH_ID_VS_TITLE = """<html><body>
+  pages: 1
+  <a href="https://www.data18.com/scenes/9999-other-name">
+    <p class="gen12 bold">Other Name</p>
+    <span class="gen11"><b>#1</b> January 5, 2024&nbsp;<i>Teens Like it Big</i></span>
+  </a>
+  <a href="https://www.data18.com/scenes/1234-fun-scene">
+    <p class="gen12 bold">Fun Scene</p>
+    <span class="gen11"><b>#2</b> January 5, 2024&nbsp;<i>Teens Like it Big</i></span>
+  </a>
+</body></html>"""
+
+
+@respx.mock
+async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18s_module, 'web_search', _no_web_search)
+    respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
+    respx.get('https://data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE))
+    results = await Data18ScenesClient().search(
+        SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Fun Scene')
+    )
+    by_url = {r.scene_url: r.score for r in results}
+    # The requested id scores 100 even though its title does not match the query at all.
+    assert by_url['https://www.data18.com/scenes/9999'] == 100
+    # The title-perfect result must NOT tie: it is scored on id distance once an id is supplied.
+    assert by_url['https://www.data18.com/scenes/1234'] < 100
+    assert max(results, key=lambda r: r.score).scene_url.endswith('/9999')
+
+
+@respx.mock
+async def test_without_scene_id_scoring_falls_back_to_date_then_title(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18s_module, 'web_search', _no_web_search)
+    respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
+    # No scene_id, no search_date -> title distance; the exact title wins.
+    results = await Data18ScenesClient().search(SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE))
+    by_url = {r.scene_url: r.score for r in results}
+    assert by_url['https://www.data18.com/scenes/1234'] == 100
+    assert by_url['https://www.data18.com/scenes/9999'] < 100

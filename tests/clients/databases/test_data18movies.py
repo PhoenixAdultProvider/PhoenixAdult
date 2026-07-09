@@ -120,3 +120,29 @@ async def test_detail_strips_reptyle_suffix_and_drops_echoed_subsite() -> None:
     assert detail.studio == 'TeamSkeet'
     assert detail.tagline is None
     assert detail.collections == ['TeamSkeet']
+
+
+_SEARCH_ID_VS_TITLE = """<html><body>
+  pages: 1
+  <a href="https://www.data18.com/movies/9999-other-name">
+    <p class="gen12 bold">Other Name</p>
+    <span class="gen11"><b>#1</b> January, 2024&nbsp;<i>ZZ Series</i></span>
+  </a>
+  <a href="https://www.data18.com/movies/1234-big-movie">
+    <p class="gen12 bold">Big Movie</p>
+    <span class="gen11"><b>#2</b> January, 2024&nbsp;<i>ZZ Series</i></span>
+  </a>
+</body></html>"""
+
+
+@respx.mock
+async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18m_module, 'web_search', _no_web_search)
+    respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
+    respx.get('https://data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    results = await Data18MoviesClient().search(
+        SearchContext(title='Big Movie', encoded='Big+Movie', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Big Movie')
+    )
+    by_url = {r.scene_url: r.score for r in results}
+    assert by_url['https://www.data18.com/movies/9999'] == 100
+    assert by_url['https://www.data18.com/movies/1234'] < 100

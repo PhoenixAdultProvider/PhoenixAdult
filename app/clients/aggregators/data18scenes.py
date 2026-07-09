@@ -8,7 +8,7 @@ from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
@@ -32,6 +32,10 @@ _SERIE_XPATHS = (
 )
 _MOVIE_XPATHS = ('(//p[b[normalize-space(.)="Movie:"]]/a)[1]',)
 _REPTYLE_NETWORKS = ('teamskeet', 'mylf')
+
+
+def _url_id(url: str) -> str:
+    return re.sub(r'.*/', '', url).split('-')[0]
 
 
 def _ns(sel: Any, xpath: str) -> str:
@@ -115,21 +119,12 @@ class Data18ScenesClient(Client):
                 continue
             seen.add(c.url)
             scene_urls.discard(c.url)
-            direct_hit = scene_id != '' and scene_id == c.url_id
             title = c.title_raw
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
                     title = _ns(loaded, _TITLE_XP) or title
-            score = (
-                100
-                if direct_hit
-                else (
-                    date_distance_score(ctx.search_date, c.release_date)
-                    if ctx.search_date and c.release_date
-                    else title_distance_score(text or ctx.title, title)
-                )
-            )
+            score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,
@@ -153,19 +148,11 @@ class Data18ScenesClient(Client):
             title = _ns(loaded, _TITLE_XP)
             if not title or 'Error 404' in title:
                 continue
-            url_id = re.sub(r'.*/', '', scene_url)
-            direct_hit = scene_id != '' and scene_id == url_id
             date_raw = _ns(loaded, _RELEASE_DATE_XP)
             release_date = iso_date(date_raw) or ''
             studio = _resolve_studio(loaded)
             subsite = _resolve_tagline(loaded, studio) or studio
-            score = (
-                100
-                if direct_hit
-                else (
-                    date_distance_score(ctx.search_date, release_date) if ctx.search_date and release_date else title_distance_score(text or ctx.title, title)
-                )
-            )
+            score = sceneid_distance_score(scene_id, _url_id(scene_url)) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,

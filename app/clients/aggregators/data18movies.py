@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
@@ -30,6 +30,10 @@ _ACTOR_XPATHS = (
     '(//b[contains(.,"Cast")])[1]/following::div//a[contains(@href,"/pornstars/")]//img',
     '(//b[contains(.,"Cast")])[1]/following::div//img[contains(@data-original,"user")]',
 )
+
+
+def _url_id(url: str) -> str:
+    return re.sub(r'.*/', '', url).split('-')[0]
 
 
 def _swap_article(raw: str) -> str:
@@ -111,21 +115,12 @@ class Data18MoviesClient(Client):
                 continue
             seen.add(c.url)
             movie_urls.discard(c.url)
-            direct_hit = scene_id != '' and scene_id == c.url_id
             title = c.title_raw
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
                     title = _swap_article(_ns(loaded, _TITLE_XP) or title)
-            score = (
-                100
-                if direct_hit
-                else (
-                    date_distance_score(ctx.search_date, c.release_date)
-                    if ctx.search_date and c.release_date
-                    else title_distance_score(text or ctx.title, title)
-                )
-            )
+            score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,
@@ -149,18 +144,10 @@ class Data18MoviesClient(Client):
             title = _swap_article(_ns(loaded, _TITLE_XP))
             if not title:
                 continue
-            url_id = re.sub(r'.*/', '', movie_url)
-            direct_hit = scene_id != '' and scene_id == url_id
             release_date = _release_date(loaded) or ''
             studio = _resolve_studio(loaded)
             subsite = _resolve_series(loaded, studio) or studio
-            score = (
-                100
-                if direct_hit
-                else (
-                    date_distance_score(ctx.search_date, release_date) if ctx.search_date and release_date else title_distance_score(text or ctx.title, title)
-                )
-            )
+            score = sceneid_distance_score(scene_id, _url_id(movie_url)) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,
