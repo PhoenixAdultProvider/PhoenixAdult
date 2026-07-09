@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import urlsplit
 
 import httpx2
 from dateutil import parser as date_parser
@@ -56,6 +57,29 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
         return None
     data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == mapping_key), None)
     return f'{_BASE}/scenes/{data18_id}' if data18_id else None
+
+
+_SCENE_REF_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
+_DATA18_HOSTS = ('data18.com', 'www.data18.com')
+
+
+def scene_url_from_ref(ref: str | None) -> str | None:
+    """Scene URL from a hand-written reference: a numeric id, a slug, 'scenes/<x>', or a full
+    data18 URL. None when empty, off-host, or not a plain scene ref."""
+    if not ref:
+        return None
+    ref = ref.strip()
+    if '://' in ref:
+        parts = urlsplit(ref)
+        if (parts.hostname or '').lower() not in _DATA18_HOSTS:
+            return None
+        ref = parts.path
+    ref = ref.strip('/')
+    if ref.lower() == 'scenes':
+        return None
+    if ref.lower().startswith('scenes/'):
+        ref = ref[len('scenes/') :].strip('/')
+    return f'{_BASE}/scenes/{ref}' if _SCENE_REF_RE.match(ref) else None
 
 
 @dataclass

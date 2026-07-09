@@ -5,7 +5,7 @@ from datetime import datetime
 import httpx
 import respx
 
-from app.clients.aggregators.data18 import Data18Client, manual_mapping_url, mapping_slug
+from app.clients.aggregators.data18 import Data18Client, manual_mapping_url, mapping_slug, scene_url_from_ref
 
 _SEARCH = (
     '<html>pages: 1'
@@ -71,3 +71,31 @@ async def test_fetch_images_poster_only() -> None:
     respx.route(method='GET', url__regex=r'data18\.com/scenes/').mock(return_value=httpx.Response(200, text=scene))
     imgs = await Data18Client().fetch_images('https://www.data18.com/scenes/123-x')
     assert imgs == ['https://cdn.example/poster.jpg']
+
+
+def test_scene_url_from_ref_accepts_id_slug_and_url() -> None:
+    url = 'https://www.data18.com/scenes/1150700'
+    assert scene_url_from_ref('1150700') == url
+    assert scene_url_from_ref('  1150700  ') == url
+    assert scene_url_from_ref('scenes/1150700') == url
+    assert scene_url_from_ref('/scenes/1150700/') == url
+    assert scene_url_from_ref(url) == url
+    assert scene_url_from_ref('http://data18.com/scenes/1150700') == url  # host+scheme normalized
+    assert scene_url_from_ref('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/delicious-firsts-hussiepass'
+
+
+def test_scene_url_from_ref_refuses_off_host_and_junk() -> None:
+    for bad in (
+        None,
+        '',
+        '/',
+        'scenes',
+        'scenes/',
+        'https://evil.com/scenes/1150700',  # off-host
+        'https://www.data18.com.evil.com/scenes/1',  # suffix-spoofed host
+        'https://www.data18.com/movies/5',  # not a scene path
+        '../../etc/passwd',
+        'scenes/a b',
+        '1150700?x=1',
+    ):
+        assert scene_url_from_ref(bad) is None, bad

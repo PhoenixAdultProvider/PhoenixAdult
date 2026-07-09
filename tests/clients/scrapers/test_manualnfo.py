@@ -214,3 +214,68 @@ async def test_detail_year_only_release(tmp_path: Path, monkeypatch: pytest.Monk
     detail = await ManualNfoClient().fetch_scene_detail('year.only.case', SITE)
     assert detail is not None
     assert detail.release_date == '2019-01-01'
+
+
+_NFO_WITH_DATA18 = SAMPLE_NFO.replace('</movie>', '  <data18>1150700</data18>\n</movie>')
+
+
+def test_parse_nfo_reads_data18_tag() -> None:
+    assert mn_module.__testing__['parse_nfo'](_NFO_WITH_DATA18).data18 == '1150700'
+    assert mn_module.__testing__['parse_nfo'](SAMPLE_NFO).data18 is None  # absent -> None
+
+
+@pytest.mark.parametrize(
+    'ref',
+    ['1150700', 'scenes/1150700', '/scenes/1150700', 'https://www.data18.com/scenes/1150700', '  1150700  '],
+)
+async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    _write_folder(tmp_path, BASENAME, nfo=SAMPLE_NFO.replace('</movie>', f'  <data18>{ref}</data18>\n</movie>'))
+    fetched: list[str] = []
+
+    class FakeData18:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+            raise AssertionError('an explicit <data18> ref must not run the data18 search')
+
+        async def fetch_images(self, scene_url: str) -> list[str]:
+            fetched.append(scene_url)
+            return ['https://cdn.data18.com/a.jpg']
+
+    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
+    assert detail is not None
+    assert fetched == ['https://www.data18.com/scenes/1150700']
+    assert 'https://cdn.data18.com/a.jpg' in detail.raw_image_urls
+
+
+async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    # off-host URL -> refused, so the normal title search still runs
+    _write_folder(tmp_path, BASENAME, nfo=SAMPLE_NFO.replace('</movie>', '  <data18>https://evil.com/scenes/1</data18>\n</movie>'))
+    queries: list[str] = []
+
+    class FakeData18:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+            queries.append(query)
+            return None
+
+        async def fetch_images(self, scene_url: str) -> list[str]:
+            raise AssertionError('no match -> no fetch')
+
+    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    assert await ManualNfoClient().fetch_scene_detail(BASENAME, SITE) is not None
+    assert queries == ['Naughty Fantasy']
+
+
+async def test_detail_data18_tag_still_respects_kill_switch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
+    _write_folder(tmp_path, BASENAME, nfo=_NFO_WITH_DATA18)
+
+    def _boom() -> None:
+        raise AssertionError('DATA18_ENABLE=off must suppress enrichment even with a <data18> tag')
+
+    monkeypatch.setattr(mn_module, 'Data18Client', _boom)
+    assert await ManualNfoClient().fetch_scene_detail(BASENAME, SITE) is not None

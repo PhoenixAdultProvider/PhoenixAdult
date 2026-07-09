@@ -140,6 +140,7 @@ The full schema PhoenixAdult reads (every field is optional except `<title>`):
   </fanart>
   <mpaa></mpaa>
   <id></id>
+  <data18></data18>        <!-- optional: pin the data18 scene for image enrichment (see below) -->
   <genre></genre>          <!-- may repeat -->
   <actor>
     <name></name>
@@ -149,6 +150,29 @@ The full schema PhoenixAdult reads (every field is optional except `<title>`):
   </actor>                 <!-- may repeat -->
 </movie>
 ```
+
+### Pinning the data18 scene
+
+When data18 enrichment is on (`DATA18_ENABLE=true`), extra images are normally found by
+searching data18 for `<title>`. A `<data18>` tag pins the exact scene instead, skipping the
+search — useful when the title is ambiguous or the search picks the wrong scene.
+
+Any of these forms work; they all resolve to `https://www.data18.com/scenes/1150700`:
+
+```xml
+<data18>1150700</data18>
+<data18>scenes/1150700</data18>
+<data18>https://www.data18.com/scenes/1150700</data18>
+<data18>delicious-firsts-hussiepass</data18>   <!-- a scene slug works too -->
+```
+
+Notes:
+
+- `<data18>` never turns enrichment on. `DATA18_ENABLE=true` and the site's `data18_enrichment`
+  flag still gate it — the tag only changes *how* the scene is found.
+- A value that isn't a data18 scene reference (an off-host URL, a non-scene path) is refused with
+  a warning, and the normal title search runs instead.
+- With a `<data18>` tag, `<title>` is no longer required for enrichment.
 
 ### End-to-end example
 
