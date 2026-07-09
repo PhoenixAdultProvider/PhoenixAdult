@@ -279,3 +279,47 @@ async def test_detail_data18_tag_still_respects_kill_switch(tmp_path: Path, monk
 
     monkeypatch.setattr(mn_module, 'Data18Client', _boom)
     assert await ManualNfoClient().fetch_scene_detail(BASENAME, SITE) is not None
+
+
+def test_parse_nfo_repairs_bare_ampersand_preserving_text() -> None:
+    nfo = '<movie><title>Big & Bad</title><genre>Pantyhose & Stockings</genre><genre>Anal</genre></movie>'
+    parsed = mn_module.__testing__['parse_nfo'](nfo)
+    assert parsed.title == 'Big & Bad'
+    assert parsed.genres == ['Pantyhose & Stockings', 'Anal']
+
+
+@pytest.mark.parametrize(
+    ('nfo', 'title'),
+    [
+        ('<movie><title>3 < 4</title></movie>', '3 < 4'),
+        ('<movie><title>a&nbsp;b</title></movie>', 'a\xa0b'),
+        ('<movie><title>a\x0cb</title></movie>', 'ab'),
+        ('<movie><title>x</movie>', 'x'),
+        ('<movie><title><b>x</title></b></movie>', ''),
+        ('<movie><title>x</title></movie>trailing', 'x'),
+        ('<?xml version="1.0" encoding="utf-8"?><movie><title>caf\xe9 & bar</title></movie>', 'caf\xe9 & bar'),
+    ],
+)
+def test_parse_nfo_recovers_from_malformed_xml(nfo: str, title: str) -> None:
+    parsed = mn_module.__testing__['parse_nfo'](nfo)
+    assert parsed is not None
+    assert parsed.title == title
+
+
+def test_parse_nfo_leaves_valid_xml_untouched() -> None:
+    nfo = '<movie><title>x &amp; y</title><plot>caf\xe9 &#233;</plot><uniqueid type="tmdb">9</uniqueid></movie>'
+    parsed = mn_module.__testing__['parse_nfo'](nfo)
+    assert parsed.title == 'x & y'
+    assert parsed.plot == 'caf\xe9 \xe9'
+
+
+def test_parse_nfo_returns_none_when_unsalvageable() -> None:
+    assert mn_module.__testing__['parse_nfo']('') is None
+
+
+async def test_detail_reads_nfo_with_bare_ampersand(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    _write_folder(tmp_path, 'amp.case', nfo='<movie><title>A & B</title><genre>Pantyhose & Stockings</genre></movie>')
+    detail = await ManualNfoClient().fetch_scene_detail('amp.case', SITE)
+    assert detail is not None
+    assert detail.title == 'A & B'

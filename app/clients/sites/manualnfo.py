@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from html.entities import html5
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from xml.etree import ElementTree as ET
+
+from lxml import etree as lxml_etree
 
 from app.clients.aggregators.data18 import Data18Client, scene_url_from_ref
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
@@ -20,6 +24,12 @@ _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
 _INDEX_TTL_S = 60.0
 _MISS_THROTTLE_S = 2.0
 _ALLOWED_GENDERS = {'male', 'female', 'trans'}
+
+_XML_DECL_RE = re.compile(r'^\s*<\?xml[^>]*\?>')
+_XML_ENTITY_RE = re.compile(r'&(?:#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos);')
+_AMP_RE = re.compile(r'&(#\d+;|#x[0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]*;)?')
+_TAG_START_RE = re.compile(r'<(?:[A-Za-z_/?!])')
+_BAD_CHAR_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
 
 @dataclass
@@ -124,12 +134,54 @@ def _txt(v: str | None) -> str | None:
     return v.strip() or None
 
 
-def _parse_nfo(data: bytes | str) -> NfoData | None:
-    raw = data.encode('utf-8') if isinstance(data, str) else data
+def _repair_xml(text: str) -> str:
+    def _amp(m: re.Match[str]) -> str:
+        ref = m.group(1)
+        if not ref:
+            return '&amp;'
+        if _XML_ENTITY_RE.match(m.group(0)):
+            return m.group(0)
+        return html5.get(ref, f'&amp;{ref}')
+
+    text = _AMP_RE.sub(_amp, _BAD_CHAR_RE.sub('', _XML_DECL_RE.sub('', text)))
+    return ''.join(c if c != '<' or _TAG_START_RE.match(text, i) else '&lt;' for i, c in enumerate(text))
+
+
+def _error_context(text: str, err: ET.ParseError) -> str:
+    line, col = err.position
+    lines = text.splitlines()
+    if not 1 <= line <= len(lines):
+        return str(err)
+    return f'{err} | {lines[line - 1].strip()[:120]!r} (column {col})'
+
+
+def _parse_xml(raw: bytes, label: str) -> Any:
     try:
-        root = ET.fromstring(raw)
+        return ET.fromstring(raw)
     except ET.ParseError as err:
-        logger.warn('Manual NFO', f'XML parse failed: {err}')
+        strict_err = err
+    text = raw.decode('utf-8', 'replace')
+    repaired = _repair_xml(text)
+    try:
+        root = ET.fromstring(repaired)
+    except ET.ParseError:
+        try:
+            root = lxml_etree.fromstring(repaired.encode('utf-8'), lxml_etree.XMLParser(recover=True))
+        except lxml_etree.LxmlError:
+            root = None
+        if root is None:
+            logger.warn('Manual NFO', f'XML parse failed{label}: {_error_context(text, strict_err)}')
+            return None
+        logger.warn('Manual NFO', f'salvaged malformed XML{label}: {_error_context(text, strict_err)}')
+        return root
+    logger.warn('Manual NFO', f'repaired malformed XML{label}: {_error_context(text, strict_err)}')
+    return root
+
+
+def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
+    raw = data.encode('utf-8') if isinstance(data, str) else data
+    root = _parse_xml(raw, f' in {label}' if label else '')
+    if root is None:
         return None
     movie = root if root.tag == 'movie' else root.find('movie')
     if movie is None:
@@ -176,7 +228,7 @@ def _load_and_parse(located: LocatedNfo) -> NfoData | None:
     except OSError as err:
         logger.warn('Manual NFO', f'read failed {located.nfo_path}: {err}')
         return None
-    return _parse_nfo(data)
+    return _parse_nfo(data, located.nfo_path.name)
 
 
 def _nfo_release_date(nfo: NfoData) -> str | None:

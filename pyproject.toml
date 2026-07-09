@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "httpx2>=2.0",
+    "lxml>=5.0",
     "parsel>=1.9",
     "Pillow>=11.0",
     "python-dotenv>=1.0",

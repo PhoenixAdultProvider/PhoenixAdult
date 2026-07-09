@@ -151,6 +151,22 @@ The full schema PhoenixAdult reads (every field is optional except `<title>`):
 </movie>
 ```
 
+### Malformed XML is repaired, not rejected
+
+Tags the provider doesn't know (`<uniqueid>`, `<premiered>`, …) are ignored, and every tag above is
+optional. A file that isn't well-formed XML is repaired rather than dropped:
+
+| in the file | what you get |
+|---|---|
+| `<genre>Pantyhose & Stockings</genre>` | `Pantyhose & Stockings` — a bare `&` is escaped |
+| `<plot>3 < 4</plot>` | `3 < 4` — a stray `<` is escaped |
+| `&nbsp;`, `&eacute;`, … | the character it names |
+| control characters | stripped |
+| unclosed or mis-nested tags | salvaged where possible |
+
+Each repair logs a warning naming the file and quoting the offending line. Writing valid XML
+(`&amp;`, `&lt;`) is still preferred — the repair pass is a safety net, not a licence.
+
 ### Pinning the data18 scene
 
 When data18 enrichment is on (`DATA18_ENABLE=true`), extra images are normally found by
