@@ -22,13 +22,22 @@ _UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 
 DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '169646': 'thats-better-than-stealing-it-herfreshmanyear',
-    '1313219': 'delicious-firsts-hussiepass',
-    '1349311': 'thanksgiving-the-hijab-way-hijabhookups',
-    '1341218': 'the-vamp-next-door-momswap',
-    '1341212': 'home-for-the-holidays-momswap',
-    '1301931': 'live-and-on-location-brazzersexxtra',
-    '1165245': 'lets-get-facials-2-brazzersexxtra',
+    '1114179': 'slut-wars-the-vagina-squirts-back-shesgonnasquirt',
+    '1132200': 'the-whore-of-wall-street-ep-1-a-whore-is-born-zzseries',
+    '1133753': 'the-whore-of-wall-street-ep-2-the-anal-office-queen-zzseries',
+    '1134102': 'the-whore-of-wall-street-ep-4-double-teamed-on-the-high-seas-zzseries',
+    '1134439': 'the-whore-of-wall-street-ep-5-one-last-orgy-zzseries',
+    '1134892': 'el-doctor-primera-parte-pornstarlikeitbig',
+    '1150082': 'vice-city-vacation-part-two-zzseries',
     '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
+    '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
+    '1162015': 'yoga-freaks-episode-four-brazzersexxtra',
+    '1165245': 'lets-get-facials-2-brazzersexxtra',
+    '1301931': 'live-and-on-location-brazzersexxtra',
+    '1313219': 'delicious-firsts-hussiepass',
+    '1341212': 'home-for-the-holidays-momswap',
+    '1341218': 'the-vamp-next-door-momswap',
+    '1349311': 'thanksgiving-the-hijab-way-hijabhookups',
 }
 
 
