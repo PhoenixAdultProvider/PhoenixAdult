@@ -358,6 +358,41 @@ def purge(key: str) -> bool:
     return True
 
 
+def duplicate_entries() -> list[str]:
+    """Rel paths of sub-site-less snapshots superseded by a sub-site-bearing twin of the
+    same scene. A lone sub-site-less snapshot is never reported: the sub-site can only be
+    stripped from a cur_id, never derived, so its twin is unprovable."""
+    from app.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
+    from app.utils.plex.rating_key import parse_rating_key
+
+    index = _ensure_index()
+    root = Path(cache_dir())
+    stale: set[str] = set()
+    for rel in set(index.values()):
+        try:
+            data = json.loads((root / rel / 'meta.json').read_text(encoding='utf-8'))
+            rating_key = ((data.get('MediaContainer') or {}).get('Metadata') or [{}])[0].get('ratingKey') or ''
+        except (OSError, ValueError):
+            continue
+        parsed = parse_rating_key(rating_key)
+        if not parsed or not parsed['cur_id'] or not parsed['site_name']:
+            continue
+        try:
+            payload, subsite = split_subsite(b64url_decode(parsed['cur_id']))
+        except ValueError:
+            continue
+        if not subsite:
+            continue
+        old_rel = index.get(_hash(parsed['site_name'], b64url_encode(payload)))
+        if old_rel and old_rel != rel:
+            stale.add(old_rel)
+    return sorted(stale)
+
+
+def purge_duplicates() -> int:
+    return sum(1 for rel in duplicate_entries() if purge(rel))
+
+
 # ── People-image backfill ─────────────────────────────────────────────────────
 
 

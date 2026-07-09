@@ -25,7 +25,12 @@ async def page(request: Request) -> HTMLResponse:
     # Escape `<` so scraped titles / a crafted ?token= can't break out of the <script> block.
     token_json = json.dumps(token).replace('<', '\\u003c')
     entries_json = json.dumps(entries).replace('<', '\\u003c')
-    body = _TEMPLATE.replace('__STATE__', state).replace('__TOKEN__', token_json).replace('__ENTRIES_JSON__', entries_json)
+    body = (
+        _TEMPLATE.replace('__STATE__', state)
+        .replace('__TOKEN__', token_json)
+        .replace('__ENTRIES_JSON__', entries_json)
+        .replace('__DUP_COUNT__', str(len(metadata_cache.duplicate_entries())))
+    )
     return HTMLResponse(body)
 
 
@@ -37,3 +42,9 @@ async def purge(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
     ok = metadata_cache.purge(key)
     return JSONResponse({'ok': ok})
+
+
+@router.post('/purge-duplicates')
+async def purge_duplicates() -> JSONResponse:
+    # Recomputed server-side; the client never supplies paths.
+    return JSONResponse({'ok': True, 'purged': metadata_cache.purge_duplicates()})

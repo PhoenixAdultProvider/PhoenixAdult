@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,8 @@ import respx
 
 from app.models.metadata import PlexMetadataResponse
 from app.utils import cache as mc
+from app.utils.helpers.helpers import b64url_encode, embed_subsite
+from app.utils.plex.rating_key import to_rating_key
 
 
 def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -398,3 +401,32 @@ def test_data18_remap_needed_off_when_disabled(monkeypatch: pytest.MonkeyPatch) 
     resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
     monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
     assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False
+
+
+def _snapshot(root: Path, rel: str, rating_key: str) -> None:
+    d = root / rel
+    d.mkdir(parents=True, exist_ok=True)
+    meta = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': rating_key, 'guid': 'g', 'title': 'Scene'}]}}
+    (d / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
+
+
+def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    old_cur = b64url_encode('3870731|scene|2015-09-24')
+    new_cur = embed_subsite(old_cur, 'Teens Like It Big')
+    old_rel = f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}'
+    new_rel = f'brazzers/teens-like-it-big/{mc._hash("Brazzers", new_cur)}'
+    _snapshot(tmp_path, old_rel, to_rating_key(old_cur, 'Brazzers'))
+    _snapshot(tmp_path, new_rel, to_rating_key(new_cur, 'Brazzers'))
+
+    assert mc.duplicate_entries() == [old_rel]  # only the superseded sub-site-less side
+    assert mc.purge_duplicates() == 1
+    assert not (tmp_path / old_rel).exists()
+    assert (tmp_path / new_rel).exists()  # the sub-site entry is kept
+
+
+def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    old_cur = b64url_encode('3870731|scene|2015-09-24')
+    _snapshot(tmp_path, f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}', to_rating_key(old_cur, 'Brazzers'))
+    assert mc.duplicate_entries() == []  # no twin -> not provably a duplicate

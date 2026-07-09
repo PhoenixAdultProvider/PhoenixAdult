@@ -55,6 +55,9 @@
     .cached-ts { color: #94a3b8; white-space: nowrap; }
     .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .purge-btn:hover { background: #dc2626; }
+    .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
+    .dup-btn.active { background: #b45309; border-color: #f59e0b; color: #fff; cursor: pointer; }
+    .dup-btn.active:hover { background: #d97706; }
     .empty { color: #94a3b8; margin-top: 24px; }
   </style>
 </head>
@@ -92,6 +95,7 @@
       <select id="f-collection" onchange="render()"><option value="">All</option></select>
     </div>
     <button class="reset-btn" onclick="reset()">Reset</button>
+    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <span class="count-badge" id="count"></span>
   </div>
 
@@ -117,6 +121,7 @@
   <script>
     const TOKEN = __TOKEN__;
     const ALL = __ENTRIES_JSON__;
+    const DUP_COUNT = __DUP_COUNT__;
 
     // Derive date parts (YYYY-MM-DD); format mtime for display
     ALL.forEach(e => {
@@ -304,6 +309,23 @@
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) location.reload(); else alert('Purge failed');
     }
+
+    async function purgeDuplicates() {
+      if (!DUP_COUNT) return;
+      if (!confirm(`Purge ${DUP_COUNT} superseded duplicate snapshot(s)? The newer sub-site entry is kept.`)) return;
+      const headers = {'Content-Type': 'application/json'};
+      if (TOKEN) headers['x-admin-token'] = TOKEN;
+      const r = await fetch('/metadata-cache/purge-duplicates', {method: 'POST', headers});
+      const j = await r.json().catch(() => ({ok: false}));
+      if (j.ok) location.reload(); else alert('Purge failed');
+    }
+
+    (function initDupBtn() {
+      const btn = document.getElementById('dupBtn');
+      btn.textContent = DUP_COUNT ? `Purge ${DUP_COUNT} Duplicate ${DUP_COUNT === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
+      btn.disabled = !DUP_COUNT;
+      btn.classList.toggle('active', DUP_COUNT > 0);
+    })();
 
     // Boot with default sort indicator showing
     applyHeaderIndicator();
