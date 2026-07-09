@@ -12,25 +12,46 @@ from app.registry import find_site
 SITE = find_site('Data18 Empire')
 assert SITE is not None
 
-MOVIE_PAGE = """<html><body>
-  <h1 class="description">Big Movie, The</h1>
+_COMMON = """
   <div class="synopsis">A grand description.</div>
   <div class="studio"><a>Empire Studios</a></div>
   <div class="release-date"><span>Released:</span> Jan 5, 2024</div>
   <div class="categories"><a>Anal</a><a>Hardcore</a></div>
-  <div class="video-performer">
-    <a><img title="Jane Doe" data-bgsrc="https://cdn.example/jane.jpg" /><span><span>Jane Doe</span></span></a>
-  </div>
-  <div class="item-grid item-grid-scene">
-    <div class="grid-item">
-      <a href="/scene1"><img src="https://cdn.example/shot1.jpg" /></a>
-      <div class="scene-cast-list"><a>Mary Roe</a></div>
-    </div>
-  </div>
   <div id="video-container-details">
     <div><section><a><picture><source data-srcset="https://cdn.example/cover.jpg" /></picture></a></section></div>
   </div>
 </body></html>"""
+
+# Live markup: each grid-item wraps an <article>, the screenshot anchor carries class
+# "scene-img", and the per-scene cast is a <p class="scene-performer-names">. The performer
+# name is the <img title>, not a nested <span>.
+MOVIE_PAGE = f"""<html><body>
+  <h1 class="description">Big Movie, The</h1>
+  <div class="video-performer-container">
+    <div class="video-performer">
+      <a href="/1/jane-pornstars.html"><img title="Jane Doe" data-bgsrc="https://cdn.example/jane.jpg" /></a>
+    </div>
+    <div class="performer-name"> Jane Doe </div>
+  </div>
+  <div class="item-grid item-grid-scene">
+    <div class="grid-item"><article class="scene-widget">
+      <div class="scene-preview-container">
+        <a class="scene-img" href="/scene1"><img src="https://cdn.example/shot1.jpg" /></a>
+      </div>
+      <p class="scene-performer-names"><a href="/2/mary.html">Mary Roe</a></p>
+    </article></div>
+  </div>{_COMMON}"""
+
+# Older shape: no <article>, cast in div.scene-cast-list. Both fallbacks must still fire.
+MOVIE_PAGE_LEGACY_GRID = f"""<html><body>
+  <h1 class="description">Big Movie, The</h1>
+  <div class="performers"><a>Jane Doe</a></div>
+  <div class="item-grid item-grid-scene">
+    <div class="grid-item">
+      <a class="scene-img" href="/scene1"><img src="https://cdn.example/shot1.jpg" /></a>
+      <div class="scene-cast-list"><a>Mary Roe</a></div>
+    </div>
+  </div>{_COMMON}"""
 
 
 async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
@@ -80,3 +101,49 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.title == 'The Big Movie [Scene 1]'
     assert [a.name for a in detail.actors] == ['Mary Roe']
     assert 'https://cdn.example/shot1.jpg' in detail.raw_image_urls
+
+
+@respx.mock
+async def test_search_sends_age_gate_cookie(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
+    route = respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    await Data18EmpireClient().search(_ctx())
+    assert 'ageConfirmed=true' in route.calls[0].request.headers['Cookie']
+
+
+@respx.mock
+async def test_search_direct_id_matches_numeric_path_segment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
+    url = 'https://data18.empirestores.co/1234567/big-movie-porn-movies.html'
+    respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(301, headers={'Location': url}))
+    respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    results = await Data18EmpireClient().search(_ctx())
+    assert results[0].score == 100
+
+
+@respx.mock
+async def test_detail_legacy_grid_shape_still_parses(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
+    respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE_LEGACY_GRID))
+    client = Data18EmpireClient()
+    results = await client.search(_ctx())
+    assert len(results) == 2
+    movie = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
+    assert movie is not None and [a.name for a in movie.actors] == ['Jane Doe']
+    scene = await client.fetch_scene_detail(client.decode(results[1].cur_id), SITE)
+    assert scene is not None and [a.name for a in scene.actors] == ['Mary Roe']
+    assert 'https://cdn.example/shot1.jpg' in scene.raw_image_urls
+
+
+def test_is_movie_url_accepts_real_empire_urls() -> None:
+    accept = [
+        'https://data18.empirestores.co/1872061/yoga-freaks-porn-movies.html',
+        'https://data18.empirestores.co/movies/1872061',
+    ]
+    reject = [
+        'https://data18.empirestores.co/474349/some-scene-streaming-scene-video.html',
+        'https://data18.empirestores.co/664699/abella-danger-pornstars.html',
+        'https://data18.empirestores.co/Search?q=yoga',
+    ]
+    assert all(d18e_module._is_movie_url(u) for u in accept)
+    assert not any(d18e_module._is_movie_url(u) for u in reject)

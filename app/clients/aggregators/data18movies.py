@@ -4,13 +4,32 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client
+from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
+
+_TITLE_XP = '(//h1)[1]'
+_DATE_ATTR_XP = '(//*[@datetime])[1]/@datetime'
+_DATE_TEXT_XP = '(//text()[contains(.,"Release date:")])[1]'
+_SERIES_XP = '(//p[contains(.,"Movie Series")]//a[@title])[1]'
+
+_STUDIO_XPATHS = (
+    '(//b[normalize-space(.)="Network"])[1]/following-sibling::b[1]',
+    '(//b[normalize-space(.)="Studio"])[1]/following-sibling::b[1]',
+    '(//b[normalize-space(.)="Network"])[1]/following-sibling::a[1]',
+    '(//b[normalize-space(.)="Studio"])[1]/following-sibling::a[1]',
+    '(//p[contains(.,"Site:")]//a[contains(@class,"bold")])[1]',
+)
+_SUBSITE_XP = '(//p[b[normalize-space(.)="Network"] or b[normalize-space(.)="Studio"]]/a)[1]'
+_ACTOR_XPATHS = (
+    '(//h3[contains(.,"Cast")])[1]/following::a[contains(@href,"/name/")]//img',
+    '(//b[contains(.,"Cast")])[1]/following::div//a[contains(@href,"/pornstars/")]//img',
+    '(//b[contains(.,"Cast")])[1]/following::div//img[contains(@data-original,"user")]',
+)
 
 
 def _swap_article(raw: str) -> str:
@@ -22,15 +41,41 @@ def _swap_article(raw: str) -> str:
     return raw
 
 
+def _ns(sel: Any, xpath: str) -> str:
+    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
+
+
+def _first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
+    for xpath in xpaths:
+        if value := _ns(sel, xpath):
+            return value
+    return ''
+
+
+def _squash(value: str) -> str:
+    return re.sub(r'\s+', '', value).lower()
+
+
 def _resolve_studio(sel: Any) -> str:
-    node = sel.xpath('(//b[contains(.,"Studio") or contains(.,"Network")])[1]')
-    if node:
-        s = first_attr(node[0], 'following-sibling::b[1]/text()')
-        if not s:
-            s = first_attr(node[0], 'following-sibling::a[1]/text()')
-        if s:
-            return s
-    return first_attr(sel, '(//p[contains(.,"Site:")]//a[contains(@class,"bold")])[1]/text()')
+    return strip_reptyle_suffix(_first_ns(sel, _STUDIO_XPATHS))
+
+
+def _resolve_series(sel: Any, studio: str) -> str:
+    if series := _ns(sel, _SERIES_XP):
+        return series
+    sub_site = strip_reptyle_suffix(_ns(sel, _SUBSITE_XP))
+    return sub_site if sub_site and _squash(sub_site) != _squash(studio) else ''
+
+
+def _release_date(sel: Any) -> str | None:
+    if attr := _ns(sel, _DATE_ATTR_XP):
+        if iso := iso_date(attr):
+            return iso
+    raw = _ns(sel, _DATE_TEXT_XP)
+    text = re.sub(r'.*Release date:\s*', '', raw).strip()
+    if not text or text.lower() == 'unknown':
+        return None
+    return iso_date(text, '%B, %Y') or iso_date(text)
 
 
 class Data18MoviesClient(Client):
@@ -71,7 +116,7 @@ class Data18MoviesClient(Client):
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
-                    title = _swap_article(first_attr(loaded, '(//h1)[1]/text()') or title)
+                    title = _swap_article(_ns(loaded, _TITLE_XP) or title)
             score = (
                 100
                 if direct_hit
@@ -90,6 +135,7 @@ class Data18MoviesClient(Client):
                     search_date=ctx.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (c.url, c.release_date) if p]),
+                    subsite=c.provider or None,
                 )
             )
 
@@ -100,13 +146,14 @@ class Data18MoviesClient(Client):
             loaded = await self._data18.fetch_page(movie_url)
             if loaded is None:
                 continue
-            title = _swap_article(first_attr(loaded, '(//h1)[1]/text()'))
+            title = _swap_article(_ns(loaded, _TITLE_XP))
             if not title:
                 continue
             url_id = re.sub(r'.*/', '', movie_url)
             direct_hit = scene_id != '' and scene_id == url_id
-            date_attr = first_attr(loaded, '(//*[@datetime])[1]/@datetime')
-            release_date = iso_date(date_attr) or ''
+            release_date = _release_date(loaded) or ''
+            studio = _resolve_studio(loaded)
+            subsite = _resolve_series(loaded, studio) or studio
             score = (
                 100
                 if direct_hit
@@ -123,6 +170,7 @@ class Data18MoviesClient(Client):
                     search_date=ctx.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (movie_url, release_date) if p]),
+                    subsite=subsite or None,
                 )
             )
         return results
@@ -141,7 +189,7 @@ class Data18MoviesClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//h1)[1]/text()')
+        raw = _ns(scene.sel, _TITLE_XP)
         return _swap_article(raw) if raw else None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
@@ -159,12 +207,12 @@ class Data18MoviesClient(Client):
 
     async def fetch_tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//p[contains(.,"Movie Series")]//a[@title])[1]/text()') or None
+        return _resolve_series(scene.sel, _resolve_studio(scene.sel)) or None
 
     async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
         studio = _resolve_studio(scene.sel)
-        series = first_attr(scene.sel, '(//p[contains(.,"Movie Series")]//a[@title])[1]/text()')
+        series = _resolve_series(scene.sel, studio)
         out: list[str] = []
         if studio:
             out.append(studio)
@@ -174,12 +222,11 @@ class Data18MoviesClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        attr = first_attr(scene.sel, '(//*[@datetime])[1]/@datetime')
-        return iso_date(attr) or scene.scene_date or None
+        return _release_date(scene.sel) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//p[.//b[contains(.,"Categories")]]//a')]
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//p[./b[contains(.,"Categories")]]//a')]
         return self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
@@ -193,15 +240,18 @@ class Data18MoviesClient(Client):
                 seen.add(n)
                 actors.append(ActorResult(name=n, photo_url=photo))
 
-        for img in scene.sel.xpath('//a[contains(@href,"/pornstars/")]//img'):
-            add(img.xpath('@alt').get() or '', first_attr(img, '@data-src'))
-        for img in scene.sel.xpath('//img[contains(@data-original,"user")]'):
-            add(img.xpath('@alt').get() or '')
+        for xpath in _ACTOR_XPATHS:
+            imgs = scene.sel.xpath(xpath)
+            if not imgs:
+                continue
+            for img in imgs:
+                add(img.xpath('@alt').get() or '', first_attr(img, '@data-src'))
+            break
         return actors
 
     async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        block = scene.sel.xpath('(//p[.//b[contains(.,"Director")]])[1]')
+        block = scene.sel.xpath('(//p[./b[contains(.,"Director")]])[1]')
         if not block:
             return None
         raw = (block[0].xpath('string(.)').get() or '').split(':')[-1].split('-')[0].strip()

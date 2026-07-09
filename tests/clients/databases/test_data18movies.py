@@ -18,20 +18,39 @@ SEARCH_PAGE = """<html><body>
   pages: 1
   <a href="https://www.data18.com/movies/12345-big-movie">
     <p class="gen12 bold">Big Movie</p>
-    <span class="gen11"><b>#1</b> January, 2024&nbsp;<i>Empire Studios</i></span>
+    <span class="gen11"><b>#1</b> January, 2024&nbsp;<i>ZZ Series</i></span>
   </a>
 </body></html>"""
 
-MOVIE_PAGE = """<html><body>
-  <h1>Big Movie</h1>
-  <p><b>Studio</b>: <b>Empire Studios</b></p>
+# The <h1> wraps an <a>, so /text() yields nothing; the nav widget's <b>R</b> follows the
+# label and must not be read as the studio. "Site:" names the sub-site.
+_HEAD = '<h1><a href="/movies/12345">Big Movie</a></h1>'
+_BODY = """
   <div class="gen12"><div>Description --- A grand description. Studio: Empire Studios</div></div>
   <p><b>Categories</b>: <a>Anal</a><a>Hardcore</a></p>
-  <time datetime="2024-01-05"></time>
-  <a href="/pornstars/jane"><img alt="Jane Doe" data-src="https://cdn.example/jane.jpg" /></a>
+  <h3>Pornstars / Cast of Big Movie</h3>
+  <div><a href="/name/jane"><img alt="Jane Doe" data-src="https://cdn.example/jane.jpg" /></a></div>
   <p><b>Director</b>: Joe Helmer</p>
   <a id="enlargecover" data-featherlight="https://cdn.example/cover.jpg"></a>
 </body></html>"""
+
+MOVIE_PAGE = f"""<html><body>{_HEAD}
+  <p><b>Network</b>: <b><a href="/studios/empire">Empire Studios</a></b>
+     <span class="gen11">- 875 Movies <span><b>R</b> Nav</span></span> |
+     Site: <a href="/studios/empire/zz-series">ZZ Series</a></p>
+  <span>Prod. Year: 2024 - Release date: January, 2024</span>{_BODY}"""
+
+# A @datetime attribute wins over the "Release date:" text when present.
+MOVIE_PAGE_DATETIME = f"""<html><body>{_HEAD}
+  <p><b>Studio</b>: <b><a href="/studios/empire">Empire Studios</a></b></p>
+  <time datetime="2024-01-05"></time>{_BODY}"""
+
+# data18 labels the Reptyle networks "<Network> - Reptyle"; the sub-site anchor repeats the studio.
+MOVIE_PAGE_REPTYLE = f"""<html><body>{_HEAD}
+  <p><b>Network</b>: <b><a href="/studios/teamskeet">TeamSkeet - Reptyle</a></b>
+     <span class="gen11">- 1 Movies</span> |
+     Site: <a href="/studios/teamskeet">TeamSkeet - Reptyle</a></p>
+  <span>Release date: January, 2024</span>{_BODY}"""
 
 
 async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
@@ -47,6 +66,7 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(results) == 1
     assert results[0].title == 'Big Movie'
     assert results[0].scene_url == 'https://www.data18.com/movies/12345'
+    assert results[0].subsite == 'ZZ Series'
 
 
 @respx.mock
@@ -59,6 +79,8 @@ async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     direct = [r for r in results if r.scene_url == 'https://data18.com/movies/12345']
     assert direct and direct[0].score == 100
+    assert direct[0].title == 'Big Movie'
+    assert direct[0].subsite == 'ZZ Series'
 
 
 @respx.mock
@@ -69,8 +91,32 @@ async def test_detail() -> None:
     assert detail is not None
     assert detail.title == 'Big Movie'
     assert detail.studio == 'Empire Studios'
-    assert detail.release_date == '2024-01-05'
+    assert detail.tagline == 'ZZ Series'
+    assert detail.collections == ['Empire Studios', 'ZZ Series']
+    assert detail.release_date == '2024-01-01'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.example/jane.jpg')]
     assert detail.directors is not None and [d.name for d in detail.directors] == ['Joe Helmer']
     assert 'https://cdn.example/cover.jpg' in detail.raw_image_urls
+
+
+@respx.mock
+async def test_detail_prefers_datetime_attribute() -> None:
+    url = 'https://data18.com/movies/12345'
+    respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE_DATETIME))
+    detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
+    assert detail is not None
+    assert detail.release_date == '2024-01-05'
+    assert detail.studio == 'Empire Studios'
+    assert detail.tagline is None
+
+
+@respx.mock
+async def test_detail_strips_reptyle_suffix_and_drops_echoed_subsite() -> None:
+    url = 'https://data18.com/movies/12345'
+    respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE_REPTYLE))
+    detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
+    assert detail is not None
+    assert detail.studio == 'TeamSkeet'
+    assert detail.tagline is None
+    assert detail.collections == ['TeamSkeet']

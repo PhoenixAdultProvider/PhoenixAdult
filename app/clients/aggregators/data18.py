@@ -59,6 +59,14 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
     return f'{_BASE}/scenes/{data18_id}' if data18_id else None
 
 
+_REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
+
+
+def strip_reptyle_suffix(studio: str) -> str:
+    """data18 labels the Reptyle networks "TeamSkeet - Reptyle"; the network is the first part."""
+    return _REPTYLE_SUFFIX_RE.sub('', studio).strip()
+
+
 _SCENE_REF_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
 _DATA18_HOSTS = ('data18.com', 'www.data18.com')
 

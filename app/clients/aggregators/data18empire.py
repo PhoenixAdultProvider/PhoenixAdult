@@ -15,6 +15,17 @@ from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
 _SCENE_GRID_XP = '//div[contains(@class,"item-grid") and contains(@class,"item-grid-scene")]'
+_GRID_ITEM_XP = f'{_SCENE_GRID_XP}//div[contains(@class,"grid-item")]'
+_AGE_HEADERS = {'Cookie': 'ageConfirmed=true'}
+
+
+def _movie_id(url: str) -> str:
+    return (urlsplit(url).path.strip('/').split('/') or [''])[0]
+
+
+def _is_movie_url(url: str) -> bool:
+    path = urlsplit(url).path
+    return '/movies/' in path or path.endswith('-porn-movies.html')
 
 
 def _swap_article(raw: str) -> str:
@@ -58,7 +69,9 @@ class Data18EmpireClient(Client):
         else:
             encoded = re.sub(r'\s+', '+', ctx.title.strip())
             search_page = await self.fetch_and_load(
-                f'{base}{ctx.site_info.search_path}{encoded}', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"'
+                f'{base}{ctx.site_info.search_path}{encoded}',
+                FetchCtx(capture=ctx.capture, headers=_AGE_HEADERS),
+                f'[{ctx.site_info.name}] search "{ctx.title}"',
             )
             if search_page:
                 for href in search_page['sel'].xpath('//a[contains(@class,"boxcover")]/@href').getall():
@@ -67,19 +80,19 @@ class Data18EmpireClient(Client):
             with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
                 host = urlsplit(ctx.site_info.base_url).hostname or ''
                 for u in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
-                    if '/movies/' in u and '.html' not in u:
+                    if _is_movie_url(u):
                         add_movie(u)
 
         results: list[SearchResult] = []
         for movie_url in movie_urls:
-            loaded = await self.fetch_and_load(movie_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] movie {movie_url}')
+            loaded = await self.fetch_and_load(movie_url, FetchCtx(capture=ctx.capture, headers=_AGE_HEADERS), f'[{ctx.site_info.name}] movie {movie_url}')
             if not loaded:
                 continue
             sel = loaded['sel']
             title = _swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'))
             if not title:
                 continue
-            url_id = re.sub(r'.*/', '', movie_url)
+            url_id = _movie_id(movie_url)
             date = _release_date(sel)
             direct_hit = scene_id != '' and scene_id == url_id
             score = 100.0 if direct_hit else None
@@ -94,7 +107,7 @@ class Data18EmpireClient(Client):
                     cur_id=pack_cur_id([json.dumps({'movieURL': movie_url, 'searchDate': ctx.search_date})]),
                 )
             )
-            scene_count = len(sel.xpath(f'{_SCENE_GRID_XP}/div/a'))
+            scene_count = len(sel.xpath(_GRID_ITEM_XP))
             for scene_num in range(1, scene_count + 1):
                 results.append(
                     build_search_result(
@@ -119,7 +132,7 @@ class Data18EmpireClient(Client):
         except (ValueError, TypeError):
             packed = {'movieURL': payload}
         movie_url = packed.get('movieURL', '')
-        loaded = await self.fetch_and_load(movie_url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {movie_url}')
+        loaded = await self.fetch_and_load(movie_url, FetchCtx(capture=ctx.capture if ctx else None, headers=_AGE_HEADERS), f'[{site.name}] detail {movie_url}')
         if not loaded:
             return None
         return LoadedScene(
@@ -199,17 +212,18 @@ class Data18EmpireClient(Client):
                 actors.append(ActorResult(name=n, photo_url=photo))
 
         if packed.get('sceneNum') is not None:
-            rows = sel.xpath(f'{_SCENE_GRID_XP}//div[contains(@class,"grid-item")]')
+            rows = sel.xpath(_GRID_ITEM_XP)
             idx = (packed['sceneNum'] or 1) - 1
             if idx < len(rows):
-                for a in rows[idx].xpath('.//div[contains(@class,"scene-cast-list")]//a'):
+                cast = rows[idx].xpath('.//p[contains(@class,"scene-performer-names")]//a') or rows[idx].xpath('.//div[contains(@class,"scene-cast-list")]//a')
+                for a in cast:
                     name = first_attr(a, 'normalize-space(.)')
                     add(name, performer_photo(name))
-        else:
-            cast = sel.xpath('//div[contains(@class,"video-performer")]//a//span//span')
-            if not cast:
-                cast = sel.xpath('//div[contains(@class,"performers")]//a')
-            for el in cast:
+            return actors
+        for name in sel.xpath('//div[contains(@class,"video-performer")]//img/@title').getall():
+            add(name.strip(), performer_photo(name.strip()))
+        if not actors:
+            for el in sel.xpath('//div[contains(@class,"performer-name")]') or sel.xpath('//div[contains(@class,"performers")]//a'):
                 name = first_attr(el, 'normalize-space(.)')
                 add(name, performer_photo(name))
         return actors
@@ -251,7 +265,7 @@ class Data18EmpireClient(Client):
         gallery_href = first_attr(sel, '(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]')
         if gallery_href:
             gallery_url = gallery_href if gallery_href.startswith('http') else base + gallery_href
-            gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
+            gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture, headers=_AGE_HEADERS), f'[{scene.site.name}] gallery')
             if gallery:
                 for src in (
                     gallery['sel']
@@ -261,8 +275,8 @@ class Data18EmpireClient(Client):
                     add(src)
 
         if packed.get('sceneNum') is not None:
-            shots = sel.xpath(f'{_SCENE_GRID_XP}/div/a//img/@src').getall()
+            rows = sel.xpath(_GRID_ITEM_XP)
             idx = (packed['sceneNum'] or 1) - 1
-            if idx < len(shots):
-                add(shots[idx])
+            if idx < len(rows):
+                add(rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
         return images

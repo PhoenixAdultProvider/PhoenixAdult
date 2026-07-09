@@ -4,49 +4,82 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client
+from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
-from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
 
-_RELEASE_DATE_XP = '(//span[contains(.,"Release date")])[1]/following-sibling::a//b[1]/text()'
+_TITLE_XP = '(//h1)[1]'
+_RELEASE_DATE_XP = '(//b[normalize-space(.)="Release date"])[1]/following-sibling::a[1]/b[1]'
+_SITE_XP = '(//p[b[normalize-space(.)="Site"]]/a)[1]'
+_NETWORK_XP = '(//p[b[normalize-space(.)="Network"]]//a)[1]'
+_BARE_SUBSITE_XP = '(//b[normalize-space(.)="Network"])[1]/following-sibling::text()'
+
+_STUDIO_XPATHS = (
+    '(//b[normalize-space(.)="Studio"])[1]/following-sibling::b[1]',
+    '(//b[normalize-space(.)="Network"])[1]/following-sibling::b[1]',
+    '(//b[normalize-space(.)="Studio"])[1]/following-sibling::a[1]',
+    '(//b[normalize-space(.)="Network"])[1]/following-sibling::a[1]',
+    _SITE_XP,
+)
+_SUBSITE_XPATHS = ('(//p[b[normalize-space(.)="Network"]]/a[@class="bold"])[1]',)
+_SERIE_XPATHS = (
+    '(//span[contains(@class,"listwebserie") or contains(@class,"listminiserie")]/u)[1]',
+    '(//text()[contains(.,"Webserie:") or contains(.,"Miniserie:")])[1]/following-sibling::a[1]',
+)
+_MOVIE_XPATHS = ('(//p[b[normalize-space(.)="Movie:"]]/a)[1]',)
+_REPTYLE_NETWORKS = ('teamskeet', 'mylf')
 
 
-def _site_anchor(sel: Any) -> str:
-    return first_attr(sel, '(//p[.//b[contains(.,"Site")]]//a)[1]/text()')
+def _ns(sel: Any, xpath: str) -> str:
+    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
+
+
+def _first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
+    for xpath in xpaths:
+        if value := _ns(sel, xpath):
+            return value
+    return ''
+
+
+def _squash(value: str) -> str:
+    return re.sub(r'\s+', '', value).lower()
 
 
 def _resolve_studio(sel: Any) -> str:
-    queries = [('Studio', 'b'), ('Network', 'b'), ('Studio', 'a'), ('Network', 'a')]
-    for label, nxt in queries:
-        text = (sel.xpath(f'(//b[normalize-space(.)="{label}"])[1]/following-sibling::{nxt}[1]/text()').get() or '').strip()
-        if text:
-            return text
-    return _site_anchor(sel)
+    return _first_ns(sel, _STUDIO_XPATHS)
+
+
+def _resolve_subsite(sel: Any) -> str:
+    if bold := _first_ns(sel, _SUBSITE_XPATHS):
+        return bold
+    texts: list[str] = sel.xpath(_BARE_SUBSITE_XP).getall()
+    for text in texts:
+        stripped = text.strip()
+        if stripped.startswith('|') and (bare := stripped.lstrip('|').strip()) and not bare.endswith(':'):
+            return bare
+    return ''
 
 
 def _resolve_tagline(sel: Any, studio: str) -> str:
-    site_name = _site_anchor(sel)
-    sub_site = first_attr(sel, '(//p[.//b[contains(.,"Network")]]//a)[1]/text()')
-    if sub_site.lower() in ('brazzers', 'bangbros'):
-        candidate = (sel.xpath('(//b[contains(.,"Network")])[1]/..').xpath('normalize-space(.)').get() or '').split('|')[-1].strip()
-        if re.search(r'Brazzers Exxtra|Brazzers Live|BangBros Clips', candidate):
-            sub_site = candidate
-    serie = first_attr(sel, '(//p[contains(.,"Webserie:")] | //p[contains(.,"Miniserie:")])[1]//a[1]/text()')
-    movie = first_attr(sel, '(//p[contains(.,"Movie:")])[1]//a[1]/text()')
-    if site_name:
+    if not _ns(sel, _NETWORK_XP):
+        return ''
+    if site_name := _ns(sel, _SITE_XP):
         return site_name
-    if sub_site and re.sub(r'\s+', '', sub_site).lower() != re.sub(r'\s+', '', studio).lower():
+    sub_site = _resolve_subsite(sel)
+    if sub_site and _squash(sub_site) != _squash(studio):
         return sub_site
-    if serie:
-        return serie
-    if movie:
-        return movie
-    return ''
+    return _first_ns(sel, _SERIE_XPATHS) or _first_ns(sel, _MOVIE_XPATHS)
+
+
+def _apply_reptyle(studio: str, tagline: str) -> tuple[str, str]:
+    if strip_reptyle_suffix(studio).lower() not in _REPTYLE_NETWORKS:
+        return studio, tagline
+    sub = resolve_reptyle_subnetwork(tagline)
+    return (sub['network'], sub['subsite']) if sub else (strip_reptyle_suffix(studio), tagline)
 
 
 class Data18ScenesClient(Client):
@@ -87,7 +120,7 @@ class Data18ScenesClient(Client):
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
-                    title = first_attr(loaded, '(//h1)[1]/text()') or title
+                    title = _ns(loaded, _TITLE_XP) or title
             score = (
                 100
                 if direct_hit
@@ -106,6 +139,7 @@ class Data18ScenesClient(Client):
                     search_date=ctx.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (c.url, c.release_date) if p]),
+                    subsite=c.provider or None,
                 )
             )
 
@@ -116,13 +150,15 @@ class Data18ScenesClient(Client):
             loaded = await self._data18.fetch_page(scene_url)
             if loaded is None:
                 continue
-            title = first_attr(loaded, '(//h1)[1]/text()')
+            title = _ns(loaded, _TITLE_XP)
             if not title or 'Error 404' in title:
                 continue
             url_id = re.sub(r'.*/', '', scene_url)
             direct_hit = scene_id != '' and scene_id == url_id
-            date_raw = (loaded.xpath(_RELEASE_DATE_XP).get() or '').strip()
+            date_raw = _ns(loaded, _RELEASE_DATE_XP)
             release_date = iso_date(date_raw) or ''
+            studio = _resolve_studio(loaded)
+            subsite = _resolve_tagline(loaded, studio) or studio
             score = (
                 100
                 if direct_hit
@@ -139,6 +175,7 @@ class Data18ScenesClient(Client):
                     search_date=ctx.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (scene_url, release_date) if p]),
+                    subsite=subsite or None,
                 )
             )
         return results
@@ -153,12 +190,9 @@ class Data18ScenesClient(Client):
             return None
         studio = _resolve_studio(loaded)
         tagline = _resolve_tagline(loaded, studio)
-        if studio and studio.lower() in ('teamskeet', 'mylf'):
-            sub = resolve_reptyle_subnetwork(tagline)
-            if sub:
-                studio = sub['network']
-                tagline = sub['subsite']
-        same = not tagline or re.sub(r'\s+', '', tagline).lower() == re.sub(r'\s+', '', studio).lower()
+        if studio:
+            studio, tagline = _apply_reptyle(studio, tagline)
+        same = not tagline or _squash(tagline) == _squash(studio)
         collections = [tagline] if tagline and not same else ([studio] if studio else [])
         return LoadedScene(
             url=url,
@@ -176,7 +210,7 @@ class Data18ScenesClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = first_attr(scene.sel, '(//h1)[1]/text()')
+        title = _ns(scene.sel, _TITLE_XP)
         m = re.match(r'^Scene[^:-]*(?::|-)', title)
         if m:
             scene_num = re.sub(r'[^A-Za-z0-9\s]+', '', m.group(0)).strip()
@@ -212,12 +246,11 @@ class Data18ScenesClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = (scene.sel.xpath(_RELEASE_DATE_XP).get() or '').strip()
-        return iso_date(raw) or scene.scene_date or None
+        return iso_date(_ns(scene.sel, _RELEASE_DATE_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[.//b[contains(.,"Categories")]]//a')]
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[./b[contains(.,"Categories")]]//a')]
         return self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
