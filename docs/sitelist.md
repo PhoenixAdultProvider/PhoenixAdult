@@ -1122,13 +1122,14 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Doctor Adventures
     - Hot and Mean
     - Hot Chicks Big Asses
+    - Jug Fuckers
     - Milfs Like It Big
     - Mommy Got Boobs
     - Moms in Control
     - Pornstars Like It Big
     - Racks and Blacks
     - Real Wife Stories
-    - Shes Gonna Squirt
+    - She's Gonna Squirt
     - Teens Like It Big
     - Teens Like It Black
     - ZZ Series
