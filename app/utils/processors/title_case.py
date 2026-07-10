@@ -6,6 +6,8 @@ from typing import Literal
 
 from text2digits import text2digits
 
+from app.utils.processors.text_normalize import normalize_text
+
 _MAX_TITLE_LENGTH = 1000
 
 
@@ -325,7 +327,10 @@ class _TitleCaseEngine:
 def title_case(text: str, *, type: str | None = None, site_name: str | None = None, site_id: str | None = None, scraper_type: str | None = None) -> str:
     if not text:
         return text
-    bounded = text[:_MAX_TITLE_LENGTH] if len(text) > _MAX_TITLE_LENGTH else text
+    normalized = normalize_text(text)
+    if not normalized:
+        return normalized
+    bounded = normalized[:_MAX_TITLE_LENGTH] if len(normalized) > _MAX_TITLE_LENGTH else normalized
     return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
 
 

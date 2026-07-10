@@ -25,6 +25,7 @@ from app.utils.images.proxy import proxy_target
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
 from app.utils.processors.studio_name import normalize_studio
+from app.utils.processors.text_normalize import normalize_text
 from app.utils.processors.title_case import title_case, title_sort
 
 if TYPE_CHECKING:
@@ -552,8 +553,8 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
 
 
 def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None) -> bool:
-    """Re-run the current text rules (title casing, studio/tagline/collection casing,
-    genre normalization, actor alias tables) on a cached response. Mutates in place and
+    """Re-run the current text rules (title casing, summary punctuation, studio/tagline/collection
+    casing, genre normalization, actor alias tables) on a cached response. Mutates in place and
     returns True if anything changed, so the caller can rewrite the snapshot. It applies
     new rules to what's stored; it can't restore values dropped at the original scrape
     (those aren't in the snapshot — purge to re-scrape)."""
@@ -565,6 +566,11 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
             md.title = cased_title
             md.titleSort = title_sort(cased_title)
             changed = True
+        if md.summary:
+            cleaned_summary = normalize_text(md.summary)
+            if cleaned_summary != md.summary:
+                md.summary = cleaned_summary
+                changed = True
         cased_studio = normalize_studio(studio)
         if cased_studio and cased_studio != md.studio:
             md.studio = cased_studio

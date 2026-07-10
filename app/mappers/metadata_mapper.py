@@ -25,6 +25,7 @@ from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, to_plex_roles
 from app.utils.plex.rating_key import to_guid, to_rating_key
 from app.utils.processors.studio_name import normalize_studio
+from app.utils.processors.text_normalize import normalize_text
 from app.utils.processors.title_case import title_case, title_sort
 
 
@@ -151,7 +152,7 @@ class MetadataMapper:
             title=clean_title,
             titleSort=title_sort(clean_title),
             originalTitle=detail.original_title,
-            summary=detail.summary,
+            summary=normalize_text(detail.summary) or None,
             tagline=tagline,
             studio=studio,
             contentRating='XXX',

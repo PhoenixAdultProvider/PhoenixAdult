@@ -430,3 +430,29 @@ def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monke
     old_cur = b64url_encode('3870731|scene|2015-09-24')
     _snapshot(tmp_path, f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}', to_rating_key(old_cur, 'Brazzers'))
     assert mc.duplicate_entries() == []  # no twin -> not provably a duplicate
+
+
+def test_reapply_text_rules_normalizes_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'studio': 'S',
+                        'summary': 'specs. . . his roommate’s girlfriend…\n\nSecond para.',
+                    }
+                ],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is True
+    assert resp.MediaContainer.Metadata[0].summary == "specs... his roommate's girlfriend...\n\nSecond para."
+    assert mc.reapply_text_rules(resp) is False  # idempotent: second pass changes nothing
