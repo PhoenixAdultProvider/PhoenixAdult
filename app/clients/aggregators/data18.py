@@ -88,29 +88,6 @@ def url_id(url: str) -> str:
     return re.sub(r'.*/', '', url).split('-')[0]
 
 
-def swap_article(raw: str, suffix_only: bool = True) -> str:
-    """Rotate a trailing ", The"/", A" to the front. suffix_only=False also rotates a
-    mid-string article (Empire's catalog format)."""
-    lower = raw.lower()
-    if suffix_only:
-        if lower.endswith(', the'):
-            return f'The {raw[:-5]}'
-        if lower.endswith(', a'):
-            return f'A {raw[:-3]}'
-        return raw
-    if ', the' in lower:
-        idx = lower.index(', the')
-    elif ', a' in lower:
-        idx = lower.index(', a')
-    else:
-        return raw
-    end = idx + 5 if lower[idx + 2] == 't' else idx + 3
-    article = lower[idx + 2 : end]
-    head = raw[:idx]
-    tail = raw[idx + 2 + len(article) :]
-    return f'{article[:1].upper()}{article[1:]} {head}{tail}'
-
-
 _REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
 
 

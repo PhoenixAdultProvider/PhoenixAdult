@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, swap_article, url_id, xp_first_ns, xp_ns
+from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, url_id, xp_first_ns, xp_ns
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
@@ -91,7 +91,7 @@ class Data18MoviesClient(Client):
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
-                    title = swap_article(xp_ns(loaded, _TITLE_XP) or title)
+                    title = xp_ns(loaded, _TITLE_XP) or title
             score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
             results.append(
                 build_search_result(
@@ -113,7 +113,7 @@ class Data18MoviesClient(Client):
             loaded = await self._data18.fetch_page(movie_url)
             if loaded is None:
                 continue
-            title = swap_article(xp_ns(loaded, _TITLE_XP))
+            title = xp_ns(loaded, _TITLE_XP)
             if not title:
                 continue
             release_date = _release_date(loaded) or ''
@@ -149,7 +149,7 @@ class Data18MoviesClient(Client):
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         raw = xp_ns(scene.sel, _TITLE_XP)
-        return swap_article(raw) if raw else None
+        return raw or None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None

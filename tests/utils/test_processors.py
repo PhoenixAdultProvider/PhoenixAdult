@@ -229,3 +229,9 @@ def test_title_case_does_not_split_words_on_accented_letters(raw: str, expected:
 def test_title_case_still_preserves_internal_capitals() -> None:
     assert title_case('LaSirena69') == 'LaSirena69'
     assert title_case('BANGBROS clips') == 'BangBros Clips'
+
+
+def test_title_case_rotates_a_trailing_article_to_the_front() -> None:
+    assert title_case('Big Movie, The') == 'The Big Movie'
+    assert title_case('Whore of Wall Street, A') == 'A Whore of Wall Street'
+    assert title_case('Movie, The (Disc 2)') != 'The Movie (Disc 2)'

@@ -7,7 +7,6 @@ from urllib.parse import urlsplit
 
 from parsel import Selector
 
-from app.clients.aggregators.data18 import swap_article
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
@@ -75,7 +74,7 @@ class Data18EmpireClient(Client):
             if not loaded:
                 continue
             sel = loaded['sel']
-            title = swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'), suffix_only=False)
+            title = first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()')
             if not title:
                 continue
             date = _release_date(sel)
@@ -143,13 +142,13 @@ class Data18EmpireClient(Client):
         if not tagline:
             raw = first_attr(scene.sel, '(//a[@data-label="Series List"]//h2)[1]/text()')
             tagline = re.sub(rf'\({re.escape(studio)}\)', '', raw.replace('Series:', '')).strip()
-        return swap_article(tagline, suffix_only=False) if tagline else studio
+        return tagline or studio
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = swap_article(first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()'), suffix_only=False)
+        title = first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()')
         if not title:
             return None
         scene_num = self._packed(scene).get('sceneNum')

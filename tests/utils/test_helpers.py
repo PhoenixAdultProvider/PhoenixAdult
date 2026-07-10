@@ -33,3 +33,8 @@ def test_title_distance_score_keeps_distinct_ordinals_apart() -> None:
     # Normalizing ordinals must not collapse different episode numbers to a perfect match.
     assert title_distance_score('Big Tits in History: Part Three', 'Big Tits in History: Part 4') < 100
     assert title_distance_score('Big Tits in History: Part 3', 'Big Tits in History: Part 4') < 100
+
+
+def test_title_distance_score_rotates_trailing_articles() -> None:
+    assert title_distance_score('The Big Movie', 'Big Movie, The') == 100
+    assert title_distance_score('A Whore of Wall Street', 'Whore of Wall Street, A') == 100
