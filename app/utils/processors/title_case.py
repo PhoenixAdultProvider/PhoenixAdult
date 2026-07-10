@@ -76,7 +76,7 @@ _SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
 _SEQ_COLON_PHRASE = rf'(?P<phrase>{_SEQ_COLON_MARKERS}\s+(?P<num>\w+))'
 
 _NON_WORD_RE = re.compile(r'\W', re.UNICODE)
-_ALNUM_RE = re.compile(r'[a-zA-Z0-9]')
+_ALNUM_RE = re.compile(r'[^\W_]')  # letters/digits incl. accented; underscore is a separator
 _WORD_RE = re.compile(r'[A-Za-z]+')
 _PURE_NUMBER_RE = re.compile(r'\d+')
 _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)

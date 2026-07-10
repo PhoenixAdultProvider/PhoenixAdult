@@ -208,3 +208,28 @@ def test_abbreviation_expansion() -> None:
     assert expand_abbreviations('18og some title').startswith('18OnlyGirls')
     # Non-matching text passes through untouched.
     assert expand_abbreviations('PlainTitle here') == 'PlainTitle here'
+
+
+@pytest.mark.parametrize(
+    ('raw', 'expected'),
+    [
+        ('compañeros', 'Compañeros'),
+        ('niño', 'Niño'),
+        ('año nuevo', 'Año Nuevo'),
+        ('coño duro', 'Coño Duro'),
+        ('café con leche', 'Café Con Leche'),
+        ('josé maría', 'José María'),
+        ("l'après-midi", "L'Après-Midi"),
+        ('straße', 'Straße'),
+        ('el doctor primera parte', 'El Doctor Primera Parte'),
+    ],
+)
+def test_title_case_does_not_split_words_on_accented_letters(raw: str, expected: str) -> None:
+    # A non-ASCII letter used to tokenize as punctuation, capitalizing the tail:
+    # "compañeros" -> "CompañEros".
+    assert title_case(raw) == expected
+
+
+def test_title_case_still_preserves_internal_capitals() -> None:
+    assert title_case('LaSirena69') == 'LaSirena69'
+    assert title_case('BANGBROS clips') == 'BangBros Clips'

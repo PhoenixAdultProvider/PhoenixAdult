@@ -24,6 +24,8 @@ _UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like
 DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '169646': 'thats-better-than-stealing-it-herfreshmanyear',
     '1114179': 'slut-wars-the-vagina-squirts-back-shesgonnasquirt',
+    '1120241': 'shaming-the-shooter-cfnm',
+    '1129579': 'companeros-teenslikeitbig',
     '1132200': 'the-whore-of-wall-street-ep-1-a-whore-is-born-zzseries',
     '1133753': 'the-whore-of-wall-street-ep-2-the-anal-office-queen-zzseries',
     '1134102': 'the-whore-of-wall-street-ep-4-double-teamed-on-the-high-seas-zzseries',
@@ -36,6 +38,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
     '1162015': 'yoga-freaks-episode-four-brazzersexxtra',
     '1165245': 'lets-get-facials-2-brazzersexxtra',
+    '1241238': 'nicoles-bent-over-backwards-daywithapornstar',
     '1301931': 'live-and-on-location-brazzersexxtra',
     '1313219': 'delicious-firsts-hussiepass',
     '1341212': 'home-for-the-holidays-momswap',
