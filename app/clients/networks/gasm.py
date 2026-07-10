@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify, title_distance_score
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
 STUDIO = 'GASM'
@@ -42,7 +42,7 @@ class GasmClient(Client):
         results: list[SearchResult] = []
         for row in loaded['sel'].xpath('//div[contains(@class,"results_item")]'):
             a = row.xpath('(.//a[contains(@class,"post_title")])[1]')
-            title = first_string(a)
+            title = first_attr(a)
             href = first_attr(a, '@href')
             if not title or not href:
                 continue

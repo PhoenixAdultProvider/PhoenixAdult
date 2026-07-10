@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, sceneid_distance_score
+from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json, pack_cur_id, pad_jav_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
@@ -15,14 +15,6 @@ _TABLES = load_site_json(__file__, 'javlibrary_tables')
 _ACTORS: dict[str, list[str]] = _TABLES['actors']
 _CROSS_SITE: dict[str, str] = _TABLES['crossSite']
 _IGNORE_LIST: list[str] = _TABLES['ignoreList']
-
-
-def _pad_jav_id(jav_id: str) -> str:
-    label = jav_id.split('-')[0]
-    num = '-'.join(jav_id.split('-')[1:])
-    if len(num) >= 3 or any(item.lower() == label.lower() for item in _IGNORE_LIST):
-        return jav_id
-    return f'{label}-{num.zfill(3)}'
 
 
 class JavLibraryClient(Client):
@@ -182,8 +174,7 @@ class JavLibraryClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            if raw and raw not in images:
-                images.append(raw)
+            append_unique(images, raw)
 
         poster = first_attr(scene.sel, '(//img[@id="video_jacket_img"]/@src)[1]')
         if poster and 'https' not in poster:
@@ -201,7 +192,7 @@ class JavLibraryClient(Client):
                 if jav_id.lower() == lib_id.lower():
                     jav_id = bus_id
                     break
-            jav_id = _pad_jav_id(jav_id)
+            jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
             date = await self.fetch_release_date(scene)
             for u in await fetch_javbus_images(self.http, jav_id, date):
                 push(u)

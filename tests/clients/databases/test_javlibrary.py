@@ -13,13 +13,9 @@ SITE = find_site('JAVLibrary')
 assert SITE is not None
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_video_cards(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(jl_module, 'web_search', _no_web_search)
+async def test_search_video_cards(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(jl_module, 'web_search', no_web_search)
     respx.get('https://www.javlibrary.com/en/vl_searchbyid.php?keyword=ABP-060').mock(
         return_value=httpx.Response(200, text='<html><body><div class="video"><a title="ABP-060 Some Movie" href="./?v=javabc"></a></div></body></html>')
     )

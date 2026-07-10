@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
+from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, swap_article, url_id, xp_first_ns, xp_ns
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
@@ -32,50 +32,22 @@ _ACTOR_XPATHS = (
 )
 
 
-def _url_id(url: str) -> str:
-    return re.sub(r'.*/', '', url).split('-')[0]
-
-
-def _swap_article(raw: str) -> str:
-    lower = raw.lower()
-    if lower.endswith(', the'):
-        return f'The {raw[:-5]}'
-    if lower.endswith(', a'):
-        return f'A {raw[:-3]}'
-    return raw
-
-
-def _ns(sel: Any, xpath: str) -> str:
-    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
-
-
-def _first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
-    for xpath in xpaths:
-        if value := _ns(sel, xpath):
-            return value
-    return ''
-
-
-def _squash(value: str) -> str:
-    return re.sub(r'\s+', '', value).lower()
-
-
 def _resolve_studio(sel: Any) -> str:
-    return strip_reptyle_suffix(_first_ns(sel, _STUDIO_XPATHS))
+    return strip_reptyle_suffix(xp_first_ns(sel, _STUDIO_XPATHS))
 
 
 def _resolve_series(sel: Any, studio: str) -> str:
-    if series := _ns(sel, _SERIES_XP):
+    if series := xp_ns(sel, _SERIES_XP):
         return series
-    sub_site = strip_reptyle_suffix(_ns(sel, _SUBSITE_XP))
-    return sub_site if sub_site and _squash(sub_site) != _squash(studio) else ''
+    sub_site = strip_reptyle_suffix(xp_ns(sel, _SUBSITE_XP))
+    return sub_site if sub_site and squash(sub_site) != squash(studio) else ''
 
 
 def _release_date(sel: Any) -> str | None:
-    if attr := _ns(sel, _DATE_ATTR_XP):
+    if attr := xp_ns(sel, _DATE_ATTR_XP):
         if iso := iso_date(attr):
             return iso
-    raw = _ns(sel, _DATE_TEXT_XP)
+    raw = xp_ns(sel, _DATE_TEXT_XP)
     text = re.sub(r'.*Release date:\s*', '', raw).strip()
     if not text or text.lower() == 'unknown':
         return None
@@ -119,7 +91,7 @@ class Data18MoviesClient(Client):
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
-                    title = _swap_article(_ns(loaded, _TITLE_XP) or title)
+                    title = swap_article(xp_ns(loaded, _TITLE_XP) or title)
             score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
             results.append(
                 build_search_result(
@@ -141,13 +113,13 @@ class Data18MoviesClient(Client):
             loaded = await self._data18.fetch_page(movie_url)
             if loaded is None:
                 continue
-            title = _swap_article(_ns(loaded, _TITLE_XP))
+            title = swap_article(xp_ns(loaded, _TITLE_XP))
             if not title:
                 continue
             release_date = _release_date(loaded) or ''
             studio = _resolve_studio(loaded)
             subsite = _resolve_series(loaded, studio) or studio
-            score = sceneid_distance_score(scene_id, _url_id(movie_url)) if scene_id else None
+            score = sceneid_distance_score(scene_id, url_id(movie_url)) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,
@@ -176,8 +148,8 @@ class Data18MoviesClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        raw = _ns(scene.sel, _TITLE_XP)
-        return _swap_article(raw) if raw else None
+        raw = xp_ns(scene.sel, _TITLE_XP)
+        return swap_article(raw) if raw else None
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None

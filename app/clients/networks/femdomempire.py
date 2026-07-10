@@ -4,7 +4,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Femdom Empire'
 _DATE_FMT = '%B %d, %Y'
@@ -20,7 +20,7 @@ class FemdomEmpireClient(Client):
         def parse_rows(sel: Any) -> None:
             for row in sel.xpath('//div[contains(@class,"item-info")]'):
                 a = row.xpath('(.//a)[1]')
-                title = first_string(a)
+                title = first_attr(a)
                 href = first_attr(a, '@href')
                 if not title or not href:
                     continue
@@ -82,7 +82,7 @@ class FemdomEmpireClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('(//div[contains(@class,"featuring")])[2]//ul//li'):
-            g = first_string(el).lower().replace('categories:', '').replace('tags:', '').strip()
+            g = first_attr(el).lower().replace('categories:', '').replace('tags:', '').strip()
             if g:
                 genres.append(g)
         if 'Femdom' not in genres:

@@ -49,13 +49,9 @@ MOVIE_PAGE_REPTYLE = f"""<html><body>{_HEAD}
   <span>Release date: January, 2024</span>{_BODY}"""
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', _no_web_search)
+async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     q = quote('Big Movie')
     respx.get(f'https://www.data18.com/sys/live.php?index=&key={q}&key2={q}&next=1&page=0').mock(return_value=httpx.Response(200, text=SEARCH_PAGE))
     results = await Data18MoviesClient().search(SearchContext(title='Big Movie', encoded=q, search_site=SITE.name, site_info=SITE))
@@ -66,8 +62,8 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @respx.mock
-async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', _no_web_search)
+async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://data18.com/movies/12345').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18MoviesClient().search(
@@ -132,8 +128,8 @@ _SEARCH_ID_VS_TITLE = """<html><body>
 
 
 @respx.mock
-async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', _no_web_search)
+async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     respx.get('https://data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18MoviesClient().search(

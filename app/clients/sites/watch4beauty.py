@@ -5,19 +5,13 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.logging.logger import logger
 
 STUDIO = 'Watch4Beauty'
 TAGLINE = 'Watch4Beauty'
 DIRECTOR = 'Mark'
 ART_BASE = 'https://mh-c75c2d6726.watch4beauty.com/production/'
-_NON_ALNUM_RE = re.compile(r'[^a-z0-9]+')
-
-
-def _slugify(s: str) -> str:
-    out = _NON_ALNUM_RE.sub('-', s.lower().replace("'", ''))
-    return out.strip('-')
 
 
 def _titleize(slug: str) -> str:
@@ -51,7 +45,7 @@ class Watch4BeautyClient(Client):
                 break
 
         if updates is None:
-            title_slug = _slugify(ctx.title)
+            title_slug = slugify(ctx.title, replacements=[("'", '')])
             data = await self.fetch_json(
                 f'{base}/api/issues/{title_slug}/models', FetchCtx(capture=ctx.capture), label=f'[{ctx.site_info.name}] issues/{title_slug}/models'
             )

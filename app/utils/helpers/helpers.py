@@ -182,6 +182,28 @@ def join_url(path: str, base_url: str) -> str:
     return f'{base_url}{path if path.startswith("/") else f"/{path}"}'
 
 
+def append_unique(items: list[str], raw: str | None, base_url: str | None = None) -> None:
+    """Append a stripped URL to items unless empty or already present; resolve it
+    against base_url when given."""
+    value = (raw or '').strip()
+    if not value:
+        return
+    if base_url:
+        value = absolute_url(value, base_url)
+    if value not in items:
+        items.append(value)
+
+
+def pad_jav_id(jav_id: str, ignore_labels: list[str]) -> str:
+    """Zero-pad a JAVID's numeric part to 3 digits (ABC-1 -> ABC-001) unless the
+    label is in ignore_labels."""
+    label = jav_id.split('-')[0]
+    num = '-'.join(jav_id.split('-')[1:])
+    if len(num) >= 3 or any(item.lower() == label.lower() for item in ignore_labels):
+        return jav_id
+    return f'{label}-{num.zfill(3)}'
+
+
 def absolute_url(u: str, base_url: str) -> str:
     if not u:
         return ''

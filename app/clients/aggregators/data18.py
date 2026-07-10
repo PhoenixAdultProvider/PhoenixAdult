@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlsplit
 
 import httpx2
@@ -10,7 +11,7 @@ from dateutil import parser as date_parser
 from parsel import Selector
 
 from app.config.env import env
-from app.utils.helpers.helpers import slugify
+from app.utils.helpers.helpers import append_unique, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
@@ -62,6 +63,52 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
         return None
     data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == mapping_key), None)
     return f'{_BASE}/scenes/{data18_id}' if data18_id else None
+
+
+def xp_ns(sel: Any, xpath: str) -> str:
+    """normalize-space() of an XPath expression, '' when it matches nothing."""
+    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
+
+
+def xp_first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
+    """First non-empty xp_ns() result across xpaths."""
+    for xpath in xpaths:
+        if value := xp_ns(sel, xpath):
+            return value
+    return ''
+
+
+def squash(value: str) -> str:
+    """Lower-case with all whitespace removed, for loose display-name comparison."""
+    return re.sub(r'\s+', '', value).lower()
+
+
+def url_id(url: str) -> str:
+    """Numeric id from a data18 scene/movie URL, slug tail stripped."""
+    return re.sub(r'.*/', '', url).split('-')[0]
+
+
+def swap_article(raw: str, suffix_only: bool = True) -> str:
+    """Rotate a trailing ", The"/", A" to the front. suffix_only=False also rotates a
+    mid-string article (Empire's catalog format)."""
+    lower = raw.lower()
+    if suffix_only:
+        if lower.endswith(', the'):
+            return f'The {raw[:-5]}'
+        if lower.endswith(', a'):
+            return f'A {raw[:-3]}'
+        return raw
+    if ', the' in lower:
+        idx = lower.index(', the')
+    elif ', a' in lower:
+        idx = lower.index(', a')
+    else:
+        return raw
+    end = idx + 5 if lower[idx + 2] == 't' else idx + 3
+    article = lower[idx + 2 : end]
+    head = raw[:idx]
+    tail = raw[idx + 2 + len(article) :]
+    return f'{article[:1].upper()}{article[1:]} {head}{tail}'
 
 
 _REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
@@ -373,8 +420,7 @@ class Data18Client:
                 return out
 
         def add(u: str | None) -> None:
-            if u and u not in out:
-                out.append(u)
+            append_unique(out, u)
 
         add(sel.xpath('//a[@id="enlargecover"][1]/@data-featherlight').get())
         add(sel.xpath('//img[@id="backcoverzone"][1]/@src').get())

@@ -13,13 +13,9 @@ SITE = find_site('DickDrainers')
 assert SITE is not None
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_onsite_cards(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dd_module, 'web_search_urls', _no_web_search)
+async def test_search_onsite_cards(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(dd_module, 'web_search_urls', no_web_search)
     url = 'http://dickdrainers.com/tour/search.php?query=wild+scene'
     html = """<html><body>
       <div class="item-video hover">

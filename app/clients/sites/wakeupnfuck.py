@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _CARD_XP = '//a[contains(@class,"scene") and contains(@class,"item") and contains(@class,"light_background")]'
@@ -85,12 +85,7 @@ class WakeUpNFuckClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, base)
 
         for poster in scene.sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
             push(poster)

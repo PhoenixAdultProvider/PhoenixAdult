@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id
 from app.utils.logging.logger import logger
 
 
@@ -109,12 +109,7 @@ class VirtualRealClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, base)
 
         push((ld.get('image') if ld else '') or '')
         for href in scene.sel.xpath('//figure[@itemprop="associatedMedia"]//a/@href').getall():

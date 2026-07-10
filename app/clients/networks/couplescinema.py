@@ -4,7 +4,7 @@ import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, title_distance_score
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Couples Cinema'
 _YEAR_RE = re.compile(r'^\d{4}$')
@@ -108,7 +108,7 @@ class CouplesCinemaClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        entries = [ActorResult(name=first_string(a)) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
+        entries = [ActorResult(name=first_attr(a)) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

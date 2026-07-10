@@ -7,7 +7,7 @@ from urllib.parse import quote
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Allure Media'
 _TABLES: dict[str, Any] = load_site_json(__file__, 'alluremedia_tables')
@@ -39,7 +39,7 @@ class AllureMediaClient(Client):
         for card in loaded['sel'].xpath('//div[contains(@class,"update_details")]'):
             if swallow_salon:
                 anchor = card.xpath('(.//a)[2]')
-                title = first_string(anchor)
+                title = first_attr(anchor)
                 href = first_attr(anchor, '@href')
             else:
                 title = (card.xpath('(.//div[contains(@class,"update_title")]//a)[1]').xpath('string(.)').get() or '').strip()
@@ -84,7 +84,7 @@ class AllureMediaClient(Client):
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('//span[contains(@class,"update_tags")]//a'):
-            g = decensor(first_string(el), _CENSORED).lower()
+            g = decensor(first_attr(el), _CENSORED).lower()
             if g and g not in genres:
                 genres.append(g)
         if 'Amateur' not in genres:
@@ -100,7 +100,7 @@ class AllureMediaClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in scene.sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
-            name = first_string(el)
+            name = first_attr(el)
             href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
@@ -161,7 +161,7 @@ class AllureMediaClient(Client):
 
         photos_href = ''
         for a in scene.sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
-            if first_string(a) == 'Photos':
+            if first_attr(a) == 'Photos':
                 photos_href = first_attr(a, '@href')
                 break
         photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''

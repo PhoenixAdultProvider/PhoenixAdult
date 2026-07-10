@@ -62,15 +62,9 @@ def first_text(node: Selector, xpath: str) -> str:
     return (nodes[0].xpath('normalize-space(.)').get() or '').strip() if nodes else ''
 
 
-def first_attr(node: Node, xpath: str) -> str:
-    """Raw value of the first XPath match, trimmed ('' if none). For attributes/text
-    where you want the value as-is (use first_text for normalize-space element text)."""
-    return (node.xpath(xpath).get() or '').strip()
-
-
-def first_string(node: Node, xpath: str = 'string(.)') -> str:
-    """Trimmed string() of a node (concatenated descendant text, internal whitespace
-    preserved — unlike first_text's normalize-space). Defaults to the node itself."""
+def first_attr(node: Node, xpath: str = 'string(.)') -> str:
+    """Raw value of the first XPath match, trimmed ('' if none). Internal whitespace is
+    preserved, unlike first_text's normalize-space. Defaults to string(.) of the node."""
     return (node.xpath(xpath).get() or '').strip()
 
 

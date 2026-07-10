@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
 
@@ -85,12 +85,7 @@ class VRPFilmsClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, base)
 
         bg_style = first_attr(scene.sel, '(//section[contains(@class,"login-banner") and contains(@class,"parallax")]/@style)[1]')
         push(_url_from_style(bg_style))

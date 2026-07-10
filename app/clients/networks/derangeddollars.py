@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Deranged Dollars'
@@ -118,7 +118,7 @@ class DerangedDollarsClient(Client):
             if not loaded:
                 continue
             for el in loaded['sel'].xpath('//div[contains(@class,"item")]'):
-                raw = first_string(el)
+                raw = first_attr(el)
                 if not raw:
                     continue
                 name = raw.split(':', 1)[1].strip() if ':' in raw else raw

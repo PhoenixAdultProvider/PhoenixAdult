@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 
 from parsel import Selector
 
+from app.clients.aggregators.data18 import swap_article
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
@@ -26,21 +27,6 @@ def _movie_id(url: str) -> str:
 def _is_movie_url(url: str) -> bool:
     path = urlsplit(url).path
     return '/movies/' in path or path.endswith('-porn-movies.html')
-
-
-def _swap_article(raw: str) -> str:
-    lower = raw.lower()
-    if ', the' in lower:
-        idx = lower.index(', the')
-    elif ', a' in lower:
-        idx = lower.index(', a')
-    else:
-        return raw
-    end = idx + 5 if lower[idx + 2] == 't' else idx + 3
-    article = lower[idx + 2 : end]
-    head = raw[:idx]
-    tail = raw[idx + 2 + len(article) :]
-    return f'{article[:1].upper()}{article[1:]} {head}{tail}'
 
 
 def _release_date(sel: Any) -> str | None:
@@ -89,7 +75,7 @@ class Data18EmpireClient(Client):
             if not loaded:
                 continue
             sel = loaded['sel']
-            title = _swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'))
+            title = swap_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'), suffix_only=False)
             if not title:
                 continue
             date = _release_date(sel)
@@ -157,13 +143,13 @@ class Data18EmpireClient(Client):
         if not tagline:
             raw = first_attr(scene.sel, '(//a[@data-label="Series List"]//h2)[1]/text()')
             tagline = re.sub(rf'\({re.escape(studio)}\)', '', raw.replace('Series:', '')).strip()
-        return _swap_article(tagline) if tagline else studio
+        return swap_article(tagline, suffix_only=False) if tagline else studio
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = _swap_article(first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()'))
+        title = swap_article(first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()'), suffix_only=False)
         if not title:
             return None
         scene_num = self._packed(scene).get('sceneNum')

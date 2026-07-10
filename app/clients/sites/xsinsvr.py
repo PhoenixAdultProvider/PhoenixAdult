@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling::span//a[contains(@class,"tiny-link")]'
@@ -94,12 +94,7 @@ class XSinsVRClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, base)
 
         for src in scene.sel.xpath('//div[contains(@class,"tn-photo__container")]//div//a//div//img/@src').getall():
             if (src or '').startswith('http'):

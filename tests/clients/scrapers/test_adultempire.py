@@ -43,10 +43,6 @@ MOVIE_PAGE = """<html><body>
 </body></html>"""
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 def _mock_age_gate() -> None:
     respx.get('https://www.adultempire.com/').mock(return_value=httpx.Response(200, text=''))
     respx.get(url__startswith='https://www.adultempire.com/Account/AgeConfirmation').mock(
@@ -59,7 +55,7 @@ def _ctx(scene_id: str | None = None, title: str = '') -> SearchContext:
 
 
 @respx.mock
-async def test_requests_carry_age_cookie() -> None:
+async def test_requests_carry_age_cookie(no_web_search: object) -> None:
     _mock_age_gate()
     seen: dict[str, str | None] = {}
 
@@ -74,7 +70,7 @@ async def test_requests_carry_age_cookie() -> None:
 
 
 @respx.mock
-async def test_search_direct_id_with_split_scene() -> None:
+async def test_search_direct_id_with_split_scene(no_web_search: object) -> None:
     _mock_age_gate()
     respx.get('https://www.adultempire.com/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await AdultEmpireClient().search(_ctx(scene_id='1234567'))
@@ -85,9 +81,9 @@ async def test_search_direct_id_with_split_scene() -> None:
 
 
 @respx.mock
-async def test_search_onsite_vol_scoring(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_search_onsite_vol_scoring(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     _mock_age_gate()
-    monkeypatch.setattr(ae_module, 'web_search', _no_web_search)
+    monkeypatch.setattr(ae_module, 'web_search', no_web_search)
     vol_movie = '<html><body><h1>Anal Compilation Vol. 3</h1><ul><li>Studio: <a>Empire Studios</a></li></ul></body></html>'
     search_results = (
         '<html><body><div class="product-details__item-title"><a href="/9999-anal-compilation-blu-ray.html">Anal Compilation</a></div></body></html>'

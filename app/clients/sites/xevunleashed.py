@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import re
-
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Xev Unleashed'
 _XEV_PHOTO = 'https://xevunleashed.com/content//contentthumbs/00/01/1-set-2x.jpg'
-_NON_ALNUM_RE = re.compile(r'[^a-z0-9]+')
 _AVAILDATE_XP = '(//span[contains(@class,"availdate")]/text())[1]'
-
-
-def _slugify(s: str) -> str:
-    return _NON_ALNUM_RE.sub('-', s.lower().replace("'", '')).strip('-')
 
 
 class XevUnleashedClient(Client):
@@ -22,7 +15,7 @@ class XevUnleashedClient(Client):
         results: list[SearchResult] = []
         seen: set[str] = set()
 
-        slug = _slugify(ctx.title)
+        slug = slugify(ctx.title, replacements=[("'", '')])
         if slug:
             direct_url = f'{base}/updates/{slug}.html'
             direct = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct {direct_url}')

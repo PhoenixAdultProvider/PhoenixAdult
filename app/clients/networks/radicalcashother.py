@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, strip_query
-from app.utils.helpers.html_helpers import first_attr, first_string, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
 _PROFILES: dict[str, dict[str, Any]] = load_site_json(__file__, 'radicalcashother_profiles')
@@ -101,7 +101,7 @@ class RadicalCashOtherClient(Client):
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         p = self._profile(scene.site.name)
-        parts = [first_string(el) for el in scene.sel.xpath(f'//{p["summary"]}')]
+        parts = [first_attr(el) for el in scene.sel.xpath(f'//{p["summary"]}')]
         parts = [t for t in parts if t]
         return '\n\n'.join(parts) if parts else None
 
@@ -146,7 +146,7 @@ class RadicalCashOtherClient(Client):
                 if p['actor_name_inline']:
                     name = (block.xpath(f'(.//{p["actor_name_inline"]})[1]').xpath('string(.)').get() or '').strip()
                 else:
-                    name = first_string(block)
+                    name = first_attr(block)
                 if not name or name in seen:
                     continue
                 seen.add(name)

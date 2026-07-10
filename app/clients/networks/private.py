@@ -7,7 +7,7 @@ from parsel import Selector
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Private'
 _SUPPORTED_LANGS = {'en', 'de', 'fr', 'es', 'nl'}
@@ -40,7 +40,7 @@ class PrivateClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//ul[@id="search_results"]//li[@class="card"]'):
             anchor = card.xpath('(.//h3/a)[1]')
-            title = first_string(anchor)
+            title = first_attr(anchor)
             href = first_attr(anchor, '@href')
             if not title or not href:
                 continue

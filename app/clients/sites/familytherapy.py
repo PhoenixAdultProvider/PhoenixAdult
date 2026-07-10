@@ -9,7 +9,7 @@ from app.clients.sites.clips4sale import Clips4SaleClient
 from app.models.scraper_config import ScraperConfig
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, unpack_cur_id
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Family Therapy'
 _C4S_STUDIO_ID = '81593'
@@ -44,7 +44,7 @@ class FamilyTherapyClient(Client):
         if loaded:
             for card in loaded['sel'].xpath('//article'):
                 a = card.xpath('(.//h2//a)[1]')
-                title = first_string(a)
+                title = first_attr(a)
                 href = first_attr(a, '@href')
                 if not title or not href:
                     continue
@@ -101,7 +101,7 @@ class FamilyTherapyClient(Client):
         date_raw = (sel.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
         release_date = iso_date(date_raw, '%b %d, %Y') or fallback_date or None
 
-        genres = self.dedup_strings([first_string(el) for el in sel.xpath('//a[@rel="category tag"]')])
+        genres = self.dedup_strings([first_attr(el) for el in sel.xpath('//a[@rel="category tag"]')])
 
         actors: list[ActorResult] = []
         seen: set[str] = set()

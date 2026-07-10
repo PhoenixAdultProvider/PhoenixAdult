@@ -34,13 +34,9 @@ SCENE_PAGE = """<html><body>
 ACTOR_PAGE = '<html><body><img class="info-img" src="https://cdn.example/jane.jpg" /></body></html>'
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_row(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(xart_module, 'web_search', _no_web_search)
+async def test_search_row(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(xart_module, 'web_search', no_web_search)
     url = 'https://x-art.com/search/?input_search_sm=' + quote('Wild Ride')
     html = """<html><body>
       <a href="/videos/wild_ride">
@@ -58,8 +54,8 @@ async def test_search_row(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @respx.mock
-async def test_search_manual_match(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(xart_module, 'web_search', _no_web_search)
+async def test_search_manual_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(xart_module, 'web_search', no_web_search)
     respx.get('https://x-art.com/search/?input_search_sm=Sunset').mock(return_value=httpx.Response(200, text='<html></html>'))
     results = await XartClient().search(SearchContext(title='Sunset', encoded='Sunset', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
@@ -69,8 +65,8 @@ async def test_search_manual_match(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @respx.mock
-async def test_detail_harvest_variants(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(xart_module, 'web_search', _no_web_search)
+async def test_detail_harvest_variants(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(xart_module, 'web_search', no_web_search)
     respx.get(URL).mock(return_value=httpx.Response(200, text=SCENE_PAGE))
     respx.get(GALLERY_URL).mock(return_value=httpx.Response(200, text='<html></html>'))
     respx.get('https://x-art.com/models/jane').mock(return_value=httpx.Response(200, text=ACTOR_PAGE))

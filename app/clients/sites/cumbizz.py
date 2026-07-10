@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url
+from app.utils.helpers.helpers import append_unique
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 
@@ -66,12 +66,7 @@ class CumbizzClient(Client):
         images: list[str] = []
 
         def add(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, scene.site.base_url)
 
         add(scene.sel.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
         for el in scene.sel.xpath('//img[contains(@class,"vidgal")]'):

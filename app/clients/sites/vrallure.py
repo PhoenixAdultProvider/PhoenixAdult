@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
+from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, iso_date, pack_cur_id, to_https
 from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 from app.utils.logging.logger import logger
 
@@ -99,8 +99,7 @@ class VRAllureClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            if raw and raw not in images:
-                images.append(raw)
+            append_unique(images, raw)
 
         push(to_https(meta_content(scene.sel, 'og:image')))
         for href in scene.sel.xpath(f'{_ACTOR_LINK_XP}/@href').getall():

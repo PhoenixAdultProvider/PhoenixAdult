@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _FIXED_GENRES: list[str] = ['BDSM', 'Breast Torture', 'Breasts', 'Fetish', 'HuCows', 'Nipple Torture', 'Nipples']
@@ -77,12 +77,7 @@ class HucowsClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, scene.site.base_url)
 
         for raw in scene.sel.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
             push(raw)

@@ -7,7 +7,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from app.utils.helpers.html_helpers import first_attr, first_string, web_search_urls
+from app.utils.helpers.html_helpers import first_attr, web_search_urls
 from app.utils.searchengines import web_search_available
 
 STUDIO = 'Score Group'
@@ -62,7 +62,7 @@ class ScoreGroupClient(Client):
             ]
 
         anchor = source.xpath('(.//a[contains(@class,"title")])[1]')
-        raw_title = first_string(anchor)
+        raw_title = first_attr(anchor)
         href = first_attr(anchor, '@href').split('?')[0]
         if not raw_title or not href:
             return []

@@ -9,7 +9,7 @@ from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, 
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
 from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score, to_https
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 
 STUDIO = 'Nubiles'
@@ -125,7 +125,7 @@ class NubilesClient(Client):
         block = scene.sel.xpath('(//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]/div)[1]').xpath('string(.)').get() or ''
         if block:
             return block.split('Show More')[0].strip()
-        paragraphs = [first_string(p) for p in scene.sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
+        paragraphs = [first_attr(p) for p in scene.sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
         return '\n\n'.join(p for p in paragraphs if p).strip()
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:

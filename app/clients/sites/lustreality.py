@@ -3,7 +3,7 @@ from __future__ import annotations
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
+from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, css_bg_image, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
@@ -93,12 +93,7 @@ class LustRealityClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, scene.site.base_url)
 
         for el in scene.sel.xpath('//div[contains(@class,"splash-screen")]'):
             push(css_bg_image(el.xpath('@style').get()))

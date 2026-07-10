@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, title_distance_score
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Czech Authentic Videos'
 _CASTING_HOST = 'czechcasting.com'
@@ -24,7 +24,7 @@ class CzechAVClient(Client):
         results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//*[contains(@class,"search-item")][.//h2]'):
             a = card.xpath('(.//a[.//h2])[1]')
-            title = first_string(a)
+            title = first_attr(a)
             href = first_attr(a, '@href')
             if not title or not href:
                 continue
@@ -59,8 +59,8 @@ class CzechAVClient(Client):
         ps = scene.sel.xpath('//div[contains(@class,"read-more")]//p')
         if not ps:
             return None
-        second = first_string(ps[1]) if len(ps) > 1 else ''
-        first = first_string(ps[0])
+        second = first_attr(ps[1]) if len(ps) > 1 else ''
+        first = first_attr(ps[0])
         return second or first or None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:

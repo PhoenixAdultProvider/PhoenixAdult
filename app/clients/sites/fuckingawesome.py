@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _GROUP_GENRES: dict[str, str] = {'3': 'Threesome', '4': 'Foursome'}
@@ -99,12 +99,7 @@ class FuckingAwesomeClient(Client):
         images: list[str] = []
 
         def add(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, base)
 
         for raw in scene.sel.xpath('//span[contains(@class,"et_pb_image_wrap")]//img/@content').getall():
             add(raw)

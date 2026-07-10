@@ -8,7 +8,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneCo
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.coalescer import coalesce_future
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 _HOUSE_ACTORS = ['Rocco Siffredi', 'Peter North']
 _SEARCH_DISABLED = {'Tera Patrick'}
@@ -49,7 +49,7 @@ class GammaEntClient(Client):
                 href = first_attr(a, '@href')
                 if not href:
                     continue
-                title = first_string(a).replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ')
+                title = first_attr(a).replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ')
                 date_raw = (
                     row.xpath('(.//div[contains(@class,"tlcSpecs")]//span[contains(@class,"tlcSpecsDate")]//span[contains(@class,"tlcDetailsValue")])[1]')
                     .xpath('string(.)')

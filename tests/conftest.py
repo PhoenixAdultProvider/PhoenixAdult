@@ -28,3 +28,13 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.utils.http.impersonate import impersonate_backend
 
     monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)
+
+
+@pytest.fixture
+def no_web_search() -> object:
+    """A stand-in for a client module's imported web_search that finds nothing."""
+
+    async def _none(*_args: object, **_kwargs: object) -> list[str]:
+        return []
+
+    return _none

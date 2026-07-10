@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from app.utils.processors.title_case import title_case
 
@@ -138,12 +138,7 @@ class DickDrainersClient(Client):
         images: list[str] = []
 
         def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
+            append_unique(images, raw, scene.site.base_url)
 
         for el in scene.sel.xpath('//div[contains(@class,"player_thumbs")]'):
             push(el.xpath('@src0_3x').get() or '')

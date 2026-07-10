@@ -20,13 +20,9 @@ SCENE_HTML = """<html><body>
 </body></html>"""
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tt_module, 'web_search_urls', _no_web_search)
+async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(tt_module, 'web_search_urls', no_web_search)
     respx.get('https://teenytaboo.com/video/wild-scene').mock(return_value=httpx.Response(200, text=SCENE_HTML))
     results = await TeenyTabooClient().search(SearchContext(title='Wild Scene', encoded='Wild%20Scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1

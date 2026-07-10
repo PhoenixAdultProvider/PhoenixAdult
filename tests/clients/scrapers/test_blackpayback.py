@@ -31,18 +31,14 @@ DETAIL_HTML = """<html><body>
 </body></html>"""
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 def _mock_iafd() -> None:
     respx.get('https://www.iafd.com/studio.rme/studio=9856/blackpayback.com.htm').mock(return_value=httpx.Response(200, text=IAFD_STUDIO_HTML))
     respx.get('https://www.iafd.com/title.rme/title=123/birfday-bitch.htm').mock(return_value=httpx.Response(200, text=IAFD_SCENE_HTML))
 
 
 @respx.mock
-async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(bpb_module, 'web_search_urls', _no_web_search)
+async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(bpb_module, 'web_search_urls', no_web_search)
     url = 'https://blackpayback.com/tour/trailers/birfday-bitch.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><body><h1>Birfday Bitch</h1></body></html>'))
     results = await BlackPayBackClient().search(SearchContext(title='12 birfday bitch', encoded='', search_site=SITE.name, site_info=SITE))

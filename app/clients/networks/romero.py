@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Romero Multimedia'
 _FULLSTORY_ONLY = {'Freeze', 'Plants vs Cunts'}
@@ -43,7 +43,7 @@ class RomeroClient(Client):
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         h2s = source.xpath('.//h2')
-        raw = first_string(h2s[1]).split('&nbsp')[-1].strip() if len(h2s) > 1 else ''
+        raw = first_attr(h2s[1]).split('&nbsp')[-1].strip() if len(h2s) > 1 else ''
         if not raw:
             raw = (source.xpath('(.//div[@class="entry-date"])[1]').xpath('string(.)').get() or '').strip()
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
@@ -65,7 +65,7 @@ class RomeroClient(Client):
             )
         parts: list[str] = []
         for el in paras:
-            text = first_string(el)
+            text = first_attr(el)
             if text and text != '\xa0':
                 parts.append(text)
         return '\n'.join(parts).strip() or None

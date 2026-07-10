@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, sceneid_distance_score
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'CzechVR'
 _DATE_FMT = '%b %d, %Y'
@@ -104,9 +104,9 @@ class CzechVRClient(Client):
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"modelky")]//a'):
-            entries.append(ActorResult(name=first_string(el)))
+            entries.append(ActorResult(name=first_attr(el)))
         for el in scene.sel.xpath('(//div[contains(@class,"nazev")])[1]//div[contains(@class,"featuring")]//a'):
-            entries.append(ActorResult(name=first_string(el)))
+            entries.append(ActorResult(name=first_attr(el)))
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

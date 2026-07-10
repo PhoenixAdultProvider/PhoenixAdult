@@ -13,13 +13,9 @@ SITE = find_site('VR Latina')
 assert SITE is not None
 
 
-async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
-    return []
-
-
 @respx.mock
-async def test_search_direct_og_title(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(vrl_module, 'web_search_urls', _no_web_search)
+async def test_search_direct_og_title(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
+    monkeypatch.setattr(vrl_module, 'web_search_urls', no_web_search)
     url = 'https://vrlatina.com/video/wild-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><head><meta property="og:title" content="Wild Scene" /></head></html>'))
     results = await VRLatinaClient().search(SearchContext(title='Wild Scene', encoded='x', search_site=SITE.name, site_info=SITE))

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Intersec Interactive'
 _TAGLINE_FALLBACK = 'Intersex'
@@ -103,7 +103,7 @@ class IntersecClient(Client):
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
         dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
-        entries = [ActorResult(name=first_string(el)) for el in dark[:-1]]
+        entries = [ActorResult(name=first_attr(el)) for el in dark[:-1]]
         return self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:

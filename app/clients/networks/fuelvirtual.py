@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json
-from app.utils.helpers.html_helpers import first_attr, first_string
+from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json
+from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
@@ -31,7 +31,7 @@ class FuelVirtualClient(Client):
         results: list[SearchResult] = []
         for row in loaded['sel'].xpath('//div[@align="left"]'):
             a = row.xpath('(.//td[@valign="top"])[2]//a[1]')
-            title = first_string(a)
+            title = first_attr(a)
             href = first_attr(a, '@href')
             if not title or not href:
                 continue
@@ -101,8 +101,7 @@ class FuelVirtualClient(Client):
         out: list[str] = []
 
         def push(u: str) -> None:
-            if u and u not in out:
-                out.append(u)
+            append_unique(out, u)
 
         for src in scene.sel.xpath('//a[contains(@class,"jqModal")]//img/@src | //div[@id="overallthumb"]//a//img/@src').getall():
             if not src:

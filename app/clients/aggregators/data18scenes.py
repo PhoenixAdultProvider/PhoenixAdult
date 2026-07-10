@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client, strip_reptyle_suffix
+from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, url_id, xp_first_ns, xp_ns
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from app.registry import ResolvedSiteInfo
@@ -34,31 +34,12 @@ _MOVIE_XPATHS = ('(//p[b[normalize-space(.)="Movie:"]]/a)[1]',)
 _REPTYLE_NETWORKS = ('teamskeet', 'mylf')
 
 
-def _url_id(url: str) -> str:
-    return re.sub(r'.*/', '', url).split('-')[0]
-
-
-def _ns(sel: Any, xpath: str) -> str:
-    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
-
-
-def _first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
-    for xpath in xpaths:
-        if value := _ns(sel, xpath):
-            return value
-    return ''
-
-
-def _squash(value: str) -> str:
-    return re.sub(r'\s+', '', value).lower()
-
-
 def _resolve_studio(sel: Any) -> str:
-    return _first_ns(sel, _STUDIO_XPATHS)
+    return xp_first_ns(sel, _STUDIO_XPATHS)
 
 
 def _resolve_subsite(sel: Any) -> str:
-    if bold := _first_ns(sel, _SUBSITE_XPATHS):
+    if bold := xp_first_ns(sel, _SUBSITE_XPATHS):
         return bold
     texts: list[str] = sel.xpath(_BARE_SUBSITE_XP).getall()
     for text in texts:
@@ -69,14 +50,14 @@ def _resolve_subsite(sel: Any) -> str:
 
 
 def _resolve_tagline(sel: Any, studio: str) -> str:
-    if not _ns(sel, _NETWORK_XP):
+    if not xp_ns(sel, _NETWORK_XP):
         return ''
-    if site_name := _ns(sel, _SITE_XP):
+    if site_name := xp_ns(sel, _SITE_XP):
         return site_name
     sub_site = _resolve_subsite(sel)
-    if sub_site and _squash(sub_site) != _squash(studio):
+    if sub_site and squash(sub_site) != squash(studio):
         return sub_site
-    return _first_ns(sel, _SERIE_XPATHS) or _first_ns(sel, _MOVIE_XPATHS)
+    return xp_first_ns(sel, _SERIE_XPATHS) or xp_first_ns(sel, _MOVIE_XPATHS)
 
 
 def _apply_reptyle(studio: str, tagline: str) -> tuple[str, str]:
@@ -123,7 +104,7 @@ class Data18ScenesClient(Client):
             if c.truncated:
                 loaded = await self._data18.fetch_page(c.url)
                 if loaded is not None:
-                    title = _ns(loaded, _TITLE_XP) or title
+                    title = xp_ns(loaded, _TITLE_XP) or title
             score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
             results.append(
                 build_search_result(
@@ -145,14 +126,14 @@ class Data18ScenesClient(Client):
             loaded = await self._data18.fetch_page(scene_url)
             if loaded is None:
                 continue
-            title = _ns(loaded, _TITLE_XP)
+            title = xp_ns(loaded, _TITLE_XP)
             if not title or 'Error 404' in title:
                 continue
-            date_raw = _ns(loaded, _RELEASE_DATE_XP)
+            date_raw = xp_ns(loaded, _RELEASE_DATE_XP)
             release_date = iso_date(date_raw) or ''
             studio = _resolve_studio(loaded)
             subsite = _resolve_tagline(loaded, studio) or studio
-            score = sceneid_distance_score(scene_id, _url_id(scene_url)) if scene_id else None
+            score = sceneid_distance_score(scene_id, url_id(scene_url)) if scene_id else None
             results.append(
                 build_search_result(
                     title=title,
@@ -179,7 +160,7 @@ class Data18ScenesClient(Client):
         tagline = _resolve_tagline(loaded, studio)
         if studio:
             studio, tagline = _apply_reptyle(studio, tagline)
-        same = not tagline or _squash(tagline) == _squash(studio)
+        same = not tagline or squash(tagline) == squash(studio)
         collections = [tagline] if tagline and not same else ([studio] if studio else [])
         return LoadedScene(
             url=url,
@@ -197,7 +178,7 @@ class Data18ScenesClient(Client):
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = _ns(scene.sel, _TITLE_XP)
+        title = xp_ns(scene.sel, _TITLE_XP)
         m = re.match(r'^Scene[^:-]*(?::|-)', title)
         if m:
             scene_num = re.sub(r'[^A-Za-z0-9\s]+', '', m.group(0)).strip()
@@ -233,7 +214,7 @@ class Data18ScenesClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        return iso_date(_ns(scene.sel, _RELEASE_DATE_XP)) or scene.scene_date or None
+        return iso_date(xp_ns(scene.sel, _RELEASE_DATE_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
         assert scene.sel is not None
