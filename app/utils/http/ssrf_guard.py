@@ -73,7 +73,7 @@ def is_blocked_hostname(host: str) -> bool:
 async def _resolve(host: str) -> list[str]:
     loop = asyncio.get_running_loop()
     infos = await loop.getaddrinfo(host, None)
-    return [info[4][0] for info in infos]
+    return [str(info[4][0]) for info in infos]
 
 
 async def resolve_public_ip(host: str) -> str:

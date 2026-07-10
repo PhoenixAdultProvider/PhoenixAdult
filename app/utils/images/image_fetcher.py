@@ -125,7 +125,8 @@ async def _get_once_pinned(url: str, referer: str | None, cookie: str | None) ->
 
 def _decode_dims(data: bytes) -> tuple[int, int]:
     with Image.open(io.BytesIO(data)) as img:
-        return img.size
+        width, height = img.size
+        return int(width), int(height)
 
 
 _coalesce: Coalescer[str, ImageEntry] = Coalescer()
