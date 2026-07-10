@@ -14,7 +14,6 @@ from app.utils.plex.rating_key import parse_rating_key
 
 _TAG = 'plex-reconcile'
 
-# Provider field -> the tag name Plex's edit API uses. Plex calls a Role an "actor".
 _FIELDS: dict[str, str] = {
     'Collection': 'collection',
     'Genre': 'genre',
@@ -77,8 +76,7 @@ def _our_rating_key(guid: str) -> str | None:
 
 
 def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
-    """The tag values the provider currently stands behind, read from the snapshot only.
-    None when the scene was never snapshotted — reconciling it would mean re-scraping."""
+    """The tag values from this scene's cached snapshot, or None when it was never snapshotted."""
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed['site_name'] or not parsed['cur_id']:
         return None
@@ -105,7 +103,6 @@ class PlexClient:
         if not enabled():
             raise RuntimeError('PLEX_URL and PLEX_TOKEN must both be set')
         self.base = (env.plex_url or '').rstrip('/')
-        # Token rides in a header, never the query string, so it stays out of request logs.
         self.http: httpx2.AsyncClient = make_http({'X-Plex-Token': env.plex_token or '', 'Accept': 'application/json'}, timeout=30.0)
 
     async def _get(self, path: str, **params: str) -> dict[str, Any]:
@@ -129,8 +126,6 @@ class PlexClient:
         return items[0] if items else {}
 
     async def remove_tags(self, section: str, rating_key: str, tag: str, values: list[str]) -> None:
-        # `tag[].tag.tag-` removes; `tag.locked=0` keeps the field agent-owned. Plex locks any
-        # field it sees edited, which would freeze out every future provider update.
         params = {'type': '1', 'id': rating_key, f'{tag}[].tag.tag-': ','.join(values), f'{tag}.locked': '0'}
         r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
         r.raise_for_status()

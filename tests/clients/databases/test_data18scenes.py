@@ -32,27 +32,21 @@ _TAIL = """
   <div><a href="/name/jane"><img alt="Jane Doe" /></a></div>
 </body></html>"""
 
-# Sub-site is a bold anchor after the "|" (Brazzers -> Teens Like It Big).
 SCENE_PAGE = f"""<html><body>{_HEAD}
   <p><b>Network</b>: <b><a href="/studios/brazzers">Brazzers</a></b>
      <span class="gen11">- 14,021 Scenes</span> |
      <a href="/studios/brazzers/teens-like-it-big" class="bold">Teens Like It Big</a>
      <span class="gen11">- 666 Scenes</span></p>{_TAIL}"""
 
-# Sub-site is bare text after the "|", with no anchor at all (Brazzers Exxtra).
 SCENE_PAGE_BARE_SUBSITE = f"""<html><body>{_HEAD}
   <p><b>Network</b>: <b><a href="/studios/brazzers">Brazzers</a></b>
      <span class="gen11">- 14,021 Scenes</span> | Brazzers Exxtra
      <span class="gen11">- 12 Scenes</span></p>{_TAIL}"""
 
-# No Network row: a standalone studio, whose value is an anchor, not a <b>.
-# The nav widget's <b>R</b> sits after the label and must not be picked up.
 SCENE_PAGE_STUDIO_ONLY = f"""<html><body>{_HEAD}
   <p><b>Studio</b>: <a href="/studios/hussie-pass" class="bold">Hussie Pass</a>
      <span class="gen11">- 640 Scenes <span><b>R</b> Nav</span></span></p>{_TAIL}"""
 
-# Webserie lives in the site <p>, not the network <p>. "| Webserie:" is a tail text
-# node of the gen11 span, so the name is that span's following sibling, not a descendant.
 SCENE_PAGE_WEBSERIE = f"""<html><body>{_HEAD}
   <p><b>Network</b>: <b><a href="/studios/teamskeet">TeamSkeet - Reptyle</a></b>
      <span class="gen11">- 12,260 Scenes</span></p>
@@ -61,8 +55,6 @@ SCENE_PAGE_WEBSERIE = f"""<html><body>{_HEAD}
      <a href="/studios/teamskeet/her-freshman-year" class="bold">Her Freshman Year</a>
      <span class="gen11">- 20 Scenes</span></p>{_TAIL}"""
 
-# Miniserie name is a <u> inside span.listminiserie, with no anchor. The icon span
-# of the same class comes first and must be skipped.
 SCENE_PAGE_MINISERIE = f"""<html><body>{_HEAD}
   <p><b>Network</b>: <b><a href="/studios/brazzers">Brazzers</a></b>
      <span class="gen11">- 14,021 Scenes</span></p>
@@ -142,7 +134,6 @@ async def test_detail_studio_and_tagline_per_network_shape(page: str, studio: st
     assert detail.collections == [tagline or studio]
 
 
-# Two hits: /scenes/1234 has the exact query as its title, /scenes/9999 is the requested id.
 _SEARCH_ID_VS_TITLE = """<html><body>
   pages: 1
   <a href="https://www.data18.com/scenes/9999-other-name">
@@ -165,9 +156,7 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
         SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Fun Scene')
     )
     by_url = {r.scene_url: r.score for r in results}
-    # The requested id scores 100 even though its title does not match the query at all.
     assert by_url['https://www.data18.com/scenes/9999'] == 100
-    # The title-perfect result must NOT tie: it is scored on id distance once an id is supplied.
     assert by_url['https://www.data18.com/scenes/1234'] < 100
     assert max(results, key=lambda r: r.score).scene_url.endswith('/9999')
 
@@ -176,7 +165,6 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
 async def test_without_scene_id_scoring_falls_back_to_date_then_title(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(d18s_module, 'web_search', _no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
-    # No scene_id, no search_date -> title distance; the exact title wins.
     results = await Data18ScenesClient().search(SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE))
     by_url = {r.scene_url: r.score for r in results}
     assert by_url['https://www.data18.com/scenes/1234'] == 100

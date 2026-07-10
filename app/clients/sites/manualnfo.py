@@ -54,7 +54,7 @@ class NfoData:
     studio: str | None = None
     thumb: str | None = None
     fanart: str | None = None
-    data18: str | None = None  # explicit data18 scene ref; bypasses the data18 search
+    data18: str | None = None
 
 
 @dataclass

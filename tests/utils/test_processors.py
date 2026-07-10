@@ -225,8 +225,6 @@ def test_abbreviation_expansion() -> None:
     ],
 )
 def test_title_case_does_not_split_words_on_accented_letters(raw: str, expected: str) -> None:
-    # A non-ASCII letter used to tokenize as punctuation, capitalizing the tail:
-    # "compañeros" -> "CompañEros".
     assert title_case(raw) == expected
 
 

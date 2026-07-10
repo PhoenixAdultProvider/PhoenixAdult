@@ -455,7 +455,7 @@ def test_reapply_text_rules_normalizes_summary(monkeypatch: pytest.MonkeyPatch) 
     )
     assert mc.reapply_text_rules(resp) is True
     assert resp.MediaContainer.Metadata[0].summary == "specs... his roommate's girlfriend...\n\nSecond para."
-    assert mc.reapply_text_rules(resp) is False  # idempotent: second pass changes nothing
+    assert mc.reapply_text_rules(resp) is False
 
 
 def test_reapply_text_rules_normalizes_cast_name_punctuation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -483,7 +483,7 @@ def test_reapply_text_rules_normalizes_cast_name_punctuation(monkeypatch: pytest
     assert mc.reapply_text_rules(resp) is True
     assert [r.tag for r in (resp.MediaContainer.Metadata[0].Role or [])] == ["Nikki D'Angelo"]
     assert [d.tag for d in (resp.MediaContainer.Metadata[0].Director or [])] == ["Jean-Luc O'Brien"]
-    assert mc.reapply_text_rules(resp) is False  # idempotent
+    assert mc.reapply_text_rules(resp) is False
 
 
 def test_reapply_text_rules_leaves_clean_cast_names_untouched(monkeypatch: pytest.MonkeyPatch) -> None:

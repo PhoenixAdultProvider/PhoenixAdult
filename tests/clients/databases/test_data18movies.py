@@ -22,8 +22,6 @@ SEARCH_PAGE = """<html><body>
   </a>
 </body></html>"""
 
-# The <h1> wraps an <a>, so /text() yields nothing; the nav widget's <b>R</b> follows the
-# label and must not be read as the studio. "Site:" names the sub-site.
 _HEAD = '<h1><a href="/movies/12345">Big Movie</a></h1>'
 _BODY = """
   <div class="gen12"><div>Description --- A grand description. Studio: Empire Studios</div></div>
@@ -40,12 +38,10 @@ MOVIE_PAGE = f"""<html><body>{_HEAD}
      Site: <a href="/studios/empire/zz-series">ZZ Series</a></p>
   <span>Prod. Year: 2024 - Release date: January, 2024</span>{_BODY}"""
 
-# A @datetime attribute wins over the "Release date:" text when present.
 MOVIE_PAGE_DATETIME = f"""<html><body>{_HEAD}
   <p><b>Studio</b>: <b><a href="/studios/empire">Empire Studios</a></b></p>
   <time datetime="2024-01-05"></time>{_BODY}"""
 
-# data18 labels the Reptyle networks "<Network> - Reptyle"; the sub-site anchor repeats the studio.
 MOVIE_PAGE_REPTYLE = f"""<html><body>{_HEAD}
   <p><b>Network</b>: <b><a href="/studios/teamskeet">TeamSkeet - Reptyle</a></b>
      <span class="gen11">- 1 Movies</span> |

@@ -22,9 +22,6 @@ _COMMON = """
   </div>
 </body></html>"""
 
-# Live markup: each grid-item wraps an <article>, the screenshot anchor carries class
-# "scene-img", and the per-scene cast is a <p class="scene-performer-names">. The performer
-# name is the <img title>, not a nested <span>.
 MOVIE_PAGE = f"""<html><body>
   <h1 class="description">Big Movie, The</h1>
   <div class="video-performer-container">
@@ -42,7 +39,6 @@ MOVIE_PAGE = f"""<html><body>
     </article></div>
   </div>{_COMMON}"""
 
-# Older shape: no <article>, cast in div.scene-cast-list. Both fallbacks must still fire.
 MOVIE_PAGE_LEGACY_GRID = f"""<html><body>
   <h1 class="description">Big Movie, The</h1>
   <div class="performers"><a>Jane Doe</a></div>
@@ -154,8 +150,6 @@ async def test_scene_id_scores_via_id_distance(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(d18e_module, 'web_search', _no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18EmpireClient().search(_ctx())
-    # Empire builds exactly one candidate from the requested id, so it always scores 100.
-    # Title scoring must not be consulted: the movie title does not match the empty query.
     assert results and all(r.score == 100 for r in results)
 
 
@@ -167,4 +161,4 @@ async def test_without_scene_id_scoring_falls_back_to_title(monkeypatch: pytest.
     respx.get('https://data18.empirestores.co/1234567/big-movie-porn-movies.html').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     ctx = SearchContext(title='The Big Movie', encoded='The+Big+Movie', search_site=SITE.name, site_info=SITE)
     results = await Data18EmpireClient().search(ctx)
-    assert results and results[0].score == 100  # exact title match, no id supplied
+    assert results and results[0].score == 100

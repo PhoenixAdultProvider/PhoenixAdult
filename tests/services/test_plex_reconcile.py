@@ -9,7 +9,6 @@ import respx
 from app.services import plex_reconcile as pr
 from app.utils import cache as metadata_cache
 
-# RFC 5737 documentation range — never a real host.
 BASE = 'http://192.0.2.10:32400'
 GUID = 'tv.plex.agents.custom.myprovider.phoenixadult://movie/scene-brazzers-abc123'
 FOREIGN_GUID = 'plex://movie/5d776b9ad'
@@ -63,7 +62,7 @@ async def test_dry_run_reports_but_does_not_write(monkeypatch: pytest.MonkeyPatc
     assert report.applied is False
     assert report.matched == 1 and report.changed == 1
     assert report.items[0].removals == {'Collection': ['Brazzers']}
-    assert not put.called  # nothing written
+    assert not put.called
 
 
 @respx.mock
@@ -77,7 +76,7 @@ async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: py
     params = put.calls[0].request.url.params
     assert params['id'] == '77'
     assert params['collection[].tag.tag-'] == 'Brazzers'
-    assert params['collection.locked'] == '0'  # editing would otherwise lock the field forever
+    assert params['collection.locked'] == '0'
 
 
 @respx.mock
@@ -104,7 +103,7 @@ async def test_locked_field_is_skipped_and_reported(monkeypatch: pytest.MonkeyPa
     assert report.changed == 0
     assert report.skipped_locked == 1
     assert report.items[0].locked == ['Collection']
-    assert not put.called  # a hand-curated field is never overwritten
+    assert not put.called
 
 
 @respx.mock

@@ -221,7 +221,7 @@ _NFO_WITH_DATA18 = SAMPLE_NFO.replace('</movie>', '  <data18>1150700</data18>\n<
 
 def test_parse_nfo_reads_data18_tag() -> None:
     assert mn_module.__testing__['parse_nfo'](_NFO_WITH_DATA18).data18 == '1150700'
-    assert mn_module.__testing__['parse_nfo'](SAMPLE_NFO).data18 is None  # absent -> None
+    assert mn_module.__testing__['parse_nfo'](SAMPLE_NFO).data18 is None
 
 
 @pytest.mark.parametrize(
@@ -252,7 +252,6 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
 async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     monkeypatch.setenv('DATA18_ENABLE', 'true')
-    # off-host URL -> refused, so the normal title search still runs
     _write_folder(tmp_path, BASENAME, nfo=SAMPLE_NFO.replace('</movie>', '  <data18>https://evil.com/scenes/1</data18>\n</movie>'))
     queries: list[str] = []
 

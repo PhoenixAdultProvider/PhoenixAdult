@@ -80,7 +80,7 @@ def test_scene_url_from_ref_accepts_id_slug_and_url() -> None:
     assert scene_url_from_ref('scenes/1150700') == url
     assert scene_url_from_ref('/scenes/1150700/') == url
     assert scene_url_from_ref(url) == url
-    assert scene_url_from_ref('http://data18.com/scenes/1150700') == url  # host+scheme normalized
+    assert scene_url_from_ref('http://data18.com/scenes/1150700') == url
     assert scene_url_from_ref('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/delicious-firsts-hussiepass'
 
 
@@ -91,9 +91,9 @@ def test_scene_url_from_ref_refuses_off_host_and_junk() -> None:
         '/',
         'scenes',
         'scenes/',
-        'https://evil.com/scenes/1150700',  # off-host
-        'https://www.data18.com.evil.com/scenes/1',  # suffix-spoofed host
-        'https://www.data18.com/movies/5',  # not a scene path
+        'https://evil.com/scenes/1150700',
+        'https://www.data18.com.evil.com/scenes/1',
+        'https://www.data18.com/movies/5',
         '../../etc/passwd',
         'scenes/a b',
         '1150700?x=1',

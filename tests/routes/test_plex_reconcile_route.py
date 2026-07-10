@@ -23,8 +23,8 @@ def test_status_reports_disabled_until_both_vars_are_set(monkeypatch: pytest.Mon
     hdr = {'x-admin-token': 'tok'}
     assert client.get('/plex/status', headers=hdr).json() == {'enabled': False}
 
-    monkeypatch.setenv('PLEX_URL', 'http://192.0.2.10:32400')  # RFC 5737 documentation range
-    assert client.get('/plex/status', headers=hdr).json() == {'enabled': False}  # token still missing
+    monkeypatch.setenv('PLEX_URL', 'http://192.0.2.10:32400')
+    assert client.get('/plex/status', headers=hdr).json() == {'enabled': False}
 
     monkeypatch.setenv('PLEX_TOKEN', 'test-token')
     assert client.get('/plex/status', headers=hdr).json() == {'enabled': True}
