@@ -205,6 +205,14 @@ class _Env:
         return _flag('PHOENIX_EXTRA_COLLECTIONS', '') == 'true'
 
     @property
+    def plex_url(self) -> str | None:
+        return (os.environ.get('PLEX_URL') or '').strip().rstrip('/') or None
+
+    @property
+    def plex_token(self) -> str | None:
+        return (os.environ.get('PLEX_TOKEN') or '').strip() or None
+
+    @property
     def admin_token(self) -> str | None:
         token = (os.environ.get('ADMIN_TOKEN') or '').strip()
         return token or None

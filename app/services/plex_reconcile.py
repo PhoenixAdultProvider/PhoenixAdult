@@ -1,0 +1,197 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+import httpx2
+
+from app.config.env import env
+from app.registry import PROVIDER_DEFINITIONS
+from app.utils import cache as metadata_cache
+from app.utils.http.client import make_http
+from app.utils.logging.logger import logger
+from app.utils.plex.rating_key import parse_rating_key
+
+_TAG = 'plex-reconcile'
+
+# Provider field -> the tag name Plex's edit API uses. Plex calls a Role an "actor".
+_FIELDS: dict[str, str] = {
+    'Collection': 'collection',
+    'Genre': 'genre',
+    'Role': 'actor',
+    'Director': 'director',
+    'Producer': 'producer',
+}
+
+
+def enabled() -> bool:
+    return bool(env.plex_url and env.plex_token)
+
+
+@dataclass
+class ItemReport:
+    rating_key: str
+    title: str
+    guid: str
+    removals: dict[str, list[str]] = field(default_factory=dict)
+    locked: list[str] = field(default_factory=list)
+    skipped: str | None = None
+
+
+@dataclass
+class ReconcileReport:
+    applied: bool
+    scanned: int = 0
+    matched: int = 0
+    changed: int = 0
+    skipped_locked: int = 0
+    skipped_no_snapshot: int = 0
+    items: list[ItemReport] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            'applied': self.applied,
+            'scanned': self.scanned,
+            'matched': self.matched,
+            'changed': self.changed,
+            'skippedLocked': self.skipped_locked,
+            'skippedNoSnapshot': self.skipped_no_snapshot,
+            'items': [
+                {'ratingKey': i.rating_key, 'title': i.title, 'guid': i.guid, 'removals': i.removals, 'locked': i.locked, 'skipped': i.skipped}
+                for i in self.items
+            ],
+        }
+
+
+def _guid_prefixes() -> tuple[str, ...]:
+    return tuple(f'{p.plex_identifier}://' for p in PROVIDER_DEFINITIONS)
+
+
+def _our_rating_key(guid: str) -> str | None:
+    """The provider-side rating key inside one of our guids, else None."""
+    if not guid.startswith(_guid_prefixes()):
+        return None
+    _, _, tail = guid.partition('://')
+    _, _, rating_key = tail.partition('/')
+    return rating_key or None
+
+
+def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
+    """The tag values the provider currently stands behind, read from the snapshot only.
+    None when the scene was never snapshotted — reconciling it would mean re-scraping."""
+    parsed = parse_rating_key(rating_key)
+    if not parsed or not parsed['site_name'] or not parsed['cur_id']:
+        return None
+    cached = metadata_cache.read(parsed['site_name'], parsed['cur_id'])
+    if not cached:
+        return None
+    try:
+        md = cached['MediaContainer']['Metadata'][0]
+    except (KeyError, IndexError, TypeError):
+        return None
+    return {name: [t['tag'] for t in (md.get(name) or []) if t.get('tag')] for name in _FIELDS}
+
+
+def _locked_fields(item: dict[str, Any]) -> set[str]:
+    return {f['name'] for f in (item.get('Field') or []) if f.get('locked') and f.get('name')}
+
+
+def _plex_tags(item: dict[str, Any], provider_field: str) -> list[str]:
+    return [t['tag'] for t in (item.get(provider_field) or []) if t.get('tag')]
+
+
+class PlexClient:
+    def __init__(self) -> None:
+        if not enabled():
+            raise RuntimeError('PLEX_URL and PLEX_TOKEN must both be set')
+        self.base = (env.plex_url or '').rstrip('/')
+        # Token rides in a header, never the query string, so it stays out of request logs.
+        self.http: httpx2.AsyncClient = make_http({'X-Plex-Token': env.plex_token or '', 'Accept': 'application/json'}, timeout=30.0)
+
+    async def _get(self, path: str, **params: str) -> dict[str, Any]:
+        r = await self.http.get(f'{self.base}{path}', params=params)
+        r.raise_for_status()
+        data = r.json()
+        container = data.get('MediaContainer') if isinstance(data, dict) else None
+        return container if isinstance(container, dict) else {}
+
+    async def movie_sections(self) -> list[str]:
+        container = await self._get('/library/sections')
+        return [d['key'] for d in (container.get('Directory') or []) if d.get('type') == 'movie' and d.get('key')]
+
+    async def section_items(self, section: str) -> list[dict[str, Any]]:
+        container = await self._get(f'/library/sections/{section}/all', type='1', includeGuids='1')
+        return list(container.get('Metadata') or [])
+
+    async def item(self, rating_key: str) -> dict[str, Any]:
+        container = await self._get(f'/library/metadata/{rating_key}', includeFields='1')
+        items = container.get('Metadata') or []
+        return items[0] if items else {}
+
+    async def remove_tags(self, section: str, rating_key: str, tag: str, values: list[str]) -> None:
+        # `tag[].tag.tag-` removes; `tag.locked=0` keeps the field agent-owned. Plex locks any
+        # field it sees edited, which would freeze out every future provider update.
+        params = {'type': '1', 'id': rating_key, f'{tag}[].tag.tag-': ','.join(values), f'{tag}.locked': '0'}
+        r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
+        r.raise_for_status()
+
+    async def aclose(self) -> None:
+        await self.http.aclose()
+
+
+async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileReport:
+    """Strip tags Plex still holds that the provider no longer returns. Dry-run by default.
+    Locked fields are reported and left alone; a scene with no snapshot is skipped."""
+    report = ReconcileReport(applied=apply)
+    client = PlexClient()
+    try:
+        for section in await client.movie_sections():
+            for stub in await client.section_items(section):
+                report.scanned += 1
+                rating_key = _our_rating_key(stub.get('guid') or '')
+                if not rating_key:
+                    continue
+                report.matched += 1
+                if limit is not None and report.changed >= limit:
+                    continue
+
+                plex_key = str(stub.get('ratingKey') or '')
+                entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '')
+
+                desired = _snapshot_tags(rating_key)
+                if desired is None:
+                    entry.skipped = 'no snapshot'
+                    report.skipped_no_snapshot += 1
+                    report.items.append(entry)
+                    continue
+
+                item = await client.item(plex_key)
+                locked = _locked_fields(item)
+                for provider_field, plex_tag in _FIELDS.items():
+                    stale = [t for t in _plex_tags(item, provider_field) if t not in desired[provider_field]]
+                    if not stale:
+                        continue
+                    if plex_tag in locked:
+                        entry.locked.append(provider_field)
+                        continue
+                    entry.removals[provider_field] = stale
+
+                if entry.locked:
+                    report.skipped_locked += 1
+                if not entry.removals:
+                    if entry.locked:
+                        report.items.append(entry)
+                    continue
+
+                report.changed += 1
+                report.items.append(entry)
+                if apply:
+                    for provider_field, stale in entry.removals.items():
+                        await client.remove_tags(section, plex_key, _FIELDS[provider_field], stale)
+                    logger.info(_TAG, f'{plex_key} "{entry.title}": removed {entry.removals}')
+    finally:
+        await client.aclose()
+
+    verb = 'removed from' if apply else 'would be removed from'
+    logger.info(_TAG, f'scanned {report.scanned}, ours {report.matched}, stale tags {verb} {report.changed} item(s)')
+    return report

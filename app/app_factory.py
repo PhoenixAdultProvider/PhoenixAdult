@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from app.config import base_url_config_warning, config
 from app.config.env import env
 from app.registry import get_all_providers
-from app.routes import dev_routes, env_routes, image_routes, metadata_cache_routes, people_cache_routes
+from app.routes import dev_routes, env_routes, image_routes, metadata_cache_routes, people_cache_routes, plex_routes
 from app.routes.provider_router import create_provider_router
 from app.utils.logging.logger import logger
 from app.utils.logging.request_context import RequestContextMiddleware
@@ -67,6 +67,9 @@ def create_app() -> FastAPI:
 
     # ── Snapshot metadata cache review UI (admin-guarded) ────────────────────
     app.include_router(metadata_cache_routes.router, prefix='/metadata-cache')
+
+    # ── Plex server reconciliation (admin-guarded; no-op until PLEX_* are set) ─
+    app.include_router(plex_routes.router, prefix='/plex')
 
     # ── Dev / test UI (non-production only, admin-guarded) ───────────────────
     if not env.is_production:

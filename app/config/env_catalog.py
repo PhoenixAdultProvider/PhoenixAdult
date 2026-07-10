@@ -9,7 +9,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 # fmt: off
 ENV_GROUP_ORDER = [
     'Logging', 'Images', 'Manual NFO', 'People cache & sources', 'Gender handling',
-    'Web search', 'HTTP bypass', 'Data18 enrichment', 'MetadataAPI', 'Misc',
+    'Web search', 'HTTP bypass', 'Data18 enrichment', 'MetadataAPI', 'Plex server', 'Misc',
 ]
 
 # Default whole-word junk tokens (regex fragments) stripped from a parsed search
@@ -260,6 +260,21 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='false',
     ),
     EnvVarSpec('REQBIN_API_KEY', 'ReqBin API key', 'API key for the ReqBin HTTP-bypass fallback.', 'HTTP bypass', 'secret'),
+    EnvVarSpec(
+        'PLEX_URL',
+        'Plex server URL',
+        'Base URL of the Plex server to reconcile against, e.g. http://plex.lan:32400. A LAN address is fine. '
+        'Reconciliation is only available when this and PLEX_TOKEN are both set.',
+        'Plex server',
+        'string',
+    ),
+    EnvVarSpec(
+        'PLEX_TOKEN',
+        'Plex token',
+        'X-Plex-Token for the server above. Needs library write access, so treat it like a password.',
+        'Plex server',
+        'secret',
+    ),
     EnvVarSpec(
         'BYPASS_ORDER',
         'Bypass attempt order',

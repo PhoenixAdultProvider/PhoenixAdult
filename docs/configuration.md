@@ -168,6 +168,44 @@ refresh in Plex to re-emit the image URLs.
 | --- | --- | --- |
 | `METADATAAPI_TOKEN` | _(unset)_ | Bearer token for api.theporndb.net. Optional — without it the API serves a reduced response. |
 
+### Plex Server
+
+Only needed for reconciliation (below). Both must be set or the feature stays off.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PLEX_URL` | _(unset)_ | Base URL of the Plex server, e.g. `http://plex.lan:32400`. A LAN address is fine — the provider dials out to Plex, Plex never dials in. |
+| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server. Needs library write access, so treat it like a password. Sent as a header, never in a query string. |
+
+#### Reconciling stale tags
+
+Plex keeps agent-supplied tags that a provider stops returning: change a scene's collection and
+the old one stays on the item. The HTTP provider API has no way to clear it — the legacy Plex
+agent could call `metadata.collections.clear()` because it mutated a live Plex object, but a
+provider only answers questions. Reconciliation closes that gap from the outside.
+
+```
+POST /plex/reconcile              # dry run: reports what it would remove
+POST /plex/reconcile?apply=1      # performs the removals
+POST /plex/reconcile?apply=1&limit=10
+GET  /plex/status                 # {"enabled": true|false}
+```
+
+Admin-guarded like the cache UIs (`?token=` or `x-admin-token`). It reconciles the five tag
+fields the legacy agent cleared — Collection, Genre, Role, Director, Producer — removing only
+values Plex holds that the provider's current snapshot does not.
+
+Notes:
+
+- **Dry run by default.** Nothing is written without `apply=1`.
+- **Locked fields are skipped**, never overwritten. Plex locks a field once you edit it by hand,
+  so a lock means you chose that value. Skipped fields are listed in the report.
+- Writes send `<field>.locked=0`. Without it Plex would lock the field it just saw edited,
+  freezing out every future provider update.
+- Scenes with no cached snapshot are skipped rather than re-scraped, so a run costs no upstream
+  traffic.
+- Items matched by another agent are ignored — only guids carrying our provider identifier.
+
 ### Title Processing & Misc
 
 | Variable | Default | Description |
