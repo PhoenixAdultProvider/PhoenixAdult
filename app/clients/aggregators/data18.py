@@ -29,6 +29,8 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1134102': 'the-whore-of-wall-street-ep-4-double-teamed-on-the-high-seas-zzseries',
     '1134439': 'the-whore-of-wall-street-ep-5-one-last-orgy-zzseries',
     '1134892': 'el-doctor-primera-parte-pornstarslikeitbig',
+    '1136052': 'sensual-sexual-jane-brazzersexxtra',
+    '1146768': 'el-cruce-bigtitsinuniform',
     '1150082': 'vice-city-vacation-part-two-zzseries',
     '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
     '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
