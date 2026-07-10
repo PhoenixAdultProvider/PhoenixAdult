@@ -60,9 +60,9 @@ async def test_search_direct_id_split_scene(monkeypatch: pytest.MonkeyPatch, no_
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18EmpireClient().search(_ctx())
     assert len(results) == 2
-    assert results[0].title == 'Big Movie, The'
+    assert results[0].title == 'The Big Movie'
     assert results[0].score == 100
-    assert results[1].title == 'Big Movie, The [Scene 1]'
+    assert results[1].title == 'The Big Movie [Scene 1]'
 
 
 @respx.mock
@@ -73,7 +73,7 @@ async def test_detail_movie(monkeypatch: pytest.MonkeyPatch, no_web_search: obje
     results = await client.search(_ctx())
     detail = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
     assert detail is not None
-    assert detail.title == 'Big Movie, The'
+    assert detail.title == 'The Big Movie'
     assert detail.summary == 'A grand description.'
     assert detail.studio == 'Empire Studios'
     assert detail.release_date == '2024-01-05'
@@ -90,7 +90,7 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search
     results = await client.search(_ctx())
     detail = await client.fetch_scene_detail(client.decode(results[1].cur_id), SITE)
     assert detail is not None
-    assert detail.title == 'Big Movie, The [Scene 1]'
+    assert detail.title == 'The Big Movie [Scene 1]'
     assert [a.name for a in detail.actors] == ['Mary Roe']
     assert 'https://cdn.example/shot1.jpg' in detail.raw_image_urls
 
@@ -158,3 +158,9 @@ async def test_without_scene_id_scoring_falls_back_to_title(monkeypatch: pytest.
     ctx = SearchContext(title='The Big Movie', encoded='The+Big+Movie', search_site=SITE.name, site_info=SITE)
     results = await Data18EmpireClient().search(ctx)
     assert results and results[0].score == 100
+
+
+def test_rotate_article_handles_mid_string_the() -> None:
+    assert d18e_module._rotate_article('Movie, The (Disc 2)') == 'The Movie (Disc 2)'
+    assert d18e_module._rotate_article('Big Movie, The') == 'The Big Movie'
+    assert d18e_module._rotate_article('No Article Here') == 'No Article Here'

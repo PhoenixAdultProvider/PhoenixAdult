@@ -28,6 +28,23 @@ def _is_movie_url(url: str) -> bool:
     return '/movies/' in path or path.endswith('-porn-movies.html')
 
 
+def _rotate_article(raw: str) -> str:
+    """Rotate a ", The"/", A" anywhere in the string to the front (Empire's catalog
+    format), matching the legacy bundle's re.split behaviour exactly."""
+    lower = raw.lower()
+    if ', the' in lower:
+        idx = lower.index(', the')
+    elif ', a' in lower:
+        idx = lower.index(', a')
+    else:
+        return raw
+    end = idx + 5 if lower[idx + 2] == 't' else idx + 3
+    article = lower[idx + 2 : end]
+    head = raw[:idx]
+    tail = raw[idx + 2 + len(article) :]
+    return f'{article[:1].upper()}{article[1:]} {head}{tail}'
+
+
 def _release_date(sel: Any) -> str | None:
     nodes = sel.xpath('//div[contains(@class,"release-date")][.//span[contains(.,"Released:")]]')
     if not nodes:
@@ -74,7 +91,7 @@ class Data18EmpireClient(Client):
             if not loaded:
                 continue
             sel = loaded['sel']
-            title = first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()')
+            title = _rotate_article(first_attr(sel, '(//h1[contains(@class,"description")])[1]/text()'))
             if not title:
                 continue
             date = _release_date(sel)
@@ -142,13 +159,13 @@ class Data18EmpireClient(Client):
         if not tagline:
             raw = first_attr(scene.sel, '(//a[@data-label="Series List"]//h2)[1]/text()')
             tagline = re.sub(rf'\({re.escape(studio)}\)', '', raw.replace('Series:', '')).strip()
-        return tagline or studio
+        return _rotate_article(tagline) if tagline else studio
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
-        title = first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()')
+        title = _rotate_article(first_attr(scene.sel, '(//h1[contains(@class,"description")])[1]/text()'))
         if not title:
             return None
         scene_num = self._packed(scene).get('sceneNum')
