@@ -598,7 +598,8 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
             seen: set[str] = set()
             kept: list[PlexRole] = []
             for r in roles:
-                aliased = apply_name_aliases(r.tag, studio, studio)
+                cased_name = re.sub(r'\s+', ' ', title_case(r.tag, type='name', site_name=studio)).strip()
+                aliased = apply_name_aliases(cased_name, studio, studio)
                 if aliased != r.tag:
                     r.tag = aliased
                     changed = True
