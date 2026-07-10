@@ -23,7 +23,6 @@ def _log_startup_banner() -> None:
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 
-    # Admin surfaces — include the token in the link so it works through a tunnel.
     qs = f'?token={env.admin_token}' if env.admin_token else ''
     logger.info(f'  Config UI:      {config.base_url}/config{qs}')
     logger.info(f'  People cache:   {config.base_url}/people-cache{qs}')
@@ -57,7 +56,7 @@ def create_app() -> FastAPI:
 
     # ── Image serving ────────────────────────────────────────────────────────
     app.include_router(image_routes.router, prefix='/images')
-    app.include_router(image_routes.cache_router)  # snapshot images at /cache/...
+    app.include_router(image_routes.cache_router)
 
     # ── Runtime config UI ────────────────────────────────────────────────────
     app.include_router(env_routes.router, prefix='/config')

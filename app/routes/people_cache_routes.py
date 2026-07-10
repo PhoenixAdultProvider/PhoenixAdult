@@ -21,10 +21,8 @@ from app.utils.people.types import parse_person_filename
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _ROLES = ('actor', 'director', 'producer')
-# gender key -> (css suffix, label)
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
-# (subfolder-derived type, tab label) — one view per storage bucket.
 _TABS = [
     ('directors', 'Directors'),
     ('producers', 'Producers'),
@@ -112,7 +110,7 @@ def _card(entry: dict[str, Any]) -> str:
     gcss = next(css for key, css, _ in _GENDERS if key == _gender_of(str(entry.get('gender', ''))))
     relpath = str(entry.get('relpath', filename))
     ctype = html.escape(str(entry.get('type', '')), quote=True)
-    local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'  # bust the browser cache when the file changes
+    local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
     fn = html.escape(filename, quote=True)

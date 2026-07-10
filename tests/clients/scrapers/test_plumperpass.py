@@ -38,7 +38,7 @@ async def test_search_refstat_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get(CONTENT_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results = await PlumperPassClient().search(SearchContext(title='big fun', encoded='big+fun', search_site=SITE.name, site_info=SITE, scene_id='2222'))
     assert len(results) == 1
-    assert results[0].title == 'Big Fun'  # quotes stripped
+    assert results[0].title == 'Big Fun'
     assert results[0].scene_url == CONTENT_URL
     assert results[0].release_date == '2021-06-06'
 
@@ -52,7 +52,7 @@ async def test_detail_tagline_genres_actors_images() -> None:
     assert detail.title == 'Big Fun'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'PlumperPass'
-    assert detail.tagline == 'Hot Sexy Plumpers'  # hsp/ token
+    assert detail.tagline == 'Hot Sexy Plumpers'
     assert detail.collections == ['Hot Sexy Plumpers']
     assert detail.release_date == '2021-06-06'
     assert detail.genres == ['BBW', 'Hardcore']

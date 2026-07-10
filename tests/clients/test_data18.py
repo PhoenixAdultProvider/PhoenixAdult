@@ -17,8 +17,6 @@ _SEARCH = (
 
 
 async def test_manual_mapping_shortcut() -> None:
-    # Callers pass the project1-side slug (a dict value); it resolves to the
-    # data18 scene id (the key) used in the URL.
     url = await Data18Client().find_scene_url('thats-better-than-stealing-it-herfreshmanyear', 'whatever', [], None)
     assert url == 'https://www.data18.com/scenes/169646'
 
@@ -30,8 +28,6 @@ def test_mapping_slug_matches_the_client_formula() -> None:
 
 
 def test_mapping_slug_strips_apostrophes_to_match_mapping_values() -> None:
-    # Apostrophes are dropped (not turned into a dash) so the slug matches the mapping
-    # values, e.g. "That's" -> "thats", the data18-only exception to the default slugify.
     assert mapping_slug("That's Better Than Stealing It", 'Her Freshman Year') == 'thats-better-than-stealing-it-herfreshmanyear'
     assert manual_mapping_url(mapping_slug("That's Better Than Stealing It", 'Her Freshman Year')) == 'https://www.data18.com/scenes/169646'
 
@@ -52,7 +48,6 @@ async def test_find_scene_url_scores_match() -> None:
 @respx.mock
 async def test_find_scene_url_rejects_low_accuracy() -> None:
     respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=_SEARCH))
-    # Different provider + title + date → accuracy below the default 100 threshold.
     url = await Data18Client().find_scene_url(None, 'Totally Different', ['OtherStudio'], datetime(2010, 5, 5))
     assert url is None
 

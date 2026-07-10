@@ -51,12 +51,12 @@ async def test_detail_bbc_twins() -> None:
     )
     detail = await InterracialPassClient().fetch_scene_detail(url, BBC)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # h3 selector for BBC Surprise
-    assert detail.summary == 'A summary.'  # 2nd update-info-block
-    assert detail.studio == 'ExploitedX'  # studio override
+    assert detail.title == 'Cool Scene'
+    assert detail.summary == 'A summary.'
+    assert detail.studio == 'ExploitedX'
     assert detail.tagline == 'BBC Surprise'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']
-    assert [a.name for a in detail.actors] == ['Joey White', 'Sami White']  # Twins expanded
+    assert [a.name for a in detail.actors] == ['Joey White', 'Sami White']
     assert detail.actors[0].photo_url == 'https://bbcsurprise.com/p/twins.jpg'
     assert detail.raw_image_urls == ['https://bbcsurprise.com/img/t.jpg']

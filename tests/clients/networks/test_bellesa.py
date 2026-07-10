@@ -63,6 +63,6 @@ async def test_detail() -> None:
     assert detail.studio == 'Bellesa'
     assert detail.tagline == 'Bellesa House'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Anal', 'Teen']  # comma-split string
+    assert detail.genres == ['Anal', 'Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

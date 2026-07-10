@@ -60,7 +60,7 @@ def record(directory: str, *, name: str, filename: str, base: str, orig_ext: str
 
 def recent(directory: str) -> list[dict[str, Any]]:
     with _lock:
-        return list(reversed(_load(directory)))  # newest first
+        return list(reversed(_load(directory)))
 
 
 def remove(directory: str, filename: str) -> None:

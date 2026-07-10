@@ -33,8 +33,8 @@ async def test_search_scene_id_score() -> None:
     assert len(results) == 1
     assert results[0].title == '555 - Cool Scene'
     assert results[0].scene_url == 'https://czechvr.com/video/555-cool-scene'
-    assert results[0].score == 100  # exact sceneId match → distance 0
-    assert results[0].thumb_url == 'https://cdn/cdn-cgi/image//thumb.jpg'  # cdn-cgi rewrite
+    assert results[0].score == 100
+    assert results[0].thumb_url == 'https://cdn/cdn-cgi/image//thumb.jpg'
 
 
 @respx.mock
@@ -57,13 +57,13 @@ async def test_detail() -> None:
     )
     detail = await CzechVRClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # last '-' segment, brand stripped
+    assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'CzechVR'
     assert detail.tagline == 'CzechVR'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['vr', '180']  # lowercased + deduped
-    assert [a.name for a in detail.actors] == ['Jane Doe']  # deduped across modelky+featuring
+    assert detail.genres == ['vr', '180']
+    assert [a.name for a in detail.actors] == ['Jane Doe']
     assert detail.raw_image_urls == ['https://cdn/g1.jpg']
 
 

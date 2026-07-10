@@ -61,7 +61,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Gay Hoopla'
     assert detail.collections == ['Gay Hoopla']
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Anal', 'Twink']  # deduped
+    assert detail.genres == ['Anal', 'Twink']
     assert [a.name for a in detail.actors] == ['Jane Doe']
     assert detail.actors[0].photo_url == 'https://gayhoopla.com/img/jane.jpg'
     assert detail.raw_image_urls == ['https://gayhoopla.com/img/main.jpg', 'https://cdn/g1.jpg']

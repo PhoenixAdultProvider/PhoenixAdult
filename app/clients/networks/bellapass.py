@@ -48,7 +48,6 @@ class BellaPassClient(Client):
         base = ctx.site_info.base_url.rstrip('/')
         candidates: list[str] = [f'{base}/trailers/{slugify(ctx.title)}.html']
 
-        # On-site search.
         enc = ctx.encoded.replace('%20', '-').lower()
         search_url = base + ctx.site_info.search_path.replace('{query}', enc)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
@@ -62,7 +61,6 @@ class BellaPassClient(Client):
                 if abs_url not in candidates:
                     candidates.append(abs_url)
 
-        # Legacy web-search augmentation (gated on an engine being available).
         if web_search_available():
             host = urlparse(ctx.site_info.base_url).netloc
             try:
@@ -74,7 +72,6 @@ class BellaPassClient(Client):
                 if '/trailers/' in url and url not in candidates:
                     candidates.append(url)
 
-        # Fetch each candidate → SearchResult.
         primary = _title_selector_for(ctx.site_info.name)
         results: list[SearchResult] = []
         for scene_url in candidates:

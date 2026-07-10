@@ -63,6 +63,6 @@ async def test_detail() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'QueenSnake'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['BDSM', 'S&M', 'Needles', 'Abby']  # base + tags
-    assert [a.name for a in detail.actors] == ['Abby']  # only roster match
-    assert detail.raw_image_urls == ['https://cdn/preview1.jpg?x=1']  # query kept
+    assert detail.genres == ['BDSM', 'S&M', 'Needles', 'Abby']
+    assert [a.name for a in detail.actors] == ['Abby']
+    assert detail.raw_image_urls == ['https://cdn/preview1.jpg?x=1']

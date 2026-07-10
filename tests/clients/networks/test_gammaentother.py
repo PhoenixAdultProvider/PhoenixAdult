@@ -38,7 +38,7 @@ def _algolia(request: httpx.Request) -> httpx.Response:
         hits = [_SCENE_HIT]
     elif index == 'all_actors':
         hits = [_ACTOR_HIT]
-    else:  # all_movies
+    else:
         hits = []
     return httpx.Response(200, json={'results': [{'hits': hits}]})
 
@@ -60,7 +60,6 @@ async def test_search() -> None:
     assert any(r.title == 'Cool Scene' for r in results)
     assert next(r for r in results if r.title == 'Cool Scene').subsite == "Mommy's Girl"
     r = next(r for r in results if r.title == 'Cool Scene')
-    # cur_id decodes to "123|scenes|2021-03-04"
     assert GammaEntOtherClient().decode(r.cur_id) == '123|scenes|2021-03-04'
 
 
@@ -77,5 +76,4 @@ async def test_detail() -> None:
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://images-fame.gammacdn.com/actors/a/jane.jpg'
-    # scene picture inserted at the front
     assert detail.raw_image_urls[0] == 'https://images-fame.gammacdn.com/movies//p/cover.jpg'

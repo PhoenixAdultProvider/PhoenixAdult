@@ -43,12 +43,10 @@ async def test_detail_srcset_actors_images() -> None:
     detail = await RealityLoversClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'VR Dream'
-    assert detail.summary == 'A blurb.'  # '…' and 'Read more' stripped, whitespace collapsed
+    assert detail.summary == 'A blurb.'
     assert detail.studio == 'Reality Lovers'
     assert detail.release_date == '2021-05-05'
     assert detail.genres == ['vr', 'pov']
     assert [a.name for a in detail.actors] == ['Alice']
-    # actor srcset index-1 entry minus the 3-char " 2x" descriptor, https->http
     assert detail.actors[0].photo_url == 'http://cdn.rl.com/alice.jpg'
-    # gallery last entry minus the 6-char " 1920w" descriptor, https->http
     assert detail.raw_image_urls == ['http://cdn.rl.com/s1_big.jpg']

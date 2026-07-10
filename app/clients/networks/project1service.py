@@ -92,7 +92,7 @@ class Project1ServiceClient(Client):
                             token = m.group(1)
                             break
             if not token:
-                return None  # keep serving any prior token
+                return None
             return token, float(_parse_jwt_exp(token) or int(time.time()) + 3600)
 
         return await _TOKENS.get(host, _fetch)

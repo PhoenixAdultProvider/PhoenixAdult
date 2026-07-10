@@ -384,7 +384,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             ('collections', self.fetch_collections),
             ('image_urls', self.fetch_image_urls),
         )
-        # One hook failing shouldn't discard the ten that succeeded.
         gathered = await asyncio.gather(*(fn(scene) for _, fn in hooks), return_exceptions=True)
         values: list[Any] = []
         for (name, _), value in zip(hooks, gathered, strict=True):

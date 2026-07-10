@@ -34,7 +34,6 @@ async def test_search_packs_cover() -> None:
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.insexondemand.com/iod/scene_123.php'
     assert results[0].display_date == '2021-03-04'
-    # cover survives via the curID into detail
     detail_html = '<div class="has-text-weight-bold">Cool Scene</div>'
     respx.get('https://www.insexondemand.com/iod/scene_123.php').mock(return_value=httpx.Response(200, text=detail_html))
     detail = await IntersecClient().fetch_scene_detail(IntersecClient().decode(results[0].cur_id), SITE)
@@ -65,10 +64,10 @@ async def test_detail() -> None:
     detail = await IntersecClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # 3rd has-text-white-ter
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Intersec Interactive'
-    assert detail.tagline == 'Hardtied'  # resolved from channel link
+    assert detail.tagline == 'Hardtied'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['BDSM']  # 2 actors → no group genre
-    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']  # channel link dropped
+    assert detail.genres == ['BDSM']
+    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.raw_image_urls == ['https://cdn/poster.jpg']

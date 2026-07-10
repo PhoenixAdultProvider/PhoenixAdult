@@ -51,7 +51,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Evolved Fights Network'
-    assert detail.tagline == 'Evolved Fights'  # site name differs from studio
+    assert detail.tagline == 'Evolved Fights'
     assert detail.collections == ['Evolved Fights Network']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Wrestling', 'Mixed']

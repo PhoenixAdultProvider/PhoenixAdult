@@ -62,12 +62,12 @@ async def test_detail_two_hop() -> None:
     respx.get('https://www.littlecaprice-dreams.com/model/jane').mock(return_value=httpx.Response(200, text='<img class="img-poster" src="/p/jane.jpg" />'))
     detail = await LittleCapriceClient().fetch_scene_detail(gallery_url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # tagline prefix stripped
+    assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'LittleCaprice'
-    assert detail.tagline == 'Buttmuse'  # from category class
+    assert detail.tagline == 'Buttmuse'
     assert detail.release_date == '2021-03-04'
-    assert 'toys' in detail.genres and 'anal' in detail.genres  # video + gallery tags
+    assert 'toys' in detail.genres and 'anal' in detail.genres
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.littlecaprice-dreams.com/p/jane.jpg'
     assert 'https://cdn/video-og.jpg' in detail.raw_image_urls

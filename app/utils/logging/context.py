@@ -13,12 +13,8 @@ from collections.abc import Iterator
 HTTP = 25
 logging.addLevelName(HTTP, 'HTTP')
 
-# A short hex id for this process run — the default for logs not tied to an
-# external request (startup, lifespan, uvicorn server lines). Changes on restart.
 SESSION_ID = uuid.uuid4().hex[:5]
 
-# Shared log layout, padded so the ":" before the message lands at a fixed column:
-#   "<ts>  (<id>) <LEVEL padded> <module:line padded>: message"
 _LOG_FORMAT = '%(asctime)s  (%(request_id)s) %(levelfield)s %(locfield)s: %(message)s'
 _LEVEL_NAME_WIDTH = 8  # widest level name, "CRITICAL"
 _LOCATION_WIDTH = 28  # widest "module:line" content

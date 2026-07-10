@@ -41,13 +41,13 @@ async def test_detail_fields_genres_actors_images() -> None:
     detail = await HegreClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Morning Massage'
-    assert detail.summary == 'A blurb.'  # truncated before "Runtime"
+    assert detail.summary == 'A blurb.'
     assert detail.studio == 'Hegre'
     assert detail.collections == ['Hegre']
     assert detail.release_date == '2021-09-09'
     assert detail.genres == ['massage', 'solo']
     assert [a.name for a in detail.actors] == ['Alice']
-    assert detail.actors[0].photo_url == 'https://cdn.hegre.com/480x/alice.jpg'  # 240x -> 480x
+    assert detail.actors[0].photo_url == 'https://cdn.hegre.com/480x/alice.jpg'
     assert detail.directors is not None
     assert detail.directors[0].name == 'Petter Hegre'
     assert detail.raw_image_urls == [

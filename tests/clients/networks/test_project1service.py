@@ -47,12 +47,12 @@ async def test_search() -> None:
     results = await Project1ServiceClient().search(_ctx())
     titles = {r.title for r in results}
     assert 'Cool Scene' in titles
-    assert '[Trailer] Cool Scene' in titles  # trailer type prefixed
+    assert '[Trailer] Cool Scene' in titles
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert cool.thumb_url == 'https://image-service-ht.project1content.com/path/p.jpg'
     assert cool.release_date == '2021-03-04'
     assert cool.display_date == '2021-03-04'
-    assert cool.subsite == 'Pornstars Like It Big'  # labels the result with the sub-brand, not the network
+    assert cool.subsite == 'Pornstars Like It Big'
 
 
 @respx.mock
@@ -62,7 +62,7 @@ async def test_search_date_falls_back_to_filename_date() -> None:
     respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [dateless]}))
     results = await Project1ServiceClient().search(_ctx(search_date='2021-03-04'))
     cool = next(r for r in results if r.title == 'Cool Scene')
-    assert cool.release_date == '2021-03-04'  # API omitted dateReleased -> filename date used for release_date
+    assert cool.release_date == '2021-03-04'
     assert cool.display_date is None  # display_date is the scene's own date only, never the filename date
 
 
@@ -77,7 +77,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Brazzers'
-    assert detail.tagline == 'Pornstars Like It Big'  # sub-site != studio
+    assert detail.tagline == 'Pornstars Like It Big'
     assert detail.collections == ['Pornstars Like It Big']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']
@@ -108,7 +108,7 @@ async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkey
     monkeypatch.setattr(p1_module, 'Data18Client', FakeData18)
     detail = await Project1ServiceClient().fetch_scene_detail('777|scene|2021-03-04', SITE, SceneContext(subsite='Teens Like It Big'))
     assert detail is not None
-    assert captured['mapping_id'] == 'cool-scene-teenslikeitbig'  # falls back to the search-selection sub-site
+    assert captured['mapping_id'] == 'cool-scene-teenslikeitbig'
     assert 'Teens Like It Big' in captured['providers']  # type: ignore[operator]
 
 
@@ -121,4 +121,4 @@ async def test_search_forces_brazzers_live_subsite() -> None:
     ctx = SearchContext(title='cool scene', encoded='cool+scene', search_site='Brazzers Live', site_info=SITE)
     results = await Project1ServiceClient().search(ctx)
     cool = next(r for r in results if r.title == 'Cool Scene')
-    assert cool.subsite == 'Brazzers Live'  # forced alias; carried on the result (folded into the cur_id by the mapper)
+    assert cool.subsite == 'Brazzers Live'

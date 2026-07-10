@@ -22,7 +22,7 @@ async def test_fetch_javbus_images() -> None:
         imgs = await fetch_javbus_images(client, 'ABC-123')
     assert 'https://www.javbus.com/cover/abc_b.jpg' in imgs
     assert 'https://img.example/sample1.jpg' in imgs
-    assert all('nowprinting' not in u for u in imgs)  # placeholder filtered
+    assert all('nowprinting' not in u for u in imgs)
 
 
 @respx.mock

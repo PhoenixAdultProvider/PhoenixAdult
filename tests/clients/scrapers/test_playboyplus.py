@@ -48,10 +48,9 @@ async def test_detail_via_packed_curid() -> None:
     detail = await PlayboyPlusClient().fetch_scene_detail(PlayboyPlusClient().decode(cur_id), SITE)
     assert detail is not None
     assert detail.title == 'Golden Hour'
-    assert detail.summary == 'A blurb'  # trailing '...' stripped
+    assert detail.summary == 'A blurb'
     assert detail.studio == 'Playboy Plus'
     assert detail.release_date == '2021-03-03'
     assert detail.genres == ['Glamour']
     assert [a.name for a in detail.actors] == ['Alice']
-    # poster from curID + main image + gallery image, query strings stripped
     assert detail.raw_image_urls == ['https://cdn.pp.com/poster.jpg', 'https://cdn.pp.com/main.jpg', 'https://cdn.pp.com/g1.jpg']

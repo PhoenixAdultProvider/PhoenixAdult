@@ -37,7 +37,7 @@ async def test_search() -> None:
     respx.get('https://www.wankzvr.com/search?q=cool+scene').mock(return_value=httpx.Response(200, text=html))
     results = await WankzVRClient().search(_ctx())
     assert len(results) == 1
-    assert results[0].title == 'Cool Scene'  # first text node only
+    assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.wankzvr.com/v/7'
 
 
@@ -71,5 +71,5 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'  # 2nd source srcset, .webp -> .jpg, well-formed
-    assert detail.raw_image_urls == ['https://cdn/hero_large.jpg']  # cover->hero, medium->large
+    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
+    assert detail.raw_image_urls == ['https://cdn/hero_large.jpg']

@@ -19,7 +19,7 @@ def test_reparses_on_mtime_change(tmp_path: Path) -> None:
 
     _write(f, {'v': 2})
     os.utime(f, (f.stat().st_atime, f.stat().st_mtime + 10))
-    res._stat_checked_at = 0.0  # skip the stat rate-limit window
+    res._stat_checked_at = 0.0
     assert res.get() == 2
 
 
@@ -31,4 +31,4 @@ def test_stat_throttle_serves_cached_within_interval(tmp_path: Path) -> None:
 
     _write(f, {'v': 2})
     os.utime(f, (f.stat().st_atime, f.stat().st_mtime + 10))
-    assert res.get() == 1  # within the throttle window the mtime change isn't observed
+    assert res.get() == 1

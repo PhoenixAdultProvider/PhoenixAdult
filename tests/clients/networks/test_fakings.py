@@ -55,7 +55,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'FAKings'
-    assert detail.tagline == 'MILF Club'  # title-cased
+    assert detail.tagline == 'MILF Club'
     assert detail.collections == ['MILF Club']
     assert detail.genres == ['Anal', 'MILF']
     assert detail.actors[0].name == 'Jane Doe'

@@ -14,7 +14,6 @@ class HegreClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')
 
-        # Stage 1 — direct /films/<slug>.
         direct = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
         direct_page = await self.fetch_and_load(direct, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {direct}')
         if direct_page:
@@ -34,7 +33,6 @@ class HegreClient(Client):
                     )
                 ]
 
-        # Stage 2 — in-site search with optional year filter.
         search_url = append_year_param(f'{base}/search?q={ctx.encoded}', 'year', year=ctx.year, search_date=ctx.search_date)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if not loaded:

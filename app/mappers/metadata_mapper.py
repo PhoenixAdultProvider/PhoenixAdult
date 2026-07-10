@@ -47,7 +47,7 @@ class MetadataMapper:
         scraper_type: str | None = None,
         filename_site: str | None = None,
     ) -> PlexMatchResult:
-        search_sub = raw.subsite or filename_site  # the sub-site the selected result resolved to
+        search_sub = raw.subsite or filename_site
         search_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
         rating_key = to_rating_key(embed_subsite(raw.cur_id, search_sub), site_name, date)
         display_date = (raw.display_date or '').strip()
@@ -135,13 +135,13 @@ class MetadataMapper:
         year = _year_of(effective_date)
 
         studio = normalize_studio(detail.studio)
-        if detail.tagline:  # 1) scraped sub-site
+        if detail.tagline:
             tagline = normalize_studio(detail.tagline)
             collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.tagline]) if c))
-        elif filename_site and normalize_site_key(filename_site) != normalize_site_key(detail.studio):  # 2) filename sub-site
+        elif filename_site and normalize_site_key(filename_site) != normalize_site_key(detail.studio):
             tagline = normalize_studio(filename_site)
             collections = [tagline]
-        else:  # 3) none — blank tagline, collection is the studio
+        else:
             tagline = None
             collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
 

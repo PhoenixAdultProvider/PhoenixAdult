@@ -118,7 +118,7 @@ async def api_reset(request: Request) -> JSONResponse:
     return JSONResponse(_build_state())
 
 
-_MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'  # a file the --reload watcher tracks
+_MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'
 
 
 @router.post('/api/restart')

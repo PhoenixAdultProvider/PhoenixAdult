@@ -34,7 +34,7 @@ class GoogleCseClient:
             'cx': cx,
             'q': opts.query,
             'siteSearch': opts.site,
-            'siteSearchFilter': 'i',  # include-only
+            'siteSearchFilter': 'i',
             'num': str(num),
             'lr': f'lang_{language}',
             'safe': 'active' if opts.safe_search else 'off',

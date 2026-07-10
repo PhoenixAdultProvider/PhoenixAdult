@@ -59,7 +59,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Porndoe Premium'
     assert detail.tagline == 'Jane Doe'
     assert detail.collections == ['Jane Doe']
-    assert detail.release_date == '2021-03-04'  # last bullet
+    assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Latina']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'

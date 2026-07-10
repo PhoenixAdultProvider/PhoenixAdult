@@ -55,7 +55,7 @@ async def test_detail() -> None:
     assert detail.studio == 'LoveHerFilms'
     assert detail.tagline == 'LoveHerFeet'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Footjob', 'Foot Sex']  # +constant
+    assert detail.genres == ['Footjob', 'Foot Sex']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.loveherfeet.com/p/jane.jpg'
     assert detail.raw_image_urls == ['https://cdn/og.jpg', 'https://www.loveherfeet.com/img/p1.jpg']

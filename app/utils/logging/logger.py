@@ -10,7 +10,6 @@ from app.config import config
 from app.config.env import env
 from app.utils.logging.context import HTTP, AlignedFormatter, current_request_id
 
-# Stamp the current per-request id onto every log record so the formatter can show it.
 _old_factory = logging.getLogRecordFactory()
 
 

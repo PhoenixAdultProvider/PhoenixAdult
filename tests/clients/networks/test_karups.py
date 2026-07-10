@@ -30,7 +30,7 @@ async def test_search_model_to_videos() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.karups.com/video/77'
-    assert results[0].display_date == '2021-03-04'  # ordinal stripped
+    assert results[0].display_date == '2021-03-04'
 
 
 @respx.mock
@@ -56,7 +56,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Karups'
     assert detail.tagline == 'KarupsHA'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Amateur']  # KarupsHA
+    assert detail.genres == ['Amateur']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.karups.com/p/jane.jpg'
     assert detail.raw_image_urls == ['https://www.karups.com/img/poster.jpg']

@@ -34,7 +34,7 @@ async def test_search_card() -> None:
     results = await ScoreGroupClient().search(_ctx(scene_id='777'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
-    assert results[0].score == 100  # id in URL matches scene_id
+    assert results[0].score == 100
 
 
 @respx.mock
@@ -62,7 +62,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Score Group'
     assert detail.tagline == 'Scoreland'
-    assert detail.release_date == '2021-03-04'  # 2nd span.value
+    assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Big Tits']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'

@@ -63,7 +63,7 @@ def _subdir_for(filename: str) -> str:
     return _subdir(role, gender)  # type: ignore[arg-type]
 
 
-_bust_cache: dict[str, tuple[float, str]] = {}  # relpath -> (mtime, token)
+_bust_cache: dict[str, tuple[float, str]] = {}
 
 
 def _bust_token(relpath: str, data: bytes | None) -> str:
@@ -351,7 +351,7 @@ def purge(filename: str) -> bool:
         logger.warn('people-cache', f'purge failed {filename}: {err}')
         return False
     entry = _log_entry(str(target.parent), filename)
-    if entry:  # drop the preserved original too
+    if entry:
         orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
         if orig is not None and orig.exists():
             orig.unlink()
@@ -394,7 +394,7 @@ def set_gender(filename: str, new_gender: str) -> str | None:
 
     old_log, new_log = str(src.parent), str(dst.parent)
     entry = _log_entry(old_log, filename)
-    if entry:  # move/rename the preserved original to match the new base
+    if entry:
         orig_ext = entry.get('orig_ext') or '.jpg'
         old_orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
         new_orig = safe_join(directory, _ORIGINALS_DIR, f'{new_base}{orig_ext}')

@@ -41,7 +41,7 @@ async def test_search_json_api() -> None:
     assert len(results) == 1
     assert results[0].title == 'Deep Scene'
     assert results[0].scene_url == 'https://analvids.com/watch/123'
-    assert results[0].score == 100  # leading numeric token matched source_id
+    assert results[0].score == 100
 
 
 @respx.mock
@@ -58,6 +58,6 @@ async def test_detail_fields_actors_genres_poster() -> None:
     assert detail.collections == ['LegalPorno']
     assert detail.release_date == '2021-08-20'
     assert detail.genres == ['Anal', 'Gonzo']
-    assert [a.name for a in detail.actors] == ['Alice']  # forum link excluded
+    assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.av.com/alice.jpg'
     assert detail.raw_image_urls == ['https://cdn.av.com/poster.jpg']

@@ -35,7 +35,6 @@ async def test_search_and_detail_roundtrip() -> None:
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
 
-    # detail decodes the JSON-packed curID — no second fetch
     detail = await PureCFNMClient().fetch_scene_detail(PureCFNMClient().decode(results[0].cur_id), SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
@@ -43,7 +42,6 @@ async def test_search_and_detail_roundtrip() -> None:
     assert detail.studio == 'PureCFNM'
     assert detail.tagline == 'Girls Abuse Guys'
     assert detail.release_date == '2021-03-04'
-    # per-site base genres + group-size (2 listed → Threesome)
     assert detail.genres == ['CFNM', 'Femdom', 'Male Humiliation', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mistress X']
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

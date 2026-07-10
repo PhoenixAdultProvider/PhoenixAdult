@@ -64,9 +64,9 @@ async def test_detail_actor_host_swap() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'PervCity'
-    assert detail.tagline == 'Anal Overdose'  # from About block
+    assert detail.tagline == 'Anal Overdose'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']
     assert detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'  # fetched from pervcity.com host
-    assert detail.raw_image_urls == ['https://cdn/s1.jpg?token=x']  # query token kept (policy)
+    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
+    assert detail.raw_image_urls == ['https://cdn/s1.jpg?token=x']

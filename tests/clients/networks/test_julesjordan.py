@@ -47,7 +47,6 @@ async def test_detail() -> None:
     respx.get('https://www.julesjordan.com/trial/models/jane.html').mock(
         return_value=httpx.Response(200, text='<img class="model_bio_thumb stdimage thumbs target" src0_3x="/p/jane.jpg" />')
     )
-    # slideshow re-fetch of the search page (title "Cool Scene")
     respx.get('https://www.julesjordan.com/trial/search.php?query=Cool%20Scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     detail = await JulesJordanClient().fetch_scene_detail(url, SITE)
     assert detail is not None

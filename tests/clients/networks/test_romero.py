@@ -50,7 +50,7 @@ async def test_detail() -> None:
     )
     detail = await RomeroClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # | suffix trimmed
+    assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Romero Multimedia'
     assert detail.tagline == 'Hentaied'
@@ -58,7 +58,7 @@ async def test_detail() -> None:
     assert detail.genres == ['Tentacles']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.directors is not None and detail.directors[0].name == 'Mr Romero'
-    assert detail.raw_image_urls == ['https://cdn/img.jpg']  # -scaled stripped
+    assert detail.raw_image_urls == ['https://cdn/img.jpg']
 
 
 @respx.mock
@@ -71,4 +71,4 @@ async def test_detail_loose_actors() -> None:
     )
     detail = await RomeroClient().fetch_scene_detail(url, site)
     assert detail is not None
-    assert [a.name for a in detail.actors] == ['Fighter A', 'Fighter B']  # loose: no model-icon requirement
+    assert [a.name for a in detail.actors] == ['Fighter A', 'Fighter B']

@@ -59,7 +59,6 @@ async def test_detail_via_packed_curid() -> None:
     assert detail.release_date == '2021-03-12'
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Maria Rya', 'Bella', 'Cara']
-    # Bella's noimageavailable thumb falls back to the actor-search lookup
     assert detail.actors[1].photo_url == 'https://cdn.fj.com/bella-real.jpg'
     assert detail.directors is not None
     assert detail.directors[0].name == 'Dir One'

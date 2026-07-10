@@ -30,7 +30,7 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
     results = await grooby_mod.GroobyClient().search(_ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
-    assert results[0].scene_url == 'https://www.groobygirls.com/tour/trailers/cool.html'  # query stripped
+    assert results[0].scene_url == 'https://www.groobygirls.com/tour/trailers/cool.html'
     assert results[0].display_date == '2021-03-04'
 
 
@@ -56,7 +56,7 @@ async def test_detail() -> None:
     detail = await grooby_mod.GroobyClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'The summary.'  # last p in trailer_videoinfo
+    assert detail.summary == 'The summary.'
     assert detail.studio == 'Grooby'
     assert detail.tagline == 'Grooby Girls'
     assert detail.release_date == '2021-03-04'

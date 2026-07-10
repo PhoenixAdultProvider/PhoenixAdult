@@ -31,7 +31,7 @@ async def test_detail() -> None:
     item = {
         'title': 'Cool Scene',
         'description': '<p>A <b>summary</b>.</p>',
-        'publishedAt': 1614816000,  # 2021-03-04 UTC
+        'publishedAt': 1614816000,
         'categories': [{'name': 'VR'}],
         'models': [{'title': 'Jane Doe', 'featuredImage': {'permalink': '/media/jane.jpg'}}],
         'sliderImage': {'permalink': '/media/slider.jpg'},
@@ -42,12 +42,12 @@ async def test_detail() -> None:
     detail = await UnzipVRClient().fetch_scene_detail('cool-scene', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # tags stripped
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Unzip VR'
-    assert detail.tagline == 'VR Conk'  # site name
-    assert detail.release_date == '2021-03-04'  # epoch -> date
+    assert detail.tagline == 'VR Conk'
+    assert detail.release_date == '2021-03-04'
     assert detail.genres == ['VR']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == f'{_BASE}/media/jane.jpg'  # basePath-prefixed permalink
+    assert detail.actors[0].photo_url == f'{_BASE}/media/jane.jpg'
     assert detail.actors[0].gender == 'female'
     assert detail.raw_image_urls == [f'{_BASE}/media/slider.jpg', f'{_BASE}/media/poster.jpg', f'{_BASE}/media/g1.jpg']

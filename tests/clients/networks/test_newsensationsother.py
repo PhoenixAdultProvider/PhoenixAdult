@@ -59,8 +59,7 @@ async def test_detail_with_filmography_images() -> None:
     assert detail.studio == 'New Sensations'
     assert detail.tagline == 'The Tabu Tales'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Taboo']  # title-cased, deduped
+    assert detail.genres == ['Taboo']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://thetabutales.com/p/jane.jpg'
-    # poster + only the matching DVD's filmography still
     assert detail.raw_image_urls == ['https://thetabutales.com/img/poster.jpg', 'https://thetabutales.com/img/film1.jpg']

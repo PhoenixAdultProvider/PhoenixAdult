@@ -51,11 +51,11 @@ async def test_detail() -> None:
     detail = await PerfectGonzoClient().fetch_scene_detail('https://www.perfectgonzo.com/movie/7', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # not the tag-container block
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Perfect Gonzo'
     assert detail.tagline == 'All Internal'
-    assert detail.release_date == '2021-03-04'  # "Added" stripped
-    assert detail.genres == ['anal']  # lowered + deduped
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['anal']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.perfectgonzo.com/p/jane.jpg'
     assert detail.raw_image_urls == ['https://www.perfectgonzo.com/img/p.jpg', 'https://www.perfectgonzo.com/img/s1.jpg']

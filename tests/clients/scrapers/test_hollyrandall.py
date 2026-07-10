@@ -36,7 +36,7 @@ async def test_search_parses_cards() -> None:
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
     results = await HollyRandallClient().search(SearchContext(title='glam', encoded='glam', search_site=SITE.name, site_info=SITE))
-    assert len(results) == 1  # paywall card dropped
+    assert len(results) == 1
     assert results[0].title == 'Glam Shoot'
     assert results[0].scene_url == 'https://hollyrandall.com/scene/glam-1'
     assert results[0].release_date == '2021-06-06'
@@ -49,7 +49,7 @@ async def test_detail_via_packed_curid() -> None:
     cur_id = pack_cur_id([scene_url, f'2021-06-06|{b64url_encode("Glam Shoot")}'])
     detail = await HollyRandallClient().fetch_scene_detail(HollyRandallClient().decode(cur_id), SITE)
     assert detail is not None
-    assert detail.title == 'Glam Shoot'  # from packed base64 title
+    assert detail.title == 'Glam Shoot'
     assert detail.studio == 'Holly Randall Productions'
     assert detail.collections == ['Holly Randall']
     assert detail.release_date == '2021-06-06'

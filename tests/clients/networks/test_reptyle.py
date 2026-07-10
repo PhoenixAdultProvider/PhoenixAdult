@@ -31,7 +31,7 @@ _SCENE = {
     'publishedDate': '2021-03-04T00:00:00Z',
     'models': [{'modelId': 'm1', 'modelName': 'Jane Doe'}, {'modelId': 'm2', 'modelName': 'John Smith'}],
     'tags': ['Taboo'],
-    'id': 'cool-scene',  # reptyle scene ids are URL slugs, not numeric
+    'id': 'cool-scene',
 }
 
 
@@ -60,12 +60,12 @@ async def test_detail() -> None:
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # tags stripped, period added
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'TeamSkeet'
-    assert detail.tagline == 'Family Strokes'  # sub-site distinct
+    assert detail.tagline == 'Family Strokes'
     assert detail.collections == ['Family Strokes']
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Taboo', 'Threesome']  # >1 actor & not Mylfed
+    assert detail.genres == ['Taboo', 'Threesome']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.actors[0].gender == 'female'
@@ -96,5 +96,5 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     monkeypatch.setattr(reptyle_module, 'Data18Client', FakeData18)
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
     assert detail is not None
-    assert captured['mapping_id'] == 'cool-scene-familystrokes'  # slug id + normalized sub-site
+    assert captured['mapping_id'] == 'cool-scene-familystrokes'
     assert 'https://cdn.data18.com/extra.jpg' in detail.raw_image_urls

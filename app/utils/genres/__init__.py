@@ -35,31 +35,25 @@ def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRu
     if raw is None:
         return None
 
-    # Step 1 — pre-clean: strip stray double quotes, NBSP → space, trim.
     cleaned = raw.replace('"', '').replace('\xa0', ' ').strip()
     if not cleaned:
         return None
 
     lower = cleaned.lower()
 
-    # Step 2 — exact-match skip list.
     if lower in rules.skip_set:
         return None
 
-    # Step 3 — substring partial-skip list.
     for sub in rules.partial_skip:
         if sub in lower:
             return None
 
-    # Step 4 — canonical alias replacement (canonical names are pre-typed).
     canonical = rules.replace_lookup.get(lower)
     if canonical:
         return canonical
 
-    # Step 5 — unknown → title-case it.
     cased = title_case(cleaned, site_name=opts.site_name, type='title')
 
-    # Step 6 — heuristic skips (only for unknowns; mirrors `if not found and not skip`).
     if len(cased) > 25:
         return None
 

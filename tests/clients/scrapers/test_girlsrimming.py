@@ -50,7 +50,6 @@ async def test_detail_genres_actors_images(monkeypatch: pytest.MonkeyPatch) -> N
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Girls Rimming'
     assert detail.release_date == '2021-05-05'
-    # keyword entries without ' Id ' become title-cased genres + fixed 'Rim Job'
     assert detail.genres == ['Deep Rimming', 'Sloppy', 'Anal', 'Rim Job']
     assert [a.name for a in detail.actors] == ['Alice Star']
     assert detail.actors[0].photo_url == 'https://www.girlsrimming.com/img/alice.jpg'

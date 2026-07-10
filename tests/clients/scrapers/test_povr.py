@@ -54,10 +54,10 @@ async def test_detail_ldjson() -> None:
     assert detail is not None
     assert detail.title == 'VR Encounter'
     assert detail.summary == 'A blurb.'
-    assert detail.studio == 'BadoinkVR'  # sub-site from curID
+    assert detail.studio == 'BadoinkVR'
     assert detail.collections == ['BadoinkVR']
     assert detail.release_date == '2021-07-07'
     assert detail.genres == ['vr', 'pov']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.povr.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.povr.com/large/cover.jpg']  # tiny -> large
+    assert detail.raw_image_urls == ['https://cdn.povr.com/large/cover.jpg']

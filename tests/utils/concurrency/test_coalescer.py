@@ -17,11 +17,11 @@ async def test_run_coalesces_concurrent_calls() -> None:
         return 42
 
     waiters = [asyncio.create_task(c.run('k', factory)) for _ in range(5)]
-    await asyncio.sleep(0)  # let all five reach the coalescer
+    await asyncio.sleep(0)
     gate.set()
     results = await asyncio.gather(*waiters)
     assert results == [42] * 5
-    assert calls == 1  # one execution for five concurrent callers
+    assert calls == 1
 
 
 async def test_run_reexecutes_after_completion() -> None:
@@ -34,7 +34,7 @@ async def test_run_reexecutes_after_completion() -> None:
         return calls
 
     assert await c.run('k', factory) == 1
-    assert await c.run('k', factory) == 2  # entry dropped after settling -> re-runs (no caching)
+    assert await c.run('k', factory) == 2
 
 
 async def test_coalesce_future_memoizes_for_dict_lifetime() -> None:
@@ -48,9 +48,9 @@ async def test_coalesce_future_memoizes_for_dict_lifetime() -> None:
 
     f1 = coalesce_future(cache, 'k', factory)
     f2 = coalesce_future(cache, 'k', factory)
-    assert f1 is f2  # same key -> same future
+    assert f1 is f2
     assert await f1 == 7
-    assert await f2 == 7  # result kept, not recomputed
+    assert await f2 == 7
     assert calls == 1
 
 

@@ -109,7 +109,7 @@ class MetadataService:
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
         if response is not None and metadata_cache.data18_remap_needed(response, site.name, cur_id):
             logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
-            response = None  # fall through to a fresh scrape below
+            response = None
 
         if response is not None:
 
@@ -126,9 +126,9 @@ class MetadataService:
                 return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
 
             changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
-            if metadata_cache.reapply_text_rules(response, site.scraper_config.type):  # re-apply current text rules
+            if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
                 changed = True
-            if metadata_cache.backfill_metadata_attrs(response):  # attrs added after the snapshot was written
+            if metadata_cache.backfill_metadata_attrs(response):
                 changed = True
                 logger.info(provider.id, f'Backfilled metadata attrs for ratingKey={rating_key}')
             if changed:

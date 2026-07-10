@@ -50,5 +50,5 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal', 'Teen']
     names = [a.name for a in (detail.actors or [])]
-    assert names == ['Jane Doe', 'John Smith', 'Sarah Arabic']  # ' XXX' stripped + per-scene table (id 36260)
+    assert names == ['Jane Doe', 'John Smith', 'Sarah Arabic']
     assert detail.raw_image_urls == ['https://sarajay.com/img/thumb_1.jpg', 'https://sarajay.com/img/thumb_2.jpg', 'https://sarajay.com/img/thumb_3.jpg']

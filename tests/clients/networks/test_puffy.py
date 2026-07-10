@@ -46,12 +46,11 @@ async def test_detail() -> None:
     detail = await PuffyClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # tags <p> removed, "Show more..." trimmed
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Puffy Network'
     assert detail.tagline == 'Wet and Pissy'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    # constructed cover on the brand media CDN (host = site name no-spaces)
     assert 'https://media.wetandpissy.com/videos/video-77cover/hd.jpg' in detail.raw_image_urls

@@ -53,15 +53,15 @@ async def test_detail() -> None:
     detail = await KinkClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # <br> → space
+    assert detail.summary == 'A summary.'
     assert detail.tagline == 'Hogtied'
-    assert detail.studio == 'Kink'  # Hogtied not in studioByTagline → Kink
+    assert detail.studio == 'Kink'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Bondage']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.directors is not None and detail.directors[0].name == 'Director'
-    assert detail.raw_image_urls == ['https://cdn/poster.jpg?token=x']  # query kept
+    assert detail.raw_image_urls == ['https://cdn/poster.jpg?token=x']
 
 
 def test_kink_tagline() -> None:

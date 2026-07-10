@@ -20,6 +20,6 @@ async def test_202_and_empty_body_are_not_ok() -> None:
     respx.get('https://x.test/empty').mock(return_value=httpx.Response(200, text='   '))
 
     client = _C()
-    assert await client.fetch_and_load('https://x.test/ok') is not None  # real page
-    assert await client.fetch_and_load('https://x.test/blocked') is None  # 202 soft-block
-    assert await client.fetch_and_load('https://x.test/empty') is None  # empty 2xx
+    assert await client.fetch_and_load('https://x.test/ok') is not None
+    assert await client.fetch_and_load('https://x.test/blocked') is None
+    assert await client.fetch_and_load('https://x.test/empty') is None

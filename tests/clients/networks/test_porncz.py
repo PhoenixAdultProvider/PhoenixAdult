@@ -53,9 +53,9 @@ async def test_detail_dolls_gender_tag() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'PornCZ'
     assert detail.tagline == 'Czech Real Dolls'
-    assert detail.release_date == '2021-03-04'  # dd.MM.yyyy
-    assert detail.genres == ['Anal']  # '#' stripped
-    assert detail.actors[0].name == 'Jane Doe (Sex Doll)'  # dolls + female
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['Anal']
+    assert detail.actors[0].name == 'Jane Doe (Sex Doll)'
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://www.czechrealdolls.com/p/jane.jpg'
     assert detail.raw_image_urls == ['https://www.czechrealdolls.com/g/1.jpg']

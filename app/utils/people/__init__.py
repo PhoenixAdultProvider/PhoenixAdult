@@ -166,21 +166,17 @@ class PeopleManager:
         lookup_ctx = PersonLookupContext(role=role, studio=ctx.studio, site_name=ctx.site_name)
         photo = ''
         gender: Gender = entry.gender or ''
-        # Whether/where the scene's own image runs, per the 'Scene' token in PEOPLE_SOURCE_ORDER.
         use_scene, scene_first = scene_image_pref()
 
-        # 6a — local cache
         if cache_enabled() and not cache_replace_enabled():
             cached = lookup_cached(name, role)
             if cached:
                 photo = cached['served_url']
                 gender = gender or cached['gender']  # type: ignore[assignment]
 
-        # 6b — scene image, before the external sources (unless PEOPLE_SOURCE_ORDER puts it later).
         if not photo and use_scene and scene_first:
             photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
 
-        # 6c — external sources
         if not photo:
             found = await find_photo(name, lookup_ctx)
             gender = gender or found.gender
@@ -192,7 +188,6 @@ class PeopleManager:
                 else:
                     photo = found.url
 
-        # 6b (fallback) — scene image after the external sources, when ordered that way.
         if not photo and use_scene and not scene_first:
             photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
 

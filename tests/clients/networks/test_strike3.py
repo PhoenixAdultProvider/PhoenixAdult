@@ -40,14 +40,13 @@ async def test_search_by_id() -> None:
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
     results = await Strike3Client().search(_ctx(scene_id='12345'))
     assert len(results) == 1
-    assert results[0].score == 100  # videoId matches
+    assert results[0].score == 100
 
 
 @respx.mock
 async def test_search_recovers_via_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     import json as _json
 
-    # Pin to FlareSolverr so the test doesn't reach the real-network Impersonate backend.
     monkeypatch.setenv('FLARESOLVERR_URL', 'http://localhost:8191')
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr')
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(403, html='<html>Attention Required! | Cloudflare</html>'))
@@ -83,7 +82,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Tushy'
     assert detail.collections == ['Tushy']
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Anal', 'Hardcore']  # Tushy adds Anal first
+    assert detail.genres == ['Anal', 'Hardcore']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.directors is not None and detail.directors[0].name == 'Mr Vixen'

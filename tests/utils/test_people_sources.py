@@ -88,7 +88,6 @@ async def test_javbus_search_match() -> None:
 
 @respx.mock
 async def test_find_photo_uses_first_hit() -> None:
-    # Local Storage (cache off) returns nothing; Freeones is next in order.
     respx.route(method='GET', url__regex=r'freeones\.com/babes').mock(return_value=httpx.Response(200, text=FREEONES_SEARCH))
     respx.route(method='GET', url__regex=r'freeones\.com/.+/bio').mock(return_value=httpx.Response(200, text=FREEONES_BIO))
     hit = await find_photo('Jane Doe', CTX)
@@ -96,9 +95,6 @@ async def test_find_photo_uses_first_hit() -> None:
 
 
 async def test_find_photo_keeps_gender_without_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A source that identifies the person but has no usable image (e.g. IAFD
-    # rejecting a placeholder headshot) must still propagate the gender so the
-    # resolver can fall back to the gendered silhouette.
     class _GenderOnly:
         name = 'GenderOnly'
 

@@ -57,7 +57,7 @@ async def test_detail() -> None:
     assert detail.studio == 'MetArt'
     assert detail.tagline == 'MetArt'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Glamour', 'Solo Girl', 'Glamorous']  # capitalized + constant
+    assert detail.genres == ['Glamour', 'Solo Girl', 'Glamorous']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.metart.com/h/jane.jpg'
     assert detail.directors is not None and detail.directors[0].name == 'Some Photog'

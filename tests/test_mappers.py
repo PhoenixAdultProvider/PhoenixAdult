@@ -58,7 +58,7 @@ def test_match_result_falls_back_to_master_site_without_subsite() -> None:
 
 
 def test_match_result_falls_back_to_filename_site_when_client_has_no_subsite() -> None:
-    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')  # client supplied no sub-site
+    raw = SearchResult(title='A Scene', scene_url='https://x/1', cur_id='YWJj')
     result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Big Tits at School')
     assert result.title.endswith('[Big Tits at School]')
 
@@ -74,7 +74,6 @@ def test_match_result_folds_filename_subsite_into_cur_id() -> None:
     result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Big Tits at School')
     payload, sub = split_subsite(b64url_decode(parse_rating_key(result.ratingKey)['cur_id']))  # type: ignore[arg-type]
     assert payload == '3870731|scene' and sub == 'Big Tits at School'
-    # A filename that IS the studio isn't folded in (would only echo the studio).
     same = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x', filename_site='Brazzers')
     assert split_subsite(b64url_decode(parse_rating_key(same.ratingKey)['cur_id']))[1] is None  # type: ignore[arg-type]
 
@@ -90,6 +89,5 @@ async def test_metadata_tagline_chain_falls_back_to_filename_subsite() -> None:
 
 
 async def test_metadata_tagline_chain_blank_when_no_subsite() -> None:
-    # No scraped sub-site and the filename resolves to the studio -> blank tagline, collection = studio.
     tagline, collections = await _to_meta(_detail('Brazzers', tagline=None), filename_site='Brazzers')
     assert tagline is None and collections == ['Brazzers']

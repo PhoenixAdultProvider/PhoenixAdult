@@ -78,7 +78,6 @@ async def dev_test(request: Request) -> JSONResponse:
     def send(payload: dict[str, Any]) -> JSONResponse:
         return JSONResponse({**payload, 'logs': cap.end()})
 
-    # Step 1: Parse
     parsed = get_site_name_from_registry(filename, lambda token: find_site(token) is not None)
     year_trimmed = (year_override or '').strip()
     year_num = int(year_trimmed) if len(year_trimmed) == 4 and year_trimmed.isdigit() else None
@@ -94,7 +93,6 @@ async def dev_test(request: Request) -> JSONResponse:
     if not parsed:
         return send({'filename': filename, 'steps': steps})
 
-    # Step 2: Site lookup
     site = find_site(parsed.site_token)
     assert site is not None
     steps.append(
@@ -113,7 +111,6 @@ async def dev_test(request: Request) -> JSONResponse:
         }
     )
 
-    # Step 3: Provider lookup
     provider = next((p for p in get_all_providers() if p.id == site.provider_id), None)
     steps.append(
         {
@@ -127,7 +124,6 @@ async def dev_test(request: Request) -> JSONResponse:
     if not provider:
         return send({'filename': filename, 'steps': steps})
 
-    # Step 4: Build search query
     pieces = build_search_pieces(site.content_type, parsed)
     step4_data: dict[str, Any] = {'query': pieces.query, 'searchURL': ''}
     steps.append(
@@ -152,7 +148,6 @@ async def dev_test(request: Request) -> JSONResponse:
         scraper_type=site.scraper_config.type,
     )
 
-    # Step 5: Search
     lap()  # reset baseline so the duration reflects the upstream search only
     try:
         captures: list[RawCaptureEntry] = []
@@ -241,7 +236,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     provider_id = body.get('providerId')
     filename = body.get('filename')
     result_score = body.get('resultScore')
-    force = bool(body.get('force'))  # re-scrape upstream, bypassing the snapshot
+    force = bool(body.get('force'))
     steps: list[dict[str, Any]] = []
 
     if not rating_key or not provider_id:
@@ -255,7 +250,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
     log_update_header(provider_id, rating_key)
 
-    # Step 1: Parse ratingKey
     parsed = parse_rating_key(rating_key)
     steps.append(
         {
@@ -269,7 +263,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if not parsed:
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    # Step 2: Site lookup
     site = find_site(parsed['site_name'] or '')
     steps.append(
         {
@@ -283,7 +276,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if not site:
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    # Step 3: Provider lookup
     provider = next((p for p in get_all_providers() if p.id == provider_id), None)
     steps.append(
         {
@@ -299,7 +291,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
     log_update_provider(provider.id, site.name, site.scraper_config.type)
 
-    # Step 4: Decode sceneURL / videoId
     cur_id = parsed['cur_id'] or ''
     scene_url, subsite = split_subsite(scraper.decode(cur_id))
     steps.append({'step': '4. Decode identifier', 'ok': bool(scene_url), 'data': {'curID': cur_id, 'sceneURL': scene_url}, 'durationMs': lap()})
@@ -317,7 +308,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if cached is not None:
         response = PlexMetadataResponse.model_validate(cached)
         backfilled = await metadata_cache.backfill_people_images(response, site.name)
-        reapplied = metadata_cache.reapply_text_rules(response, site.scraper_config.type)  # re-apply current text rules
+        reapplied = metadata_cache.reapply_text_rules(response, site.scraper_config.type)
         if metadata_cache.backfill_metadata_attrs(response):
             backfilled = True
         if backfilled or reapplied:
@@ -354,7 +345,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
         )
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    # Step 5: Fetch detail
     lap()  # reset baseline so the duration reflects the upstream fetch only
     try:
         captures: list[RawCaptureEntry] = []
@@ -374,7 +364,6 @@ async def dev_metadata(request: Request) -> JSONResponse:
         log_detail_summary(provider.id, site.name, detail)
         metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
 
-        # Freeze a snapshot for next time (no-op unless METADATA_CACHE_ENABLE).
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
         snapshot_saved = await metadata_cache.write(site.name, cur_id, response)
         filter_male_actors(response)  # hide male actors from the preview (after the write — snapshot keeps them)

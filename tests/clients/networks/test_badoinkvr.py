@@ -42,7 +42,7 @@ async def test_search_direct_scene_id() -> None:
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].score == 100
-    assert results[0].thumb_url == 'https://cdn/t.jpg?x=1'  # not stripped
+    assert results[0].thumb_url == 'https://cdn/t.jpg?x=1'
 
 
 @respx.mock
@@ -77,8 +77,7 @@ async def test_detail_fields() -> None:
     assert detail.genres == ['VR', '180']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].gender == 'female'
-    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg?sig=z'  # full URL, not stripped
-    # video-image kept whole; gallery synthesized base_1..base_4 (count 3 + 1).
+    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg?sig=z'
     assert detail.raw_image_urls == [
         'https://cdn/main.jpg?token=abc',
         'https://cdn/g/base_1.jpg',

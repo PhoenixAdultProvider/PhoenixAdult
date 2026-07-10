@@ -21,7 +21,7 @@ async def test_search_direct_id() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene - PornWorld</title>'))
     results = await PornWorldClient().search(_ctx(scene_id='12345'))
     assert len(results) == 1
-    assert results[0].title == 'Cool Scene'  # suffix stripped
+    assert results[0].title == 'Cool Scene'
     assert results[0].score == 100
 
 
@@ -58,10 +58,10 @@ async def test_detail() -> None:
     detail = await PornWorldClient().fetch_scene_detail('https://ddfbusty.com/watch/7', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # following-sibling div
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'PornWorld'
     assert detail.tagline == 'DDF Busty'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Busty']  # deduped
+    assert detail.genres == ['Busty']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

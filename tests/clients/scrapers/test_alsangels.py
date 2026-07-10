@@ -51,18 +51,16 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Masturbation']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == 'https://alsangels.com/p/jane.jpg'  # .. -> base
+    assert detail.actors[0].photo_url == 'https://alsangels.com/p/jane.jpg'
     assert detail.actors[0].gender == 'female'
     assert detail.raw_image_urls == ['https://alsangels.com/graphics/videos/jane01.jpg', 'https://alsangels.com/graphics/g1.jpg']
 
 
 @respx.mock
 async def test_detail_scene_id_trailing_suffix() -> None:
-    # IDs like "stormrose006-nn" (trailing non-numeric suffix) must still split into
-    # model "stormrose" + num "006-"; the old ^...$ anchor dropped these -> None.
     row = _ROW.replace('../graphics/videos/jane01.jpg', '../graphics/videos/stormrose006-nn.jpg').replace('Jane Doe', 'Storm Rose')
     page = f'<html><head><title>ALSAngels.com - Storm Rose</title></head><body><table>{row}</table></body></html>'
     respx.get('https://alsangels.com/profiles/stormrose.html').mock(return_value=httpx.Response(200, text=page))
     detail = await AlsAngelsClient().fetch_scene_detail('stormrose006-nn|2021-03-04', SITE)
     assert detail is not None
-    assert detail.title == 'Storm Rose #6: Masturbation'  # model resolved from prefix, leading digits of num used
+    assert detail.title == 'Storm Rose #6: Masturbation'

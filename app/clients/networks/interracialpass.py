@@ -22,7 +22,6 @@ class InterracialPassClient(Client):
         results: list[SearchResult] = []
         seen: set[str] = set()
 
-        # 1. Direct trailer-URL guess.
         direct_url = f'{base}/t1/trailers/{ctx.title.strip().replace(" ", "-")}.html'
         direct = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {direct_url}')
         if direct:
@@ -38,7 +37,6 @@ class InterracialPassClient(Client):
                     build_search_result(title=title, scene_url=direct_url, query=ctx.title, display_date=iso_date(raw_date), search_date=ctx.search_date)
                 )
 
-        # 2. On-site search.
         search_url = base + ctx.site_info.search_path.replace('{query}', ctx.title.strip().replace(' ', '+'))
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if loaded:

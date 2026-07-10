@@ -64,7 +64,7 @@ async def test_detail_with_playlist_poster() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Dirty Hard Drive'
-    assert detail.tagline is None  # single brand (site name == studio)
+    assert detail.tagline is None
     assert detail.collections == ['Dirty Hard Drive']
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'
@@ -87,5 +87,5 @@ async def test_detail_bookend_fallback() -> None:
     respx.get('https://dirtyharddrive.com/pornstar_x.html').mock(return_value=httpx.Response(200, text='<div></div>'))
     detail = await dhd_mod.DirtyHardDriveClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.actors[0].name == 'X'  # derived from slug pornstar_x.html
+    assert detail.actors[0].name == 'X'
     assert detail.raw_image_urls == ['https://dirtyharddrive.com/media/x/bookend.jpg']

@@ -12,9 +12,7 @@ _ACTORS = _JSON / 'actors.json'
 
 class ActorRules(NamedTuple):
     replace: dict[str, list[str]]
-    # Keyed by studio-index (as a string), each a canonical→aliases map.
     replace_studios: dict[str, dict[str, list[str]]]
-    # Studio-index (string) → the studio/site names that select that index.
     studio_indexes: dict[str, list[str]]
 
 

@@ -63,7 +63,6 @@ async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
 
         m = re.search(r'var\s+turnstileConfig\s*=\s*(\{.*?\});', get_resp.text, re.DOTALL)
         if not m:
-            # No challenge presented — the initial cookies are sufficient.
             return initial, time.time() + _HOST_CACHE_TTL
 
         try:

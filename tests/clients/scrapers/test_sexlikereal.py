@@ -51,12 +51,11 @@ async def test_detail_fields_actors_images() -> None:
     detail = await SexLikeRealClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'VR Real'
-    assert detail.summary == 'A blurb.'  # 'Video specifications' paragraph skipped
+    assert detail.summary == 'A blurb.'
     assert detail.studio == 'SLR Originals'
     assert detail.collections == ['SLR Originals']
     assert detail.release_date == '2021-09-09'
     assert detail.genres == ['VR', 'POV']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.slr.com/alice.jpg'
-    # og:image + cover, webp -> jpg
     assert detail.raw_image_urls == ['https://cdn.slr.com/cover.jpg', 'https://cdn.slr.com/c1.jpg']

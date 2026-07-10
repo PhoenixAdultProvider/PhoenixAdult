@@ -31,8 +31,7 @@ def test_record_carries_request_id_and_real_caller():
         base.removeHandler(handler)
 
     rec = records[-1]
-    assert rec.request_id == 'zz999'  # stamped by the factory
-    # stacklevel must resolve module/lineno to THIS test file, not logger.py.
+    assert rec.request_id == 'zz999'
     assert rec.module == 'test_log_context'
 
 
@@ -72,5 +71,5 @@ def test_middleware_shares_id_across_endpoint_and_access_log():
     endpoint = [r.request_id for r in captured if 'inside endpoint' in r.getMessage()]
     access = [r.request_id for r in captured if '/ping' in r.getMessage()]
     assert endpoint and access
-    assert endpoint[0] == access[0]  # one id spans the endpoint and its access line
-    assert endpoint[0] != SESSION_ID  # a real per-request id, not the process default
+    assert endpoint[0] == access[0]
+    assert endpoint[0] != SESSION_ID

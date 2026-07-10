@@ -37,7 +37,7 @@ DETAIL_HTML = f'<html><body><div><div id="profile_page"></div><script>window.__D
 async def test_search_json_post() -> None:
     respx.post(SEARCH_API).mock(return_value=httpx.Response(200, json=SEARCH_BODY))
     results = await MyDirtyHobbyClient().search(SearchContext(title='homemade', encoded='homemade', search_site=SITE.name, site_info=SITE))
-    assert len(results) == 1  # only the video item
+    assert len(results) == 1
     assert results[0].title == 'Homemade Fun'
     assert results[0].scene_url == 'https://www.mydirtyhobby.com/profil/7-lola/videos/99-Homemade-Fun'
     assert results[0].release_date == '2021-04-03'

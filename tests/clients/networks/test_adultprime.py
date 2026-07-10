@@ -87,7 +87,6 @@ async def test_detail_fields() -> None:
     assert detail.genres == ['Anal', 'Gonzo', 'MILF']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    # Poster URL kept raw (query string included), per the full-resolution policy.
     assert detail.raw_image_urls == ['https://cdn.example.com/p.jpg?token=abc']
 
 
@@ -105,8 +104,8 @@ async def test_detail_skips_generic_summary_and_studio_override() -> None:
     )
     detail = await AdultPrimeClient().fetch_scene_detail(url, SWEETHEARTS)
     assert detail is not None
-    assert detail.summary == ''  # generic prefix skipped
-    assert detail.studio == 'Club Sweethearts'  # name-keyed override
+    assert detail.summary == ''
+    assert detail.studio == 'Club Sweethearts'
 
 
 def test_helpers() -> None:

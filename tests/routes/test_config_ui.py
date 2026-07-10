@@ -23,9 +23,9 @@ def test_config_page_renders_styled(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     assert 'PhoenixAdult Config' in body
-    assert 'class="toolbar"' in body  # styled UI, not the old stub
-    assert 'const STATE =' in body  # client-rendered state
-    assert '__STATE_JSON__' not in body  # placeholder was substituted
+    assert 'class="toolbar"' in body
+    assert 'const STATE =' in body
+    assert '__STATE_JSON__' not in body
 
 
 def test_config_api_state(client: TestClient) -> None:
@@ -50,9 +50,9 @@ def test_config_api_restart_reloads_in_dev(client: TestClient, tmp_path: pytest.
     monkeypatch.setenv('NODE_ENV', 'development')
     sentinel = Path(str(tmp_path)) / 'main.py'
     sentinel.write_bytes(b'x')
-    monkeypatch.setattr(env_routes, '_MAIN_PY', sentinel)  # bump this instead of the real file
+    monkeypatch.setattr(env_routes, '_MAIN_PY', sentinel)
     r = client.post('/config/api/restart', params={'token': TOKEN})
-    assert r.status_code == 200 and r.json()['method'] == 'reload'  # triggers the reloader, no kill
+    assert r.status_code == 200 and r.json()['method'] == 'reload'
 
 
 def test_config_api_restart_shuts_down_in_prod(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -60,7 +60,7 @@ def test_config_api_restart_shuts_down_in_prod(client: TestClient, monkeypatch: 
 
     monkeypatch.setenv('NODE_ENV', 'production')
     killed: list[int] = []
-    monkeypatch.setattr(env_routes.os, 'kill', lambda _pid, sig: killed.append(sig))  # don't actually kill the test runner
+    monkeypatch.setattr(env_routes.os, 'kill', lambda _pid, sig: killed.append(sig))
     r = client.post('/config/api/restart', params={'token': TOKEN})
     assert r.status_code == 200 and r.json()['method'] == 'shutdown'
-    assert killed  # signalled the supervisor path
+    assert killed

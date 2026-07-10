@@ -15,7 +15,6 @@ assert SITE is not None
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Don't sleep between fetches during tests.
     monkeypatch.setattr(na, '_PACE_SECONDS', 0.0)
 
 
@@ -34,9 +33,9 @@ async def test_paced_serializes_and_spaces_requests(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(cl, 'fetch_and_load', _fake)
     start = _t.monotonic()
-    await cl._paced('u1')  # immediate
-    await cl._paced('u2')  # +0.1s
-    await cl._paced('u3')  # +0.1s
+    await cl._paced('u1')
+    await cl._paced('u2')
+    await cl._paced('u3')
     assert _t.monotonic() - start >= 0.2
 
 
@@ -89,12 +88,11 @@ async def test_detail() -> None:
     detail = await NaughtyAmericaClient().fetch_scene_detail('scene/cool-scene-555', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # h2 removed
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Naughty America'
     assert detail.tagline == 'Naughty Office'
-    assert detail.release_date == '2021-03-04'  # entry-date span
-    assert detail.genres == ['Office']  # deduped
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['Office']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    # single poster from play-trailer, scheme-prefixed, no images1 rewrite
     assert detail.raw_image_urls == ['https://images5.naughtycdn.com/cms/big.jpg']

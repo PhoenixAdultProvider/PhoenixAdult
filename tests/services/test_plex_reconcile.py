@@ -9,6 +9,7 @@ import respx
 from app.services import plex_reconcile as pr
 from app.utils import cache as metadata_cache
 
+# Documentation/reserved range only — never the host's real address (RFC 5737).
 BASE = 'http://192.0.2.10:32400'
 GUID = 'tv.plex.agents.custom.myprovider.phoenixadult://movie/scene-brazzers-abc123'
 FOREIGN_GUID = 'plex://movie/5d776b9ad'

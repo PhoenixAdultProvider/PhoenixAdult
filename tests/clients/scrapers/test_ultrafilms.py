@@ -28,7 +28,7 @@ async def test_search_quoted_hit_skips_fallback() -> None:
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://www.ultrafilms.xxx/scene/wild'
-    assert not unquoted.called  # quoted hit short-circuits
+    assert not unquoted.called
 
 
 @respx.mock
@@ -68,7 +68,7 @@ async def test_detail() -> None:
     )
     detail = await UltrafilmsClient().fetch_scene_detail(f'{url}||https://cdn/uf/thumb.jpg', SITE)
     assert detail is not None
-    assert detail.title == 'Wild Scene'  # last entry-title wins
+    assert detail.title == 'Wild Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Ultrafilms'
     assert detail.tagline == 'Ultrafilms'

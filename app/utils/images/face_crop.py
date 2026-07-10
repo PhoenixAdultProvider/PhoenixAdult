@@ -12,9 +12,6 @@ _DETECT_SCORE = 0.5
 _CROP_SCORE = 0.6
 _JPEG_QUALITY = 92
 
-# Head-and-shoulders framing. The square side is a few face-heights tall (or wider
-# for broad faces), placed with a little headroom above the hair so the face sits in
-# the upper half and the shoulders/upper chest fill the lower half.
 _CROP_SIDE_FACES = 3.0  # square side as a multiple of the detected face height
 _CROP_SIDE_WIDTHS = 2.2  # ...or of the face width, whichever is larger
 _CROP_HEADROOM = 0.5  # headroom above the face box, in face-heights
@@ -90,10 +87,8 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
     x, y, w, h = box
     cx = x + w / 2.0
 
-    # Square a few face-heights tall, capped to the image.
     side = max(_CROP_SIDE_FACES * h, _CROP_SIDE_WIDTHS * w)
     side = min(side, width, height)
-    # Can't fit head + shoulders (already ~a close-up) -> keep the original.
     if side < _CROP_MIN_FACES * h:
         return None
 

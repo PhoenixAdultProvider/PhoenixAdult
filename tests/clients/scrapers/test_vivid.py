@@ -51,10 +51,10 @@ async def test_search_fans_videos_and_dvds() -> None:
     assert len(results) == 2
     assert results[0].scene_url == 'https://www.vivid.com/scenes/wild-scene'
     assert results[0].release_date == '2024-01-05'
-    assert results[0].subsite == 'Indie'  # named sub-site labels the result
+    assert results[0].subsite == 'Indie'
     assert results[1].scene_url == 'https://www.vivid.com/dvds/compilation'
     assert results[1].release_date == '2024-02-10'
-    assert results[1].subsite is None  # DVD release has no sub-site -> falls back to master
+    assert results[1].subsite is None
 
 
 @respx.mock

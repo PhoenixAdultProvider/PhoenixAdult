@@ -52,13 +52,12 @@ async def test_detail() -> None:
     detail = await MissaXClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # Synopsis: stripped
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'MissaX'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Taboo']  # deduped
+    assert detail.genres == ['Taboo']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://missax.com/p/jane.jpg'
-    # query tokens kept (image-URL policy)
     assert detail.raw_image_urls == ['https://cdn/big.jpg?token=x', 'https://cdn/small.jpg?token=y']
 
 
@@ -77,4 +76,4 @@ async def test_house_of_fyre_title_strip() -> None:
     respx.get('https://www.houseofyre.com/model/jane').mock(return_value=httpx.Response(200, text='<div></div>'))
     detail = await MissaXClient().fetch_scene_detail(url, FYRE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # ": Jane Doe" cast suffix stripped
+    assert detail.title == 'Cool Scene'

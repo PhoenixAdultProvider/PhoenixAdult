@@ -19,7 +19,7 @@ def _site(name: str, host: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='strike3',
-        cache_layout='network',  # multi-studio network, no sub-sites → strike3/<studio>
+        cache_layout='network',
     )
 
 

@@ -67,14 +67,14 @@ async def test_detail() -> None:
     detail = await NubilesClient().fetch_scene_detail('555|2021-03-04', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene - Part One'
-    assert detail.summary == 'A summary.'  # Show More split
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Nubiles'
-    assert detail.tagline == 'Nubile Films'  # site name != studio
+    assert detail.tagline == 'Nubile Films'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Teen']  # .com filtered out
+    assert detail.genres == ['Teen']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    assert detail.actors[0].gender == 'female'  # Figure heuristic
+    assert detail.actors[0].gender == 'female'
     assert detail.raw_image_urls == ['https://cdn/p.jpg', 'https://cdn/g1.jpg']
 
 
@@ -93,6 +93,5 @@ async def test_summary_actor_injection() -> None:
     detail = await NubilesClient().fetch_scene_detail('9', SITE)
     assert detail is not None
     names = [a.name for a in detail.actors or []]
-    # both male performers injected (TS adds all matches, not just the first), in keyword-list order
     assert names == ['Van Wylde', 'Johnny Castle']
     assert all(a.gender == 'male' for a in detail.actors or [])

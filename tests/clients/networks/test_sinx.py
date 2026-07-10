@@ -51,8 +51,8 @@ async def test_detail() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'SinX'
     assert detail.tagline == 'Slime Wave'
-    assert detail.release_date == '2021-03-04'  # dd MMM yyyy
-    assert detail.genres == ['pissing']  # '#' stripped
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['pissing']
     assert detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'  # single performer → photo
+    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

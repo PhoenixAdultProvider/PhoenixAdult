@@ -13,7 +13,6 @@ SITE = find_site('Romi Rain')
 JOWM = find_site('Jerk Off With Me')
 assert SITE is not None and JOWM is not None
 
-# ah="ZYX" reversed → "XYZ"; aet is an unquoted number. token = "XYZ" + "/99/".
 _TOKEN_HTML = '<html><script>var x = {"ah":"ZYX","aet":99};</script></html>'
 
 
@@ -42,7 +41,7 @@ async def test_search() -> None:
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.romirain.com/scene/5/'
     assert results[0].display_date == '2021-03-04'
-    assert results[0].score == 100  # scene_id match
+    assert results[0].score == 100
 
 
 @respx.mock
@@ -73,7 +72,6 @@ async def test_detail() -> None:
     assert detail.studio == 'Romi Rain'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['hardcore', 'big-tits']
-    # cast = model endpoint + per-site lead actor (Romi Rain)
     names = [a.name for a in detail.actors]
     assert 'Jane Doe' in names and 'Romi Rain' in names
     assert detail.raw_image_urls == ['https://cdn/a.jpg']
@@ -90,5 +88,5 @@ async def test_jerkoffwithme_tags_as_actors() -> None:
     payload = json.dumps({'id': 5, 'title': 'Cool', 'releaseDate': '', 'art': []})
     detail = await ModelCentroClient().fetch_scene_detail(payload, JOWM)
     assert detail is not None
-    assert detail.genres == []  # tags routed to actors
-    assert [a.name for a in detail.actors] == ['jane doe']  # alias dashes → spaces
+    assert detail.genres == []
+    assert [a.name for a in detail.actors] == ['jane doe']

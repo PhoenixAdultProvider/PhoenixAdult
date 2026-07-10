@@ -10,7 +10,7 @@ def test_swallows_exception_and_logs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(be.logger, 'warn', lambda *a, **k: calls.append(a))
     with be.best_effort('scope', 'token HEAD'):
         raise ValueError('boom')
-    assert calls == [('scope', 'token HEAD failed: boom')]  # uniform '<action> failed: <err>'
+    assert calls == [('scope', 'token HEAD failed: boom')]
 
 
 def test_level_override(monkeypatch: pytest.MonkeyPatch) -> None:

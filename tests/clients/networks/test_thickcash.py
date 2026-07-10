@@ -36,6 +36,6 @@ async def test_search_and_detail_roundtrip() -> None:
     assert detail.studio == 'Thick Cash'
     assert detail.tagline == 'Ebony Tugs'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Ebony', 'Handjob']  # per-site table
-    assert detail.actors == []  # no per-scene cast
+    assert detail.genres == ['Ebony', 'Handjob']
+    assert detail.actors == []
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

@@ -35,8 +35,8 @@ def test_lru_eviction_respects_byte_cap(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(fetcher, '_CACHE_MAX_TOTAL_BYTES', 25)
     _cache_put('a', _entry(10))
     _cache_put('b', _entry(10))
-    _cache_get('a')  # a is now most-recently used
-    _cache_put('c', _entry(10))  # 30 bytes > 25 → evict LRU (b)
+    _cache_get('a')
+    _cache_put('c', _entry(10))
     assert _cache_get('b') is None
     assert _cache_get('a') is not None
     assert _cache_get('c') is not None

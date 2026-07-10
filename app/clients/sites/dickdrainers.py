@@ -36,7 +36,6 @@ class DickDrainersClient(Client):
                 date = iso_date(raw_date) if raw_date else None
                 results.append(self._result(raw_title, scene_url, ctx, date))
 
-        # Web-search fallback — only /trailers/ URLs the on-site search missed.
         for scene_url in await web_search_urls(ctx.title, ctx.site_info, include=['/trailers/']):
             if scene_url in onsite_hrefs:
                 continue

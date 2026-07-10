@@ -46,7 +46,6 @@ async def local_image(filepath: str) -> Response:
 
 @cache_router.get('/cache/{splat:path}')
 async def cached_metadata_image(splat: str) -> Response:
-    # Serves images frozen by the snapshot cache (<studio>/<sub>/<hash>/images/<file>).
     if Path(splat).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
     file_path = safe_join(env.metadata_cache_dir, splat)

@@ -37,15 +37,12 @@ async def test_search_packs_curid() -> None:
     results = await SicflicsClient().search(SearchContext(title='Wild', encoded='Wild', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
-    # sceneURL goes through the popup-modal path so detail is deterministic.
     assert results[0].scene_url == 'https://www.sicflics.com/v6/v6.pop.php?id=9999'
     assert results[0].release_date == '2024-01-05'
 
 
 @respx.mock
 async def test_detail_from_packed_payload() -> None:
-    # The router decodes the curID before fetch_scene_detail sees it; in a test
-    # we hand it the JSON payload directly.
     payload = json.dumps(
         {
             'sceneID': '9999',
@@ -63,6 +60,5 @@ async def test_detail_from_packed_payload() -> None:
     assert detail.collections == ['Sicflics']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Fisting', 'Extreme']
-    # description split on `'` or `?` → parts[1] is 'Anna Loma'.
     assert [a.name for a in detail.actors] == ['Anna Loma']
     assert detail.raw_image_urls == ['https://www.sicflics.com/thumb.jpg']

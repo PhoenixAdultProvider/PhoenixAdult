@@ -58,7 +58,7 @@ async def test_detail() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
-    assert detail.studio == 'Open Life Network'  # from sub_group
+    assert detail.studio == 'Open Life Network'
     assert detail.tagline == 'Cool Studio'
     assert detail.collections == ['Cool Studio']
     assert detail.release_date == '2021-03-04'

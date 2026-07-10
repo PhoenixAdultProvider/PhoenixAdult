@@ -39,8 +39,6 @@ async def test_search_walks_model_to_scene() -> None:
             '</body></html>',
         )
     )
-    # Model card list used for date resolution. The title sits inside an <a> and the
-    # date inside the <span> — a bare /text() node-test misses both (the bug).
     respx.get('https://www.abbywinters.com/models/alice-card').mock(
         return_value=httpx.Response(
             200,
@@ -56,7 +54,7 @@ async def test_search_walks_model_to_scene() -> None:
     results = await AbbyWintersClient().search(SearchContext(title='foo', encoded='foo', search_site=SITE.name, site_info=SITE))
     assert [r.title for r in results] == ['Scene Title One']
     assert results[0].scene_url == 'https://www.abbywinters.com/scenes/scene-1'
-    assert results[0].display_date == '2021-03-04'  # resolved from the model card (h2 in <a>, date in <span>)
+    assert results[0].display_date == '2021-03-04'
 
 
 @respx.mock

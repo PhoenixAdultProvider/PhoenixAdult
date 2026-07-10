@@ -107,7 +107,6 @@ class GammaEntOtherClient(Client):
                 key=lambda h: h.get('clip_id') or 0,
             )
 
-        # Title
         title = ''
         if 'dogfart' in base_lower:
             title = f'{d.get("title") or ""} from {d.get("serie_name") or ""}.com'
@@ -120,7 +119,6 @@ class GammaEntOtherClient(Client):
 
         summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
 
-        # Studio
         if not d.get('network_name'):
             if 'filthykings' in base_lower:
                 studio = normalize_studio(d.get('sitename_pretty') or '', site.name)
@@ -129,7 +127,6 @@ class GammaEntOtherClient(Client):
         else:
             studio = normalize_studio(d['network_name'], site.name).replace('DFXtra', 'DogFart Network')
 
-        # Tagline / collections
         collections: list[str] = []
         tagline: str | None = None
 
@@ -160,7 +157,6 @@ class GammaEntOtherClient(Client):
             if (':' in t or '#' in t) and len(scene_list) > 1 and d.get('movie_title'):
                 add_collection(d['movie_title'])
 
-        # Genres
         genres: list[str] = []
 
         def add_genre(g: str | None) -> None:
@@ -174,7 +170,6 @@ class GammaEntOtherClient(Client):
                 for c in s.get('categories') or []:
                     add_genre(c.get('name'))
 
-        # Actors — female first, then male; per-actor Algolia headshot.
         female: list[ActorResult] = []
         male: list[ActorResult] = []
         for a in d.get('actors') or []:
@@ -192,7 +187,6 @@ class GammaEntOtherClient(Client):
             (female if a.get('gender') == 'female' else male).append(entry)
         actors = [*female, *male, *_actor_overrides(scene_id)]
 
-        # Posters
         raw_images: list[str] = []
 
         def push_img(u: str) -> None:
@@ -246,7 +240,7 @@ class GammaEntOtherClient(Client):
                     continue
             m = re.search(r'"apiKey":"(.*?)"', text)
             key = m.group(1) if m else ''
-            return (key, float('inf')) if key else None  # don't cache an empty key
+            return (key, float('inf')) if key else None
 
         return await _API_KEYS.get(host, _fetch) or ''
 

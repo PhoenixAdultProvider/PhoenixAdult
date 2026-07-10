@@ -14,7 +14,6 @@ def test_redact_own_host_keeps_scheme_and_path(monkeypatch):
 
 
 def test_redact_leaves_scraped_hosts_untouched(monkeypatch):
-    # Scraped target sites must stay visible — only the server's own host is redacted.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
     assert redact('Requesting GET "https://czechcasting.com/video/lucie-1484/"') == 'Requesting GET "https://czechcasting.com/video/lucie-1484/"'
@@ -27,7 +26,6 @@ def test_redact_own_host_not_confused_with_lookalike(monkeypatch):
 
 
 def test_own_host_not_redacted_when_flag_off(monkeypatch):
-    # The server's own FQDN stays visible in dev (flag off) — only IPs are always forced.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('PHOENIX_BASE_URL', 'https://my-tunnel.example.com')
     assert redact('Config UI: https://my-tunnel.example.com/config') == 'Config UI: https://my-tunnel.example.com/config'
@@ -77,7 +75,6 @@ def test_redact_leaves_plain_text_untouched():
 
 
 def test_redact_query_token(monkeypatch):
-    # Host left intact (not the server's own host); only the token value is masked.
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     assert redact('http://h.example/config?token=s3cret&x=1') == 'http://h.example/config?token=***REDACTED***&x=1'
 
@@ -124,8 +121,6 @@ def test_filter_shows_private_ip_when_flag_off(monkeypatch):
 
 
 def test_filter_redacts_public_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
-    # A public client IP is redacted even with LOG_REDACT_HOSTS off; the token only when
-    # LOG_REDACT_TOKEN is on. 8.8.8.8 = Google public DNS (non-PII public stand-in).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     args = ('8.8.8.8:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
@@ -174,13 +169,11 @@ def test_flag_truthy_values(monkeypatch, flag):
 def test_log_redact_token_follows_production_default(monkeypatch):
     from app.config.env import env
 
-    # Unset → tracks the production posture (masked in prod, visible in dev).
     monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
     monkeypatch.delenv('NODE_ENV', raising=False)
     assert env.log_redact_token is True
     monkeypatch.setenv('NODE_ENV', 'development')
     assert env.log_redact_token is False
-    # Explicit values win over the production default.
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
     assert env.log_redact_token is False
     for flag in ('1', 'yes', 'on', 'TRUE'):

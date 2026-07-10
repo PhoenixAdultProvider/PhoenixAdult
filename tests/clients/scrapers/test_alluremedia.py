@@ -28,7 +28,7 @@ async def test_search() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://amateurallure.com/v/7'
-    assert results[0].display_date == '2021-03-04'  # MM/dd/yyyy parsed
+    assert results[0].display_date == '2021-03-04'
 
 
 @respx.mock
@@ -55,8 +55,8 @@ async def test_detail() -> None:
     assert detail.studio == 'Allure Media'
     assert detail.tagline == 'Amateur Allure'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['blowjob', 'teen', 'Amateur']  # de-censored + lowered + Amateur
+    assert detail.genres == ['blowjob', 'teen', 'Amateur']
     names = [a.name for a in (detail.actors or [])]
-    assert 'Jane Doe' in names  # model link
-    assert 'Jane Wilde' in names  # keyword scan of summary
-    assert (detail.actors or [])[0].photo_url == 'https://amateurallure.com/p/jane-3x.jpg'  # 1x -> 3x
+    assert 'Jane Doe' in names
+    assert 'Jane Wilde' in names
+    assert (detail.actors or [])[0].photo_url == 'https://amateurallure.com/p/jane-3x.jpg'

@@ -42,9 +42,7 @@ async def test_search_keyword_packs_cover() -> None:
     results = await CouplesCinemaClient().search(_ctx(search_date='2021-03-04'))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.couplescinema.com/post/details/77'
-    # exact title + studio matches site name → no penalty
     assert results[0].score == 100
-    # cover round-trips through the detail path:
     detail_html = '<video poster="https://cdn/poster.jpg"></video>'
     respx.get('https://www.couplescinema.com/post/details/77').mock(return_value=httpx.Response(200, text=detail_html))
     detail = await CouplesCinemaClient().fetch_scene_detail(CouplesCinemaClient().decode(results[0].cur_id), SITE)
@@ -74,6 +72,6 @@ async def test_detail_fields() -> None:
     assert detail.studio == 'Couples Cinema'
     assert detail.tagline == 'Feature'
     assert detail.collections == ['Feature']
-    assert detail.release_date == '2021-01-01'  # year-only fallback from .type
+    assert detail.release_date == '2021-01-01'
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.raw_image_urls == ['https://cdn/poster.jpg']

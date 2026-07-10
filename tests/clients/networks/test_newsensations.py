@@ -51,9 +51,9 @@ async def test_detail_scene() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'New Sensations'
-    assert detail.tagline is None  # scene (not DVD)
+    assert detail.tagline is None
     assert detail.collections == ['New Sensations']
-    assert detail.release_date == '2021-03-04'  # whole string parsed (year kept)
+    assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'http://www.newsensations.com/p/jane.jpg'
     assert detail.raw_image_urls == ['http://www.newsensations.com/img/t.jpg']
@@ -82,7 +82,7 @@ async def test_detail_dvd() -> None:
     detail = await NewSensationsClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool DVD'
-    assert detail.tagline == 'Cool DVD'  # DVD name
+    assert detail.tagline == 'Cool DVD'
     assert detail.collections == ['Cool DVD']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']

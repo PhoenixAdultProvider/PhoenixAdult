@@ -32,7 +32,7 @@ async def test_search_scene_id_score() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.pornfidelity.com/episodes/777/cool-scene'
-    assert results[0].score == 100  # episode #1234 matches
+    assert results[0].score == 100
     assert results[0].display_date == '2021-03-04'
 
 
@@ -56,12 +56,11 @@ async def test_detail() -> None:
     assert detail.title == 'TeenFidelity Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Kelly Madison Productions'
-    assert detail.tagline == 'TeenFidelity'  # derived from title
+    assert detail.tagline == 'TeenFidelity'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Hardcore', 'Heterosexual']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.pornfidelity.com/p/jane.jpg'
-    # poster templates from slug "cool-scene"
     assert detail.raw_image_urls == [
         'https://tour-content-cdn.kellymadisonmedia.com/episode/poster_image/cool-scene/poster.jpg',
         'https://tour-content-cdn.kellymadisonmedia.com/episode/episode_thumb_image_1/cool-scene/1.jpg',

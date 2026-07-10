@@ -23,7 +23,7 @@ async def test_search() -> None:
     results = await TeenCoreClubClient().search(_ctx(scene_id='77'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
-    assert results[0].score == 100  # id matches
+    assert results[0].score == 100
     assert TeenCoreClubClient().decode(results[0].cur_id) == f'{_API}/videodetail/77'
 
 
@@ -49,7 +49,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Teen Core Club'
-    assert detail.tagline == 'Young Throats'  # 'YoungThroats' camelCase-split, '.Special' dropped
+    assert detail.tagline == 'Young Throats'
     assert detail.collections == ['Young Throats']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen']
@@ -64,4 +64,4 @@ async def test_detail_bic_title() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, json=body))
     detail = await TeenCoreClubClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Jane Doe & John Smith'  # bic_ placeholder → cast names
+    assert detail.title == 'Jane Doe & John Smith'

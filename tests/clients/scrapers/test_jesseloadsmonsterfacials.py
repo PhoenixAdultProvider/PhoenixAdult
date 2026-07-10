@@ -13,7 +13,6 @@ from app.utils.helpers.helpers import pack_cur_id
 SITE = find_site('Jesse Loads Monster Facials')
 assert SITE is not None
 
-# 'We Aaliyahlove' resolves to 'Aaliyah Love' in the variant table.
 TOUR_HTML = """<html><body>
   <span class="bppindex"><select><option value="1">1</option></select></span>
   <b>Update: 06/06/2021</b>

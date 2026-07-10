@@ -35,7 +35,7 @@ async def test_search_web_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hwxxx_module, 'web_search', _web)
     respx.get(SCENE_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results = await HotwifeXXXClient().search(SearchContext(title='wild wife', encoded='wild-wife', search_site=SITE.name, site_info=SITE))
-    assert len(results) == 1  # only the /updates/ + /tour_hwxxx/ URL kept
+    assert len(results) == 1
     assert results[0].title == 'Wild Wife'
     assert results[0].scene_url == SCENE_URL
     assert results[0].release_date == '2021-06-06'

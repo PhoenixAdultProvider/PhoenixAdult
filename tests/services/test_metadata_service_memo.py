@@ -67,17 +67,16 @@ async def test_failed_fetch_is_not_memoized() -> None:
 
 async def test_triple_refresh_forces_a_fresh_fetch() -> None:
     svc, calls = _counting_service()
-    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # miss -> fetch (1), memoized
-    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # memo hit, but counted (2)
-    await svc.get_metadata('rk', PROVIDER, is_refresh=True)  # 3rd within window -> force, bypass memo -> fetch (2)
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)
+    await svc.get_metadata('rk', PROVIDER, is_refresh=True)
     assert calls[0] == 2
-    # The counter reset after firing, so the next refresh is served from the memo again.
     await svc.get_metadata('rk', PROVIDER, is_refresh=True)
     assert calls[0] == 2
 
 
 async def test_images_calls_never_force_refresh() -> None:
     svc, calls = _counting_service()
-    for _ in range(5):  # the /images sidecar passes is_refresh=False
+    for _ in range(5):
         await svc.get_metadata('rk', PROVIDER, is_refresh=False)
-    assert calls[0] == 1  # all served from the memo, never forced
+    assert calls[0] == 1

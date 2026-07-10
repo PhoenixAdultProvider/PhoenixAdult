@@ -61,9 +61,9 @@ async def test_detail_purgatoryx() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Radical Cash'
     assert detail.tagline == 'PurgatoryX'
-    assert detail.release_date == '2021-03-04'  # EEEE MMMM d, yyyy
-    assert detail.genres == ['Anal', 'Teen']  # deduped
-    assert detail.actors[0].name == 'Jane Doe'  # inline mode
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['Anal', 'Teen']
+    assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
 
 
@@ -77,4 +77,4 @@ async def test_detail_toughlovex_director() -> None:
     assert detail is not None
     assert detail.studio == 'Radical Cash'
     assert detail.directors is not None and detail.directors[0].name == 'Charles Dera'
-    assert detail.release_date == '2021-03-04'  # no date selector → scene_date fallback
+    assert detail.release_date == '2021-03-04'

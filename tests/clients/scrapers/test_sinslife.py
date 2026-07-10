@@ -69,7 +69,6 @@ async def test_detail() -> None:
     assert detail.tagline == 'SinsLife'
     assert detail.collections == ['SinsLife']
     assert detail.release_date == '2024-01-05'
-    # 3 cast → auto-genre Threesome
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Kissa Sins', 'Johnny Sins', 'Third Star']
     assert detail.raw_image_urls == ['https://cdn.sl.com/poster.jpg']

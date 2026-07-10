@@ -26,7 +26,6 @@ def test_title_distance_score_matches_spelled_out_ordinals() -> None:
     # Plex-safe "Part Three" filename must match upstream "Part 3".
     assert title_distance_score('Big Tits in History: Part Three', 'Big Tits in History: Part 3') == 100
     assert title_distance_score('Big Tits in History: Episode Three', 'Big Tits in History: Episode 3') == 100
-    # Already-matching digits are unaffected.
     assert title_distance_score('Big Tits in History: Episode 3', 'Big Tits in History: Episode 3') == 100
 
 

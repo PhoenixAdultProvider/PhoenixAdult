@@ -58,7 +58,6 @@ async def test_detail_title_fix_iafd_genres_images() -> None:
     _mock_iafd()
     detail = await BlackPayBackClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    # On-page h1 "ARIA CARSON 2" is remapped via the title-fixes table.
     assert detail.title == 'Birfday Bitch'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Black PayBack'

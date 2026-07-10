@@ -44,7 +44,6 @@ async def fetch_javbus_images(http: httpx2.AsyncClient, jav_id: str, date_iso: s
     for href in sel.xpath('//a[contains(@class,"sample-box")]/@href').getall():
         push(href)
 
-    # Derive a /thumb/<code>.jpg cover from the first cover/sample image.
     cover_raw = sel.xpath('//a[contains(@href,"/cover/")]/@href').get() or sel.xpath('//img[contains(@src,"/sample/")]/@src').get() or ''
     if cover_raw:
         code = cover_raw.split('/')[-1].split('.')[0].split('_')[0]

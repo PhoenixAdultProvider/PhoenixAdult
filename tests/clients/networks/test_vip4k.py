@@ -31,7 +31,7 @@ async def test_direct_scene() -> None:
     respx.get('https://vip4k.com/en/videos/99999').mock(return_value=httpx.Response(200, text='<title>Sis | Cool Scene</title>'))
     results = await VIP4KClient().search(_ctx(scene_id='99999'))
     assert len(results) == 1
-    assert results[0].title == 'Cool Scene'  # trailing |-segment
+    assert results[0].title == 'Cool Scene'
 
 
 @respx.mock
@@ -55,8 +55,8 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'VIP4K'
-    assert detail.tagline == 'Sis.Porn'  # Sis -> Sis.Porn
+    assert detail.tagline == 'Sis.Porn'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Step Sister', 'Teen']  # per-site table + on-page tag
+    assert detail.genres == ['Step Sister', 'Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.raw_image_urls == ['https://cdn/p.jpg']  # // -> https:
+    assert detail.raw_image_urls == ['https://cdn/p.jpg']

@@ -47,11 +47,10 @@ async def test_detail_studio_override_year_actors_images() -> None:
     assert detail is not None
     assert detail.title == 'Vision Movie'
     assert detail.summary == 'A blurb.'
-    assert detail.studio == 'Wild Studio'  # page override
+    assert detail.studio == 'Wild Studio'
     assert detail.collections == ['Dorcel Vision', 'Wild Studio']
     assert detail.release_date == '2019-01-01'
     assert len(detail.actors) == 1
     assert detail.actors[0].name == 'Alice'
     assert detail.actors[0].photo_url == 'https://www.dorcelvision.com/img/alice.jpg'
-    # blur9/ prefix stripped; relative cover resolved, screenshot absolute kept
     assert detail.raw_image_urls == ['https://www.dorcelvision.com/cover.jpg', 'https://cdn.dv.com/s1.jpg']

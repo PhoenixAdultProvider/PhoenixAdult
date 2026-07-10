@@ -7,7 +7,6 @@ import pytest
 from app.config.env import env
 from app.config.env_catalog import ENV_CATALOG, EnvVarSpec
 
-# Defaults that follow NODE_ENV rather than a static value; asserted separately.
 _DERIVED = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'}
 
 _BOOL_GETTERS: dict[str, Callable[[], bool]] = {

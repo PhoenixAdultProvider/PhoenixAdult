@@ -87,7 +87,6 @@ def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
     if layout == 'aggregator':
         sub_slug = slugify(tagline) or studio_slug
         return f'{scraper}/{studio_slug}/{sub_slug}' if scraper else f'{studio_slug}/{sub_slug}'
-    # auto
     if site and _scraper_site_count(site.scraper_config.type) >= 2:
         return f'{studio_slug}/{slugify(tagline) or studio_slug}'
     return studio_slug
@@ -268,7 +267,7 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
                     return f'/cache/{rel_path}/images/{name}'
                 except (httpx2.HTTPError, OSError) as err:
                     logger.debug('meta-cache', f'image download failed {target}: {err}')
-                    return _relativize(url)  # best-effort: keep the link, host-relative
+                    return _relativize(url)
 
             async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
                 obj[key] = await localize(obj.get(key), hint)
@@ -325,7 +324,7 @@ def entries() -> list[dict[str, Any]]:
         segs = rel.split('/')
         out.append(
             {
-                'key': rel,  # full relative path to the scene dir — the purge handle
+                'key': rel,
                 'site_slug': segs[-2] if len(segs) >= 2 else rel,
                 'studio_dir': segs[-3] if len(segs) >= 3 else '',
                 'hash': segs[-1],
@@ -404,7 +403,7 @@ def _is_stale_local_thumb(thumb: str) -> bool:
     marker = '/images/local/'
     if marker not in thumb:
         return False
-    relpath = unquote(thumb.rsplit(marker, 1)[1].split('?')[0])  # e.g. actors/female/x.jpg
+    relpath = unquote(thumb.rsplit(marker, 1)[1].split('?')[0])
     if not relpath:
         return False
     target = safe_join(env.people_cache_dir, relpath)
@@ -458,7 +457,6 @@ async def backfill_people_images(
     except (AttributeError, IndexError):
         return False
 
-    # (snapshot entries, role, resolve_all() output key)
     groups: list[tuple[list[PlexRole], str, str]] = [
         (md.Role or [], 'actor', 'actors'),
         (md.Director or [], 'director', 'directors'),
@@ -484,7 +482,6 @@ async def backfill_people_images(
     fill_groups = [(entries, key) for entries, _role, key in groups]
     changed = stale_cleared  # clearing a purged thumb is itself a change worth persisting
 
-    # Phase 1 — the scene's own images first (mirrors a fresh scrape), when re-fetchable.
     if fetch_detail is not None:
         try:
             detail = await fetch_detail()
@@ -507,7 +504,6 @@ async def backfill_people_images(
             if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
                 changed = True
 
-    # Phase 2 — external people sources for anyone still imageless (incl. people the scene omits).
     sources = PeopleManager()
     enqueued = False
     for entries, role, _key in groups:

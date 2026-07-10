@@ -16,7 +16,6 @@ DDG_HTML = """<html><body>
 
 @pytest.fixture(autouse=True)
 def no_google(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Google CSE unavailable so the chain falls through to DuckDuckGo.
     monkeypatch.delenv('GOOGLE_SEARCH_API_KEY', raising=False)
     monkeypatch.delenv('GOOGLE_SEARCH_CX', raising=False)
 

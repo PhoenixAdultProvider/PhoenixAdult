@@ -19,6 +19,6 @@ def test_purge_validates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     client = TestClient(create_app())
     hdr = {'x-admin-token': 'tok'}
-    assert client.post('/metadata-cache/purge', json={}, headers=hdr).status_code == 400  # no key
+    assert client.post('/metadata-cache/purge', json={}, headers=hdr).status_code == 400
     r = client.post('/metadata-cache/purge', json={'key': 'nope/abc'}, headers=hdr)
-    assert r.status_code == 200 and r.json()['ok'] is False  # valid shape, nothing to purge
+    assert r.status_code == 200 and r.json()['ok'] is False

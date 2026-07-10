@@ -29,7 +29,7 @@ def test_data_loaded() -> None:
 
 async def test_alias_resolution() -> None:
     pm = PeopleManager()
-    pm.add_actor('abby rains', '')  # alias of 'Abbey Rain' in the global table
+    pm.add_actor('abby rains', '')
     res = await pm.resolve_all(studio='SomeStudio', site_name='SomeSite')
     assert [p.name for p in res['actors']] == ['Abbey Rain']
 
@@ -42,8 +42,6 @@ async def test_skip_name() -> None:
 
 
 async def test_male_actor_resolved_not_dropped_at_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Male actors are always resolved + cached (faster future gender resolution); they are
-    # hidden at serve time by filter_male_actors, not dropped here.
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
     pm = PeopleManager()
     pm.add_actor('John Q Smith', '', 'male')
@@ -94,8 +92,6 @@ async def test_generic_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A director with no input gender, found by a source that knows the gender but
-    # has no image (IAFD placeholder), still gets the gendered silhouette.
     import app.utils.people.sources as sources
     from app.utils.people.types import PhotoHit
 
@@ -116,8 +112,6 @@ async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch
 
 @respx.mock
 async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    # The gendered silhouette is cached under the person so the next lookup is a
-    # local-cache hit rather than another full source-chain run.
     import app.utils.people.sources as sources
     from app.utils.people.types import PhotoHit
 
@@ -138,19 +132,19 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     pm.add_director('Ken Shiro', '')
     res = await pm.resolve_all(studio='', site_name='')
 
-    assert '/images/local/directors/director.ken-shiro_male.jpg?v=' in res['directors'][0].photo  # subfolder + cache-bust
+    assert '/images/local/directors/director.ken-shiro_male.jpg?v=' in res['directors'][0].photo
     assert (tmp_path / 'directors' / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
 
 
 @pytest.mark.parametrize(
     ('order', 'expected'),
     [
-        (None, (True, True)),  # unset -> scene image first, then providers
-        ('Local Storage', (False, False)),  # set without 'Scene' -> skip the scene image
-        ('Local Storage,Scene,AdultDVDEmpire', (True, True)),  # default shape -> scene before providers
-        ('Scene,Freeones', (True, True)),  # scene ahead of a provider -> first
-        ('Freeones,Scene', (True, False)),  # a provider ahead of scene -> scene is a fallback
-        ('Local Storage,Scene', (True, True)),  # cache isn't a provider -> still scene-first
+        (None, (True, True)),
+        ('Local Storage', (False, False)),
+        ('Local Storage,Scene,AdultDVDEmpire', (True, True)),
+        ('Scene,Freeones', (True, True)),
+        ('Freeones,Scene', (True, False)),
+        ('Local Storage,Scene', (True, True)),
     ],
 )
 def test_scene_image_pref(monkeypatch: pytest.MonkeyPatch, order: str | None, expected: tuple[bool, bool]) -> None:
@@ -165,7 +159,6 @@ def test_scene_image_pref(monkeypatch: pytest.MonkeyPatch, order: str | None, ex
 
 @respx.mock
 async def test_scene_image_used_when_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    # 'Scene' present -> the scene's own actor image is used (HEAD-checked), not skipped.
     monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Scene,Local Storage')
     respx.head('https://cdn.example/scene.jpg').mock(return_value=httpx.Response(200))
     pm = PeopleManager()
@@ -175,7 +168,6 @@ async def test_scene_image_used_when_in_order(monkeypatch: pytest.MonkeyPatch) -
 
 
 async def test_scene_image_skipped_when_absent(monkeypatch: pytest.MonkeyPatch) -> None:
-    # 'Scene' absent from a set order -> the scene image is skipped entirely (no HEAD, no use).
     monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Local Storage')
     pm = PeopleManager()
     pm.add_actor('Jane Roe', 'https://cdn.example/scene.jpg', 'female')

@@ -7,7 +7,7 @@ from app.clients.base import SearchContext
 from app.clients.networks.pornpros import PornProsClient
 from app.registry import find_site
 
-SITE = find_site('Cum4K')  # fixedGenres ['Creampie']
+SITE = find_site('Cum4K')
 assert SITE is not None
 
 _RELEASE = {
@@ -28,7 +28,6 @@ def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search() -> None:
-    # actor prefix 'Jane Doe' stripped -> slug 'cool-scene'
     respx.get('https://cum4k.com/api/releases/cool-scene').mock(return_value=httpx.Response(200, json=_RELEASE))
     results = await PornProsClient().search(_ctx())
     assert len(results) == 1
@@ -46,7 +45,7 @@ async def test_detail() -> None:
     assert detail.studio == 'PornPros'
     assert detail.tagline == 'Cum4K'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Teen', 'Creampie']  # release tags + per-site fixedGenres
+    assert detail.genres == ['Teen', 'Creampie']
     names = [a.name for a in (detail.actors or [])]
-    assert names == ['Jane Doe', 'John Smith']  # '&'-split
-    assert detail.raw_image_urls == ['https://cdn/p.jpg?token=x', 'https://cdn/t1.jpg?token=y']  # full URLs (image-URL policy)
+    assert names == ['Jane Doe', 'John Smith']
+    assert detail.raw_image_urls == ['https://cdn/p.jpg?token=x', 'https://cdn/t1.jpg?token=y']

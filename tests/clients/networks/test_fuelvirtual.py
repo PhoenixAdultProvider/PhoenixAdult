@@ -48,14 +48,12 @@ async def test_detail_uses_actor_db() -> None:
             </body></html>""",
         )
     )
-    # highres page (vids→highres)
     respx.get('https://fuckedhard18.com/membersarea/highres.php?id=434').mock(return_value=httpx.Response(200, text='<html></html>'))
     detail = await FuelVirtualClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # before '-'
+    assert detail.title == 'Cool Scene'
     assert detail.studio == 'FuelVirtual'
     assert detail.tagline == 'FuckedHard18'
     assert detail.genres == ['Teen', '18-Year-Old']
-    # sceneId 434 → DB override (not the page's "Wrong Name")
     assert [a.name for a in detail.actors] == ['Abby Lane']
     assert detail.raw_image_urls == ['https://fuckedhard18.com/img/t.jpg']

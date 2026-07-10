@@ -45,12 +45,10 @@ async def test_detail_title_cleanup_genres_actors() -> None:
     respx.get('https://sexmex.xxx/tour/models/alice.php').mock(return_value=httpx.Response(200, text=ACTOR_HTML))
     detail = await SexMexClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    # "The Big Day . Alice" -> actor-name segment sliced off -> "The Big Day"
     assert detail.title == 'The Big Day'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'SexMex'
-    assert detail.genres == ['Anal', 'Latina']  # 'Alice' excluded as cast
+    assert detail.genres == ['Anal', 'Latina']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.sm.com/alice.jpg'
-    # query strings stripped
     assert detail.raw_image_urls == ['https://cdn.sm.com/t1.jpg', 'https://cdn.sm.com/poster.jpg']

@@ -24,7 +24,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='project1service',
         data18_enrichment=True,
-        cache_layout='aggregator',  # aggregator of networks with sub-brands → project1service/<studio>/<sub-site>
+        cache_layout='aggregator',
     )
 
 

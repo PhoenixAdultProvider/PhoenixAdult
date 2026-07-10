@@ -26,8 +26,7 @@ def test_gender_validates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     client = TestClient(create_app())
     hdr = {'x-admin-token': 'tok'}
-    assert client.post('/people-cache/gender', json={'gender': 'male'}, headers=hdr).status_code == 400  # no filename
-    assert client.post('/people-cache/gender', json={'filename': 'a.jpg', 'gender': 'x'}, headers=hdr).status_code == 400  # bad gender
-    # valid shape but unknown file -> 200 with ok=False (nothing to rename)
+    assert client.post('/people-cache/gender', json={'gender': 'male'}, headers=hdr).status_code == 400
+    assert client.post('/people-cache/gender', json={'filename': 'a.jpg', 'gender': 'x'}, headers=hdr).status_code == 400
     r = client.post('/people-cache/gender', json={'filename': 'unknown.jpg', 'gender': 'female'}, headers=hdr)
     assert r.status_code == 200 and r.json()['ok'] is False

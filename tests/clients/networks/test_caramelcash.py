@@ -49,11 +49,11 @@ async def test_detail() -> None:
     detail = await CaramelCashClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # second content-desc
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Caramel Cash'
     assert detail.tagline == 'Alex Legend'
     assert detail.collections == ['Alex Legend']
-    assert detail.release_date == '2024-05-12'  # verbose date parsed
+    assert detail.release_date == '2024-05-12'
     assert detail.genres == ['Anal', 'Gonzo']
     assert [a.name for a in detail.actors] == ['Jane Doe']
     assert detail.raw_image_urls == ['https://cdn/g1.jpg']

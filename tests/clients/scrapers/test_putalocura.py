@@ -36,7 +36,7 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pl_module, 'web_search', _web)
     respx.get(scene_url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results = await PutalocuraClient().search(SearchContext(title='alika', encoded='alika', search_site=SITE.name, site_info=SITE))
-    assert len(results) == 1  # /tags/ filtered
+    assert len(results) == 1
     assert results[0].title == 'Casting Alika'
     assert results[0].release_date == '2021-05-05'
 
@@ -45,7 +45,6 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_detail_actors_remap_photo() -> None:
     url = 'https://www.putalocura.com/casting-alika'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    # 'Alika' -> remapped to 'Alyka'; model index for 'A' supplies the photo
     respx.get('https://www.putalocura.com/actrices/a').mock(return_value=httpx.Response(200, text=MODEL_INDEX_A))
     respx.get('https://www.putalocura.com/actrices/c').mock(return_value=httpx.Response(200, text='<html><body></body></html>'))
     detail = await PutalocuraClient().fetch_scene_detail(url, SITE)

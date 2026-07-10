@@ -29,7 +29,7 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @respx.mock
 async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ftv_mod, 'web_search_available', lambda: False)  # skip gallery layer
+    monkeypatch.setattr(ftv_mod, 'web_search_available', lambda: False)
     url = 'https://www.ftvgirls.com/update/s-555.html'
     respx.get(url).mock(
         return_value=httpx.Response(
@@ -51,12 +51,12 @@ async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.collections == ['FTVGirls']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen', 'Solo', 'Public']
-    assert detail.actors[0].name == 'Jane Doe'  # extended from summary
+    assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.ftvgirls.com/t/jane.jpg'
     assert detail.raw_image_urls == ['https://www.ftvgirls.com/img/mag.jpg']
 
 
 def test_photo_lookup() -> None:
     assert ftv_mod.__testing__['photo_lookup'](226) == ['cool-colors', 'shes-on-fire', 'heating-up']
-    assert ftv_mod.__testing__['photo_lookup'](1573) == []  # explicit empty
-    assert ftv_mod.__testing__['photo_lookup'](999999) == ['none']  # unknown
+    assert ftv_mod.__testing__['photo_lookup'](1573) == []
+    assert ftv_mod.__testing__['photo_lookup'](999999) == ['none']

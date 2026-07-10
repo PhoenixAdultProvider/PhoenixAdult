@@ -9,7 +9,7 @@ from app.clients.base import SearchContext
 from app.clients.networks.radicalcash import RadicalCashClient
 from app.registry import find_site
 
-SITE = find_site('Inserted')  # studio 'Radical Cash', scene_path '/videos'
+SITE = find_site('Inserted')
 assert SITE is not None
 
 
@@ -33,7 +33,7 @@ async def test_detail() -> None:
     url = 'https://inserted.com/videos/cool-scene'
     content = {
         'title': 'Cool Scene',
-        'description': 'A summary',  # no trailing period -> client appends '.'
+        'description': 'A summary',
         'site': 'Inserted',
         'publish_date': '2021-03-04',
         'tags': ['Anal', 'Teen'],
@@ -46,7 +46,7 @@ async def test_detail() -> None:
     detail = await RadicalCashClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # period appended
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Radical Cash'
     assert detail.tagline == 'Inserted'
     assert detail.release_date == '2021-03-04'

@@ -143,6 +143,6 @@ def test_name_keyed_lookups() -> None:
     studio_for = __testing__['studio_for']
     assert variant_for('Jays POV') == 'imgFullFluid'
     assert variant_for('Bizarre Entertainment') == 'sceneTitleP'
-    assert variant_for('Conor Coxxx') == 'standard'  # default
-    assert studio_for('Horny Household') == 'Horny Household'  # override
-    assert studio_for('Conor Coxxx') == 'Adult Empire Cash'  # default
+    assert variant_for('Conor Coxxx') == 'standard'
+    assert studio_for('Horny Household') == 'Horny Household'
+    assert studio_for('Conor Coxxx') == 'Adult Empire Cash'

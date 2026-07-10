@@ -67,10 +67,10 @@ async def test_detail_umbrella() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'BellaPass'
-    assert detail.tagline == 'BellaPass'  # umbrella keeps a tagline
+    assert detail.tagline == 'BellaPass'
     assert detail.collections == ['BellaPass']
-    assert detail.genres == ['Anal', 'Threesome']  # 3 models → Threesome
-    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith', 'Jack']  # punctuation stripped
+    assert detail.genres == ['Anal', 'Threesome']
+    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith', 'Jack']
     assert detail.actors[0].photo_url == 'https://bellapass.com/p/jane.jpg'
     assert detail.raw_image_urls == [
         'https://bellapass.com/img/t1.jpg',
@@ -86,9 +86,9 @@ async def test_detail_subbrand_is_own_studio() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1>Sub Scene</h1>'))
     detail = await BellaPassClient().fetch_scene_detail(url, HUSSIE)
     assert detail is not None
-    assert detail.title == 'Sub Scene'  # h1 selector for Hussie Pass
-    assert detail.studio == 'Hussie Pass'  # sub-brand is its own studio
-    assert detail.tagline is None  # no tagline for sub-brands
+    assert detail.title == 'Sub Scene'
+    assert detail.studio == 'Hussie Pass'
+    assert detail.tagline is None
     assert detail.collections == ['Hussie Pass']
 
 

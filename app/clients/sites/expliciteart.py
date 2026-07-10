@@ -29,7 +29,6 @@ class ExpliciteArtClient(Client):
                     build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url]))
                 )
 
-        # Web-search fallback when the on-site search produced nothing.
         if not results:
             for scene_url in await web_search_urls(ctx.title, ctx.site_info):
                 page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] web-search {scene_url}')

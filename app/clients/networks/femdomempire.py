@@ -32,14 +32,12 @@ class FemdomEmpireClient(Client):
                     build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=score)
                 )
 
-        # Stage 1 — advanced search.
         adv = await self.fetch_and_load(
             base + ctx.site_info.search_path.replace('{query}', ctx.encoded), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] advanced'
         )
         if adv:
             parse_rows(adv['sel'])
 
-        # Stage 2 — manual match (always wins).
         manual = _MANUAL_MATCHES.get(ctx.title.strip())
         if manual:
             results.append(build_search_result(title=manual['title'], scene_url=manual['url'], query=ctx.title, score=101))
@@ -47,7 +45,6 @@ class FemdomEmpireClient(Client):
         if results:
             return results
 
-        # Stage 3 — standard search fallback.
         std = await self.fetch_and_load(f'{base}/tour/search.php?query={ctx.encoded}', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] standard')
         if std:
             parse_rows(std['sel'])

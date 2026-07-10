@@ -19,7 +19,6 @@ def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
 @respx.mock
 async def test_search_model_crawl(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(fpn_mod, 'web_search_available', lambda: False)
-    # direct model guess: "jane doe" → 1 space → "janedoe"
     url = 'https://jamesdeen.com/models/janedoe.html'
     respx.get(url).mock(
         return_value=httpx.Response(
@@ -55,7 +54,7 @@ async def test_detail() -> None:
     respx.get('https://jamesdeen.com/models/jane').mock(return_value=httpx.Response(200, text='<img alt="model" src0_3x="/p/jane.jpg" />'))
     detail = await fpn_mod.FullPornNetworkClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # after colon
+    assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Full Porn Network'
     assert detail.tagline == 'James Deen'
@@ -63,4 +62,4 @@ async def test_detail() -> None:
     assert detail.genres == ['Anal']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://jamesdeen.com/p/jane.jpg'
-    assert detail.raw_image_urls == ['https://jamesdeen.com/img/scene-3x.jpg']  # -1x → -3x
+    assert detail.raw_image_urls == ['https://jamesdeen.com/img/scene-3x.jpg']

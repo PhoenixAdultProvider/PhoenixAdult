@@ -50,7 +50,6 @@ class AdultPrimeClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')
 
-        # Direct numeric lookup at /studios/video/<id>.
         if ctx.scene_id:
             url = f'{base}/studios/video/{ctx.scene_id}'
             loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'GET {url}')
@@ -69,7 +68,6 @@ class AdultPrimeClient(Client):
                         )
                     ]
 
-        # Video + performer keyword search.
         results: list[SearchResult] = []
         seen: set[str] = set()
         qplus = ctx.encoded.replace('%20', '+')

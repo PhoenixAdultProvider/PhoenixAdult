@@ -13,7 +13,6 @@ assert SITE is not None
 
 @respx.mock
 async def test_search_strips_relationship_words() -> None:
-    # title -> drop first 2 tokens -> "secret lesson"
     url = 'https://momcomesfirst.com/?s=secret+lesson'
     html = """<html><body>
       <article>
@@ -46,8 +45,8 @@ async def test_detail_genres_actors_split() -> None:
     detail = await MomComesFirstClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Secret Lesson'
-    assert detail.summary == 'A blurb.'  # 'Starring' paragraph excluded
+    assert detail.summary == 'A blurb.'
     assert detail.studio == 'Mom Comes First'
     assert detail.release_date == '2021-03-03'
-    assert detail.genres == ['Taboo']  # 'cory chase' is a known actor, not a genre
+    assert detail.genres == ['Taboo']
     assert [a.name for a in detail.actors] == ['Cory Chase', 'Alex Adams']

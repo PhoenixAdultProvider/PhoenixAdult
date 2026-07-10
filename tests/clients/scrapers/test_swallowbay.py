@@ -52,7 +52,7 @@ async def test_detail() -> None:
     assert detail.studio == 'Swallow Bay'
     assert detail.tagline == 'Swallow Bay'
     assert detail.collections == ['Swallow Bay']
-    assert detail.release_date == '2024-01-05'  # "5th Jan 2024" ordinal-stripped
+    assert detail.release_date == '2024-01-05'
     assert detail.genres == ['VR', 'Blowjob']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://cdn.example/jane.jpg'),

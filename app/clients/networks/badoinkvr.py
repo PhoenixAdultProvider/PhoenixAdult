@@ -33,7 +33,6 @@ class BadoinkVrClient(Client):
         base = ctx.site_info.base_url.rstrip('/')
         cleaned = _mangle(ctx.title)
 
-        # Numeric direct lookup — score 100.
         if ctx.scene_id:
             url = f'{base}/vrpornvideo/{ctx.scene_id}'
             loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'GET {url}')
@@ -43,7 +42,6 @@ class BadoinkVrClient(Client):
                     thumb = first_attr(loaded['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
                     return [build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=100, thumb_url=thumb or None)]
 
-        # Search page.
         results: list[SearchResult] = []
         query_clean_lower = cleaned.lower()
         enc = quote(cleaned, safe='')
@@ -125,7 +123,6 @@ class BadoinkVrClient(Client):
         if video_img:
             out.append(video_img)
 
-        # Gallery synthesis: `<base>_1.jpg` … `<base>_<count+1>.jpg`.
         gallery_big = first_attr(scene.sel, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
         if gallery_big:
             base_img = re.sub(r'_\d+\.jpg.*$', '', gallery_big)

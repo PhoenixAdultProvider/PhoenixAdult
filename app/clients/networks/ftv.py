@@ -17,7 +17,6 @@ _GENRES: dict[str, list[str]] = {
     'FTVMilfs': ['MILF', 'Solo', 'Public'],
 }
 
-# (xpath, attr) poster rules, in priority order.
 _POSTER_RULES: list[str] = [
     '//img[@id="Magazine"]/@src',
     '//div[contains(@class,"gallery")]//div[contains(@class,"row")]//*[@href]/@href',
@@ -143,7 +142,6 @@ class FTVClient(Client):
             if abs_url not in out:
                 out.append(abs_url)
 
-        # Layer 1 — cast-name gallery web search, slug-filtered (gated).
         m = _SCENE_ID_RE.search(scene.url)
         scene_id = int(m.group(1)) if m else 0
         slugs = _photo_lookup(scene_id)
@@ -164,7 +162,6 @@ class FTVClient(Client):
                     for raw in _collect_images(g['sel']):
                         push(raw)
 
-        # Layer 2 — the detail page itself.
         for raw in _collect_images(scene.sel):
             push(raw)
         return out or None

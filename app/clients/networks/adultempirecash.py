@@ -76,7 +76,7 @@ class AdultEmpireCashClient(Client):
             if base in self._confirmed:
                 return
             try:
-                await self.http.get(f'{base}/')  # prime: receive the guest etoken cookie
+                await self.http.get(f'{base}/')
                 await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
                 logger.debug('AdultEmpireCash', f'age-confirm handshake done for {base}')
             except Exception as err:  # noqa: BLE001 - best-effort; proceed regardless
@@ -91,7 +91,6 @@ class AdultEmpireCashClient(Client):
         variant = _variant_for(ctx.site_info.name)
         results: list[SearchResult] = []
 
-        # Direct numeric lookup at /<id>/<slug>.html
         if ctx.scene_id:
             direct_url = f'{base}/{ctx.scene_id}/{slugify(ctx.title)}.html'
             loaded = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'GET {direct_url}')
@@ -100,7 +99,6 @@ class AdultEmpireCashClient(Client):
                 if title:
                     results.append(build_search_result(title=title, scene_url=direct_url, query=ctx.title, score=100))
 
-        # Standard keyword search.
         url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'GET {url}')
         if loaded:

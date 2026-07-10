@@ -19,7 +19,6 @@ def _parse_caramel_date(raw: str) -> str | None:
         return None
     if _DDMMYYYY_RE.match(cleaned):
         return iso_date(cleaned, '%d.%m.%Y')
-    # Verbose: "Date: 12th May 2024" → strip prefix + ordinal suffixes.
     no_prefix = cleaned.split(':')[-1].strip() if ':' in cleaned else cleaned
     no_ordinal = _ORDINAL_RE.sub(r'\1', no_prefix).strip()
     return iso_date(no_ordinal, '%d %b %Y') or iso_date(no_ordinal)

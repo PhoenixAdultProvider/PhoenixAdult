@@ -48,8 +48,6 @@ async def _no_web_search(*_args: object, **_kwargs: object) -> list[str]:
 
 
 def _mock_age_gate() -> None:
-    # The client primes a session (GET /) then confirms age
-    # (GET /Account/AgeConfirmation?...), which sets ageConfirmed in the cookie jar.
     respx.get('https://www.adultempire.com/').mock(return_value=httpx.Response(200, text=''))
     respx.get(url__startswith='https://www.adultempire.com/Account/AgeConfirmation').mock(
         return_value=httpx.Response(200, headers={'set-cookie': 'ageConfirmed=true; path=/'}, text='')
@@ -63,8 +61,6 @@ def _ctx(scene_id: str | None = None, title: str = '') -> SearchContext:
 @respx.mock
 async def test_requests_carry_age_cookie() -> None:
     _mock_age_gate()
-    # All requests (search + direct movie URLs) must send the ageConfirmed cookie.
-    # base_url is www.* so there's no cross-host redirect to strip the header.
     seen: dict[str, str | None] = {}
 
     def cap(request: httpx.Request) -> httpx.Response:

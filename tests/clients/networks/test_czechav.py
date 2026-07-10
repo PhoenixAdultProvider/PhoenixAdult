@@ -32,7 +32,7 @@ async def test_search_scene_id_boost() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://czechmassage.com/video/cool-scene-555/'
-    assert results[0].score == 100  # sceneId matches trailing -555
+    assert results[0].score == 100
     assert results[0].thumb_url == 'https://cdn/t.jpg'
 
 
@@ -54,13 +54,12 @@ async def test_detail_episode() -> None:
     )
     detail = await CzechAVClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene'  # split after colon
-    assert detail.summary == 'The real summary.'  # 2nd read-more p
+    assert detail.title == 'Cool Scene'
+    assert detail.summary == 'The real summary.'
     assert detail.studio == 'Czech Authentic Videos'
     assert detail.tagline == 'Czech Massage'
     assert detail.genres == ['Massage', 'Oil']
-    assert detail.actors == []  # not a casting site
-    # gallery dropped from posters (TS ruling)
+    assert detail.actors == []
     assert detail.raw_image_urls == ['https://cdn/og.jpg', 'https://czechmassage.com/img/t1.jpg']
 
 

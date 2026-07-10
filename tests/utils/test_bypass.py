@@ -24,8 +24,6 @@ def test_configured_order_includes_impersonate(monkeypatch: pytest.MonkeyPatch) 
 
 
 async def test_all_unavailable_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Nothing configured → every backend unavailable. Pin the order to the HTTP
-    # backends so the result doesn't depend on whether Playwright is installed.
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)

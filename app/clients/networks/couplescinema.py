@@ -17,7 +17,6 @@ class CouplesCinemaClient(Client):
     async def search(self, ctx: SearchContext) -> list[SearchResult]:
         base = ctx.site_info.base_url.rstrip('/')
 
-        # Numeric sceneId → direct scene.
         if ctx.scene_id:
             scene_url = f'{base}/post/details/{ctx.scene_id}'
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
@@ -30,7 +29,6 @@ class CouplesCinemaClient(Client):
                 build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
             ]
 
-        # Keyword search.
         slug = '+'.join(ctx.title.split())
         search_url = base + ctx.site_info.search_path.replace('{query}', slug)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')

@@ -61,8 +61,6 @@ async def test_find_fan_art_imagepost() -> None:
 
 
 async def test_contains_filter_excludes_models_link() -> None:
-    # XartBeauties' header selector uses :not(:contains("Models")); reaching a
-    # non-empty result proves the actor gate passed (Jane kept, "Models" dropped).
     result = await find_fan_art(
         FindFanArtOptions(
             sites=['XartBeauties.com'],
@@ -107,7 +105,7 @@ async def test_bad_match_override_pins_and_skips_gates() -> None:
     register_fanart_overrides(bad_match=[{'title': 'Special', 'site': 'ImagePost.com', 'url': 'http://imagepost.com/special'}])
     result = await find_fan_art(
         FindFanArtOptions(
-            sites=['SomewhereElse.com'],  # ignored; override pins ImagePost
+            sites=['SomewhereElse.com'],
             title='Special',
             actor_names=['Whoever'],
             fetch_page=_page(_IMAGEPOST),

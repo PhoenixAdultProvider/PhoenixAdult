@@ -67,7 +67,6 @@ async def test_detail() -> None:
             </body></html>""",
         )
     )
-    # JavBus cross-fetch returns nothing (empty page → no cover).
     respx.get('https://www.javbus.com/en/ABP-060').mock(return_value=httpx.Response(200, text='<html><body></body></html>'))
     detail = await JavLibraryClient().fetch_scene_detail(url, SITE)
     assert detail is not None

@@ -20,7 +20,6 @@ class JulesJordanClient(Client):
         results: list[SearchResult] = []
         seen: set[str] = set()
 
-        # 1. Direct slug guess.
         direct_url = f'{base}/trial/scenes/{"-".join(ctx.title.lower().split())}_vids.html'
         direct = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {direct_url}')
         if direct:
@@ -36,7 +35,6 @@ class JulesJordanClient(Client):
                 )
             )
 
-        # 2. On-site search.
         search_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if loaded:

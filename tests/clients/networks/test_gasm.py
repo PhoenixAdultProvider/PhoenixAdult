@@ -30,7 +30,6 @@ async def test_search_direct_scene_id() -> None:
 
 @respx.mock
 async def test_search_keyword_with_channel() -> None:
-    # Magma Film → channel 8118; slugify("cool scene") → "cool-scene" → "cool+scene"
     url = 'https://www.gasm.com/search/videos?s=cool+scene&channel=8118'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="results_item"><a class="post_title" href="/post/details/77">Cool Scene</a></div>'))
     results = await GasmClient().search(_ctx(MAGMA))
@@ -61,7 +60,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'GASM'
-    assert detail.tagline == 'Cool Studio'  # title-cased
+    assert detail.tagline == 'Cool Studio'
     assert detail.collections == ['Cool Studio', 'Cool Dvd']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']

@@ -25,7 +25,6 @@ async def test_search() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://wowgirlsblog.com/v/7'
-    # Detail reuses the packed thumbnail (no second image fetch needed).
     detail = await WowNetworkClient().fetch_scene_detail(WowNetworkClient().decode(results[0].cur_id), SITE)
     assert detail is not None
     assert 'https://cdn/t.jpg' in (detail.raw_image_urls or [])
@@ -52,6 +51,6 @@ async def test_detail() -> None:
     assert detail.studio == 'WowNetwork'
     assert detail.tagline == 'Wow Girls'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['Teen']  # 'Movies' stripped
+    assert detail.genres == ['Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
     assert detail.raw_image_urls == ['https://cdn/og.jpg']

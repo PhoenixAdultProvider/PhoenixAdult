@@ -19,8 +19,8 @@ def test_genre_rules_reloads_on_mtime_change(tmp_path, monkeypatch: pytest.Monke
     assert rules.replace_lookup['bj'] == 'Blow Job'
 
     f.write_text(json.dumps({'replace': {}, 'skip': ['bar'], 'partial_skip': []}), encoding='utf-8')
-    os.utime(f, (f.stat().st_atime, f.stat().st_mtime + 10))  # force a newer mtime
-    monkeypatch.setattr(gdata._RULES, '_stat_checked_at', 0.0)  # skip the stat rate-limit window
+    os.utime(f, (f.stat().st_atime, f.stat().st_mtime + 10))
+    monkeypatch.setattr(gdata._RULES, '_stat_checked_at', 0.0)
 
     reloaded = gdata.genre_rules()
     assert 'bar' in reloaded.skip_set
@@ -36,6 +36,6 @@ def test_actor_rules_reloads_on_mtime_change(tmp_path, monkeypatch: pytest.Monke
 
     f.write_text(json.dumps({'replace': {'John Roe': ['jr']}, 'replace_studios': {}, 'studio_indexes': {}}), encoding='utf-8')
     os.utime(f, (f.stat().st_atime, f.stat().st_mtime + 10))
-    monkeypatch.setattr(pdata._RULES, '_stat_checked_at', 0.0)  # skip the stat rate-limit window
+    monkeypatch.setattr(pdata._RULES, '_stat_checked_at', 0.0)
 
     assert pdata.actor_rules().replace == {'John Roe': ['jr']}

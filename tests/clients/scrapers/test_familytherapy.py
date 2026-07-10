@@ -23,7 +23,6 @@ async def test_search_direct() -> None:
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://familytherapyxxx.com/v/7'
-    # curID tail mode 0 (direct).
     assert FamilyTherapyClient().decode(results[0].cur_id).endswith('|0')
 
 
@@ -45,11 +44,11 @@ async def test_detail_direct() -> None:
     )
     detail = await FamilyTherapyClient().fetch_scene_detail(f'{url}|2021-03-04|0', SITE)
     assert detail is not None
-    assert detail.title == 'Cool Scene Title'  # toTitleCase
+    assert detail.title == 'Cool Scene Title'
     assert detail.studio == 'Family Therapy'
     assert detail.tagline == 'Family Therapy'
     assert detail.collections == ['Family Therapy']
-    assert detail.release_date == '2021-03-04'  # MMM d, yyyy
+    assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Taboo']
     names = [a.name for a in (detail.actors or [])]
-    assert names == ['Jane Doe', 'John Smith']  # Starring regex
+    assert names == ['Jane Doe', 'John Smith']

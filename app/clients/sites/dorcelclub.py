@@ -49,7 +49,6 @@ class DorcelClubClient(Client):
         def card_result(title: str, scene_url: str) -> SearchResult:
             return build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url]))
 
-        # (1) Direct scene cards.
         for card in sel.xpath(_SCENE_CARD_XP):
             title = first_text(card, './/div[contains(@class,"textual")]/a')
             href = first_attr(card, '(.//a[contains(@class,"title")]/@href)[1]')
@@ -58,7 +57,6 @@ class DorcelClubClient(Client):
             scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(card_result(title, scene_url))
 
-        # (2) Movie cards — the movie is a result and its sub-scenes are appended.
         for card in sel.xpath(_MOVIE_CARD_XP):
             movie_title = first_text(card, './h2')
             movie_href = first_attr(card, '@href')

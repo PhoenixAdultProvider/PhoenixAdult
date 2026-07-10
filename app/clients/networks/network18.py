@@ -18,7 +18,6 @@ _BATCH_ASSET_QUERY = (
 
 _CHUNK_SIZE = 25
 
-# Per-site GraphQL config (client-isolated; ScraperConfig stays minimal).
 _SITE_CONFIG: dict[str, dict[str, Any]] = {
     'Fit18': {'api_key': '77cd9282-9d81-4ba8-8868-ca9125c76991', 'endpoint': 'https://fit18.team18media.app/graphql', 'genres': ['Young', 'Gym']},
     'Thicc18': {'api_key': '0e36c7e9-8cb7-4fa1-9454-adbc2bad15f0', 'endpoint': 'https://thicc18.team18media.app/graphql', 'genres': ['Thicc']},

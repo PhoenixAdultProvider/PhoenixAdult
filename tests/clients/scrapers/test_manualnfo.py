@@ -75,7 +75,7 @@ async def test_search_miss_driven_refresh(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(mn_module, '_MISS_THROTTLE_S', 0.0)
     _write_folder(tmp_path, BASENAME)
     client = ManualNfoClient()
-    await client.search(_ctx(BASENAME))  # warm cache
+    await client.search(_ctx(BASENAME))
     _write_folder(tmp_path, 'latecomer.basename')
     results = await client.search(_ctx('latecomer.basename'))
     assert len(results) == 1
@@ -139,7 +139,7 @@ async def test_detail_full_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 async def test_detail_url_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
-    _write_folder(tmp_path, BASENAME)  # no sibling images
+    _write_folder(tmp_path, BASENAME)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
@@ -163,7 +163,7 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
             return 'https://www.data18.com/scenes/123'
 
         async def fetch_images(self, scene_url: str) -> list[str]:
-            return ['https://cdn.data18.com/a.jpg', 'https://example.com/poster.jpg']  # second is a duplicate
+            return ['https://cdn.data18.com/a.jpg', 'https://example.com/poster.jpg']
 
     monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
@@ -190,7 +190,7 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
     monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
-    assert queries == ['Naughty Fantasy']  # no digit form → no retry
+    assert queries == ['Naughty Fantasy']
     assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
 
 

@@ -26,9 +26,9 @@ async def test_search() -> None:
     )
     results = await SpizooClient().search(_ctx())
     assert len(results) == 1
-    assert results[0].title == 'Cool Scene'  # ' 4K' stripped
+    assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.spizoo.com/v/7'
-    assert results[0].display_date == '2021-03-04'  # h4 heading excluded from date text
+    assert results[0].display_date == '2021-03-04'
 
 
 @respx.mock
@@ -56,9 +56,9 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Spizoo'
-    assert detail.tagline == 'First Class POV'  # inline i#site value
-    assert detail.release_date == '2021-03-04'  # head[:10]
-    assert detail.genres == ['anal', 'teen']  # split on comma, lowered
-    assert detail.actors[0].name == 'JaneDoe'  # dots stripped
+    assert detail.tagline == 'First Class POV'
+    assert detail.release_date == '2021-03-04'
+    assert detail.genres == ['anal', 'teen']
+    assert detail.actors[0].name == 'JaneDoe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.raw_image_urls == ['https://cdn/p.jpg']

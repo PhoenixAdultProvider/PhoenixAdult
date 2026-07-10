@@ -23,9 +23,8 @@ async def test_crop_applied_logged_and_original_preserved(tmp_path: pytest.TempP
 
     assert res is not None
     sub = tmp_path / 'actors' / 'female'  # type: ignore[operator]
-    f = sub / 'actor.jane-doe_female.jpg'  # cropped -> JPEG ext, in the gender subfolder
+    f = sub / 'actor.jane-doe_female.jpg'
     assert f.exists() and f.read_bytes() == b'CROPPEDJPEGBYTES'
-    # pre-crop original preserved under originals/ (kept so the user can go back)
     assert (tmp_path / 'originals' / 'actor.jane-doe_female.webp').read_bytes() == b'origwebp'  # type: ignore[operator]
     log = face_crop_log.recent(str(sub))
     assert log and log[0]['cropped'] is True and log[0]['orig_ext'] == '.webp'
@@ -47,7 +46,7 @@ async def test_generic_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch
     respx.get(url).mock(return_value=httpx.Response(200, content=b'ORIGINALBYTES', headers={'content-type': 'image/jpeg'}))
     await cache.cache_photo(url, 'Jane Doe', 'actor', 'female')
 
-    assert called['v'] is False  # generic placeholder never cropped
+    assert called['v'] is False
     assert (tmp_path / 'actors' / 'female' / 'actor.jane-doe_female.jpg').read_bytes() == b'ORIGINALBYTES'  # type: ignore[operator]
     assert not (tmp_path / 'originals').exists()  # no separate original when not cropped  # type: ignore[operator]
 
@@ -68,15 +67,13 @@ async def test_iafd_source_not_cropped(tmp_path: pytest.TempPathFactory, monkeyp
     respx.get(url).mock(return_value=httpx.Response(200, content=b'HEADSHOTBYTES', headers={'content-type': 'image/jpeg'}))
     await cache.cache_photo(url, 'Jane Doe', 'actor', 'female', source='IAFD')
 
-    assert called['v'] is False  # IAFD headshots are already cropped
+    assert called['v'] is False
     assert (tmp_path / 'actors' / 'female' / 'actor.jane-doe_female.jpg').read_bytes() == b'HEADSHOTBYTES'  # type: ignore[operator]
     assert not (tmp_path / 'originals').exists()  # type: ignore[operator]
 
 
 @respx.mock
 async def test_restore_uses_preserved_original(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    # No respx route registered -> if restore hit the network it would error; it must use
-    # the local original instead.
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     sub = tmp_path / 'actors' / 'female'  # type: ignore[operator]
     sub.mkdir(parents=True)
@@ -95,8 +92,8 @@ async def test_restore_uses_preserved_original(tmp_path: pytest.TempPathFactory,
 
     ok = await cache.restore_original('actor.jane-doe_female.jpg')
     assert ok is True
-    assert (sub / 'actor.jane-doe_female.webp').read_bytes() == b'ORIGINALWEBP'  # restored from local original
-    assert not (sub / 'actor.jane-doe_female.jpg').exists()  # old cropped file removed
+    assert (sub / 'actor.jane-doe_female.webp').read_bytes() == b'ORIGINALWEBP'
+    assert not (sub / 'actor.jane-doe_female.jpg').exists()
     log = face_crop_log.recent(str(sub))
     assert log[0]['filename'] == 'actor.jane-doe_female.webp' and log[0]['cropped'] is False
 
@@ -117,17 +114,15 @@ def test_set_gender_moves_folders_and_relogs(tmp_path: pytest.TempPathFactory, m
         cropped=True,
     )
 
-    # female -> male: file + log move from actors/female to actors/male.
     new = cache.set_gender('actor.jane-doe_female.jpg', 'male')
     assert new == 'actor.jane-doe_male.jpg'
     msub = tmp_path / 'actors' / 'male'  # type: ignore[operator]
     assert (msub / 'actor.jane-doe_male.jpg').read_bytes() == b'IMG'
     assert not (fsub / 'actor.jane-doe_female.jpg').exists()
     assert face_crop_log.recent(str(msub))[0]['filename'] == 'actor.jane-doe_male.jpg'
-    assert face_crop_log.recent(str(fsub)) == []  # moved out of the female log
+    assert face_crop_log.recent(str(fsub)) == []
     assert cache.lookup_cached('Jane Doe', 'actor')['gender'] == 'male'  # type: ignore[index]
 
-    # male -> none: drops the suffix and moves to actors/unknown.
     new2 = cache.set_gender('actor.jane-doe_male.jpg', '')
     assert new2 == 'actor.jane-doe.jpg'
     assert (tmp_path / 'actors' / 'unknown' / 'actor.jane-doe.jpg').exists()  # type: ignore[operator]
@@ -155,10 +150,10 @@ def test_purge_deletes_file_original_and_log(tmp_path: pytest.TempPathFactory, m
     assert not (fsub / 'actor.jane-doe_female.jpg').exists()
     assert not (tmp_path / 'originals' / 'actor.jane-doe_female.jpg').exists()  # preserved original purged too  # type: ignore[operator]
     assert face_crop_log.recent(str(fsub)) == []
-    assert cache.purge('actor.jane-doe_female.jpg') is False  # already gone
+    assert cache.purge('actor.jane-doe_female.jpg') is False
 
 
 def test_set_gender_rejects_bad_value(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    assert cache.set_gender('actor.jane-doe_female.jpg', 'other') is None  # invalid
-    assert cache.set_gender('nonexistent.jpg', 'male') is None  # file not present
+    assert cache.set_gender('actor.jane-doe_female.jpg', 'other') is None
+    assert cache.set_gender('nonexistent.jpg', 'male') is None

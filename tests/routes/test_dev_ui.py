@@ -13,7 +13,6 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     # The /dev UI is only mounted outside production; pin it so an ambient
     # NODE_ENV=production in the developer's .env can't 404 these tests.
     monkeypatch.setenv('NODE_ENV', 'development')
-    # TestClient's client host is not loopback, so the admin token is required.
     monkeypatch.setenv('ADMIN_TOKEN', TOKEN)
     return TestClient(create_app())
 
@@ -24,7 +23,6 @@ def test_dev_requires_auth(client: TestClient) -> None:
 
 def test_dev_open_when_token_blank(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('NODE_ENV', 'development')
-    # No ADMIN_TOKEN configured → auth disabled, admin surfaces open to all.
     monkeypatch.delenv('ADMIN_TOKEN', raising=False)
     open_client = TestClient(create_app())
     assert open_client.get('/dev').status_code == 200
@@ -43,7 +41,6 @@ def test_dev_test_pipeline(client: TestClient) -> None:
     assert r.status_code == 200
     data = r.json()
     assert 'steps' in data and 'logs' in data
-    # No sites registered in the foundation → parse step fails.
     assert data['steps'][0]['step'].startswith('1.')
     assert data['steps'][0]['ok'] is False
     assert 'durationMs' in data['steps'][0]
@@ -55,7 +52,6 @@ def test_dev_test_requires_filename(client: TestClient) -> None:
 
 
 def test_dev_metadata_pipeline(client: TestClient) -> None:
-    # Valid ratingKey format, but the site won't resolve (no scrapers) → step 2 fails.
     r = client.post(
         '/dev/metadata',
         params={'token': TOKEN},
@@ -64,8 +60,8 @@ def test_dev_metadata_pipeline(client: TestClient) -> None:
     assert r.status_code == 200
     data = r.json()
     assert data['steps'][0]['step'].startswith('1.')
-    assert data['steps'][0]['ok'] is True  # ratingKey parses
-    assert any(not s['ok'] for s in data['steps'])  # site lookup fails
+    assert data['steps'][0]['ok'] is True
+    assert any(not s['ok'] for s in data['steps'])
     assert 'logs' in data
 
 

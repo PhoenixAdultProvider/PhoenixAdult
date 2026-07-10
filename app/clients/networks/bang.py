@@ -51,7 +51,6 @@ class BangClient(Client):
         results: list[SearchResult] = []
         seen: set[str] = set()
 
-        # Legacy web-search augmentation — only when an engine is available.
         if web_search_available():
             host = urlparse(ctx.site_info.base_url).netloc
             try:
@@ -76,7 +75,6 @@ class BangClient(Client):
                 release = iso_date(ld['datePublished']) if ld.get('datePublished') else None
                 results.append(build_search_result(title=_bangify(title), scene_url=url, query=ctx.title, display_date=release, search_date=ctx.search_date))
 
-        # On-page search grid.
         enc = quote(ctx.title, safe='').replace('%20', '+')
         search_url = base + ctx.site_info.search_path.replace('{query}', enc)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
@@ -176,7 +174,6 @@ class BangClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
         assert scene.sel is not None
-        # Prefer scene-style markup; fall back to DVD-style (per-actor JSON-LD).
         scene_els = scene.sel.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
         if scene_els:
             actors: list[ActorResult] = []

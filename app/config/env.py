@@ -124,15 +124,10 @@ class _Env:
 
     @property
     def people_cache_face_enabled(self) -> bool:
-        # Off by default. When on (and people caching is enabled), cached headshots
-        # are face-detected and cropped to head+shoulders. Requires opencv-python-headless.
         return _flag('PEOPLE_CACHE_FACE_ENABLE', 'false') == 'true'
 
     @property
     def metadata_cache_enabled(self) -> bool:
-        # Off by default. When on, each scraped scene's metadata + images are
-        # snapshotted under METADATA_CACHE_DIR and served cache-first on later
-        # requests (offline-safe protection against the source going down).
         return _flag('METADATA_CACHE_ENABLE', 'false') == 'true'
 
     @property

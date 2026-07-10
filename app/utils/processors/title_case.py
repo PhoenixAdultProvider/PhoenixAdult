@@ -88,11 +88,8 @@ _AFTER_RUN_RE = re.compile(r'\s+([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)')
 _SEQ_PAREN_RE = re.compile(rf'(?<=\S)\s*\(\s*{_SEQ_PHRASE}\s*\)', re.IGNORECASE)
 _SEQ_SEP_RE = re.compile(rf'(?<=\S)\s*[:,–—-]\s*{_SEQ_PHRASE}', re.IGNORECASE)
 _SEQ_SPACE_RE = re.compile(rf'(?<=[\w\'"])\s+{_SEQ_COLON_PHRASE}', re.IGNORECASE)
-# A spaced initialism run of 3+ letters (B. O. O. T. Y); trailing period optional.
 _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A-Za-z])')
-# "vs"/"vs."/"vs.." → "vs." (idempotent; case-preserving).
 _VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
-# Possessive of a word already ending in s drops the extra s: "Jewels's" → "Jewels'".
 _POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
 
 _T2D = text2digits.Text2Digits()
@@ -271,53 +268,29 @@ class _TitleCaseEngine:
     # ── Post-process ─────────────────────────────────────────────────────────
     def _post_process(self, output: str) -> str:
         output = output.replace('“', '"').replace('”', '"').replace('’', "'")  # Normalize curly quotes
-        # Rotate trailing ", the/a/an" to front
         output = re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
-        # Add missing space after ! : ? (but not before domains)
         output = re.sub(r'(?i)([!:?])(?=\w)(?!(?:co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b))', r'\1 ', output)
-        # Add missing space after period when followed by a letter (not domains)
         output = re.sub(r'\.(?=[A-Za-z])(?!co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b)', '. ', output)
-        # Remove a single trailing period (but keep "..", "..." etc.)
         output = re.sub(r'(?<!\.)\.$', '', output)
-        # Remove spaces before punctuation characters
         output = re.sub(r"\s+(?=[.,!'):])", '', output)
-        # Insert a space before an opening double quote when it starts a token
         output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
-        # Insert a space before an opening single quote (when not a contraction),
-        # and capitalize the quoted word; only applies if another quote appears later
         output = _OPEN_QUOTE_RE.sub(lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}', output)
-        # Remove spaces after opening punctuation characters
         output = re.sub(r'(?<=[#("\[])\s+', '', output)
-        # Add a space after a closing double quote, but only if quotes are balanced
         output = re.sub(r'"(?!\s)(?=(?:(?:[^"]*"){2})*[^"]*$)', '" ', output)
-        # Capitalize the first letter of a word following punctuation (except after "vs.")
         output = re.sub(r'(?<!vs\.)([!:?.\-–])(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
-        # Capitalize the first letter of a word following a closing bracket
         output = re.sub(r'([\])])(\s)([a-z])', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
-        # Capitalize a lowercase letter immediately after certain opening punctuation
         output = re.sub(r'(?<=[(|&"\[*~])([a-z])', lambda m: m.group(1).upper(), output)
-        # Capitalize any token ending with ], ), ", ~, or :
         output = re.sub(r'\S+[\])"~:]', lambda m: _capitalize(m.group(0)), output)
-        # Capitalize the final token in the string
         output = re.sub(r'\S+$', lambda m: _capitalize(m.group(0)), output)
-        # Add a trailing period to initials of the form "A. B" → "A. B."
         output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
-        # Remove the space between two initials: "A. B." → "A.B."
         output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
-        # Collapse a spaced initialism of 3+ letters: "A. B. C" → "A.B.C" (keeps any source trailing period)
         output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
-        # "vs"/"vs." → "vs."
         output = _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
-        # Possessive of an s-ending word drops the trailing s: "Jewels's" → "Jewels'"
         output = _POSSESSIVE_S_RE.sub("'", output)
-        # Fix "a/A" → "an/An" before vowel-initial words
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
-        # Honorific titles get a trailing period (Mr -> Mr.); skip if one already follows
         output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
-        # Numbered sequence markers get a uniform ': ' separator
         if self.type == 'title':
             output = normalize_sequence_separator(output)
-        # Scraper-specific phrase corrections
         for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
 
@@ -360,7 +333,6 @@ def _convert_bounded_numbers(text: str) -> str:
         if m.start() < pos:
             continue
 
-        # Number run ending at the marker ("First Part"); longest suffix wins.
         replaced = False
         before = _BEFORE_RUN_RE.search(text[pos : m.start()])
         if before:
@@ -378,7 +350,6 @@ def _convert_bounded_numbers(text: str) -> str:
             out.append(text[pos : m.end()])
         pos = m.end()
 
-        # Number run following the marker ("Part One"); longest prefix wins.
         after = _AFTER_RUN_RE.match(text, m.end())
         if after:
             window = after.group(1)

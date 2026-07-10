@@ -28,7 +28,7 @@ async def test_search_onsite_and_guess() -> None:
     results = await PenthouseGoldClient().search(SearchContext(title='gold night', encoded='gold%20night', search_site=SITE.name, site_info=SITE))
     assert any(r.scene_url == video_url for r in results)
     hit = next(r for r in results if r.scene_url == video_url)
-    assert hit.title == 'Video - Gold Night'  # search keeps the raw H1; detail strips the prefix
+    assert hit.title == 'Video - Gold Night'
     assert hit.score == 100
     assert hit.release_date == '2021-07-07'
 

@@ -51,12 +51,11 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'RealJamVR'
-    assert detail.tagline == 'Cool Scene'  # 2nd '|' segment
+    assert detail.tagline == 'Cool Scene'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['VR', '180']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    # full URLs kept (query not stripped, per policy)
     assert detail.raw_image_urls == ['https://cdn/g1.jpg?token=x', 'https://cdn/poster.jpg?token=y']
 
 

@@ -56,7 +56,7 @@ async def test_search_web_augmentation(monkeypatch: pytest.MonkeyPatch) -> None:
     results = await BangClient().search(_ctx())
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.bang.com/video/123/slug'
-    assert results[0].title == 'Cool Scene'  # from JSON-LD name, HTML stripped
+    assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
 
 
@@ -78,13 +78,12 @@ async def test_detail_fields() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
-    assert detail.studio == 'Bang! originals'  # bangify applied to productionCompany
+    assert detail.studio == 'Bang! originals'
     assert detail.tagline == 'Bang! Originals'
     assert detail.collections == ['Bang! Originals']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal', 'Gonzo']
     assert [a.name for a in detail.actors] == ['Jane Doe']
-    # thumbnailUrl is a /shots/ URL → cover synthesized + original kept.
     assert detail.raw_image_urls == ['https://i.bang.com/covers/123/front.jpg', 'https://i.bang.com/shots/123/x.jpg']
 
 

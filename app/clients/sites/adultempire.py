@@ -122,7 +122,7 @@ class AdultEmpireClient(Client):
             if token:
                 self.http.cookies.set('etoken', token, domain='www.adultempire.com', path='/')
             with best_effort('AdultEmpire', 'age-confirm handshake', level='debug'):
-                await self.http.get(f'{base}/')  # prime: receive the guest etoken cookie
+                await self.http.get(f'{base}/')
                 await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
                 logger.debug('AdultEmpire', f'age-confirm handshake done; jar={list(self.http.cookies.keys())}')
             self._age_confirmed = True
@@ -148,7 +148,7 @@ class AdultEmpireClient(Client):
             name, f'search "{ctx.title}" (direct_id={direct_id}, vol_search={is_vol_search}, token={"set" if env.adult_empire_login_token else "absent"})'
         )
 
-        movie_urls: dict[str, str] = {}  # url -> result_type
+        movie_urls: dict[str, str] = {}
         if direct_id:
             movie_urls[f'{base}/{scene_id}'] = ''
         else:

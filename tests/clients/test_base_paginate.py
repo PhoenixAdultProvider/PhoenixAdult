@@ -13,10 +13,10 @@ async def test_short_page_stops_pagination() -> None:
 
     async def fetch_rows(page: int) -> list[str] | None:
         fetched.append(page)
-        return [f'p{page}-{i}' for i in range(9)] if page == 1 else ['p2-0']  # page 2 is short
+        return [f'p{page}-{i}' for i in range(9)] if page == 1 else ['p2-0']
 
     results = await client.paginate_search(fetch_rows=fetch_rows, build_row=_result, max_pages=5, full_page=9)
-    assert fetched == [1, 2]  # short page 2 halts before page 3
+    assert fetched == [1, 2]
     assert len(results) == 10
 
 
@@ -54,7 +54,7 @@ async def test_skip_and_dedup() -> None:
         build_row=lambda r: None if r == 'skip' else _result(r),
         max_pages=2,
     )
-    assert [r.scene_url for r in results] == ['a', 'b']  # 'skip' dropped, duplicate 'a' deduped
+    assert [r.scene_url for r in results] == ['a', 'b']
 
 
 async def test_stop_on_empty_page() -> None:
@@ -63,7 +63,7 @@ async def test_stop_on_empty_page() -> None:
 
     async def fetch_rows(page: int) -> list[str] | None:
         fetched.append(page)
-        return ['a', 'b'] if page == 1 else ['skip', 'skip']  # page 2 maps to zero results
+        return ['a', 'b'] if page == 1 else ['skip', 'skip']
 
     results = await client.paginate_search(
         fetch_rows=fetch_rows,
@@ -71,7 +71,7 @@ async def test_stop_on_empty_page() -> None:
         max_pages=5,
         stop_on_empty_page=True,
     )
-    assert fetched == [1, 2]  # page 2 produced nothing -> halts before page 3
+    assert fetched == [1, 2]
     assert [r.scene_url for r in results] == ['a', 'b']
 
 
@@ -89,7 +89,7 @@ async def test_should_continue_stops_after_page() -> None:
         max_pages=5,
         should_continue=lambda out: not any((r.score or 0) >= 100 for r in out),
     )
-    assert fetched == [1]  # perfect match on page 1 halts pagination
+    assert fetched == [1]
     assert [r.scene_url for r in results] == ['perfect']
 
 
@@ -105,19 +105,19 @@ async def test_dedup_false_keeps_shared_scene_url() -> None:
         max_pages=2,
         dedup=False,
     )
-    assert [r.cur_id for r in results] == ['a', 'b']  # shared scene_url not collapsed when dedup is off
+    assert [r.cur_id for r in results] == ['a', 'b']
 
 
 async def test_custom_dedup_key() -> None:
     client = Client()
 
     async def fetch_rows(page: int) -> list[str] | None:
-        return ['a|1', 'a|2'] if page == 1 else None  # same scene_url prefix, different tail
+        return ['a|1', 'a|2'] if page == 1 else None
 
     results = await client.paginate_search(
         fetch_rows=fetch_rows,
         build_row=lambda r: SearchResult(title=r, scene_url=r.split('|')[0], cur_id=r),
         max_pages=2,
-        dedup_key=lambda r: r.cur_id,  # dedup on cur_id, not scene_url
+        dedup_key=lambda r: r.cur_id,
     )
-    assert [r.cur_id for r in results] == ['a|1', 'a|2']  # both kept despite identical scene_url
+    assert [r.cur_id for r in results] == ['a|1', 'a|2']

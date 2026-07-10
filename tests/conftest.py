@@ -3,8 +3,6 @@ from __future__ import annotations
 import os
 import tempfile
 
-# Keep test runs out of the real local/logs/agent.log: point file logging at a temp
-# dir BEFORE any app module (and its logger, which opens the file at import) loads.
 os.environ['LOG_DIR'] = os.path.join(tempfile.gettempdir(), 'phoenixadult-pytest-logs')
 
 import pytest  # noqa: E402
@@ -27,8 +25,6 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)
-    # impersonate_get_bytes() (binary image fetch) calls curl_cffi directly, escaping
-    # the order pin above — mark the backend unavailable so it can't reach the network.
     from app.utils.http.impersonate import impersonate_backend
 
     monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)

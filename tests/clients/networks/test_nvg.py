@@ -55,8 +55,8 @@ async def test_detail_from_id() -> None:
     assert detail.studio == 'NVG Network'
     assert detail.tagline == 'Net Video Girls'
     assert detail.release_date == '2021-03-04'
-    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']  # split on " AND "
-    assert detail.raw_image_urls == ['https://netvideogirls.net/img/c.jpg']  # fluid src, base-prefixed
+    assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
+    assert detail.raw_image_urls == ['https://netvideogirls.net/img/c.jpg']
 
 
 @respx.mock

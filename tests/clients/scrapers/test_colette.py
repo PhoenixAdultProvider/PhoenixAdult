@@ -57,7 +57,7 @@ async def test_detail_genres_actors_images() -> None:
     assert detail.studio == 'Colette'
     assert detail.collections == ['Colette']
     assert detail.release_date == '2021-10-10'
-    assert detail.genres == ['Threesome']  # 3 cast members
+    assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.actors[0].photo_url == 'https://cdn.col.com/alice.jpg'
     assert detail.raw_image_urls == ['https://cdn.col.com/g1.jpg', 'https://cdn.col.com/scene.jpg']

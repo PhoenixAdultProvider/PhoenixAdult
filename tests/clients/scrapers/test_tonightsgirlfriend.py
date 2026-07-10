@@ -29,7 +29,7 @@ async def test_search_paginates_stops_short() -> None:
     assert results[0].scene_url == 'https://www.tonightsgirlfriend.com/scene/wild-0'
     assert results[0].title == 'Jane Doe'
     assert results[0].release_date == '2024-01-01'
-    assert not p3.called  # short page 2 halts pagination
+    assert not p3.called
 
 
 @respx.mock

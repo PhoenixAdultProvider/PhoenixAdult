@@ -54,7 +54,7 @@ async def test_detail_summary_genres_actors_images() -> None:
     detail = await HoloGirlsVRClient().fetch_scene_detail(f'{url}|2021-10-10', SITE)
     assert detail is not None
     assert detail.title == 'Holo Scene'
-    assert detail.summary == 'A blurb here'  # 5th text node (index 4)
+    assert detail.summary == 'A blurb here'
     assert detail.studio == 'HoloGirlsVR'
     assert detail.collections == ['HoloGirlsVR']
     assert detail.release_date == '2021-10-10'

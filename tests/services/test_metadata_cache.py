@@ -15,8 +15,6 @@ from app.utils.plex.rating_key import to_rating_key
 
 
 def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Stand in for the current genres.json/actors.json: drop "Drop Me", upper-case the rest;
-    # collapse "Alias A"/"Alias B" onto one canonical name.
     monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: [t.upper() for t in tags if t != 'Drop Me'])
     monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Canonical' if name in ('Alias A', 'Alias B') else name)
 
@@ -41,8 +39,8 @@ def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.
     )
     assert mc.reapply_text_rules(resp) is True
     md = resp.MediaContainer.Metadata[0]
-    assert [g.tag for g in (md.Genre or [])] == ['KEEP']  # Drop Me removed, Keep upper-cased
-    assert [r.tag for r in (md.Role or [])] == ['Canonical', 'Solo']  # A+B merged to one, deduped
+    assert [g.tag for g in (md.Genre or [])] == ['KEEP']
+    assert [r.tag for r in (md.Role or [])] == ['Canonical', 'Solo']
 
 
 def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -85,7 +83,7 @@ def test_reapply_text_rules_recases_studio_tagline_collections(monkeypatch: pyte
     md = resp.MediaContainer.Metadata[0]
     assert md.studio == 'Word of The Day'
     assert md.tagline == 'Lady of The Manor'
-    assert [c.tag for c in md.Collection or []] == ['Word of The Day']  # recased + deduped
+    assert [c.tag for c in md.Collection or []] == ['Word of The Day']
 
 
 def test_reapply_text_rules_recases_title_and_titlesort() -> None:
@@ -120,7 +118,7 @@ def test_backfill_metadata_attrs_adds_new_fields() -> None:
     assert md.isAdult is True
     assert md.titleSort == 'Cool Scene'
     assert [r.order for r in md.Role or []] == [0, 1]
-    assert mc.backfill_metadata_attrs(resp) is False  # idempotent
+    assert mc.backfill_metadata_attrs(resp) is False
 
 
 def _resp(
@@ -156,17 +154,16 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
         studio='Brazzers',
         tagline='Baby Got Boobs',
         thumb='https://host/images/proxy?url=https%3A%2F%2Fcdn.example%2Fp.jpg',
-        role_thumb='https://host/images/local/actor.jane_female.jpg',  # cached actor -> keep
+        role_thumb='https://host/images/local/actor.jane_female.jpg',
     )
     assert await mc.write('Brazzers', 'curid123', resp) is True
 
     cached = mc.read('Brazzers', 'curid123')
     assert cached is not None
     md = cached['MediaContainer']['Metadata'][0]
-    # project1service is an 'aggregator' layout: <scraper>/<studio>/<sub-site>, served at /cache.
     assert '/cache/project1service/brazzers/baby-got-boobs/' in md['thumb'] and '/images/cache/' not in md['thumb']
-    assert md['thumb'].endswith('/images/poster-00.jpg')  # images live in an images/ subdir
-    assert md['Role'][0]['thumb'].endswith('/images/local/actor.jane_female.jpg')  # untouched
+    assert md['thumb'].endswith('/images/poster-00.jpg')
+    assert md['Role'][0]['thumb'].endswith('/images/local/actor.jane_female.jpg')
     downloaded = list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*/images/poster-00.jpg'))  # type: ignore[attr-defined]
     assert downloaded and downloaded[0].read_bytes() == b'POSTER'
 
@@ -190,22 +187,19 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     resp = _resp(
         studio='DickDrainers',
         thumb='https://host/images/proxy?url=https%3A%2F%2Fcdn.example%2Fp.jpg',
-        role_thumb='https://tunnel-a:1/images/local/actor.jane_female.jpg',  # absolute, like an old snapshot
+        role_thumb='https://tunnel-a:1/images/local/actor.jane_female.jpg',
     )
     assert await mc.write('DickDrainers', 's1', resp) is True
 
-    # On disk: metadata image -> /cache/ path; people image -> host-relative.
     raw = json.loads(next(Path(str(tmp_path)).rglob('meta.json')).read_text(encoding='utf-8'))
     rmd = raw['MediaContainer']['Metadata'][0]
     assert rmd['thumb'].startswith('/cache/')
     assert rmd['Role'][0]['thumb'] == '/images/local/actor.jane_female.jpg'
 
-    # Read: metadata follows base_url, people follows the People base.
     md = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
     assert md['thumb'].startswith('http://tunnel-a:1/cache/')
     assert md['Role'][0]['thumb'] == 'http://10.0.0.5:3000/images/local/actor.jane_female.jpg'
 
-    # Change both bases -> both re-point on the next read.
     monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-b:2'))
     monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://localhost:3000')
     md2 = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
@@ -217,19 +211,15 @@ async def test_layout_per_registry_type(tmp_path: pytest.TempPathFactory, monkey
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
-    # 'aggregator' (project1service): <scraper>/<studio>/<sub-site>.
     assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
     assert list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*/meta.json'))  # type: ignore[attr-defined]
 
-    # 'network' (Strike3): <scraper>/<studio>, no sub-site.
     assert await mc.write('Vixen', 'v1', _resp(studio='Vixen')) is True
     assert list(tmp_path.glob('strike3/vixen/*/meta.json'))  # type: ignore[attr-defined]
 
-    # 'auto' multi-site scraper, sub-site == studio (5Kporn flagship) -> 5kporn/5kporn.
     assert await mc.write('5Kporn', 'p1', _resp(studio='5Kporn')) is True
     assert list(tmp_path.glob('5kporn/5kporn/*/meta.json'))  # type: ignore[attr-defined]
 
-    # 'auto' multi-site scraper, distinct sub-site -> 5kporn/5kteens.
     assert await mc.write('5Kteens', 't1', _resp(studio='5Kporn', tagline='5Kteens')) is True
     assert list(tmp_path.glob('5kporn/5kteens/*/meta.json'))  # type: ignore[attr-defined]
 
@@ -267,17 +257,17 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
     key = entry['key']
     assert mc.purge(key) is True
     assert mc.read('Brazzers', 'curid123') is None
-    assert mc.purge(key) is False  # already gone
+    assert mc.purge(key) is False
 
 
 async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.utils.people.types import PersonLookupContext, PhotoHit
 
-    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')  # use the raw URL, skip local download
-    monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')  # no IAFD lookup
-    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')  # keep male actors (don't skip Mandingo)
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    (Path(str(tmp_path)) / 'actor.kira-noir_female.jpg').write_bytes(b'x')  # present file -> thumb kept
+    (Path(str(tmp_path)) / 'actor.kira-noir_female.jpg').write_bytes(b'x')
 
     photos = {
         'Mandingo': PhotoHit(url='https://cdn.example/mandingo.jpg', gender='male'),
@@ -302,11 +292,11 @@ async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPa
                         'guid': 'g',
                         'title': 'T',
                         'Role': [
-                            {'tag': 'Mandingo'},  # missing thumb -> should backfill
-                            {'tag': 'Kira Noir', 'thumb': '/images/local/actor.kira-noir_female.jpg'},  # has thumb -> untouched
+                            {'tag': 'Mandingo'},
+                            {'tag': 'Kira Noir', 'thumb': '/images/local/actor.kira-noir_female.jpg'},
                         ],
-                        'Director': [{'tag': 'Greg Lansky'}],  # missing thumb -> should backfill
-                        'Producer': [{'tag': 'Jane Producer'}],  # missing thumb -> should backfill
+                        'Director': [{'tag': 'Greg Lansky'}],
+                        'Producer': [{'tag': 'Jane Producer'}],
                     },
                 ],
             }
@@ -324,7 +314,7 @@ async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPa
 
 async def test_backfill_noop_when_all_thumbs_present(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    (Path(str(tmp_path)) / 'a.jpg').write_bytes(b'x')  # the referenced cache file exists -> not stale
+    (Path(str(tmp_path)) / 'a.jpg').write_bytes(b'x')
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -340,13 +330,12 @@ async def test_backfill_noop_when_all_thumbs_present(tmp_path: pytest.TempPathFa
 
 
 async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    # A present /images/local/ thumb whose file was purged is treated as missing and re-resolved.
     from app.utils.people.types import PersonLookupContext, PhotoHit
 
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))  # empty -> the referenced file is absent
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
 
     async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
         return PhotoHit(url='https://cdn.example/greg-new.jpg', gender='male') if name == 'Greg Lansky' else PhotoHit(url='')
@@ -372,7 +361,7 @@ async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPath
     )
     assert await mc.backfill_people_images(resp, 'TestSite') is True
     d = resp.MediaContainer.Metadata[0].Director
-    assert d is not None and d[0].thumb and 'greg-new.jpg' in d[0].thumb  # re-downloaded, not the dead link
+    assert d is not None and d[0].thumb and 'greg-new.jpg' in d[0].thumb
 
 
 def _md_resp(title: str, tagline: str) -> PlexMetadataResponse:
@@ -383,17 +372,17 @@ def _md_resp(title: str, tagline: str) -> PlexMetadataResponse:
 
 def test_data18_remap_needed_flags_added_or_changed_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
-    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # mapping_slug -> a mapped value
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
 
-    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')  # nothing recorded yet
+    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
     assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is True
 
     monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: 'https://www.data18.com/scenes/1301931')
-    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False  # fingerprint already current
+    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False
 
     unmapped = _md_resp('Some Unmapped Scene', 'Brazzers Exxtra')
     monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
-    assert mc.data18_remap_needed(unmapped, 'Brazzers', 'cur') is False  # no mapping -> nothing to do
+    assert mc.data18_remap_needed(unmapped, 'Brazzers', 'cur') is False
 
 
 def test_data18_remap_needed_off_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -419,17 +408,17 @@ def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch:
     _snapshot(tmp_path, old_rel, to_rating_key(old_cur, 'Brazzers'))
     _snapshot(tmp_path, new_rel, to_rating_key(new_cur, 'Brazzers'))
 
-    assert mc.duplicate_entries() == [old_rel]  # only the superseded sub-site-less side
+    assert mc.duplicate_entries() == [old_rel]
     assert mc.purge_duplicates() == 1
     assert not (tmp_path / old_rel).exists()
-    assert (tmp_path / new_rel).exists()  # the sub-site entry is kept
+    assert (tmp_path / new_rel).exists()
 
 
 def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     old_cur = b64url_encode('3870731|scene|2015-09-24')
     _snapshot(tmp_path, f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}', to_rating_key(old_cur, 'Brazzers'))
-    assert mc.duplicate_entries() == []  # no twin -> not provably a duplicate
+    assert mc.duplicate_entries() == []
 
 
 def test_reapply_text_rules_normalizes_summary(monkeypatch: pytest.MonkeyPatch) -> None:

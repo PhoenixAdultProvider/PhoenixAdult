@@ -26,7 +26,7 @@ async def test_search_parses_scene_cards() -> None:
     assert len(results) == 1
     assert results[0].title == 'Hand Job'
     assert results[0].scene_url == 'https://www.finishesthejob.com/scene/manojob/hand-job/'
-    assert results[0].subsite == 'ManoJob'  # sub-brand from the card-footer link text
+    assert results[0].subsite == 'ManoJob'
 
 
 @respx.mock

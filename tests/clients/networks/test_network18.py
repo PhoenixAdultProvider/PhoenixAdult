@@ -32,7 +32,7 @@ async def test_search() -> None:
     }
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
     results = await Network18Client().search(_ctx())
-    assert len(results) == 1  # MODEL filtered out
+    assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert Network18Client().decode(results[0].cur_id) == 'model1:scene7'
     assert results[0].thumb_url == 'https://cdn/t.jpg'
@@ -67,10 +67,10 @@ async def test_detail() -> None:
     detail = await Network18Client().fetch_scene_detail('model1:scene7', SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # trailing period added
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Fit18'
     assert detail.collections == ['Fit18']
-    assert detail.genres == ['Young', 'Gym']  # per-site static genres
+    assert detail.genres == ['Young', 'Gym']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.actors[0].gender == 'female'

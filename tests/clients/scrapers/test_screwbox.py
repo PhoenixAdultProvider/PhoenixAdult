@@ -48,7 +48,7 @@ async def test_detail_fields_actors_images() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Screwbox'
     assert detail.release_date == '2021-06-06'
-    assert detail.genres == ['Anal', 'POV']  # title-cased
-    assert [a.name for a in detail.actors] == ['Alice']  # title-cased
+    assert detail.genres == ['Anal', 'POV']
+    assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.sb.com/alice.jpg'
     assert detail.raw_image_urls == ['https://cdn.sb.com/poster.jpg']

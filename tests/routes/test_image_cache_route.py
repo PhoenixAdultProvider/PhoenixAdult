@@ -18,4 +18,4 @@ def test_cache_route_serves_and_images_prefix_is_gone(tmp_path: pytest.TempPathF
 
     assert client.get('/images/cache/brazzers/baby-got-boobs/abc/images/poster-00.jpg').status_code == 404
     assert client.get('/cache/brazzers/baby-got-boobs/abc/images/missing.jpg').status_code == 404
-    assert client.get('/cache/brazzers/evil.txt').status_code == 400  # bad extension
+    assert client.get('/cache/brazzers/evil.txt').status_code == 400

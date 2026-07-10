@@ -38,9 +38,9 @@ async def test_direct_clip_search() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, text=_page(_CLIP)))
     results = await Clips4SaleClient().search(_ctx('57445 99999999'))
     assert len(results) == 1
-    assert results[0].title == 'Cool Scene'  # quality/filetype noise stripped
+    assert results[0].title == 'Cool Scene'
     assert results[0].score == 100
-    assert results[0].display_date == '2021-03-04'  # MM/dd/yy
+    assert results[0].display_date == '2021-03-04'
 
 
 @respx.mock
@@ -50,11 +50,11 @@ async def test_detail() -> None:
     detail = await Clips4SaleClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
-    assert detail.summary == 'A summary.'  # tags stripped, --SCREEN SIZE cut
+    assert detail.summary == 'A summary.'
     assert detail.studio == 'Clips4Sale'
     assert detail.tagline == 'My Studio'
     assert detail.release_date == '2021-03-04'
-    assert detail.genres == ['teen']  # 'cherry' removed by the 57445 rule
+    assert detail.genres == ['teen']
     assert detail.actors == []
     assert 'https://cdn/p.jpg' in (detail.raw_image_urls or [])
     assert 'http://imagecdn.clips4sale.com/accounts99/57445/clip_images/previewlg_99999999.jpg' in (detail.raw_image_urls or [])

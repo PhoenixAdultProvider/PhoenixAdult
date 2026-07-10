@@ -51,9 +51,9 @@ async def test_detail_actors_date_genres() -> None:
     detail = await ScrewMeTooClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.title == 'Wild Screw'
-    assert detail.summary == 'About A blurb.'  # 'Read More ...Read Less' stripped
+    assert detail.summary == 'About A blurb.'
     assert detail.studio == 'ScrewMeToo'
-    assert detail.release_date == '2021-08-08'  # recovered from model page back-link
+    assert detail.release_date == '2021-08-08'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.smt.com/alice.jpg'
