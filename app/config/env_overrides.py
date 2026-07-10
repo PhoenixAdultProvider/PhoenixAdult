@@ -48,10 +48,6 @@ def load_overrides() -> None:
         os.environ[key] = value
 
 
-def get_overrides() -> dict[str, str]:
-    return dict(_overrides)
-
-
 def is_overridden(key: str) -> bool:
     return key in _overrides
 

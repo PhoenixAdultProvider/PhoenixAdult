@@ -297,7 +297,7 @@ class _TitleCaseEngine:
         return output
 
 
-def title_case(text: str, *, type: str | None = None, site_name: str | None = None, site_id: str | None = None, scraper_type: str | None = None) -> str:
+def title_case(text: str, *, type: str | None = None, site_name: str | None = None, scraper_type: str | None = None) -> str:
     if not text:
         return text
     normalized = normalize_text(text)

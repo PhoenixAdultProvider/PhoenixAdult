@@ -12,13 +12,3 @@ def safe_join(root: str | Path, *parts: str) -> Path | None:
     except (ValueError, OSError):
         return None
     return resolved if resolved.is_relative_to(base) else None
-
-
-def is_within(root: str | Path, path: str | Path) -> bool:
-    """True if ``path`` resolves to ``root`` or a descendant of it."""
-    base = Path(root).resolve()
-    try:
-        target = Path(path).resolve()
-    except (ValueError, OSError):
-        return False
-    return target.is_relative_to(base)

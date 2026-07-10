@@ -43,10 +43,6 @@ class _Env:
         return os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy') or os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
 
     @property
-    def no_proxy_raw(self) -> str:
-        return os.environ.get('NO_PROXY') or os.environ.get('no_proxy') or ''
-
-    @property
     def disable_auto_match(self) -> bool:
         return _flag('DISABLE_AUTO_MATCH', 'false') != 'false'
 
