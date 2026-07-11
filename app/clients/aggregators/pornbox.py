@@ -6,10 +6,27 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.processors.title_case import title_case
+from app.utils.processors.title_case import collapse_initial_pairs, expand_initial_pairs, title_case
 
 _MATCH_ID_RE = re.compile(r'(\w+\d)$')
 _TAG_RE = re.compile(r'<[^>]*>')
+
+
+def _clean_summary(summary: str) -> str:
+    """Pornbox summaries arrive shouting; lower-case then rebuild sentence casing
+    (the legacy bundle's PAutils.cleanSummary)."""
+    s = summary.lower().capitalize()
+    s = s.replace('\u201c', '"').replace('\u201d', '"').replace('\u2019', "'").replace('\xa0', ' ')
+    s = re.sub(r'(?i)(?<![A-Za-z])W/', 'w/', s)
+    s = re.sub(r'(?i)([!:?.])(?=\w)(?!(?:co|net|com|org|porn|xxx)\b)(?!E\d)', r'\1 ', s)
+    s = re.sub(r"\s+(?=[.,!:')])", '', s)
+    s = re.sub(r'(?<=[#(])\s+', '', s)
+    s = re.sub(r'(?<!vs\.)([!:?.])(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), s)
+    s = collapse_initial_pairs(s)
+    s = expand_initial_pairs(s)
+    if not re.search(r'[!.?]$', s):
+        s += '.'
+    return s
 
 
 class PornboxClient(Client):
@@ -82,7 +99,10 @@ class PornboxClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene) -> str | None:
         raw = self._data(scene).get('small_description')
-        return _TAG_RE.sub('', raw).strip() or None if raw else None
+        if not raw:
+            return None
+        stripped = _TAG_RE.sub('', raw).strip()
+        return _clean_summary(stripped) if stripped else None
 
     async def fetch_studio(self, scene: LoadedScene) -> str | None:
         return 'Pornbox'

@@ -66,6 +66,23 @@ _ROMAN_NUMERALS = frozenset({
 _SIZE_CODES = frozenset({'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl'})
 # fmt: on
 
+_INITIAL_PAIRS = frozenset({'aj', 'tj'})
+_INITIAL_PAIR_RE = re.compile(
+    r'(?<![\w.])(' + '|'.join(sorted(_INITIAL_PAIRS)) + r")(?='[sS](?![\w.])|\s|$)",
+    re.IGNORECASE,
+)
+_INITIAL_PAIR_COLLAPSE_RE = re.compile(r'(?<![\w.])([A-Za-z])\.\s+([A-Za-z])\.(?![\w.])')
+
+
+def collapse_initial_pairs(text: str) -> str:
+    """Join a spaced initial pair into dotted form (A. J. -> A.J.), upper-casing both."""
+    return _INITIAL_PAIR_COLLAPSE_RE.sub(lambda m: f'{m.group(1).upper()}.{m.group(2).upper()}.', text)
+
+
+def expand_initial_pairs(text: str) -> str:
+    """Dot standalone initial-pair names (aj -> A.J., tj -> T.J.), possessives included."""
+    return _INITIAL_PAIR_RE.sub(lambda m: '.'.join(m.group(1).upper()) + '.', text)
+
 
 # ── Patterns ──────────────────────────────────────────────────────────────────
 _SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
@@ -283,14 +300,16 @@ class _TitleCaseEngine:
         output = re.sub(r'\S+[\])"~:]', lambda m: _capitalize(m.group(0)), output)
         output = re.sub(r'\S+$', lambda m: _capitalize(m.group(0)), output)
         output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
-        output = re.sub(r'^(\w\.)\s(\w\.)', r'\1\2', output)
         output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
+        output = collapse_initial_pairs(output)
         output = _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
         output = _POSSESSIVE_S_RE.sub("'", output)
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
         output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
         if self.type == 'title':
             output = normalize_sequence_separator(output)
+        output = expand_initial_pairs(output)
+        output = re.sub(r'(?<![A-Za-z])W/', 'w/', output)
         for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
 

@@ -235,3 +235,21 @@ def test_title_case_rotates_a_trailing_article_to_the_front() -> None:
     assert title_case('Big Movie, The') == 'The Big Movie'
     assert title_case('Whore of Wall Street, A') == 'A Whore of Wall Street'
     assert title_case('Movie, The (Disc 2)') != 'The Movie (Disc 2)'
+
+
+@pytest.mark.parametrize(
+    ('raw', 'expected'),
+    [
+        ("AJ's Fantasy Anal Sex", "A.J.'s Fantasy Anal Sex"),
+        ("aj's fantasy anal sex", "A.J.'s Fantasy Anal Sex"),
+        ('aj applegate rides', 'A.J. Applegate Rides'),
+        ('tj cummings returns', 'T.J. Cummings Returns'),
+        ('AJS FANTASY ANAL SEX', 'AJS FANTASY ANAL SEX'),
+        ('Ajax Attacks', 'Ajax Attacks'),
+        ('Fantasy With A. J. Tonight', 'Fantasy with A.J. Tonight'),
+        ('W/ My Best Friend', 'w/ My Best Friend'),
+        ('Fun w/AJ', 'Fun w/ A.J.'),
+    ],
+)
+def test_title_case_initial_pair_names(raw: str, expected: str) -> None:
+    assert title_case(raw) == expected
