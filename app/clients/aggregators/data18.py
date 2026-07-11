@@ -11,7 +11,7 @@ from parsel import Selector
 
 from app.clients.base import Client
 from app.config.env import env
-from app.utils.helpers.helpers import append_unique, slugify
+from app.utils.helpers.helpers import append_unique, load_site_json, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
@@ -21,37 +21,7 @@ _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 
-DATA18_MANUAL_MAPPINGS: dict[str, str | list[str]] = {
-    '169646': 'thats-better-than-stealing-it-herfreshmanyear',
-    '1114179': 'slut-wars-the-vagina-squirts-back-shesgonnasquirt',
-    '1120241': 'shaming-the-shooter-cfnm',
-    '1127813': 'la-madrastra-da-una-mano-mommygotboobs',
-    '1129579': 'companeros-teenslikeitbig',
-    '1132200': 'the-whore-of-wall-street-ep-1-a-whore-is-born-zzseries',
-    '1133753': 'the-whore-of-wall-street-ep-2-the-anal-office-queen-zzseries',
-    '1134102': 'the-whore-of-wall-street-ep-4-double-teamed-on-the-high-seas-zzseries',
-    '1134439': 'the-whore-of-wall-street-ep-5-one-last-orgy-zzseries',
-    '1134892': 'el-doctor-primera-parte-pornstarslikeitbig',
-    '1136052': 'sensual-sexual-jane-brazzersexxtra',
-    '1146768': 'el-cruce-bigtitsinuniform',
-    '1150082': 'vice-city-vacation-part-two-zzseries',
-    '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
-    '1151691': 'phoenix-vs-piper-hotandmean',
-    '1152808': 'blind-experiment-doctoradventures',
-    '1157334': 'california-creaming-pornstarslikeitbig',
-    '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
-    '1159876': 'halftime-show-brazzerslive',
-    '1162015': 'yoga-freaks-episode-four-brazzersexxtra',
-    '1165245': 'lets-get-facials-2-brazzersexxtra',
-    '1233354': ['valentines-day-affair-best-moments-brazzerslive', 'valentines-day-affair-unseen-moments-brazzerslive'],
-    '1241238': 'nicoles-bent-over-backwards-daywithapornstar',
-    '1290942': 'horny-milf-attracted-to-couple-fucking-momsincontrol',
-    '1301931': 'live-and-on-location-brazzersexxtra',
-    '1313219': 'delicious-firsts-hussiepass',
-    '1341212': 'home-for-the-holidays-momswap',
-    '1341218': 'the-vamp-next-door-momswap',
-    '1349311': 'thanksgiving-the-hijab-way-hijabhookups',
-}
+DATA18_MANUAL_MAPPINGS: dict[str, str | list[str]] = load_site_json(__file__, 'data18_manual_mappings')
 
 
 def mapping_slug(title: str, sub_site: str | None) -> str | None:

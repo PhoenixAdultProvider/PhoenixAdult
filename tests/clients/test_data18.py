@@ -102,14 +102,18 @@ def test_manual_mapping_list_values_resolve_to_the_shared_scene() -> None:
 
 
 def test_manual_mappings_have_no_duplicate_keys() -> None:
-    import ast
     import collections
+    import json
     import pathlib
 
-    src = pathlib.Path('app/clients/aggregators/data18.py').read_text(encoding='utf-8')
-    tree = ast.parse(src)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Dict) and len(node.keys) > 10:
-            keys = [k.value for k in node.keys if isinstance(k, ast.Constant)]
-            dupes = [k for k, n in collections.Counter(keys).items() if n > 1]
-            assert not dupes, f'duplicate mapping keys silently shadow earlier entries: {dupes}'
+    raw = pathlib.Path('app/clients/aggregators/_data/json/data18_manual_mappings.json').read_text(encoding='utf-8')
+    seen: collections.Counter[str] = collections.Counter()
+
+    def hook(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        for k, _ in pairs:
+            seen[k] += 1
+        return dict(pairs)
+
+    json.loads(raw, object_pairs_hook=hook)
+    dupes = [k for k, n in seen.items() if n > 1]
+    assert not dupes, f'duplicate mapping keys silently shadow earlier entries: {dupes}'
