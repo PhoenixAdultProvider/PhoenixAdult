@@ -78,6 +78,12 @@ def test_match_result_folds_filename_subsite_into_cur_id() -> None:
     assert split_subsite(b64url_decode(parse_rating_key(same.ratingKey)['cur_id']))[1] is None  # type: ignore[arg-type]
 
 
+def test_match_result_label_uses_registry_casing() -> None:
+    raw = SearchResult(title='Horny MILF', scene_url='https://x/1', cur_id=pack_cur_id(['4655051|scene']), subsite='Moms in control')
+    result = MetadataMapper().to_match_result(raw, 'Brazzers', 100.0, 'com.plexapp.agents.x')
+    assert '[Moms in Control]' in result.title
+
+
 async def test_metadata_tagline_chain_scrape_wins() -> None:
     tagline, collections = await _to_meta(_detail('Brazzers', tagline='Real Wife Stories'), filename_site='Big Tits at School')
     assert tagline == 'Real Wife Stories' and collections == ['Real Wife Stories']

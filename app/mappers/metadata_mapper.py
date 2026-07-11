@@ -51,7 +51,7 @@ class MetadataMapper:
         search_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
         rating_key = to_rating_key(embed_subsite(raw.cur_id, search_sub), site_name, date)
         display_date = (raw.display_date or '').strip()
-        label = raw.subsite or filename_site or site_name
+        label = normalize_studio(raw.subsite or filename_site or site_name)
         title = f'{title_case(raw.title, site_name=site_name, scraper_type=scraper_type)} [{label}]' + (f' {display_date}' if display_date else '')
 
         return PlexMatchResult(
