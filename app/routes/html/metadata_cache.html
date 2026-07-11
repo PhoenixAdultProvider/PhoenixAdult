@@ -123,7 +123,6 @@
     const ALL = __ENTRIES_JSON__;
     const DUP_COUNT = __DUP_COUNT__;
 
-    // Derive date parts (YYYY-MM-DD); format mtime for display
     ALL.forEach(e => {
       e.year = e.date ? e.date.slice(0, 4) : '';
       e.month = e.date ? e.date.slice(5, 7) : '';
@@ -133,14 +132,12 @@
         : '';
     });
 
-    // Populate studio dropdown
     const studios = [...new Set(ALL.map(e => e.studio).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     const studioSel = document.getElementById('f-studio');
     studios.forEach(s => {
       const o = document.createElement('option'); o.value = s; o.textContent = s; studioSel.appendChild(o);
     });
 
-    // Populate tagline dropdown with each distinct tagline + a Blank bucket
     const taglines = [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     const taglineSel = document.getElementById('f-tagline');
     taglines.forEach(t => {
@@ -150,7 +147,6 @@
       const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; taglineSel.appendChild(o);
     }
 
-    // Populate collection dropdown — an entry can belong to several collections
     const collections = [...new Set(ALL.flatMap(e => e.collections || []))].sort((a, b) => a.localeCompare(b));
     const collectionSel = document.getElementById('f-collection');
     collections.forEach(c => {
@@ -160,7 +156,6 @@
       const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; collectionSel.appendChild(o);
     }
 
-    // Populate Year / Month / Day dropdowns from distinct date parts (+ Blank where applicable)
     const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     function fillDatePart(selId, values, labelFn, hasBlank) {
       const sel = document.getElementById(selId);
@@ -207,7 +202,6 @@
       return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // One predicate per dropdown facet, plus the value an entry maps to for that facet.
     const FACETS = {
       'f-studio':  {pred: (e, v) => e.studio === v,                                val: e => e.studio},
       'f-year':    {pred: (e, v) => v === '__blank__' ? !e.date : e.year === v,    val: e => e.date ? e.year : '__blank__'},
@@ -266,7 +260,6 @@
       });
 
       rows.sort((a, b) => {
-        // mtime is numeric; everything else string
         const av = sortKey === 'mtime' ? (a.mtime ?? 0) : String(a[sortKey] ?? '');
         const bv = sortKey === 'mtime' ? (b.mtime ?? 0) : String(b[sortKey] ?? '');
         return av < bv ? -sortDir : av > bv ? sortDir : 0;
@@ -327,7 +320,6 @@
       btn.classList.toggle('active', DUP_COUNT > 0);
     })();
 
-    // Boot with default sort indicator showing
     applyHeaderIndicator();
     render();
   </script>
