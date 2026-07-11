@@ -8,6 +8,7 @@ from app.clients.aggregators.javdatabase import JAVDatabaseClient
 from app.clients.aggregators.javlibrary import JavLibraryClient
 from app.clients.aggregators.metadataapi import MetadataAPIClient
 from app.clients.aggregators.pornbox import PornboxClient
+from app.clients.aggregators.project1service import Project1ServiceClient
 from app.clients.base import Client
 from app.clients.networks.abbywinters import AbbyWintersClient
 from app.clients.networks.adultempirecash import AdultEmpireCashClient
@@ -63,7 +64,6 @@ from app.clients.networks.porndoepremium import PorndoePremiumClient
 from app.clients.networks.pornpros import PornProsClient
 from app.clients.networks.pornworld import PornWorldClient
 from app.clients.networks.private import PrivateClient
-from app.clients.networks.project1service import Project1ServiceClient
 from app.clients.networks.puffy import PuffyClient
 from app.clients.networks.purecfnm import PureCFNMClient
 from app.clients.networks.queensnake import QueenSnakeClient

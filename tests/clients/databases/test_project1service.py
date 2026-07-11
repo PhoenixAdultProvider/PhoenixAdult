@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.project1service as p1_module
+import app.clients.aggregators.project1service as p1_module
+from app.clients.aggregators.project1service import Project1ServiceClient, _service_url
 from app.clients.base import SceneContext, SearchContext
-from app.clients.networks.project1service import Project1ServiceClient, _service_url
 from app.registry import find_site
 
 SITE = find_site('Brazzers')
@@ -122,3 +122,37 @@ async def test_search_forces_brazzers_live_subsite() -> None:
     results = await Project1ServiceClient().search(ctx)
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert cool.subsite == 'Brazzers Live'
+
+
+@respx.mock
+async def test_scene_id_hit_skips_the_text_search() -> None:
+    _token_head()
+    hit = {**_RELEASE, 'id': 3940141, 'title': "The Coach's Wife", 'collections': [{'name': 'Brazzers'}]}
+    id_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': [hit]}))
+    search_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': []}))
+    results = await Project1ServiceClient().search(_ctx('3940141 the coachs wife'))
+    assert id_route.called
+    assert not search_route.called
+    assert any(r.score == 100 and r.title == "The Coach's Wife" for r in results)
+
+
+@respx.mock
+async def test_scene_id_miss_falls_back_to_the_text_search() -> None:
+    _token_head()
+    id_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': []}))
+    search_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
+    results = await Project1ServiceClient().search(_ctx('3940141 cool scene'))
+    assert id_route.called
+    assert search_route.called
+    assert any(r.title == 'Cool Scene' for r in results)
+
+
+@respx.mock
+async def test_scene_id_near_miss_still_searches_and_dedupes() -> None:
+    _token_head()
+    other = {**_RELEASE, 'id': 3940142}
+    respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': [other]}))
+    respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': [other]}))
+    results = await Project1ServiceClient().search(_ctx('3940141 cool scene'))
+    assert len(results) == 4
+    assert all(r.score < 100 for r in results)

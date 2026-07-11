@@ -7,6 +7,7 @@ from app.registry.selectors.aggregators.javbus import JAVBUS_SITES
 from app.registry.selectors.aggregators.javdatabase import JAVDATABASE_SITES
 from app.registry.selectors.aggregators.javlibrary import JAVLIBRARY_SITES
 from app.registry.selectors.aggregators.metadataapi import METADATAAPI_SITES
+from app.registry.selectors.aggregators.project1service import PROJECT1SERVICE_SITES
 from app.registry.selectors.networks.abbywinters import ABBYWINTERS_SITES
 from app.registry.selectors.networks.adultempirecash import ADULTEMPIRECASH_SITES
 from app.registry.selectors.networks.adultprime import ADULTPRIME_SITES
@@ -62,7 +63,6 @@ from app.registry.selectors.networks.porndoepremium import PORNDOEPREMIUM_SITES
 from app.registry.selectors.networks.pornpros import PORNPROS_SITES
 from app.registry.selectors.networks.pornworld import PORNWORLD_SITES
 from app.registry.selectors.networks.private import PRIVATE_SITES
-from app.registry.selectors.networks.project1service import PROJECT1SERVICE_SITES
 from app.registry.selectors.networks.puba import PUBA_SITES
 from app.registry.selectors.networks.puffy import PUFFY_SITES
 from app.registry.selectors.networks.purecfnm import PURECFNM_SITES

@@ -36,6 +36,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1150082': 'vice-city-vacation-part-two-zzseries',
     '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
     '1151691': 'phoenix-vs-piper-hotandmean',
+    '1290942': 'horny-milf-attracted-to-couple-fucking-milfslikeitbig',
     '1157334': 'california-creaming-pornstarslikeitbig',
     '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
     '1162015': 'yoga-freaks-episode-four-brazzersexxtra',

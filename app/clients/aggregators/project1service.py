@@ -114,8 +114,30 @@ class Project1ServiceClient(Client):
         match_target_key = _normalize(ctx.search_site or ctx.site_info.name)
         forced_sub = _FORCED_SUBSITES.get(match_target_key)
         results: list[SearchResult] = []
+        seen: set[str] = set()
+
+        if scene_id:
+            await self._search_phase(ctx, headers, f'id={quote(scene_id)}', scene_id, q, match_target_key, forced_sub, results, seen)
+            if any(r.score == 100 for r in results):
+                return results
+        if q or not scene_id:
+            await self._search_phase(ctx, headers, f'search={quote(q)}', scene_id, q, match_target_key, forced_sub, results, seen)
+        return results
+
+    async def _search_phase(
+        self,
+        ctx: SearchContext,
+        headers: dict[str, str],
+        query_param: str,
+        scene_id: str | None,
+        q: str,
+        match_target_key: str,
+        forced_sub: str | None,
+        results: list[SearchResult],
+        seen: set[str],
+    ) -> None:
         for type_ in _SEARCH_TYPES:
-            params = f'type={type_}&id={quote(scene_id)}' if scene_id and not q else f'type={type_}&search={quote(q)}'
+            params = f'type={type_}&{query_param}'
             url = f'{_DEFAULT_API_BASE}/v2/releases?{params}'
             body = await self.fetch_json(url, FetchCtx(capture=ctx.capture), headers=headers, label=f'GET {url}')
             releases = body.get('result') or [] if isinstance(body, dict) else []
@@ -144,6 +166,9 @@ class Project1ServiceClient(Client):
                     score -= 10
 
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
+                if composite in seen:
+                    continue
+                seen.add(composite)
                 result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None)
 
                 results.append(
@@ -159,8 +184,6 @@ class Project1ServiceClient(Client):
                         subsite=result_sub,
                     )
                 )
-
-        return results
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         parts = payload.split('|')
