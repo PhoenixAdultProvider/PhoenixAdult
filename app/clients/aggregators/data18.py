@@ -275,6 +275,7 @@ class Data18Client:
         try:
             r = await self.http.get(url)
             if r.status_code >= 400:
+                logger.warn('data18', f'page fetch {url} -> HTTP {r.status_code}')
                 return None
             return Selector(text=r.text)
         except httpx2.HTTPError as err:

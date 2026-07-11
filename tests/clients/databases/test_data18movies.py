@@ -65,11 +65,11 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search:
 async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
-    respx.get('https://data18.com/movies/12345').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    respx.get('https://www.data18.com/movies/12345').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18MoviesClient().search(
         SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='12345', full_title='12345')
     )
-    direct = [r for r in results if r.scene_url == 'https://data18.com/movies/12345']
+    direct = [r for r in results if r.scene_url == 'https://www.data18.com/movies/12345']
     assert direct and direct[0].score == 100
     assert direct[0].title == 'Big Movie'
     assert direct[0].subsite == 'ZZ Series'
@@ -77,7 +77,7 @@ async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch, no_web_search: 
 
 @respx.mock
 async def test_detail() -> None:
-    url = 'https://data18.com/movies/12345'
+    url = 'https://www.data18.com/movies/12345'
     respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
     assert detail is not None
@@ -94,7 +94,7 @@ async def test_detail() -> None:
 
 @respx.mock
 async def test_detail_prefers_datetime_attribute() -> None:
-    url = 'https://data18.com/movies/12345'
+    url = 'https://www.data18.com/movies/12345'
     respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE_DATETIME))
     detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
     assert detail is not None
@@ -105,7 +105,7 @@ async def test_detail_prefers_datetime_attribute() -> None:
 
 @respx.mock
 async def test_detail_strips_reptyle_suffix_and_drops_echoed_subsite() -> None:
-    url = 'https://data18.com/movies/12345'
+    url = 'https://www.data18.com/movies/12345'
     respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE_REPTYLE))
     detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
     assert detail is not None
@@ -131,7 +131,7 @@ _SEARCH_ID_VS_TITLE = """<html><body>
 async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
-    respx.get('https://data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
+    respx.get('https://www.data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results = await Data18MoviesClient().search(
         SearchContext(title='Big Movie', encoded='Big+Movie', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Big Movie')
     )

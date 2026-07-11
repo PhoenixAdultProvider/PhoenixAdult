@@ -12,7 +12,7 @@ DATA18MOVIES_SITES: list[SiteInfo] = [
     make_site(
         name='Data18 Movies',
         provider_name=PROVIDER_NAME,
-        base_url='https://data18.com',
+        base_url='https://www.data18.com',
         search_path='/sys/live.php?index=&key=',
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,

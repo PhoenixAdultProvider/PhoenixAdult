@@ -13,7 +13,7 @@ def _data18_scenes(name: str) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
-        base_url='https://data18.com',
+        base_url='https://www.data18.com',
         search_path='/sys/live.php?index=&key=',
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
