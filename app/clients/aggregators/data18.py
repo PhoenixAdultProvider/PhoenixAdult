@@ -6,10 +6,10 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit
 
-import httpx2
 from dateutil import parser as date_parser
 from parsel import Selector
 
+from app.clients.base import Client
 from app.config.env import env
 from app.utils.helpers.helpers import append_unique, slugify
 from app.utils.helpers.html_helpers import first_attr
@@ -20,7 +20,6 @@ from app.utils.processors.title_case import convert_sequence_numbers
 _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
-_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
 DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '169646': 'thats-better-than-stealing-it-herfreshmanyear',
@@ -194,27 +193,18 @@ def _clean_thumb(u: str) -> str:
     return u.replace('/th8', '').replace('-th8', '')
 
 
-class Data18Client:
+class Data18Client(Client):
     def __init__(self) -> None:
-        self._http: httpx2.AsyncClient | None = None
+        super().__init__({'Referer': _BASE, 'Cookie': 'data_user_captcha=1'})
 
-    @property
-    def http(self) -> httpx2.AsyncClient:
-        if self._http is None:
-            self._http = httpx2.AsyncClient(
-                timeout=15.0,
-                verify=False,
-                follow_redirects=True,
-                headers={'User-Agent': _UA, 'Referer': _BASE, 'Cookie': 'data_user_captcha=1'},
-            )
-        return self._http
-
-    async def _fetch_search_page(self, clean_query: str, page: int) -> tuple[str, Selector]:
+    async def _fetch_search_page(self, clean_query: str, page: int) -> tuple[str, Selector] | None:
         from urllib.parse import quote
 
         url = f'{_SEARCH_URL_TPL}{quote(clean_query)}&key2={quote(clean_query)}&next=1&page={page}'
-        html = (await self.http.get(url)).text
-        return html, Selector(text=html)
+        loaded = await self.fetch_and_load(url, label=f'[data18] search "{clean_query}" p{page}')
+        if not loaded:
+            return None
+        return loaded['html'], loaded['sel']
 
     async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
         logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date}')
@@ -236,7 +226,10 @@ class Data18Client:
         query_clean = re.sub(r'\W', '', query).lower()
         min_accuracy = env.data18_accuracy
 
-        html, sel = await self._fetch_search_page(clean_query, 0)
+        page_zero = await self._fetch_search_page(clean_query, 0)
+        if not page_zero:
+            return None
+        html, sel = page_zero
         pages_match = re.search(r'pages:\s*(\d+)', html)
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, 50)
 
@@ -267,20 +260,20 @@ class Data18Client:
                     return href if href.startswith('http') else f'{_BASE}{href}'
 
             if page + 1 < num_pages:
-                _, sel = await self._fetch_search_page(clean_query, page + 1)
+                next_page = await self._fetch_search_page(clean_query, page + 1)
+                if not next_page:
+                    break
+                _, sel = next_page
 
         return None
 
     async def fetch_page(self, url: str) -> Selector | None:
-        try:
-            r = await self.http.get(url)
-            if r.status_code >= 400:
-                logger.warn('data18', f'page fetch {url} -> HTTP {r.status_code}')
-                return None
-            return Selector(text=r.text)
-        except httpx2.HTTPError as err:
-            logger.warn('data18', f'page fetch {url} failed ({err}) - possible IP ban')
+        loaded = await self.fetch_and_load(url, label=f'[data18] {url}')
+        if not loaded:
+            logger.warn('data18', f'page fetch {url} failed - possible IP ban')
             return None
+        sel: Selector = loaded['sel']
+        return sel
 
     @staticmethod
     def _thumbs_from_page(sel: Selector) -> list[str]:
@@ -292,12 +285,11 @@ class Data18Client:
 
     async def fetch_images(self, scene_url: str) -> list[str]:
         out: list[str] = []
-        try:
-            html = (await self.http.get(scene_url)).text
-        except httpx2.HTTPError as err:
-            logger.warn('data18', f'sceneURL fetch failed ({err}) - possible IP ban')
+        loaded = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
+        if not loaded:
+            logger.warn('data18', 'sceneURL fetch failed - possible IP ban')
             return out
-        sel = Selector(text=html)
+        sel = loaded['sel']
 
         id_match = re.search(r'/scenes/(\d+)', scene_url)
         scene_id = id_match.group(1) if id_match else ''
@@ -315,11 +307,10 @@ class Data18Client:
                 continue
 
             viewer_url = f'{_BASE}/sys/media_photos.php?s={scene_prefix}&scene={scene_suffix}&pic={gallery_id}'
-            try:
-                viewer_html = (await self.http.get(viewer_url)).text
-            except httpx2.HTTPError:
+            viewer_loaded = await self.fetch_and_load(viewer_url, label=f'[data18] gallery {gallery_id}')
+            if not viewer_loaded:
                 continue
-            viewer = Selector(text=viewer_html)
+            viewer = viewer_loaded['sel']
 
             for img in self._thumbs_from_page(viewer):
                 if '/th8_2' in img:
@@ -361,7 +352,10 @@ class Data18Client:
 
         out: list[Data18Candidate] = []
         seen: set[str] = set()
-        html, sel = await self._fetch_search_page(clean_query, 0)
+        page_zero = await self._fetch_search_page(clean_query, 0)
+        if not page_zero:
+            return out
+        html, sel = page_zero
         pages_match = re.search(r'pages:\s*(\d+)', html)
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, max_pages)
         path_segment = f'/{kind}/'
@@ -387,7 +381,10 @@ class Data18Client:
                 )
 
             if page + 1 < num_pages:
-                _, sel = await self._fetch_search_page(clean_query, page + 1)
+                next_page = await self._fetch_search_page(clean_query, page + 1)
+                if not next_page:
+                    break
+                _, sel = next_page
 
         return out
 
