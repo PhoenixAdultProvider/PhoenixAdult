@@ -89,14 +89,13 @@ def _gender_of(gender: str) -> str:
     return gender if gender in ('male', 'female', 'trans') else ''
 
 
-def _gender_buttons(filename: str, gender: str) -> str:
+def _gender_buttons(gender: str) -> str:
     cur = _gender_of(gender)
-    fn = html.escape(filename, quote=True)
     out = []
     for key, css, label in _GENDERS:
         active = ' active' if key == cur else ''
         dis = ' disabled' if key == cur else ''
-        out.append(f'<button class="g {css}{active}" onclick="setGender({fn!r}, \'{key}\')"{dis}>{label}</button>')
+        out.append(f'<button class="g {css}{active}" data-g="{key}"{dis}>{label}</button>')
     return f'<div class="gender"><span>Gender:</span>{"".join(out)}</div>'
 
 
@@ -116,20 +115,18 @@ def _card(entry: dict[str, Any]) -> str:
     fn = html.escape(filename, quote=True)
     if upstream:
         upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
-        restore_btn = (
-            f'<button class="restore" onclick="restore({fn!r})">Use original</button>' if cropped else '<button class="restore" disabled>Original kept</button>'
-        )
+        restore_btn = '<button class="restore">Use original</button>' if cropped else '<button class="restore" disabled>Original kept</button>'
     else:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
-    purge_btn = f'<button class="purge" onclick="purge({fn!r})">Purge</button>'
-    return f"""<div class="card {gcss}" data-type="{ctype}">
+    purge_btn = '<button class="purge">Purge</button>'
+    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{fn}">
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{ts}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}
       </div>
-      {_gender_buttons(filename, str(entry.get('gender', '')))}
+      {_gender_buttons(str(entry.get('gender', '')))}
       <div class="actions">{restore_btn}{purge_btn}</div>
     </div>"""
 
@@ -157,7 +154,7 @@ async def page(request: Request) -> HTMLResponse:
       .warn{{background:#3b1d1d;border:1px solid #b91c1c;padding:8px 12px;border-radius:6px}}
       .empty{{color:#94a3b8}}
       .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}}
-      .card{{background:#1e2433;border:1px solid #334155;border-left:5px solid #475569;border-radius:8px;padding:12px}}
+      .card{{background:#1e2433;border:1px solid #334155;border-left:5px solid #475569;border-radius:8px;padding:12px;display:none}}
       .card.gf{{border-left-color:#db2777;background:#241a20}}
       .card.gm{{border-left-color:#2563eb;background:#1a1f2e}}
       .card.gt{{border-left-color:#9333ea;background:#211a2e}}
@@ -215,9 +212,18 @@ async def page(request: Request) -> HTMLResponse:
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
         let n=0;
-        document.querySelectorAll('.card').forEach(c=>{{ const m=c.dataset.type===t; c.style.display=m?'':'none'; if(m)n++; }});
+        document.querySelectorAll('.card').forEach(c=>{{ const m=c.dataset.type===t; c.style.display=m?'block':'none'; if(m)n++; }});
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
       }}
+      document.addEventListener('click', e => {{
+        const b = e.target.closest('button');
+        if (!b || b.disabled) return;
+        const fn = b.closest('.card')?.dataset.fn;
+        if (!fn) return;
+        if (b.classList.contains('purge')) purge(fn);
+        else if (b.classList.contains('restore')) restore(fn);
+        else if (b.classList.contains('g')) setGender(fn, b.dataset.g);
+      }});
       const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
       const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
       showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
