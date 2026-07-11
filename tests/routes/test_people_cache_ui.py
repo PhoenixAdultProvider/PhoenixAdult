@@ -60,3 +60,17 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
 
     page = TestClient(create_app()).get('/people-cache?token=tok')
     assert 'display:none}' in page.text.split('.card{')[1].split('\n')[0]
+
+
+def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    from pathlib import Path
+
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'actors' / 'female'
+    d.mkdir(parents=True)
+    (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
+
+    page = TestClient(create_app()).get('/people-cache?token=tok')
+    assert 'data-cropped="0"' in page.text
+    assert 'id="cropToggle"' in page.text

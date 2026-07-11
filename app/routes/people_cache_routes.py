@@ -120,7 +120,7 @@ def _card(entry: dict[str, Any]) -> str:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
     purge_btn = '<button class="purge">Purge</button>'
-    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{fn}">
+    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{fn}" data-cropped="{1 if cropped else 0}">
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{ts}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
@@ -177,6 +177,7 @@ async def page(request: Request) -> HTMLResponse:
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
       .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
+      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
       .tab .cnt{{opacity:.65;font-size:11px}}
     </style></head><body>
     <h1>People Image Cache</h1>
@@ -184,7 +185,7 @@ async def page(request: Request) -> HTMLResponse:
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>PEOPLE_IMAGE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
-    <div class="tabs">{tabs}</div>
+    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {empty}
@@ -208,13 +209,24 @@ async def page(request: Request) -> HTMLResponse:
         const j = await post('/people-cache/purge', {{filename}});
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
+      let croppedOnly = false;
+      let curTab = '';
       function showTab(t){{
+        curTab = t;
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
         let n=0;
-        document.querySelectorAll('.card').forEach(c=>{{ const m=c.dataset.type===t; c.style.display=m?'block':'none'; if(m)n++; }});
+        document.querySelectorAll('.card').forEach(c=>{{
+          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1');
+          c.style.display=m?'block':'none'; if(m)n++;
+        }});
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
       }}
+      document.getElementById('cropToggle').addEventListener('click', () => {{
+        croppedOnly = !croppedOnly;
+        document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
+        showTab(curTab);
+      }});
       document.addEventListener('click', e => {{
         const b = e.target.closest('button');
         if (!b || b.disabled) return;
