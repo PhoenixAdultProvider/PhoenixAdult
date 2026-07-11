@@ -175,7 +175,7 @@ Only needed for reconciliation (below). Both must be set or the feature stays of
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PLEX_URL` | _(unset)_ | Base URL of the Plex server, e.g. `http://plex.lan:32400`. A LAN address is fine — the provider dials out to Plex, Plex never dials in. |
-| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server. Needs library write access, so treat it like a password. Sent as a header, never in a query string. |
+| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server ([how to find yours](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)). Needs library write access, so treat it like a password. Sent as a header, never in a query string. |
 
 #### Reconciling stale tags
 
