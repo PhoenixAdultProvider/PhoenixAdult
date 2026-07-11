@@ -21,7 +21,7 @@ _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 
-DATA18_MANUAL_MAPPINGS: dict[str, str] = {
+DATA18_MANUAL_MAPPINGS: dict[str, str | list[str]] = {
     '169646': 'thats-better-than-stealing-it-herfreshmanyear',
     '1114179': 'slut-wars-the-vagina-squirts-back-shesgonnasquirt',
     '1120241': 'shaming-the-shooter-cfnm',
@@ -43,8 +43,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1159876': 'halftime-show-brazzerslive',
     '1162015': 'yoga-freaks-episode-four-brazzersexxtra',
     '1165245': 'lets-get-facials-2-brazzersexxtra',
-    '1233354': 'valentines-day-affair-best-moments-brazzerslive',
-    '1233354': 'valentines-day-affair-unseen-moments-brazzerslive',
+    '1233354': ['valentines-day-affair-best-moments-brazzerslive', 'valentines-day-affair-unseen-moments-brazzerslive'],
     '1241238': 'nicoles-bent-over-backwards-daywithapornstar',
     '1290942': 'horny-milf-attracted-to-couple-fucking-momsincontrol',
     '1301931': 'live-and-on-location-brazzersexxtra',
@@ -65,11 +64,14 @@ def mapping_slug(title: str, sub_site: str | None) -> str | None:
 
 
 def manual_mapping_url(mapping_key: str | None) -> str | None:
-    """The data18 scene URL forced for `mapping_key` (a mapping_slug value), else None."""
+    """The data18 scene URL forced for `mapping_key` (a mapping_slug value), else None.
+    A mapping value may be a list when several scenes share one data18 page."""
     if not mapping_key:
         return None
-    data18_id = next((d18 for d18, slug in DATA18_MANUAL_MAPPINGS.items() if slug == mapping_key), None)
-    return f'{_BASE}/scenes/{data18_id}' if data18_id else None
+    for d18, slug in DATA18_MANUAL_MAPPINGS.items():
+        if mapping_key == slug or (isinstance(slug, list) and mapping_key in slug):
+            return f'{_BASE}/scenes/{d18}'
+    return None
 
 
 def xp_ns(sel: Any, xpath: str) -> str:

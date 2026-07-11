@@ -94,3 +94,22 @@ def test_scene_url_from_ref_refuses_off_host_and_junk() -> None:
         '1150700?x=1',
     ):
         assert scene_url_from_ref(bad) is None, bad
+
+
+def test_manual_mapping_list_values_resolve_to_the_shared_scene() -> None:
+    assert manual_mapping_url('valentines-day-affair-best-moments-brazzerslive') == 'https://www.data18.com/scenes/1233354'
+    assert manual_mapping_url('valentines-day-affair-unseen-moments-brazzerslive') == 'https://www.data18.com/scenes/1233354'
+
+
+def test_manual_mappings_have_no_duplicate_keys() -> None:
+    import ast
+    import collections
+    import pathlib
+
+    src = pathlib.Path('app/clients/aggregators/data18.py').read_text(encoding='utf-8')
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict) and len(node.keys) > 10:
+            keys = [k.value for k in node.keys if isinstance(k, ast.Constant)]
+            dupes = [k for k, n in collections.Counter(keys).items() if n > 1]
+            assert not dupes, f'duplicate mapping keys silently shadow earlier entries: {dupes}'
