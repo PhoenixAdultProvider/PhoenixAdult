@@ -46,10 +46,10 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_LEVEL',
         'Log level',
-        'Verbosity of the agent log.',
+        'Verbosity, least to most: error, warn, info, debug, http, verbose. HTTP access lines only appear at http or verbose.',
         'Logging',
         'enum',
-        options=['error', 'warn', 'info', 'http', 'verbose', 'debug'],
+        options=['error', 'warn', 'info', 'debug', 'http', 'verbose'],
         default_value='info',
         requires_restart=True,
     ),

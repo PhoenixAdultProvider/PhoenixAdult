@@ -75,7 +75,7 @@ _Read from the environment at startup; not editable in the Config UI._
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `LOG_LEVEL` | `info` | Verbosity: `error`, `warn`, `info`, `http`, `verbose`, `debug`. Restart to apply. |
+| `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose`. Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
 | `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `PEOPLE_IMAGE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
 | `LOG_REDACT_TOKEN` | `false` | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off by default so you can see the admin token in URLs while testing. |

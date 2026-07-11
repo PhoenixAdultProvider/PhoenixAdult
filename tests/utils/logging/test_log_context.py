@@ -52,8 +52,12 @@ def test_middleware_shares_id_across_endpoint_and_access_log():
     captured: list[logging.LogRecord] = []
     handler = logging.Handler()
     handler.emit = captured.append  # type: ignore[method-assign]
+    from app.utils.logging.context import HTTP
+
     base = logging.getLogger('phoenixadult')
     base.addHandler(handler)
+    prior_level = base.level
+    base.setLevel(HTTP)
 
     app = FastAPI()
     app.add_middleware(RequestContextMiddleware)
@@ -67,9 +71,23 @@ def test_middleware_shares_id_across_endpoint_and_access_log():
         TestClient(app).get('/ping')
     finally:
         base.removeHandler(handler)
+        base.setLevel(prior_level)
 
     endpoint = [r.request_id for r in captured if 'inside endpoint' in r.getMessage()]
     access = [r.request_id for r in captured if '/ping' in r.getMessage()]
     assert endpoint and access
     assert endpoint[0] == access[0]
     assert endpoint[0] != SESSION_ID
+
+
+def test_http_and_verbose_sit_below_debug() -> None:
+    import logging
+
+    from app.utils.logging.context import HTTP, VERBOSE
+    from app.utils.logging.logger import _LEVEL_MAP
+
+    assert VERBOSE < HTTP < logging.DEBUG
+    assert not HTTP >= _LEVEL_MAP['info']
+    assert not HTTP >= _LEVEL_MAP['debug']
+    assert HTTP >= _LEVEL_MAP['http']
+    assert HTTP >= _LEVEL_MAP['verbose']

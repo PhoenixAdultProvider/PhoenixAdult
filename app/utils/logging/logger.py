@@ -8,7 +8,7 @@ from typing import Any
 
 from app.config import config
 from app.config.env import env
-from app.utils.logging.context import HTTP, AlignedFormatter, current_request_id
+from app.utils.logging.context import HTTP, VERBOSE, AlignedFormatter, current_request_id
 
 _old_factory = logging.getLogRecordFactory()
 
@@ -26,10 +26,10 @@ _LEVEL_MAP = {
     'error': logging.ERROR,
     'warn': logging.WARNING,
     'info': logging.INFO,
-    'http': HTTP,
-    'verbose': logging.DEBUG,
     'debug': logging.DEBUG,
-    'silly': logging.DEBUG,
+    'http': HTTP,
+    'verbose': VERBOSE,
+    'silly': VERBOSE,
 }
 
 _LOG_DIR = Path(env.log_dir)
@@ -90,7 +90,7 @@ class _Logger:
         self._emit(HTTP, a, b, **meta)
 
     def verbose(self, a: Any, b: Any = None, **meta: Any) -> None:
-        self._emit(logging.DEBUG, a, b, **meta)
+        self._emit(VERBOSE, a, b, **meta)
 
     def debug(self, a: Any, b: Any = None, **meta: Any) -> None:
         self._emit(logging.DEBUG, a, b, **meta)

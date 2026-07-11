@@ -3,9 +3,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.config import config
 from app.config.env import env
 from app.utils.logging.context import AlignedFormatter
 from app.utils.logging.redaction import RedactionFilter
+
+
+def uvicorn_level() -> str:
+    """The stdlib level name uvicorn's own loggers run at for the configured
+    LOG_LEVEL. Levels below DEBUG (http, verbose, silly) map to DEBUG — uvicorn
+    has nothing quieter."""
+    return {'error': 'ERROR', 'warn': 'WARNING', 'info': 'INFO'}.get(config.log_level, 'DEBUG')
 
 
 class StartupAddressFilter(logging.Filter):
@@ -37,8 +45,8 @@ UVICORN_LOG_CONFIG: dict[str, Any] = {
         },
     },
     'loggers': {
-        'uvicorn': {'handlers': ['default'], 'level': 'INFO', 'propagate': False},
-        'uvicorn.error': {'level': 'INFO', 'propagate': True},
+        'uvicorn': {'handlers': ['default'], 'level': uvicorn_level(), 'propagate': False},
+        'uvicorn.error': {'level': uvicorn_level(), 'propagate': True},
         # Silenced — RequestContextMiddleware emits the access line in-scope instead.
         'uvicorn.access': {'handlers': [], 'level': 'CRITICAL', 'propagate': False},
     },
@@ -55,6 +63,7 @@ def configure_uvicorn_logging() -> None:
     """
     for name in ('uvicorn', 'uvicorn.error'):
         lg = logging.getLogger(name)
+        lg.setLevel(uvicorn_level())
         if not any(isinstance(f, RedactionFilter) for f in lg.filters):
             lg.addFilter(RedactionFilter())
 

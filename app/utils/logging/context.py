@@ -7,11 +7,12 @@ import os
 import uuid
 from collections.abc import Iterator
 
-# Dedicated HTTP level (between INFO and WARNING) so request lines tag as HTTP and
-# still show at the default info threshold. Registered here so the name resolves
-# wherever AlignedFormatter is used.
-HTTP = 25
+# Winston-style tail of the hierarchy: DEBUG(10) > HTTP(7) > VERBOSE(5), so access
+# lines only appear at LOG_LEVEL=http or verbose — never at the info/debug defaults.
+HTTP = 7
 logging.addLevelName(HTTP, 'HTTP')
+VERBOSE = 5
+logging.addLevelName(VERBOSE, 'VERBOSE')
 
 SESSION_ID = uuid.uuid4().hex[:5]
 
