@@ -29,7 +29,7 @@ async def page(request: Request) -> HTMLResponse:
         _TEMPLATE.replace('__STATE__', state)
         .replace('__TOKEN__', token_json)
         .replace('__ENTRIES_JSON__', entries_json)
-        .replace('__DUP_COUNT__', str(len(metadata_cache.duplicate_entries())))
+        .replace('__DUP_KEYS__', json.dumps(metadata_cache.duplicate_entries()).replace('<', '\u003c'))
     )
     return HTMLResponse(body)
 

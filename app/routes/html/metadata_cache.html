@@ -55,6 +55,8 @@
     .cached-ts { color: #94a3b8; white-space: nowrap; }
     .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .purge-btn:hover { background: #dc2626; }
+    .dup-toggle { padding: 8px 16px; border: 1px solid #f59e0b; border-radius: 6px; background: #1e293b; color: #f59e0b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
+    .dup-toggle.on { background: #b45309; color: #fff; }
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
     .dup-btn.active { background: #b45309; border-color: #f59e0b; color: #fff; cursor: pointer; }
     .dup-btn.active:hover { background: #d97706; }
@@ -95,6 +97,7 @@
       <select id="f-collection" onchange="render()"><option value="">All</option></select>
     </div>
     <button class="reset-btn" onclick="reset()">Reset</button>
+    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <span class="count-badge" id="count"></span>
   </div>
@@ -121,7 +124,10 @@
   <script>
     const TOKEN = __TOKEN__;
     const ALL = __ENTRIES_JSON__;
-    const DUP_COUNT = __DUP_COUNT__;
+    const DUP_KEYS = __DUP_KEYS__;
+    const DUP_SET = new Set(DUP_KEYS);
+    const DUP_COUNT = DUP_KEYS.length;
+    let showDupsOnly = false;
 
     ALL.forEach(e => {
       e.year = e.date ? e.date.slice(0, 4) : '';
@@ -223,6 +229,7 @@
     function rowsExcept(exceptId) {
       const q = document.getElementById('q').value.toLowerCase();
       return ALL.filter(e => {
+        if (showDupsOnly && !DUP_SET.has(e.key)) return false;
         if (!textPred(e, q)) return false;
         for (const [id, f] of Object.entries(FACETS)) {
           if (id === exceptId) continue;
@@ -251,6 +258,7 @@
       const q = document.getElementById('q').value.toLowerCase();
 
       let rows = ALL.filter(e => {
+        if (showDupsOnly && !DUP_SET.has(e.key)) return false;
         if (!textPred(e, q)) return false;
         for (const [id, f] of Object.entries(FACETS)) {
           const v = document.getElementById(id).value;
@@ -313,11 +321,20 @@
       if (j.ok) location.reload(); else alert('Purge failed');
     }
 
+    function toggleDuplicates() {
+      showDupsOnly = !showDupsOnly;
+      const t = document.getElementById('dupToggle');
+      t.classList.toggle('on', showDupsOnly);
+      t.textContent = showDupsOnly ? 'Showing Duplicates Only' : 'Show Duplicates';
+      render();
+    }
+
     (function initDupBtn() {
       const btn = document.getElementById('dupBtn');
       btn.textContent = DUP_COUNT ? `Purge ${DUP_COUNT} Duplicate ${DUP_COUNT === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
       btn.disabled = !DUP_COUNT;
       btn.classList.toggle('active', DUP_COUNT > 0);
+      document.getElementById('dupToggle').hidden = !DUP_COUNT;
     })();
 
     applyHeaderIndicator();

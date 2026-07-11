@@ -32,7 +32,7 @@ def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
             f'Serving ratingKey={md.ratingKey} key={md.key} title="{md.title}" date={md.originallyAvailableAt} '
             f'genres={len(md.Genre or [])} actors={len(md.Role or [])} images={len(md.Image or [])}',
         )
-        logger.debug(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
+        logger.verbose(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
 
 
 _MEMO_TTL_SECONDS = 60.0

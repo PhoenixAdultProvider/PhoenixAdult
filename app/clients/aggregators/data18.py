@@ -33,6 +33,7 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1134892': 'el-doctor-primera-parte-pornstarslikeitbig',
     '1136052': 'sensual-sexual-jane-brazzersexxtra',
     '1146768': 'el-cruce-bigtitsinuniform',
+    '1127813': 'la-madrastra-da-una-mano-mommygotboobs',
     '1150082': 'vice-city-vacation-part-two-zzseries',
     '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
     '1151691': 'phoenix-vs-piper-hotandmean',
