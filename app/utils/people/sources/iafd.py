@@ -9,7 +9,7 @@ from app.utils.logging.logger import logger
 from app.utils.people.sources._http import encode_name, fix_iafd_encoding, levenshtein
 from app.utils.people.types import Gender, PersonLookupContext, PhotoHit
 
-_BASE = 'http://www.iafd.com'
+_BASE = 'https://www.iafd.com'
 
 
 async def iafd_best_match(actor_name: str, studio: str = '') -> tuple[str, Gender] | None:
