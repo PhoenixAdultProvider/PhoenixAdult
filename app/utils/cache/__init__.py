@@ -526,10 +526,19 @@ async def backfill_people_images(
 
 def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
     """Add metadata attributes introduced after a snapshot was written (contentRating,
-    isAdult, titleSort, Role order). Mutates in place and returns True if anything
-    changed, so the caller can rewrite the snapshot."""
+    isAdult, titleSort, Role order), and recompute the guid from the ratingKey so a
+    provider-identifier change heals cached snapshots on serve. Mutates in place and
+    returns True if anything changed, so the caller can rewrite the snapshot."""
+    from app.registry import PROVIDER_DEFINITIONS
+    from app.utils.plex.rating_key import to_guid
+
     changed = False
     for md in response.MediaContainer.Metadata:
+        if md.ratingKey:
+            guid = to_guid(md.ratingKey, PROVIDER_DEFINITIONS[0].plex_identifier)
+            if md.guid != guid:
+                md.guid = guid
+                changed = True
         if md.contentRating is None:
             md.contentRating = 'XXX'
             changed = True

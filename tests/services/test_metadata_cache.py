@@ -498,3 +498,26 @@ def test_reapply_text_rules_leaves_clean_cast_names_untouched(monkeypatch: pytes
     )
     assert mc.reapply_text_rules(resp) is False
     assert [r.tag for r in (resp.MediaContainer.Metadata[0].Role or [])] == ['Danny D', 'Gina Gerson', 'Xander Corvus']
+
+
+def test_backfill_recomputes_guid_after_an_identifier_change() -> None:
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'scene-brazzers-abc123.20200101',
+                        'guid': 'tv.plex.agents.custom.myprovider.phoenixadult://movie/scene-brazzers-abc123.20200101',
+                        'title': 'T',
+                        'studio': 'S',
+                    }
+                ],
+            }
+        }
+    )
+    assert mc.backfill_metadata_attrs(resp) is True
+    assert resp.MediaContainer.Metadata[0].guid == 'tv.plex.agents.custom.phoenixadult://movie/scene-brazzers-abc123.20200101'
+    assert mc.backfill_metadata_attrs(resp) is False

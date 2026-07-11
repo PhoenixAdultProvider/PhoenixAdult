@@ -179,7 +179,7 @@ async def page(request: Request) -> HTMLResponse:
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
       .tab .cnt{{opacity:.65;font-size:11px}}
     </style></head><body>
-    <h1>People image cache</h1>
+    <h1>People Image Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>PEOPLE_IMAGE_URL={img_opt}</code> → <code>{img_base}</code></div>

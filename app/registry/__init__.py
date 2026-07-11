@@ -27,7 +27,7 @@ __all__ = [
 PROVIDER_DEFINITIONS: list[ProviderInfo] = [
     ProviderInfo(
         id='phoenixadult',
-        plex_identifier='tv.plex.agents.custom.myprovider.phoenixadult',
+        plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
         version='1.0.0',
         media_type='movie',
