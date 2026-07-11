@@ -36,6 +36,8 @@ DATA18_MANUAL_MAPPINGS: dict[str, str] = {
     '1146768': 'el-cruce-bigtitsinuniform',
     '1150082': 'vice-city-vacation-part-two-zzseries',
     '1150700': 'national-pornographic-la-estrella-porno-adolescente-teenslikeitbig',
+    '1151691': 'phoenix-vs-piper-hotandmean',
+    '1157334': 'california-creaming-pornstarslikeitbig',
     '1157734': 'the-whore-of-wall-street-ep-3-bitch-you-work-for-me-zzseries',
     '1162015': 'yoga-freaks-episode-four-brazzersexxtra',
     '1165245': 'lets-get-facials-2-brazzersexxtra',
