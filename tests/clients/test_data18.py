@@ -5,7 +5,7 @@ from datetime import datetime
 import httpx
 import respx
 
-from app.clients.aggregators.data18 import Data18Client, manual_mapping_url, mapping_slug, scene_url_from_ref
+from app.clients.aggregators.data18 import Data18Client, data18_ref, manual_mapping_url, mapping_slug, scene_url_from_ref
 
 _SEARCH = (
     '<html>pages: 1'
@@ -36,6 +36,14 @@ def test_manual_mapping_url_resolves_value_to_key() -> None:
     assert manual_mapping_url('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/1313219'
     assert manual_mapping_url('not-a-mapped-slug') is None
     assert manual_mapping_url(None) is None
+
+
+def test_data18_ref_extracts_type_and_id() -> None:
+    assert data18_ref('https://www.data18.com/scenes/1125441') == {'type': 'scene', 'id': '1125441'}
+    assert data18_ref('https://www.data18.com/movies/1133091-smilf') == {'type': 'movie', 'id': '1133091'}
+    assert data18_ref('https://www.data18.com/name/somebody') is None
+    assert data18_ref('') is None
+    assert data18_ref(None) is None
 
 
 @respx.mock

@@ -36,6 +36,11 @@ class PlexGuid(_Model):
     id: str
 
 
+class PlexData18(_Model):
+    type: Literal['scene', 'movie']
+    id: str
+
+
 class PlexCollection(_Model):
     tag: str
 
@@ -80,6 +85,7 @@ class PlexMetadata(_Model):
     year: int | None = None
     summary: str | None = None
     tagline: str | None = None
+    data18: PlexData18 | None = None
     contentRating: str | None = None
     isAdult: bool | None = None
     audienceRating: float | None = None

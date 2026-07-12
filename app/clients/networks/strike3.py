@@ -11,8 +11,6 @@ from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from app.utils.logging.best_effort import best_effort
-from app.utils.logging.logger import logger
 
 # Strike3 (Vixen Media Group) is behind Cloudflare; space GraphQL calls a little.
 _PACE_SECONDS = 1.0
@@ -142,18 +140,13 @@ class Strike3Client(GraphQLClient):
             if uri and uri not in raw_images:
                 raw_images.append(uri)
 
+        data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
-            with best_effort(site.name, 'data18 enrichment'):
-                self._data18 = self._data18 or Data18Client()
-                date_obj = datetime.fromisoformat(release_date) if release_date else None
-                providers = [site.name]
-                mapping_id = mapping_slug(title, site.name)
-                data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
-                if data18_url:
-                    logger.info(site.name, f'data18 enrichment match: {data18_url}')
-                    for u in await self._data18.fetch_images(data18_url):
-                        if u not in raw_images:
-                            raw_images.append(u)
+            self._data18 = self._data18 or Data18Client()
+            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            data18_url = await self._data18.enrich_images(
+                scope=site.name, images=raw_images, scene_id=mapping_slug(title, site.name), title=title, providers=[site.name], scene_date=date_obj
+            )
 
         return SceneDetail(
             title=title,
@@ -165,4 +158,5 @@ class Strike3Client(GraphQLClient):
             actors=actors,
             directors=directors or None,
             raw_image_urls=raw_images,
+            data18_url=data18_url,
         )

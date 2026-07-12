@@ -8,7 +8,7 @@ import httpx
 import pytest
 import respx
 
-from app.models.metadata import PlexMetadataResponse
+from app.models.metadata import PlexData18, PlexMetadataResponse
 from app.utils import cache as mc
 from app.utils.helpers.helpers import b64url_encode, embed_subsite
 from app.utils.plex.rating_key import to_rating_key
@@ -372,24 +372,44 @@ def _md_resp(title: str, tagline: str) -> PlexMetadataResponse:
 
 def test_data18_remap_needed_flags_added_or_changed_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
-    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # has a manual mapping
 
-    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
-    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is True
+    # Nothing stored yet: the manual mapping is new -> re-scrape.
+    assert mc.data18_remap_needed(resp, 'Brazzers') is True
 
-    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: 'https://www.data18.com/scenes/1301931')
-    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False
+    # Stored data18 ref already equals the manual mapping -> nothing to do.
+    resp.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='1301931')
+    assert mc.data18_remap_needed(resp, 'Brazzers') is False
 
+    # No manual mapping never forces a re-scrape, even with a stored (search-matched) ref.
     unmapped = _md_resp('Some Unmapped Scene', 'Brazzers Exxtra')
-    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
-    assert mc.data18_remap_needed(unmapped, 'Brazzers', 'cur') is False
+    unmapped.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='999')
+    assert mc.data18_remap_needed(unmapped, 'Brazzers') is False
 
 
 def test_data18_remap_needed_off_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'false')
     resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
-    monkeypatch.setattr(mc, '_read_enrich', lambda site_name, cur_id: '')
-    assert mc.data18_remap_needed(resp, 'Brazzers', 'cur') is False
+    assert mc.data18_remap_needed(resp, 'Brazzers') is False
+
+
+async def test_backfill_data18_records_manual_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # manual-mapped -> resolves with no network
+
+    assert await mc.backfill_data18(resp, 'Brazzers') is True
+    d = resp.MediaContainer.Metadata[0].data18
+    assert d is not None and d.type == 'scene' and d.id == '1301931'
+
+    # Already recorded -> no re-resolve, no change.
+    assert await mc.backfill_data18(resp, 'Brazzers') is False
+
+
+async def test_backfill_data18_skips_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'false')
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
+    assert await mc.backfill_data18(resp, 'Brazzers') is False
+    assert resp.MediaContainer.Metadata[0].data18 is None
 
 
 def _snapshot(root: Path, rel: str, rating_key: str) -> None:

@@ -126,26 +126,67 @@ def _data18_fingerprint(response: PlexMetadataResponse) -> str:
     return manual_mapping_url(mapping_slug(md.title or '', md.tagline)) or ''
 
 
-def _read_enrich(site_name: str, cur_id: str) -> str:
-    rel_path = _ensure_index().get(_hash(site_name, cur_id))
-    if not rel_path:
-        return ''
+def _stored_data18(response: PlexMetadataResponse) -> dict[str, str] | None:
     try:
-        data = json.loads((Path(cache_dir()) / rel_path / 'enrich.json').read_text(encoding='utf-8'))
-    except (OSError, ValueError):
-        return ''
-    return data.get('data18', '') if isinstance(data, dict) else ''
+        d = response.MediaContainer.Metadata[0].data18
+    except (AttributeError, IndexError):
+        return None
+    return {'type': d.type, 'id': d.id} if d else None
 
 
-def data18_remap_needed(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:
-    """True if this cached scene's data18 manual mapping was added/changed/removed since
-    it was snapshotted — so the caller re-scrapes to pick up (or drop) data18 images."""
+def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
+    """True if a data18 manual mapping now exists for this cached scene and disagrees with
+    the data18 ref stored in its snapshot — so the caller re-scrapes to pick up the override.
+    A scene with no manual mapping (whether unmatched or matched by search) is left alone."""
+    from app.clients.aggregators.data18 import data18_ref
+
     if not env.data18_enabled:
         return False
     site = find_site(site_name)
     if not site or not site.scraper_config.data18_enrichment:
         return False
-    return _data18_fingerprint(response) != _read_enrich(site_name, cur_id)
+    manual = data18_ref(_data18_fingerprint(response))
+    return manual is not None and manual != _stored_data18(response)
+
+
+async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
+    """Record a cached scene's data18 ref if its snapshot predates data18 recording. Resolves
+    the data18 page from the snapshot's own fields — a manual mapping (no network) or a search —
+    and stores the {type, id}; images already cached at scrape time are left untouched. Best-effort
+    (never breaks a serve) and self-healing: runs only for enrichment-eligible sites on snapshots
+    with no ref yet, and once a ref is stored it never re-runs (a scene with no data18 match is
+    retried on a later refresh). Returns True if anything changed, so the caller can rewrite."""
+    from datetime import datetime
+
+    from app.clients.aggregators.data18 import Data18Client, data18_ref, mapping_slug
+    from app.models.metadata import PlexData18
+
+    if not env.data18_enabled:
+        return False
+    site = find_site(site_name)
+    if not site or not site.scraper_config.data18_enrichment:
+        return False
+    pending = [md for md in response.MediaContainer.Metadata if md.data18 is None and md.title]
+    if not pending:
+        return False
+
+    client = Data18Client()
+    changed = False
+    for md in pending:
+        try:
+            date_obj = datetime.fromisoformat(md.originallyAvailableAt) if md.originallyAvailableAt else None
+        except ValueError:
+            date_obj = None
+        providers = [p for p in (md.studio, md.tagline) if p]
+        try:
+            url = await client.find_scene_url(mapping_slug(md.title, md.tagline), md.title, providers, date_obj)
+        except Exception as err:  # noqa: BLE001 — backfill must never break the serve
+            logger.warn('meta-cache', f'data18 backfill resolve failed for "{md.title}": {err}')
+            continue
+        if ref := data18_ref(url):
+            md.data18 = PlexData18.model_validate(ref)
+            changed = True
+    return changed
 
 
 # ── Read ─────────────────────────────────────────────────────────────────────
@@ -220,16 +261,13 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     if final_dir is None:
         return False
 
-    site = find_site(site_name)
-    fingerprint = _data18_fingerprint(response) if site and site.scraper_config.data18_enrichment else None
-
     # Concurrent writes for the same scene share {hash}.tmp — serialize them.
     lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
     async with lock:
-        return await _write_locked(response, scene_hash, rel_path, final_dir, fingerprint)
+        return await _write_locked(response, scene_hash, rel_path, final_dir)
 
 
-async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path, fingerprint: str | None = None) -> bool:
+async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
     data = response.model_dump(by_alias=True, exclude_none=True)
@@ -284,10 +322,6 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
             await asyncio.gather(*jobs)
 
         (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
-        if fingerprint is not None:
-            # Records the data18 manual-mapping URL this scene resolves to; a later mapping
-            # edit makes the serve-time fingerprint differ, forcing a re-scrape.
-            (tmp_dir / 'enrich.json').write_text(json.dumps({'data18': fingerprint}), encoding='utf-8')
         if final_dir.exists():
             shutil.rmtree(final_dir, ignore_errors=True)
         tmp_dir.rename(final_dir)

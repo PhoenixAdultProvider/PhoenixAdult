@@ -96,7 +96,7 @@ async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkey
     respx.get(url__startswith=f'{_API}/v1/actors').mock(return_value=httpx.Response(200, json={'result': []}))
     captured: dict[str, object] = {}
 
-    class FakeData18:
+    class FakeData18(p1_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
             captured['mapping_id'] = scene_id
             captured['providers'] = providers

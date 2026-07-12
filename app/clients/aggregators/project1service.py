@@ -238,19 +238,15 @@ class Project1ServiceClient(Client):
                 if u:
                     raw_images.append(u)
 
+        data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
-            with best_effort(site.name, 'data18 enrichment'):
-                self._data18 = self._data18 or Data18Client()
-                date_obj = datetime.fromisoformat(release_date) if release_date else None
-                search_sub = sub_site or (ctx.subsite if ctx else None)
-                providers = [p for p in (site.name, search_sub) if p]
-                mapping_id = mapping_slug(title, search_sub)
-                data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
-                if data18_url:
-                    logger.info(site.name, f'data18 enrichment match: {data18_url}')
-                    for u in await self._data18.fetch_images(data18_url):
-                        if u not in raw_images:
-                            raw_images.append(u)
+            self._data18 = self._data18 or Data18Client()
+            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            search_sub = sub_site or (ctx.subsite if ctx else None)
+            providers = [p for p in (site.name, search_sub) if p]
+            data18_url = await self._data18.enrich_images(
+                scope=site.name, images=raw_images, scene_id=mapping_slug(title, search_sub), title=title, providers=providers, scene_date=date_obj
+            )
 
         return SceneDetail(
             title=title,
@@ -262,6 +258,7 @@ class Project1ServiceClient(Client):
             genres=genres,
             actors=actors,
             raw_image_urls=raw_images,
+            data18_url=data18_url,
         )
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:

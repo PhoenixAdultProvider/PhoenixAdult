@@ -97,6 +97,7 @@ class SceneDetail:
     producers: list[ActorResult] | None = None
     scene_url: str | None = None
     original_title: str | None = None
+    data18_url: str | None = None
     duration: int | None = None  # milliseconds
     countries: list[str] | None = None
     rating: float | None = None
@@ -118,6 +119,7 @@ class LoadedScene:
     html: str | None = None
     raw_image_referer: str | None = None
     raw_image_cookie: str | None = None
+    data18_url: str | None = None
 
 
 @dataclass
@@ -411,6 +413,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             raw_image_referer=scene.raw_image_referer,
             raw_image_cookie=scene.raw_image_cookie,
             scene_url=scene.url,
+            data18_url=scene.data18_url,
         )
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:

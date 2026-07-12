@@ -13,6 +13,7 @@ from app.clients.base import Client
 from app.config.env import env
 from app.utils.helpers.helpers import append_unique, load_site_json, slugify
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import convert_sequence_numbers
@@ -65,6 +66,20 @@ def squash(value: str) -> str:
 def url_id(url: str) -> str:
     """Numeric id from a data18 scene/movie URL, slug tail stripped."""
     return re.sub(r'.*/', '', url).split('-')[0]
+
+
+_DATA18_REF_RE = re.compile(r'/(scenes|movies)/(\d+)')
+
+
+def data18_ref(url: str | None) -> dict[str, str] | None:
+    """The {type, id} a data18 scene/movie URL points to (type 'scene'/'movie', numeric
+    id, slug tail dropped), or None when it isn't a scene/movie URL."""
+    if not url:
+        return None
+    m = _DATA18_REF_RE.search(url)
+    if not m:
+        return None
+    return {'type': 'scene' if m.group(1) == 'scenes' else 'movie', 'id': m.group(2)}
 
 
 _REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
@@ -243,6 +258,30 @@ class Data18Client(Client):
                     break
                 _, sel = next_page
 
+        return None
+
+    async def enrich_images(
+        self,
+        *,
+        scope: str,
+        images: list[str],
+        scene_id: str | None = None,
+        title: str = '',
+        providers: list[str] | None = None,
+        scene_date: datetime | None = None,
+        forced_url: str | None = None,
+    ) -> str | None:
+        """Resolve a scene's data18 page — a forced URL, a manual mapping, or a search —
+        append its images to `images` in place (de-duplicated), and return the resolved
+        scene URL (or None). Wrapped in best_effort so a data18 failure never breaks the
+        host scrape; shared by every network that enriches from data18."""
+        with best_effort(scope, 'data18 enrichment'):
+            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date)
+            if url:
+                logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
+                for u in await self.fetch_images(url):
+                    append_unique(images, u)
+                return url
         return None
 
     async def fetch_page(self, url: str) -> Selector | None:

@@ -17,7 +17,6 @@ from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, Sea
 from app.config import config
 from app.config.env import env
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
-from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 
 _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
@@ -376,22 +375,21 @@ class ManualNfoClient(Client):
             images.append(fanart)
 
         if scene.site.scraper_config.data18_enrichment and env.data18_enabled and (nfo.title or nfo.data18):
-            with best_effort(scene.site.name, 'data18 enrichment'):
-                forced_url = scene_url_from_ref(nfo.data18)
-                if nfo.data18 and not forced_url:
-                    logger.warn(scene.site.name, f'ignoring unusable <data18> value: {nfo.data18!r}')
-                self._data18 = self._data18 or Data18Client()
-                data18_url = forced_url
-                if not data18_url and nfo.title:
-                    date_iso = _nfo_release_date(nfo)
-                    date_obj = datetime.fromisoformat(date_iso) if date_iso else None
-                    providers = [p for p in (nfo.studio, nfo.set) if p]
-                    data18_url = await self._data18.find_scene_url(slugify(nfo.title.replace("'", '')), nfo.title, providers, date_obj)
-                if data18_url:
-                    logger.info(scene.site.name, f'data18 enrichment {"manual" if forced_url else "match"}: {data18_url}')
-                    for u in await self._data18.fetch_images(data18_url):
-                        if u not in images:
-                            images.append(u)
+            forced_url = scene_url_from_ref(nfo.data18)
+            if nfo.data18 and not forced_url:
+                logger.warn(scene.site.name, f'ignoring unusable <data18> value: {nfo.data18!r}')
+            self._data18 = self._data18 or Data18Client()
+            date_iso = _nfo_release_date(nfo)
+            date_obj = datetime.fromisoformat(date_iso) if date_iso else None
+            scene.data18_url = await self._data18.enrich_images(
+                scope=scene.site.name,
+                images=images,
+                scene_id=slugify(nfo.title.replace("'", '')) if nfo.title else None,
+                title=nfo.title or '',
+                providers=[p for p in (nfo.studio, nfo.set) if p],
+                scene_date=date_obj,
+                forced_url=forced_url,
+            )
         return images
 
 

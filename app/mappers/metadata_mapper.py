@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from app.clients.aggregators.data18 import data18_ref
 from app.clients.base import SceneDetail, SearchResult
 from app.config import config, people_image_base
 from app.models.metadata import (
     PlexCollection,
     PlexCountry,
+    PlexData18,
     PlexGenre,
     PlexImage,
     PlexMatchResult,
@@ -154,6 +156,7 @@ class MetadataMapper:
             originalTitle=detail.original_title,
             summary=normalize_text(detail.summary) or None,
             tagline=tagline,
+            data18=PlexData18.model_validate(ref) if (ref := data18_ref(detail.data18_url)) else None,
             studio=studio,
             contentRating='XXX',
             isAdult=True,

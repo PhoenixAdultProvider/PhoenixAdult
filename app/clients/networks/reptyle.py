@@ -11,7 +11,6 @@ from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, slugify
 from app.utils.helpers.html_helpers import strip_tags
-from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 
 _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
@@ -139,20 +138,17 @@ class ReptyleClient(Client):
         if scene_json.get('img'):
             raw_images.append(scene_json['img'])
 
+        data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
-            with best_effort(site.name, 'data18 enrichment'):
-                self._data18 = self._data18 or Data18Client()
-                date_obj = datetime.fromisoformat(release_date) if release_date else None
-                sid = scene_json.get('id')
-                search_sub = (sub_site if sub_site != site.name else None) or (ctx.subsite if ctx else None)
-                mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
-                providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
-                data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
-                if data18_url:
-                    logger.info(site.name, f'data18 enrichment match: {data18_url}')
-                    for u in await self._data18.fetch_images(data18_url):
-                        if u not in raw_images:
-                            raw_images.append(u)
+            self._data18 = self._data18 or Data18Client()
+            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            sid = scene_json.get('id')
+            search_sub = (sub_site if sub_site != site.name else None) or (ctx.subsite if ctx else None)
+            mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
+            providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
+            data18_url = await self._data18.enrich_images(
+                scope=site.name, images=raw_images, scene_id=mapping_id, title=title, providers=providers, scene_date=date_obj
+            )
 
         has_sub = bool(sub_site) and sub_site != site.name
         return SceneDetail(
@@ -165,4 +161,5 @@ class ReptyleClient(Client):
             genres=genres,
             actors=actors,
             raw_image_urls=raw_images,
+            data18_url=data18_url,
         )
