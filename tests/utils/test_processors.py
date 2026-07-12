@@ -253,3 +253,17 @@ def test_title_case_rotates_a_trailing_article_to_the_front() -> None:
 )
 def test_title_case_initial_pair_names(raw: str, expected: str) -> None:
     assert title_case(raw) == expected
+
+
+def test_spanish_sites_lower_their_particles() -> None:
+    assert title_case('clases de mamadas con maria', site_name='FAKings') == 'Clases de Mamadas con Maria'
+    assert title_case('vendo a mi novia', site_name='FAKings') == 'Vendo a mi Novia'
+
+
+def test_spanish_particles_stay_english_elsewhere() -> None:
+    assert title_case('a day con el paso', site_name='Brazzers') == 'A Day Con El Paso'
+
+
+def test_registry_heals_api_cased_aliases() -> None:
+    assert normalize_studio('Milf Soup') == 'MILF Soup'
+    assert normalize_studio('BIG BUTTS LIKE IT BIG') == 'Big Butts Like It Big'

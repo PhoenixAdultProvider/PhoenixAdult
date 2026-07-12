@@ -24,6 +24,10 @@ _UPPER_EXCEPTIONS = frozenset({
     'avn', 'xtc', 'atv', 'joi', 'rpg', 'wunf', 'uk', 'asap', 'sss', 'nf', 'pawg', 'ama',
 })
 
+_SPANISH_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'con', 'en', 'la', 'el', 'los', 'las', 'mi', 'al', 'por', 'para'})
+
+_SPANISH_SITE_KEYS = frozenset({'fakings', 'putalocura', 'sexmex'})
+
 _NAME_EXCEPTIONS = frozenset({'ai'})
 
 _NAME_EXCEPTION_SITES = frozenset({'JavBus', 'JavLibrary', 'TeamSkeet X JavHub', 'JAVDatabase', 'JAV888'})
@@ -142,6 +146,7 @@ class _TitleCaseEngine:
         self.site_name = site_name or ''
         self.clean_site = _strip_non_word(re.sub(r'\s+', '', self.site_name)).lower()
         self.scraper_type = scraper_type or ''
+        self.lower_exceptions = _LOWER_EXCEPTIONS | _SPANISH_LOWER_EXCEPTIONS if self.clean_site in _SPANISH_SITE_KEYS else _LOWER_EXCEPTIONS
         self._manual_cache: dict[str, str] = {}
 
     def parse(self, text: str) -> str:
@@ -220,10 +225,10 @@ class _TitleCaseEngine:
         if clean_lower in _UPPER_EXCEPTIONS:
             return self._manual_word_fix(word.upper())
 
-        if clean_word and clean_word == clean_word.upper() and clean_lower not in _LOWER_EXCEPTIONS:
+        if clean_word and clean_word == clean_word.upper() and clean_lower not in self.lower_exceptions:
             return self._manual_word_fix(word.upper())
 
-        if clean_lower in _LOWER_EXCEPTIONS:
+        if clean_lower in self.lower_exceptions:
             return self._manual_word_fix(word.lower())
 
         has_lower = bool(re.search(r'[a-z]', word))
@@ -236,7 +241,7 @@ class _TitleCaseEngine:
     def _is_acronym_or_size(self, clean_lower: str, clean_word: str) -> tuple[bool, str | None]:
         if clean_lower in _NAME_EXCEPTIONS and self.site_name in _NAME_EXCEPTION_SITES:
             return False, None
-        if clean_lower in _LOWER_EXCEPTIONS:
+        if clean_lower in self.lower_exceptions:
             return False, None
         if self.type == 'name':
             return False, None

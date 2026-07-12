@@ -17,14 +17,14 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Abby Winters Best Of
   - Abby Winters Girl Girl
   - Girls and Their Boys
-  - Girls In Lingerie At Night
+  - Girls in Lingerie at Night
   - Guest Direction
   - Learn How to Get Women
   - Mystery Shoot
   - Nude Girls
-  - Nude In Public
+  - Nude in Public
   - Video Masturbation
-  - Video Of Myself at Home
+  - Video of Myself at Home
 + #### Adult Empire | ✅
 + #### Adult Empire Cash | ✅ - **DVDs not supported**
   - 18 Lust
@@ -322,7 +322,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Historias de Cuarentena
   - Horsedicks
   - I Sell My Girlfriend
-  - Im a Webcam Girl
+  - I'm a Webcam Girl
   - Innocent 18
   - Inocentes 18
   - La Escuela de FAKings
@@ -334,7 +334,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - My First Anal
   - My First DP
   - NERD BUSTER
-  - Newbies Or So They Say
+  - Newbies or So They Say
   - Next Door Girl
   - Novatas O Eso Dicen
   - Parejas.NET
@@ -348,7 +348,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Sick Videos
   - Soy Webcamer
   - Swingers Life
-  - Talk To Them
+  - Talk to Them
   - The Anatomical Sulphate
   - The Naughty Bet
   - Trans FAKings
@@ -430,18 +430,18 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Dogfart Network
     - Barb Cummings
     - Black Meat White Feet
-    - Blacks On Blondes
-    - Blacks On Boys
-    - Blacks On Cougars
+    - Blacks on Blondes
+    - Blacks on Boys
+    - Blacks on Cougars
     - Candy Monroe
     - Cuckold Sessions
     - CumBang
     - DFXtra
     - Dogfart
-    - Dogfart Behind The Scenes
+    - Dogfart Behind the Scenes
     - Glory Hole
     - Glory Hole Initiations
-    - Gloryholes And Handjobs
+    - Gloryholes and Handjobs
     - Interracial Blowbang
     - Interracial Pickups
     - Katie Thomas
@@ -1044,7 +1044,7 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Project1Service | ✅
   - Babes
     - Babes Unleashed
-    - Black is Better
+    - Black Is Better
     - Elegant Anal
     - Office Obsession
     - Stepmom Lessons
@@ -1078,19 +1078,19 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Fuck Team Five
     - Glory Hole Loads
     - Latina Rampage
-    - Living With Anna
+    - Living with Anna
     - Magical Feet
     - MILF Lessons
-    - Milf Soup
+    - MILF Soup
     - Mom Is Horny
     - Monsters of Cock
-    - Mr Anal
-    - Mr CamelToe
+    - Mr. Anal
+    - Mr. CamelToe
     - My Dirty Maid
-    - My Life In Brazil
+    - My Life in Brazil
     - Newbie Black
     - Party of 3
-    - Pawg
+    - PAWG
     - Penny Show
     - Porn Star Spa
     - Power Munch
@@ -1105,7 +1105,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Brazzers
     - Asses in Public
     - Baby Got Boobs
-    - Big Butts like it big
+    - Big Butts Like It Big
     - Big Tits at School
     - Big Tits at Work
     - Big Tits in Sports
@@ -1116,14 +1116,14 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Busty and Real
     - Bustyz
     - Butts and Blacks
-    - CFNM Clothed Female Male Nude
-    - Day With a Pornstar
+    - CFNM
+    - Day with a Pornstar
     - Dirty Masseur
     - Doctor Adventures
     - Hot and Mean
     - Hot Chicks Big Asses
     - Jug Fuckers
-    - Milfs Like It Big
+    - MILFs Like It Big
     - Mommy Got Boobs
     - Moms in Control
     - Pornstars Like It Big
@@ -1199,16 +1199,16 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Latina Sex Tapes
     - Let's Try Anal
     - LPI
-    - Milfs Like It Black
+    - MILFs Like It Black
     - Mofos B Sides
     - Mofos Lab
-    - Pervs On Patrol
+    - Pervs on Patrol
     - Pornstar Vote
     - Project RV
     - Public Pick-Ups
     - Real Slut Party
     - Share My BF
-    - Shes a Freak
+    - She's a Freak
     - Stranded Teens
     - The Sex Scout
   - My GF
@@ -1247,8 +1247,8 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Lil Humpers
     - Mike in Brazil
     - Mikes Apartment
-    - Milf Hunter
-    - Milf Next Door
+    - MILF Hunter
+    - MILF Next Door
     - Moms Bang Teens
     - Moms Lick Teens
     - Money Talks
@@ -1396,7 +1396,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Anal Mom
     - BBC Paradise
     - Blue Collar Babes
-    - Full Of JOI
+    - Full of JOI
     - Got MYLF
     - Hijab MYLFs
     - Hookup Pad
@@ -1503,7 +1503,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - POV Life
     - Reptyle Classics
     - Reptyle Labs
-    - Rub A Teen
+    - Rub a Teen
     - Self Desire
     - Sex and Grades
     - She's New
