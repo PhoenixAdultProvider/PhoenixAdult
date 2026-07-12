@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import time
+from datetime import datetime
 from typing import Any
 
+from app.clients.aggregators.data18 import Data18Client, mapping_slug
 from app.clients.base import ActorResult, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from app.utils.logging.best_effort import best_effort
+from app.utils.logging.logger import logger
 
 # Strike3 (Vixen Media Group) is behind Cloudflare; space GraphQL calls a little.
 _PACE_SECONDS = 1.0
@@ -31,6 +36,7 @@ class Strike3Client(GraphQLClient):
         super().__init__(extra_headers)
         self._pace_lock = asyncio.Lock()
         self._last_fetch = 0.0
+        self._data18: Data18Client | None = None
 
     async def _gql(self, endpoint: str, query: str, variables: dict[str, Any], base_url: str, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         async with self._pace_lock:
@@ -106,6 +112,10 @@ class Strike3Client(GraphQLClient):
         if not isinstance(v, dict) or not v.get('title'):
             return None
 
+        title = v['title'].strip()
+
+        release_date = iso_date(v.get('releaseDate') or '') or None
+
         genres: list[str] = []
         if site.name in ('Tushy', 'TushyRaw'):
             genres.append('Anal')
@@ -132,12 +142,25 @@ class Strike3Client(GraphQLClient):
             if uri and uri not in raw_images:
                 raw_images.append(uri)
 
+        if site.scraper_config.data18_enrichment and env.data18_enabled:
+            with best_effort(site.name, 'data18 enrichment'):
+                self._data18 = self._data18 or Data18Client()
+                date_obj = datetime.fromisoformat(release_date) if release_date else None
+                providers = [site.name]
+                mapping_id = mapping_slug(title, site.name)
+                data18_url = await self._data18.find_scene_url(mapping_id, title, providers, date_obj)
+                if data18_url:
+                    logger.info(site.name, f'data18 enrichment match: {data18_url}')
+                    for u in await self._data18.fetch_images(data18_url):
+                        if u not in raw_images:
+                            raw_images.append(u)
+
         return SceneDetail(
-            title=v['title'].strip(),
+            title=title,
             summary=(v.get('description') or '').strip(),
             studio=site.name,
             collections=[site.name],
-            release_date=iso_date(v.get('releaseDate') or '') or None,
+            release_date=release_date,
             genres=genres,
             actors=actors,
             directors=directors or None,
