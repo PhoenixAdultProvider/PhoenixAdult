@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
@@ -73,22 +75,18 @@ class TeenMegaWorldClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src')
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//a[contains(@class,"video-actor-link") and contains(@class,"actor__link")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
-            if not name or name in seen:
-                continue
-            seen.add(name)
-            photo = ''
-            if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-                raw = first_attr(page['sel'], '(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src') if page else ''
-                if raw:
-                    photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors or []
+            if name:
+                refs.append((name, absolute_url(href, base) if href else ''))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

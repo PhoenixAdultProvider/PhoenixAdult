@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
@@ -81,20 +83,19 @@ class ColetteClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        links: list[tuple[str, str]] = []
+        base = scene.site.base_url.rstrip('/')
+
+        def extract_photo(sel: Selector) -> str:
+            raw = sel.xpath('(//img[contains(@class,"info-img")]/@data-interchange)[1]').get() or ''
+            return _parse_interchange(raw)
+
+        refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(_CAST_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
-                links.append((name, href))
-
-        actors: list[ActorResult] = []
-        for name, href in links:
-            url = href if href.startswith('http') else scene.site.base_url.rstrip('/') + href
-            page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            interchange = (page['sel'].xpath('(//img[contains(@class,"info-img")]/@data-interchange)[1]').get() or '') if page else ''
-            actors.append(ActorResult(name=name, photo_url=_parse_interchange(interchange)))
-        metadata.actors = actors
+                refs.append((name, href if href.startswith('http') else base + href))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

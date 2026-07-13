@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from parsel import Selector
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
@@ -150,24 +152,18 @@ class RadicalCashOtherClient(Client):
             metadata.actors = actors or []
             return
 
+        attr = p['actor_photo_page_attr'] or 'src'
+
+        def extract_photo(sel: Selector) -> str:
+            return (sel.xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(f'//{p["actors"]}'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name:
-                refs.append((name, href))
-        attr = p['actor_photo_page_attr'] or 'src'
-        for name, href in refs:
-            if name in seen:
-                continue
-            seen.add(name)
-            photo = ''
-            if href and p['actor_photo_page']:
-                page = await self.fetch_and_load(join_url(href, base), None, f'[{scene.site.name}] actor {name}')
-                if page:
-                    photo = (page['sel'].xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors or []
+                refs.append((name, join_url(href, base) if (href and p['actor_photo_page']) else ''))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None) or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         director = self._profile(scene.site.name)['director']

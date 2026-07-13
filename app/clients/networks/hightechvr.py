@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr
 
@@ -86,26 +88,17 @@ class HighTechVRClient(Client):
         assert scene.sel is not None
         p = _profile(scene.site.name)
         base = scene.site.base_url.rstrip('/')
+
+        def extract_photo(sel: Selector) -> str:
+            return (sel.xpath(f'({p["actor_photo"]})[1]/@src').get() or '').strip()
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(p['actors']):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name:
-                refs.append((name, href))
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
-        for name, href in refs:
-            if name in seen:
-                continue
-            seen.add(name)
-            photo = ''
-            if href:
-                url = join_url(href, base)
-                page = await self.fetch_and_load(url, None, f'[{scene.site.name}] actor {name}')
-                if page:
-                    photo = (page['sel'].xpath(f'({p["actor_photo"]})[1]/@src').get() or '').strip()
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors or []
+                refs.append((name, join_url(href, base) if href else ''))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

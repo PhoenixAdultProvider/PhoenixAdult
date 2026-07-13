@@ -4,7 +4,9 @@ import re
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
@@ -127,19 +129,18 @@ class BellaPassClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
+
+        def extract_photo(sel: Selector) -> str:
+            rel = first_attr(sel, '(//div[@class="profile-pic"]//img)[1]/@src0_3x')
+            return (rel if rel.startswith('http') else base + rel) if rel else ''
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/models/")]'):
             name = _strip_punct(first_attr(el, 'normalize-space(.)'))
             href = first_attr(el, '@href')
             if name:
                 refs.append((name, absolute_url(href, scene.site.base_url)))
-        actors: list[ActorResult] = []
-        for name, actor_url in refs:
-            loaded = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')
-            rel = first_attr(loaded['sel'], '(//div[@class="profile-pic"]//img)[1]/@src0_3x') if loaded else ''
-            photo = (rel if rel.startswith('http') else base + rel) if rel else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

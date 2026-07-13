@@ -4,7 +4,9 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
@@ -110,24 +112,18 @@ class KellyMadisonClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//div[contains(@class,"one")]//img)[1]/@src')
+            return absolute_url(raw, base) if raw else ''
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
-                refs.append((name, href))
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
-        for name, href in refs:
-            if name in seen:
-                continue
-            seen.add(name)
-            actor_url = absolute_url(href, base)
-            page = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {name}')
-            raw = first_attr(page['sel'], '(//div[contains(@class,"one")]//img)[1]/@src') if page else ''
-            photo = (absolute_url(raw, base)) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors
+                refs.append((name, absolute_url(href, base)))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         slug = scene.url.rstrip('/').split('/')[-1]

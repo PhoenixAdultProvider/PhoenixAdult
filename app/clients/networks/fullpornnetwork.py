@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
@@ -127,6 +129,11 @@ class FullPornNetworkClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//img[@alt="model"])[1]/@src0_3x')
+            return absolute_url(raw, base) if raw else ''
+
         refs: list[tuple[str, str]] = []
         for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/models/")]'):
             name = first_attr(a, 'normalize-space(.)')
@@ -135,12 +142,7 @@ class FullPornNetworkClient(Client):
                 refs.append((name, absolute_url(href, base)))
         if not refs:
             return
-        actors: list[ActorResult] = []
-        for name, href in refs:
-            page = await self.fetch_and_load(href, None, f'GET {href} (model)')
-            raw = first_attr(page['sel'], '(//img[@alt="model"])[1]/@src0_3x') if page else ''
-            actors.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
-        metadata.actors = actors or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

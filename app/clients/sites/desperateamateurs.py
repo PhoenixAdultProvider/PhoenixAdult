@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -69,22 +71,19 @@ class DesperateAmateursClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+        base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//img[contains(@class,"thumbs")]/@src)[1]')
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//a[starts-with(@href,"sets")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
-            if not name or not href or name in seen:
-                continue
-            seen.add(name)
-            actor_url = absolute_url(href, scene.site.base_url)
-            actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = ''
-            if actor_page:
-                raw = first_attr(actor_page['sel'], '(//img[contains(@class,"thumbs")]/@src)[1]')
-                photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors
+            if name and href:
+                refs.append((name, absolute_url(href, base)))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

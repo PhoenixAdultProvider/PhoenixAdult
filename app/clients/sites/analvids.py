@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
+from parsel import Selector
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -78,23 +80,18 @@ class AnalVidsClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        links: list[tuple[str, str]] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//div[contains(@class,"model")]//img/@src)[1]')
+
+        refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//a[contains(@href,"/model/")]'):
             href = first_attr(el, '@href')
             name = first_attr(el, 'normalize-space(.)')
-            if not name or not href or 'forum' in href or name in seen:
+            if not name or not href or 'forum' in href:
                 continue
-            seen.add(name)
-            links.append((name, href))
-
-        actors: list[ActorResult] = []
-        for name, href in links:
-            url = absolute_url(href, scene.site.base_url)
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = first_attr(loaded['sel'], '(//div[contains(@class,"model")]//img/@src)[1]') if loaded else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors
+            refs.append((name, absolute_url(href, scene.site.base_url)))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

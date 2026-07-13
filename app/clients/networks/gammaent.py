@@ -4,6 +4,8 @@ import asyncio
 import re
 from typing import Any
 
+from parsel import Selector
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.coalescer import coalesce_future
@@ -222,6 +224,15 @@ class GammaEntClient(Client):
     async def _resolve_actors(self, scene: LoadedScene) -> list[ActorResult]:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = (
+                sel.xpath('(//img[contains(@class,"actorPicture")])[1]/@src').get()
+                or sel.xpath('(//span[contains(@class,"removeAvatarParent")]//img)[1]/@src').get()
+                or ''
+            ).strip()
+            return absolute_url(raw, base) if raw else ''
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(_ACTOR_SEL):
             name = first_attr(el, 'normalize-space(.)')
@@ -245,16 +256,5 @@ class GammaEntClient(Client):
                     actor_id, name = m.group(1).strip(), m.group(2).strip()
                     refs.append((name, f'/en/pornstar/{name.replace(" ", "-")}/{actor_id}'))
 
-        out: list[ActorResult] = []
-        for name, href in refs:
-            photo = ''
-            page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-            if page:
-                raw = (
-                    page['sel'].xpath('(//img[contains(@class,"actorPicture")])[1]/@src').get()
-                    or page['sel'].xpath('(//span[contains(@class,"removeAvatarParent")]//img)[1]/@src').get()
-                    or ''
-                ).strip()
-                photo = absolute_url(raw, base) if raw else ''
-            out.append(ActorResult(name=name, photo_url=photo))
-        return out
+        refs = [(name, absolute_url(href, base)) for name, href in refs]
+        return await self.resolve_actor_photos(refs, extract_photo)

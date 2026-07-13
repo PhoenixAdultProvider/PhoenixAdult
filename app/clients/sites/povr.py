@@ -5,7 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -101,19 +101,16 @@ class POVRClient(Client):
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        actors: list[ActorResult] = []
+        def extract_photo(sel: Selector) -> str:
+            return (_parse_ld(sel) or {}).get('image') or ''
+
+        refs: list[tuple[str, str]] = []
         for a in self._ld(scene).get('actor') or []:
             name = (a.get('name') or '').strip()
             if not name:
                 continue
-            photo = ''
-            page = (a.get('@id') or '').strip()
-            if page:
-                loaded = await self.fetch_and_load(page, FetchCtx(capture=scene.capture), f'GET {page} (actor)')
-                ld = _parse_ld(loaded['sel']) if loaded else None
-                photo = (ld or {}).get('image') or ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors
+            refs.append((name, (a.get('@id') or '').strip()))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         thumb = (self._ld(scene).get('thumbnailUrl') or '').strip()

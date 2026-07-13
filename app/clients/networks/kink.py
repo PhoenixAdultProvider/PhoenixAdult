@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from parsel import Selector
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -127,26 +129,17 @@ class KinkClient(Client):
     async def _collect_people(self, scene: LoadedScene, xp: str) -> list[ActorResult]:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
+
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(xp):
             name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
             href = first_attr(el, '@href')
             if name:
-                refs.append((name, href))
-        people: list[ActorResult] = []
-        seen: set[str] = set()
-        for name, href in refs:
-            if name in seen:
-                continue
-            seen.add(name)
-            photo = ''
-            if href:
-                url = absolute_url(href, base)
-                page = await self.fetch_and_load(url, None, f'[{scene.site.name}] {name}')
-                if page:
-                    photo = first_attr(page['sel'], '(//div[contains(@class,"biography-container")]//img)[1]/@src')
-            people.append(ActorResult(name=name, photo_url=photo))
-        return people
+                refs.append((name, absolute_url(href, base) if href else ''))
+        return await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

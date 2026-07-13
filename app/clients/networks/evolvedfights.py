@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
@@ -72,6 +74,11 @@ class EvolvedFightsClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x')
+            return absolute_url(raw, base) if raw else ''
+
         refs: list[tuple[str, str]] = []
         for a in scene.sel.xpath(
             '//div[contains(@class,"update_block_info") and contains(@class,"model_update_block_info")]//span[contains(@class,"tour_update_models")]//a'
@@ -79,18 +86,8 @@ class EvolvedFightsClient(Client):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if name:
-                refs.append((name, href))
-        actors: list[ActorResult] = []
-        for name, href in refs:
-            photo = ''
-            if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                if page:
-                    raw = first_attr(page['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x')
-                    if raw:
-                        photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors or []
+                refs.append((name, absolute_url(href, base) if href else ''))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

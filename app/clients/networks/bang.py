@@ -5,6 +5,8 @@ import re
 from typing import Any
 from urllib.parse import quote, urlparse
 
+from parsel import Selector
+
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
@@ -186,25 +188,25 @@ class BangClient(Client):
             metadata.actors = actors or []
             return
 
-        dvd_actors: list[ActorResult] = []
+        def extract_photo(sel: Selector) -> str:
+            for s in sel.xpath('//script[@type="application/ld+json"]'):
+                try:
+                    blob = json.loads(s.xpath('string(.)').get() or '')
+                except (ValueError, TypeError):
+                    continue
+                if isinstance(blob, dict) and blob.get('@type') == 'Person':
+                    img = blob.get('image')
+                    if isinstance(img, str):
+                        return img.strip()
+            return ''
+
+        refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
-            if not name or not href:
-                continue
-            loaded = await self.fetch_and_load(absolute_url(href, scene.site.base_url), None, 'actor')
-            photo = ''
-            if loaded:
-                for s in loaded['sel'].xpath('//script[@type="application/ld+json"]'):
-                    try:
-                        blob = json.loads(s.xpath('string(.)').get() or '')
-                    except (ValueError, TypeError):
-                        continue
-                    if isinstance(blob, dict) and blob.get('@type') == 'Person' and isinstance(blob.get('image'), str):
-                        photo = blob['image'].strip()
-                        break
-            dvd_actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = dvd_actors or []
+            if name and href:
+                refs.append((name, absolute_url(href, scene.site.base_url)))
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

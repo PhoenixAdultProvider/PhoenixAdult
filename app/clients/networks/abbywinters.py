@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
@@ -150,20 +152,17 @@ class AbbyWintersClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//img[contains(@class,"img-responsive")]/@src)[1]')
+
         refs: list[tuple[str, str]] = []
-        seen: set[str] = set()
         for el in scene.sel.xpath('//tr[contains(.,"Scene")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
-            if name and href and name not in seen:
-                seen.add(name)
+            if name and href:
                 refs.append((name, absolute_url(href, base)))
-        actors: list[ActorResult] = []
-        for name, href in refs:
-            page = await self.fetch_and_load(href, None, f'GET {href} (actor)')
-            photo = first_attr(page['sel'], '(//img[contains(@class,"img-responsive")]/@src)[1]') if page else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
