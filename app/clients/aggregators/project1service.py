@@ -208,29 +208,37 @@ class Project1ServiceClient(Client):
         headers = scene.extra['headers']
         capture = scene.capture
 
-        title = (detail.get('title') or '').strip().replace('�', "'")
-        summary = detail.get('description') or (detail.get('parent') or {}).get('description') or ''
-        studio = title_case(detail.get('brand') or '', site_name=site.name) or site.name
+        # Title
+        metadata.title = (detail.get('title') or '').strip().replace('�', "'")
 
+        # Summary
+        metadata.summary = detail.get('description') or (detail.get('parent') or {}).get('description') or ''
+
+        # Studio
+        metadata.studio = title_case(detail.get('brand') or '', site_name=site.name) or site.name
+
+        # Tagline and Collection(s)
         colls = detail.get('collections') or []
         sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
-        # Tier 1 (scraped sub-site) only; the mapper fills tiers 2-3 (filename sub-site / studio).
-        has_sub = bool(sub_site) and _normalize(sub_site) != _normalize(studio)
-        tagline = sub_site if has_sub else None
-        collections = [sub_site] if has_sub else [studio]
+        has_sub = bool(sub_site) and _normalize(sub_site) != _normalize(metadata.studio)
+        metadata.tagline = sub_site if has_sub else None
+        metadata.collections = [sub_site] if has_sub else [metadata.studio]
 
-        release_date = iso_date(detail['dateReleased']) if detail.get('dateReleased') else None
-        genres = [g for g in ((t.get('name') or '').strip() for t in (detail.get('tags') or []) if isinstance(t, dict)) if g]
+        # Release Date
+        metadata.release_date = iso_date(detail['dateReleased']) if detail.get('dateReleased') else None
 
-        actors: list[ActorResult] = []
+        # Genres
+        metadata.genres = [g for g in ((t.get('name') or '').strip() for t in (detail.get('tags') or []) if isinstance(t, dict)) if g]
+
+        # Actor(s)
         for a in detail.get('actors') or []:
             if not isinstance(a, dict) or a.get('id') is None:
                 continue
             fetched = await self._fetch_actor(int(a['id']), headers, capture)
             if fetched:
-                actors.append(fetched)
+                metadata.actors.append(fetched)
 
-        raw_images: list[str] = []
+        # Posters
         for kind in ('poster', 'cover'):
             bucket = (detail.get('images') or {}).get(kind)
             if not isinstance(bucket, dict):
@@ -240,28 +248,24 @@ class Project1ServiceClient(Client):
                     continue
                 u = _service_url(((bucket[k] or {}).get('xx') or {}).get('url'), _DEFAULT_IMAGE_BASE)
                 if u:
-                    raw_images.append(u)
+                    metadata.raw_image_urls.append(u)
 
+        # Posters from Data18
         data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
             search_sub = sub_site or scene.subsite
             providers = [p for p in (site.name, search_sub) if p]
             data18_url = await self._data18.enrich_images(
-                scope=site.name, images=raw_images, scene_id=mapping_slug(title, search_sub), title=title, providers=providers, scene_date=date_obj
+                scope=site.name,
+                images=metadata.raw_image_urls,
+                scene_id=mapping_slug(metadata.title, search_sub),
+                title=metadata.title,
+                providers=providers,
+                scene_date=date_obj,
             )
-
-        metadata.title = title
-        metadata.summary = summary
-        metadata.studio = studio
-        metadata.tagline = tagline
-        metadata.release_date = release_date
-        metadata.collections = collections
-        metadata.genres = genres
-        metadata.actors = actors
-        metadata.raw_image_urls = raw_images
-        metadata.data18_url = data18_url
+            metadata.data18_url = data18_url
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'

@@ -114,6 +114,12 @@ def test_title_case_honorifics_get_a_period() -> None:
     assert title_case('1st time') == '1st Time'
 
 
+def test_title_case_name_skips_honorific_period() -> None:
+    assert title_case('summer col', type='name') == 'Summer Col'
+    assert title_case('dr love', type='name') == 'Dr Love'
+    assert title_case('summer col') == 'Summer Col.'  # titles still get the period
+
+
 def test_title_case_trailing_article_rotation() -> None:
     assert title_case('dog, the') == 'The Dog'
 

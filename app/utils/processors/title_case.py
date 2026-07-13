@@ -312,7 +312,8 @@ class _TitleCaseEngine:
         output = _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
         output = _POSSESSIVE_S_RE.sub("'", output)
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
-        output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
+        if self.type != 'name':
+            output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
         if self.type == 'title':
             output = normalize_sequence_separator(output)
         output = expand_initial_pairs(output)
