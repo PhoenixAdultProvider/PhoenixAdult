@@ -542,8 +542,8 @@ async def backfill_people_images(
             for pr in detail.producers or []:
                 if pr.name:
                     scene.add_producer(pr.name, pr.photo_url or '')
-            refs = [detail.raw_image_referer] if detail.raw_image_referer else []
-            cks = [detail.raw_image_cookie] if detail.raw_image_cookie else []
+            refs = [detail.art_referer] if detail.art_referer else []
+            cks = [detail.art_cookie] if detail.art_cookie else []
             if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
                 changed = True
 

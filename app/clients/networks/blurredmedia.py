@@ -76,7 +76,7 @@ class BlurredMediaClient(Client):
             capture=ctx.capture if ctx else None,
             sel=loaded['sel'],
             html=loaded['html'],
-            raw_image_cookie=cookie,
+            art_cookie=cookie,
         )
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:

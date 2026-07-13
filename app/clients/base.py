@@ -87,8 +87,8 @@ class SceneDetail:
     genres: list[str] = field(default_factory=list)
     actors: list[ActorResult] = field(default_factory=list)
     art: list[str] = field(default_factory=list)
-    raw_image_referer: str | None = None
-    raw_image_cookie: str | None = None
+    art_referer: str | None = None
+    art_cookie: str | None = None
     tagline: str | None = None
     release_date: str | None = None
     year: int | None = None
@@ -117,8 +117,8 @@ class LoadedScene:
     extra: Any = None
     sel: Selector | None = None
     html: str | None = None
-    raw_image_referer: str | None = None
-    raw_image_cookie: str | None = None
+    art_referer: str | None = None
+    art_cookie: str | None = None
     data18_url: str | None = None
     subsite: str | None = None
     language: str | None = None
@@ -434,8 +434,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
         metadata = SceneDetail(
             scene_url=scene.url,
-            raw_image_referer=scene.raw_image_referer,
-            raw_image_cookie=scene.raw_image_cookie,
+            art_referer=scene.art_referer,
+            art_cookie=scene.art_cookie,
             data18_url=scene.data18_url,
         )
         await self.update(metadata, scene)

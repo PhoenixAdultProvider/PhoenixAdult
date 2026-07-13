@@ -163,7 +163,7 @@ class AllureMediaClient(Client):
                 photos_href = first_attr(a, '@href')
                 break
         photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
-        metadata.raw_image_referer = photos_url or scene.url
+        metadata.art_referer = photos_url or scene.url
 
         if photos_url:
             photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')

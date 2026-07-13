@@ -83,9 +83,9 @@ class MetadataMapper:
             logger.info(f'Poster: {u}')
 
         site_referers = resolve_image_referers(site, detail.scene_url) if site else []
-        referers = [detail.raw_image_referer, *site_referers] if detail.raw_image_referer else site_referers
+        referers = [detail.art_referer, *site_referers] if detail.art_referer else site_referers
         site_cookies = resolve_image_cookies(site) if site else []
-        cookies = [detail.raw_image_cookie, *site_cookies] if detail.raw_image_cookie else site_cookies
+        cookies = [detail.art_cookie, *site_cookies] if detail.art_cookie else site_cookies
 
         async def probe(raw_url: str) -> dict[str, Any] | None:
             dims = await fetch_dimensions(raw_url, referers, cookies)
