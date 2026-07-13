@@ -291,8 +291,18 @@ class _TitleCaseEngine:
 
     # ── Post-process ─────────────────────────────────────────────────────────
     def _post_process(self, output: str) -> str:
+        output = self._normalize_quotes_and_articles(output)
+        output = self._fix_spacing(output)
+        output = self._capitalize_boundaries(output)
+        output = self._normalize_initials(output)
+        output = self._fix_grammar(output)
+        return self._finish_by_type(output)
+
+    def _normalize_quotes_and_articles(self, output: str) -> str:
         output = output.replace('“', '"').replace('”', '"').replace('’', "'")  # Normalize curly quotes
-        output = re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
+        return re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
+
+    def _fix_spacing(self, output: str) -> str:
         output = re.sub(r'(?i)([!:?])(?=\w)(?!(?:co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b))', r'\1 ', output)
         output = re.sub(r'\.(?=[A-Za-z])(?!co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b)', '. ', output)
         output = re.sub(r'(?<!\.)\.$', '', output)
@@ -300,27 +310,35 @@ class _TitleCaseEngine:
         output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
         output = _OPEN_QUOTE_RE.sub(lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}', output)
         output = re.sub(r'(?<=[#("\[])\s+', '', output)
-        output = re.sub(r'"(?!\s)(?=(?:(?:[^"]*"){2})*[^"]*$)', '" ', output)
+        return re.sub(r'"(?!\s)(?=(?:(?:[^"]*"){2})*[^"]*$)', '" ', output)
+
+    def _capitalize_boundaries(self, output: str) -> str:
         output = re.sub(r'(?<!vs\.)([!:?.\-–])(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
         output = re.sub(r'([\])])(\s)([a-z])', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
         output = re.sub(r'(?<=[(|&"\[*~])([a-z])', lambda m: m.group(1).upper(), output)
         output = re.sub(r'\S+[\])"~:]', lambda m: _capitalize(m.group(0)), output)
-        output = re.sub(r'\S+$', lambda m: _capitalize(m.group(0)), output)
+        return re.sub(r'\S+$', lambda m: _capitalize(m.group(0)), output)
+
+    def _normalize_initials(self, output: str) -> str:
         output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
         output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
         output = collapse_initial_pairs(output)
-        output = _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
+        return _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
+
+    def _fix_grammar(self, output: str) -> str:
         output = _POSSESSIVE_S_RE.sub("'", output)
         output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
         if self.type != 'name':
             output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
+        return output
+
+    def _finish_by_type(self, output: str) -> str:
         if self.type == 'title':
             output = normalize_sequence_separator(output)
         output = expand_initial_pairs(output)
         output = re.sub(r'(?<![A-Za-z])W/', 'w/', output)
         for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
-
         return output
 
 
