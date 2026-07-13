@@ -63,4 +63,4 @@ async def test_detail_via_packed_curid() -> None:
     assert detail.actors[1].photo_url == 'https://cdn.fj.com/bella-real.jpg'
     assert detail.directors is not None
     assert detail.directors[0].name == 'Dir One'
-    assert detail.raw_image_urls == ['https://cdn.fj.com/poster.jpg']
+    assert detail.art == ['https://cdn.fj.com/poster.jpg']

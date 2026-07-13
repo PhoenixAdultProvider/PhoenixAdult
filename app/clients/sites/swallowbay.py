@@ -84,4 +84,4 @@ class SwallowBayClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         poster = meta_content(scene.sel, 'og:image')
-        metadata.raw_image_urls = [poster] if poster else []
+        metadata.art = [poster] if poster else []

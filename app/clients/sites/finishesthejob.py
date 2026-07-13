@@ -96,4 +96,4 @@ class FinishesTheJobClient(Client):
                 alt = first_attr(el, '@alt').lower()
                 if alt == title:
                     push(el.xpath('@src').get() or '')
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -54,4 +54,4 @@ async def test_detail_genres_actors_images(monkeypatch: pytest.MonkeyPatch) -> N
     assert detail.genres == ['Deep Rimming', 'Sloppy', 'Anal', 'Rim Job']
     assert [a.name for a in detail.actors] == ['Alice Star']
     assert detail.actors[0].photo_url == 'https://www.girlsrimming.com/img/alice.jpg'
-    assert detail.raw_image_urls == ['https://www.girlsrimming.com/img/p1.jpg']
+    assert detail.art == ['https://www.girlsrimming.com/img/p1.jpg']

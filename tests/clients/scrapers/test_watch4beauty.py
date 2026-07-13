@@ -95,7 +95,7 @@ async def test_detail_end_to_end_json() -> None:
         ('Jane Doe', f'{ART}20240105model-jane-320.jpg'),
         ('Mary Roe', f'{ART}20240105model-mary-320.jpg'),
     ]
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         f'{ART}20240105-issue-cover-1280.jpg',
         f'{ART}20240105-issue-video-cover-2560.jpg',
         f'{ART}20240105-issue-cover-wide-2560.jpg',

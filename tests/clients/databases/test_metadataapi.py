@@ -57,7 +57,7 @@ async def test_detail_parent_network() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Blonde']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.tpdb.net/jane.jpg')]
-    assert detail.raw_image_urls == ['https://cdn.tpdb.net/poster.jpg', 'https://cdn.tpdb.net/bg.jpg']
+    assert detail.art == ['https://cdn.tpdb.net/poster.jpg', 'https://cdn.tpdb.net/bg.jpg']
 
 
 @respx.mock

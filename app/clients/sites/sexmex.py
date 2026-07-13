@@ -116,4 +116,4 @@ class SexMexClient(Client):
             coll['push'](raw)
         for raw in scene.sel.xpath('//video/@poster').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

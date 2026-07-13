@@ -61,4 +61,4 @@ class XVirtualClient(Client):
         coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for el in scene.sel.xpath('//div[contains(@class,"thumbnails")]//img'):
             coll['push'](el.xpath('@src').get() or '')
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -65,7 +65,7 @@ async def test_detail_with_princess_leia() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Cosplay', 'Sci-Fi']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Xev Bellringer', XEV_PHOTO), ('Princess Leia', '')]
-    assert detail.raw_image_urls == ['https://xevunleashed.com/content/poster.jpg']
+    assert detail.art == ['https://xevunleashed.com/content/poster.jpg']
 
 
 @respx.mock

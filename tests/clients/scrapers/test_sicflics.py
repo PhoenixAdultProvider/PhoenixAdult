@@ -62,4 +62,4 @@ async def test_detail_from_packed_payload() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Fisting', 'Extreme']
     assert [a.name for a in detail.actors] == ['Anna Loma']
-    assert detail.raw_image_urls == ['https://www.sicflics.com/thumb.jpg']
+    assert detail.art == ['https://www.sicflics.com/thumb.jpg']

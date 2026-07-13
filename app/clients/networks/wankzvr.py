@@ -106,4 +106,4 @@ class WankzVRClient(Client):
         raw = first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content')
         if not raw:
             return
-        metadata.raw_image_urls = [raw.replace('cover', 'hero').replace('medium.jpg', 'large.jpg')]
+        metadata.art = [raw.replace('cover', 'hero').replace('medium.jpg', 'large.jpg')]

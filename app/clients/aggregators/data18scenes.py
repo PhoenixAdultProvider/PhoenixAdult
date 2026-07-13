@@ -191,4 +191,4 @@ class Data18ScenesClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.raw_image_urls = await self._data18.fetch_images(scene.url) or []
+        metadata.art = await self._data18.fetch_images(scene.url) or []

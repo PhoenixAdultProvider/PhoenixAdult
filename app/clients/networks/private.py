@@ -158,4 +158,4 @@ class PrivateClient(Client):
                 coll['push'](f'{prefix}{watermark_id}_{n}.jpg'.replace('pcoms', 'pcom'))
 
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -87,6 +87,6 @@ class MetArtClient(Client):
 
         # Posters
         if cdn and d.get('coverImagePath'):
-            metadata.raw_image_urls.append(cdn + d['coverImagePath'])
+            metadata.art.append(cdn + d['coverImagePath'])
         if cdn and d.get('splashImagePath'):
-            metadata.raw_image_urls.append(cdn + d['splashImagePath'])
+            metadata.art.append(cdn + d['splashImagePath'])

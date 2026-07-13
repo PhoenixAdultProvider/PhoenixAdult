@@ -45,4 +45,4 @@ async def test_search_and_detail_roundtrip() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['CFNM', 'Femdom', 'Male Humiliation', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mistress X']
-    assert detail.raw_image_urls == ['https://cdn/p.jpg']
+    assert detail.art == ['https://cdn/p.jpg']

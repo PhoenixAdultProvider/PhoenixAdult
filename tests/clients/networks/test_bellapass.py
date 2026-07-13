@@ -73,7 +73,7 @@ async def test_detail_umbrella() -> None:
     assert detail.genres == ['Anal', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith', 'Jack']
     assert detail.actors[0].photo_url == 'https://bellapass.com/p/jane.jpg'
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://bellapass.com/img/t1.jpg',
         'https://bellapass.com/img/s0.jpg',
         'https://bellapass.com/img/s1.jpg',

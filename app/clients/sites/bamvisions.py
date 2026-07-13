@@ -77,4 +77,4 @@ class BAMVisionsClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for el in scene.sel.xpath('//img[contains(@class,"update_thumb")]'):
             coll['push'](first_attr(el, '@src0_3x'))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

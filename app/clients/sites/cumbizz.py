@@ -67,4 +67,4 @@ class CumbizzClient(Client):
         coll['push'](scene.sel.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
         for el in scene.sel.xpath('//img[contains(@class,"vidgal")]'):
             coll['push'](el.xpath('@src').get() or '')
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -57,5 +57,5 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['teen']
     assert detail.actors == []
-    assert 'https://cdn/p.jpg' in (detail.raw_image_urls or [])
-    assert 'http://imagecdn.clips4sale.com/accounts99/57445/clip_images/previewlg_99999999.jpg' in (detail.raw_image_urls or [])
+    assert 'https://cdn/p.jpg' in (detail.art or [])
+    assert 'http://imagecdn.clips4sale.com/accounts99/57445/clip_images/previewlg_99999999.jpg' in (detail.art or [])

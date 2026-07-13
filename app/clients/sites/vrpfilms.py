@@ -88,4 +88,4 @@ class VRPFilmsClient(Client):
         push(_url_from_style(bg_style))
         for href in scene.sel.xpath('//div[contains(@class,"col-md-12") and contains(@class,"gallery-body")]//div//div//div//a[@href]/@href').getall():
             push(href)
-        metadata.raw_image_urls = images
+        metadata.art = images

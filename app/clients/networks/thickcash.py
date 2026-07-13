@@ -84,4 +84,4 @@ class ThickCashClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')
-        metadata.raw_image_urls = [poster] if poster else []
+        metadata.art = [poster] if poster else []

@@ -135,4 +135,4 @@ class FemjoyClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         image = (self._extra(scene).result.get('thumb') or {}).get('image')
-        metadata.raw_image_urls = [image] if image else []
+        metadata.art = [image] if image else []

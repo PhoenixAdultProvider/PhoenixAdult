@@ -135,4 +135,4 @@ class BadoinkVrClient(Client):
                 out.append(f'{base_img}_{i}.jpg')
 
         deduped = list(dict.fromkeys(u for u in out if u))
-        metadata.raw_image_urls = deduped or []
+        metadata.art = deduped or []

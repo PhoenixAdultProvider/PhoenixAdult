@@ -160,7 +160,7 @@ async def test_detail_movie() -> None:
     assert detail.collections == ['Empire Studios', 'Best Of The Best']
     assert detail.directors is not None and [d.name for d in detail.directors] == ['Mike Boss']
     assert detail.producers is not None and [p.name for p in detail.producers] == ['John Smith']
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://cdn.example/cover.jpg',
         'https://cdn.example/cover-big.jpg',
         'https://cdn.example/shot-1.jpg',

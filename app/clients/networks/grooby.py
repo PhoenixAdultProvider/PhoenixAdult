@@ -118,4 +118,4 @@ class GroobyClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

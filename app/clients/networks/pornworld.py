@@ -175,4 +175,4 @@ class PornWorldClient(Client):
         coll = self.image_collector()
         for raw in scene.sel.xpath('//video/@data-poster').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

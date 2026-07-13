@@ -78,4 +78,4 @@ async def test_detail() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['anal', 'hardcore', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Mike Jones']
-    assert detail.raw_image_urls == ['https://cdn/uf/thumb.jpg']
+    assert detail.art == ['https://cdn/uf/thumb.jpg']

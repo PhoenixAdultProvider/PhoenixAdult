@@ -123,4 +123,4 @@ class NewSensationsOtherClient(Client):
                     continue
                 for src in block.xpath('.//div[@class="cell"]//img/@src0_3x').getall():
                     coll['push'](src)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

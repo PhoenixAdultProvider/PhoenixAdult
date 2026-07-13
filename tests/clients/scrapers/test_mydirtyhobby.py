@@ -59,4 +59,4 @@ async def test_detail_embedded_json() -> None:
     assert detail.genres == ['amateur', 'pov']
     assert [a.name for a in detail.actors] == ['Lola']
     assert detail.actors[0].photo_url == 'https://cdn.mdh.com/lola.jpg'
-    assert detail.raw_image_urls == ['https://cdn.mdh.com/poster.jpg']
+    assert detail.art == ['https://cdn.mdh.com/poster.jpg']

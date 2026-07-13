@@ -94,4 +94,4 @@ class LustRealityClient(Client):
             coll['push'](css_bg_image(el.xpath('@style').get()))
         for href in scene.sel.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

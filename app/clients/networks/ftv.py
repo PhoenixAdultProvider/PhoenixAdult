@@ -157,4 +157,4 @@ class FTVClient(Client):
 
         for raw in _collect_images(scene.sel):
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []

@@ -255,7 +255,7 @@ class Project1ServiceClient(Client):
                     continue
                 u = _service_url(((bucket[k] or {}).get('xx') or {}).get('url'), _DEFAULT_IMAGE_BASE)
                 if u:
-                    metadata.raw_image_urls.append(u)
+                    metadata.art.append(u)
 
         # Posters from Data18
         data18_url: str | None = None
@@ -266,7 +266,7 @@ class Project1ServiceClient(Client):
             providers = [p for p in (site.name, search_sub) if p]
             data18_url = await self._data18.enrich_images(
                 scope=site.name,
-                images=metadata.raw_image_urls,
+                images=metadata.art,
                 scene_id=mapping_slug(metadata.title, search_sub),
                 title=metadata.title,
                 providers=providers,

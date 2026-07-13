@@ -109,4 +109,4 @@ class FittingRoomClient(Client):
         images = [f'https://www.fitting-room.com/contents/videos_screenshots/0/{scene_id}/preview.jpg']
         for n in range(2, 6):
             images.append(f'https://www.fitting-room.com/contents/videos_screenshots/0/{scene_id}/3840x1400/{n}.jpg')
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -38,4 +38,4 @@ async def test_detail_cast_and_images() -> None:
     assert detail.studio == 'Lustomic'
     assert detail.release_date == '2024-01-05'
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe']
-    assert detail.raw_image_urls == ['/video_preview_images/1.jpg']
+    assert detail.art == ['/video_preview_images/1.jpg']

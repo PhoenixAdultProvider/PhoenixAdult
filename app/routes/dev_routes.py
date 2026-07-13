@@ -419,7 +419,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
                     'thumb': metadata.thumb,
                     'art': metadata.art,
                     'images': [{'url': img.url, 'type': img.type} for img in images],
-                    'rawImageCount': len(detail.raw_image_urls),
+                    'rawImageCount': len(detail.art),
                     'captures': _serialize_captures(captures),
                     'fixture': fixture,
                 },

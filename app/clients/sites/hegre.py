@@ -124,4 +124,4 @@ class HegreClient(Client):
         large = raw.replace('1600x', '1920x')
         if large not in images:
             images.append(large)
-        metadata.raw_image_urls = images
+        metadata.art = images

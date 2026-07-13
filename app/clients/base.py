@@ -86,7 +86,7 @@ class SceneDetail:
     studio: str = ''
     genres: list[str] = field(default_factory=list)
     actors: list[ActorResult] = field(default_factory=list)
-    raw_image_urls: list[str] = field(default_factory=list)
+    art: list[str] = field(default_factory=list)
     raw_image_referer: str | None = None
     raw_image_cookie: str | None = None
     tagline: str | None = None
@@ -441,7 +441,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.release_date = metadata.release_date or scene.scene_date or None
         metadata.genres = metadata.genres or []
         metadata.actors = metadata.actors or []
-        metadata.raw_image_urls = metadata.raw_image_urls or []
+        metadata.art = metadata.art or []
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:

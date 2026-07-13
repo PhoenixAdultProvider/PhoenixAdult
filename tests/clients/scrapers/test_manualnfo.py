@@ -139,9 +139,9 @@ async def test_detail_full_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         ('John Smith', '', 'male'),
         ('Pat Roe', '', ''),
     ]
-    assert len(detail.raw_image_urls) == 2
-    assert f'{BASENAME}-poster.jpg' in detail.raw_image_urls[0]
-    assert f'{BASENAME}-fanart.jpg' in detail.raw_image_urls[1]
+    assert len(detail.art) == 2
+    assert f'{BASENAME}-poster.jpg' in detail.art[0]
+    assert f'{BASENAME}-fanart.jpg' in detail.art[1]
 
 
 async def test_detail_url_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -149,7 +149,7 @@ async def test_detail_url_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     _write_folder(tmp_path, BASENAME)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
+    assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
 
 
 async def test_detail_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -175,7 +175,7 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
     monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg', 'https://cdn.data18.com/a.jpg']
+    assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg', 'https://cdn.data18.com/a.jpg']
     assert calls['query'] == 'Naughty Fantasy'
     assert calls['providers'] == ['Paradise Films', 'Naughty Series']
 
@@ -198,7 +198,7 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert queries == ['Naughty Fantasy']
-    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
+    assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
 
 
 async def test_detail_data18_enrichment_off_by_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -212,7 +212,7 @@ async def test_detail_data18_enrichment_off_by_default(tmp_path: Path, monkeypat
     monkeypatch.setattr(mn_module, 'Data18Client', _boom)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
+    assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
 
 
 async def test_detail_year_only_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -253,7 +253,7 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert fetched == ['https://www.data18.com/scenes/1150700']
-    assert 'https://cdn.data18.com/a.jpg' in detail.raw_image_urls
+    assert 'https://cdn.data18.com/a.jpg' in detail.art
 
 
 async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

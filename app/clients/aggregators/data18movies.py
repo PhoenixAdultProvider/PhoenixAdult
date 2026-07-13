@@ -166,4 +166,4 @@ class Data18MoviesClient(Client):
         metadata.directors = [ActorResult(name=raw)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.raw_image_urls = await self._data18.fetch_movie_images(scene.url, scene.sel) or []
+        metadata.art = await self._data18.fetch_movie_images(scene.url, scene.sel) or []

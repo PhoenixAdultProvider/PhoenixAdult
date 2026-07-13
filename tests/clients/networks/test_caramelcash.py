@@ -57,7 +57,7 @@ async def test_detail() -> None:
     assert detail.release_date == '2024-05-12'
     assert detail.genres == ['Anal', 'Gonzo']
     assert [a.name for a in detail.actors] == ['Jane Doe']
-    assert detail.raw_image_urls == ['https://cdn/g1.jpg']
+    assert detail.art == ['https://cdn/g1.jpg']
 
 
 def test_parse_caramel_date() -> None:

@@ -78,4 +78,4 @@ class PlayboyPlusClient(Client):
         coll['push'](scene.sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
         for raw in scene.sel.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

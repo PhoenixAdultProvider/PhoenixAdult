@@ -98,4 +98,4 @@ class RealityLoversClient(Client):
         coll = self.image_collector(lambda raw: _srcset_entry(raw, len(raw.split(',')) - 1, 6))
         for data_big in scene.sel.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
             coll['push']((data_big or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -142,4 +142,4 @@ class DickDrainersClient(Client):
             for m in _SRC0_3X_RE.finditer(text):
                 coll['push'](m.group(1))
 
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

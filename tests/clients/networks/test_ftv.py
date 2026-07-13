@@ -54,7 +54,7 @@ async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.genres == ['Teen', 'Solo', 'Public']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.ftvgirls.com/t/jane.jpg'
-    assert detail.raw_image_urls == ['https://www.ftvgirls.com/img/mag.jpg']
+    assert detail.art == ['https://www.ftvgirls.com/img/mag.jpg']
 
 
 def test_photo_lookup() -> None:

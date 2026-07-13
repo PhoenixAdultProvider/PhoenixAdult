@@ -85,4 +85,4 @@ async def test_detail_json_map() -> None:
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.xc.com/jane.jpg'), ('Mary Roe', '')]
     assert detail.directors is not None and [d.name for d in detail.directors] == ['Erika Lust']
     assert detail.producers is not None and [(p.name, p.photo_url) for p in detail.producers] == [('Erika Lust', 'https://cdn.xc.com/erika.jpg')]
-    assert detail.raw_image_urls == ['https://cdn.xc.com/poster.jpg', 'https://cdn.xc.com/g1.jpg', 'https://cdn.xc.com/g2.jpg']
+    assert detail.art == ['https://cdn.xc.com/poster.jpg', 'https://cdn.xc.com/g1.jpg', 'https://cdn.xc.com/g2.jpg']

@@ -66,4 +66,4 @@ async def test_detail_actor_photo_zip() -> None:
         ('Jane Doe', 'https://cdn.vr.com/jane.jpg'),
         ('Mary Roe', 'https://cdn.vr.com/mary.jpg'),
     ]
-    assert detail.raw_image_urls == ['https://cdn.vr.com/og.jpg', 'https://cdn.vr.com/g1.jpg']
+    assert detail.art == ['https://cdn.vr.com/og.jpg', 'https://cdn.vr.com/g1.jpg']

@@ -140,4 +140,4 @@ class BlackPayBackClient(Client):
             if not m:
                 continue
             coll['push'](m.group(1))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

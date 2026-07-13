@@ -108,4 +108,4 @@ class UltrafilmsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = scene.extra.get('poster_url') if isinstance(scene.extra, dict) else ''
-        metadata.raw_image_urls = [poster] if poster else []
+        metadata.art = [poster] if poster else []

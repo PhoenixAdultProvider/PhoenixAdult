@@ -68,4 +68,4 @@ class ReidMyLipsClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//div[contains(@class,"update_image")]//img/@src0_2x').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

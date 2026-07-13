@@ -57,7 +57,7 @@ async def test_detail_scene() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'http://www.newsensations.com/p/jane.jpg'
-    assert detail.raw_image_urls == ['http://www.newsensations.com/img/t.jpg']
+    assert detail.art == ['http://www.newsensations.com/img/t.jpg']
 
 
 @respx.mock
@@ -87,4 +87,4 @@ async def test_detail_dvd() -> None:
     assert detail.collections == ['Cool DVD']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal']
-    assert detail.raw_image_urls == ['http://www.newsensations.com/img/t.jpg', 'http://www.newsensations.com/img/v1.jpg']
+    assert detail.art == ['http://www.newsensations.com/img/t.jpg', 'http://www.newsensations.com/img/v1.jpg']

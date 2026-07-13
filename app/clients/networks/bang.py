@@ -248,4 +248,4 @@ class BangClient(Client):
         coll = self.image_collector()
         for u in out:
             coll['push'](u)
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []

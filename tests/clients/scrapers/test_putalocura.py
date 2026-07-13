@@ -57,4 +57,4 @@ async def test_detail_actors_remap_photo() -> None:
     assert detail.genres == ['Casting', 'Amateur']
     assert [a.name for a in detail.actors] == ['Alyka']
     assert detail.actors[0].photo_url == 'https://www.putalocura.com/img/alyka.jpg'
-    assert detail.raw_image_urls == ['https://cdn.pl.com/poster.jpg']
+    assert detail.art == ['https://cdn.pl.com/poster.jpg']

@@ -100,4 +100,4 @@ class EvolvedFightsClient(Client):
         poster2 = poster.replace('0-4x', '1-4x')
         if poster2 != poster:
             out.append(poster2)
-        metadata.raw_image_urls = out
+        metadata.art = out

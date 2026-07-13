@@ -110,4 +110,4 @@ class KillergramClient(Client):
                 break
             images.append(src)
             n += 1
-        metadata.raw_image_urls = images
+        metadata.art = images

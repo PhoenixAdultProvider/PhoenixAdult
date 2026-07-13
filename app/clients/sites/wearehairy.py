@@ -94,4 +94,4 @@ class WeAreHairyClient(Client):
         coll = self.image_collector(lambda src: to_https((src or '').strip()))
         for src in scene.sel.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
             coll['push'](src)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

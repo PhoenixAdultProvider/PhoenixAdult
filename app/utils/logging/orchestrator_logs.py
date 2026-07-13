@@ -47,5 +47,5 @@ def log_detail_summary(provider_id: str, site_name: str, detail: SceneDetail) ->
         f'{site_name} detail "{detail.title}" -> '
         f'{len(detail.collections or [])} collection(s), {len(detail.genres)} genre(s), '
         f'{len(detail.actors)} actor(s), {len(detail.directors or [])} director(s), '
-        f'{len(detail.producers or [])} producer(s), {len(detail.raw_image_urls)} image(s)',
+        f'{len(detail.producers or [])} producer(s), {len(detail.art)} image(s)',
     )

@@ -148,4 +148,4 @@ class PutalocuraClient(Client):
         assert scene.sel is not None
         script = scene.sel.xpath('string((//div[contains(@class,"top-area-content")]//script)[1])').get() or ''
         m = _POSTER_RE.search(script)
-        metadata.raw_image_urls = [m.group(1)] if m and m.group(1) else []
+        metadata.art = [m.group(1)] if m and m.group(1) else []

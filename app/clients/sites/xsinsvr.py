@@ -98,4 +98,4 @@ class XSinsVRClient(Client):
                 push(src.replace('sceneGallerySmall', 'sceneGallery'))
         for poster in scene.sel.xpath('//dl8-video/@poster').getall():
             push(poster)
-        metadata.raw_image_urls = images
+        metadata.art = images

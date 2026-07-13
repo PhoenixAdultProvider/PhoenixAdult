@@ -46,7 +46,7 @@ async def test_search_and_detail_roundtrip() -> None:
     assert detail.collections == ['Tricky Agent']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Agent', 'Casting']
-    assert detail.raw_image_urls == ['https://trickyagent.com/img/poster.jpg']
+    assert detail.art == ['https://trickyagent.com/img/poster.jpg']
 
 
 def test_scene_actor_db() -> None:

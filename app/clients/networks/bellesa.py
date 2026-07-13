@@ -126,4 +126,4 @@ class BellesaClient(Client):
         coll = self.image_collector()
         coll['push'](self._v(scene).get('image'))
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

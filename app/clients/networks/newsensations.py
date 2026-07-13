@@ -131,4 +131,4 @@ class NewSensationsClient(Client):
             for src in scene.sel.xpath('//div[@class="videoBlock"]//img/@src0_3x').getall():
                 coll['push'](src)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

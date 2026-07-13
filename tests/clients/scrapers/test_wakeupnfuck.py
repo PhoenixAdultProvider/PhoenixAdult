@@ -56,7 +56,7 @@ async def test_detail_publish_date_split() -> None:
         ('Jane Doe', 'https://cdn.wunf/jane.jpg'),
         ('Mary Roe', 'https://cdn.wunf/mary.jpg'),
     ]
-    assert detail.raw_image_urls == ['https://cdn.wunf/poster.jpg']
+    assert detail.art == ['https://cdn.wunf/poster.jpg']
 
 
 @respx.mock
@@ -74,4 +74,4 @@ async def test_detail_inline_script_image_fallback() -> None:
     )
     detail = await WakeUpNFuckClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://cdn.wunf/inline.jpg']
+    assert detail.art == ['https://cdn.wunf/inline.jpg']

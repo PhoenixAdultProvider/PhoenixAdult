@@ -60,4 +60,4 @@ async def test_detail_bbc_twins() -> None:
     assert detail.genres == ['Anal']
     assert [a.name for a in detail.actors] == ['Joey White', 'Sami White']
     assert detail.actors[0].photo_url == 'https://bbcsurprise.com/p/twins.jpg'
-    assert detail.raw_image_urls == ['https://bbcsurprise.com/img/t.jpg']
+    assert detail.art == ['https://bbcsurprise.com/img/t.jpg']

@@ -91,4 +91,4 @@ class WakeUpNFuckClient(Client):
                 m = _IMAGE_RE.search(script)
                 if m:
                     push(m.group(1).strip())
-        metadata.raw_image_urls = images
+        metadata.art = images

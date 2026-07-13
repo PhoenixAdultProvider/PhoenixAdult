@@ -61,7 +61,7 @@ async def test_detail_episode() -> None:
     assert detail.tagline == 'Czech Massage'
     assert detail.genres == ['Massage', 'Oil']
     assert detail.actors == []
-    assert detail.raw_image_urls == ['https://cdn/og.jpg', 'https://czechmassage.com/img/t1.jpg']
+    assert detail.art == ['https://cdn/og.jpg', 'https://czechmassage.com/img/t1.jpg']
 
 
 @respx.mock

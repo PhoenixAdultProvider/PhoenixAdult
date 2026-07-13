@@ -71,4 +71,4 @@ class LustomicClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        metadata.raw_image_urls = self.dedup_strings([first_attr(a, '@href') for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]')])
+        metadata.art = self.dedup_strings([first_attr(a, '@href') for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]')])

@@ -87,7 +87,7 @@ async def test_detail_harvest_variants(monkeypatch: pytest.MonkeyPatch, no_web_s
         'https://cdn.example/videos/wild_ride/tour_1.jpg',
         'https://cdn.example/videos/wild_ride/tour_2.jpg',
     ):
-        assert u in detail.raw_image_urls
+        assert u in detail.art
 
 
 @respx.mock
@@ -116,5 +116,5 @@ async def test_detail_fanart_supplement(monkeypatch: pytest.MonkeyPatch) -> None
     )
     detail = await XartClient().fetch_scene_detail(URL, SITE)
     assert detail is not None
-    assert 'https://xartfan.com/wild-ride/01.jpg' in detail.raw_image_urls
-    assert 'https://xartfan.com/wild-ride/02.jpg' in detail.raw_image_urls
+    assert 'https://xartfan.com/wild-ride/01.jpg' in detail.art
+    assert 'https://xartfan.com/wild-ride/02.jpg' in detail.art

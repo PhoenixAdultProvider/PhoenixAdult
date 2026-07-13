@@ -82,4 +82,4 @@ class UnzipVRClient(Client):
         for img in item.get('galleryImages') or []:
             coll['push'](img.get('permalink'))
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

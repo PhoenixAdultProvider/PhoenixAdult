@@ -110,4 +110,4 @@ class VIP4KClient(Client):
         for el in scene.sel.xpath('//div[contains(@class,"player-item__block")]//img'):
             coll['push']((el.xpath('@data-src').get() or el.xpath('@src').get() or '').strip())
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

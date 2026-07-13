@@ -212,7 +212,7 @@ class GammaEntClient(Client):
             for xpath in xpaths:
                 for raw in sel.xpath(xpath).getall():
                     coll['push'](raw)
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

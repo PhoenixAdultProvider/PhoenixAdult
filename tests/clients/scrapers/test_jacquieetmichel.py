@@ -54,4 +54,4 @@ async def test_detail_genres_actors_from_fragment() -> None:
     assert detail.release_date == '2021-07-07'
     assert detail.genres == ['Anal', 'Orgy', 'French porn']
     assert [a.name for a in detail.actors] == ['Alexis Crystal', 'Cassie Del Isla', 'Dorian Del Isla']
-    assert detail.raw_image_urls == ['https://cdn.jm.com/poster.jpg']
+    assert detail.art == ['https://cdn.jm.com/poster.jpg']

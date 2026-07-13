@@ -103,4 +103,4 @@ class FuckingAwesomeClient(Client):
             if photos_page:
                 for raw in photos_page['sel'].xpath('//div[contains(@class,"my-gallery")]//a/@href').getall():
                     coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

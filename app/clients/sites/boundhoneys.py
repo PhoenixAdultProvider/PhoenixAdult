@@ -84,4 +84,4 @@ class BoundHoneysClient(Client):
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
         for href in scene.sel.xpath('//link[@rel="preload"]/@href').getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

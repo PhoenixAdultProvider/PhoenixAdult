@@ -92,4 +92,4 @@ class BrandNewAmateursClient(Client):
         poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
         if not poster:
             return
-        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]
+        metadata.art = [absolute_url(poster, scene.site.base_url)]

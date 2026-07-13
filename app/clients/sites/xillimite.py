@@ -86,4 +86,4 @@ class XillimiteClient(Client):
             push(href)
         for href in scene.sel.xpath('//div[contains(@class,"screenshots")]//div[contains(@class,"slides")]//a/@href').getall():
             push(href)
-        metadata.raw_image_urls = images
+        metadata.art = images

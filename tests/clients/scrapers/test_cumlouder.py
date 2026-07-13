@@ -52,6 +52,6 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.collections == ['CumLouder']
     assert detail.genres == ['POV', 'HD', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
-    assert detail.raw_image_urls == ['https://cdn.cl.com/poster.jpg']
+    assert detail.art == ['https://cdn.cl.com/poster.jpg']
     expected = (datetime.now(UTC) - timedelta(days=3)).strftime('%Y-%m-%d')
     assert detail.release_date == expected

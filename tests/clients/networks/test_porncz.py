@@ -59,4 +59,4 @@ async def test_detail_dolls_gender_tag() -> None:
     assert detail.actors[0].name == 'Jane Doe (Sex Doll)'
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://www.czechrealdolls.com/p/jane.jpg'
-    assert detail.raw_image_urls == ['https://www.czechrealdolls.com/g/1.jpg']
+    assert detail.art == ['https://www.czechrealdolls.com/g/1.jpg']

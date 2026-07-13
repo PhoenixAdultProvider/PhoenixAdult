@@ -80,4 +80,4 @@ class JVRPornClient(Client):
             coll['push'](raw)
         for raw in scene.sel.xpath('//deo-video/@cover-image').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

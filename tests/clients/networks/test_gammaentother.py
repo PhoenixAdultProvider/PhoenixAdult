@@ -77,4 +77,4 @@ async def test_detail() -> None:
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].gender == 'female'
     assert detail.actors[0].photo_url == 'https://images-fame.gammacdn.com/actors/a/jane.jpg'
-    assert detail.raw_image_urls[0] == 'https://images-fame.gammacdn.com/movies//p/cover.jpg'
+    assert detail.art[0] == 'https://images-fame.gammacdn.com/movies//p/cover.jpg'

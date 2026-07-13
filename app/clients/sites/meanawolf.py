@@ -93,4 +93,4 @@ class MeanaWolfClient(Client):
         poster = scene.extra.get('poster', '') if isinstance(scene.extra, dict) else ''
         if not poster:
             return
-        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]
+        metadata.art = [absolute_url(poster, scene.site.base_url)]

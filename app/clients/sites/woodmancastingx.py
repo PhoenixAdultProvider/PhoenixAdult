@@ -126,4 +126,4 @@ class WoodmanCastingXClient(Client):
             m = _IMAGE_RE.search(script)
             if m:
                 coll['push'](m.group(1).strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

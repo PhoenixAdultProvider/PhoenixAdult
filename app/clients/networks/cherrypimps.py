@@ -113,4 +113,4 @@ class CherryPimpsClient(Client):
                 raw = (el.xpath(attr).get() or '').strip()
                 if raw.startswith('http'):
                     coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

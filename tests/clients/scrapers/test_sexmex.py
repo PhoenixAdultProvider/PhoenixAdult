@@ -52,4 +52,4 @@ async def test_detail_title_cleanup_genres_actors() -> None:
     assert detail.genres == ['Anal', 'Latina']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.sm.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.sm.com/t1.jpg', 'https://cdn.sm.com/poster.jpg']
+    assert detail.art == ['https://cdn.sm.com/t1.jpg', 'https://cdn.sm.com/poster.jpg']

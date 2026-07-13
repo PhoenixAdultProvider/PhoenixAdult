@@ -54,4 +54,4 @@ async def test_detail_studio_override_year_actors_images() -> None:
     assert len(detail.actors) == 1
     assert detail.actors[0].name == 'Alice'
     assert detail.actors[0].photo_url == 'https://www.dorcelvision.com/img/alice.jpg'
-    assert detail.raw_image_urls == ['https://www.dorcelvision.com/cover.jpg', 'https://cdn.dv.com/s1.jpg']
+    assert detail.art == ['https://www.dorcelvision.com/cover.jpg', 'https://cdn.dv.com/s1.jpg']

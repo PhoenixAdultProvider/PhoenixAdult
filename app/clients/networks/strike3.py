@@ -157,7 +157,7 @@ class Strike3Client(GraphQLClient):
             listing = img.get('listing') or []
             uri = (listing[0].get('highdpi') or {}).get('triple') if listing else None
             coll['push'](uri)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']
 
         # Posters from Data18
         if site.scraper_config.data18_enrichment and env.data18_enabled:
@@ -165,7 +165,7 @@ class Strike3Client(GraphQLClient):
             date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
             metadata.data18_url = await self._data18.enrich_images(
                 scope=site.name,
-                images=metadata.raw_image_urls,
+                images=metadata.art,
                 scene_id=mapping_slug(metadata.title, site.name),
                 title=metadata.title,
                 providers=[site.name],

@@ -54,4 +54,4 @@ async def test_detail_json_api() -> None:
     assert detail.genres == ['Solo', 'Toys']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.mv.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.mv.com/shot.jpg']
+    assert detail.art == ['https://cdn.mv.com/shot.jpg']

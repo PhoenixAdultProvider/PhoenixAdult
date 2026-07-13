@@ -28,7 +28,7 @@ async def test_search() -> None:
     assert results[0].scene_url == 'https://wowgirlsblog.com/v/7'
     detail = await WowNetworkClient().fetch_scene_detail(WowNetworkClient().decode(results[0].cur_id), SITE)
     assert detail is not None
-    assert 'https://cdn/t.jpg' in (detail.raw_image_urls or [])
+    assert 'https://cdn/t.jpg' in (detail.art or [])
 
 
 @respx.mock
@@ -54,4 +54,4 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.raw_image_urls == ['https://cdn/og.jpg']
+    assert detail.art == ['https://cdn/og.jpg']

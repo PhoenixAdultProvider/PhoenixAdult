@@ -114,4 +114,4 @@ class POVRClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         thumb = (self._ld(scene).get('thumbnailUrl') or '').strip()
-        metadata.raw_image_urls = [thumb.replace('tiny', 'large')] if thumb else []
+        metadata.art = [thumb.replace('tiny', 'large')] if thumb else []

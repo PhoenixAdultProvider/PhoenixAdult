@@ -59,4 +59,4 @@ async def test_detail_tagline_genres_actors_images() -> None:
     assert detail.genres == ['BBW', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://plumperpass.com/t1/img/alice.jpg'
-    assert detail.raw_image_urls == ['https://plumperpass.com/t1/img/poster.jpg', 'https://plumperpass.com/t1/img/t1.jpg']
+    assert detail.art == ['https://plumperpass.com/t1/img/poster.jpg', 'https://plumperpass.com/t1/img/t1.jpg']

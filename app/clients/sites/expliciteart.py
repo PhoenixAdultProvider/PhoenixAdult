@@ -81,4 +81,4 @@ class ExpliciteArtClient(Client):
         assert scene.sel is not None
         script_text = scene.sel.xpath('(//div[@id="player"]//script)[1]/text()').get() or ''
         poster = script_match(script_text, r'image:\s*"([^"]+)"')
-        metadata.raw_image_urls = [poster] if poster else []
+        metadata.art = [poster] if poster else []

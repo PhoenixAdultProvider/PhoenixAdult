@@ -105,4 +105,4 @@ class SexLikeRealClient(Client):
         coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for raw in scene.sel.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

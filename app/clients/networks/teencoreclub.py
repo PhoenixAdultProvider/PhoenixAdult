@@ -118,4 +118,4 @@ class TeenCoreClubClient(Client):
         coll['push'](cover.get('large'))
         for s in v.get('screenshots') or []:
             coll['push'](s)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

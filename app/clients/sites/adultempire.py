@@ -390,4 +390,4 @@ class AdultEmpireClient(Client):
             h = (href or '').strip()
             if h and h not in images:
                 images.append(h)
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

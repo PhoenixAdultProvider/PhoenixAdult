@@ -96,11 +96,11 @@ class DirtyHardDriveClient(Client):
                 if r.status_code < 400:
                     thumb = _PLAYLIST_THUMB_RE.search(r.text)
                     if thumb:
-                        metadata.raw_image_urls = [absolute_url(thumb.group(1), scene.site.base_url)]
+                        metadata.art = [absolute_url(thumb.group(1), scene.site.base_url)]
                         return
             except httpx2.HTTPError as err:
                 logger.debug(f'playlist fetch {playlist_url} failed: {err}')
 
         fallback = _BOOKEND_IMG_RE.search(scene.html)
         if fallback:
-            metadata.raw_image_urls = [absolute_url(fallback.group(1), scene.site.base_url)]
+            metadata.art = [absolute_url(fallback.group(1), scene.site.base_url)]

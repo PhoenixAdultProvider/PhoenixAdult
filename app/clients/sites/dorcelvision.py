@@ -84,4 +84,4 @@ class DorcelVisionClient(Client):
             '//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href'
         ).getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

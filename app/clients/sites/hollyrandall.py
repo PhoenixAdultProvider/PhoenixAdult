@@ -106,4 +106,4 @@ class HollyRandallClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//img[contains(@class,"update_thumb")]/@src0_3x').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

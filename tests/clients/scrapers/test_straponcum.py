@@ -62,7 +62,7 @@ async def test_detail() -> None:
         ('Mary Roe', 'https://cdn/mary.jpg'),
         ('Sue Smith', 'https://cdn/sue.jpg'),
     ]
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://straponcum.com/content/abc123/0.jpg',
         'https://straponcum.com/content/abc123/1.jpg',
         'https://straponcum.com/content/abc123/2.jpg',

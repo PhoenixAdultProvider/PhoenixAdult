@@ -70,4 +70,4 @@ async def test_detail_actor_host_swap() -> None:
     assert detail.genres == ['Anal']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    assert detail.raw_image_urls == ['https://cdn/s1.jpg?token=x']
+    assert detail.art == ['https://cdn/s1.jpg?token=x']

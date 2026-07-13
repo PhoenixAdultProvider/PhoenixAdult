@@ -116,4 +116,4 @@ class ColetteClient(Client):
                 coll['push'](_parse_interchange(raw or ''))
             for raw in page.xpath('//div[contains(@class,"columns")]/img/@data-interchange').getall():
                 coll['push'](_parse_interchange(raw or ''))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

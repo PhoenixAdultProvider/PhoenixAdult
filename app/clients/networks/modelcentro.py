@@ -171,4 +171,4 @@ class ModelCentroClient(Client):
         metadata.actors = [ActorResult(name=n) for n in dict.fromkeys(actor_names)]
 
         # Posters
-        metadata.raw_image_urls = art
+        metadata.art = art

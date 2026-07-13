@@ -101,6 +101,6 @@ class MetadataAPIClient(Client):
 
         # Posters
         if (d.get('posters') or {}).get('large'):
-            metadata.raw_image_urls.append(d['posters']['large'])
+            metadata.art.append(d['posters']['large'])
         if (d.get('background') or {}).get('large'):
-            metadata.raw_image_urls.append(d['background']['large'])
+            metadata.art.append(d['background']['large'])

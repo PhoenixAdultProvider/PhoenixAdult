@@ -116,7 +116,7 @@ async def test_detail_fields() -> None:
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.actors[0].photo_url == 'https://cdn/x.jpg'
     assert detail.directors is not None and detail.directors[0].name == 'Some Name'
-    assert detail.raw_image_urls == ['https://cdn/img/3840/pic_10.jpg']
+    assert detail.art == ['https://cdn/img/3840/pic_10.jpg']
 
 
 @respx.mock

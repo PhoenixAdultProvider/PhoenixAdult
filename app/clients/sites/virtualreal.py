@@ -114,4 +114,4 @@ class VirtualRealClient(Client):
         push((ld.get('image') if ld else '') or '')
         for href in scene.sel.xpath('//figure[@itemprop="associatedMedia"]//a/@href').getall():
             push(href)
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -49,7 +49,7 @@ async def test_search_keyword_packs_cover() -> None:
     respx.get('https://www.couplescinema.com/post/details/77').mock(return_value=httpx.Response(200, text=detail_html))
     detail = await CouplesCinemaClient().fetch_scene_detail(CouplesCinemaClient().decode(results[0].cur_id), SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://cdn/cover.jpg', 'https://cdn/poster.jpg']
+    assert detail.art == ['https://cdn/cover.jpg', 'https://cdn/poster.jpg']
 
 
 @respx.mock
@@ -76,4 +76,4 @@ async def test_detail_fields() -> None:
     assert detail.collections == ['Feature']
     assert detail.release_date == '2021-01-01'
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
-    assert detail.raw_image_urls == ['https://cdn/poster.jpg']
+    assert detail.art == ['https://cdn/poster.jpg']

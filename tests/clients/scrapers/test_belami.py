@@ -51,4 +51,4 @@ async def test_detail_fields_actors_genres_poster() -> None:
     assert detail.genres == ['Twink', 'Outdoor', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.actors[0].photo_url == 'https://cdn.bel.com/a.jpg'
-    assert detail.raw_image_urls == ['https://freecdn.belamionline.com/Data/Contents/Content_987/Thumbnail8.jpg']
+    assert detail.art == ['https://freecdn.belamionline.com/Data/Contents/Content_987/Thumbnail8.jpg']

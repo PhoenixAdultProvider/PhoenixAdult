@@ -91,4 +91,4 @@ class BelAmiClient(Client):
         m = _VIDEO_ID_RE.search(scene.url)
         if not m:
             return
-        metadata.raw_image_urls = [f'https://freecdn.belamionline.com/Data/Contents/Content_{m.group(1)}/Thumbnail8.jpg']
+        metadata.art = [f'https://freecdn.belamionline.com/Data/Contents/Content_{m.group(1)}/Thumbnail8.jpg']

@@ -143,4 +143,4 @@ class MyDirtyHobbyClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         src = ((self._content(scene).get('videoNotPurchased') or {}).get('thumbnail') or {}).get('src')
         src = (src or '').strip()
-        metadata.raw_image_urls = [src] if src else []
+        metadata.art = [src] if src else []

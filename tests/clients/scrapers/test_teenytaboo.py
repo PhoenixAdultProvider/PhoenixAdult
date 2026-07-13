@@ -43,4 +43,4 @@ async def test_detail() -> None:
     assert detail.tagline is None
     assert detail.collections == ['Teeny Taboo']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Sue Smith']
-    assert detail.raw_image_urls == ['https://teenytaboo.com/img/poster.jpg']
+    assert detail.art == ['https://teenytaboo.com/img/poster.jpg']

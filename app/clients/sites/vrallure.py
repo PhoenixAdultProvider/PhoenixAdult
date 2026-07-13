@@ -110,4 +110,4 @@ class VRAllureClient(Client):
             page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-art {url}')
             if page:
                 push(to_https((page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()))
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -156,4 +156,4 @@ class PornboxClient(Client):
             if len(shots) > 50 and x % 10 != 0:
                 continue
             coll['push'](shots[x].get('xga_size'))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

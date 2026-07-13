@@ -107,4 +107,4 @@ class PuffyClient(Client):
             abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
-        metadata.raw_image_urls = images
+        metadata.art = images

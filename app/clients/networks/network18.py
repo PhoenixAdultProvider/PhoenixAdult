@@ -110,7 +110,7 @@ class Network18Client(GraphQLClient):
         metadata.actors = await self._fetch_actors(site, detail.get('talent') or [], sink)
 
         # Posters
-        metadata.raw_image_urls = await self._fetch_image_urls(site, model_id, scene_id, scene_num, detail.get('galleryCount') or 0, sink)
+        metadata.art = await self._fetch_image_urls(site, model_id, scene_id, scene_num, detail.get('galleryCount') or 0, sink)
 
     async def _fetch_actors(self, site: ResolvedSiteInfo, talent: list[Any], sink: list[RawCaptureEntry] | None) -> list[ActorResult]:
         talent = [t for t in talent if isinstance(t, dict) and isinstance(t.get('talent'), dict) and t['talent'].get('talentId')]

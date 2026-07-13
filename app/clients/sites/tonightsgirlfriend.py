@@ -124,7 +124,7 @@ class TonightsGirlfriendClient(Client):
         vertical = f'{head}scene/vertical/390x590cdynamic.jpg'
         if vertical != poster:
             out.append(vertical)
-        metadata.raw_image_urls = out
+        metadata.art = out
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

@@ -51,4 +51,4 @@ async def test_detail_from_curid() -> None:
     assert detail.release_date == '2021-06-06'
     assert detail.genres == ['Facial']
     assert [a.name for a in detail.actors] == ['Aaliyah Love']
-    assert detail.raw_image_urls == ['http://jesseloadsmonsterfacials.com/tour/poster.jpg']
+    assert detail.art == ['http://jesseloadsmonsterfacials.com/tour/poster.jpg']

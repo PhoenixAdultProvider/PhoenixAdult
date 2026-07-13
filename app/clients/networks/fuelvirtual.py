@@ -113,4 +113,4 @@ class FuelVirtualClient(Client):
             m = _IMG_SCRIPT_RE.search(script.xpath('string(.)').get() or '')
             if m:
                 coll['push'](base + m.group(1))
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []

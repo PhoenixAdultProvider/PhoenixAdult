@@ -157,7 +157,7 @@ class ReptyleClient(Client):
 
         # Posters
         if scene_json.get('img'):
-            metadata.raw_image_urls.append(scene_json['img'])
+            metadata.art.append(scene_json['img'])
 
         # Posters from Data18
         if site.scraper_config.data18_enrichment and env.data18_enabled:
@@ -168,5 +168,5 @@ class ReptyleClient(Client):
             mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
             providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
             metadata.data18_url = await self._data18.enrich_images(
-                scope=site.name, images=metadata.raw_image_urls, scene_id=mapping_id, title=metadata.title, providers=providers, scene_date=date_obj
+                scope=site.name, images=metadata.art, scene_id=mapping_id, title=metadata.title, providers=providers, scene_date=date_obj
             )

@@ -192,4 +192,4 @@ class AdultEmpireCashClient(Client):
         for raw in scene.sel.xpath('//div[@id="dv_frames"]//img/@src').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

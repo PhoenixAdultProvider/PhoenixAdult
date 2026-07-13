@@ -126,4 +126,4 @@ class StraponCumClient(Client):
         scene_id = first_attr(scene.sel, '(//div[contains(@class,"trailer")]//img/@alt)[1]')
         if not scene_id:
             return
-        metadata.raw_image_urls = [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]
+        metadata.art = [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]

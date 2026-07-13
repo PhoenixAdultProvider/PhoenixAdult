@@ -199,4 +199,4 @@ class XConfessionsClient(Client):
         for a in d.get('album') or []:
             if a.get('path'):
                 coll['push'](strip_query(a['path']))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

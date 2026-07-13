@@ -153,4 +153,4 @@ class PlumperPassClient(Client):
             coll['push']((m.group(1) or '').strip())
         for raw in scene.sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

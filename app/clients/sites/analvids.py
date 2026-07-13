@@ -114,4 +114,4 @@ class AnalVidsClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         poster = first_attr(scene.sel, '(//div[contains(@class,"watch__video")]//video/@data-poster)[1]')
-        metadata.raw_image_urls = [poster] if poster else []
+        metadata.art = [poster] if poster else []

@@ -104,4 +104,4 @@ class FemdomEmpireClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//a[contains(@class,"fake_trailer")]//img/@src0_1x').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []

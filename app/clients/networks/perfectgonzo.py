@@ -97,4 +97,4 @@ class PerfectGonzoClient(Client):
         for img in scene.sel.xpath('//ul[@class="bxslider_screenshots"]//img'):
             coll['push'](img.xpath('@src').get() or img.xpath('@data-original').get())
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

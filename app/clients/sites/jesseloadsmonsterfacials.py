@@ -130,4 +130,4 @@ class JesseLoadsMonsterFacialsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._data(scene).get('poster')
-        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)] if poster else []
+        metadata.art = [absolute_url(poster, scene.site.base_url)] if poster else []

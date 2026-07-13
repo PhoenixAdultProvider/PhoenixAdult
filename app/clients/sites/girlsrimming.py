@@ -118,4 +118,4 @@ class GirlsRimmingClient(Client):
         coll = self.image_collector(lambda raw: join_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

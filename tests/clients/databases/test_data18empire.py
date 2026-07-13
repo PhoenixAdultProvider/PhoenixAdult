@@ -81,7 +81,7 @@ async def test_detail_movie(monkeypatch: pytest.MonkeyPatch, no_web_search: obje
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.example/jane.jpg')]
-    assert detail.raw_image_urls == ['https://cdn.example/cover.jpg']
+    assert detail.art == ['https://cdn.example/cover.jpg']
 
 
 @respx.mock
@@ -95,7 +95,7 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search
     assert detail is not None
     assert detail.title == 'The Big Movie [Scene 1]'
     assert [a.name for a in detail.actors] == ['Mary Roe']
-    assert 'https://cdn.example/shot1.jpg' in detail.raw_image_urls
+    assert 'https://cdn.example/shot1.jpg' in detail.art
 
 
 @respx.mock
@@ -129,7 +129,7 @@ async def test_detail_legacy_grid_shape_still_parses(monkeypatch: pytest.MonkeyP
     assert movie is not None and [a.name for a in movie.actors] == ['Jane Doe']
     scene = await client.fetch_scene_detail(client.decode(results[1].cur_id), SITE)
     assert scene is not None and [a.name for a in scene.actors] == ['Mary Roe']
-    assert 'https://cdn.example/shot1.jpg' in scene.raw_image_urls
+    assert 'https://cdn.example/shot1.jpg' in scene.art
 
 
 def test_is_movie_url_accepts_real_empire_urls() -> None:

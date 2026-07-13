@@ -94,4 +94,4 @@ class TeenMegaWorldClient(Client):
         for raw in scene.sel.xpath('//img[@id="video-cover-image"]/@src').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

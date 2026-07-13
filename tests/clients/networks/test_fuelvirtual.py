@@ -57,4 +57,4 @@ async def test_detail_uses_actor_db() -> None:
     assert detail.tagline == 'FuckedHard18'
     assert detail.genres == ['Teen', '18-Year-Old']
     assert [a.name for a in detail.actors] == ['Abby Lane']
-    assert detail.raw_image_urls == ['https://fuckedhard18.com/img/t.jpg']
+    assert detail.art == ['https://fuckedhard18.com/img/t.jpg']

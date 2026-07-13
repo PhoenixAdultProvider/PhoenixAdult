@@ -93,4 +93,4 @@ class VogoVClient(Client):
         coll = self.image_collector(lambda href: absolute_url((href or '').strip(), base))
         for href in scene.sel.xpath('//div[contains(@class,"swiper-wrapper")]//figure//a/@href').getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

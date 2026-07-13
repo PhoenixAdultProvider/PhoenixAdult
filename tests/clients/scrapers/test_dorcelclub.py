@@ -72,4 +72,4 @@ async def test_detail_scene_path() -> None:
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.directors is not None
     assert detail.directors[0].name == 'Jane Doe'
-    assert detail.raw_image_urls == ['https://cdn.dc.com/a_b.jpg']
+    assert detail.art == ['https://cdn.dc.com/a_b.jpg']

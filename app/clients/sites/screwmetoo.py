@@ -133,4 +133,4 @@ class ScrewMeTooClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//div[contains(@class,"amp-vis-mobile")]//*[@src]/@src').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

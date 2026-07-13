@@ -157,4 +157,4 @@ class XartClient(Client):
             for u in fan.images:
                 coll['push'](u)
 
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

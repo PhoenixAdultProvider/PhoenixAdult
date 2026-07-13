@@ -91,4 +91,4 @@ class AmourAngelsClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for el in scene.sel.xpath('//td[contains(@class,"noisebg")]//div//img'):
             coll['push'](first_attr(el, '@src'))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

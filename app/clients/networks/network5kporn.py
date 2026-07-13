@@ -122,7 +122,7 @@ class Network5KPClient(Client):
         # Posters
         for src in sel.xpath('//div[contains(@class,"gal")]//img/@src').getall():
             if src:
-                metadata.raw_image_urls.append(src)
+                metadata.art.append(src)
         for page_num in (1, 2):
             photo_url = f'{scene_url.rstrip("/")}/photoset?page={page_num}'
             page = await self.fetch_and_load(photo_url, FetchCtx(capture=capture), f'GET {photo_url}')
@@ -130,4 +130,4 @@ class Network5KPClient(Client):
                 continue
             for src in page['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
                 if src and 'full' not in src:
-                    metadata.raw_image_urls.append(src)
+                    metadata.art.append(src)

@@ -203,7 +203,7 @@ class NubilesClient(Client):
                     first = srcset.split(',')[0].strip().split(' ')[0]
                     if first:
                         out.append(to_https(first))
-        metadata.raw_image_urls = out
+        metadata.art = out
 
     def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
         for a in sel.xpath('//div[contains(@class,"content-pane-related-links")]/a'):

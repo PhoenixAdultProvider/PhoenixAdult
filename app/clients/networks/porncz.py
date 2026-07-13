@@ -105,4 +105,4 @@ class PornCZClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

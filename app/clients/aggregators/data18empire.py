@@ -271,4 +271,4 @@ class Data18EmpireClient(Client):
             idx = (packed['sceneNum'] or 1) - 1
             if idx < len(rows):
                 coll['push'](rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

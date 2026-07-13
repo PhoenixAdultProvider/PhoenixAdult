@@ -161,4 +161,4 @@ class AlsAngelsClient(Client):
         for href in row.xpath('.//td[contains(@class,"videothumbnail")]//a/@href').getall():
             coll['push'](href)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

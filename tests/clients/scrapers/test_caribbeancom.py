@@ -46,7 +46,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.release_date == '2021-03-09'
     assert detail.genres == ['Creampie', 'Big Tits']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob']
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://en.caribbeancom.com/moviepages/012345-678/images/poster_en.jpg',
         'https://en.caribbeancom.com/g1.jpg',
         'https://cdn.cc.com/g2.jpg',

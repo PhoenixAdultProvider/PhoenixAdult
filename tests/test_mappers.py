@@ -8,7 +8,7 @@ from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 
 
 def _detail(studio: str, tagline: str | None = None, collections: list[str] | None = None) -> SceneDetail:
-    return SceneDetail(title='A Scene', summary='', studio=studio, genres=[], actors=[], raw_image_urls=[], tagline=tagline, collections=collections)
+    return SceneDetail(title='A Scene', summary='', studio=studio, genres=[], actors=[], art=[], tagline=tagline, collections=collections)
 
 
 async def _to_meta(detail: SceneDetail, filename_site: str | None = None) -> tuple[str | None, list[str]]:

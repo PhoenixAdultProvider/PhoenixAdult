@@ -178,4 +178,4 @@ class BellaPassClient(Client):
             if preview:
                 for src in preview['sel'].xpath(f'//img[@id="{set_id}"]/@src0_3x').getall():
                     coll['push'](src)
-        metadata.raw_image_urls = coll['list'] or []
+        metadata.art = coll['list'] or []

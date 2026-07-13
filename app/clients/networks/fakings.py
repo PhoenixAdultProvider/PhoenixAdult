@@ -133,5 +133,5 @@ class FAKingsClient(Client):
                 if row_href and absolute_url(row_href, base) == scene.url:
                     poster = first_attr(row, '(.//img[@class])[1]/@src')
                     if poster:
-                        metadata.raw_image_urls = [absolute_url(poster, base)]
+                        metadata.art = [absolute_url(poster, base)]
                         return

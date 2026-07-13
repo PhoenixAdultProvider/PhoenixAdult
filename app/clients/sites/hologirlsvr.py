@@ -102,4 +102,4 @@ class HoloGirlsVRClient(Client):
         push(scene.sel.xpath('(//div[contains(@class,"vidCover")]//img/@src)[1]').get() or '')
         for raw in scene.sel.xpath('//div[contains(@class,"vid-flex-container")]//span//img/@src').getall():
             push((raw or '').replace('_thumb', ''))
-        metadata.raw_image_urls = images
+        metadata.art = images

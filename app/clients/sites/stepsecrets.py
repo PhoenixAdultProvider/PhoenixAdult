@@ -82,4 +82,4 @@ class StepSecretsClient(Client):
             s = (src or '').strip()
             if s and s not in images:
                 images.append(s)
-        metadata.raw_image_urls = images
+        metadata.art = images

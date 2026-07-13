@@ -101,7 +101,7 @@ async def test_detail_posters() -> None:
     )
     detail = await AbbyWintersClient().fetch_scene_detail(url, SITE)
     assert detail is not None
-    assert detail.raw_image_urls == ['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.jpg']
+    assert detail.art == ['https://cdn.example.com/a.jpg', 'https://cdn.example.com/b.jpg']
 
 
 def test_is_usable_scene_url() -> None:

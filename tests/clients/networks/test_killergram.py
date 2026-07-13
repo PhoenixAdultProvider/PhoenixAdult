@@ -48,7 +48,7 @@ async def test_detail() -> None:
     assert detail.release_date == '2024-05-12'
     assert detail.genres == ['British']
     assert [a.name for a in detail.actors] == ['Jane Doe']
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://media.killergram.com/models/Jane Doe/Jane Doe_Cool Scene/1.jpg',
         'https://media.killergram.com/models/Jane Doe/Jane Doe_Cool Scene/2.jpg',
     ]

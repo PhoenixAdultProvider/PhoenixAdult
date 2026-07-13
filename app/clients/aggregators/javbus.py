@@ -182,4 +182,4 @@ class JavBusClient(Client):
         )
         if cover_raw:
             push(_derive_cover_thumb(absolute_url(cover_raw, base)))
-        metadata.raw_image_urls = out
+        metadata.art = out

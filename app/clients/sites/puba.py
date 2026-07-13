@@ -67,4 +67,4 @@ class PubaClient(Client):
         bg = css_bg_image(style)
         if not bg:
             return
-        metadata.raw_image_urls = [absolute_url(bg, scene.site.base_url)]
+        metadata.art = [absolute_url(bg, scene.site.base_url)]

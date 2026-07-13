@@ -89,7 +89,7 @@ async def test_detail_fields() -> None:
     assert detail.genres == ['Anal', 'Gonzo', 'MILF']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    assert detail.raw_image_urls == ['https://cdn.example.com/p.jpg?token=abc']
+    assert detail.art == ['https://cdn.example.com/p.jpg?token=abc']
 
 
 @respx.mock

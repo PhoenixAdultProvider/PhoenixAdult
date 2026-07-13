@@ -93,4 +93,4 @@ class QueenSnakeClient(Client):
         for src in scene.sel.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

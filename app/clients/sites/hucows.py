@@ -79,4 +79,4 @@ class HucowsClient(Client):
             coll['push'](raw)
         for raw in scene.sel.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

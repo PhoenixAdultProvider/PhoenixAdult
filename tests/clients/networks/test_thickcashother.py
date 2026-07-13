@@ -46,4 +46,4 @@ async def test_search_and_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.studio == 'Thick Cash'
     assert detail.tagline == 'MilfAF'
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.raw_image_urls == ['https://cdn/p.jpg']
+    assert detail.art == ['https://cdn/p.jpg']

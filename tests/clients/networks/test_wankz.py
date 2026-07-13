@@ -58,4 +58,4 @@ async def test_detail() -> None:
     assert detail.genres == ['Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == '/p/jane.jpg'  # actor photos kept raw (TS parity)
-    assert detail.raw_image_urls == ['https://wankz.com/img/c.jpg']
+    assert detail.art == ['https://wankz.com/img/c.jpg']

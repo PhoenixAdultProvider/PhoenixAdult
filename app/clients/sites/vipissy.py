@@ -122,4 +122,4 @@ class VIPissyClient(Client):
             twitter_bg = f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg'
             if twitter_bg not in images:
                 images.insert(0, twitter_bg)
-        metadata.raw_image_urls = images
+        metadata.art = images

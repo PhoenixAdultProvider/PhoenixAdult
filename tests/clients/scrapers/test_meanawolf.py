@@ -58,4 +58,4 @@ async def test_detail_via_packed_curid() -> None:
     assert detail.genres == ['Fetish', 'POV']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.mw.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.mw.com/poster.jpg']
+    assert detail.art == ['https://cdn.mw.com/poster.jpg']

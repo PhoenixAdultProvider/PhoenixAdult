@@ -119,4 +119,4 @@ class PornProsClient(Client):
         for img in release.get('thumbUrls') or []:
             coll['push'](img)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

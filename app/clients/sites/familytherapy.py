@@ -154,4 +154,4 @@ class FamilyTherapyClient(Client):
                     metadata.actors.append(ActorResult(name=name))
 
         # Posters
-        metadata.raw_image_urls = []
+        metadata.art = []

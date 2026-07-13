@@ -394,7 +394,7 @@ class ManualNfoClient(Client):
                 scene_date=date_obj,
                 forced_url=forced_url,
             )
-        metadata.raw_image_urls = images
+        metadata.art = images
 
 
 __testing__ = {'locate_nfo': _locate_nfo, 'parse_nfo': _parse_nfo, 'manual_nfo_root': _manual_nfo_root, 'reset_index_cache': _reset_index_cache}

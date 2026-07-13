@@ -59,7 +59,7 @@ async def test_detail_decensor() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Drama']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn/full/jane.jpg')]
-    assert 'https://cdn/cover.jpg' in detail.raw_image_urls
+    assert 'https://cdn/cover.jpg' in detail.art
 
 
 @respx.mock

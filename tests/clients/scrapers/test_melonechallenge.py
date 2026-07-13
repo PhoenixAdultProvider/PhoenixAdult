@@ -30,7 +30,7 @@ async def test_detail_fields() -> None:
     assert detail.studio == 'Melone Challenge'
     assert detail.tagline == 'Melone Challenge'
     assert detail.release_date == '2024-01-05'
-    assert detail.raw_image_urls == ['https://cdn.example/poster.jpg']
+    assert detail.art == ['https://cdn.example/poster.jpg']
 
 
 @respx.mock

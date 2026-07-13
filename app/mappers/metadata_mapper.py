@@ -78,8 +78,8 @@ class MetadataMapper:
         filename_site: str | None = None,
     ) -> PlexMetadata:
         clean_title = title_case(detail.title, site_name=detail.studio, scraper_type=site.scraper_config.type if site else None)
-        logger.info(f'Artwork found: {len(detail.raw_image_urls)}')
-        for u in detail.raw_image_urls:
+        logger.info(f'Artwork found: {len(detail.art)}')
+        for u in detail.art:
             logger.info(f'Poster: {u}')
 
         site_referers = resolve_image_referers(site, detail.scene_url) if site else []
@@ -94,7 +94,7 @@ class MetadataMapper:
             result = classify_image(dims['width'], dims['height'])
             return {'url': raw_url, 'dims': dims, 'image_class': result.image_class}
 
-        probed = await asyncio.gather(*(probe(u) for u in detail.raw_image_urls))
+        probed = await asyncio.gather(*(probe(u) for u in detail.art))
         valid = [p for p in probed if p is not None]
 
         images: list[PlexImage] = []
@@ -110,8 +110,8 @@ class MetadataMapper:
             for p in valid:
                 images.append(PlexImage(url=p['url'], type='coverPoster'))
 
-        thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.raw_image_urls[0] if detail.raw_image_urls else None)
-        art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.raw_image_urls[1] if len(detail.raw_image_urls) > 1 else None)
+        thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
+        art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)
         thumb = self._proxy(thumb_raw, referers, cookies)
         art = self._proxy(art_raw, referers, cookies)
         images_proxied = [PlexImage(url=self._proxy(img.url, referers, cookies) or img.url, type=img.type) for img in images]

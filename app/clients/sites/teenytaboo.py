@@ -97,4 +97,4 @@ class TeenyTabooClient(Client):
         coll = self.image_collector(lambda src: absolute_url((src or '').strip(), base))
         for src in scene.sel.xpath('//center//img/@src').getall():
             coll['push'](src)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

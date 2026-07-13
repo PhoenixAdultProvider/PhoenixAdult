@@ -243,7 +243,7 @@ class GammaEntOtherClient(Client):
                 push_img(picture_url)
             else:
                 raw_images.insert(0, picture_url)
-        metadata.raw_image_urls = raw_images
+        metadata.art = raw_images
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

@@ -76,6 +76,4 @@ class StasyQClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        metadata.raw_image_urls = self.dedup_strings(
-            [(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()]
-        )
+        metadata.art = self.dedup_strings([(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()])

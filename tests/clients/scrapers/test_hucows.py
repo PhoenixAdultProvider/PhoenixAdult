@@ -52,4 +52,4 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.release_date == '2021-07-12'
     assert detail.genres == ['BDSM', 'Breast Torture', 'Breasts', 'Fetish', 'HuCows', 'Nipple Torture', 'Nipples', 'Lactation']
     assert [a.name for a in detail.actors] == ['Alice']
-    assert detail.raw_image_urls == ['https://cdn.hc.com/p1.jpg', 'https://www.hucows.com/p2.jpg']
+    assert detail.art == ['https://cdn.hc.com/p1.jpg', 'https://www.hucows.com/p2.jpg']

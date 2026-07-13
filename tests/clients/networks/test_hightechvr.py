@@ -57,7 +57,7 @@ async def test_detail() -> None:
     assert detail.genres == ['VR', '180']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    assert detail.raw_image_urls == ['https://cdn/g1.jpg?token=x', 'https://cdn/poster.jpg?token=y']
+    assert detail.art == ['https://cdn/g1.jpg?token=x', 'https://cdn/poster.jpg?token=y']
 
 
 def test_rewrite_sexbabes() -> None:

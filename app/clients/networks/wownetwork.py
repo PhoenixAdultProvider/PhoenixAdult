@@ -94,4 +94,4 @@ class WowNetworkClient(Client):
                     pass
         coll['push'](first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

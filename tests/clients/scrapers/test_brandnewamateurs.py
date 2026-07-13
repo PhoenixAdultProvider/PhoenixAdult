@@ -61,4 +61,4 @@ async def test_detail_fields_genres_actor_via_packed_curid() -> None:
     assert len(detail.actors) == 1
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn.bna.com/jane.jpg'
-    assert detail.raw_image_urls == ['https://cdn.bna.com/poster.jpg']
+    assert detail.art == ['https://cdn.bna.com/poster.jpg']

@@ -149,7 +149,7 @@ class Watch4BeautyClient(Client):
         # Posters (issue-level; per-model art is added with the cast below)
         date_compact = re.sub(r'[^0-9]', '', issue_datetime)[:8] if issue_datetime else (metadata.release_date or '').replace('-', '')
         art_prefix = f'{ART_BASE}{date_compact}' if date_compact else ART_BASE
-        metadata.raw_image_urls.extend(
+        metadata.art.extend(
             [
                 f'{art_prefix}-issue-cover-1280.jpg',
                 f'{art_prefix}-issue-video-cover-2560.jpg',
@@ -170,8 +170,8 @@ class Watch4BeautyClient(Client):
             photo = f'{art_prefix}model-{slug}-320.jpg' if slug else ''
             metadata.actors.append(ActorResult(name=name, photo_url=photo))
             if slug:
-                metadata.raw_image_urls.append(f'{ART_BASE}model-{slug}-wide-2560.jpg')
-                metadata.raw_image_urls.append(f'{ART_BASE}model-{slug}-1280.jpg')
+                metadata.art.append(f'{ART_BASE}model-{slug}-wide-2560.jpg')
+                metadata.art.append(f'{ART_BASE}model-{slug}-1280.jpg')
         if not metadata.actors and model_slug:
             metadata.actors.append(ActorResult(name=_titleize(model_slug)))
 

@@ -79,4 +79,4 @@ class CaribbeancomClient(Client):
             abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        metadata.raw_image_urls = images
+        metadata.art = images

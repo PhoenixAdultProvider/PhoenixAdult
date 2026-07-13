@@ -147,4 +147,4 @@ class DorcelClubClient(Client):
                 coll['push'](cover)
         for raw in scene.sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

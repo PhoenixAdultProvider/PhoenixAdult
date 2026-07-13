@@ -46,4 +46,4 @@ async def test_detail_images_genres_no_actors() -> None:
     assert detail.studio == 'XVirtual'
     assert detail.genres == ['VR', 'POV']
     assert detail.actors == []
-    assert detail.raw_image_urls == ['https://cdn.xv.com/og.jpg', 'https://cdn.xv.com/t1.jpg', 'https://cdn.xv.com/t2.jpg']
+    assert detail.art == ['https://cdn.xv.com/og.jpg', 'https://cdn.xv.com/t1.jpg', 'https://cdn.xv.com/t2.jpg']

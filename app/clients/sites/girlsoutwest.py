@@ -99,4 +99,4 @@ class GirlsOutWestClient(Client):
             if not raw:
                 continue
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

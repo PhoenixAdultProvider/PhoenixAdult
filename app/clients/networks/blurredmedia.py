@@ -124,4 +124,4 @@ class BlurredMediaClient(Client):
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

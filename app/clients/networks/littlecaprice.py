@@ -145,4 +145,4 @@ class LittleCapriceClient(Client):
             coll['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
             for src in gallery.xpath('//div[contains(@class,"gallery") and contains(@class,"spotlight-group")]//img/@src').getall():
                 coll['push'](src)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

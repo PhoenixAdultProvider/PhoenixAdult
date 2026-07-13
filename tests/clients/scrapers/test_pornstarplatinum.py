@@ -55,4 +55,4 @@ async def test_detail_from_packed_curid() -> None:
     assert detail.release_date == '2021-09-09'
     assert detail.genres == ['Anal', 'MILF']
     assert [a.name for a in detail.actors] == ['Alice']
-    assert detail.raw_image_urls == ['https://cdn.psp.com/poster.jpg']
+    assert detail.art == ['https://cdn.psp.com/poster.jpg']

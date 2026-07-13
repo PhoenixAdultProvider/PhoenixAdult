@@ -97,4 +97,4 @@ class VRLatinaClient(Client):
         for href in scene.sel.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
             coll['push'](href)
         coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

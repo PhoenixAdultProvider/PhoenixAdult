@@ -104,4 +104,4 @@ class JacquieEtMichelClient(Client):
         raw = first_attr(scene.sel, '(//video/@poster)[1]')
         if not raw:
             return
-        metadata.raw_image_urls = [absolute_url(raw, scene.site.base_url)]
+        metadata.art = [absolute_url(raw, scene.site.base_url)]

@@ -95,4 +95,4 @@ class FirstAnalQuestClient(Client):
             coll['push'](raw)
         for raw in scene.sel.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

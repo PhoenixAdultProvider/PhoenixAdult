@@ -92,4 +92,4 @@ class ManyvidsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         shot = self._data(scene).get('screenshot')
-        metadata.raw_image_urls = [shot] if shot else []
+        metadata.art = [shot] if shot else []

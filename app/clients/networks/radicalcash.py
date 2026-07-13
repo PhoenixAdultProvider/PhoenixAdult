@@ -110,4 +110,4 @@ class RadicalCashClient(Client):
             for img in content.get('thumbs') or []:
                 coll['push'](img)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

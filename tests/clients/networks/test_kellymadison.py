@@ -62,7 +62,7 @@ async def test_detail() -> None:
     assert detail.genres == ['Hardcore', 'Heterosexual']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.pornfidelity.com/p/jane.jpg'
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://tour-content-cdn.kellymadisonmedia.com/episode/poster_image/cool-scene/poster.jpg',
         'https://tour-content-cdn.kellymadisonmedia.com/episode/episode_thumb_image_1/cool-scene/1.jpg',
         'https://tour-content-cdn.kellymadisonmedia.com/episode/episode_thumb_image_1/cool-scene/01.jpg',

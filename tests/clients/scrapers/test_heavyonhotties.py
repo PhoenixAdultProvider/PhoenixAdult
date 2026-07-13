@@ -57,4 +57,4 @@ async def test_detail_title_actors_images() -> None:
     assert detail.release_date == '2021-08-08'
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.hoh.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.hoh.com/poster.jpg']
+    assert detail.art == ['https://cdn.hoh.com/poster.jpg']

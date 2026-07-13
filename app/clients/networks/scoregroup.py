@@ -233,4 +233,4 @@ class ScoreGroupClient(Client):
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
                 push(raw)
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

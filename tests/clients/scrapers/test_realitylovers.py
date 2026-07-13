@@ -50,4 +50,4 @@ async def test_detail_srcset_actors_images() -> None:
     assert detail.genres == ['vr', 'pov']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'http://cdn.rl.com/alice.jpg'
-    assert detail.raw_image_urls == ['http://cdn.rl.com/s1_big.jpg']
+    assert detail.art == ['http://cdn.rl.com/s1_big.jpg']

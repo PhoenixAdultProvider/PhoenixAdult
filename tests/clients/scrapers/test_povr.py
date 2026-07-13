@@ -61,4 +61,4 @@ async def test_detail_ldjson() -> None:
     assert detail.genres == ['vr', 'pov']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.actors[0].photo_url == 'https://cdn.povr.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.povr.com/large/cover.jpg']
+    assert detail.art == ['https://cdn.povr.com/large/cover.jpg']

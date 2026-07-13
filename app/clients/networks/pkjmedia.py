@@ -71,4 +71,4 @@ class PKJMediaClient(Client):
         for poster in scene.sel.xpath('//video[contains(@class,"bricks-plyr")]/@poster').getall():
             coll['push'](poster)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

@@ -108,7 +108,7 @@ class DerangedDollarsClient(Client):
             for m in _QUOTED_URL_RE.findall(text):
                 coll['push'](m)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

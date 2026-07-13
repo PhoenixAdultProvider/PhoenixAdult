@@ -62,7 +62,7 @@ async def test_detail() -> None:
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.directors is not None and detail.directors[0].name == 'Director'
-    assert detail.raw_image_urls == ['https://cdn/poster.jpg?token=x']
+    assert detail.art == ['https://cdn/poster.jpg?token=x']
 
 
 def test_kink_tagline() -> None:

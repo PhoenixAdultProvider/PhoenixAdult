@@ -57,7 +57,7 @@ async def test_detail_from_id() -> None:
     assert detail.tagline == 'Net Video Girls'
     assert detail.release_date == '2021-03-04'
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith']
-    assert detail.raw_image_urls == ['https://netvideogirls.net/img/c.jpg']
+    assert detail.art == ['https://netvideogirls.net/img/c.jpg']
 
 
 @respx.mock
@@ -77,4 +77,4 @@ async def test_detail_url_prefers_page_data_poster() -> None:
     assert detail.summary == 'A summary.'
     assert detail.scene_url == scene_url
     # page-data fluid src wins over the on-page <video poster> (legacy merge)
-    assert detail.raw_image_urls == ['https://netvideogirls.net/img/c.jpg']
+    assert detail.art == ['https://netvideogirls.net/img/c.jpg']

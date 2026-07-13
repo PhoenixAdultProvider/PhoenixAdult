@@ -250,4 +250,4 @@ class Clips4SaleClient(Client):
         clip_id = payload.split('/studio/')[1].split('/')[1] if '/studio/' in payload and len(payload.split('/studio/')[1].split('/')) > 1 else ''
         if user_id and clip_id.isdigit():
             coll['push'](f'http://imagecdn.clips4sale.com/accounts99/{user_id}/clip_images/previewlg_{clip_id}.jpg')
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

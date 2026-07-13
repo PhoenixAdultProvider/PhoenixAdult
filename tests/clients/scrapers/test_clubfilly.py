@@ -48,4 +48,4 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.release_date == '2020-08-15'
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.genres == ['Lesbian', 'Threesome']
-    assert detail.raw_image_urls == ['https://cdn.cf.com/s1.jpg', 'https://clubfilly.com/s2.jpg']
+    assert detail.art == ['https://cdn.cf.com/s1.jpg', 'https://clubfilly.com/s2.jpg']

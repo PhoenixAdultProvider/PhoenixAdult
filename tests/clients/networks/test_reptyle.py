@@ -70,7 +70,7 @@ async def test_detail() -> None:
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.actors[0].gender == 'female'
-    assert detail.raw_image_urls == ['https://cdn/p.jpg']
+    assert detail.art == ['https://cdn/p.jpg']
 
 
 @respx.mock
@@ -98,4 +98,4 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-familystrokes'
-    assert 'https://cdn.data18.com/extra.jpg' in detail.raw_image_urls
+    assert 'https://cdn.data18.com/extra.jpg' in detail.art

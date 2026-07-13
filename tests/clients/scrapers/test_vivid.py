@@ -84,7 +84,7 @@ async def test_detail_unpacks_extras() -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe']
-    assert detail.raw_image_urls == [poster]
+    assert detail.art == [poster]
 
 
 @respx.mock
@@ -96,4 +96,4 @@ async def test_detail_subsite_fallback() -> None:
     detail = await VividClient().fetch_scene_detail(f'{scene_url}|||', SITE)
     assert detail is not None
     assert detail.tagline == 'Vivid'
-    assert detail.raw_image_urls == []
+    assert detail.art == []

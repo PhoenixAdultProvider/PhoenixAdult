@@ -115,4 +115,4 @@ class VNAClient(Client):
         if 'thumb_1' in abs_url:
             out.append(abs_url.replace('thumb_1', 'thumb_2'))
             out.append(abs_url.replace('thumb_1', 'thumb_3'))
-        metadata.raw_image_urls = out
+        metadata.art = out

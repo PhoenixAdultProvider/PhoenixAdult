@@ -203,4 +203,4 @@ class JAVDatabaseClient(Client):
                     jav_id = jav_id.replace(db_ids[0], jav_bus_id)
                     break
             await push_javbus_images(self.http, coll, jav_id, _IGNORE_LIST, self._release_date(scene))
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -71,5 +71,5 @@ async def test_detail_two_hop() -> None:
     assert 'toys' in detail.genres and 'anal' in detail.genres
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://www.littlecaprice-dreams.com/p/jane.jpg'
-    assert 'https://cdn/video-og.jpg' in detail.raw_image_urls
-    assert 'https://www.littlecaprice-dreams.com/img/g1.jpg' in detail.raw_image_urls
+    assert 'https://cdn/video-og.jpg' in detail.art
+    assert 'https://www.littlecaprice-dreams.com/img/g1.jpg' in detail.art

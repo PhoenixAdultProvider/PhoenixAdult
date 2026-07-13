@@ -175,4 +175,4 @@ class AllureMediaClient(Client):
                     coll['push'](u)
 
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

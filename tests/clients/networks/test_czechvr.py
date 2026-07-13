@@ -65,7 +65,7 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['vr', '180']
     assert [a.name for a in detail.actors] == ['Jane Doe']
-    assert detail.raw_image_urls == ['https://cdn/g1.jpg']
+    assert detail.art == ['https://cdn/g1.jpg']
 
 
 def test_strip_brand() -> None:

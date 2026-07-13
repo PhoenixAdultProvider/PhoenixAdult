@@ -80,4 +80,4 @@ async def test_detail() -> None:
         ('Mary Roe', 'https://cdn.vp.com/mary.jpg'),
         ('Anna Lee', 'https://cdn.vp.com/anna.jpg'),
     ]
-    assert detail.raw_image_urls == ['https://media.vipissy.com/videos/wild-scene-1234/cover/l.jpg', 'https://cdn.vp.com/g1.jpg']
+    assert detail.art == ['https://media.vipissy.com/videos/wild-scene-1234/cover/l.jpg', 'https://cdn.vp.com/g1.jpg']

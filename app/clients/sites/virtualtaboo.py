@@ -80,4 +80,4 @@ class VirtualTabooClient(Client):
         coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for href in scene.sel.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

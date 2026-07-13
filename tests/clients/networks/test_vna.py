@@ -52,4 +52,4 @@ async def test_detail() -> None:
     assert detail.genres == ['Anal', 'Teen']
     names = [a.name for a in (detail.actors or [])]
     assert names == ['Jane Doe', 'John Smith', 'Sarah Arabic']
-    assert detail.raw_image_urls == ['https://sarajay.com/img/thumb_1.jpg', 'https://sarajay.com/img/thumb_2.jpg', 'https://sarajay.com/img/thumb_3.jpg']
+    assert detail.art == ['https://sarajay.com/img/thumb_1.jpg', 'https://sarajay.com/img/thumb_2.jpg', 'https://sarajay.com/img/thumb_3.jpg']

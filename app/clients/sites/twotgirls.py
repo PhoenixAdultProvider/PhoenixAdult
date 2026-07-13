@@ -111,4 +111,4 @@ class TwoTGirlsClient(Client):
             coll['push'](poster)
         for src in scene.sel.xpath('//article//div[contains(@class,"row")]//img/@src').getall():
             coll['push'](src)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

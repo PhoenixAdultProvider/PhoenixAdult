@@ -75,7 +75,7 @@ async def test_detail() -> None:
     assert detail.genres == ['hardcore', 'big-tits']
     names = [a.name for a in detail.actors]
     assert 'Jane Doe' in names and 'Romi Rain' in names
-    assert detail.raw_image_urls == ['https://cdn/a.jpg']
+    assert detail.art == ['https://cdn/a.jpg']
 
 
 @respx.mock

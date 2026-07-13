@@ -51,7 +51,7 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.actors[0].photo_url == 'https://cdn.hegre.com/480x/alice.jpg'
     assert detail.directors is not None
     assert detail.directors[0].name == 'Petter Hegre'
-    assert detail.raw_image_urls == [
+    assert detail.art == [
         'https://p.hegre.com/poster-image/x/640x/cover.jpg',
         'https://p.hegre.com/board-image/x/1920x/cover.jpg',
     ]

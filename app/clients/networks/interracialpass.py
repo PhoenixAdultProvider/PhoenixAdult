@@ -115,4 +115,4 @@ class InterracialPassClient(Client):
         for src in scene.sel.xpath('//div[contains(@class,"player-thumb")]//img/@src0_1x').getall():
             coll['push'](src)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images
+        metadata.art = images

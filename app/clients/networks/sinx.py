@@ -82,4 +82,4 @@ class SinXClient(Client):
         for src in scene.sel.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

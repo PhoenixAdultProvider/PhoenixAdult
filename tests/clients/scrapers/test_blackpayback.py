@@ -63,4 +63,4 @@ async def test_detail_title_fix_iafd_genres_images() -> None:
     assert detail.genres == ['Anal', 'BBC']
     assert [a.name for a in detail.actors] == ['Aria Carson']
     assert detail.actors[0].photo_url == 'https://cdn.iafd.com/aria.jpg'
-    assert detail.raw_image_urls == ['https://blackpayback.com/poster.jpg']
+    assert detail.art == ['https://blackpayback.com/poster.jpg']

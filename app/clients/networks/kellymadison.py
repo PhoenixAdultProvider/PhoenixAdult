@@ -129,4 +129,4 @@ class KellyMadisonClient(Client):
         slug = scene.url.rstrip('/').split('/')[-1]
         if not slug:
             return
-        metadata.raw_image_urls = [t.replace('{slug}', slug) for t in _POSTER_TEMPLATES]
+        metadata.art = [t.replace('{slug}', slug) for t in _POSTER_TEMPLATES]

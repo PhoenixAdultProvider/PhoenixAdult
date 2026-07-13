@@ -82,4 +82,4 @@ class SinsLifeClient(Client):
         src = (scene.sel.xpath(_POSTER_XP + '/@src').get() or '').strip()
         if not src:
             return
-        metadata.raw_image_urls = [src if src.startswith('http') else f'https:{src}']
+        metadata.art = [src if src.startswith('http') else f'https:{src}']

@@ -189,4 +189,4 @@ class PervCityClient(Client):
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
         for raw in scene.sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
             coll['push'](raw)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

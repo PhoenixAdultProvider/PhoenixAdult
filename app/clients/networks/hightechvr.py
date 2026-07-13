@@ -126,4 +126,4 @@ class HighTechVRClient(Client):
                 m = _STYLE_URL_RE.search(style)
                 if m:
                     push(m.group(1))
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

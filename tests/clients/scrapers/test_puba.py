@@ -44,4 +44,4 @@ async def test_detail_genres_actors_image() -> None:
     assert detail.collections == ['Puba']
     assert detail.genres == ['Anal']
     assert [a.name for a in detail.actors] == ['Alice']
-    assert detail.raw_image_urls == ['https://cdn.puba.com/poster.jpg']
+    assert detail.art == ['https://cdn.puba.com/poster.jpg']

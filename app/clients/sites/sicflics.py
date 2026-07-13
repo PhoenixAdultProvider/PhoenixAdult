@@ -116,4 +116,4 @@ class SicflicsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         img = (self._packed(scene).get('imgURL') or '').strip()
-        metadata.raw_image_urls = [img] if img else []
+        metadata.art = [img] if img else []

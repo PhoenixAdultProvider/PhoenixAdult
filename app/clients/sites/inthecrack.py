@@ -100,4 +100,4 @@ class InTheCrackClient(Client):
         rel = parts[1].strip()
         if not rel:
             return
-        metadata.raw_image_urls = [absolute_url(rel, scene.site.base_url)]
+        metadata.art = [absolute_url(rel, scene.site.base_url)]

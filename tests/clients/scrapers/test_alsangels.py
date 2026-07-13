@@ -54,7 +54,7 @@ async def test_detail() -> None:
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://alsangels.com/p/jane.jpg'
     assert detail.actors[0].gender == 'female'
-    assert detail.raw_image_urls == ['https://alsangels.com/graphics/videos/jane01.jpg', 'https://alsangels.com/graphics/g1.jpg']
+    assert detail.art == ['https://alsangels.com/graphics/videos/jane01.jpg', 'https://alsangels.com/graphics/g1.jpg']
 
 
 @respx.mock

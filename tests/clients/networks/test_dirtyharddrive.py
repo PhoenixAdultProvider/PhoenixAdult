@@ -72,7 +72,7 @@ async def test_detail_with_playlist_poster() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://dirtyharddrive.com/p/jane.jpg'
-    assert detail.raw_image_urls == ['https://cdn/thumb.jpg']
+    assert detail.art == ['https://cdn/thumb.jpg']
 
 
 @respx.mock
@@ -91,4 +91,4 @@ async def test_detail_bookend_fallback() -> None:
     detail = await dhd_mod.DirtyHardDriveClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.actors[0].name == 'X'
-    assert detail.raw_image_urls == ['https://dirtyharddrive.com/media/x/bookend.jpg']
+    assert detail.art == ['https://dirtyharddrive.com/media/x/bookend.jpg']

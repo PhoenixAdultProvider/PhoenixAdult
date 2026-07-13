@@ -170,5 +170,5 @@ class NVGClient(Client):
         metadata.actors = _actors_from(extra['cast_str'])
 
         # Posters
-        metadata.raw_image_urls = [extra['poster']] if extra['poster'] else []
+        metadata.art = [extra['poster']] if extra['poster'] else []
         metadata.scene_url = extra['scene_url']

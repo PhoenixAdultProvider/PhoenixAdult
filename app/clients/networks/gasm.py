@@ -110,4 +110,4 @@ class GasmClient(Client):
             coll['push'](src)
         coll['push'](scene.sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
         images: list[str] = coll['list']
-        metadata.raw_image_urls = images or []
+        metadata.art = images or []

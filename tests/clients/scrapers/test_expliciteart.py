@@ -51,7 +51,7 @@ async def test_detail_fields() -> None:
     assert result.genres == ['Anal', 'Hardcore']
     assert result.actors[0].name == 'Jane Doe'
     assert result.actors[0].photo_url == 'https://cdn.example/jane.jpg'
-    assert result.raw_image_urls == ['https://cdn.example/poster.jpg']
+    assert result.art == ['https://cdn.example/poster.jpg']
 
 
 def test_registered() -> None:

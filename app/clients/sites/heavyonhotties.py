@@ -119,4 +119,4 @@ class HeavyOnHottiesClient(Client):
         coll = self.image_collector(_lift_scheme)
         for raw in scene.sel.xpath('//video[@poster]/@poster').getall():
             coll['push']((raw or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -134,4 +134,4 @@ class JulesJordanClient(Client):
                 img = loaded['sel'].xpath('(//img[contains(@id,"set-target")])[1]')
                 for i in range(7):
                     coll['push']((img.xpath(f'@src{i}_1x').get() or '').strip())
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

@@ -106,4 +106,4 @@ class CaramelCashClient(Client):
         coll = self.image_collector()
         for href in scene.sel.xpath('//section[contains(@class,"content-gallery-sec")]//a[@data-lightbox="gallery"]/@href').getall():
             coll['push'](href)
-        metadata.raw_image_urls = coll['list']
+        metadata.art = coll['list']

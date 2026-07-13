@@ -57,4 +57,4 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.genres == ['anal', 'hd', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']
     assert detail.actors[0].photo_url == 'https://cdn.fa.com/alice.jpg'
-    assert detail.raw_image_urls == ['https://cdn.fa.com/p1.jpg']
+    assert detail.art == ['https://cdn.fa.com/p1.jpg']
