@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.reptyle as reptyle_module
+import app.clients.aggregators.data18 as data18_module
 from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.reptyle import ReptyleClient
 from app.registry import find_site
@@ -86,7 +86,7 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     )
     captured: dict[str, object] = {}
 
-    class FakeData18(reptyle_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> str:
             captured['mapping_id'] = scene_id
             return 'https://www.data18.com/scenes/999'
@@ -94,7 +94,7 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
         async def fetch_images(self, scene_url: str) -> list[str]:
             return ['https://cdn.data18.com/extra.jpg']
 
-    monkeypatch.setattr(reptyle_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-familystrokes'

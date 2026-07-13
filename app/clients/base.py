@@ -5,6 +5,7 @@ import json
 from abc import ABC
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 import httpx2
@@ -17,6 +18,7 @@ from app.utils.http.client import make_http
 from app.utils.logging.logger import logger
 
 if TYPE_CHECKING:
+    from app.clients.aggregators.data18 import Data18Client
     from app.registry import ResolvedSiteInfo
 
 
@@ -159,6 +161,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         self._extra_headers = extra_headers or {}
         self._http: httpx2.AsyncClient | None = None
+        self._data18_enricher: Data18Client | None = None
 
     @property
     def http(self) -> httpx2.AsyncClient:
@@ -422,6 +425,38 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return ActorResult(name=name, photo_url=photo)
 
         return list(await asyncio.gather(*(_resolve(name, href) for name, href in unique)))
+
+    async def enrich_from_data18(
+        self,
+        metadata: SceneDetail,
+        site: ResolvedSiteInfo,
+        *,
+        scene_id: str | None,
+        providers: list[str],
+        title: str | None = None,
+        scene_date: str | None = None,
+        images: list[str] | None = None,
+        forced_url: str | None = None,
+    ) -> None:
+        """Resolve the scene's data18 page and merge its images into `images` (default
+        metadata.art), recording metadata.data18_url. No-op unless the site opts into
+        data18 enrichment and it's enabled; one shared Data18Client per client. `title`
+        and `scene_date` default to metadata's own; `scene_date` is an ISO date string."""
+        if not (site.scraper_config.data18_enrichment and env.data18_enabled):
+            return
+        from app.clients.aggregators.data18 import Data18Client
+
+        self._data18_enricher = self._data18_enricher or Data18Client()
+        date = scene_date if scene_date is not None else metadata.release_date
+        metadata.data18_url = await self._data18_enricher.enrich_images(
+            scope=site.name,
+            images=metadata.art if images is None else images,
+            scene_id=scene_id,
+            title=metadata.title if title is None else title,
+            providers=providers,
+            scene_date=datetime.fromisoformat(date) if date else None,
+            forced_url=forced_url,
+        )
 
     # ── Detail orchestrator ──────────────────────────────────────────────────────
 

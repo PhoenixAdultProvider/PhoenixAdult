@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import datetime
 from typing import Any
 
-from app.clients.aggregators.data18 import Data18Client, mapping_slug
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
-from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
@@ -34,7 +32,6 @@ class Strike3Client(GraphQLClient):
         super().__init__(extra_headers)
         self._pace_lock = asyncio.Lock()
         self._last_fetch = 0.0
-        self._data18: Data18Client | None = None
 
     async def _gql(self, endpoint: str, query: str, variables: dict[str, Any], base_url: str, label: str, sink: list[RawCaptureEntry] | None) -> Any:
         async with self._pace_lock:
@@ -160,14 +157,4 @@ class Strike3Client(GraphQLClient):
         metadata.art = coll['list']
 
         # Posters from Data18
-        if site.scraper_config.data18_enrichment and env.data18_enabled:
-            self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
-            metadata.data18_url = await self._data18.enrich_images(
-                scope=site.name,
-                images=metadata.art,
-                scene_id=mapping_slug(metadata.title, site.name),
-                title=metadata.title,
-                providers=[site.name],
-                scene_date=date_obj,
-            )
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, site.name), providers=[site.name])

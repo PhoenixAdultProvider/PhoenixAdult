@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import app.clients.aggregators.data18 as data18_module
 import app.clients.sites.manualnfo as mn_module
 from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.manualnfo import ManualNfoClient
@@ -163,7 +164,7 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
     _write_folder(tmp_path, BASENAME)
     calls: dict[str, object] = {}
 
-    class FakeData18(mn_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> str:
             calls['providers'] = providers
             calls['query'] = query
@@ -172,7 +173,7 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
         async def fetch_images(self, scene_url: str) -> list[str]:
             return ['https://cdn.data18.com/a.jpg', 'https://example.com/poster.jpg']
 
-    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg', 'https://cdn.data18.com/a.jpg']
@@ -186,7 +187,7 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
     _write_folder(tmp_path, BASENAME)
     queries: list[str] = []
 
-    class FakeData18(mn_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
             queries.append(query)
             return None
@@ -194,7 +195,7 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
         async def fetch_images(self, scene_url: str) -> list[str]:
             raise AssertionError('fetch_images must not be called without a match')
 
-    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert queries == ['Naughty Fantasy']
@@ -209,7 +210,7 @@ async def test_detail_data18_enrichment_off_by_default(tmp_path: Path, monkeypat
     def _boom() -> None:
         raise AssertionError('Data18Client must not be constructed when DATA18_ENABLE is off')
 
-    monkeypatch.setattr(mn_module, 'Data18Client', _boom)
+    monkeypatch.setattr(data18_module, 'Data18Client', _boom)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert detail.art == ['https://example.com/poster.jpg', 'https://example.com/fanart.jpg']
@@ -241,7 +242,7 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
     _write_folder(tmp_path, BASENAME, nfo=SAMPLE_NFO.replace('</movie>', f'  <data18>{ref}</data18>\n</movie>'))
     fetched: list[str] = []
 
-    class FakeData18(mn_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
             raise AssertionError('an explicit <data18> ref must not run the data18 search')
 
@@ -249,7 +250,7 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
             fetched.append(scene_url)
             return ['https://cdn.data18.com/a.jpg']
 
-    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
     assert fetched == ['https://www.data18.com/scenes/1150700']
@@ -262,7 +263,7 @@ async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: P
     _write_folder(tmp_path, BASENAME, nfo=SAMPLE_NFO.replace('</movie>', '  <data18>https://evil.com/scenes/1</data18>\n</movie>'))
     queries: list[str] = []
 
-    class FakeData18(mn_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
             queries.append(query)
             return None
@@ -270,7 +271,7 @@ async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: P
         async def fetch_images(self, scene_url: str) -> list[str]:
             raise AssertionError('no match -> no fetch')
 
-    monkeypatch.setattr(mn_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     assert await ManualNfoClient().fetch_scene_detail(BASENAME, SITE) is not None
     assert queries == ['Naughty Fantasy']
 
@@ -283,7 +284,7 @@ async def test_detail_data18_tag_still_respects_kill_switch(tmp_path: Path, monk
     def _boom() -> None:
         raise AssertionError('DATA18_ENABLE=off must suppress enrichment even with a <data18> tag')
 
-    monkeypatch.setattr(mn_module, 'Data18Client', _boom)
+    monkeypatch.setattr(data18_module, 'Data18Client', _boom)
     assert await ManualNfoClient().fetch_scene_detail(BASENAME, SITE) is not None
 
 

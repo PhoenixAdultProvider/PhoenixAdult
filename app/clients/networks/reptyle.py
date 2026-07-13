@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
 from typing import Any
 
-from app.clients.aggregators.data18 import Data18Client
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
-from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, slugify
 from app.utils.helpers.html_helpers import strip_tags
@@ -37,7 +34,6 @@ class ReptyleClient(Client):
                 'Cookie': 'age_verified=yes',
             }
         )
-        self._data18: Data18Client | None = None
 
     async def _fetch_initial_state(self, url: str, capture: list[RawCaptureEntry] | None) -> dict[str, Any] | None:
         try:
@@ -160,13 +156,8 @@ class ReptyleClient(Client):
             metadata.art.append(scene_json['img'])
 
         # Posters from Data18
-        if site.scraper_config.data18_enrichment and env.data18_enabled:
-            self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
-            sid = scene_json.get('id')
-            search_sub = (sub_site if sub_site != site.name else None) or scene.subsite
-            mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
-            providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
-            metadata.data18_url = await self._data18.enrich_images(
-                scope=site.name, images=metadata.art, scene_id=mapping_id, title=metadata.title, providers=providers, scene_date=date_obj
-            )
+        sid = scene_json.get('id')
+        search_sub = (sub_site if sub_site != site.name else None) or scene.subsite
+        mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
+        providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_id, providers=providers)

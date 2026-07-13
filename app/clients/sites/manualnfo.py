@@ -5,7 +5,6 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from html.entities import html5
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,7 @@ from xml.etree import ElementTree as ET
 
 from lxml import etree as lxml_etree
 
-from app.clients.aggregators.data18 import Data18Client, scene_url_from_ref
+from app.clients.aggregators.data18 import scene_url_from_ref
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config import config
 from app.config.env import env
@@ -264,10 +263,6 @@ def _is_http(url: str | None) -> bool:
 
 
 class ManualNfoClient(Client):
-    def __init__(self) -> None:
-        super().__init__()
-        self._data18: Data18Client | None = None
-
     async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         tag = ctx.site_info.name
         basename = ctx.title.strip()
@@ -382,16 +377,14 @@ class ManualNfoClient(Client):
             forced_url = scene_url_from_ref(nfo.data18)
             if nfo.data18 and not forced_url:
                 logger.warn(scene.site.name, f'ignoring unusable <data18> value: {nfo.data18!r}')
-            self._data18 = self._data18 or Data18Client()
-            date_iso = _nfo_release_date(nfo)
-            date_obj = datetime.fromisoformat(date_iso) if date_iso else None
-            metadata.data18_url = await self._data18.enrich_images(
-                scope=scene.site.name,
-                images=images,
+            await self.enrich_from_data18(
+                metadata,
+                scene.site,
                 scene_id=slugify(nfo.title.replace("'", '')) if nfo.title else None,
-                title=nfo.title or '',
                 providers=[p for p in (nfo.studio, nfo.set) if p],
-                scene_date=date_obj,
+                title=nfo.title or '',
+                scene_date=_nfo_release_date(nfo),
+                images=images,
                 forced_url=forced_url,
             )
         metadata.art = images

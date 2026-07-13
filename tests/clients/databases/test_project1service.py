@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-import app.clients.aggregators.project1service as p1_module
+import app.clients.aggregators.data18 as data18_module
 from app.clients.aggregators.project1service import Project1ServiceClient, _service_url
 from app.clients.base import SceneContext, SearchContext, SearchResult
 from app.registry import find_site
@@ -98,7 +98,7 @@ async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkey
     respx.get(url__startswith=f'{_API}/v1/actors').mock(return_value=httpx.Response(200, json={'result': []}))
     captured: dict[str, object] = {}
 
-    class FakeData18(p1_module.Data18Client):
+    class FakeData18(data18_module.Data18Client):
         async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
             captured['mapping_id'] = scene_id
             captured['providers'] = providers
@@ -107,7 +107,7 @@ async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkey
         async def fetch_images(self, url: str) -> list[str]:
             return []
 
-    monkeypatch.setattr(p1_module, 'Data18Client', FakeData18)
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
     detail = await Project1ServiceClient().fetch_scene_detail('777|scene|2021-03-04', SITE, SceneContext(subsite='Teens Like It Big'))
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-teenslikeitbig'

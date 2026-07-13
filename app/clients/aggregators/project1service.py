@@ -5,13 +5,11 @@ import binascii
 import json
 import re
 import time
-from datetime import datetime
 from typing import Any, TypedDict
 from urllib.parse import quote, urlsplit
 
-from app.clients.aggregators.data18 import Data18Client, mapping_slug
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
-from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.single_flight import SingleFlight
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, title_distance_score
@@ -78,7 +76,6 @@ class _SceneExtra(TypedDict):
 class Project1ServiceClient(Client):
     def __init__(self) -> None:
         super().__init__({'Accept': 'application/json'})
-        self._data18: Data18Client | None = None
 
     async def _get_token(self, site: ResolvedSiteInfo) -> str | None:
         host = urlsplit(site.base_url).hostname or ''
@@ -258,21 +255,9 @@ class Project1ServiceClient(Client):
                     metadata.art.append(u)
 
         # Posters from Data18
-        data18_url: str | None = None
-        if site.scraper_config.data18_enrichment and env.data18_enabled:
-            self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
-            search_sub = sub_site or scene.subsite
-            providers = [p for p in (site.name, search_sub) if p]
-            data18_url = await self._data18.enrich_images(
-                scope=site.name,
-                images=metadata.art,
-                scene_id=mapping_slug(metadata.title, search_sub),
-                title=metadata.title,
-                providers=providers,
-                scene_date=date_obj,
-            )
-            metadata.data18_url = data18_url
+        search_sub = sub_site or scene.subsite
+        providers = [p for p in (site.name, search_sub) if p]
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, search_sub), providers=providers)
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'
