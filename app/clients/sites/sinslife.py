@@ -63,14 +63,8 @@ class SinsLifeClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         count = len(scene.sel.xpath(_ACTORS_XP))
-        if count == 3:
-            metadata.genres = ['Threesome']
-        elif count == 4:
-            metadata.genres = ['Foursome']
-        elif count > 4:
-            metadata.genres = ['Orgy']
-        else:
-            metadata.genres = []
+        group = self.group_genre_for(count)
+        metadata.genres = [group] if group else []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

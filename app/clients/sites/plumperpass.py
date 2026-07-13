@@ -122,12 +122,8 @@ class PlumperPassClient(Client):
                 if t and t not in genres:
                     genres.append(t)
         cast = len(scene.sel.xpath('//h3[contains(@class,"releases")]//a'))
-        if cast == 3:
-            genres.append('Threesome')
-        elif cast == 4:
-            genres.append('Foursome')
-        elif cast > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

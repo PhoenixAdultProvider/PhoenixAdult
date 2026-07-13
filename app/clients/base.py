@@ -373,6 +373,17 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
         return {'push': push, 'list': out}
 
+    def group_genre_for(self, cast: int) -> str | None:
+        """The group-sex genre implied by the cast size: 3 → Threesome, 4 → Foursome, 5+ → Orgy.
+        Clients on an offset scale (e.g. a POV performer excluded from the count) adjust `cast`."""
+        if cast == 3:
+            return 'Threesome'
+        if cast == 4:
+            return 'Foursome'
+        if cast > 4:
+            return 'Orgy'
+        return None
+
     # ── Detail orchestrator ──────────────────────────────────────────────────────
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:

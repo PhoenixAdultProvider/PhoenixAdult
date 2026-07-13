@@ -112,12 +112,8 @@ class DorcelClubClient(Client):
         genres = list(_FIXED_GENRES)
         if not _is_movie_url(scene.url):
             count = len(scene.sel.xpath('//div[contains(@class,"actress")]/a'))
-            if count == 3:
-                genres.append('Threesome')
-            elif count == 4:
-                genres.append('Foursome')
-            elif count > 4:
-                genres.append('Orgy')
+            if group := self.group_genre_for(count):
+                genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

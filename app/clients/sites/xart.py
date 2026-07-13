@@ -96,12 +96,8 @@ class XartClient(Client):
         assert scene.sel is not None
         genres = ['Artistic', 'Glamorous']
         count = len(scene.sel.xpath('//h2//a'))
-        if count == 3:
-            genres.append('Threesome')
-        elif count == 4:
-            genres.append('Foursome')
-        elif count > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

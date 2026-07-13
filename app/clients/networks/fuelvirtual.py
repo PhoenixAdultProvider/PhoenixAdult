@@ -74,12 +74,8 @@ class FuelVirtualClient(Client):
         if scene.site.name != 'NewGirlPOV':
             genres.append('18-Year-Old')
         cast = len(scene.sel.xpath('//div[@id="description"]//td[@align="left"]//a'))
-        if cast == 3:
-            genres.append('Threesome')
-        elif cast == 4:
-            genres.append('Foursome')
-        elif cast > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

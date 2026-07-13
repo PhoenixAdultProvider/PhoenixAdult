@@ -54,12 +54,8 @@ class CumLouderClient(Client):
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//ul[contains(@class,"tags")]/li/a')])
         actor_count = len(scene.sel.xpath('//a[contains(@class,"pornstar-link")]'))
-        if actor_count == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif actor_count == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif actor_count > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(actor_count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

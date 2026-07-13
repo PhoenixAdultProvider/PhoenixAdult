@@ -23,3 +23,14 @@ async def test_202_and_empty_body_are_not_ok() -> None:
     assert await client.fetch_and_load('https://x.test/ok') is not None
     assert await client.fetch_and_load('https://x.test/blocked') is None
     assert await client.fetch_and_load('https://x.test/empty') is None
+
+
+def test_group_genre_for_scale() -> None:
+    c = _C()
+    assert c.group_genre_for(0) is None
+    assert c.group_genre_for(1) is None
+    assert c.group_genre_for(2) is None
+    assert c.group_genre_for(3) == 'Threesome'
+    assert c.group_genre_for(4) == 'Foursome'
+    assert c.group_genre_for(5) == 'Orgy'
+    assert c.group_genre_for(9) == 'Orgy'

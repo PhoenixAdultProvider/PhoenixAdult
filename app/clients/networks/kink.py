@@ -114,12 +114,8 @@ class KinkClient(Client):
             [(a.xpath('normalize-space(.)').get() or '').replace(',', '').strip() for a in scene.sel.xpath('//a[contains(@href,"/tag/")]')]
         )
         cast = len(scene.sel.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
-        if cast == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif cast == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif cast > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

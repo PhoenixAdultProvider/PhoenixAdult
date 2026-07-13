@@ -70,12 +70,8 @@ class BelAmiClient(Client):
             if g and g not in genres:
                 genres.append(g)
         actor_count = len(scene.sel.xpath(_ACTORS_XP))
-        if actor_count == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif actor_count == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif actor_count > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(actor_count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

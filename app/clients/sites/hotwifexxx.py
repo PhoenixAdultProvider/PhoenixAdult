@@ -82,12 +82,8 @@ class HotwifeXXXClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         count = len(scene.sel.xpath(_CAST_XP))
-        if count == 3:
-            metadata.genres = ['Threesome']
-        elif count == 4:
-            metadata.genres = ['Foursome']
-        elif count > 4:
-            metadata.genres = ['Orgy']
+        if group := self.group_genre_for(count):
+            metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

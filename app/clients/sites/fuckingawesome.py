@@ -6,8 +6,6 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedS
 from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
-_GROUP_GENRES: dict[str, str] = {'3': 'Threesome', '4': 'Foursome'}
-
 STUDIO = 'FuckingAwesome'
 _ACTOR_XP = '//div[contains(@class,"pornstarnames")]//ul//li//a[contains(@href,"pornstars")]'
 
@@ -67,11 +65,8 @@ class FuckingAwesomeClient(Client):
             if g and g not in genres:
                 genres.append(g)
         count = len(scene.sel.xpath(_ACTOR_XP))
-        count_genre = _GROUP_GENRES.get(str(count))
-        if count_genre and count_genre not in genres:
-            genres.append(count_genre)
-        if count > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

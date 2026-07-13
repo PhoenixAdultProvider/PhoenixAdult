@@ -66,12 +66,8 @@ class PuffyClient(Client):
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div/section[3]/div[2]/p/a')])
         cast = len(scene.sel.xpath('//div/section[2]/dl/dd[1]/a'))
-        if cast == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif cast == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif cast > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

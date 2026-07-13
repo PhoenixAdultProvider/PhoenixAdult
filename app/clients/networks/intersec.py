@@ -94,12 +94,8 @@ class IntersecClient(Client):
         genres = ['BDSM']
         dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         actor_count = max(0, len(dark) - 1)
-        if actor_count == 3:
-            genres.append('Threesome')
-        elif actor_count == 4:
-            genres.append('Foursome')
-        elif actor_count > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(actor_count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

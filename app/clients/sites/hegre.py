@@ -96,12 +96,8 @@ class HegreClient(Client):
             if g and g not in genres:
                 genres.append(g)
         count = len(scene.sel.xpath('//a[contains(@class,"record-model")]'))
-        if count == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif count == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif count > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

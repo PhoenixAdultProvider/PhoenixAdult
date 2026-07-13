@@ -72,12 +72,8 @@ class BoundHoneysClient(Client):
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"updateCategoriesList")]//a')])
         n = len(await self._collect_actors(scene))
-        if n == 3:
-            genres.append('Threesome')
-        elif n == 4:
-            genres.append('Foursome')
-        elif n > 4:
-            genres.append('Orgy')
+        if group := self.group_genre_for(n):
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

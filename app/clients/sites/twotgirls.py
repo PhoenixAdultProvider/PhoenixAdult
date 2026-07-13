@@ -77,9 +77,8 @@ class TwoTGirlsClient(Client):
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//p[contains(@class,"video-tags")]//a')])
         count = len(scene.sel.xpath('//p[contains(@class,"video-date")]//a'))
-        extra = {3: 'Threesome', 4: 'Foursome'}.get(count) or ('Orgy' if count > 4 else None)
-        if extra and extra not in genres:
-            genres.append(extra)
+        if (group := self.group_genre_for(count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

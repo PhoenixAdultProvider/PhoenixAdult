@@ -29,6 +29,7 @@ async def test_group_genre_thresholds() -> None:
     assert 'Orgy' in await genres_for(4)  # regression: a cast of 4 previously fell through and got no group genre
     assert 'Orgy' in await genres_for(5)
 
+
 DETAIL_HTML = """<html><body>
   <h1>Wild Screw</h1>
   <div><h2>About</h2> A blurb.Read More ...Read Less</div>

@@ -64,12 +64,8 @@ class LoveHerFilmsClient(Client):
         if 'Foot Sex' not in genres:
             genres.append('Foot Sex')
         cast = len(scene.sel.xpath('//div[contains(@class,"featured")]/a'))
-        if cast == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif cast == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif cast > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

@@ -121,12 +121,8 @@ class ScrewMeTooClient(Client):
             if g and g not in genres:
                 genres.append(g)
         cast = len(self._extra(scene).actors)
-        if cast == 2:
-            genres.append('Threesome')
-        elif cast == 3:
-            genres.append('Foursome')
-        elif cast > 3:
-            genres.append('Orgy')
+        if group := self.group_genre_for(cast + 1):  # offset scale: the POV performer is excluded from the count
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

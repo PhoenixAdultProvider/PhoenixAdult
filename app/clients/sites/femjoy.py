@@ -105,12 +105,8 @@ class FemjoyClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         n = self._unique_actor_count(scene)
-        if n == 3:
-            metadata.genres = ['Threesome']
-        elif n == 4:
-            metadata.genres = ['Foursome']
-        elif n > 4:
-            metadata.genres = ['Orgy']
+        if group := self.group_genre_for(n):
+            metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []

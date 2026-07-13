@@ -62,12 +62,8 @@ class LustomicClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         cast = len(_cast_names(scene.sel))
-        if cast == 3:
-            metadata.genres = ['Threesome']
-        elif cast == 4:
-            metadata.genres = ['Foursome']
-        elif cast > 4:
-            metadata.genres = ['Orgy']
+        if group := self.group_genre_for(cast):
+            metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

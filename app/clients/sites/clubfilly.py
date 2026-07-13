@@ -73,12 +73,8 @@ class ClubFillyClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = ['Lesbian']
         n = len(self._collect_actors(scene))
-        if n == 3:
-            genres.append('Threesome')
-        elif n == 4:
-            genres.append('Foursome')
-        elif n > 4:
-            genres.append('Orgy')
+        if group := self.group_genre_for(n):
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

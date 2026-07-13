@@ -68,12 +68,8 @@ class GirlsOutWestClient(Client):
         assert scene.sel is not None
         genres = ['Amateur', 'Australian']
         count = len(scene.sel.xpath(_CAST_XP))
-        if count == 3:
-            genres.append('Threesome')
-        elif count == 4:
-            genres.append('Foursome')
-        elif count > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(count)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

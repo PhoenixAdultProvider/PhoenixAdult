@@ -98,12 +98,8 @@ class NewSensationsClient(Client):
                     genres.append(g)
         else:
             cast = len(scene.sel.xpath('//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'))
-            if cast == 3:
-                genres.append('Threesome')
-            elif cast == 4:
-                genres.append('Foursome')
-            elif cast > 4:
-                genres.append('Orgy')
+            if (group := self.group_genre_for(cast)) and group not in genres:
+                genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

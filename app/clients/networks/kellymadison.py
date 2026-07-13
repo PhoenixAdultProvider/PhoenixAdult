@@ -103,12 +103,8 @@ class KellyMadisonClient(Client):
         assert scene.sel is not None
         genres = ['Hardcore', 'Heterosexual']
         cast = len(scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
-        if cast == 3:
-            genres.append('Threesome')
-        elif cast == 4:
-            genres.append('Foursome')
-        elif cast > 4:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

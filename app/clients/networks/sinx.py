@@ -61,12 +61,8 @@ class SinXClient(Client):
             [(a.xpath('string(.)').get() or '').split('#')[-1].strip() for a in scene.sel.xpath('//div[contains(@class,"tags-wrap")]//a')]
         )
         cast = len(scene.sel.xpath('//figure[contains(@class,"girls-item")]'))
-        if cast == 3 and 'Threesome' not in genres:
-            genres.append('Threesome')
-        elif cast == 4 and 'Foursome' not in genres:
-            genres.append('Foursome')
-        elif cast > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
+        if (group := self.group_genre_for(cast)) and group not in genres:
+            genres.append(group)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
