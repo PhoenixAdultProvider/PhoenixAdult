@@ -146,6 +146,8 @@ class MetadataMapper:
         else:
             tagline = None
             collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
+        if tagline and normalize_site_key(tagline) == normalize_site_key(studio):
+            tagline = None
 
         return PlexMetadata(
             type='movie',

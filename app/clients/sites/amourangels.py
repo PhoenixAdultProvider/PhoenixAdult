@@ -49,9 +49,6 @@ class AmourAngelsClient(Client):
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.genres = ['Softcore', 'European Girls']
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         cell_text = first_text(scene.sel, _DATE_CELL_XP)
@@ -60,6 +57,9 @@ class AmourAngelsClient(Client):
             return
         candidate = parts[1].strip()[:10]
         metadata.release_date = iso_date(candidate, '%Y-%m-%d') or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Softcore', 'European Girls']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

@@ -115,7 +115,6 @@ class FamilyTherapyClient(Client):
             for f in dataclasses.fields(c4s):
                 setattr(metadata, f.name, getattr(c4s, f.name))
             metadata.studio = STUDIO
-            metadata.tagline = STUDIO
             metadata.collections = [STUDIO]
             return
 
@@ -133,8 +132,7 @@ class FamilyTherapyClient(Client):
         # Studio
         metadata.studio = STUDIO
 
-        # Tagline and Collection(s)
-        metadata.tagline = STUDIO
+        # Collection(s)
         metadata.collections = [STUDIO]
 
         # Release Date

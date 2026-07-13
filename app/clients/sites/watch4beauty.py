@@ -135,8 +135,7 @@ class Watch4BeautyClient(Client):
         # Studio
         metadata.studio = STUDIO
 
-        # Tagline and Collection(s)
-        metadata.tagline = TAGLINE
+        # Collection(s)
         metadata.collections = [TAGLINE]
 
         # Release Date

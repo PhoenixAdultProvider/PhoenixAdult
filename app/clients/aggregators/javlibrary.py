@@ -139,10 +139,6 @@ class JavLibraryClient(Client):
         maker = self._table_link(scene, 'Maker:')
         metadata.collections = [label or maker or 'Japan Adult Video']
 
-    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        name = self._table_link(scene, 'Director:')
-        metadata.directors = [ActorResult(name=name)] if name else None
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = self._release_date(scene)
 
@@ -169,6 +165,10 @@ class JavLibraryClient(Client):
         for el in scene.sel.xpath('//span[contains(@class,"star")]//a'):
             add(el.xpath('normalize-space(.)').get() or '')
         metadata.actors = actors
+
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        name = self._table_link(scene, 'Director:')
+        metadata.directors = [ActorResult(name=name)] if name else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

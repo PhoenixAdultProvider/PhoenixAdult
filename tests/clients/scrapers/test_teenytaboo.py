@@ -40,7 +40,7 @@ async def test_detail() -> None:
     assert detail.title == 'wild scene title'
     assert detail.summary == 'A scene blurb.'
     assert detail.studio == 'Teeny Taboo'
-    assert detail.tagline == 'Teeny Taboo'
+    assert detail.tagline is None
     assert detail.collections == ['Teeny Taboo']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Sue Smith']
     assert detail.raw_image_urls == ['https://teenytaboo.com/img/poster.jpg']

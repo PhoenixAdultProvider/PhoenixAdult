@@ -39,14 +39,8 @@ class BAMVisionsClient(Client):
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'BAMVisions'
 
-    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = 'BAMVisions'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['BAMVisions']
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.genres = ['Anal', 'Hardcore']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
@@ -55,6 +49,9 @@ class BAMVisionsClient(Client):
             return
         after = li.split('Release Date:')[-1].strip()
         metadata.release_date = iso_date(after, '%B %d, %Y') or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Anal', 'Hardcore']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

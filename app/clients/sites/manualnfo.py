@@ -338,6 +338,10 @@ class ManualNfoClient(Client):
         nfo = self._nfo(scene)
         metadata.tagline = (nfo.tagline if nfo else None) or None
 
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        nfo = self._nfo(scene)
+        metadata.collections = [nfo.set] if nfo and nfo.set else None
+
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         metadata.release_date = _nfo_release_date(nfo) if nfo else None
@@ -345,10 +349,6 @@ class ManualNfoClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         metadata.genres = (nfo.genres if nfo else None) or []
-
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        nfo = self._nfo(scene)
-        metadata.collections = [nfo.set] if nfo and nfo.set else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)

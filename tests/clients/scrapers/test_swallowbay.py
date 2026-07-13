@@ -51,7 +51,7 @@ async def test_detail() -> None:
     assert detail.title == 'Wild VR Session'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Swallow Bay'
-    assert detail.tagline == 'Swallow Bay'
+    assert detail.tagline is None
     assert detail.collections == ['Swallow Bay']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['VR', 'Blowjob']

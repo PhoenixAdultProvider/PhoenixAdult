@@ -64,7 +64,7 @@ async def test_detail() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A wild scene blurb.'
     assert detail.studio == 'VRPFilms'
-    assert detail.tagline == 'VRPFilms'
+    assert detail.tagline is None
     assert detail.collections == ['VRPFilms']
     assert detail.genres == ['Anal', 'Hardcore', 'Threesome']
     assert [(a.name, a.photo_url) for a in detail.actors] == [

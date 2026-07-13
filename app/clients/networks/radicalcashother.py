@@ -123,10 +123,6 @@ class RadicalCashOtherClient(Client):
                 return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        director = self._profile(scene.site.name)['director']
-        metadata.directors = [ActorResult(name=director)] if director else None
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('(//meta[@name="keywords"])[1]/@content').get() or ''
@@ -172,6 +168,10 @@ class RadicalCashOtherClient(Client):
                     photo = (page['sel'].xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
             actors.append(ActorResult(name=name, photo_url=photo))
         metadata.actors = actors or []
+
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        director = self._profile(scene.site.name)['director']
+        metadata.directors = [ActorResult(name=director)] if director else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

@@ -68,7 +68,7 @@ class MetadataAPIClient(Client):
         # Summary
         metadata.summary = d.get('description') or ''
 
-        # Studio, Tagline and Collection(s)
+        # Studio and Collection(s)
         site_obj = d.get('site') or {}
         studio = site_obj.get('name') or site.name
         collections: list[str] = [site_obj['name']] if site_obj.get('name') else []
@@ -79,7 +79,6 @@ class MetadataAPIClient(Client):
                 studio = parent_name
                 collections.append(parent_name)
         metadata.studio = studio
-        metadata.tagline = studio
         metadata.collections = collections or None
 
         # Release Date

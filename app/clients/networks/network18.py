@@ -101,7 +101,6 @@ class Network18Client(GraphQLClient):
         metadata.studio = site.name
 
         # Tagline and Collection(s)
-        metadata.tagline = site.name
         metadata.collections = [site.name]
 
         # Genres

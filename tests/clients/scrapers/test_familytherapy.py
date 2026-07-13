@@ -47,7 +47,7 @@ async def test_detail_direct() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene Title'
     assert detail.studio == 'Family Therapy'
-    assert detail.tagline == 'Family Therapy'
+    assert detail.tagline is None
     assert detail.collections == ['Family Therapy']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Taboo']

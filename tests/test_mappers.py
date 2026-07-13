@@ -97,3 +97,8 @@ async def test_metadata_tagline_chain_falls_back_to_filename_subsite() -> None:
 async def test_metadata_tagline_chain_blank_when_no_subsite() -> None:
     tagline, collections = await _to_meta(_detail('Brazzers', tagline=None), filename_site='Brazzers')
     assert tagline is None and collections == ['Brazzers']
+
+
+async def test_metadata_tagline_dropped_when_equal_to_studio() -> None:
+    tagline, collections = await _to_meta(_detail('Brazzers', tagline='Brazzers'))
+    assert tagline is None and collections == ['Brazzers']

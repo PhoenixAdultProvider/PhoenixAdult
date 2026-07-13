@@ -70,15 +70,15 @@ class FinishesTheJobClient(Client):
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = scene.scene_date or None
 
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//h2[contains(.,"Starring")]//a')]
-        metadata.actors = self.dedup_people(entries)
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//p[contains(.,"Categories")]//a')]
         metadata.genres = self.dedup_strings(values)
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//h2[contains(.,"Starring")]//a')]
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

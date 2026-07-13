@@ -55,7 +55,7 @@ async def test_detail() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'Line one.\nLine two.'
     assert detail.studio == 'Xillimite'
-    assert detail.tagline == 'Xillimite'
+    assert detail.tagline is None
     assert detail.collections == ['Xillimite']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://www.xillimite.com/img/blur9/jane.jpg'),

@@ -46,9 +46,6 @@ class DorcelVisionClient(Client):
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _page_studio_override(scene) or UMBRELLA_STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = _page_studio_override(scene) or UMBRELLA_STUDIO
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         override = _page_studio_override(scene)
         metadata.collections = [UMBRELLA_STUDIO, override] if override else [UMBRELLA_STUDIO]

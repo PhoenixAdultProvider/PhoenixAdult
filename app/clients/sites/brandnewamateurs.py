@@ -72,13 +72,6 @@ class BrandNewAmateursClient(Client):
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//ul[li[contains(.,"Tags:")]]//a')]
         metadata.genres = self.dedup_strings(values)
 
-    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
-        if not poster:
-            return
-        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]
-
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actor_url = scene.extra if isinstance(scene.extra, str) else ''
         if not actor_url:
@@ -93,3 +86,10 @@ class BrandNewAmateursClient(Client):
         if photo and not photo.startswith('http'):
             photo = absolute_url(photo, scene.site.base_url)
         metadata.actors = [ActorResult(name=name, photo_url=photo)]
+
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
+        if not poster:
+            return
+        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]

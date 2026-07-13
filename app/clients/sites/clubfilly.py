@@ -70,9 +70,6 @@ class ClubFillyClient(Client):
         names = [n.strip() for n in text.split(',') if n.strip()]
         return [ActorResult(name=name) for name in names]
 
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = self._collect_actors(scene)
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = ['Lesbian']
         n = len(self._collect_actors(scene))
@@ -83,6 +80,9 @@ class ClubFillyClient(Client):
         elif n > 4:
             genres.append('Orgy')
         metadata.genres = genres
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = self._collect_actors(scene)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

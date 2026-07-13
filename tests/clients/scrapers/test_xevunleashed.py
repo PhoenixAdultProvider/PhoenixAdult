@@ -60,7 +60,7 @@ async def test_detail_with_princess_leia() -> None:
     assert detail.title == 'Leia Cosplay'
     assert detail.summary == 'Star Wars themed.'
     assert detail.studio == 'Xev Unleashed'
-    assert detail.tagline == 'Xev Unleashed'
+    assert detail.tagline is None
     assert detail.collections == ['Xev Unleashed']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Cosplay', 'Sci-Fi']

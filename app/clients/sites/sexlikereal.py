@@ -67,10 +67,6 @@ class SexLikeRealClient(Client):
         assert scene.sel is not None
         metadata.studio = first_text(scene.sel, _STUDIO_XP)
 
-    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.tagline = first_text(scene.sel, _STUDIO_XP) or None
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         studio = first_text(scene.sel, _STUDIO_XP)

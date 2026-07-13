@@ -68,9 +68,6 @@ class BoundHoneysClient(Client):
             actors.append(ActorResult(name=name, photo_url=photo))
         return actors
 
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = await self._collect_actors(scene)
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"updateCategoriesList")]//a')])
@@ -82,6 +79,9 @@ class BoundHoneysClient(Client):
         elif n > 4:
             genres.append('Orgy')
         metadata.genres = genres
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = await self._collect_actors(scene)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

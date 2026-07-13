@@ -143,6 +143,10 @@ class AdultEmpireCashClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or None
 
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene)
+        metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
+
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//div[@class="release-date"])[1]/text()')
@@ -181,10 +185,6 @@ class AdultEmpireCashClient(Client):
         raw = scene.sel.xpath('string((//div[@class="director"])[1])').get() or ''
         name = raw.split(':')[-1].strip()
         metadata.directors = [ActorResult(name=name)] if name else None
-
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        tagline = self._tagline(scene)
-        metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

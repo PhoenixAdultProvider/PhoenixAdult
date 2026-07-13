@@ -59,6 +59,21 @@ class FuckingAwesomeClient(Client):
         raw = first_text(scene.sel, '//div[contains(@class,"videodate")]//strong')
         metadata.release_date = iso_date(raw, '%B %d, %Y') or None
 
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        genres: list[str] = []
+        for a in scene.sel.xpath('//div[contains(@class,"tags")]//ul//li//a'):
+            g = first_attr(a, 'normalize-space(.)').lower()
+            if g and g not in genres:
+                genres.append(g)
+        count = len(scene.sel.xpath(_ACTOR_XP))
+        count_genre = _GROUP_GENRES.get(str(count))
+        if count_genre and count_genre not in genres:
+            genres.append(count_genre)
+        if count > 4 and 'Orgy' not in genres:
+            genres.append('Orgy')
+        metadata.genres = genres
+
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
@@ -77,21 +92,6 @@ class FuckingAwesomeClient(Client):
                 photo = absolute_url(src, scene.site.base_url) if src else ''
             actors.append(ActorResult(name=name, photo_url=photo))
         metadata.actors = actors
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres: list[str] = []
-        for a in scene.sel.xpath('//div[contains(@class,"tags")]//ul//li//a'):
-            g = first_attr(a, 'normalize-space(.)').lower()
-            if g and g not in genres:
-                genres.append(g)
-        count = len(scene.sel.xpath(_ACTOR_XP))
-        count_genre = _GROUP_GENRES.get(str(count))
-        if count_genre and count_genre not in genres:
-            genres.append(count_genre)
-        if count > 4 and 'Orgy' not in genres:
-            genres.append('Orgy')
-        metadata.genres = genres
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None

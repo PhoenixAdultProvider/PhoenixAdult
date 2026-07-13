@@ -63,11 +63,6 @@ class FittingRoomClient(Client):
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
-    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        date = meta_content(scene.sel, 'video:release_date')
-        metadata.release_date = iso_date(date) if date else None
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         collection = first_text(scene.sel, '//div/div[contains(.,"Series")]/a')
@@ -75,18 +70,10 @@ class FittingRoomClient(Client):
             collection = _COLLECTIONS.get(_extract_title(scene.sel), '')
         metadata.collections = [STUDIO, collection] if collection else [STUDIO]
 
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
-        for el in scene.sel.xpath('//div/div[contains(.,"Models")]/a'):
-            name = (el.xpath('normalize-space(.)').get() or '').strip()
-            key = name.lower()
-            if not name or key in seen:
-                continue
-            seen.add(key)
-            actors.append(ActorResult(name=name))
-        metadata.actors = actors
+        date = meta_content(scene.sel, 'video:release_date')
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
@@ -100,6 +87,19 @@ class FittingRoomClient(Client):
         if 'Fitting Room' not in genres:
             genres.append('Fitting Room')
         metadata.genres = genres
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        actors: list[ActorResult] = []
+        seen: set[str] = set()
+        for el in scene.sel.xpath('//div/div[contains(.,"Models")]/a'):
+            name = (el.xpath('normalize-space(.)').get() or '').strip()
+            key = name.lower()
+            if not name or key in seen:
+                continue
+            seen.add(key)
+            actors.append(ActorResult(name=name))
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         m = _SCENE_ID_RE.search(scene.url)
