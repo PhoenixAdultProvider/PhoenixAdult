@@ -8,7 +8,7 @@ on:
 
 jobs:
   gate:
-    runs-on: codeberg-tiny
+    runs-on: codeberg-small
     container:
       # Big community image — effectively always warm in the runner's docker cache,
       # unlike the python+node combo image (~570MB cold pull per host) that the
