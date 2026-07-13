@@ -111,18 +111,9 @@ class SexMexClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = (absolute_url(raw, base)).split('?')[0]
-            if abs_url and abs_url not in images:
-                images.append(abs_url)
-
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base).split('?')[0])
         for raw in scene.sel.xpath('//div[contains(@class,"thumbnail")]//img/@src').getall():
-            push(raw)
+            coll['push'](raw)
         for raw in scene.sel.xpath('//video/@poster').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

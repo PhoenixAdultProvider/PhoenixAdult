@@ -111,14 +111,7 @@ class MissaXClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url and abs_url not in images:
-                images.append(abs_url)
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
 
         xpaths = (
             '//img[contains(@class,"update_thumb")]/@src0_4x',
@@ -126,5 +119,5 @@ class MissaXClient(Client):
         )
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
-                push(raw)
-        metadata.raw_image_urls = images
+                coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

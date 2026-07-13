@@ -172,8 +172,7 @@ class PornWorldClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector()
         for raw in scene.sel.xpath('//video/@data-poster').getall():
-            if raw and raw not in images:
-                images.append(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

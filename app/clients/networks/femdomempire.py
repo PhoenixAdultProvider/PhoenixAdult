@@ -101,11 +101,7 @@ class FemdomEmpireClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        out: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//a[contains(@class,"fake_trailer")]//img/@src0_1x').getall():
-            if not raw:
-                continue
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in out:
-                out.append(abs_url)
-        metadata.raw_image_urls = out or []
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list'] or []

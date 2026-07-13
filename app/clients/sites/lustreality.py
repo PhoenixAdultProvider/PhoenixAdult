@@ -3,7 +3,7 @@ from __future__ import annotations
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, css_bg_image, iso_date, slugify
+from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
@@ -88,13 +88,9 @@ class LustRealityClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
-
+        coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
         for el in scene.sel.xpath('//div[contains(@class,"splash-screen")]'):
-            push(css_bg_image(el.xpath('@style').get()))
+            coll['push'](css_bg_image(el.xpath('@style').get()))
         for href in scene.sel.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
-            push(href)
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        metadata.raw_image_urls = coll['list']

@@ -93,14 +93,8 @@ class VRLatinaClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            url = to_https((raw or '').strip())
-            if url and url not in images:
-                images.append(url)
-
+        coll = self.image_collector(lambda raw: to_https((raw or '').strip()))
         for href in scene.sel.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
-            push(href)
-        push(scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        metadata.raw_image_urls = coll['list']

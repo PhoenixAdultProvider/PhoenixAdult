@@ -144,14 +144,7 @@ class BellaPassClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        out: list[str] = []
-
-        def add(rel: str) -> None:
-            if not rel:
-                return
-            abs_url = rel if rel.startswith('http') else base + rel
-            if abs_url not in out:
-                out.append(abs_url)
+        coll = self.image_collector(lambda rel: rel if rel.startswith('http') else base + rel)
 
         xpaths = (
             '//img[contains(@class,"thumbs")]/@src0_3x',
@@ -159,7 +152,7 @@ class BellaPassClient(Client):
         )
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
-                add(raw)
+                coll['push'](raw)
 
         set_id = (
             scene.sel.xpath('(//img[contains(@class,"thumbs")])[1]/@id').get()
@@ -178,10 +171,10 @@ class BellaPassClient(Client):
                 except ValueError:
                     cnt = 0
                 for i in range(cnt):
-                    add((sloaded['sel'].xpath(f'(//img[@id="{set_id}"])[1]/@src{i}_3x').get() or '').strip())
+                    coll['push']((sloaded['sel'].xpath(f'(//img[@id="{set_id}"])[1]/@src{i}_3x').get() or '').strip())
 
             preview = await self.fetch_and_load(scene.url.replace('/trailers/', '/preview/'), None, 'preview page')
             if preview:
                 for src in preview['sel'].xpath(f'//img[@id="{set_id}"]/@src0_3x').getall():
-                    add(src)
-        metadata.raw_image_urls = out or []
+                    coll['push'](src)
+        metadata.raw_image_urls = coll['list'] or []

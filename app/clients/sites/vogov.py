@@ -90,12 +90,7 @@ class VogoVClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
+        coll = self.image_collector(lambda href: absolute_url((href or '').strip(), base))
         for href in scene.sel.xpath('//div[contains(@class,"swiper-wrapper")]//figure//a/@href').getall():
-            raw = (href or '').strip()
-            if not raw:
-                continue
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        metadata.raw_image_urls = coll['list']

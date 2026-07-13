@@ -113,14 +113,10 @@ class VIPissyClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
         for raw in scene.sel.xpath(_POSTERS_XP).getall():
-            raw = (raw or '').strip()
-            if not raw:
-                continue
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
+            coll['push'](raw)
+        images = coll['list']
         idx = scene.url.find('/updates')
         if idx >= 0:
             twitter_bg = f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg'

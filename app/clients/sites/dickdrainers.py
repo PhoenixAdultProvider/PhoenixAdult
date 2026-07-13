@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from app.utils.processors.title_case import title_case
 
@@ -130,19 +130,16 @@ class DickDrainersClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
 
         for el in scene.sel.xpath('//div[contains(@class,"player_thumbs")]'):
-            push(el.xpath('@src0_3x').get() or '')
+            coll['push'](el.xpath('@src0_3x').get() or '')
             for child in el.xpath('.//*[@src0_3x]'):
-                push(child.xpath('@src0_3x').get() or '')
+                coll['push'](child.xpath('@src0_3x').get() or '')
 
         for script in scene.sel.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _SRC0_3X_RE.finditer(text):
-                push(m.group(1))
+                coll['push'](m.group(1))
 
-        metadata.raw_image_urls = images
+        metadata.raw_image_urls = coll['list']

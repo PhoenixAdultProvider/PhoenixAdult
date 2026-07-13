@@ -244,22 +244,14 @@ class Data18EmpireClient(Client):
         sel = scene.sel
         base = scene.site.base_url.rstrip('/')
         packed = self._packed(scene)
-        images: list[str] = []
-
-        def add(u: str) -> None:
-            u = (u or '').strip()
-            if not u:
-                return
-            abs_url = join_url(u, base)
-            if abs_url not in images:
-                images.append(abs_url)
+        coll = self.image_collector(lambda u: join_url(u.strip(), base) if u.strip() else '')
 
         srcset = sel.xpath('(//div[@id="video-container-details"]//div//section//a//picture//source/@data-srcset)[1]').get()
         if srcset:
-            add(srcset)
+            coll['push'](srcset)
         for noscript in sel.xpath('//div[@id="viewLargeBoxcoverCarousel"]//noscript/text()').getall():
             for img_src in Selector(text=noscript).xpath('//img/@src').getall():
-                add(img_src)
+                coll['push'](img_src)
 
         gallery_href = first_attr(sel, '(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]')
         if gallery_href:
@@ -271,11 +263,11 @@ class Data18EmpireClient(Client):
                     .xpath('//div[contains(@class,"item-grid") and contains(@class,"item-grid-gallery")]//div[contains(@class,"grid-item")]//a//img/@data-src')
                     .getall()
                 ):
-                    add(src)
+                    coll['push'](src)
 
         if packed.get('sceneNum') is not None:
             rows = sel.xpath(_GRID_ITEM_XP)
             idx = (packed['sceneNum'] or 1) - 1
             if idx < len(rows):
-                add(rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
-        metadata.raw_image_urls = images
+                coll['push'](rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
+        metadata.raw_image_urls = coll['list']

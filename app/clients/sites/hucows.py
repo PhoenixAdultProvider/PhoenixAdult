@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _FIXED_GENRES: list[str] = ['BDSM', 'Breast Torture', 'Breasts', 'Fetish', 'HuCows', 'Nipple Torture', 'Nipples']
@@ -74,13 +74,9 @@ class HucowsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
-
+        coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
         for raw in scene.sel.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
-            push(raw)
+            coll['push'](raw)
         for raw in scene.sel.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

@@ -152,11 +152,12 @@ class Strike3Client(GraphQLClient):
         metadata.directors = directors or None
 
         # Posters
+        coll = self.image_collector()
         for img in v.get('carousel') or []:
             listing = img.get('listing') or []
             uri = (listing[0].get('highdpi') or {}).get('triple') if listing else None
-            if uri and uri not in metadata.raw_image_urls:
-                metadata.raw_image_urls.append(uri)
+            coll['push'](uri)
+        metadata.raw_image_urls = coll['list']
 
         # Posters from Data18
         if site.scraper_config.data18_enrichment and env.data18_enabled:

@@ -5,7 +5,7 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, iso_date, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'Woodman Casting X'
@@ -117,17 +117,13 @@ class WoodmanCastingXClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, base)
-
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
         for poster in scene.sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
-            push(poster)
+            coll['push'](poster)
         for script in scene.sel.xpath('//script/text()').getall():
             if 'var player' not in script:
                 continue
             m = _IMAGE_RE.search(script)
             if m:
-                push(m.group(1).strip())
-        metadata.raw_image_urls = images
+                coll['push'](m.group(1).strip())
+        metadata.raw_image_urls = coll['list']

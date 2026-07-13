@@ -94,12 +94,7 @@ class TeenyTabooClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
+        coll = self.image_collector(lambda src: absolute_url((src or '').strip(), base))
         for src in scene.sel.xpath('//center//img/@src').getall():
-            s = (src or '').strip()
-            if not s:
-                continue
-            abs_url = absolute_url(s, base)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](src)
+        metadata.raw_image_urls = coll['list']

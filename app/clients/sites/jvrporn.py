@@ -3,7 +3,7 @@ from __future__ import annotations
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 from app.utils.logging.best_effort import best_effort
 from app.utils.searchengines import SearchOptions, web_search
@@ -75,13 +75,9 @@ class JVRPornClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
-
+        coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
         for raw in scene.sel.xpath('//div[contains(@id,"snapshot-gallery")]//a/@href').getall():
-            push(raw)
+            coll['push'](raw)
         for raw in scene.sel.xpath('//deo-video/@cover-image').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

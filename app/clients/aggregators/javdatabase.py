@@ -181,17 +181,12 @@ class JAVDatabaseClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            url = (raw or '').split('?')[0].strip()
-            if url and url not in images:
-                images.append(url)
+        coll = self.image_collector(lambda raw: raw.split('?')[0].strip())
 
         for src in scene.sel.xpath('//tr[contains(@class,"moviecovertb")]//img/@src').getall():
-            push(src)
+            coll['push'](src)
         for href in scene.sel.xpath('(//h2[contains(.,"Images")])[1]/../a/@href').getall():
-            push(href)
+            coll['push'](href)
 
         jav_id = self._jav_id(scene)
         if jav_id:
@@ -202,5 +197,5 @@ class JAVDatabaseClient(Client):
             jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
             date = self._release_date(scene)
             for u in await fetch_javbus_images(self.http, jav_id, date):
-                push(u)
-        metadata.raw_image_urls = images
+                coll['push'](u)
+        metadata.raw_image_urls = coll['list']

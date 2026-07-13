@@ -57,17 +57,8 @@ class XVirtualClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            url = strip_query(raw)
-            if not url:
-                return
-            abs_url = absolute_url(url, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
-
-        push(scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        coll = self.image_collector(lambda raw: absolute_url(strip_query(raw), scene.site.base_url))
+        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for el in scene.sel.xpath('//div[contains(@class,"thumbnails")]//img'):
-            push(el.xpath('@src').get() or '')
-        metadata.raw_image_urls = images
+            coll['push'](el.xpath('@src').get() or '')
+        metadata.raw_image_urls = coll['list']

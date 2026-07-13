@@ -148,14 +148,12 @@ class PornboxClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         data = self._data(scene)
-        images: list[str] = []
+        coll = self.image_collector()
         if data.get('player_poster'):
-            images.append(data['player_poster'])
+            coll['push'](data['player_poster'])
         shots = data.get('screenshots') or []
         for x in range(1, len(shots)):
             if len(shots) > 50 and x % 10 != 0:
                 continue
-            u = shots[x].get('xga_size')
-            if u and u not in images:
-                images.append(u)
-        metadata.raw_image_urls = images
+            coll['push'](shots[x].get('xga_size'))
+        metadata.raw_image_urls = coll['list']

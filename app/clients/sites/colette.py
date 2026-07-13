@@ -98,11 +98,7 @@ class ColetteClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def add(u: str) -> None:
-            if u and u not in images:
-                images.append(u)
+        coll = self.image_collector()
 
         slug = scene.url.split('/videos/')[-1]
         gallery_path = _GALLERY_FIXES.get(slug, slug)
@@ -112,11 +108,11 @@ class ColetteClient(Client):
         pages = [p['sel'] for p in (gallery,) if p] + [scene.sel]
         for page in pages:
             for src in page.xpath('//div[contains(@class,"gallery-item")]//a//img/@src').getall():
-                add((src or '').strip())
+                coll['push']((src or '').strip())
             for src in page.xpath('//div[contains(@class,"video-tour")]//a//img/@src').getall():
-                add((src or '').strip())
+                coll['push']((src or '').strip())
             for raw in page.xpath('//div[contains(@class,"widescreen")]//img/@data-interchange').getall():
-                add(_parse_interchange(raw or ''))
+                coll['push'](_parse_interchange(raw or ''))
             for raw in page.xpath('//div[contains(@class,"columns")]/img/@data-interchange').getall():
-                add(_parse_interchange(raw or ''))
-        metadata.raw_image_urls = images
+                coll['push'](_parse_interchange(raw or ''))
+        metadata.raw_image_urls = coll['list']

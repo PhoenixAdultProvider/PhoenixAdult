@@ -137,19 +137,12 @@ class LittleCapriceClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: join_url(raw, base))
 
-        def push(raw: str) -> None:
-            if not raw:
-                return
-            abs_url = join_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
-
-        push(first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
+        coll['push'](first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
-            push(first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
+            coll['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
             for src in gallery.xpath('//div[contains(@class,"gallery") and contains(@class,"spotlight-group")]//img/@src').getall():
-                push(src)
-        metadata.raw_image_urls = images
+                coll['push'](src)
+        metadata.raw_image_urls = coll['list']

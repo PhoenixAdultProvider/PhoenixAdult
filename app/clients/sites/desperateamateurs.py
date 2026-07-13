@@ -88,12 +88,7 @@ class DesperateAmateursClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for el in scene.sel.xpath('//div[contains(@class,"gal")]//img'):
-            raw = first_attr(el, '@src')
-            if not raw:
-                continue
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](first_attr(el, '@src'))
+        metadata.raw_image_urls = coll['list']

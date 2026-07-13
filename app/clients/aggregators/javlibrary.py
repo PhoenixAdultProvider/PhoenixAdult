@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json, pack_cur_id, pad_jav_id, sceneid_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, pad_jav_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
 from app.utils.logging.logger import logger
@@ -172,20 +172,17 @@ class JavLibraryClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw)
+        coll = self.image_collector(lambda raw: (raw or '').strip())
 
         poster = first_attr(scene.sel, '(//img[@id="video_jacket_img"]/@src)[1]')
         if poster and 'https' not in poster:
             poster = f'https:{poster}'
-        push(poster)
+        coll['push'](poster)
 
         for thumb in scene.sel.xpath('//div[contains(@class,"previewthumbs")]//img/@src').getall():
             thumb = (thumb or '').strip()
             m = re.search(r'-([1-9]+)\.jpg', thumb)
-            push(f'{thumb[: m.start()]}jp{thumb[m.start() :]}' if m else thumb)
+            coll['push'](f'{thumb[: m.start()]}jp{thumb[m.start() :]}' if m else thumb)
 
         jav_id = self._og_jav_id(scene)
         if jav_id:
@@ -196,5 +193,5 @@ class JavLibraryClient(Client):
             jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
             date = self._release_date(scene)
             for u in await fetch_javbus_images(self.http, jav_id, date):
-                push(u)
-        metadata.raw_image_urls = images
+                coll['push'](u)
+        metadata.raw_image_urls = coll['list']

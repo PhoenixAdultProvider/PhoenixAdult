@@ -107,10 +107,10 @@ class CherryPimpsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector()
         for el in scene.sel.xpath('//img[contains(@class,"update_thumb")]'):
             for attr in ('@src', '@src0_1x'):
                 raw = (el.xpath(attr).get() or '').strip()
-                if raw.startswith('http') and raw not in images:
-                    images.append(raw)
-        metadata.raw_image_urls = images
+                if raw.startswith('http'):
+                    coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

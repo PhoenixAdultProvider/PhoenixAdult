@@ -81,12 +81,7 @@ class BoundHoneysClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
         for href in scene.sel.xpath('//link[@rel="preload"]/@href').getall():
-            href = (href or '').strip()
-            if not href:
-                continue
-            abs_url = absolute_url(href, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        metadata.raw_image_urls = coll['list']

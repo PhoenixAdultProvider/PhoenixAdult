@@ -76,17 +76,8 @@ class VirtualTabooClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            url = (raw or '').strip().split('?')[0]
-            if not url:
-                return
-            abs_url = absolute_url(url, base)
-            if abs_url not in images:
-                images.append(abs_url)
-
-        push(scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip().split('?')[0], base))
+        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for href in scene.sel.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
-            push(href)
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        metadata.raw_image_urls = coll['list']

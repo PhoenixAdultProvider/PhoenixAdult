@@ -186,11 +186,7 @@ class PervCityClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
         for raw in scene.sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
-            if not raw:
-                continue
-            abs_url = absolute_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

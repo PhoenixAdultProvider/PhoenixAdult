@@ -131,14 +131,7 @@ class FTVClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        out: list[str] = []
-
-        def push(raw: str) -> None:
-            if not raw:
-                return
-            abs_url = absolute_url(raw, base)
-            if abs_url not in out:
-                out.append(abs_url)
+        coll = self.image_collector(lambda raw: absolute_url(raw, base))
 
         m = _SCENE_ID_RE.search(scene.url)
         scene_id = int(m.group(1)) if m else 0
@@ -158,8 +151,8 @@ class FTVClient(Client):
                 g = await self.fetch_and_load(photo_url, None, f'GET {photo_url} (gallery)')
                 if g:
                     for raw in _collect_images(g['sel']):
-                        push(raw)
+                        coll['push'](raw)
 
         for raw in _collect_images(scene.sel):
-            push(raw)
-        metadata.raw_image_urls = out or []
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list'] or []

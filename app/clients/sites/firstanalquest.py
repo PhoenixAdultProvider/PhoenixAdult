@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 _CARD_XP = '//li[contains(concat(" ", normalize-space(@class), " "), " thumb ")]'
@@ -88,15 +88,11 @@ class FirstAnalQuestClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
-
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
         for raw in scene.sel.xpath('//img[contains(@class,"player-preview")]/@src').getall():
-            push(raw)
+            coll['push'](raw)
         for raw in scene.sel.xpath('//a[contains(@class,"fancybox") and contains(@class,"img-album")]/@href').getall():
-            push(raw)
+            coll['push'](raw)
         for raw in scene.sel.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

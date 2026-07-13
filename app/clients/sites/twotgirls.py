@@ -106,19 +106,9 @@ class TwoTGirlsClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            upgraded = raw.replace('720p', '1080p')
-            abs_url = absolute_url(upgraded, base)
-            if abs_url not in images:
-                images.append(abs_url)
-
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip().replace('720p', '1080p'), base))
         for poster in scene.sel.xpath('//video/@poster').getall():
-            push(poster)
+            coll['push'](poster)
         for src in scene.sel.xpath('//article//div[contains(@class,"row")]//img/@src').getall():
-            push(src)
-        metadata.raw_image_urls = images
+            coll['push'](src)
+        metadata.raw_image_urls = coll['list']

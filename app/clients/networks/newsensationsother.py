@@ -109,18 +109,10 @@ class NewSensationsOtherClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            trimmed = (raw or '').strip()
-            if not trimmed:
-                return
-            abs_url = absolute_url(trimmed, base)
-            if abs_url not in images:
-                images.append(abs_url)
+        coll = self.image_collector(lambda raw: absolute_url(raw.strip(), base))
 
         for src in scene.sel.xpath('//div[contains(@class,"mejs-layers")]//img/@src').getall():
-            push(src)
+            coll['push'](src)
 
         last = (scene.extra or {}).get('last_actor_page')
         if last is not None:
@@ -130,5 +122,5 @@ class NewSensationsOtherClient(Client):
                 if block_title != title:
                     continue
                 for src in block.xpath('.//div[@class="cell"]//img/@src0_3x').getall():
-                    push(src)
-        metadata.raw_image_urls = images
+                    coll['push'](src)
+        metadata.raw_image_urls = coll['list']

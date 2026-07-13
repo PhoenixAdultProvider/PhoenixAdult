@@ -184,40 +184,33 @@ class GammaEntClient(Client):
         assert scene.sel is not None
         sel = scene.sel
         base = scene.site.base_url
-        out: list[str] = []
+        coll = self.image_collector(lambda u: absolute_url(u, base))
 
-        def push(u: str | None) -> None:
-            if not u:
-                return
-            abs_url = absolute_url(u, base)
-            if abs_url and abs_url not in out:
-                out.append(abs_url)
-
-        push(sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
+        coll['push'](sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
         pic = _PIC_PREVIEW_RE.search(scene.html or '')
         if pic:
-            push(pic.group(1).replace('\\', ''))
-        push(sel.xpath('(//img[contains(@class,"sceneImage")])[1]/@src').get())
+            coll['push'](pic.group(1).replace('\\', ''))
+        coll['push'](sel.xpath('(//img[contains(@class,"sceneImage")])[1]/@src').get())
 
         photo_href = first_attr(sel, '(//a[contains(@class,"GA_Track_Action_Pictures")])[1]/@href')
         if photo_href:
             photo = await self.fetch_and_load(absolute_url(photo_href, base), None, 'photo page')
             if photo:
-                push(photo['sel'].xpath('(//div[contains(@class,"previewImage")]//img)[1]/@src').get())
+                coll['push'](photo['sel'].xpath('(//div[contains(@class,"previewImage")]//img)[1]/@src').get())
                 for h in photo['sel'].xpath('//a[contains(@class,"imgLink")]/@href').getall():
-                    push(h)
+                    coll['push'](h)
 
         if '/movie/' in scene.url:
-            push(sel.xpath('(//a[contains(@class,"frontCoverImg")])[1]/@href').get())
-            push(sel.xpath('(//a[contains(@class,"backCoverImg")])[1]/@href').get())
+            coll['push'](sel.xpath('(//a[contains(@class,"frontCoverImg")])[1]/@href').get())
+            coll['push'](sel.xpath('(//a[contains(@class,"backCoverImg")])[1]/@href').get())
             xpaths = (
                 '//img[contains(@class,"tlcImageItem") and contains(@class,"img")]/@src',
                 '//img[contains(@class,"img") and contains(@class,"lazy")]/@data-original',
             )
             for xpath in xpaths:
                 for raw in sel.xpath(xpath).getall():
-                    push(raw)
-        metadata.raw_image_urls = out or []
+                    coll['push'](raw)
+        metadata.raw_image_urls = coll['list'] or []
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

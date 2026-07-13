@@ -118,12 +118,7 @@ class HeavyOnHottiesClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector(_lift_scheme)
         for raw in scene.sel.xpath('//video[@poster]/@poster').getall():
-            raw = (raw or '').strip()
-            if not raw:
-                continue
-            abs_url = _lift_scheme(raw)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push']((raw or '').strip())
+        metadata.raw_image_urls = coll['list']

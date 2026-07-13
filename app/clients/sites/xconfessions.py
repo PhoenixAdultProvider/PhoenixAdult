@@ -7,7 +7,7 @@ import httpx2
 
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id, strip_query
+from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.logging.logger import logger
 
 _TOKEN_RE = re.compile(r'\.access_token="([^"]+)"')
@@ -191,16 +191,12 @@ class XConfessionsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._data(scene)
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            append_unique(images, raw)
-
+        coll = self.image_collector(lambda raw: (raw or '').strip())
         if d.get('poster_picture'):
-            push(strip_query(d['poster_picture']))
+            coll['push'](strip_query(d['poster_picture']))
         elif d.get('banner_image_mobile'):
-            push(strip_query(d['banner_image_mobile']))
+            coll['push'](strip_query(d['banner_image_mobile']))
         for a in d.get('album') or []:
             if a.get('path'):
-                push(strip_query(a['path']))
-        metadata.raw_image_urls = images
+                coll['push'](strip_query(a['path']))
+        metadata.raw_image_urls = coll['list']

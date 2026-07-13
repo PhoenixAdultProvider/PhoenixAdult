@@ -146,20 +146,11 @@ class PlumperPassClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            abs_url = raw if 'http' in raw else f'{base}/t1/{raw}'
-            if abs_url not in images:
-                images.append(abs_url)
-
+        coll = self.image_collector(lambda raw: raw if 'http' in raw else f'{base}/t1/{raw}')
         script = scene.sel.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
         m = _IMAGE_RE.search(script)
         if m:
-            push(m.group(1))
+            coll['push']((m.group(1) or '').strip())
         for raw in scene.sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push']((raw or '').strip())
+        metadata.raw_image_urls = coll['list']

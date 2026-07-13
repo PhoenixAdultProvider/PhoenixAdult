@@ -133,14 +133,11 @@ class BlackPayBackClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for script in scene.sel.xpath('//div[contains(@class,"player")]//script'):
             text = script.xpath('string(.)').get() or ''
             m = _POSTER_RE.search(text)
             if not m:
                 continue
-            raw = m.group(1)
-            abs_url = absolute_url(raw, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
-        metadata.raw_image_urls = images
+            coll['push'](m.group(1))
+        metadata.raw_image_urls = coll['list']

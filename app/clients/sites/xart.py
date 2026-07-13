@@ -119,12 +119,7 @@ class XartClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def add(raw: str) -> None:
-            url = (raw or '').strip()
-            if url and url not in images:
-                images.append(url)
+        coll = self.image_collector(lambda raw: (raw or '').strip())
 
         def harvest(sel: Any) -> None:
             if sel is None:
@@ -134,11 +129,11 @@ class XartClient(Client):
                     url = (raw or '').strip()
                     if 'videos' not in url:
                         continue
-                    add(url)
+                    coll['push'](url)
                     if url.endswith('_1.jpg'):
-                        add(url.replace('_1.jpg', '_2.jpg'))
+                        coll['push'](url.replace('_1.jpg', '_2.jpg'))
                     elif url.endswith('_1-lrg.jpg'):
-                        add(url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
+                        coll['push'](url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
 
         gallery_url = scene.url.replace('/videos/', '/galleries/')
         if gallery_url != scene.url:
@@ -160,6 +155,6 @@ class XartClient(Client):
 
             fan = await find_fan_art(FindFanArtOptions(sites=_FANART_SITES, title=title, actor_names=actor_names, fetch_page=fetch_page, web_search=do_search))
             for u in fan.images:
-                add(u)
+                coll['push'](u)
 
-        metadata.raw_image_urls = images
+        metadata.raw_image_urls = coll['list']

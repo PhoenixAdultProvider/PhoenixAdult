@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import append_unique
+from app.utils.helpers.helpers import absolute_url
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 
@@ -63,12 +63,8 @@ class CumbizzClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def add(raw: str) -> None:
-            append_unique(images, raw, scene.site.base_url)
-
-        add(scene.sel.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
+        coll['push'](scene.sel.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
         for el in scene.sel.xpath('//img[contains(@class,"vidgal")]'):
-            add(el.xpath('@src').get() or '')
-        metadata.raw_image_urls = images
+            coll['push'](el.xpath('@src').get() or '')
+        metadata.raw_image_urls = coll['list']

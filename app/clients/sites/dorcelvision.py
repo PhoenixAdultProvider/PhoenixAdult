@@ -76,21 +76,12 @@ class DorcelVisionClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
-
-        def add(raw: str) -> None:
-            raw = (raw or '').strip()
-            if not raw:
-                return
-            stripped = raw.replace('blur9/', '')
-            abs_url = absolute_url(stripped, base)
-            if abs_url not in images:
-                images.append(abs_url)
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip().replace('blur9/', ''), base))
 
         for href in scene.sel.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
-            add(href)
+            coll['push'](href)
         for href in scene.sel.xpath(
             '//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href'
         ).getall():
-            add(href)
-        metadata.raw_image_urls = images
+            coll['push'](href)
+        metadata.raw_image_urls = coll['list']

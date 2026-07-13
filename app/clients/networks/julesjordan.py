@@ -122,16 +122,9 @@ class JulesJordanClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: join_url(raw, base))
 
-        def push(raw: str) -> None:
-            if not raw:
-                return
-            abs_url = join_url(raw, base)
-            if abs_url not in images:
-                images.append(abs_url)
-
-        push(first_attr(scene.sel, '(//video[@id="video-player"])[1]/@poster'))
+        coll['push'](first_attr(scene.sel, '(//video[@id="video-player"])[1]/@poster'))
 
         title = (scene.sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip()
         if title:
@@ -140,5 +133,5 @@ class JulesJordanClient(Client):
             if loaded:
                 img = loaded['sel'].xpath('(//img[contains(@id,"set-target")])[1]')
                 for i in range(7):
-                    push((img.xpath(f'@src{i}_1x').get() or '').strip())
-        metadata.raw_image_urls = images
+                    coll['push']((img.xpath(f'@src{i}_1x').get() or '').strip())
+        metadata.raw_image_urls = coll['list']

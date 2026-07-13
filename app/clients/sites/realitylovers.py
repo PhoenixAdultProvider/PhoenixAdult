@@ -95,12 +95,7 @@ class RealityLoversClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
+        coll = self.image_collector(lambda raw: _srcset_entry(raw, len(raw.split(',')) - 1, 6))
         for data_big in scene.sel.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
-            data_big = (data_big or '').strip()
-            if not data_big:
-                continue
-            url = _srcset_entry(data_big, len(data_big.split(',')) - 1, 6)
-            if url and url not in images:
-                images.append(url)
-        metadata.raw_image_urls = images
+            coll['push']((data_big or '').strip())
+        metadata.raw_image_urls = coll['list']

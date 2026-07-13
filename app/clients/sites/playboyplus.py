@@ -73,18 +73,9 @@ class PlayboyPlusClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            u = (raw or '').split('?')[0].strip()
-            if not u:
-                return
-            abs_url = absolute_url(u, scene.site.base_url)
-            if abs_url not in images:
-                images.append(abs_url)
-
-        push(scene.extra.get('poster', '') if isinstance(scene.extra, dict) else '')
-        push(scene.sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
+        coll = self.image_collector(lambda raw: absolute_url(raw.split('?')[0].strip(), scene.site.base_url))
+        coll['push'](scene.extra.get('poster', '') if isinstance(scene.extra, dict) else '')
+        coll['push'](scene.sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
         for raw in scene.sel.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

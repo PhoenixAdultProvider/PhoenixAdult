@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'FuckingAwesome'
@@ -91,13 +91,10 @@ class FuckingAwesomeClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        images: list[str] = []
-
-        def add(raw: str) -> None:
-            append_unique(images, raw, base)
+        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
 
         for raw in scene.sel.xpath('//span[contains(@class,"et_pb_image_wrap")]//img/@content').getall():
-            add(raw)
+            coll['push'](raw)
 
         photos_href = first_attr(scene.sel, '(//li[contains(@class,"photos")]//a/@href)[1]')
         if photos_href:
@@ -105,5 +102,5 @@ class FuckingAwesomeClient(Client):
             photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
             if photos_page:
                 for raw in photos_page['sel'].xpath('//div[contains(@class,"my-gallery")]//a/@href').getall():
-                    add(raw)
-        metadata.raw_image_urls = images
+                    coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'FuelVirtual'
@@ -94,15 +94,12 @@ class FuelVirtualClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
-        out: list[str] = []
-
-        def push(u: str) -> None:
-            append_unique(out, u)
+        coll = self.image_collector(lambda u: (u or '').strip())
 
         for src in scene.sel.xpath('//a[contains(@class,"jqModal")]//img/@src | //div[@id="overallthumb"]//a//img/@src').getall():
             if not src:
                 continue
-            push(base + src if src.startswith('/') else f'{base}/tour/newgirlpov/{src}')
+            coll['push'](base + src if src.startswith('/') else f'{base}/tour/newgirlpov/{src}')
 
         photo_url = scene.url.replace('vids', 'highres')
         if photo_url != scene.url:
@@ -110,10 +107,10 @@ class FuelVirtualClient(Client):
             if photo:
                 for src in photo['sel'].xpath('//a[contains(@class,"jqModal")]//img/@src').getall():
                     if src:
-                        push(base + src)
+                        coll['push'](base + src)
 
         for script in scene.sel.xpath('//div[@id="mediabox"]//script'):
             m = _IMG_SCRIPT_RE.search(script.xpath('string(.)').get() or '')
             if m:
-                push(base + m.group(1))
-        metadata.raw_image_urls = out or []
+                coll['push'](base + m.group(1))
+        metadata.raw_image_urls = coll['list'] or []

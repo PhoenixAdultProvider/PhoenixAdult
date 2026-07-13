@@ -243,8 +243,7 @@ class BangClient(Client):
                     if token:
                         out.append(token)
 
-        deduped: list[str] = []
+        coll = self.image_collector()
         for u in out:
-            if u and u not in deduped:
-                deduped.append(u)
-        metadata.raw_image_urls = deduped or []
+            coll['push'](u)
+        metadata.raw_image_urls = coll['list'] or []

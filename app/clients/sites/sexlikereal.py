@@ -101,14 +101,8 @@ class SexLikeRealClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def push(raw: str) -> None:
-            raw = (raw or '').strip().replace('.webp', '.jpg')
-            if raw and raw not in images:
-                images.append(raw)
-
-        push(scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        coll = self.image_collector(lambda raw: (raw or '').strip().replace('.webp', '.jpg'))
+        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for raw in scene.sel.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
-            push(raw)
-        metadata.raw_image_urls = images
+            coll['push'](raw)
+        metadata.raw_image_urls = coll['list']

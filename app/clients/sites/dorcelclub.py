@@ -139,17 +139,12 @@ class DorcelClubClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        images: list[str] = []
-
-        def add(raw: str) -> None:
-            cleaned = _clean_srcset_image(raw)
-            if cleaned and cleaned not in images:
-                images.append(cleaned)
+        coll = self.image_collector(_clean_srcset_image)
 
         if _is_movie_url(scene.url):
             cover = first_attr(scene.sel, '(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]')
             if cover:
-                add(cover)
+                coll['push'](cover)
         for raw in scene.sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
-            add((raw or '').strip())
-        metadata.raw_image_urls = images
+            coll['push']((raw or '').strip())
+        metadata.raw_image_urls = coll['list']
