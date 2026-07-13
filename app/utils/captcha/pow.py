@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -72,7 +73,7 @@ async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
             return None
 
         t0 = time.time()
-        nonce = solve_pow(config['challenge'], config['difficulty'])
+        nonce = await asyncio.to_thread(solve_pow, config['challenge'], config['difficulty'])
         logger.info('pow', f'{host}: solved difficulty={config["difficulty"]} nonce={nonce} in {round((time.time() - t0) * 1000)}ms')
 
         verify_url = f'{base}/turnstile/verify'

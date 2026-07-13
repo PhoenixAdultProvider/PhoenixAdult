@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 from datetime import UTC, datetime
 from pathlib import Path
@@ -134,7 +135,7 @@ def _card(entry: dict[str, Any]) -> str:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries = _list_people(people_cache_dir())
+    entries = await asyncio.to_thread(_list_people, people_cache_dir())
     type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
     default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
     token = html.escape(request.query_params.get('token', ''), quote=True)

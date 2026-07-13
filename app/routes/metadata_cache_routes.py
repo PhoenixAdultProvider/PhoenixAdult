@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -19,7 +20,8 @@ _TEMPLATE = (Path(__file__).parent / 'html' / 'metadata_cache.html').read_text(e
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries = metadata_cache.entries()
+    entries = await asyncio.to_thread(metadata_cache.entries)
+    dup_keys = await asyncio.to_thread(metadata_cache.duplicate_entries)
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     # Escape `<` so scraped titles / a crafted ?token= can't break out of the <script> block.
@@ -29,7 +31,7 @@ async def page(request: Request) -> HTMLResponse:
         _TEMPLATE.replace('__STATE__', state)
         .replace('__TOKEN__', token_json)
         .replace('__ENTRIES_JSON__', entries_json)
-        .replace('__DUP_KEYS__', json.dumps(metadata_cache.duplicate_entries()).replace('<', '\u003c'))
+        .replace('__DUP_KEYS__', json.dumps(dup_keys).replace('<', '\u003c'))
     )
     return HTMLResponse(body)
 
@@ -40,11 +42,11 @@ async def purge(request: Request) -> JSONResponse:
     key = str(data.get('key', ''))
     if '/' not in key:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
-    ok = metadata_cache.purge(key)
+    ok = await asyncio.to_thread(metadata_cache.purge, key)
     return JSONResponse({'ok': ok})
 
 
 @router.post('/purge-duplicates')
 async def purge_duplicates() -> JSONResponse:
     # Recomputed server-side; the client never supplies paths.
-    return JSONResponse({'ok': True, 'purged': metadata_cache.purge_duplicates()})
+    return JSONResponse({'ok': True, 'purged': await asyncio.to_thread(metadata_cache.purge_duplicates)})

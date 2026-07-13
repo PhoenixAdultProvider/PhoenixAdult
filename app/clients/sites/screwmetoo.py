@@ -125,7 +125,7 @@ class ScrewMeTooClient(Client):
             genres.append('Threesome')
         elif cast == 3:
             genres.append('Foursome')
-        elif cast > 4:
+        elif cast > 3:
             genres.append('Orgy')
         metadata.genres = genres
 

@@ -265,21 +265,22 @@ async def cache_photo(
     if filepath is None:
         logger.warn('people-cache', f'refusing to write outside cache dir: {relpath}')
         return None
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    filepath.write_bytes(data)
-
     # Preserve the pre-crop original so "Use original" can restore it offline. Only when we
     # actually cropped — an uncropped served file already IS the original.
-    if cropped:
-        orig_path = safe_join(directory, _ORIGINALS_DIR, f'{name_base}{orig_ext}')
+    orig_path = safe_join(directory, _ORIGINALS_DIR, f'{name_base}{orig_ext}') if cropped else None
+
+    def _write() -> None:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_bytes(data)
         if orig_path is not None:
             orig_path.parent.mkdir(parents=True, exist_ok=True)
             orig_path.write_bytes(original)
+        # Always record (not just for crops) so every cached image keeps its upstream URL.
+        face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
 
+    await asyncio.to_thread(_write)
     _invalidate_index()
     logger.info('people-cache', f'cached {relpath}{" (face-cropped)" if cropped else ""}')
-    # Always record (not just for crops) so every cached image keeps its upstream URL.
-    face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
     return {'served_url': _local_url(relpath, data), 'gender': gender}
 
 

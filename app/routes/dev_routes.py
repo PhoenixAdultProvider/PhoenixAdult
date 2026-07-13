@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import html
 import time
@@ -10,11 +11,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from app.clients.base import RawCaptureEntry, SceneContext, SearchContext
+from app.clients.base import RawCaptureEntry, SceneContext, SceneDetail, SearchContext
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMetadataResponse
 from app.registry import canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
 from app.routes import read_json_body
+from app.services.metadata_service import refresh_cached_snapshot
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
@@ -304,15 +306,16 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
     # Snapshot cache-first: mirror MetadataService — a frozen snapshot is served
     # without touching the source (only when METADATA_CACHE_ENABLE is on).
-    cached = None if force else metadata_cache.read(site.name, cur_id)
-    if cached is not None:
-        response = PlexMetadataResponse.model_validate(cached)
-        backfilled = await metadata_cache.backfill_people_images(response, site.name)
-        reapplied = metadata_cache.reapply_text_rules(response, site.scraper_config.type)
-        if metadata_cache.backfill_metadata_attrs(response):
-            backfilled = True
-        if backfilled or reapplied:
-            await metadata_cache.write(site.name, cur_id, response)
+    cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
+    response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
+    if response is not None and metadata_cache.data18_remap_needed(response, site.name):
+        response = None  # data18 mapping changed since snapshot — re-scrape, mirroring MetadataService
+    if response is not None:
+
+        async def _fetch_detail() -> SceneDetail | None:
+            return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
+
+        refreshed = await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail)
         filter_male_actors(response)  # serve-time filter (after any cache write); mirrors MetadataService
         md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
         steps.append(
@@ -321,8 +324,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
                 'ok': True,
                 'data': {
                     'servedFrom': 'snapshot',
-                    'backfilled': backfilled,
-                    'reapplied': reapplied,
+                    'refreshed': refreshed,
                     'title': md.get('title'),
                     'summary': md.get('summary'),
                     'tagline': md.get('tagline'),

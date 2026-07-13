@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import time
+from collections.abc import Awaitable, Callable
 
 from app.clients.base import SceneContext, SceneDetail
 from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
 from app.models.provider_info import ProviderInfo
-from app.registry import find_site
+from app.registry import ResolvedSiteInfo, find_site
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.concurrency.coalescer import Coalescer
@@ -33,6 +35,28 @@ def _log_served(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
             f'genres={len(md.Genre or [])} actors={len(md.Role or [])} images={len(md.Image or [])}',
         )
         logger.verbose(provider.id, f'metadata response -> {md.model_dump_json(by_alias=True, exclude_none=True)}')
+
+
+async def refresh_cached_snapshot(
+    response: PlexMetadataResponse,
+    site: ResolvedSiteInfo,
+    cur_id: str,
+    *,
+    fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
+) -> bool:
+    """Apply the serve-time backfills/reapplies to a cached snapshot in place and rewrite it if
+    anything changed. Shared by the live serve and the dev preview so the two can't drift.
+    Returns whether the snapshot changed."""
+    changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)
+    if await metadata_cache.backfill_data18(response, site.name):
+        changed = True
+    if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
+        changed = True
+    if metadata_cache.backfill_metadata_attrs(response):
+        changed = True
+    if changed:
+        await metadata_cache.write(site.name, cur_id, response)
+    return changed
 
 
 _MEMO_TTL_SECONDS = 60.0
@@ -105,7 +129,7 @@ class MetadataService:
 
         scene_url, subsite = split_subsite(self._scraper.decode(cur_id))  # sub-site folded into the cur_id at search
 
-        cached = None if force else metadata_cache.read(site.name, cur_id)
+        cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
         if response is not None and metadata_cache.data18_remap_needed(response, site.name):
             logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
@@ -125,17 +149,7 @@ class MetadataService:
                     return None
                 return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
 
-            changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=_fetch_detail)
-            if await metadata_cache.backfill_data18(response, site.name):
-                changed = True
-                logger.info(provider.id, f'Backfilled data18 ref for ratingKey={rating_key}')
-            if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
-                changed = True
-            if metadata_cache.backfill_metadata_attrs(response):
-                changed = True
-                logger.info(provider.id, f'Backfilled metadata attrs for ratingKey={rating_key}')
-            if changed:
-                await metadata_cache.write(site.name, cur_id, response)
+            if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail):
                 logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
             # Filter AFTER any cache write so the snapshot keeps every actor on disk.
             if removed := filter_male_actors(response):

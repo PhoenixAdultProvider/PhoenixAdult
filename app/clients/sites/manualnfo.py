@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from dataclasses import dataclass, field
@@ -269,11 +270,11 @@ class ManualNfoClient(Client):
         basename = ctx.title.strip()
         if not basename:
             return
-        located = _locate_nfo(basename)
+        located = await asyncio.to_thread(_locate_nfo, basename)
         if not located:
             logger.debug(tag, f'search: no NFO for basename="{basename}" under {_manual_nfo_root()}')
             return
-        nfo = _load_and_parse(located)
+        nfo = await asyncio.to_thread(_load_and_parse, located)
         if not nfo:
             return
         title = nfo.title or basename
@@ -296,11 +297,11 @@ class ManualNfoClient(Client):
 
     async def load_scene_context(self, payload: str, site: Any, ctx: SceneContext | None = None) -> LoadedScene | None:
         basename = payload.strip()
-        located = _locate_nfo(basename)
+        located = await asyncio.to_thread(_locate_nfo, basename)
         if not located:
             logger.warn(site.name, f'loadSceneContext: NFO missing for basename="{basename}"')
             return None
-        nfo = _load_and_parse(located)
+        nfo = await asyncio.to_thread(_load_and_parse, located)
         if not nfo:
             logger.warn(site.name, f'loadSceneContext: NFO parse failed at {located.nfo_path}')
             return None

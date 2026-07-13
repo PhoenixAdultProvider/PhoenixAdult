@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -75,12 +76,12 @@ def _our_rating_key(guid: str) -> str | None:
     return rating_key or None
 
 
-def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
+async def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
     """The tag values from this scene's cached snapshot, or None when it was never snapshotted."""
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed['site_name'] or not parsed['cur_id']:
         return None
-    cached = metadata_cache.read(parsed['site_name'], parsed['cur_id'])
+    cached = await asyncio.to_thread(metadata_cache.read, parsed['site_name'], parsed['cur_id'])
     if not cached:
         return None
     try:
@@ -153,7 +154,7 @@ async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileR
                 plex_key = str(stub.get('ratingKey') or '')
                 entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '')
 
-                desired = _snapshot_tags(rating_key)
+                desired = await _snapshot_tags(rating_key)
                 if desired is None:
                     entry.skipped = 'no snapshot'
                     report.skipped_no_snapshot += 1

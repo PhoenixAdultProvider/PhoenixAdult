@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import signal
@@ -91,9 +92,13 @@ async def api_save(request: Request) -> JSONResponse:
             return JSONResponse({'error': value}, status_code=400)
         clean.append((key, value))
 
-    for key, value in clean:
-        set_override(key, value)
     if clean:
+
+        def _apply() -> None:
+            for key, value in clean:
+                set_override(key, value)
+
+        await asyncio.to_thread(_apply)
         logger.info('config', f'applied {len(clean)} override(s): {", ".join(k for k, _ in clean)}')
     return JSONResponse(_build_state())
 
@@ -108,12 +113,12 @@ async def api_reset(request: Request) -> JSONResponse:
         return JSONResponse({'error': 'invalid JSON body'}, status_code=400)
     key = body.get('key') if isinstance(body, dict) else None
     if key is None:
-        clear_all_overrides()
+        await asyncio.to_thread(clear_all_overrides)
         logger.info('config', 'cleared all overrides')
         return JSONResponse(_build_state())
     if not isinstance(key, str) or not find_env_var(key):
         return JSONResponse({'error': f'"{key}" is not an editable variable'}, status_code=400)
-    clear_override(key)
+    await asyncio.to_thread(clear_override, key)
     logger.info('config', f'cleared override: {key}')
     return JSONResponse(_build_state())
 

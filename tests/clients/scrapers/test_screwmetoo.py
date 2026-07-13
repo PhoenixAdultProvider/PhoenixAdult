@@ -2,13 +2,32 @@ from __future__ import annotations
 
 import httpx
 import respx
+from parsel import Selector
 
-from app.clients.base import SearchContext, SearchResult
+import app.clients.sites.screwmetoo as smt_module
+from app.clients.base import ActorResult, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.clients.sites.screwmetoo import ScrewMeTooClient
 from app.registry import find_site
 
 SITE = find_site('ScrewMeToo')
 assert SITE is not None
+
+
+async def test_group_genre_thresholds() -> None:
+    client = ScrewMeTooClient()
+
+    async def genres_for(n: int) -> list[str]:
+        scene = LoadedScene(
+            url='u', site=SITE, sel=Selector(text='<html></html>'), extra=smt_module._SmtExtra(actors=[ActorResult(name=f'A{i}') for i in range(n)])
+        )
+        md = SceneDetail()
+        await client.fetch_genres(scene, md)
+        return md.genres
+
+    assert 'Threesome' in await genres_for(2)
+    assert 'Foursome' in await genres_for(3)
+    assert 'Orgy' in await genres_for(4)  # regression: a cast of 4 previously fell through and got no group genre
+    assert 'Orgy' in await genres_for(5)
 
 DETAIL_HTML = """<html><body>
   <h1>Wild Screw</h1>
