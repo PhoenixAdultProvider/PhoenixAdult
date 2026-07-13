@@ -53,29 +53,40 @@ class MetArtClient(Client):
         base = site.base_url.rstrip('/')
         cdn = f'https://cdn.metartnetwork.com/{d["siteUUID"]}' if d.get('siteUUID') else ''
 
+        # Title
+        metadata.title = d.get('name') or ''
+
+        # Summary
+        metadata.summary = d.get('description') or ''
+
+        # Studio
+        metadata.studio = 'MetArt'
+
+        # Tagline and Collection(s)
+        metadata.tagline = site.name
+        metadata.collections = [site.name]
+
+        # Release Date
+        metadata.release_date = api_date(d.get('publishedAt')) or scene.scene_date or None
+
+        # Genres
         genres = [_capitalize(t) for t in (d.get('tags') or [])]
         genres.append('Glamorous')
+        metadata.genres = genres
 
-        actors = [
+        # Actor(s)
+        metadata.actors = [
             ActorResult(name=m['name'], photo_url=base + m['headshotImagePath'] if m.get('headshotImagePath') else '')
             for m in (d.get('models') or [])
             if isinstance(m, dict) and m.get('name')
         ]
+
+        # Director(s)
         directors = [ActorResult(name=p['name']) for p in (d.get('photographers') or []) if isinstance(p, dict) and p.get('name')]
-
-        raw_images: list[str] = []
-        if cdn and d.get('coverImagePath'):
-            raw_images.append(cdn + d['coverImagePath'])
-        if cdn and d.get('splashImagePath'):
-            raw_images.append(cdn + d['splashImagePath'])
-
-        metadata.title = d.get('name') or ''
-        metadata.summary = d.get('description') or ''
-        metadata.studio = 'MetArt'
-        metadata.tagline = site.name
-        metadata.release_date = api_date(d.get('publishedAt')) or scene.scene_date or None
-        metadata.collections = [site.name]
-        metadata.genres = genres
-        metadata.actors = actors
         metadata.directors = directors or None
-        metadata.raw_image_urls = raw_images
+
+        # Posters
+        if cdn and d.get('coverImagePath'):
+            metadata.raw_image_urls.append(cdn + d['coverImagePath'])
+        if cdn and d.get('splashImagePath'):
+            metadata.raw_image_urls.append(cdn + d['splashImagePath'])

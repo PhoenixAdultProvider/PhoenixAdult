@@ -112,9 +112,23 @@ class Strike3Client(GraphQLClient):
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site
         v = scene.extra
-        title = v['title'].strip()
-        release_date = iso_date(v.get('releaseDate') or '') or None
 
+        # Title
+        metadata.title = v['title'].strip()
+
+        # Summary
+        metadata.summary = (v.get('description') or '').strip()
+
+        # Studio
+        metadata.studio = site.name
+
+        # Collection(s)
+        metadata.collections = [site.name]
+
+        # Release Date
+        metadata.release_date = iso_date(v.get('releaseDate') or '') or None
+
+        # Genres
         genres: list[str] = []
         if site.name in ('Tushy', 'TushyRaw'):
             genres.append('Anal')
@@ -122,38 +136,37 @@ class Strike3Client(GraphQLClient):
             name = (c.get('name') or '').strip()
             if name and name not in genres:
                 genres.append(name)
+        metadata.genres = genres
 
-        actors: list[ActorResult] = []
+        # Actor(s)
         for mdl in v.get('models') or []:
             name = (mdl.get('name') or '').strip()
             if not name:
                 continue
             listing = (mdl.get('images') or {}).get('listing') or []
             photo = (listing[0].get('highdpi') or {}).get('double', '') if listing else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            metadata.actors.append(ActorResult(name=name, photo_url=photo))
 
+        # Director(s)
         directors = [ActorResult(name=(d.get('name') or '').strip()) for d in (v.get('directors') or []) if (d.get('name') or '').strip()]
+        metadata.directors = directors or None
 
-        raw_images: list[str] = []
+        # Posters
         for img in v.get('carousel') or []:
             listing = img.get('listing') or []
             uri = (listing[0].get('highdpi') or {}).get('triple') if listing else None
-            if uri and uri not in raw_images:
-                raw_images.append(uri)
+            if uri and uri not in metadata.raw_image_urls:
+                metadata.raw_image_urls.append(uri)
 
+        # Posters from Data18
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
             metadata.data18_url = await self._data18.enrich_images(
-                scope=site.name, images=raw_images, scene_id=mapping_slug(title, site.name), title=title, providers=[site.name], scene_date=date_obj
+                scope=site.name,
+                images=metadata.raw_image_urls,
+                scene_id=mapping_slug(metadata.title, site.name),
+                title=metadata.title,
+                providers=[site.name],
+                scene_date=date_obj,
             )
-
-        metadata.title = title
-        metadata.summary = (v.get('description') or '').strip()
-        metadata.studio = site.name
-        metadata.collections = [site.name]
-        metadata.release_date = release_date
-        metadata.genres = genres
-        metadata.actors = actors
-        metadata.directors = directors or None
-        metadata.raw_image_urls = raw_images

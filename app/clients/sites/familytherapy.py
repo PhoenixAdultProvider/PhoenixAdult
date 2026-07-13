@@ -121,18 +121,30 @@ class FamilyTherapyClient(Client):
 
         assert scene.sel is not None
         sel = scene.sel
-        title_raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
+        # Title
+        metadata.title = _to_title_case((sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip())
+
+        # Summary
         nodes = sel.xpath('//div[contains(@class,"entry-content")]/p')
         summary = (nodes[0].xpath('string(.)').get() if nodes else sel.xpath('(//div[contains(@class,"entry-content")])[1]').xpath('string(.)').get()) or ''
-        summary = summary.strip()
+        metadata.summary = summary.strip()
 
+        # Studio
+        metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
+        metadata.tagline = STUDIO
+        metadata.collections = [STUDIO]
+
+        # Release Date
         date_raw = (sel.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
-        release_date = iso_date(date_raw, '%b %d, %Y') or scene.scene_date or None
+        metadata.release_date = iso_date(date_raw, '%b %d, %Y') or scene.scene_date or None
 
-        genres = self.dedup_strings([first_attr(el) for el in sel.xpath('//a[@rel="category tag"]')])
+        # Genres
+        metadata.genres = self.dedup_strings([first_attr(el) for el in sel.xpath('//a[@rel="category tag"]')])
 
-        actors: list[ActorResult] = []
+        # Actor(s)
         seen: set[str] = set()
         for el in sel.xpath('//div[contains(@class,"entry-content")]//p'):
             m = _STARRING_RE.search(el.xpath('string(.)').get() or '')
@@ -141,14 +153,7 @@ class FamilyTherapyClient(Client):
             for name in (s.strip() for s in m.group(1).split('&')):
                 if name and name not in seen:
                     seen.add(name)
-                    actors.append(ActorResult(name=name))
+                    metadata.actors.append(ActorResult(name=name))
 
-        metadata.title = _to_title_case(title_raw)
-        metadata.summary = summary
-        metadata.studio = STUDIO
-        metadata.tagline = STUDIO
-        metadata.collections = [STUDIO]
-        metadata.release_date = release_date
-        metadata.genres = genres
-        metadata.actors = actors
+        # Posters
         metadata.raw_image_urls = []

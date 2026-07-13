@@ -83,20 +83,33 @@ class Network5KPClient(Client):
         capture = scene.capture
         fallback_date = scene.scene_date or ''
 
-        title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
-        summary = (sel.xpath('(//div[contains(@class,"video-summary")]//p[not(@class) or @class=""])[1]').xpath('string(.)').get() or '').strip()
-        tagline = '5Kteens' if '5KT' in scene_url else site.name
+        # Title
+        metadata.title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
 
+        # Summary
+        metadata.summary = (sel.xpath('(//div[contains(@class,"video-summary")]//p[not(@class) or @class=""])[1]').xpath('string(.)').get() or '').strip()
+
+        # Studio
+        metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
+        tagline = '5Kteens' if '5KT' in scene_url else site.name
+        metadata.tagline = tagline if tagline != STUDIO else None
+        metadata.collections = [tagline]
+
+        # Release Date
         release_date: str | None = None
         for h5 in sel.xpath('//h5'):
             txt = h5.xpath('string(.)').get() or ''
             if 'Published' in txt:
                 release_date = iso_date(txt.replace('Published:', '').strip())
                 break
-        if not release_date and fallback_date:
-            release_date = fallback_date
+        metadata.release_date = release_date or fallback_date or None
 
-        actors: list[ActorResult] = []
+        # Genres
+        metadata.genres = []
+
+        # Actor(s)
         for a in sel.xpath('//h5[contains(.,"Starring")]//a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
@@ -104,12 +117,12 @@ class Network5KPClient(Client):
                 continue
             page = await self.fetch_and_load(href, FetchCtx(capture=capture), f'GET {href} (actor)')
             photo = first_attr(page['sel'], '(//img[contains(@class,"model-image")])[1]/@src') if page else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            metadata.actors.append(ActorResult(name=name, photo_url=photo))
 
-        raw_images: list[str] = []
+        # Posters
         for src in sel.xpath('//div[contains(@class,"gal")]//img/@src').getall():
             if src:
-                raw_images.append(src)
+                metadata.raw_image_urls.append(src)
         for page_num in (1, 2):
             photo_url = f'{scene_url.rstrip("/")}/photoset?page={page_num}'
             page = await self.fetch_and_load(photo_url, FetchCtx(capture=capture), f'GET {photo_url}')
@@ -117,14 +130,4 @@ class Network5KPClient(Client):
                 continue
             for src in page['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
                 if src and 'full' not in src:
-                    raw_images.append(src)
-
-        metadata.title = title
-        metadata.summary = summary
-        metadata.studio = STUDIO
-        metadata.tagline = tagline if tagline != STUDIO else None
-        metadata.release_date = release_date or None
-        metadata.collections = [tagline]
-        metadata.genres = []
-        metadata.actors = actors
-        metadata.raw_image_urls = raw_images
+                    metadata.raw_image_urls.append(src)

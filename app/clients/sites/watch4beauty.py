@@ -126,22 +126,39 @@ class Watch4BeautyClient(Client):
         cur_id_date = data['cur_id_date']
         capture = scene.capture
 
-        title = (scene_json.get('issue_title') or '').strip()
-        summary = (scene_json.get('issue_text') or '').strip()
-        datetime = scene_json.get('issue_datetime') or ''
-        release_date = (iso_date(datetime) or cur_id_date) if datetime else (cur_id_date or None)
-        year = int(release_date[:4]) if release_date else None
-        genres = self.dedup_strings(list((scene_json.get('issue_tags') or '').split(','))) if scene_json.get('issue_tags') else []
+        # Title
+        metadata.title = (scene_json.get('issue_title') or '').strip()
 
-        date_compact = re.sub(r'[^0-9]', '', datetime)[:8] if datetime else (release_date or '').replace('-', '')
+        # Summary
+        metadata.summary = (scene_json.get('issue_text') or '').strip()
+
+        # Studio
+        metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
+        metadata.tagline = TAGLINE
+        metadata.collections = [TAGLINE]
+
+        # Release Date
+        issue_datetime = scene_json.get('issue_datetime') or ''
+        metadata.release_date = (iso_date(issue_datetime) or cur_id_date) if issue_datetime else (cur_id_date or None)
+        metadata.year = int(metadata.release_date[:4]) if metadata.release_date else None
+
+        # Genres
+        metadata.genres = self.dedup_strings(list((scene_json.get('issue_tags') or '').split(','))) if scene_json.get('issue_tags') else []
+
+        # Posters (issue-level; per-model art is added with the cast below)
+        date_compact = re.sub(r'[^0-9]', '', issue_datetime)[:8] if issue_datetime else (metadata.release_date or '').replace('-', '')
         art_prefix = f'{ART_BASE}{date_compact}' if date_compact else ART_BASE
-        images = [
-            f'{art_prefix}-issue-cover-1280.jpg',
-            f'{art_prefix}-issue-video-cover-2560.jpg',
-            f'{art_prefix}-issue-cover-wide-2560.jpg',
-        ]
+        metadata.raw_image_urls.extend(
+            [
+                f'{art_prefix}-issue-cover-1280.jpg',
+                f'{art_prefix}-issue-video-cover-2560.jpg',
+                f'{art_prefix}-issue-cover-wide-2560.jpg',
+            ]
+        )
 
-        actors: list[ActorResult] = []
+        # Actor(s)
         models_arr = await self.fetch_json(
             f'{base}/api/issues/{scene_slug}/models', FetchCtx(capture=capture), label=f'[{site.name}] issues/{scene_slug}/models'
         )
@@ -152,25 +169,15 @@ class Watch4BeautyClient(Client):
             if not name:
                 continue
             photo = f'{art_prefix}model-{slug}-320.jpg' if slug else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            metadata.actors.append(ActorResult(name=name, photo_url=photo))
             if slug:
-                images.append(f'{ART_BASE}model-{slug}-wide-2560.jpg')
-                images.append(f'{ART_BASE}model-{slug}-1280.jpg')
+                metadata.raw_image_urls.append(f'{ART_BASE}model-{slug}-wide-2560.jpg')
+                metadata.raw_image_urls.append(f'{ART_BASE}model-{slug}-1280.jpg')
+        if not metadata.actors and model_slug:
+            metadata.actors.append(ActorResult(name=_titleize(model_slug)))
 
-        if not actors and model_slug:
-            actors.append(ActorResult(name=_titleize(model_slug)))
-
-        metadata.title = title
-        metadata.summary = summary
-        metadata.studio = STUDIO
-        metadata.tagline = TAGLINE
-        metadata.collections = [TAGLINE]
-        metadata.genres = genres
-        metadata.actors = actors
+        # Director(s)
         metadata.directors = [ActorResult(name=DIRECTOR)]
-        metadata.raw_image_urls = images
-        metadata.release_date = release_date
-        metadata.year = year
 
 
 def _first_model_nickname(data: Any) -> str:

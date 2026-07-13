@@ -115,13 +115,26 @@ class ReptyleClient(Client):
         site = scene.site
         scene_json = scene.extra
         capture = scene.capture
-
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip() or site.name
-        title = (scene_json.get('title') or '').strip()
-        summary = _strip_tags(scene_json.get('description') or '')
-        release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
+        has_sub = bool(sub_site) and sub_site != site.name
 
-        actors: list[ActorResult] = []
+        # Title
+        metadata.title = (scene_json.get('title') or '').strip()
+
+        # Summary
+        metadata.summary = _strip_tags(scene_json.get('description') or '')
+
+        # Studio
+        metadata.studio = site.name
+
+        # Tagline and Collection(s)
+        metadata.tagline = sub_site if has_sub else None
+        metadata.collections = [sub_site] if has_sub else [site.name]
+
+        # Release Date
+        metadata.release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
+
+        # Actor(s)
         for m in scene_json.get('models') or []:
             mid = m.get('modelId') or m.get('id') or ''
             name = m.get('modelName') or m.get('name') or ''
@@ -134,34 +147,26 @@ class ReptyleClient(Client):
                 if isinstance(entry, dict):
                     photo = entry.get('img') or ''
                     gender = entry.get('gender') or ''
-            actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
+            metadata.actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
 
+        # Genres
         genres = [t.strip() for t in (scene_json.get('tags') or []) if t.strip()]
-        if len(actors) > 1 and sub_site != 'Mylfed':
+        if len(metadata.actors) > 1 and sub_site != 'Mylfed':
             genres.append('Threesome')
+        metadata.genres = genres
 
-        raw_images: list[str] = []
+        # Posters
         if scene_json.get('img'):
-            raw_images.append(scene_json['img'])
+            metadata.raw_image_urls.append(scene_json['img'])
 
+        # Posters from Data18
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
-            date_obj = datetime.fromisoformat(release_date) if release_date else None
+            date_obj = datetime.fromisoformat(metadata.release_date) if metadata.release_date else None
             sid = scene_json.get('id')
             search_sub = (sub_site if sub_site != site.name else None) or scene.subsite
             mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
             providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
             metadata.data18_url = await self._data18.enrich_images(
-                scope=site.name, images=raw_images, scene_id=mapping_id, title=title, providers=providers, scene_date=date_obj
+                scope=site.name, images=metadata.raw_image_urls, scene_id=mapping_id, title=metadata.title, providers=providers, scene_date=date_obj
             )
-
-        has_sub = bool(sub_site) and sub_site != site.name
-        metadata.title = title
-        metadata.summary = summary
-        metadata.studio = site.name
-        metadata.tagline = sub_site if has_sub else None
-        metadata.release_date = release_date
-        metadata.collections = [sub_site] if has_sub else [site.name]
-        metadata.genres = genres
-        metadata.actors = actors
-        metadata.raw_image_urls = raw_images

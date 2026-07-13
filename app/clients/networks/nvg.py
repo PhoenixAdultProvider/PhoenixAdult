@@ -146,13 +146,29 @@ class NVGClient(Client):
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         extra = scene.extra
+
+        # Title
         metadata.title = extra['title']
+
+        # Summary
         metadata.summary = extra['summary']
+
+        # Studio
         metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
         metadata.tagline = scene.site.name
         metadata.collections = [scene.site.name]
+
+        # Release Date
         metadata.release_date = scene.scene_date or None
+
+        # Genres
         metadata.genres = []
+
+        # Actor(s)
         metadata.actors = _actors_from(extra['cast_str'])
+
+        # Posters
         metadata.raw_image_urls = [extra['poster']] if extra['poster'] else []
         metadata.scene_url = extra['scene_url']

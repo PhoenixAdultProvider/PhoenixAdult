@@ -62,6 +62,13 @@ class MetadataAPIClient(Client):
         site = scene.site
         headers = _auth_headers()
 
+        # Title
+        metadata.title = d.get('title') or ''
+
+        # Summary
+        metadata.summary = d.get('description') or ''
+
+        # Studio, Tagline and Collection(s)
         site_obj = d.get('site') or {}
         studio = site_obj.get('name') or site.name
         collections: list[str] = [site_obj['name']] if site_obj.get('name') else []
@@ -71,10 +78,17 @@ class MetadataAPIClient(Client):
             if parent_name:
                 studio = parent_name
                 collections.append(parent_name)
+        metadata.studio = studio
+        metadata.tagline = studio
+        metadata.collections = collections or None
 
-        genres = [t['name'].strip() for t in (d.get('tags') or []) if (t.get('name') or '').strip()]
+        # Release Date
+        metadata.release_date = api_date(d.get('date')) or scene.scene_date or None
 
-        actors: list[ActorResult] = []
+        # Genres
+        metadata.genres = [t['name'].strip() for t in (d.get('tags') or []) if (t.get('name') or '').strip()]
+
+        # Actor(s)
         for p in d.get('performers') or []:
             name = p.get('name') or ''
             face = p.get('face') or ''
@@ -84,20 +98,10 @@ class MetadataAPIClient(Client):
                 name = parent_p['name']
                 photo = parent_p.get('face') or ''
             if name:
-                actors.append(ActorResult(name=name, photo_url=photo))
+                metadata.actors.append(ActorResult(name=name, photo_url=photo))
 
-        raw_images: list[str] = []
+        # Posters
         if (d.get('posters') or {}).get('large'):
-            raw_images.append(d['posters']['large'])
+            metadata.raw_image_urls.append(d['posters']['large'])
         if (d.get('background') or {}).get('large'):
-            raw_images.append(d['background']['large'])
-
-        metadata.title = d.get('title') or ''
-        metadata.summary = d.get('description') or ''
-        metadata.studio = studio
-        metadata.tagline = studio
-        metadata.collections = collections or None
-        metadata.release_date = api_date(d.get('date')) or scene.scene_date or None
-        metadata.genres = genres
-        metadata.actors = actors
-        metadata.raw_image_urls = raw_images
+            metadata.raw_image_urls.append(d['background']['large'])

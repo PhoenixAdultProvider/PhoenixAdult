@@ -88,22 +88,30 @@ class Network18Client(GraphQLClient):
         scene_num = e['scene_num']
         sink = scene.capture
 
+        # Title
+        metadata.title = detail.get('title') or ''
+
+        # Summary
         summary = ((detail.get('description') or {}).get('long') or '').strip()
         if summary and summary[-1] not in '!.?':
             summary += '.'
-
-        talent = detail.get('talent') or []
-        actors = await self._fetch_actors(site, talent, sink)
-        raw_images = await self._fetch_image_urls(site, model_id, scene_id, scene_num, detail.get('galleryCount') or 0, sink)
-
-        metadata.title = detail.get('title') or ''
         metadata.summary = summary
+
+        # Studio
         metadata.studio = site.name
+
+        # Tagline and Collection(s)
         metadata.tagline = site.name
         metadata.collections = [site.name]
+
+        # Genres
         metadata.genres = list(_SITE_CONFIG[site.name]['genres'])
-        metadata.actors = actors
-        metadata.raw_image_urls = raw_images
+
+        # Actor(s)
+        metadata.actors = await self._fetch_actors(site, detail.get('talent') or [], sink)
+
+        # Posters
+        metadata.raw_image_urls = await self._fetch_image_urls(site, model_id, scene_id, scene_num, detail.get('galleryCount') or 0, sink)
 
     async def _fetch_actors(self, site: ResolvedSiteInfo, talent: list[Any], sink: list[RawCaptureEntry] | None) -> list[ActorResult]:
         talent = [t for t in talent if isinstance(t, dict) and isinstance(t.get('talent'), dict) and t['talent'].get('talentId')]

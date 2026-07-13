@@ -121,6 +121,7 @@ class GammaEntOtherClient(Client):
         api_key: str = scene.extra['api_key']
         url_title = d.get('url_title') or ''
 
+        # Title
         title = ''
         if 'dogfart' in base_lower:
             title = f'{d.get("title") or ""} from {d.get("serie_name") or ""}.com'
@@ -130,9 +131,12 @@ class GammaEntOtherClient(Client):
                     title = f'{d.get("title") or ""}, Scene {i + 1}'
         if not title:
             title = d.get('title') or ''
+        metadata.title = title
 
-        summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
+        # Summary
+        metadata.summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
 
+        # Studio, Tagline and Collection(s)
         if not d.get('network_name'):
             if 'filthykings' in base_lower:
                 studio = normalize_studio(d.get('sitename_pretty') or '', site.name)
@@ -170,7 +174,11 @@ class GammaEntOtherClient(Client):
             t = d.get('title') or ''
             if (':' in t or '#' in t) and len(scene_list) > 1 and d.get('movie_title'):
                 add_collection(d['movie_title'])
+        metadata.studio = studio
+        metadata.tagline = tagline
+        metadata.collections = collections or None
 
+        # Genres
         genres: list[str] = []
 
         def add_genre(g: str | None) -> None:
@@ -183,7 +191,9 @@ class GammaEntOtherClient(Client):
             for s in scene_list:
                 for c in s.get('categories') or []:
                     add_genre(c.get('name'))
+        metadata.genres = genres
 
+        # Actor(s)
         female: list[ActorResult] = []
         male: list[ActorResult] = []
         for a in d.get('actors') or []:
@@ -199,8 +209,9 @@ class GammaEntOtherClient(Client):
                     photo = f'{_IMG_BASE}/actors{pics[max_quality]}'
             entry = ActorResult(name=name, photo_url=photo, gender='female' if a.get('gender') == 'female' else 'male')
             (female if a.get('gender') == 'female' else male).append(entry)
-        actors = [*female, *male, *_actor_overrides(scene_id)]
+        metadata.actors = [*female, *male, *_actor_overrides(scene_id)]
 
+        # Posters
         raw_images: list[str] = []
 
         def push_img(u: str) -> None:
@@ -222,14 +233,6 @@ class GammaEntOtherClient(Client):
                 push_img(picture_url)
             else:
                 raw_images.insert(0, picture_url)
-
-        metadata.title = title
-        metadata.summary = summary
-        metadata.studio = studio
-        metadata.tagline = tagline
-        metadata.collections = collections or None
-        metadata.genres = genres
-        metadata.actors = actors
         metadata.raw_image_urls = raw_images
 
     # ── Internals ─────────────────────────────────────────────────────────────

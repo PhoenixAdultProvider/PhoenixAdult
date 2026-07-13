@@ -72,13 +72,33 @@ class TeenCoreClubClient(Client):
         title = scene.extra['title']
         actors = scene.extra['actors']
 
+        # Title
+        metadata.title = title
+
+        # Summary
+        metadata.summary = ((v.get('description') or {}).get('en') or '').strip()
+
+        # Studio
+        metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
         tagline = site.name
         label = (v.get('labels') or [{}])[0].get('name') if v.get('labels') else None
         if label:
             tagline = _CAMEL_RE.sub(r'\1 \2', label.split('.')[0].strip())
+        metadata.tagline = tagline if tagline and tagline != STUDIO else None
+        metadata.collections = [tagline] if tagline else None
 
-        genres = [g for g in (((gg.get('title') or {}).get('en') or '').strip() for gg in (v.get('genres') or [])) if g]
+        # Release Date
+        metadata.release_date = iso_date(v.get('publication_date') or '') or None
 
+        # Genres
+        metadata.genres = [g for g in (((gg.get('title') or {}).get('en') or '').strip() for gg in (v.get('genres') or [])) if g]
+
+        # Actor(s)
+        metadata.actors = actors
+
+        # Posters
         coll = self.image_collector()
         artwork = v.get('artwork') or {}
         cover = v.get('cover') or {}
@@ -89,14 +109,4 @@ class TeenCoreClubClient(Client):
         coll['push'](cover.get('large'))
         for s in v.get('screenshots') or []:
             coll['push'](s)
-        images: list[str] = coll['list']
-
-        metadata.title = title
-        metadata.summary = ((v.get('description') or {}).get('en') or '').strip()
-        metadata.studio = STUDIO
-        metadata.tagline = tagline if tagline and tagline != STUDIO else None
-        metadata.collections = [tagline] if tagline else None
-        metadata.release_date = iso_date(v.get('publication_date') or '') or None
-        metadata.genres = genres
-        metadata.actors = actors
-        metadata.raw_image_urls = images
+        metadata.raw_image_urls = coll['list']

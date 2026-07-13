@@ -149,14 +149,27 @@ class ModelCentroClient(Client):
         if lead:
             actor_names.append(lead)
 
-        actors = [ActorResult(name=n) for n in dict.fromkeys(actor_names)]
-
+        # Title
         metadata.title = (scene_json.get('title') or search_title or '').strip()
+
+        # Summary
         metadata.summary = (scene_json.get('description') or '').strip()
+
+        # Studio
         metadata.studio = site.name
+
+        # Tagline and Collection(s)
         metadata.tagline = site.name
         metadata.collections = [site.name]
+
+        # Release Date
         metadata.release_date = date or None
+
+        # Genres
         metadata.genres = [] if tags_are_actors else tag_aliases
-        metadata.actors = actors
+
+        # Actor(s)
+        metadata.actors = [ActorResult(name=n) for n in dict.fromkeys(actor_names)]
+
+        # Posters
         metadata.raw_image_urls = art

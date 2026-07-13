@@ -219,26 +219,35 @@ class Clips4SaleClient(Client):
             keywords.append((k.get('keyword') or '').strip())
 
         ruled = _apply_rules(user_id, clip.get('studioTitle') or '', _clean_title(clip['title']), summary, genre_list, keywords)
-        actors = [ActorResult(name=n) for n in ruled['actors']]
-        release_date = iso_date((clip.get('dateDisplay') or '').split(' ')[0], '%m/%d/%y') or None
 
+        # Title
+        metadata.title = ruled['title']
+
+        # Summary
+        metadata.summary = summary
+
+        # Studio
+        metadata.studio = STUDIO
+
+        # Tagline and Collection(s)
+        tagline_override = ruled['tagline_override']
+        metadata.tagline = tagline_override or clip.get('studioTitle') or None
+        metadata.collections = [tagline_override] if tagline_override else ([clip['studioTitle']] if clip.get('studioTitle') else None)
+
+        # Release Date
+        metadata.release_date = iso_date((clip.get('dateDisplay') or '').split(' ')[0], '%m/%d/%y') or None
+
+        # Genres
+        metadata.genres = ruled['genres']
+
+        # Actor(s)
+        metadata.actors = [ActorResult(name=n) for n in ruled['actors']]
+
+        # Posters
         coll = self.image_collector()
         coll['push'](clip.get('preview_screencap_image_path'))
         coll['push'](clip.get('screencap_image_path'))
         clip_id = payload.split('/studio/')[1].split('/')[1] if '/studio/' in payload and len(payload.split('/studio/')[1].split('/')) > 1 else ''
         if user_id and clip_id.isdigit():
             coll['push'](f'http://imagecdn.clips4sale.com/accounts99/{user_id}/clip_images/previewlg_{clip_id}.jpg')
-
-        tagline_override = ruled['tagline_override']
-        tagline = tagline_override or clip.get('studioTitle') or None
-        collections = [tagline_override] if tagline_override else ([clip['studioTitle']] if clip.get('studioTitle') else None)
-
-        metadata.title = ruled['title']
-        metadata.summary = summary
-        metadata.studio = STUDIO
-        metadata.tagline = tagline
-        metadata.collections = collections
-        metadata.release_date = release_date
-        metadata.genres = ruled['genres']
-        metadata.actors = actors
         metadata.raw_image_urls = coll['list']
