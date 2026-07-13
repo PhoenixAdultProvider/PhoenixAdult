@@ -384,6 +384,40 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return 'Orgy'
         return None
 
+    async def resolve_actor_photos(
+        self,
+        refs: list[tuple[str, str]],
+        extract_photo: Callable[[Selector], str],
+        *,
+        capture: list[RawCaptureEntry] | None = None,
+        label: str = 'actor',
+        limit: int = 3,
+    ) -> list[ActorResult]:
+        """Turn (name, profile_url) refs into ActorResults, fetching the profile pages concurrently
+        (at most `limit` in flight) and running `extract_photo` on each loaded page's selector for the
+        headshot. De-duplicated by name (first wins), input order preserved. A ref with no URL — or a
+        page that fails to load — yields an ActorResult with an empty photo, never an error."""
+        seen: set[str] = set()
+        unique: list[tuple[str, str]] = []
+        for name, href in refs:
+            clean = (name or '').strip()
+            if clean and clean not in seen:
+                seen.add(clean)
+                unique.append((clean, href))
+
+        sem = asyncio.Semaphore(limit)
+
+        async def _resolve(name: str, href: str) -> ActorResult:
+            photo = ''
+            if href:
+                async with sem:
+                    loaded = await self.fetch_and_load(href, FetchCtx(capture=capture), f'[{label}] {name}')
+                if loaded:
+                    photo = extract_photo(loaded['sel'])
+            return ActorResult(name=name, photo_url=photo)
+
+        return list(await asyncio.gather(*(_resolve(name, href) for name, href in unique)))
+
     # ── Detail orchestrator ──────────────────────────────────────────────────────
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:

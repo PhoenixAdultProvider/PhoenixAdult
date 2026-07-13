@@ -34,3 +34,15 @@ def test_group_genre_for_scale() -> None:
     assert c.group_genre_for(4) == 'Foursome'
     assert c.group_genre_for(5) == 'Orgy'
     assert c.group_genre_for(9) == 'Orgy'
+
+
+@respx.mock
+async def test_resolve_actor_photos_dedups_extracts_and_preserves_order() -> None:
+    respx.get('https://x.test/a').mock(return_value=httpx.Response(200, text='<html><img id="p" src="https://cdn/a.jpg"></html>'))
+    respx.get('https://x.test/b').mock(return_value=httpx.Response(200, text='<html><img id="p" src="https://cdn/b.jpg"></html>'))
+    refs = [('Alice', 'https://x.test/a'), ('Bob', 'https://x.test/b'), ('Alice', 'https://x.test/a'), ('Cara', '')]
+    actors = await _C().resolve_actor_photos(refs, lambda sel: sel.xpath('//img[@id="p"]/@src').get() or '')
+    assert [a.name for a in actors] == ['Alice', 'Bob', 'Cara']
+    assert actors[0].photo_url == 'https://cdn/a.jpg'
+    assert actors[1].photo_url == 'https://cdn/b.jpg'
+    assert actors[2].photo_url == ''
