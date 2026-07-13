@@ -7,6 +7,7 @@ from parsel import Selector
 from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Evolved Fights Network'
@@ -28,8 +29,8 @@ class EvolvedFightsClient(Client):
                 for url in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS):
                     if url not in candidates:
                         candidates.append(url)
-            except Exception:  # noqa: BLE001 - search is best-effort
-                pass
+            except Exception as err:  # noqa: BLE001 - search is best-effort
+                logger.debug(ctx.site_info.name, f'webSearch: {err}')
 
         for url in candidates:
             loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')

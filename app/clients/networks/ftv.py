@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
+from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search, web_search_available, web_search_filtered
 
 STUDIO = 'First Time Videos'
@@ -60,8 +61,8 @@ class FTVClient(Client):
                 for url in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/update/'):
                     if url not in candidates:
                         candidates.append(url)
-            except Exception:  # noqa: BLE001 - best-effort
-                pass
+            except Exception as err:  # noqa: BLE001 - best-effort
+                logger.debug(ctx.site_info.name, f'webSearch: {err}')
 
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
@@ -141,7 +142,8 @@ class FTVClient(Client):
             host = urlsplit(base).netloc.removeprefix('www.')
             try:
                 gallery_results = await web_search(SearchOptions(query=cast_query, site=host, num=10))
-            except Exception:  # noqa: BLE001 - best-effort
+            except Exception as err:  # noqa: BLE001 - best-effort
+                logger.debug(scene.site.name, f'webSearch: {err}')
                 gallery_results = []
             for photo_url in gallery_results:
                 is_gallery = 'galleries' in photo_url or 'preview' in photo_url

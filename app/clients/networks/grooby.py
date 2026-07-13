@@ -8,6 +8,7 @@ from parsel import Selector
 from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Grooby'
@@ -32,7 +33,8 @@ class GroobyClient(Client):
         host = urlsplit(ctx.site_info.base_url).netloc
         try:
             candidates = [strip_query(u) for u in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/trailers/')]
-        except Exception:  # noqa: BLE001 - best-effort
+        except Exception as err:  # noqa: BLE001 - best-effort
+            logger.debug(ctx.site_info.name, f'webSearch: {err}')
             return
 
         seen: set[str] = set()

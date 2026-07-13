@@ -5,6 +5,7 @@ import re
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.logger import logger
 
 STUDIO = 'Couples Cinema'
 _YEAR_RE = re.compile(r'^\d{4}$')
@@ -124,8 +125,8 @@ class CouplesCinemaClient(Client):
         if cover_packed:
             try:
                 coll['push'](self.decode(cover_packed))
-            except Exception:  # noqa: BLE001 - decode failures are non-fatal
-                pass
+            except Exception as err:  # noqa: BLE001 - decode failures are non-fatal
+                logger.debug(scene.site.name, f'cover decode: {err}')
 
         for raw in scene.sel.xpath('//video/@poster').getall():
             coll['push'](raw)

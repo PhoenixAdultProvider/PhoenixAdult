@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.logging.logger import logger
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Deranged Dollars'
@@ -22,7 +23,8 @@ class DerangedDollarsClient(Client):
         host = urlsplit(ctx.site_info.base_url).netloc
         try:
             candidates = await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS)
-        except Exception:  # noqa: BLE001 - search is best-effort
+        except Exception as err:  # noqa: BLE001 - search is best-effort
+            logger.debug(ctx.site_info.name, f'webSearch: {err}')
             return
 
         for url in candidates:
