@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -9,18 +10,26 @@ from urllib.parse import urlsplit
 from dateutil import parser as date_parser
 from parsel import Selector
 
-from app.clients.base import Client
+from app.clients.base import Client, SearchContext, SearchResult
 from app.config.env import env
-from app.utils.helpers.helpers import append_unique, load_site_json, slugify
+from app.utils.helpers.helpers import append_unique, build_search_result, load_site_json, pack_cur_id, sceneid_distance_score, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import convert_sequence_numbers
+from app.utils.searchengines import SearchOptions, web_search
 
 _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
+_TITLE_XP = '(//h1)[1]'
+
+
+def data18_scene_id(raw: str | None) -> str:
+    """The numeric data18 scene/movie id from a client rating-key, or '' when it isn't a usable id."""
+    return raw if raw and raw.isdigit() and int(raw) > 100 else ''
+
 
 DATA18_MANUAL_MAPPINGS: dict[str, str | list[str]] = load_site_json(__file__, 'data18_manual_mappings')
 
@@ -189,6 +198,89 @@ def _clean_thumb(u: str) -> str:
 class Data18Client(Client):
     def __init__(self) -> None:
         super().__init__({'Referer': _BASE, 'Cookie': 'data_user_captcha=1'})
+
+    async def data18_search(
+        self,
+        ctx: SearchContext,
+        results: list[SearchResult],
+        *,
+        kind: str,
+        ws_query: str,
+        clean_ws_url: Callable[[str], str | None],
+        extract_detail: Callable[[Selector, str], tuple[str, str, str] | None],
+        max_pages: int = 10,
+    ) -> None:
+        """Shared scenes/movies search: candidate lookup + web-search url harvest, then per-url detail.
+        `clean_ws_url` normalises a raw web-search hit (None to drop it); `extract_detail(sel, url)`
+        returns (title, release_date, subsite) for a direct-url page, or None to skip it."""
+        base = ctx.site_info.base_url.rstrip('/')
+        scene_id = data18_scene_id(ctx.scene_id)
+        text = ctx.title.strip()
+
+        urls: set[str] = set()
+        if scene_id:
+            urls.add(f'{base}/{kind}/{scene_id}')
+
+        candidates: list[Data18Candidate] = []
+        with best_effort(ctx.site_info.name, 'find_candidates'):
+            candidates = await self.find_candidates(text or ctx.title, kind, max_pages=max_pages)
+
+        with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
+            host = urlsplit(ctx.site_info.base_url).hostname or ''
+            for u in await web_search(SearchOptions(query=ws_query, site=host, num=10)):
+                if cleaned := clean_ws_url(u):
+                    urls.add(cleaned)
+
+        seen: set[str] = set()
+
+        for c in candidates:
+            if c.url in seen:
+                continue
+            seen.add(c.url)
+            urls.discard(c.url)
+            title = c.title_raw
+            if c.truncated:
+                loaded = await self.fetch_page(c.url)
+                if loaded is not None:
+                    title = xp_ns(loaded, _TITLE_XP) or title
+            score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
+            results.append(
+                build_search_result(
+                    title=title,
+                    scene_url=c.url,
+                    query=text or ctx.title,
+                    display_date=c.release_date,
+                    search_date=ctx.search_date,
+                    score=score,
+                    cur_id=pack_cur_id([p for p in (c.url, c.release_date) if p]),
+                    subsite=c.provider or None,
+                )
+            )
+
+        for url in urls:
+            if url in seen:
+                continue
+            seen.add(url)
+            loaded = await self.fetch_page(url)
+            if loaded is None:
+                continue
+            detail = extract_detail(loaded, url)
+            if detail is None:
+                continue
+            title, release_date, subsite = detail
+            score = sceneid_distance_score(scene_id, url_id(url)) if scene_id else None
+            results.append(
+                build_search_result(
+                    title=title,
+                    scene_url=url,
+                    query=text or ctx.title,
+                    display_date=release_date or None,
+                    search_date=ctx.search_date,
+                    score=score,
+                    cur_id=pack_cur_id([p for p in (url, release_date) if p]),
+                    subsite=subsite or None,
+                )
+            )
 
     async def _fetch_search_page(self, clean_query: str, page: int) -> tuple[str, Selector] | None:
         from urllib.parse import quote

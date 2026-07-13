@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 
 from parsel import Selector
 
+from app.clients.aggregators.data18 import data18_scene_id
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
@@ -58,7 +59,7 @@ def _release_date(sel: Any) -> str | None:
 class Data18EmpireClient(Client):
     async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        scene_id = ctx.scene_id if ctx.scene_id and ctx.scene_id.isdigit() and int(ctx.scene_id) > 100 else ''
+        scene_id = data18_scene_id(ctx.scene_id)
 
         movie_urls: list[str] = []
 

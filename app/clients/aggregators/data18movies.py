@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import urlsplit
 
-from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, url_id, xp_first_ns, xp_ns
+from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, xp_first_ns, xp_ns
 from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
+from app.utils.helpers.helpers import iso_date
 from app.utils.helpers.html_helpers import first_attr
-from app.utils.logging.best_effort import best_effort
-from app.utils.searchengines import SearchOptions, web_search
 
 _TITLE_XP = '(//h1)[1]'
 _DATE_ATTR_XP = '(//*[@datetime])[1]/@datetime'
@@ -54,83 +51,35 @@ def _release_date(sel: Any) -> str | None:
     return iso_date(text, '%B, %Y') or iso_date(text)
 
 
+def _clean_ws_url(u: str) -> str | None:
+    cleaned = u.split('-')[0].replace('http:', 'https:')
+    return cleaned if '/movies/' in cleaned and '.html' not in cleaned else None
+
+
+def _extract_detail(loaded: Any, url: str) -> tuple[str, str, str] | None:
+    title = xp_ns(loaded, _TITLE_XP)
+    if not title:
+        return None
+    release_date = _release_date(loaded) or ''
+    studio = _resolve_studio(loaded)
+    subsite = _resolve_series(loaded, studio) or studio
+    return title, release_date, subsite
+
+
 class Data18MoviesClient(Client):
     def __init__(self) -> None:
         super().__init__()
         self._data18 = Data18Client()
 
     async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = ctx.scene_id if ctx.scene_id and ctx.scene_id.isdigit() and int(ctx.scene_id) > 100 else ''
-        text = ctx.title.strip()
-
-        movie_urls: set[str] = set()
-        if scene_id:
-            movie_urls.add(f'{base}/movies/{scene_id}')
-
-        candidates = []
-        with best_effort(ctx.site_info.name, 'find_candidates'):
-            candidates = await self._data18.find_candidates(text or ctx.title, 'movies')
-
-        with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
-            host = urlsplit(ctx.site_info.base_url).hostname or ''
-            for u in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
-                cleaned = u.split('-')[0].replace('http:', 'https:')
-                if '/movies/' in cleaned and '.html' not in cleaned:
-                    movie_urls.add(cleaned)
-
-        seen: set[str] = set()
-
-        for c in candidates:
-            if c.url in seen:
-                continue
-            seen.add(c.url)
-            movie_urls.discard(c.url)
-            title = c.title_raw
-            if c.truncated:
-                loaded = await self._data18.fetch_page(c.url)
-                if loaded is not None:
-                    title = xp_ns(loaded, _TITLE_XP) or title
-            score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
-            results.append(
-                build_search_result(
-                    title=title,
-                    scene_url=c.url,
-                    query=text or ctx.title,
-                    display_date=c.release_date,
-                    search_date=ctx.search_date,
-                    score=score,
-                    cur_id=pack_cur_id([p for p in (c.url, c.release_date) if p]),
-                    subsite=c.provider or None,
-                )
-            )
-
-        for movie_url in movie_urls:
-            if movie_url in seen:
-                continue
-            seen.add(movie_url)
-            loaded = await self._data18.fetch_page(movie_url)
-            if loaded is None:
-                continue
-            title = xp_ns(loaded, _TITLE_XP)
-            if not title:
-                continue
-            release_date = _release_date(loaded) or ''
-            studio = _resolve_studio(loaded)
-            subsite = _resolve_series(loaded, studio) or studio
-            score = sceneid_distance_score(scene_id, url_id(movie_url)) if scene_id else None
-            results.append(
-                build_search_result(
-                    title=title,
-                    scene_url=movie_url,
-                    query=text or ctx.title,
-                    display_date=release_date or None,
-                    search_date=ctx.search_date,
-                    score=score,
-                    cur_id=pack_cur_id([p for p in (movie_url, release_date) if p]),
-                    subsite=subsite or None,
-                )
-            )
+        await self._data18.data18_search(
+            ctx,
+            results,
+            kind='movies',
+            ws_query=ctx.title,
+            clean_ws_url=_clean_ws_url,
+            extract_detail=_extract_detail,
+        )
 
     # ── Context loader ────────────────────────────────────────────────────────
 

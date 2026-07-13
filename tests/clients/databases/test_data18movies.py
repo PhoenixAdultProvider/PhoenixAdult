@@ -6,7 +6,6 @@ import httpx
 import pytest
 import respx
 
-import app.clients.aggregators.data18movies as d18m_module
 from app.clients.aggregators.data18movies import Data18MoviesClient
 from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
@@ -51,7 +50,7 @@ MOVIE_PAGE_REPTYLE = f"""<html><body>{_HEAD}
 
 @respx.mock
 async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
+    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
     q = quote('Big Movie')
     respx.get(f'https://www.data18.com/sys/live.php?index=&key={q}&key2={q}&next=1&page=0').mock(return_value=httpx.Response(200, text=SEARCH_PAGE))
     results: list[SearchResult] = []
@@ -64,7 +63,7 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search:
 
 @respx.mock
 async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
+    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/movies/12345').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results: list[SearchResult] = []
@@ -129,7 +128,7 @@ _SEARCH_ID_VS_TITLE = """<html><body>
 
 @respx.mock
 async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
+    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     respx.get('https://www.data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results: list[SearchResult] = []

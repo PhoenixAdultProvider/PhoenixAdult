@@ -4,9 +4,9 @@ import re
 from urllib.parse import urlsplit
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, pad_jav_id, sceneid_distance_score
+from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
-from app.utils.helpers.javbus_images import fetch_javbus_images
+from app.utils.helpers.javbus_images import push_javbus_images
 from app.utils.logging.logger import logger
 from app.utils.processors.title_case import title_case
 from app.utils.searchengines import SearchOptions, web_search
@@ -190,8 +190,5 @@ class JavLibraryClient(Client):
                 if jav_id.lower() == lib_id.lower():
                     jav_id = bus_id
                     break
-            jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
-            date = self._release_date(scene)
-            for u in await fetch_javbus_images(self.http, jav_id, date):
-                coll['push'](u)
+            await push_javbus_images(self.http, coll, jav_id, _IGNORE_LIST, self._release_date(scene))
         metadata.raw_image_urls = coll['list']

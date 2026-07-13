@@ -4,9 +4,9 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import decensor, iso_date, load_site_json, pad_jav_id, sceneid_distance_score
+from app.utils.helpers.helpers import decensor, iso_date, load_site_json, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
-from app.utils.helpers.javbus_images import fetch_javbus_images
+from app.utils.helpers.javbus_images import push_javbus_images
 from app.utils.processors.title_case import title_case
 
 _TABLES = load_site_json(__file__, 'javdatabase_tables')
@@ -194,8 +194,5 @@ class JAVDatabaseClient(Client):
                 if any(i.lower() == jav_id.lower() for i in db_ids):
                     jav_id = jav_id.replace(db_ids[0], jav_bus_id)
                     break
-            jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
-            date = self._release_date(scene)
-            for u in await fetch_javbus_images(self.http, jav_id, date):
-                coll['push'](u)
+            await push_javbus_images(self.http, coll, jav_id, _IGNORE_LIST, self._release_date(scene))
         metadata.raw_image_urls = coll['list']
