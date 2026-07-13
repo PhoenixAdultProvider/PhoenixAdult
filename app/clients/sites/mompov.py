@@ -50,12 +50,12 @@ class MomPOVClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//a[contains(@class,"title")]') or first_attr(scene.sel, '//meta[@property="og:title"]/@content') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//a[contains(@class,"title")]') or first_attr(sel, '//meta[@property="og:title"]/@content') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"entry_content")]//p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"entry_content")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'MomPOV'
@@ -67,8 +67,8 @@ class MomPOVClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = _holder_date(scene.sel) or scene.scene_date or None
+        sel = scene.require_sel()
+        metadata.release_date = _holder_date(sel) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['MILF']
@@ -77,8 +77,8 @@ class MomPOVClient(Client):
         metadata.actors = []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        first_div = scene.sel.xpath('//div[@id="inner_content"]/div')
+        sel = scene.require_sel()
+        first_div = sel.xpath('//div[@id="inner_content"]/div')
         if not first_div:
             return
         raw = first_attr(first_div[0], '(.//a//img/@src)[1]')

@@ -61,14 +61,12 @@ class DickDrainersClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h3') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        parts = [
-            s.xpath('normalize-space(.)').get() or '' for s in scene.sel.xpath('//div[contains(@class,"videoDetails") and contains(@class,"clear")]//p/span')
-        ]
+        sel = scene.require_sel()
+        parts = [s.xpath('normalize-space(.)').get() or '' for s in sel.xpath('//div[contains(@class,"videoDetails") and contains(@class,"clear")]//p/span')]
         parts = [p for p in parts if p]
         if not parts:
             return
@@ -85,14 +83,14 @@ class DickDrainersClient(Client):
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
             return
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
+        for a in sel.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
             raw = first_attr(a, 'normalize-space(.)')
             if not raw:
                 continue
@@ -102,8 +100,8 @@ class DickDrainersClient(Client):
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        items = scene.sel.xpath('//li[contains(@class,"update_models")]')
+        sel = scene.require_sel()
+        items = sel.xpath('//li[contains(@class,"update_models")]')
         if not items:
             m = _SLUG_RE.search(scene.url)
             if m:
@@ -129,15 +127,15 @@ class DickDrainersClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
 
-        for el in scene.sel.xpath('//div[contains(@class,"player_thumbs")]'):
+        for el in sel.xpath('//div[contains(@class,"player_thumbs")]'):
             coll['push'](el.xpath('@src0_3x').get() or '')
             for child in el.xpath('.//*[@src0_3x]'):
                 coll['push'](child.xpath('@src0_3x').get() or '')
 
-        for script in scene.sel.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
+        for script in sel.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _SRC0_3X_RE.finditer(text):
                 coll['push'](m.group(1))

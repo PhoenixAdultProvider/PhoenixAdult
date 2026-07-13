@@ -62,12 +62,12 @@ class UltrafilmsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '(//h1[contains(@class,"entry-title")])[last()]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '(//h1[contains(@class,"entry-title")])[last()]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"video-description")]//div[contains(@class,"desc")]//p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"video-description")]//div[contains(@class,"desc")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name or ''
@@ -79,8 +79,8 @@ class UltrafilmsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = meta_content(scene.sel, 'article:published_time')
+        sel = scene.require_sel()
+        raw = meta_content(sel, 'article:published_time')
         if raw:
             parsed = iso_date(raw)
             if parsed:
@@ -90,20 +90,20 @@ class UltrafilmsClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//div[contains(@class,"tags-list")]//a[i[contains(@class,"fa-folder-open")]]'):
+        for a in sel.xpath('//div[contains(@class,"tags-list")]//a[i[contains(@class,"fa-folder-open")]]'):
             t = (a.xpath('normalize-space(.)').get() or '').replace('Movies', '').strip().lower()
             if t and t not in genres:
                 genres.append(t)
-        count = len(scene.sel.xpath('//div[@id="video-actors"]//a'))
+        count = len(sel.xpath('//div[@id="video-actors"]//a'))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '')) for a in scene.sel.xpath('//div[@id="video-actors"]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '')) for a in sel.xpath('//div[@id="video-actors"]//a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:

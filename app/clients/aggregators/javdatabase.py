@@ -91,31 +91,31 @@ class JAVDatabaseClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _jav_id(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return meta_content(scene.sel, 'og:title')
+        sel = scene.require_sel()
+        return meta_content(sel, 'og:title')
 
     def _studio(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        studio = _label_link_value(scene.sel, 'Studio:')
+        sel = scene.require_sel()
+        studio = _label_link_value(sel, 'Studio:')
         return decensor(studio, _CENSORED) if studio else ''
 
     def _release_date(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = _label_text_value(scene.sel, 'Release Date:')
+        sel = scene.require_sel()
+        raw = _label_text_value(sel, 'Release Date:')
         return (iso_date(raw, '%Y-%m-%d') if raw else None) or scene.scene_date or None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         jav_id = self._jav_id(scene)
-        raw = decensor(_label_text_value(scene.sel, 'Title:'), _CENSORED)
+        raw = decensor(_label_text_value(sel, 'Title:'), _CENSORED)
         if not raw:
             metadata.title = f'[{jav_id.upper()}]' if jav_id else ''
             return
         metadata.title = f'[{jav_id.upper()}] {raw}'
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = decensor(_label_text_value(scene.sel, 'Title:'), _CENSORED)
+        sel = scene.require_sel()
+        raw = decensor(_label_text_value(sel, 'Title:'), _CENSORED)
         metadata.summary = title_case(raw) if len(raw) > 80 else ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -128,9 +128,9 @@ class JAVDatabaseClient(Client):
         metadata.release_date = self._release_date(scene)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for el in scene.sel.xpath(_LABEL_XP):
+        for el in sel.xpath(_LABEL_XP):
             if first_attr(el, 'normalize-space(.)') != 'Genre(s):':
                 continue
             for a in el.xpath('following-sibling::*//a'):
@@ -149,13 +149,13 @@ class JAVDatabaseClient(Client):
             return False
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         jav_id = self._jav_id(scene)
         correction = _ACTOR_CORRECTIONS.get(jav_id.upper())
         correction_lower = [n.lower() for n in correction] if correction else None
 
         candidates: list[dict[str, str]] = []
-        for card in scene.sel.xpath('(//h4[contains(.,"Actress/Idols")])[1]/..//div[contains(@class,"card-body")]'):
+        for card in sel.xpath('(//h4[contains(.,"Actress/Idols")])[1]/..//div[contains(@class,"card-body")]'):
             name = first_attr(card, '(.//a[contains(@class,"cut-text")])[1]/text()')
             if not name:
                 continue
@@ -183,17 +183,17 @@ class JAVDatabaseClient(Client):
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        name = _label_link_value(scene.sel, 'Director:')
+        sel = scene.require_sel()
+        name = _label_link_value(sel, 'Director:')
         metadata.directors = [ActorResult(name=name)] if name else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: raw.split('?')[0].strip())
 
-        for src in scene.sel.xpath('//tr[contains(@class,"moviecovertb")]//img/@src').getall():
+        for src in sel.xpath('//tr[contains(@class,"moviecovertb")]//img/@src').getall():
             coll['push'](src)
-        for href in scene.sel.xpath('(//h2[contains(.,"Images")])[1]/../a/@href').getall():
+        for href in sel.xpath('(//h2[contains(.,"Images")])[1]/../a/@href').getall():
             coll['push'](href)
 
         jav_id = self._jav_id(scene)

@@ -29,16 +29,16 @@ class VirtualTabooClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"right-info")]//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"right-info")]//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        full = first_text(scene.sel, '//div[contains(@class,"description")]//span[contains(@class,"full")]')
+        sel = scene.require_sel()
+        full = first_text(sel, '//div[contains(@class,"description")]//span[contains(@class,"full")]')
         if full:
             metadata.summary = full
             return
-        metadata.summary = first_text(scene.sel, '//details[contains(@class,"description")]') or ''
+        metadata.summary = first_text(sel, '//details[contains(@class,"description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name or ''
@@ -50,8 +50,8 @@ class VirtualTabooClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"info mt-5")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"info mt-5")]')
         parts = raw.split('•')
         if len(parts) < 2:
             if scene.scene_date:
@@ -61,23 +61,23 @@ class VirtualTabooClient(Client):
         metadata.release_date = iso_date(date_raw) if date_raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in scene.sel.xpath('//div[contains(@class,"tag-list")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in sel.xpath('//div[contains(@class,"tag-list")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries = [
             ActorResult(name=(a.xpath('normalize-space(.)').get() or ''))
-            for a in scene.sel.xpath('//div[contains(@class,"right-info")]//div[contains(@class,"info")]//a')
+            for a in sel.xpath('//div[contains(@class,"right-info")]//div[contains(@class,"info")]//a')
         ]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip().split('?')[0], base))
-        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        for href in scene.sel.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
+        coll['push'](sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        for href in sel.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

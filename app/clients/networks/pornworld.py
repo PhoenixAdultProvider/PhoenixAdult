@@ -135,13 +135,13 @@ class PornWorldClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
         metadata.title = _clean_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[text()="Description:"]/following-sibling::div)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[text()="Description:"]/following-sibling::div)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -153,26 +153,26 @@ class PornWorldClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//i[contains(@class,"bi-calendar")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//i[contains(@class,"bi-calendar")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"genres-list")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"genres-list")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//h1[contains(@class,"watch__title")]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//h1[contains(@class,"watch__title")]//a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
-        for raw in scene.sel.xpath('//video/@data-poster').getall():
+        for raw in sel.xpath('//video/@data-poster').getall():
             coll['push'](raw)
         metadata.art = coll['list']

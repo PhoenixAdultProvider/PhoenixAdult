@@ -55,8 +55,8 @@ class IntersecClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        links = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
+        sel = scene.require_sel()
+        links = sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         if not links:
             return _TAGLINE_FALLBACK
         last = links[-1]
@@ -64,12 +64,12 @@ class IntersecClient(Client):
         return _resolve_tagline(link_text)
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[3]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"has-text-white-ter")])[3]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -82,30 +82,30 @@ class IntersecClient(Client):
         metadata.collections = [tag] if tag else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//span[contains(@class,"is-dark")][1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//span[contains(@class,"is-dark")][1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
         else:
             metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = ['BDSM']
-        dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
+        dark = sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         actor_count = max(0, len(dark) - 1)
         if (group := self.group_genre_for(actor_count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
+        sel = scene.require_sel()
+        dark = sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         entries = [ActorResult(name=first_attr(el)) for el in dark[:-1]]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
 
         if scene.scene_date and '|' in scene.scene_date:
@@ -120,7 +120,7 @@ class IntersecClient(Client):
 
         xpaths = ('//video-js/@poster', '//figure//img/@src')
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

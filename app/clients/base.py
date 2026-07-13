@@ -123,6 +123,11 @@ class LoadedScene:
     subsite: str | None = None
     language: str | None = None
 
+    def require_sel(self) -> Selector:
+        if self.sel is None:
+            raise ValueError(f'{self.url}: scene has no parsed HTML')
+        return self.sel
+
 
 @dataclass
 class LoadedSearch:

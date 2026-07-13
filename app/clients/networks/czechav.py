@@ -48,13 +48,13 @@ class CzechAVClient(Client):
         return _CASTING_HOST in scene.site.base_url
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         metadata.title = raw.split(':')[-1].strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ps = scene.sel.xpath('//div[contains(@class,"read-more")]//p')
+        sel = scene.require_sel()
+        ps = sel.xpath('//div[contains(@class,"read-more")]//p')
         if not ps:
             return
         second = first_attr(ps[1]) if len(ps) > 1 else ''
@@ -74,26 +74,26 @@ class CzechAVClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            el.xpath('string(.)').get() or '' for el in scene.sel.xpath('//ul[contains(@class,"tags")]//li | //ul//li[contains(@class,"tag")]')
+            el.xpath('string(.)').get() or '' for el in sel.xpath('//ul[contains(@class,"tags")]//li | //ul//li[contains(@class,"tag")]')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if not self._is_casting(scene):
             return
-        name = (scene.sel.xpath('(//span[@class="name"])[1]').xpath('string(.)').get() or '').strip()
+        name = (sel.xpath('(//span[@class="name"])[1]').xpath('string(.)').get() or '').strip()
         if not name:
             return
-        age = (scene.sel.xpath('(//span[@class="age"])[1]').xpath('string(.)').get() or '').strip()
+        age = (sel.xpath('(//span[@class="age"])[1]').xpath('string(.)').get() or '').strip()
         full_name = f'{name} {age}' if age else name
-        photo = first_attr(scene.sel, '(//div[contains(@class,"gallery")]//a)[1]/@href')
+        photo = first_attr(sel, '(//div[contains(@class,"gallery")]//a)[1]/@href')
         metadata.actors = [ActorResult(name=full_name, photo_url=photo)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
@@ -101,7 +101,7 @@ class CzechAVClient(Client):
             '//img[contains(@class,"thumb")]/@src',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

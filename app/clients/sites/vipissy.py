@@ -44,15 +44,15 @@ class VIPissyClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        all_text = first_text(scene.sel, _SUMMARY_BLOCK_XP)
+        sel = scene.require_sel()
+        all_text = first_text(sel, _SUMMARY_BLOCK_XP)
         if not all_text:
             return
-        tags = first_text(scene.sel, _TAGS_BLOCK_XP)
+        tags = first_text(sel, _TAGS_BLOCK_XP)
         summary = all_text.replace(tags, '').strip() if tags else all_text
         metadata.summary = summary.split('Show more...')[0].strip() or ''
 
@@ -66,8 +66,8 @@ class VIPissyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, _DATE_XP)
+        sel = scene.require_sel()
+        raw = first_text(sel, _DATE_XP)
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
@@ -77,23 +77,23 @@ class VIPissyClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for el in scene.sel.xpath(_TAGS_LINK_XP):
+        for el in sel.xpath(_TAGS_LINK_XP):
             t = first_attr(el, 'normalize-space(.)').lower()
             if t and t not in genres:
                 genres.append(t)
-        count = len(scene.sel.xpath(_ACTORS_XP))
+        count = len(sel.xpath(_ACTORS_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(_ACTORS_XP):
+        for a in sel.xpath(_ACTORS_XP):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if not name or name in seen:
@@ -111,10 +111,10 @@ class VIPissyClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
-        for raw in scene.sel.xpath(_POSTERS_XP).getall():
+        for raw in sel.xpath(_POSTERS_XP).getall():
             coll['push'](raw)
         images = coll['list']
         idx = scene.url.find('/updates')

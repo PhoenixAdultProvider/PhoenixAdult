@@ -58,13 +58,13 @@ class TeenyTabooClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//h1[contains(@class,"customhcolor")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//h1[contains(@class,"customhcolor")]')
         metadata.title = raw.replace('-', ' ') if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//h2[contains(@class,"customhcolor2")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//h2[contains(@class,"customhcolor2")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -73,13 +73,13 @@ class TeenyTabooClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[contains(@class,"date")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[contains(@class,"date")]')
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('string((//h3)[1])').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('string((//h3)[1])').get() or ''
         if not raw:
             return
         actors: list[ActorResult] = []
@@ -92,9 +92,9 @@ class TeenyTabooClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda src: absolute_url((src or '').strip(), base))
-        for src in scene.sel.xpath('//center//img/@src').getall():
+        for src in sel.xpath('//center//img/@src').getall():
             coll['push'](src)
         metadata.art = coll['list']

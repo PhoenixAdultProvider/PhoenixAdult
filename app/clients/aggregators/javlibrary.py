@@ -97,16 +97,16 @@ class JavLibraryClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _table_link(self, scene: LoadedScene, label: str) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath(f'(//td[contains(.,"{label}")])[1]/following-sibling::td[1]//span//a[1]/text()').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath(f'(//td[contains(.,"{label}")])[1]/following-sibling::td[1]//span//a[1]/text()').get() or '').strip()
 
     def _og_jav_id(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return meta_content(scene.sel, 'og:title').split(' ')[0]
+        sel = scene.require_sel()
+        return meta_content(sel, 'og:title').split(' ')[0]
 
     def _og_title_parts(self, scene: LoadedScene) -> tuple[str, str]:
-        assert scene.sel is not None
-        og = meta_content(scene.sel, 'og:title')
+        sel = scene.require_sel()
+        og = meta_content(sel, 'og:title')
         if not og:
             return '', ''
         jav_id = og.split(' ')[0]
@@ -114,8 +114,8 @@ class JavLibraryClient(Client):
         return jav_id, title
 
     def _release_date(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//td[contains(.,"Release Date:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//td[contains(.,"Release Date:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
         return (iso_date(raw, '%Y-%m-%d') if raw else None) or scene.scene_date or None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -143,12 +143,12 @@ class JavLibraryClient(Client):
         metadata.release_date = self._release_date(scene)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[@rel="category tag"]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[@rel="category tag"]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
@@ -162,7 +162,7 @@ class JavLibraryClient(Client):
         for name, ids in _ACTORS.items():
             if any(i.lower() == jav_id.lower() for i in ids):
                 add(name)
-        for el in scene.sel.xpath('//span[contains(@class,"star")]//a'):
+        for el in sel.xpath('//span[contains(@class,"star")]//a'):
             add(el.xpath('normalize-space(.)').get() or '')
         metadata.actors = actors
 
@@ -171,15 +171,15 @@ class JavLibraryClient(Client):
         metadata.directors = [ActorResult(name=name)] if name else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: (raw or '').strip())
 
-        poster = first_attr(scene.sel, '(//img[@id="video_jacket_img"]/@src)[1]')
+        poster = first_attr(sel, '(//img[@id="video_jacket_img"]/@src)[1]')
         if poster and 'https' not in poster:
             poster = f'https:{poster}'
         coll['push'](poster)
 
-        for thumb in scene.sel.xpath('//div[contains(@class,"previewthumbs")]//img/@src').getall():
+        for thumb in sel.xpath('//div[contains(@class,"previewthumbs")]//img/@src').getall():
             thumb = (thumb or '').strip()
             m = re.search(r'-([1-9]+)\.jpg', thumb)
             coll['push'](f'{thumb[: m.start()]}jp{thumb[m.start() :]}' if m else thumb)

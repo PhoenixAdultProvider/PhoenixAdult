@@ -37,13 +37,13 @@ class MomComesFirstClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         parts: list[str] = []
-        for p in scene.sel.xpath('//div[contains(@class,"entry-content")]//p'):
+        for p in sel.xpath('//div[contains(@class,"entry-content")]//p'):
             t = first_attr(p, 'normalize-space(.)')
             if t and 'starring' not in t.lower():
                 parts.append(t)
@@ -56,28 +56,28 @@ class MomComesFirstClient(Client):
         metadata.collections = ['Mom Comes First']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[contains(@class,"published")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[contains(@class,"published")]')
         metadata.release_date = (iso_date(raw, '%b %d, %Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
+        for a in sel.xpath('//a[contains(@rel,"tag")]'):
             g = title_case(first_attr(a, 'normalize-space(.)'))
             if g and g.lower() not in _ACTORS and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         names: list[str] = []
-        for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
+        for a in sel.xpath('//a[contains(@rel,"tag")]'):
             g = title_case(first_attr(a, 'normalize-space(.)'))
             if g and g.lower() in _ACTORS:
                 names.append(g)
 
-        paras = scene.sel.xpath('//div[contains(@class,"entry-content")]//p')
+        paras = sel.xpath('//div[contains(@class,"entry-content")]//p')
         if paras:
             last_p = paras[-1].xpath('normalize-space(.)').get() or ''
             if 'starring' in last_p.lower():

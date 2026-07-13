@@ -71,12 +71,12 @@ class XartClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in scene.sel.xpath(_SUMMARY_XP)) if t]
+        sel = scene.require_sel()
+        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in sel.xpath(_SUMMARY_XP)) if t]
         metadata.summary = '\n\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -86,26 +86,26 @@ class XartClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = re.sub(r'.$', '', first_text(scene.sel, '(//h2)[3]'))
+        sel = scene.require_sel()
+        raw = re.sub(r'.$', '', first_text(sel, '(//h2)[3]'))
         if not raw:
             return
         metadata.release_date = iso_date(raw, '%b %d, %Y') or iso_date(raw)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = ['Artistic', 'Glamorous']
-        count = len(scene.sel.xpath('//h2//a'))
+        count = len(sel.xpath('//h2//a'))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//h2//a'):
+        for el in sel.xpath('//h2//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = re.sub(r'^http:', 'https:', first_attr(el, '@href'))
             if not name or not href or name in seen:
@@ -118,7 +118,7 @@ class XartClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: (raw or '').strip())
 
         def harvest(sel: Any) -> None:
@@ -139,10 +139,10 @@ class XartClient(Client):
         if gallery_url != scene.url:
             gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
             harvest(gallery['sel'] if gallery else None)
-        harvest(scene.sel)
+        harvest(sel)
 
-        title = first_text(scene.sel, _TITLE_XP) or ''
-        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//h2//a')])
+        title = first_text(sel, _TITLE_XP) or ''
+        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in sel.xpath('//h2//a')])
 
         if title and actor_names:
 

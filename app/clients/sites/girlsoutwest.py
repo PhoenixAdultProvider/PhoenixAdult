@@ -48,8 +48,8 @@ class GirlsOutWestClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = meta_content(scene.sel, 'twitter:title') or ''
+        sel = scene.require_sel()
+        metadata.title = meta_content(sel, 'twitter:title') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'GirlsOutWest'
@@ -61,22 +61,22 @@ class GirlsOutWestClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = self._date_from(scene.sel)
+        sel = scene.require_sel()
+        metadata.release_date = self._date_from(sel)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = ['Amateur', 'Australian']
-        count = len(scene.sel.xpath(_CAST_XP))
+        count = len(sel.xpath(_CAST_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_CAST_XP):
+        for el in sel.xpath(_CAST_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -92,9 +92,9 @@ class GirlsOutWestClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: join_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//div[contains(@class,"videoplayer")]//img/@src0_3x').getall():
+        for raw in sel.xpath('//div[contains(@class,"videoplayer")]//img/@src0_3x').getall():
             raw = (raw or '').strip()
             if not raw:
                 continue

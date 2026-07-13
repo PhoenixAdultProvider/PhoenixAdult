@@ -51,12 +51,12 @@ class FemdomEmpireClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//h3)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"videoDetails")]//h3)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -68,18 +68,18 @@ class FemdomEmpireClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         raw = (
-            (scene.sel.xpath('(//div[contains(@class,"videoInfo") and contains(@class,"clear")]//p)[1]').xpath('string(.)').get() or '')
+            (sel.xpath('(//div[contains(@class,"videoInfo") and contains(@class,"clear")]//p)[1]').xpath('string(.)').get() or '')
             .replace('Date Added:', '')
             .strip()
         )
         metadata.release_date = iso_date(raw, _DATE_FMT) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for el in scene.sel.xpath('(//div[contains(@class,"featuring")])[2]//ul//li'):
+        for el in sel.xpath('(//div[contains(@class,"featuring")])[2]//ul//li'):
             g = first_attr(el).lower().replace('categories:', '').replace('tags:', '').strip()
             if g:
                 genres.append(g)
@@ -88,20 +88,20 @@ class FemdomEmpireClient(Client):
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('(//div[contains(@class,"featuring")])[1]/ul/li'):
+        for el in sel.xpath('(//div[contains(@class,"featuring")])[1]/ul/li'):
             name = (el.xpath('string(.)').get() or '').replace('Featuring:', '').strip()
             if name:
                 actors.append(ActorResult(name=name))
-        title = (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//h3)[1]').xpath('string(.)').get() or '').strip()
+        title = (sel.xpath('(//div[contains(@class,"videoDetails")]//h3)[1]').xpath('string(.)').get() or '').strip()
         if title == 'Owned by Alexis' and not any(a.name == 'Alexis Monroe' for a in actors):
             actors.append(ActorResult(name='Alexis Monroe'))
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//a[contains(@class,"fake_trailer")]//img/@src0_1x').getall():
+        for raw in sel.xpath('//a[contains(@class,"fake_trailer")]//img/@src0_1x').getall():
             coll['push'](raw)
         metadata.art = coll['list'] or []

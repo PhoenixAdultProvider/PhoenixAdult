@@ -140,8 +140,8 @@ class PervCityClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        about = (scene.sel.xpath('(//div[@class="about"]//h3)[1]').xpath('string(.)').get() or '').replace('About', '').strip()
+        sel = scene.require_sel()
+        about = (sel.xpath('(//div[@class="about"]//h3)[1]').xpath('string(.)').get() or '').replace('About', '').strip()
         if about:
             return about
         if scene.site.name.replace(' ', '') != STUDIO:
@@ -149,16 +149,16 @@ class PervCityClient(Client):
         return STUDIO
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        info = (scene.sel.xpath('(//div[contains(@class,"infoBox")]//p)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        info = (sel.xpath('(//div[contains(@class,"infoBox")]//p)[1]').xpath('string(.)').get() or '').strip()
         if info:
             metadata.summary = info
             return
-        metadata.summary = (scene.sel.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
+        metadata.summary = (sel.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -176,17 +176,17 @@ class PervCityClient(Client):
         metadata.release_date = (scene.extra or {}).get('crawled_date')
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[@class="tagcats"]/a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[@class="tagcats"]/a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = (scene.extra or {}).get('actors') or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
-        for raw in scene.sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
+        for raw in sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
             coll['push'](raw)
         metadata.art = coll['list']

@@ -53,33 +53,33 @@ class FittingRoomClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _extract_title(scene.sel) or ''
+        sel = scene.require_sel()
+        metadata.title = _extract_title(sel) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div/div[contains(.,"Description")]/em') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div/div[contains(.,"Description")]/em') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        collection = first_text(scene.sel, '//div/div[contains(.,"Series")]/a')
+        sel = scene.require_sel()
+        collection = first_text(sel, '//div/div[contains(.,"Series")]/a')
         if not collection:
-            collection = _COLLECTIONS.get(_extract_title(scene.sel), '')
+            collection = _COLLECTIONS.get(_extract_title(sel), '')
         metadata.collections = [STUDIO, collection] if collection else [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        date = meta_content(scene.sel, 'video:release_date')
+        sel = scene.require_sel()
+        date = meta_content(sel, 'video:release_date')
         metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        actor_name = first_attr(scene.sel, '(//a[contains(@class,"model")]//img/@alt)[1]')
+        sel = scene.require_sel()
+        actor_name = first_attr(sel, '(//a[contains(@class,"model")]//img/@alt)[1]')
         genres: list[str] = []
-        for raw in scene.sel.xpath('//meta[@property="video:tag"]/@content').getall():
+        for raw in sel.xpath('//meta[@property="video:tag"]/@content').getall():
             raw = (raw or '').strip()
             cleaned = (raw.replace(actor_name, '').strip() if actor_name else raw).lower()
             if cleaned and cleaned not in genres:
@@ -89,10 +89,10 @@ class FittingRoomClient(Client):
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div/div[contains(.,"Models")]/a'):
+        for el in sel.xpath('//div/div[contains(.,"Models")]/a'):
             name = (el.xpath('normalize-space(.)').get() or '').strip()
             key = name.lower()
             if not name or key in seen:

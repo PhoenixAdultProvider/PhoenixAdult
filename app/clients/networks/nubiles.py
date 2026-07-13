@@ -119,16 +119,16 @@ class NubilesClient(Client):
     # ── Field hooks ────────────────────────────────────────────────────────────
 
     def _summary_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        block = scene.sel.xpath('(//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]/div)[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        block = sel.xpath('(//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]/div)[1]').xpath('string(.)').get() or ''
         if block:
             return block.split('Show More')[0].strip()
-        paragraphs = [first_attr(p) for p in scene.sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
+        paragraphs = [first_attr(p) for p in sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
         return '\n\n'.join(p for p in paragraphs if p).strip()
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('-')]
         metadata.title = (f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or ''
 
@@ -145,14 +145,14 @@ class NubilesClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"content-pane")]//span[@class="date"])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"content-pane")]//span[@class="date"])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//div[@class="categories"]/a'):
+        for a in sel.xpath('//div[@class="categories"]/a'):
             g = first_attr(a, 'normalize-space(.)')
             lc = g.lower()
             if g and '.com' not in lc and '.xxx' not in lc:
@@ -160,10 +160,10 @@ class NubilesClient(Client):
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//div[contains(@class,"content-pane-performer")]/a'):
+        for el in sel.xpath('//div[contains(@class,"content-pane-performer")]/a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href:
@@ -187,15 +187,15 @@ class NubilesClient(Client):
         return ActorResult(name=name, photo_url=photo, gender=gender)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         out: list[str] = []
-        poster = first_attr(scene.sel, '(//video)[1]/@poster')
+        poster = first_attr(sel, '(//video)[1]/@poster')
         if poster:
             out.append(to_https(poster))
 
         m = _WATCH_ID_RE.search(scene.url)
         scene_id = m.group(1) if m else ''
-        gallery_url = self._find_gallery_url(scene.sel, scene.site.base_url.rstrip('/'), scene_id)
+        gallery_url = self._find_gallery_url(sel, scene.site.base_url.rstrip('/'), scene_id)
         if gallery_url:
             gsel = await self._get(gallery_url, scene.site.base_url, None, f'GET {gallery_url} (gallery)')
             if gsel is not None:

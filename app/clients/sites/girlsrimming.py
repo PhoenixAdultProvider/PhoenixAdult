@@ -46,12 +46,12 @@ class GirlsRimmingClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_attr(scene.sel, '(//h2[contains(@class,"title")]/text())[1]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_attr(sel, '(//h2[contains(@class,"title")]/text())[1]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = meta_content(scene.sel, 'description') or ''
+        sel = scene.require_sel()
+        metadata.summary = meta_content(sel, 'description') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Girls Rimming'
@@ -66,8 +66,8 @@ class GirlsRimmingClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     def _keywords(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
+        sel = scene.require_sel()
+        return sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres: list[str] = []
@@ -114,8 +114,8 @@ class GirlsRimmingClient(Client):
         return join_url(raw, base) if raw else ''
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: join_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
+        for raw in sel.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

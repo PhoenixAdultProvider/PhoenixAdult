@@ -64,8 +64,8 @@ class PornstarPlatinumClient(Client):
         metadata.title = (self._data(scene).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"panel-content")]//p')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"panel-content")]//p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Pornstar Platinum'
@@ -80,8 +80,8 @@ class PornstarPlatinumClient(Client):
         metadata.release_date = (self._data(scene).get('releaseDate') or '') or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"tagcloud")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"tagcloud")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

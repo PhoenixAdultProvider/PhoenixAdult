@@ -121,22 +121,20 @@ class ScoreGroupClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         packed, is_latest = self._data(scene)
         if is_latest and packed.get('title'):
             metadata.title = _clean_title(packed['title'])
             return
-        raw = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div//span[@class="value"]/a')) if n]
+            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div//span[@class="value"]/a')) if n]
             raw = ' and '.join(names)
         metadata.title = _clean_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (
-            scene.sel.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or ''
-        ).strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -148,23 +146,23 @@ class ScoreGroupClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
             a.xpath('normalize-space(.)').get()
-            for a in scene.sel.xpath('//div[@class="mb-3"]//a | //div[contains(@class,"desc")]//a[contains(@href,"tag") or contains(@href,"category")]')
+            for a in sel.xpath('//div[@class="mb-3"]//a | //div[contains(@class,"desc")]//a[contains(@href,"tag") or contains(@href,"category")]')
         ]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         packed, is_latest = self._data(scene)
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -179,7 +177,7 @@ class ScoreGroupClient(Client):
             return
 
         base = scene.site.base_url
-        for el in scene.sel.xpath('//div//span[@class="value"]/a'):
+        for el in sel.xpath('//div//span[@class="value"]/a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href').split('?')[0]
             if not name or name.lower() == 'extra' or name in seen:
@@ -197,7 +195,7 @@ class ScoreGroupClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         images: list[str] = []
 
         def push(raw: str) -> None:
@@ -231,6 +229,6 @@ class ScoreGroupClient(Client):
             '//div[contains(@class,"gallery")]//a/@href',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 push(raw)
         metadata.art = images or []

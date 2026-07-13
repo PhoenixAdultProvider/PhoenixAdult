@@ -119,20 +119,20 @@ class AbbyWintersClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _parse_page_title(scene.sel) or ''
+        sel = scene.require_sel()
+        metadata.title = _parse_page_title(sel) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//aside//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').replace('\n', '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//aside//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').replace('\n', '').strip()
         metadata.summary = raw or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     def _subsite(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@id="shoot-featured-image"]//h4)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath('(//div[@id="shoot-featured-image"]//h4)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._subsite(scene) or None
@@ -145,19 +145,19 @@ class AbbyWintersClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g]
+        sel = scene.require_sel()
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//aside//div[contains(@class,"description")]//a')) if g]
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
             return first_attr(sel, '(//img[contains(@class,"img-responsive")]/@src)[1]')
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//tr[contains(.,"Scene")]//a'):
+        for el in sel.xpath('//tr[contains(.,"Scene")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
@@ -165,14 +165,14 @@ class AbbyWintersClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
         xpaths = (
             '//div[contains(@class,"tile-image")]//img/@src',
             '//div[contains(@class,"video")]/@data-poster',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

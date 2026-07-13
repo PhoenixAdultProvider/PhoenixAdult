@@ -45,12 +45,12 @@ class CherryPimpsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath(f'({_DETAIL_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath(f'({_DETAIL_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath(f'({_DETAIL_SUMMARY_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath(f'({_DETAIL_SUMMARY_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -62,26 +62,26 @@ class CherryPimpsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath(f'({_DETAIL_DATE_XP})[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath(f'({_DETAIL_DATE_XP})[1]').xpath('string(.)').get() or ''
         if not raw:
             return
         tok = raw.split('|')[0].replace('Added', '').replace(':', '').strip()
         metadata.release_date = iso_date(tok) if tok else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath(_DETAIL_GENRES_XP)])
-        count = len(scene.sel.xpath(_DETAIL_ACTORS_XP))
+        sel = scene.require_sel()
+        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in sel.xpath(_DETAIL_GENRES_XP)])
+        count = len(sel.xpath(_DETAIL_ACTORS_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_DETAIL_ACTORS_XP):
+        for el in sel.xpath(_DETAIL_ACTORS_XP):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip()
@@ -106,9 +106,9 @@ class CherryPimpsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
-        for el in scene.sel.xpath('//img[contains(@class,"update_thumb")]'):
+        for el in sel.xpath('//img[contains(@class,"update_thumb")]'):
             for attr in ('@src', '@src0_1x'):
                 raw = (el.xpath(attr).get() or '').strip()
                 if raw.startswith('http'):

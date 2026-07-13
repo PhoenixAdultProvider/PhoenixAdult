@@ -77,19 +77,17 @@ class CouplesCinemaClient(Client):
         return ''
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
         return raw.split('|')[0].strip() or None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (
-            scene.sel.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or ''
-        ).strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//span[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -102,23 +100,23 @@ class CouplesCinemaClient(Client):
         metadata.collections = [tag] if tag else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         date_part = self._date_part(scene)
         if date_part:
             metadata.release_date = iso_date(date_part) or date_part
             return
-        raw = (scene.sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
+        raw = (sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('|')]
         year = parts[1] if len(parts) > 1 else ''
         metadata.release_date = f'{year}-01-01' if _YEAR_RE.match(year) else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a)) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a)) for a in sel.xpath('//div[contains(@class,"cast")]//a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
 
         cover_packed = self._cover_part(scene)
@@ -128,7 +126,7 @@ class CouplesCinemaClient(Client):
             except Exception as err:  # noqa: BLE001 - decode failures are non-fatal
                 logger.debug(scene.site.name, f'cover decode: {err}')
 
-        for raw in scene.sel.xpath('//video/@poster').getall():
+        for raw in sel.xpath('//video/@poster').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

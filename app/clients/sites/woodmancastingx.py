@@ -59,12 +59,12 @@ class WoodmanCastingXClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//p[contains(@class,"description")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//p[contains(@class,"description")]')
         metadata.summary = ' '.join(raw.split()) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -77,8 +77,8 @@ class WoodmanCastingXClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        trailing = first_attr(scene.sel, '(//span[contains(.,"Published")]/following-sibling::text())[1]')
+        sel = scene.require_sel()
+        trailing = first_attr(sel, '(//span[contains(.,"Published")]/following-sibling::text())[1]')
         raw = trailing.lstrip(':').strip()
         if raw:
             parsed = iso_date(raw)
@@ -89,14 +89,14 @@ class WoodmanCastingXClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
-        blocks = scene.sel.xpath('//div[contains(@class,"block_girls_videos")]//a[contains(@class,"girl_item")]')
+        blocks = sel.xpath('//div[contains(@class,"block_girls_videos")]//a[contains(@class,"girl_item")]')
         if blocks:
             actors: list[ActorResult] = []
             seen: set[str] = set()
@@ -110,17 +110,17 @@ class WoodmanCastingXClient(Client):
                 actors.append(ActorResult(name=name, photo_url=photo))
             metadata.actors = actors
             return
-        crumb = first_text(scene.sel, '//div[@id="breadcrumb"]//span[contains(@class,"crumb")]')
+        crumb = first_text(sel, '//div[@id="breadcrumb"]//span[contains(@class,"crumb")]')
         name = crumb.split('-')[0].strip()
         metadata.actors = [ActorResult(name=name)] if name else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
-        for poster in scene.sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
+        for poster in sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
             coll['push'](poster)
-        for script in scene.sel.xpath('//script/text()').getall():
+        for script in sel.xpath('//script/text()').getall():
             if 'var player' not in script:
                 continue
             m = _IMAGE_RE.search(script)

@@ -144,10 +144,10 @@ class AlsAngelsClient(Client):
         metadata.genres = [subject] if subject else []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         ex = self._ex(scene)
         base = scene.site.base_url.rstrip('/')
-        photo = first_attr(scene.sel, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
+        photo = first_attr(sel, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
         if photo.startswith('..'):
             photo = photo.replace('..', base)
         metadata.actors = [ActorResult(name=ex['model_name'], photo_url=photo, gender='female')] if ex.get('model_name') else []

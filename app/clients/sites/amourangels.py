@@ -40,8 +40,8 @@ class AmourAngelsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _strip_video_label(first_text(scene.sel, _TITLE_XP))
+        sel = scene.require_sel()
+        metadata.title = _strip_video_label(first_text(sel, _TITLE_XP))
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -50,8 +50,8 @@ class AmourAngelsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        cell_text = first_text(scene.sel, _DATE_CELL_XP)
+        sel = scene.require_sel()
+        cell_text = first_text(sel, _DATE_CELL_XP)
         parts = cell_text.split('Added')
         if len(parts) < 2:
             return
@@ -62,10 +62,10 @@ class AmourAngelsClient(Client):
         metadata.genres = ['Softcore', 'European Girls']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath('//td[contains(@class,"modinfo")]//a'):
+        for a in sel.xpath('//td[contains(@class,"modinfo")]//a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if not name or not href:
@@ -87,8 +87,8 @@ class AmourAngelsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in scene.sel.xpath('//td[contains(@class,"noisebg")]//div//img'):
+        for el in sel.xpath('//td[contains(@class,"noisebg")]//div//img'):
             coll['push'](first_attr(el, '@src'))
         metadata.art = coll['list']

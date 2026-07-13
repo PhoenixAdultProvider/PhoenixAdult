@@ -261,25 +261,25 @@ class AdultEmpireClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        title = _h1_title(scene.sel)
+        sel = scene.require_sel()
+        title = _h1_title(sel)
         if not title:
             return
         scene_num = self._packed(scene).get('sceneNum')
         metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in scene.sel.xpath('//div[@class="container"][.//h2]//parent::p')) if t]
+        sel = scene.require_sel()
+        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in sel.xpath('//div[@class="container"][.//h2]//parent::p')) if t]
         metadata.summary = '\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.studio = _studio(scene.sel) or ''
+        sel = scene.require_sel()
+        metadata.studio = _studio(sel) or ''
 
     def _tagline_value(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        series = first_attr(scene.sel, '(//h2//a[@label="Series"])[1]/text()')
+        sel = scene.require_sel()
+        series = first_attr(sel, '(//h2//a[@label="Series"])[1]/text()')
         if not series:
             return None
         parts = series.split('"')
@@ -292,9 +292,9 @@ class AdultEmpireClient(Client):
         metadata.tagline = self._tagline_value(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         collections: list[str] = []
-        studio = _studio(scene.sel)
+        studio = _studio(sel)
         if studio:
             collections.append(studio)
         tagline = self._tagline_value(scene)
@@ -302,22 +302,22 @@ class AdultEmpireClient(Client):
             if tagline not in collections:
                 collections.append(tagline)
         elif self._packed(scene).get('sceneNum') is not None:
-            h1 = _h1_title(scene.sel)
+            h1 = _h1_title(sel)
             if h1 and h1 not in collections:
                 collections.append(h1)
         metadata.collections = collections or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = _release_date(scene.sel)
+        sel = scene.require_sel()
+        metadata.release_date = _release_date(sel)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//li//a[@label="Category"]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//li//a[@label="Category"]')]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         packed = self._packed(scene)
         split_scene = packed.get('sceneNum') is not None
         actors: list[ActorResult] = []
@@ -329,9 +329,9 @@ class AdultEmpireClient(Client):
                 seen.add(n)
                 actors.append(ActorResult(name=n, photo_url=photo))
 
-        anchors = scene.sel.xpath(_STARRING_ANCHORS)
+        anchors = sel.xpath(_STARRING_ANCHORS)
         if split_scene:
-            rows = scene.sel.xpath('//div[contains(@class,"row")][.//h3]')
+            rows = sel.xpath('//div[contains(@class,"row")][.//h3]')
             idx = packed.get('sceneIndex') or 0
             if idx < len(rows):
                 row_anchors = rows[idx].xpath('.//div/a')
@@ -340,7 +340,7 @@ class AdultEmpireClient(Client):
 
         for a in anchors:
             name = a.xpath('normalize-space(.)').get() or ''
-            photo = (scene.sel.xpath(f'(//div[contains(.,"Starring")]//img[contains(@title,"{name.strip()}")]/@src)[1]').get() or '') if name.strip() else ''
+            photo = (sel.xpath(f'(//div[contains(.,"Starring")]//img[contains(@title,"{name.strip()}")]/@src)[1]').get() or '') if name.strip() else ''
             add(name, photo)
 
         for extra_name in _SCENE_ACTORS.get(re.sub(r'.*/', '', packed.get('movieURL', '')), []):
@@ -348,10 +348,10 @@ class AdultEmpireClient(Client):
         metadata.actors = actors or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         directors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(f'{_CAST_LI}[*[contains(.,"Director")]]//a'):
+        for a in sel.xpath(f'{_CAST_LI}[*[contains(.,"Director")]]//a'):
             name = first_attr(a, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
@@ -359,10 +359,10 @@ class AdultEmpireClient(Client):
         metadata.directors = directors or None
 
     async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         producers: list[ActorResult] = []
         seen: set[str] = set()
-        for node in scene.sel.xpath(f'{_CAST_LI}[*[contains(.,"Producer")]]/text()'):
+        for node in sel.xpath(f'{_CAST_LI}[*[contains(.,"Producer")]]/text()'):
             name = (node.get() or '').strip()
             if name and name not in seen:
                 seen.add(name)
@@ -370,17 +370,17 @@ class AdultEmpireClient(Client):
         metadata.producers = producers or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         images: list[str] = []
-        cover = first_attr(scene.sel, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
-        cover_href = first_attr(scene.sel, '(//div[contains(@class,"boxcover-container")]//a/@href)[1]')
+        cover = first_attr(sel, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
+        cover_href = first_attr(sel, '(//div[contains(@class,"boxcover-container")]//a/@href)[1]')
         if cover:
             images.append(cover)
         if cover_href:
             images.append(cover_href)
 
         packed = self._packed(scene)
-        rows = scene.sel.xpath('//div[contains(@class,"row")][.//div[contains(@class,"row")] and .//a[@rel="scenescreenshots"]]')
+        rows = sel.xpath('//div[contains(@class,"row")][.//div[contains(@class,"row")] and .//a[@rel="scenescreenshots"]]')
         if packed.get('sceneNum') is not None:
             idx = packed.get('sceneIndex') or 0
             hrefs = rows[idx].xpath('.//a/@href').getall() if idx < len(rows) else []

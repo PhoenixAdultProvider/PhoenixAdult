@@ -79,8 +79,8 @@ class SicflicsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//h4[contains(@class,"red")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//h4[contains(@class,"red")]')
         metadata.title = raw.lower() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -96,18 +96,16 @@ class SicflicsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[@title="Date Added"]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[@title="Date Added"]')
         if not raw:
             return
         tail = raw.split(':', 1)[1].strip() if ':' in raw else raw
         metadata.release_date = iso_date(tail) if tail else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [
-            (a.xpath('normalize-space(.)').get() or '').replace('#', '') for a in scene.sel.xpath('//div[contains(@class,"vidwrap")]//p//a')
-        ]
+        sel = scene.require_sel()
+        values: list[str | None] = [(a.xpath('normalize-space(.)').get() or '').replace('#', '') for a in sel.xpath('//div[contains(@class,"vidwrap")]//p//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

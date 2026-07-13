@@ -36,12 +36,12 @@ class LoveHerFilmsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"main-info-left")]/h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"main-info-left")]/h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//p[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//p[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -53,25 +53,25 @@ class LoveHerFilmsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw, _DATE_FMT)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"video-tags")]/a')])
+        sel = scene.require_sel()
+        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"video-tags")]/a')])
         if 'Foot Sex' not in genres:
             genres.append('Foot Sex')
-        cast = len(scene.sel.xpath('//div[contains(@class,"featured")]/a'))
+        cast = len(sel.xpath('//div[contains(@class,"featured")]/a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -79,7 +79,7 @@ class LoveHerFilmsClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in scene.sel.xpath('//div[contains(@class,"featured")]/a'):
+        for a in sel.xpath('//div[contains(@class,"featured")]/a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if name:
@@ -87,7 +87,7 @@ class LoveHerFilmsClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
@@ -95,7 +95,7 @@ class LoveHerFilmsClient(Client):
             '//div[contains(@class,"photos")]//a//img/@src',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

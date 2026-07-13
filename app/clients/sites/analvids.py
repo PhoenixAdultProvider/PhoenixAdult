@@ -46,46 +46,46 @@ class AnalVidsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//h1[contains(@class,"watch__title")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//h1[contains(@class,"watch__title")]')
         metadata.title = raw.split('featuring')[0].strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"text-mob-more")]')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"text-mob-more")]')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'AnalVids'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.tagline = first_text(scene.sel, _GENRES_LIST_FIRST_A) or None
+        sel = scene.require_sel()
+        metadata.tagline = first_text(sel, _GENRES_LIST_FIRST_A) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        tagline = first_text(scene.sel, _GENRES_LIST_FIRST_A)
+        sel = scene.require_sel()
+        tagline = first_text(sel, _GENRES_LIST_FIRST_A)
         metadata.collections = [tagline] if tagline else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//i[contains(@class,"bi-calendar3")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//i[contains(@class,"bi-calendar3")]')
         metadata.release_date = iso_date(raw) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"genres-list")]//a[contains(@href,"/genre/")]')
+            a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"genres-list")]//a[contains(@href,"/genre/")]')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
 
         def extract_photo(sel: Selector) -> str:
             return first_attr(sel, '(//div[contains(@class,"model")]//img/@src)[1]')
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//a[contains(@href,"/model/")]'):
+        for el in sel.xpath('//a[contains(@href,"/model/")]'):
             href = first_attr(el, '@href')
             name = first_attr(el, 'normalize-space(.)')
             if not name or not href or 'forum' in href:
@@ -94,7 +94,7 @@ class AnalVidsClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         directors: list[ActorResult] = []
         seen: set[str] = set()
 
@@ -104,14 +104,14 @@ class AnalVidsClient(Client):
                 seen.add(n)
                 directors.append(ActorResult(name=n))
 
-        tagline = first_text(scene.sel, _GENRES_LIST_FIRST_A)
+        tagline = first_text(sel, _GENRES_LIST_FIRST_A)
         if tagline in ('Giorgio Grandi', "Giorgio's Lab"):
             add('Giorgio Grandi')
-        for el in scene.sel.xpath('//p[contains(@class,"director")]//a'):
+        for el in sel.xpath('//p[contains(@class,"director")]//a'):
             add(el.xpath('normalize-space(.)').get() or '')
         metadata.directors = directors or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        poster = first_attr(scene.sel, '(//div[contains(@class,"watch__video")]//video/@data-poster)[1]')
+        sel = scene.require_sel()
+        poster = first_attr(sel, '(//div[contains(@class,"watch__video")]//video/@data-poster)[1]')
         metadata.art = [poster] if poster else []

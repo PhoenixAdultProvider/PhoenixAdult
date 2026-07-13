@@ -31,12 +31,12 @@ class SinXClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"title--3")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"title--3")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[h5]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[h5]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -48,26 +48,24 @@ class SinXClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//tr[td[contains(.,"Date")]]/td[2])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//tr[td[contains(.,"Date")]]/td[2])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw, _DATE_FMT) or iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings(
-            [(a.xpath('string(.)').get() or '').split('#')[-1].strip() for a in scene.sel.xpath('//div[contains(@class,"tags-wrap")]//a')]
-        )
-        cast = len(scene.sel.xpath('//figure[contains(@class,"girls-item")]'))
+        sel = scene.require_sel()
+        genres = self.dedup_strings([(a.xpath('string(.)').get() or '').split('#')[-1].strip() for a in sel.xpath('//div[contains(@class,"tags-wrap")]//a')])
+        cast = len(sel.xpath('//figure[contains(@class,"girls-item")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        figures = scene.sel.xpath('//figure[contains(@class,"girls-item")]')
+        sel = scene.require_sel()
+        figures = sel.xpath('//figure[contains(@class,"girls-item")]')
         single = len(figures) == 1
         entries: list[ActorResult] = []
         for fig in figures:
@@ -77,9 +75,9 @@ class SinXClient(Client):
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for src in scene.sel.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
+        for src in sel.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']
         metadata.art = images or []

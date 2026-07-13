@@ -52,12 +52,12 @@ class ColetteClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '(//div[contains(@class,"info")]//p)[2]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '(//div[contains(@class,"info")]//p)[2]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Colette'
@@ -72,17 +72,17 @@ class ColetteClient(Client):
         if scene.scene_date:
             metadata.release_date = scene.scene_date
             return
-        assert scene.sel is not None
-        metadata.release_date = iso_date(first_text(scene.sel, '//h2')) or None
+        sel = scene.require_sel()
+        metadata.release_date = iso_date(first_text(sel, '//h2')) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        count = len(scene.sel.xpath(_CAST_XP))
+        sel = scene.require_sel()
+        count = len(sel.xpath(_CAST_XP))
         if group := self.group_genre_for(count):
             metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
 
         def extract_photo(sel: Selector) -> str:
@@ -90,7 +90,7 @@ class ColetteClient(Client):
             return _parse_interchange(raw)
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(_CAST_XP):
+        for el in sel.xpath(_CAST_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
@@ -98,7 +98,7 @@ class ColetteClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
 
         slug = scene.url.split('/videos/')[-1]
@@ -106,7 +106,7 @@ class ColetteClient(Client):
         gallery_url = scene.url.replace('/videos/', '/galleries/').replace(slug, gallery_path)
         gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
 
-        pages = [p['sel'] for p in (gallery,) if p] + [scene.sel]
+        pages = [p['sel'] for p in (gallery,) if p] + [sel]
         for page in pages:
             for src in page.xpath('//div[contains(@class,"gallery-item")]//a//img/@src').getall():
                 coll['push']((src or '').strip())

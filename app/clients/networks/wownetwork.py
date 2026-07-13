@@ -42,8 +42,8 @@ class WowNetworkClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"entry-title")])[last()]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"entry-title")])[last()]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -55,12 +55,12 @@ class WowNetworkClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[@id="video-date"])[1]').xpath('string(.)').get() or '').replace('Date:', '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[@id="video-date"])[1]').xpath('string(.)').get() or '').replace('Date:', '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
-        meta = first_attr(scene.sel, '(//meta[@property="article:published_time"])[1]/@content')
+        meta = first_attr(sel, '(//meta[@property="article:published_time"])[1]/@content')
         if meta:
             metadata.release_date = iso_date(meta.split('T')[0])
             return
@@ -68,22 +68,22 @@ class WowNetworkClient(Client):
         metadata.release_date = iso_date(packed_date) if packed_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = self.dedup_strings(
             [
                 (el.xpath('string(.)').get() or '').replace('Movies', '').strip()
-                for el in scene.sel.xpath('//div[contains(@class,"tags-list")]//a[.//i[contains(@class,"fa-folder-open")]]')
+                for el in sel.xpath('//div[contains(@class,"tags-list")]//a[.//i[contains(@class,"fa-folder-open")]]')
             ]
         )
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[@id="video-actors"]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//div[@id="video-actors"]//a')]
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
         if scene.scene_date and '|' in scene.scene_date:
             b64 = scene.scene_date.split('|', 1)[1]
@@ -92,6 +92,6 @@ class WowNetworkClient(Client):
                     coll['push'](self.decode(b64))
                 except (ValueError, TypeError):
                     pass
-        coll['push'](first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
+        coll['push'](first_attr(sel, '(//meta[@property="og:image"])[1]/@content'))
         images: list[str] = coll['list']
         metadata.art = images or []

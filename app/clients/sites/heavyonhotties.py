@@ -74,15 +74,15 @@ class HeavyOnHottiesClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('normalize-space((//h1)[1])').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('normalize-space((//h1)[1])').get() or ''
         if not raw:
             return
         metadata.title = _detail_title_strip(raw) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_attr(scene.sel, 'normalize-space((//div[contains(@class,"video_text")])[1])') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_attr(sel, 'normalize-space((//div[contains(@class,"video_text")])[1])') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Heavy on Hotties'
@@ -91,15 +91,15 @@ class HeavyOnHottiesClient(Client):
         metadata.collections = ['Heavy on Hotties']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath(f'normalize-space(({_RELEASED_XP})[1])').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath(f'normalize-space(({_RELEASED_XP})[1])').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
 
         def extract_photo(sel: Selector) -> str:
@@ -107,7 +107,7 @@ class HeavyOnHottiesClient(Client):
             return _lift_scheme(raw) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//span[contains(@class,"feature") and contains(@class,"title")]//a[contains(@href,"models")]'):
+        for el in sel.xpath('//span[contains(@class,"feature") and contains(@class,"title")]//a[contains(@href,"models")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
@@ -115,8 +115,8 @@ class HeavyOnHottiesClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(_lift_scheme)
-        for raw in scene.sel.xpath('//video[@poster]/@poster').getall():
+        for raw in sel.xpath('//video[@poster]/@poster').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

@@ -63,12 +63,12 @@ class XevUnleashedClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//span[contains(@class,"update_title")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//span[contains(@class,"update_title")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//span[contains(@class,"latest_update_description")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//span[contains(@class,"latest_update_description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -77,8 +77,8 @@ class XevUnleashedClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        date_raw = (scene.sel.xpath(_AVAILDATE_XP).get() or '').strip()
+        sel = scene.require_sel()
+        date_raw = (sel.xpath(_AVAILDATE_XP).get() or '').strip()
         if date_raw:
             parsed = iso_date(date_raw, '%m/%d/%Y') or iso_date(date_raw)
             if parsed:
@@ -88,22 +88,22 @@ class XevUnleashedClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//span[contains(@class,"update_tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//span[contains(@class,"update_tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors = [ActorResult(name='Xev Bellringer', photo_url=_XEV_PHOTO)]
-        keywords = (scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').lower()
+        keywords = (sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').lower()
         if 'princess leia' in keywords:
             actors.append(ActorResult(name='Princess Leia'))
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda src: absolute_url((src or '').strip(), base))
-        for src in scene.sel.xpath('//div[contains(@class,"update_image")]//img/@src0_4x').getall():
+        for src in sel.xpath('//div[contains(@class,"update_image")]//img/@src0_4x').getall():
             coll['push'](src)
         metadata.art = coll['list']

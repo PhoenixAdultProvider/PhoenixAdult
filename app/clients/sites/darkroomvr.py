@@ -32,12 +32,12 @@ class DarkRoomVRClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[@data-id="description" and contains(@class,"hidden")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[@data-id="description" and contains(@class,"hidden")]')
         if not raw:
             return
         metadata.summary = _READ_LESS_RE.sub('', raw).strip() or ''
@@ -52,23 +52,23 @@ class DarkRoomVRClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"video-info__time")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"video-info__time")]')
         if not raw:
             return
         after = raw.split(' • ')[-1].strip()
         metadata.release_date = iso_date(after) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[contains(@class,"tags__item")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[contains(@class,"tags__item")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[contains(@class,"video-info__text")]//a'):
+        for el in sel.xpath('//div[contains(@class,"video-info__text")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -84,8 +84,8 @@ class DarkRoomVRClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
-        for href in scene.sel.xpath('//div[contains(@class,"video-detail__gallery-item")]//a/@href').getall():
+        for href in sel.xpath('//div[contains(@class,"video-detail__gallery-item")]//a/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

@@ -72,17 +72,17 @@ class KellyMadisonClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw, scene.site.name)
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -94,23 +94,23 @@ class KellyMadisonClient(Client):
         metadata.collections = [self._tagline_of(scene) or scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//p[contains(.,"Published")]//strong)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//p[contains(.,"Published")]//strong)[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw, '%Y-%m-%d') or iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = ['Hardcore', 'Heterosexual']
-        cast = len(scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
+        cast = len(sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -118,7 +118,7 @@ class KellyMadisonClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
+        for el in sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:

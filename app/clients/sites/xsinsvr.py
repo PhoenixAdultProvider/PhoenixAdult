@@ -31,13 +31,13 @@ class XSinsVRClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//title')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//title')
         metadata.title = (raw.split('•')[0].strip() if raw else '') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        parts = [p.xpath('string(.)').get() or '' for p in scene.sel.xpath('//li/div[contains(@class,"small")]//p')]
+        sel = scene.require_sel()
+        parts = [p.xpath('string(.)').get() or '' for p in sel.xpath('//li/div[contains(@class,"small")]//p')]
         joined = ''.join(parts).strip()
         metadata.summary = joined or ''
 
@@ -48,8 +48,8 @@ class XSinsVRClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span//time')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span//time')
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
@@ -59,16 +59,16 @@ class XSinsVRClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in scene.sel.xpath('//div[contains(@class,"tags-item")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in sel.xpath('//div[contains(@class,"tags-item")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(_ACTOR_XP):
+        for a in sel.xpath(_ACTOR_XP):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if not name or name in seen:
@@ -86,16 +86,16 @@ class XSinsVRClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw, base)
 
-        for src in scene.sel.xpath('//div[contains(@class,"tn-photo__container")]//div//a//div//img/@src').getall():
+        for src in sel.xpath('//div[contains(@class,"tn-photo__container")]//div//a//div//img/@src').getall():
             if (src or '').startswith('http'):
                 push(src.replace('sceneGallerySmall', 'sceneGallery'))
-        for poster in scene.sel.xpath('//dl8-video/@poster').getall():
+        for poster in sel.xpath('//dl8-video/@poster').getall():
             push(poster)
         metadata.art = images

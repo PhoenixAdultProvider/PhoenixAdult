@@ -71,8 +71,8 @@ class Kin8tengokuClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _title_of(scene.sel) or ''
+        sel = scene.require_sel()
+        metadata.title = _title_of(sel) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -81,20 +81,20 @@ class Kin8tengokuClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = _table_value(scene.sel, 'Date')
+        sel = scene.require_sel()
+        raw = _table_value(sel, 'Date')
         metadata.release_date = (iso_date(raw, '%Y-%m-%d') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//tr[contains(.,"Category")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//tr[contains(.,"Category")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath('//tr[contains(.,"Model")]//a'):
+        for a in sel.xpath('//tr[contains(.,"Model")]//a'):
             name = first_attr(a, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)

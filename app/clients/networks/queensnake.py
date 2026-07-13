@@ -48,12 +48,12 @@ class QueenSnakeClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[@class="contentPreviewDescription"])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[@class="contentPreviewDescription"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -62,24 +62,24 @@ class QueenSnakeClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
         metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = ['BDSM', 'S&M']
-        for a in scene.sel.xpath('//div[@class="contentPreviewTags"]//a'):
+        for a in sel.xpath('//div[@class="contentPreviewTags"]//a'):
             g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath('//div[@class="contentPreviewTags"]//a'):
+        for a in sel.xpath('//div[@class="contentPreviewTags"]//a'):
             name = first_attr(a, 'normalize-space(.)')
             if not name or name in seen or not _is_qs_actor(name):
                 continue
@@ -88,9 +88,9 @@ class QueenSnakeClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for src in scene.sel.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
+        for src in sel.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']
         metadata.art = images or []

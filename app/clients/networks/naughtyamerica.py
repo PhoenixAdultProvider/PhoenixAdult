@@ -101,16 +101,16 @@ class NaughtyAmericaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//a[contains(@class,"site-title")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath('(//a[contains(@class,"site-title")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"scene-info")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"scene-info")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        div = scene.sel.xpath('(//div[contains(@class,"synopsis") and contains(@class,"grey-text")])[1]')
+        sel = scene.require_sel()
+        div = sel.xpath('(//div[contains(@class,"synopsis") and contains(@class,"grey-text")])[1]')
         metadata.summary = ''.join(div.xpath('.//text()[not(ancestor::h2)]').getall()).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -124,20 +124,20 @@ class NaughtyAmericaClient(Client):
         metadata.collections = [tag] if tag else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"date-tags")]//span[contains(@class,"entry-date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"date-tags")]//span[contains(@class,"entry-date")])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"categories") and contains(@class,"grey-text")]//a')
+            a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"categories") and contains(@class,"grey-text")]//a')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        names = [n for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"performer-list")]//a')) if n]
+        sel = scene.require_sel()
+        names = [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"performer-list")]//a')) if n]
         actors: list[ActorResult] = []
         for name in names:
             slug = name.lower().replace(' ', '-').replace("'", '')
@@ -147,14 +147,14 @@ class NaughtyAmericaClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(to_https)
         xpaths = (
             '//a[@class="play-trailer"]/picture[1]//source[contains(@data-srcset,"jpg")]/@data-srcset',
             '//dl8-video/@poster[contains(.,"jpg")]',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

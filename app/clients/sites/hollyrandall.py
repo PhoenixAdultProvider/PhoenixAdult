@@ -85,13 +85,13 @@ class HollyRandallClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//ul[contains(@class,"tags")]//li//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//ul[contains(@class,"tags")]//li//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        p = scene.sel.xpath('(//div[contains(@class,"info")]//p)[1]')
+        sel = scene.require_sel()
+        p = sel.xpath('(//div[contains(@class,"info")]//p)[1]')
         text = p.xpath('string(.)').get() or ''
         lines = text.split('\n')
         if len(lines) <= 3:
@@ -102,8 +102,8 @@ class HollyRandallClient(Client):
         metadata.actors = self.dedup_people([ActorResult(name=part) for part in line.split(',')])
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//img[contains(@class,"update_thumb")]/@src0_3x').getall():
+        for raw in sel.xpath('//img[contains(@class,"update_thumb")]/@src0_3x').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

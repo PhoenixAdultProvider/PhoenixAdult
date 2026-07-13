@@ -29,12 +29,12 @@ class BAMVisionsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"item-info")]//h4//a')
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"item-info")]//h4//a')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"description")]')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"description")]')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'BAMVisions'
@@ -43,8 +43,8 @@ class BAMVisionsClient(Client):
         metadata.collections = ['BAMVisions']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        li = first_text(scene.sel, '//ul[contains(@class,"item-meta")]//li')
+        sel = scene.require_sel()
+        li = first_text(sel, '//ul[contains(@class,"item-meta")]//li')
         if not li:
             return
         after = li.split('Release Date:')[-1].strip()
@@ -54,10 +54,10 @@ class BAMVisionsClient(Client):
         metadata.genres = ['Anal', 'Hardcore']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[contains(@class,"item-info")]//h5//a'):
+        for el in sel.xpath('//div[contains(@class,"item-info")]//h5//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -73,8 +73,8 @@ class BAMVisionsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in scene.sel.xpath('//img[contains(@class,"update_thumb")]'):
+        for el in sel.xpath('//img[contains(@class,"update_thumb")]'):
             coll['push'](first_attr(el, '@src0_3x'))
         metadata.art = coll['list']

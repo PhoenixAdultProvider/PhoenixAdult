@@ -74,12 +74,12 @@ class BadoinkVrClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -91,20 +91,20 @@ class BadoinkVrClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//p[@itemprop="uploadDate"])[1]/@content')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//p[@itemprop="uploadDate"])[1]/@content')
         metadata.release_date = iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@class,"video-tag")]')) if g]
+        sel = scene.require_sel()
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@class,"video-tag")]')) if g]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//a[contains(@class,"video-actor-link")]'):
+        for el in sel.xpath('//a[contains(@class,"video-actor-link")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
@@ -118,17 +118,17 @@ class BadoinkVrClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         out: list[str] = []
-        video_img = first_attr(scene.sel, '(//img[contains(@class,"video-image")])[1]/@src')
+        video_img = first_attr(sel, '(//img[contains(@class,"video-image")])[1]/@src')
         if video_img:
             out.append(video_img)
 
-        gallery_big = first_attr(scene.sel, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
+        gallery_big = first_attr(sel, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
         if gallery_big:
             base_img = re.sub(r'_\d+\.jpg.*$', '', gallery_big)
             base_img = re.sub(r'\.jpg.*$', '', base_img)
-            zip_info = scene.sel.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
+            zip_info = sel.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
             m = re.search(r'(\d+)\s*photos', zip_info, re.IGNORECASE)
             count = int(m.group(1)) if m else 0
             for i in range(1, count + 2):

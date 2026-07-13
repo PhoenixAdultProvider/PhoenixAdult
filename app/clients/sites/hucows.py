@@ -39,13 +39,13 @@ class HucowsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//head//title').replace(' - HuCows.com', '').strip()
+        sel = scene.require_sel()
+        raw = first_text(sel, '//head//title').replace(' - HuCows.com', '').strip()
         metadata.title = raw or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//article//div[contains(@class,"entry-content")]//p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//article//div[contains(@class,"entry-content")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'HuCows'
@@ -54,29 +54,29 @@ class HucowsClient(Client):
         metadata.collections = ['HuCows']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[@itemprop="datePublished"]').replace('Release Date:', '').strip()
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[@itemprop="datePublished"]').replace('Release Date:', '').strip()
         metadata.release_date = (iso_date(raw, '%d %b %Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = list(_FIXED_GENRES)
-        for a in scene.sel.xpath('//a[@rel="category tag"]'):
+        for a in sel.xpath('//a[@rel="category tag"]'):
             g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//a[@rel="tag"]')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//a[@rel="tag"]')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
-        for raw in scene.sel.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
+        for raw in sel.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
             coll['push'](raw)
-        for raw in scene.sel.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
+        for raw in sel.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
             coll['push'](raw)
         metadata.art = coll['list']

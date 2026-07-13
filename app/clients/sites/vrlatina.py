@@ -42,12 +42,12 @@ class VRLatinaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h2') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h2') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"content-desc")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"content-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -56,8 +56,8 @@ class VRLatinaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"content-base-info")]//div[contains(@class,"info-elem") and contains(@class,"-length")]//span')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"content-base-info")]//div[contains(@class,"info-elem") and contains(@class,"-length")]//span')
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
@@ -67,16 +67,16 @@ class VRLatinaClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [_title_or_text(a) for a in scene.sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [_title_or_text(a) for a in sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-models")]//a'):
+        for a in sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-models")]//a'):
             name = _title_or_text(a)
             href = first_attr(a, '@href')
             if not name or name in seen:
@@ -92,9 +92,9 @@ class VRLatinaClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: to_https((raw or '').strip()))
-        for href in scene.sel.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
+        for href in sel.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
             coll['push'](href)
-        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        coll['push'](sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         metadata.art = coll['list']

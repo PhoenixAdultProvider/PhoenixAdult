@@ -52,12 +52,12 @@ class RealityLoversClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1[contains(@class,"video-detail-name")]')
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1[contains(@class,"video-detail-name")]')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//p[@itemprop="description"]').replace('…', '').replace('Read more', '')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//p[@itemprop="description"]').replace('…', '').replace('Read more', '')
         metadata.summary = ' '.join(raw.split())
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -67,19 +67,19 @@ class RealityLoversClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[contains(@class,"videoClip__Details-infoValue")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[contains(@class,"videoClip__Details-infoValue")]')
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//span[@itemprop="keywords"]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in sel.xpath('//span[@itemprop="keywords"]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//span[@itemprop="actors"]//a'):
+        for el in sel.xpath('//span[@itemprop="actors"]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -94,8 +94,8 @@ class RealityLoversClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: _srcset_entry(raw, len(raw.split(',')) - 1, 6))
-        for data_big in scene.sel.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
+        for data_big in sel.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
             coll['push']((data_big or '').strip())
         metadata.art = coll['list']

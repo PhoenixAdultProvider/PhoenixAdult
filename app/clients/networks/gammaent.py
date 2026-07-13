@@ -92,12 +92,11 @@ class GammaEntClient(Client):
         return scene
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"studioLink")])[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+        sel = scene.require_sel()
+        return (sel.xpath('(//div[contains(@class,"studioLink")])[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        sel = scene.sel
+        sel = scene.require_sel()
         title = (
             first_attr(sel, '(//meta[@name="twitter:title"])[1]/@content')
             or (sel.xpath('(//h3[contains(@class,"dvdTitle")])[1]').xpath('string(.)').get() or '').strip()
@@ -117,8 +116,7 @@ class GammaEntClient(Client):
         metadata.title = title.replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        sel = scene.sel
+        sel = scene.require_sel()
         summary = first_attr(sel, '(//meta[@name="twitter:description"])[1]/@content')
         if not summary:
             show_more = (
@@ -143,8 +141,7 @@ class GammaEntClient(Client):
         metadata.collections = [self._tagline_of(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        sel = scene.sel
+        sel = scene.require_sel()
         updated = (sel.xpath('(//*[contains(@class,"updatedDate")])[1]').xpath('string(.)').get() or '').replace('|', '').strip()
         if updated and iso_date(updated):
             metadata.release_date = iso_date(updated)
@@ -160,8 +157,8 @@ class GammaEntClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = [g for g in (first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath(_GENRE_SEL)) if g]
+        sel = scene.require_sel()
+        genres = [g for g in (first_attr(a, 'normalize-space(.)').lower() for a in sel.xpath(_GENRE_SEL)) if g]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -169,12 +166,12 @@ class GammaEntClient(Client):
         metadata.actors = actors or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         directors = [
             ActorResult(name=n)
             for n in (
                 first_attr(a, 'normalize-space(.)')
-                for a in scene.sel.xpath(
+                for a in sel.xpath(
                     '//div[contains(@class,"sceneCol") and contains(@class,"sceneColDirectors")]//a | //ul[contains(@class,"directedBy")]//li//a'
                 )
             )
@@ -183,8 +180,7 @@ class GammaEntClient(Client):
         metadata.directors = directors or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        sel = scene.sel
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda u: absolute_url(u, base))
 
@@ -222,7 +218,7 @@ class GammaEntClient(Client):
         return coalesce_future(cache, 'actor_task', lambda: self._resolve_actors(scene))
 
     async def _resolve_actors(self, scene: LoadedScene) -> list[ActorResult]:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -234,7 +230,7 @@ class GammaEntClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(_ACTOR_SEL):
+        for el in sel.xpath(_ACTOR_SEL):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:

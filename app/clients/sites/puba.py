@@ -42,8 +42,8 @@ class PubaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP)
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -52,18 +52,18 @@ class PubaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//center//div//a[contains(@class,"btn-outline-secondary")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//center//div//a[contains(@class,"btn-outline-secondary")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//center//div//a[contains(@class,"btn-secondary")]')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//center//div//a[contains(@class,"btn-secondary")]')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        style = scene.sel.xpath('(//div[@id="body-player-container"]/div/a/img/@style)[1]').get() or ''
+        sel = scene.require_sel()
+        style = sel.xpath('(//div[@id="body-player-container"]/div/a/img/@style)[1]').get() or ''
         bg = css_bg_image(style)
         if not bg:
             return

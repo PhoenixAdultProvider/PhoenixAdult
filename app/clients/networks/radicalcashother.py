@@ -94,14 +94,14 @@ class RadicalCashOtherClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
-        metadata.title = (scene.sel.xpath(f'(//{p["title"]})[1]').xpath('string(.)').get() or '').strip() or ''
+        metadata.title = (sel.xpath(f'(//{p["title"]})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
-        parts = [first_attr(el) for el in scene.sel.xpath(f'//{p["summary"]}')]
+        parts = [first_attr(el) for el in sel.xpath(f'//{p["summary"]}')]
         parts = [t for t in parts if t]
         metadata.summary = '\n\n'.join(parts) if parts else ''
 
@@ -116,30 +116,30 @@ class RadicalCashOtherClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
         if p['release_date']:
-            raw = (scene.sel.xpath(f'(//{p["release_date"]})[1]').xpath('string(.)').get() or '').strip()
+            raw = (sel.xpath(f'(//{p["release_date"]})[1]').xpath('string(.)').get() or '').strip()
             if raw:
                 metadata.release_date = iso_date(_strip_ordinals(raw), p['date_format']) or iso_date(_strip_ordinals(raw))
                 return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('(//meta[@name="keywords"])[1]/@content').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('(//meta[@name="keywords"])[1]/@content').get() or ''
         values: list[str | None] = [g.strip() for g in raw.split(',')]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
         if p['actor_mode'] == 'inline':
-            for block in scene.sel.xpath(f'//{p["actors"]}'):
+            for block in sel.xpath(f'//{p["actors"]}'):
                 if p['actor_name_inline']:
                     name = (block.xpath(f'(.//{p["actor_name_inline"]})[1]').xpath('string(.)').get() or '').strip()
                 else:
@@ -158,7 +158,7 @@ class RadicalCashOtherClient(Client):
             return (sel.xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(f'//{p["actors"]}'):
+        for el in sel.xpath(f'//{p["actors"]}'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name:
@@ -170,7 +170,7 @@ class RadicalCashOtherClient(Client):
         metadata.directors = [ActorResult(name=director)] if director else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: join_url(raw, base))
         xpaths = (
@@ -179,7 +179,7 @@ class RadicalCashOtherClient(Client):
             '//video/@poster',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images or []

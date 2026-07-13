@@ -34,8 +34,8 @@ class CaribbeancomClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//title') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//title') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'caribbeancom'
@@ -44,22 +44,22 @@ class CaribbeancomClient(Client):
         metadata.collections = ['caribbeancom']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[@itemprop="uploadDate"]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[@itemprop="uploadDate"]')
         if not raw:
             return
         m = _UPLOAD_DATE_RE.search(raw)
         metadata.release_date = f'{m.group(1)}-{m.group(2)}-{m.group(3)}' if m else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[@itemprop="genre"]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[@itemprop="genre"]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for a in scene.sel.xpath('//a[@itemprop="actor"]'):
+        for a in sel.xpath('//a[@itemprop="actor"]'):
             text = first_text(a, './/span[@itemprop="name"]')
             for name in (n.strip() for n in text.split(',')):
                 if name:
@@ -67,12 +67,12 @@ class CaribbeancomClient(Client):
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         images: list[str] = []
         constructed = scene.url.replace('/eng', '').replace('index.html', 'images/poster_en.jpg')
         if constructed != scene.url:
             images.append(constructed)
-        for el in scene.sel.xpath('//img[contains(@class,"gallery-image")]'):
+        for el in sel.xpath('//img[contains(@class,"gallery-image")]'):
             src = first_attr(el, '@src')
             if not src:
                 continue

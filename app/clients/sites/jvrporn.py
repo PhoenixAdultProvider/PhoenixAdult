@@ -47,12 +47,12 @@ class JVRPornClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//pre') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//pre') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'JVR Porn'
@@ -64,20 +64,20 @@ class JVRPornClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in scene.sel.xpath('//td[contains(@class,"tags")]//span')]
+        sel = scene.require_sel()
+        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in sel.xpath('//td[contains(@class,"tags")]//span')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=s.xpath('normalize-space(.)').get() or '') for s in scene.sel.xpath('//a[contains(@class,"actress")]//span')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=s.xpath('normalize-space(.)').get() or '') for s in sel.xpath('//a[contains(@class,"actress")]//span')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
-        for raw in scene.sel.xpath('//div[contains(@id,"snapshot-gallery")]//a/@href').getall():
+        for raw in sel.xpath('//div[contains(@id,"snapshot-gallery")]//a/@href').getall():
             coll['push'](raw)
-        for raw in scene.sel.xpath('//deo-video/@cover-image').getall():
+        for raw in sel.xpath('//deo-video/@cover-image').getall():
             coll['push'](raw)
         metadata.art = coll['list']

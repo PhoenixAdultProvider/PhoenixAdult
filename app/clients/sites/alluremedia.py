@@ -57,12 +57,12 @@ class AllureMediaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -74,14 +74,14 @@ class AllureMediaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = iso_date(raw) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for el in scene.sel.xpath('//span[contains(@class,"update_tags")]//a'):
+        for el in sel.xpath('//span[contains(@class,"update_tags")]//a'):
             g = decensor(first_attr(el), _CENSORED).lower()
             if g and g not in genres:
                 genres.append(g)
@@ -90,14 +90,14 @@ class AllureMediaClient(Client):
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
-        title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
-        summary = (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
+        title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        summary = (sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
+        for el in sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
             name = first_attr(el)
             href = first_attr(el, '@href')
             if not name or name in seen:
@@ -117,12 +117,12 @@ class AllureMediaClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda u: join_url(u, base))
-        title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
 
-        df_script = scene.sel.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
+        df_script = sel.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
         use_image = _USEIMAGE_RE.search(df_script)
         if use_image:
             coll['push'](use_image.group(1))
@@ -143,7 +143,7 @@ class AllureMediaClient(Client):
             ('//div[contains(@class,"photo_gallery_block")]//img', ('src',)),
             ('//div[contains(@class,"columns") and contains(@class,"mb")]//img', ('src0_2x', 'src')),
         ):
-            for el in scene.sel.xpath(selector):
+            for el in sel.xpath(selector):
                 src = next((v for a in attrs if (v := el.xpath(f'@{a}').get())), '')
                 if src:
                     thumbs.append(src)
@@ -158,7 +158,7 @@ class AllureMediaClient(Client):
                 coll['push'](f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
 
         photos_href = ''
-        for a in scene.sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
+        for a in sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
             if first_attr(a) == 'Photos':
                 photos_href = first_attr(a, '@href')
                 break

@@ -42,12 +42,12 @@ class PlayboyPlusClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1[contains(@class,"title")]')
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1[contains(@class,"title")]')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"description-truncated")]').replace('...', '')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"description-truncated")]').replace('...', '')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Playboy Plus'
@@ -59,23 +59,23 @@ class PlayboyPlusClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//p[contains(@class,"date")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//p[contains(@class,"date")]')
         metadata.release_date = (iso_date(raw, '%B %d, %Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['Glamour']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//p[contains(@class,"contributorName")]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//p[contains(@class,"contributorName")]//a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw.split('?')[0].strip(), scene.site.base_url))
         coll['push'](scene.extra.get('poster', '') if isinstance(scene.extra, dict) else '')
-        coll['push'](scene.sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
-        for raw in scene.sel.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
+        coll['push'](sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
+        for raw in sel.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
             coll['push'](raw)
         metadata.art = coll['list']

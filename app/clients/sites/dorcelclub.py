@@ -78,12 +78,12 @@ class DorcelClubClient(Client):
     # ── Detail field hooks (branch on movie vs scene URL) ─────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//span[contains(@class,"full")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//span[contains(@class,"full")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -92,36 +92,36 @@ class DorcelClubClient(Client):
         metadata.tagline = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         out = [scene.site.name]
-        movie_name = first_text(scene.sel, '//span[contains(@class,"movie")]/a')
+        movie_name = first_text(sel, '//span[contains(@class,"movie")]/a')
         if movie_name:
             out.append(movie_name)
         metadata.collections = out
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if _is_movie_url(scene.url):
-            raw = first_text(scene.sel, '//span[contains(@class,"out_date")]').replace('Year :', '').strip()
+            raw = first_text(sel, '//span[contains(@class,"out_date")]').replace('Year :', '').strip()
         else:
-            raw = first_text(scene.sel, '//span[contains(@class,"publish_date")]')
+            raw = first_text(sel, '//span[contains(@class,"publish_date")]')
         metadata.release_date = iso_date(raw) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = list(_FIXED_GENRES)
         if not _is_movie_url(scene.url):
-            count = len(scene.sel.xpath('//div[contains(@class,"actress")]/a'))
+            count = len(sel.xpath('//div[contains(@class,"actress")]/a'))
             if group := self.group_genre_for(count):
                 genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if _is_movie_url(scene.url):
-            els = scene.sel.xpath('//div[contains(@class,"actor") and contains(@class,"thumbnail")]/a/div[contains(@class,"name")]')
+            els = sel.xpath('//div[contains(@class,"actor") and contains(@class,"thumbnail")]/a/div[contains(@class,"name")]')
         else:
-            els = scene.sel.xpath('//div[contains(@class,"actress")]/a')
+            els = sel.xpath('//div[contains(@class,"actress")]/a')
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in els:
@@ -133,18 +133,18 @@ class DorcelClubClient(Client):
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[contains(@class,"director")]').replace('Director :', '').strip()
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[contains(@class,"director")]').replace('Director :', '').strip()
         metadata.directors = [ActorResult(name=raw)] if raw else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(_clean_srcset_image)
 
         if _is_movie_url(scene.url):
-            cover = first_attr(scene.sel, '(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]')
+            cover = first_attr(sel, '(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]')
             if cover:
                 coll['push'](cover)
-        for raw in scene.sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
+        for raw in sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

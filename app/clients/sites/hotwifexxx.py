@@ -58,12 +58,12 @@ class HotwifeXXXClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"trailerInfo")]//h2') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"trailerInfo")]//h2') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"dvdDescription")]//p')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"dvdDescription")]//p')
         metadata.summary = _DESCRIPTION_RE.sub('', raw, count=1).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -76,19 +76,19 @@ class HotwifeXXXClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = _date_of(first_text(scene.sel, _RELEASED_XP)) or scene.scene_date or None
+        sel = scene.require_sel()
+        metadata.release_date = _date_of(first_text(sel, _RELEASED_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        count = len(scene.sel.xpath(_CAST_XP))
+        sel = scene.require_sel()
+        count = len(sel.xpath(_CAST_XP))
         if group := self.group_genre_for(count):
             metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath(_CAST_XP):
+        for el in sel.xpath(_CAST_XP):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -103,8 +103,8 @@ class HotwifeXXXClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//span[@id="trailer_thumb"]//img/@src').getall():
+        for raw in sel.xpath('//span[@id="trailer_thumb"]//img/@src').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

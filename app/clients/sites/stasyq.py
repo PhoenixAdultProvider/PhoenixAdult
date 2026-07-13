@@ -43,12 +43,12 @@ class StasyQClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"about-section__text")]/p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"about-section__text")]/p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -57,17 +57,17 @@ class StasyQClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//section[contains(@class,"about-section")]//div[contains(@class,"tags")]//a')
+            a.xpath('normalize-space(.)').get() for a in sel.xpath('//section[contains(@class,"about-section")]//div[contains(@class,"tags")]//a')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//section[contains(@class,"content-section")]//div[contains(@class,"release-card__model")]//a'):
+        for el in sel.xpath('//section[contains(@class,"content-section")]//div[contains(@class,"release-card__model")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
@@ -75,5 +75,5 @@ class StasyQClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.art = self.dedup_strings([(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()])
+        sel = scene.require_sel()
+        metadata.art = self.dedup_strings([(href or '').strip() for href in sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()])

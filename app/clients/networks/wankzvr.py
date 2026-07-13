@@ -58,12 +58,12 @@ class WankzVRClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"detail__title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"detail__title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"detail__txt")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"detail__txt")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -72,20 +72,20 @@ class WankzVRClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//span[contains(@class,"detail__date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//span[contains(@class,"detail__date")])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = iso_date(raw) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in scene.sel.xpath('//div[contains(@class,"tag-list")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in sel.xpath('//div[contains(@class,"tag-list")]//a')]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//div[contains(@class,"detail__models")]//a'):
+        for el in sel.xpath('//div[contains(@class,"detail__models")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -102,8 +102,8 @@ class WankzVRClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//meta[@property="og:image"])[1]/@content')
         if not raw:
             return
         metadata.art = [raw.replace('cover', 'hero').replace('medium.jpg', 'large.jpg')]

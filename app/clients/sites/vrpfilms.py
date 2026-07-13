@@ -43,12 +43,12 @@ class VRPFilmsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _HERO_TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _HERO_TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"col-md-8") and contains(@class,"text-justify")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"col-md-8") and contains(@class,"text-justify")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -62,30 +62,30 @@ class VRPFilmsClient(Client):
         metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"single__download") and contains(@class,"tags")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"single__download") and contains(@class,"tags")]')
         parts: list[str | None] = list(raw.split(','))
         metadata.genres = self.dedup_strings(parts)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for el in scene.sel.xpath('//a[contains(@class,"starring_contain")]'):
+        for el in sel.xpath('//a[contains(@class,"starring_contain")]'):
             name = first_text(el, './/div[contains(@class,"col-xs-12") and contains(@class,"video-star-title")]//h3')
             style = first_attr(el, '(.//div[contains(@class,"starring_image")]/@style)[1]')
             entries.append(ActorResult(name=name, photo_url=_url_from_style(style)))
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw, base)
 
-        bg_style = first_attr(scene.sel, '(//section[contains(@class,"login-banner") and contains(@class,"parallax")]/@style)[1]')
+        bg_style = first_attr(sel, '(//section[contains(@class,"login-banner") and contains(@class,"parallax")]/@style)[1]')
         push(_url_from_style(bg_style))
-        for href in scene.sel.xpath('//div[contains(@class,"col-md-12") and contains(@class,"gallery-body")]//div//div//div//a[@href]/@href').getall():
+        for href in sel.xpath('//div[contains(@class,"col-md-12") and contains(@class,"gallery-body")]//div//div//div//a[@href]/@href').getall():
             push(href)
         metadata.art = images

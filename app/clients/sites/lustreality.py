@@ -48,12 +48,12 @@ class LustRealityClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"u-mb--six")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"u-mb--six")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -62,16 +62,16 @@ class LustRealityClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = iso_date(first_text(scene.sel, _DATE_XP)) or scene.scene_date or None
+        sel = scene.require_sel()
+        metadata.release_date = iso_date(first_text(sel, _DATE_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[contains(@href,"/list/category/")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[contains(@href,"/list/category/")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -79,7 +79,7 @@ class LustRealityClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//a[contains(@href,"/pornstars/model/")]'):
+        for el in sel.xpath('//a[contains(@href,"/pornstars/model/")]'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -88,10 +88,10 @@ class LustRealityClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
-        for el in scene.sel.xpath('//div[contains(@class,"splash-screen")]'):
+        for el in sel.xpath('//div[contains(@class,"splash-screen")]'):
             coll['push'](css_bg_image(el.xpath('@style').get()))
-        for href in scene.sel.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
+        for href in sel.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

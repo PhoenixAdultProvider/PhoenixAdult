@@ -96,8 +96,8 @@ class POVRClient(Client):
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in sel.xpath('//ul[contains(@class,"category-link")]//li//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

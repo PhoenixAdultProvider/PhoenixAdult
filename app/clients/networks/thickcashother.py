@@ -42,12 +42,12 @@ class ThickCashOtherClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h3[contains(@class,"top-title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h3[contains(@class,"top-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"player-box")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"player-box")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -62,14 +62,14 @@ class ThickCashOtherClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')]
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
-        for raw in scene.sel.xpath('//video/@poster').getall():
+        for raw in sel.xpath('//video/@poster').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images or []

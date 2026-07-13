@@ -69,12 +69,12 @@ class StraponCumClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1[contains(@class,"card-title")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1[contains(@class,"card-title")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"card-text") and contains(@class,"mb-2")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"card-text") and contains(@class,"mb-2")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -86,29 +86,29 @@ class StraponCumClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        cards = scene.sel.xpath('//div[contains(@class,"card")]')
+        sel = scene.require_sel()
+        cards = sel.xpath('//div[contains(@class,"card")]')
         tok = _date_from_clock(cards[0]) if cards else None
         metadata.release_date = _parse_date(tok) if tok else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = list(_FIXED_GENRES)
-        for el in scene.sel.xpath('//div[contains(@class,"tag-cloud")]//a'):
+        for el in sel.xpath('//div[contains(@class,"tag-cloud")]//a'):
             g = first_attr(el, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
-        count = len(scene.sel.xpath(_ACTOR_XP))
+        count = len(sel.xpath(_ACTOR_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_ACTOR_XP):
+        for el in sel.xpath(_ACTOR_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -121,9 +121,9 @@ class StraponCumClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
-        scene_id = first_attr(scene.sel, '(//div[contains(@class,"trailer")]//img/@alt)[1]')
+        scene_id = first_attr(sel, '(//div[contains(@class,"trailer")]//img/@alt)[1]')
         if not scene_id:
             return
         metadata.art = [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]

@@ -13,8 +13,8 @@ _STUDIO_OVERRIDE_XP = '//div[contains(@class,"entries")]//strong[contains(.,"Stu
 
 
 def _page_studio_override(scene: LoadedScene) -> str:
-    assert scene.sel is not None
-    return first_text(scene.sel, _STUDIO_OVERRIDE_XP)
+    sel = scene.require_sel()
+    return first_text(sel, _STUDIO_OVERRIDE_XP)
 
 
 class DorcelVisionClient(Client):
@@ -35,13 +35,13 @@ class DorcelVisionClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        meta = meta_content(scene.sel, 'twitter:description')
-        metadata.summary = meta or first_text(scene.sel, '//div[@id="summaryList"]') or ''
+        sel = scene.require_sel()
+        meta = meta_content(sel, 'twitter:description')
+        metadata.summary = meta or first_text(sel, '//div[@id="summaryList"]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _page_studio_override(scene) or UMBRELLA_STUDIO
@@ -51,8 +51,8 @@ class DorcelVisionClient(Client):
         metadata.collections = [UMBRELLA_STUDIO, override] if override else [UMBRELLA_STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        year_entries = scene.sel.xpath('//div[contains(@class,"entries")]//strong[contains(.,"Production year")]')
+        sel = scene.require_sel()
+        year_entries = sel.xpath('//div[contains(@class,"entries")]//strong[contains(.,"Production year")]')
         if not year_entries:
             return
         text = ''.join(year_entries[0].xpath('following-sibling::text()').getall())
@@ -60,10 +60,10 @@ class DorcelVisionClient(Client):
         metadata.release_date = f'{m.group(0)}-01-01' if m else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for card in scene.sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]'):
+        for card in sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]'):
             name = first_text(card, './/a/strong')
             if not name or name in seen:
                 continue
@@ -74,14 +74,12 @@ class DorcelVisionClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip().replace('blur9/', ''), base))
 
-        for href in scene.sel.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
+        for href in sel.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
             coll['push'](href)
-        for href in scene.sel.xpath(
-            '//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href'
-        ).getall():
+        for href in sel.xpath('//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

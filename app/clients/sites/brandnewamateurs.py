@@ -57,19 +57,19 @@ class BrandNewAmateursClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h3') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//ul[li[contains(.,"Tags:")]]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//ul[li[contains(.,"Tags:")]]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -88,8 +88,8 @@ class BrandNewAmateursClient(Client):
         metadata.actors = [ActorResult(name=name, photo_url=photo)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
+        sel = scene.require_sel()
+        poster = first_attr(sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
         if not poster:
             return
         metadata.art = [absolute_url(poster, scene.site.base_url)]

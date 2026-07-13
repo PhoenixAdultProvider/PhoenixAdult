@@ -56,12 +56,12 @@ class GroobyClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ps = scene.sel.xpath('//div[contains(@class,"trailer_videoinfo")]//p | //div[contains(@class,"trailerpage_info")]//p[not(@class)]')
+        sel = scene.require_sel()
+        ps = sel.xpath('//div[contains(@class,"trailer_videoinfo")]//p | //div[contains(@class,"trailerpage_info")]//p[not(@class)]')
         if not ps:
             return
         metadata.summary = (ps[-1].xpath('string(.)').get() or '').strip() or ''
@@ -76,16 +76,13 @@ class GroobyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         metadata.release_date = (
-            _added_date(scene.sel, '//div[contains(@class,"setdesc")]')
-            or _added_date(scene.sel, '//div[contains(@class,"trailer_videoinfo")]')
-            or scene.scene_date
-            or None
+            _added_date(sel, '//div[contains(@class,"setdesc")]') or _added_date(sel, '//div[contains(@class,"trailer_videoinfo")]') or scene.scene_date or None
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -97,7 +94,7 @@ class GroobyClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(
+        for el in sel.xpath(
             '//div[contains(@class,"trailer_videoinfo")]//p[contains(.,"Featuring")]//a | //div[contains(@class,"setdesc")]//a[contains(@href,"/models/")]'
         ):
             name = first_attr(el, 'normalize-space(.)')
@@ -107,7 +104,7 @@ class GroobyClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//div[contains(@class,"trailerpage_photoblock_fullsize")]//a/@href',
@@ -115,7 +112,7 @@ class GroobyClient(Client):
             '//div[contains(@class,"player-thumb")]//img/@src0_4x',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images or []

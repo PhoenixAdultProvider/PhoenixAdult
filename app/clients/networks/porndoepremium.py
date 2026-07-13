@@ -33,19 +33,19 @@ class PorndoePremiumClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[@class="-mvd-heading"])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[@class="-mvd-heading"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[@class="-mvd-description"])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[@class="-mvd-description"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     def _first_actor(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._first_actor(scene) or None
@@ -55,22 +55,22 @@ class PorndoePremiumClient(Client):
         metadata.collections = [tag] if tag else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        stats = (scene.sel.xpath('(//div[@class="-mvd-grid-stats"])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        stats = (sel.xpath('(//div[@class="-mvd-grid-stats"])[1]').xpath('string(.)').get() or '').strip()
         raw = stats.split('•')[-1].strip() if stats else ''
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//span[@class="-mvd-list-item"]/a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//span[@class="-mvd-list-item"]/a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[@class="-mvd-grid-actors"]//span/a[@title]'):
+        for el in sel.xpath('//div[@class="-mvd-grid-actors"]//span/a[@title]'):
             href = first_attr(el, '@href')
             if not href:
                 continue
@@ -87,14 +87,14 @@ class PorndoePremiumClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//picture[@class="-vcc-picture"]//img/@src',
             '//div[@class="swiper-wrapper"]/div/a/div/@data-bg',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw.strip())
         images: list[str] = coll['list']
         metadata.art = images

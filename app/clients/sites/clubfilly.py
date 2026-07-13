@@ -36,12 +36,12 @@ class ClubFillyClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//p[contains(@class,"description")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//p[contains(@class,"description")]')
         if not raw:
             return
         metadata.summary = _DESC_PREFIX.sub('', raw).strip() or ''
@@ -56,14 +56,14 @@ class ClubFillyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"fltRight")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"fltRight")]')
         date_text = _DATE_PREFIX.sub('', raw).strip()
         metadata.release_date = iso_date(date_text, '%Y-%m-%d') or None
 
     def _collect_actors(self, scene: LoadedScene) -> list[ActorResult]:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//p[contains(@class,"starring")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//p[contains(@class,"starring")]')
         text = _STARRING_PREFIX.sub('', raw).strip()
         if not text:
             return []
@@ -81,8 +81,8 @@ class ClubFillyClient(Client):
         metadata.actors = self._collect_actors(scene)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in scene.sel.xpath('//ul[@id="lstSceneFocus"]/li/img'):
+        for el in sel.xpath('//ul[@id="lstSceneFocus"]/li/img'):
             coll['push'](first_attr(el, '@src'))
         metadata.art = coll['list']

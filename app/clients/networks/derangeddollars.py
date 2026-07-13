@@ -42,19 +42,19 @@ class DerangedDollarsClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
         segments = [s.strip() for s in raw.split('|')]
         if len(segments) < 2:
             return None
@@ -71,12 +71,12 @@ class DerangedDollarsClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[contains(@class,"tags")]//a')) if g]
+        sel = scene.require_sel()
+        metadata.genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//p[contains(@class,"tags")]//a')) if g]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        lch = (scene.sel.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        lch = (sel.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
         blob = ','.join(lch.split(',')[:-2]).strip()
         if not blob:
             return
@@ -98,12 +98,12 @@ class DerangedDollarsClient(Client):
         metadata.actors = out
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
-        for src in scene.sel.xpath('//div[contains(@class,"stills") and contains(@class,"clearfix")]//img/@src').getall():
+        for src in sel.xpath('//div[contains(@class,"stills") and contains(@class,"clearfix")]//img/@src').getall():
             coll['push'](src)
-        for script in scene.sel.xpath('//div[contains(@class,"mainpic")]//script'):
+        for script in sel.xpath('//div[contains(@class,"mainpic")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _QUOTED_URL_RE.findall(text):
                 coll['push'](m)

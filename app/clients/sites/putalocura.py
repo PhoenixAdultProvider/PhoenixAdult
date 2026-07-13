@@ -70,12 +70,12 @@ class PutalocuraClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _parsed_title(scene.sel)
+        sel = scene.require_sel()
+        metadata.title = _parsed_title(sel)
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"description") and contains(@class,"clearfix")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"description") and contains(@class,"clearfix")]')
         if not raw:
             return
         metadata.summary = _WS_NL_RE.sub(' ', raw.split(':')[-1].strip())
@@ -87,18 +87,18 @@ class PutalocuraClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"released-views")]//span')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"released-views")]//span')
         metadata.release_date = (iso_date(raw, '%d/%m/%Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"categories")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"categories")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        title = _parsed_title(scene.sel)
+        sel = scene.require_sel()
+        title = _parsed_title(sel)
         if not title:
             return
         base = scene.site.base_url.rstrip('/')
@@ -107,7 +107,7 @@ class PutalocuraClient(Client):
         if '&' in title:
             names = title.split('&')
         else:
-            site_name = first_text(scene.sel, '//span[contains(@class,"site-name")]')
+            site_name = first_text(sel, '//span[contains(@class,"site-name")]')
             names = site_name.split(' and ' if is_english else ' y ')
 
         actors: list[ActorResult] = []
@@ -145,7 +145,7 @@ class PutalocuraClient(Client):
         return models
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        script = scene.sel.xpath('string((//div[contains(@class,"top-area-content")]//script)[1])').get() or ''
+        sel = scene.require_sel()
+        script = sel.xpath('string((//div[contains(@class,"top-area-content")]//script)[1])').get() or ''
         m = _POSTER_RE.search(script)
         metadata.art = [m.group(1)] if m and m.group(1) else []

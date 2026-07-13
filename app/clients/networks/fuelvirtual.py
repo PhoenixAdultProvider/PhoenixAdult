@@ -42,8 +42,8 @@ class FuelVirtualClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
         if scene.site.name == 'NewGirlPOV':
             parts = raw.split(' ')
             metadata.title = (parts[1].strip() if len(parts) > 1 else '') or ''
@@ -63,24 +63,22 @@ class FuelVirtualClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = [
             g
-            for g in (
-                first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//td[contains(@class,"plaintext")]//a[contains(@class,"model_category_link")]')
-            )
+            for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//td[contains(@class,"plaintext")]//a[contains(@class,"model_category_link")]'))
             if g
         ]
         if scene.site.name != 'NewGirlPOV':
             genres.append('18-Year-Old')
-        cast = len(scene.sel.xpath('//div[@id="description"]//td[@align="left"]//a'))
+        cast = len(sel.xpath('//div[@id="description"]//td[@align="left"]//a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        actor_els = scene.sel.xpath('//div[@id="description"]//td[@align="left"]//a')
+        sel = scene.require_sel()
+        actor_els = sel.xpath('//div[@id="description"]//td[@align="left"]//a')
         if not actor_els:
             return
         m = _SCENE_ID_RE.search(scene.url)
@@ -92,11 +90,11 @@ class FuelVirtualClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda u: (u or '').strip())
 
-        for src in scene.sel.xpath('//a[contains(@class,"jqModal")]//img/@src | //div[@id="overallthumb"]//a//img/@src').getall():
+        for src in sel.xpath('//a[contains(@class,"jqModal")]//img/@src | //div[@id="overallthumb"]//a//img/@src').getall():
             if not src:
                 continue
             coll['push'](base + src if src.startswith('/') else f'{base}/tour/newgirlpov/{src}')
@@ -109,7 +107,7 @@ class FuelVirtualClient(Client):
                     if src:
                         coll['push'](base + src)
 
-        for script in scene.sel.xpath('//div[@id="mediabox"]//script'):
+        for script in sel.xpath('//div[@id="mediabox"]//script'):
             m = _IMG_SCRIPT_RE.search(script.xpath('string(.)').get() or '')
             if m:
                 coll['push'](base + m.group(1))

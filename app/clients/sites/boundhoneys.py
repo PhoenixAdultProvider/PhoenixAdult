@@ -33,12 +33,12 @@ class BoundHoneysClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"updateVideoTitle")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"updateVideoTitle")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"updateDescription")]//b') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"updateDescription")]//b') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Bound Honeys'
@@ -50,10 +50,10 @@ class BoundHoneysClient(Client):
         metadata.collections = [scene.site.name]
 
     async def _collect_actors(self, scene: LoadedScene) -> list[ActorResult]:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[contains(@class,"updateModelsList")]//a'):
+        for el in sel.xpath('//div[contains(@class,"updateModelsList")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -69,8 +69,8 @@ class BoundHoneysClient(Client):
         return actors
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"updateCategoriesList")]//a')])
+        sel = scene.require_sel()
+        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"updateCategoriesList")]//a')])
         n = len(await self._collect_actors(scene))
         if group := self.group_genre_for(n):
             genres.append(group)
@@ -80,8 +80,8 @@ class BoundHoneysClient(Client):
         metadata.actors = await self._collect_actors(scene)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
-        for href in scene.sel.xpath('//link[@rel="preload"]/@href').getall():
+        for href in sel.xpath('//link[@rel="preload"]/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

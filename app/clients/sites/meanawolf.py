@@ -47,12 +47,12 @@ class MeanaWolfClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"trailerArea")]//h3') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"trailerArea")]//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"trailerContent")]//p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"trailerContent")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Meana Wolf'
@@ -64,19 +64,19 @@ class MeanaWolfClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, f'({_LI_XP})[2]').replace('ADDED:', '').strip()
+        sel = scene.require_sel()
+        raw = first_text(sel, f'({_LI_XP})[2]').replace('ADDED:', '').strip()
         metadata.release_date = iso_date(raw, '%B %d, %Y') if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath(f'({_LI_XP})[last()]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath(f'({_LI_XP})[last()]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath(f'({_LI_XP})[3]//a'):
+        for el in sel.xpath(f'({_LI_XP})[3]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue

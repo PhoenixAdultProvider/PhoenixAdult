@@ -33,15 +33,15 @@ class PuffyClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div/section[1]/div[2]/h2/span)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div/section[1]/div[2]/h2/span)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        all_text = (scene.sel.xpath('(//div/section[3]/div[2])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        all_text = (sel.xpath('(//div/section[3]/div[2])[1]').xpath('string(.)').get() or '').strip()
         if not all_text:
             return
-        tags = (scene.sel.xpath('(//div/section[3]/div[2]/p)[1]').xpath('string(.)').get() or '').strip()
+        tags = (sel.xpath('(//div/section[3]/div[2]/p)[1]').xpath('string(.)').get() or '').strip()
         summary = all_text.replace(tags, '') if tags else all_text
         metadata.summary = summary.split('Show more...')[0].strip()
 
@@ -55,27 +55,27 @@ class PuffyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div/section[2]/dl/dt[2])[1]').xpath('string(.)').get() or '').replace('Released on:', '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div/section[2]/dl/dt[2])[1]').xpath('string(.)').get() or '').replace('Released on:', '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div/section[3]/div[2]/p/a')])
-        cast = len(scene.sel.xpath('//div/section[2]/dl/dd[1]/a'))
+        sel = scene.require_sel()
+        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div/section[3]/div[2]/p/a')])
+        cast = len(sel.xpath('//div/section[2]/dl/dd[1]/a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div/section[2]/dl/dd[1]/a'):
+        for el in sel.xpath('//div/section[2]/dl/dd[1]/a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or name in seen:
@@ -91,7 +91,7 @@ class PuffyClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         images: list[str] = []
 
@@ -101,7 +101,7 @@ class PuffyClient(Client):
             host = scene.site.name.lower().replace(' ', '')
             images.append(f'https://media.{host}.com/videos/video-{cover}cover/hd.jpg')
 
-        for raw in scene.sel.xpath('//div[contains(@id,"pics")]//img/@src').getall():
+        for raw in sel.xpath('//div[contains(@id,"pics")]//img/@src').getall():
             if not raw:
                 continue
             abs_url = absolute_url(raw, base)

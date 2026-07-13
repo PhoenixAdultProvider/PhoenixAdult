@@ -79,16 +79,16 @@ class PrivateClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//li[@class="tag-sites"]//a)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+        sel = scene.require_sel()
+        return (sel.xpath('(//li[@class="tag-sites"]//a)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_attr(scene.sel, '(//meta[@itemprop="description"])[1]/@content') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_attr(sel, '(//meta[@itemprop="description"])[1]/@content') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -100,24 +100,24 @@ class PrivateClient(Client):
         metadata.collections = [self._tagline_for(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//meta[@itemprop="uploadDate"])[1]/@content')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//meta[@itemprop="uploadDate"])[1]/@content')
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//li[@class="tag-tags"]//a'):
+        for a in sel.xpath('//li[@class="tag-tags"]//a'):
             g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//li[@class="tag-models"]//a'):
+        for el in sel.xpath('//li[@class="tag-models"]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -133,9 +133,9 @@ class PrivateClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
-        coll['push'](scene.sel.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
+        coll['push'](sel.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
 
         scene_id = next((s for s in reversed(scene.url.split('/')) if s), '')
         if scene_id:
@@ -147,7 +147,7 @@ class PrivateClient(Client):
                 for href in gallery['sel'].xpath('//a/@href').getall():
                     coll['push'](href)
 
-        content_url = first_attr(scene.sel, '(//meta[@itemprop="contentURL"])[1]/@content')
+        content_url = first_attr(sel, '(//meta[@itemprop="contentURL"])[1]/@content')
         j = content_url.rfind('upload/')
         k = content_url.rfind('trailers/')
         if j >= 0 and k >= 0:

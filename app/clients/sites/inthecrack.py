@@ -59,12 +59,12 @@ class InTheCrackClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h2//span') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h2//span') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[@id="CollectionDescription"]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[@id="CollectionDescription"]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'InTheCrack'
@@ -82,8 +82,8 @@ class InTheCrackClient(Client):
         metadata.genres = ['Solo']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        page_title = first_text(scene.sel, '//title')
+        sel = scene.require_sel()
+        page_title = first_text(sel, '//title')
         if '#' not in page_title:
             return
         after_hash = page_title.split('#')[1]
@@ -92,8 +92,8 @@ class InTheCrackClient(Client):
         metadata.actors = self.dedup_people([ActorResult(name=name) for name in names])
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        style_text = first_text(scene.sel, '//style')
+        sel = scene.require_sel()
+        style_text = first_text(sel, '//style')
         parts = style_text.split("'")
         if len(parts) < 2:
             return

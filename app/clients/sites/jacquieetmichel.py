@@ -59,12 +59,12 @@ class JacquieEtMichelClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1[contains(@class,"content-detail__title")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1[contains(@class,"content-detail__title")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"content-detail__description")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"content-detail__description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Jacquie Et Michel TV'
@@ -76,14 +76,14 @@ class JacquieEtMichelClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, _RELEASE_XP)
+        sel = scene.require_sel()
+        raw = first_text(sel, _RELEASE_XP)
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for el in scene.sel.xpath('//div[contains(@class,"content-detail__row")]//li[contains(@class,"content-detail__tag")]'):
+        for el in sel.xpath('//div[contains(@class,"content-detail__row")]//li[contains(@class,"content-detail__tag")]'):
             g = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
             if g == 'Sodomy':
                 g = 'Anal'
@@ -100,8 +100,8 @@ class JacquieEtMichelClient(Client):
                 return
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//video/@poster)[1]')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//video/@poster)[1]')
         if not raw:
             return
         metadata.art = [absolute_url(raw, scene.site.base_url)]

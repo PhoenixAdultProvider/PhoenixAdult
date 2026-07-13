@@ -43,12 +43,12 @@ class ExpliciteArtClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//title') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"player-info-desc")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"player-info-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -57,12 +57,12 @@ class ExpliciteArtClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//span[contains(@class,"tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//span[contains(@class,"tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -70,7 +70,7 @@ class ExpliciteArtClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in scene.sel.xpath('//div[contains(@class,"player-info-row")]//a'):
+        for a in sel.xpath('//div[contains(@class,"player-info-row")]//a'):
             name = first_attr(a, 'normalize-space(.)')
             href = a.xpath('@href').get() or ''
             if name and href:
@@ -78,7 +78,7 @@ class ExpliciteArtClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        script_text = scene.sel.xpath('(//div[@id="player"]//script)[1]/text()').get() or ''
+        sel = scene.require_sel()
+        script_text = sel.xpath('(//div[@id="player"]//script)[1]/text()').get() or ''
         poster = script_match(script_text, r'image:\s*"([^"]+)"')
         metadata.art = [poster] if poster else []

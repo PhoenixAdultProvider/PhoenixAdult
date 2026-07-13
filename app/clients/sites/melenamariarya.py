@@ -44,12 +44,12 @@ class MelenaMariaRyaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _clean_title(first_text(scene.sel, '//title'), True) or ''
+        sel = scene.require_sel()
+        metadata.title = _clean_title(first_text(sel, '//title'), True) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_attr(scene.sel, '//meta[@name="description"]/@content') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_attr(sel, '//meta[@name="description"]/@content') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Melena Maria Rya'
@@ -67,9 +67,9 @@ class MelenaMariaRyaClient(Client):
         metadata.genres = ['European']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors = [ActorResult(name='Melena Maria Rya', photo_url='', gender='')]
-        co_star = re.search(r' with ([A-Za-z]+ [A-Za-z]+)$', _clean_title(first_text(scene.sel, '//title'), True), re.IGNORECASE)
+        co_star = re.search(r' with ([A-Za-z]+ [A-Za-z]+)$', _clean_title(first_text(sel, '//title'), True), re.IGNORECASE)
         if co_star:
             actors.append(ActorResult(name=co_star.group(1), photo_url='', gender=''))
         metadata.actors = actors

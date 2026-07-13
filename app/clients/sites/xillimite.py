@@ -34,13 +34,13 @@ class XillimiteClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        nodes = scene.sel.xpath('//div[@id="synopsis"]/node()').getall()
-        raw_html = ''.join(nodes) if nodes else (scene.sel.xpath('(//meta[@name="twitter:description"]/@content)[1]').get() or '')
+        sel = scene.require_sel()
+        nodes = sel.xpath('//div[@id="synopsis"]/node()').getall()
+        raw_html = ''.join(nodes) if nodes else (sel.xpath('(//meta[@name="twitter:description"]/@content)[1]').get() or '')
         if not raw_html:
             return
         with_newlines = _BR_RE.sub('\n', raw_html)
@@ -59,10 +59,10 @@ class XillimiteClient(Client):
         metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         entries: list[ActorResult] = []
-        for img in scene.sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//a[contains(@class,"movies")]//img'):
+        for img in sel.xpath('//div[contains(@class,"casting")]//div[contains(@class,"slider-xl")]//a[contains(@class,"movies")]//img'):
             name = first_attr(img, '@alt')
             data_src = first_attr(img, '@data-src')
             photo = join_url(data_src, base) if data_src else ''
@@ -70,7 +70,7 @@ class XillimiteClient(Client):
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
 
@@ -82,8 +82,8 @@ class XillimiteClient(Client):
             if abs_url not in images:
                 images.append(abs_url)
 
-        for href in scene.sel.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
+        for href in sel.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
             push(href)
-        for href in scene.sel.xpath('//div[contains(@class,"screenshots")]//div[contains(@class,"slides")]//a/@href').getall():
+        for href in sel.xpath('//div[contains(@class,"screenshots")]//div[contains(@class,"slides")]//a/@href').getall():
             push(href)
         metadata.art = images

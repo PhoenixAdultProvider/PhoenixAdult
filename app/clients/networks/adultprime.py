@@ -101,16 +101,16 @@ class AdultPrimeClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath(f'{_info_line_xp("Studio")}//a[1]/text()').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath(f'{_info_line_xp("Studio")}//a[1]/text()').get() or '').strip()
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _clean_title(scene.sel.xpath(f'string({_TITLE_XP})').get() or '') or ''
+        sel = scene.require_sel()
+        metadata.title = _clean_title(sel.xpath(f'string({_TITLE_XP})').get() or '') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        summary = first_attr(scene.sel, 'string((//p[contains(@class,"description")])[1])')
+        sel = scene.require_sel()
+        summary = first_attr(sel, 'string((//p[contains(@class,"description")])[1])')
         if not summary:
             return
         low = summary.lower()
@@ -129,22 +129,22 @@ class AdultPrimeClient(Client):
         metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath(f'string({_DATE_XP})').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath(f'string({_DATE_XP})').get() or ''
         metadata.release_date = _parse_euro_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        text = scene.sel.xpath(f'string({_info_line_xp("Niches")})').get() or ''
+        sel = scene.require_sel()
+        text = sel.xpath(f'string({_info_line_xp("Niches")})').get() or ''
         if ':' not in text:
             return
         genres = [g.strip() for g in text.split(':')[-1].split(',') if g.strip()]
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
-        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath(f'{_info_line_xp("Performer")}/a')])
+        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath(f'{_info_line_xp("Performer")}/a')])
         actors: list[ActorResult] = []
         for name in names:
             q = quote(name, safe='').replace('%20', '+')
@@ -159,9 +159,9 @@ class AdultPrimeClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//video[@id]/@poster').getall():
+        for raw in sel.xpath('//video[@id]/@poster').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

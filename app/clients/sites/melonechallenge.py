@@ -39,8 +39,8 @@ class MeloneChallengeClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//a[contains(@class,"dark")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//a[contains(@class,"dark")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Melone Challenge'
@@ -55,8 +55,8 @@ class MeloneChallengeClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in scene.sel.xpath('//figure//img'):
+        for el in sel.xpath('//figure//img'):
             coll['push'](first_attr(el, '@src'))
         metadata.art = coll['list']

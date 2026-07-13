@@ -44,21 +44,21 @@ class VNAClient(Client):
 
     @staticmethod
     def _actors_text(scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//h3[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath('(//h3[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
 
     @staticmethod
     def _genres_text(scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        return (sel.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        summary = (scene.sel.xpath('(//*[contains(@class,"customhcolor2")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        summary = (sel.xpath('(//*[contains(@class,"customhcolor2")])[1]').xpath('string(.)').get() or '').strip()
         if scene.site.name == 'Kimber Lee Live':
             summary = summary.split("Don't forget to join me")[0].strip()
         if scene.site.name == 'Vicky at Home':
@@ -75,8 +75,8 @@ class VNAClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = iso_date((scene.sel.xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
+        sel = scene.require_sel()
+        metadata.release_date = iso_date((sel.xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [g.strip() for g in self._genres_text(scene).split(',') if g.strip()]
@@ -105,9 +105,9 @@ class VNAClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
-        poster = first_attr(scene.sel, '(//center//img)[1]/@src')
+        poster = first_attr(sel, '(//center//img)[1]/@src')
         if not poster:
             return
         abs_url = poster if poster.startswith('http') else f'{base}/{poster}'

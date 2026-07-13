@@ -63,19 +63,19 @@ class CzechVRClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"nazev")]//h1)[1]').xpath('string(.)').get() or '').split('-')[-1].strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"nazev")]//h1)[1]').xpath('string(.)').get() or '').split('-')[-1].strip()
         if not raw:
             return
         metadata.title = _strip_brand(raw) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        text = (scene.sel.xpath('(//div[@class="text"])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        text = (sel.xpath('(//div[@class="text"])[1]').xpath('string(.)').get() or '').strip()
         if text:
             metadata.summary = text
             return
-        metadata.summary = (scene.sel.xpath('(//div[@class="textDetail"])[1]').xpath('string(.)').get() or '').strip() or ''
+        metadata.summary = (sel.xpath('(//div[@class="textDetail"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -87,32 +87,32 @@ class CzechVRClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"nazev")]//div[contains(@class,"datum")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"nazev")]//div[contains(@class,"datum")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw, _DATE_FMT)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
             (el.xpath('string(.)').get() or '').lower()
-            for el in scene.sel.xpath('//div[contains(@class,"tag") and contains(@class,"new")]//a | //div[@class="tag"]//a')
+            for el in sel.xpath('//div[contains(@class,"tag") and contains(@class,"new")]//a | //div[@class="tag"]//a')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for el in scene.sel.xpath('//div[contains(@class,"modelky")]//a'):
+        for el in sel.xpath('//div[contains(@class,"modelky")]//a'):
             entries.append(ActorResult(name=first_attr(el)))
-        for el in scene.sel.xpath('(//div[contains(@class,"nazev")])[1]//div[contains(@class,"featuring")]//a'):
+        for el in sel.xpath('(//div[contains(@class,"nazev")])[1]//div[contains(@class,"featuring")]//a'):
             entries.append(ActorResult(name=first_attr(el)))
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
@@ -121,7 +121,7 @@ class CzechVRClient(Client):
             '//meta[@property="og:image"]/@content',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

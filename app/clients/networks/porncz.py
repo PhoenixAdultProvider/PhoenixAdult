@@ -37,12 +37,12 @@ class PornCZClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"dmb-1")]/p)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"dmb-1")]/p)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,28 +54,28 @@ class PornCZClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//meta[@property="video:release_date"])[1]/@content')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//meta[@property="video:release_date"])[1]/@content')
         if raw:
             metadata.release_date = iso_date(raw, '%d.%m.%Y')
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
             (a.xpath('string(.)').get() or '').split('#')[-1].strip()
-            for a in scene.sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"?category=")]')
+            for a in sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"?category=")]')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         is_dolls = scene.site.name == _DOLLS_SITE
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath('//div[contains(@class,"mini-avatars")]/a'):
+        for el in sel.xpath('//div[contains(@class,"mini-avatars")]/a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or name in seen:
@@ -95,14 +95,14 @@ class PornCZClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//a[contains(@class,"gallery-popup")]/@href',
             '//video[contains(@class,"video-player")]/@data-poster',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

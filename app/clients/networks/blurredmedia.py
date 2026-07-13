@@ -80,12 +80,12 @@ class BlurredMediaClient(Client):
         )
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//section[@name="descriptionIntro"]/p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//section[@name="descriptionIntro"]/p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -94,27 +94,27 @@ class BlurredMediaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//time[contains(@class,"video__date")])[1]/@datetime')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//time[contains(@class,"video__date")])[1]/@datetime')
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath('//a[contains(@class,"video__tag")]')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath('//a[contains(@class,"video__tag")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         entries: list[ActorResult] = []
-        for fig in scene.sel.xpath('//section[@name="modelsBio"]/article/figure'):
+        for fig in sel.xpath('//section[@name="modelsBio"]/article/figure'):
             name = (fig.xpath('(.//p//a)[1]').xpath('string(.)').get() or '').strip()
             raw = first_attr(fig, '(.//img)[1]/@src')
             entries.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
         xpaths = (
@@ -122,6 +122,6 @@ class BlurredMediaClient(Client):
             '//ul[contains(@class,"thumbnails__gallery")]//li//a/@href',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         metadata.art = coll['list']

@@ -20,8 +20,8 @@ def _ld_from_sel(sel: Any) -> dict[str, Any] | None:
 
 
 def _last_json_ld(scene: LoadedScene) -> dict[str, Any] | None:
-    assert scene.sel is not None
-    return _ld_from_sel(scene.sel)
+    sel = scene.require_sel()
+    return _ld_from_sel(sel)
 
 
 def _strip_suffix(name: str | None) -> str:
@@ -89,10 +89,10 @@ class VirtualRealClient(Client):
         metadata.genres = self.dedup_strings(parts)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         ld = _last_json_ld(scene)
         names = [(a.get('name') or '').strip() for a in (ld.get('actors') if ld else None) or [] if (a.get('name') or '').strip()]
-        photos = [(src or '').strip() for src in scene.sel.xpath('//div[contains(@class,"model-box")]//a//img/@src').getall()]
+        photos = [(src or '').strip() for src in sel.xpath('//div[contains(@class,"model-box")]//a//img/@src').getall()]
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for idx, name in enumerate(names):
@@ -103,7 +103,7 @@ class VirtualRealClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         ld = _last_json_ld(scene)
         images: list[str] = []
@@ -112,6 +112,6 @@ class VirtualRealClient(Client):
             append_unique(images, raw, base)
 
         push((ld.get('image') if ld else '') or '')
-        for href in scene.sel.xpath('//figure[@itemprop="associatedMedia"]//a/@href').getall():
+        for href in sel.xpath('//figure[@itemprop="associatedMedia"]//a/@href').getall():
             push(href)
         metadata.art = images

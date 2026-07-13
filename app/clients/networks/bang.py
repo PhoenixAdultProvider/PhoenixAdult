@@ -107,8 +107,8 @@ class BangClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _studio_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        ld = _find_video_ld(scene.sel)
+        sel = scene.require_sel()
+        ld = _find_video_ld(sel)
         raw = ''
         if ld:
             company = ld.get('productionCompany')
@@ -117,31 +117,31 @@ class BangClient(Client):
         return _bangify(raw or STUDIO)
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        for el in scene.sel.xpath('//p[contains(.,"eries:")]//a'):
+        sel = scene.require_sel()
+        for el in sel.xpath('//p[contains(.,"eries:")]//a'):
             href = el.xpath('@href').get() or ''
             if 'originals' in href or 'videos' in href:
                 return _bangify(first_attr(el, 'normalize-space(.)'))
         return ''
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ld = _find_video_ld(scene.sel)
-        raw = _strip_html(ld.get('name')) if ld and ld.get('name') else (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        ld = _find_video_ld(sel)
+        raw = _strip_html(ld.get('name')) if ld and ld.get('name') else (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         metadata.title = _bangify(raw) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ld = _find_video_ld(scene.sel)
+        sel = scene.require_sel()
+        ld = _find_video_ld(sel)
         if ld and ld.get('description'):
             metadata.summary = _strip_html(ld['description']) or ''
             return
-        desc = (scene.sel.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
+        desc = (sel.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
         if desc:
             metadata.summary = desc
             return
-        meta = first_attr(scene.sel, '(//meta[@name="description"])[1]/@content')
-        og = first_attr(scene.sel, '(//meta[@property="og:description"])[1]/@content')
+        meta = first_attr(sel, '(//meta[@name="description"])[1]/@content')
+        og = first_attr(sel, '(//meta[@property="og:description"])[1]/@content')
         metadata.summary = meta or og or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -151,32 +151,30 @@ class BangClient(Client):
         metadata.tagline = self._tagline_of(scene) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         tagline = self._tagline_of(scene)
         collections = [tagline] if tagline else [self._studio_of(scene)]
-        dvd_title = (scene.sel.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
+        dvd_title = (sel.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
         if dvd_title:
             collections.append(_bangify(dvd_title))
         metadata.collections = collections
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ld = _find_video_ld(scene.sel)
+        sel = scene.require_sel()
+        ld = _find_video_ld(sel)
         iso = iso_date(ld['datePublished']) if ld and ld.get('datePublished') else None
         metadata.release_date = iso or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = [
-            g
-            for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]'))
-            if g
+            g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]')) if g
         ]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        scene_els = scene.sel.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
+        sel = scene.require_sel()
+        scene_els = sel.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
         if scene_els:
             actors: list[ActorResult] = []
             for el in scene_els:
@@ -201,7 +199,7 @@ class BangClient(Client):
             return ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
+        for el in sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name and href:
@@ -209,8 +207,8 @@ class BangClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        ld = _find_video_ld(scene.sel)
+        sel = scene.require_sel()
+        ld = _find_video_ld(sel)
         out: list[str] = []
 
         if ld and isinstance(ld.get('thumbnailUrl'), str):
@@ -229,13 +227,13 @@ class BangClient(Client):
 
         # XPath fallback (full URLs kept, per the image-URL policy).
         if not out:
-            og = first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content')
+            og = first_attr(sel, '(//meta[@property="og:image"])[1]/@content')
             if og:
                 out.append(og)
-            for poster in scene.sel.xpath('//video/@poster').getall():
+            for poster in sel.xpath('//video/@poster').getall():
                 if poster:
                     out.append(poster)
-            for el in scene.sel.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
+            for el in sel.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
                 src = first_attr(el, '@src')
                 if src:
                     out.append(src)

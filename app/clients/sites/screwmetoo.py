@@ -96,12 +96,12 @@ class ScrewMeTooClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1')
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[h2]').replace('Read More ...Read Less', '').strip()
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[h2]').replace('Read More ...Read Less', '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -113,9 +113,9 @@ class ScrewMeTooClient(Client):
         metadata.release_date = self._extra(scene).release_date or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        category_text = scene.sel.xpath('string((//div[contains(@class,"amp-category")])[1])').get() or ''
+        category_text = sel.xpath('string((//div[contains(@class,"amp-category")])[1])').get() or ''
         for line in category_text.split('\n'):
             g = line.strip()
             if g and g not in genres:
@@ -129,8 +129,8 @@ class ScrewMeTooClient(Client):
         metadata.actors = self._extra(scene).actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//div[contains(@class,"amp-vis-mobile")]//*[@src]/@src').getall():
+        for raw in sel.xpath('//div[contains(@class,"amp-vis-mobile")]//*[@src]/@src').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

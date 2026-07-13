@@ -79,21 +79,21 @@ class FTVClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _cast_base_names(self, scene: LoadedScene) -> list[str]:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         names = []
-        for el in scene.sel.xpath('//div[@id="ModelDescription"]//h1'):
+        for el in sel.xpath('//div[@id="ModelDescription"]//h1'):
             n = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if n:
                 names.append(n)
         return names
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _parse_title_and_date(scene.sel)[0] or ''
+        sel = scene.require_sel()
+        metadata.title = _parse_title_and_date(sel)[0] or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -105,19 +105,19 @@ class FTVClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = _parse_title_and_date(scene.sel)[1] or None
+        sel = scene.require_sel()
+        metadata.release_date = _parse_title_and_date(sel)[1] or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = _GENRES.get(scene.site.name) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
-        summary = (scene.sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
-        thumbs = scene.sel.xpath('//div[@id="Thumbs"]//img/@src').getall()
+        summary = (sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
+        thumbs = sel.xpath('//div[@id="Thumbs"]//img/@src').getall()
         actors: list[ActorResult] = []
-        for idx, el in enumerate(scene.sel.xpath('//div[@id="ModelDescription"]//h1')):
+        for idx, el in enumerate(sel.xpath('//div[@id="ModelDescription"]//h1')):
             base_name = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if not base_name:
                 continue
@@ -130,7 +130,7 @@ class FTVClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
 
@@ -155,6 +155,6 @@ class FTVClient(Client):
                     for raw in _collect_images(g['sel']):
                         coll['push'](raw)
 
-        for raw in _collect_images(scene.sel):
+        for raw in _collect_images(sel):
             coll['push'](raw)
         metadata.art = coll['list'] or []

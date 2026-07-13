@@ -58,12 +58,12 @@ class HoloGirlsVRClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"video-title")]//h3') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"video-title")]//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        nodes = scene.sel.xpath('(//div[contains(@class,"vidpage-info")])[1]/text()').getall()
+        sel = scene.require_sel()
+        nodes = sel.xpath('(//div[contains(@class,"vidpage-info")])[1]/text()').getall()
         if len(nodes) <= 4:
             return
         metadata.summary = nodes[4].strip() or ''
@@ -78,14 +78,14 @@ class HoloGirlsVRClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"videopage-tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"videopage-tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for card in scene.sel.xpath('//div[contains(@class,"col-md-3")]'):
+        for card in sel.xpath('//div[contains(@class,"col-md-3")]'):
             name = first_text(card, './/div[contains(@class,"vidpage-mobilePad")]//a//strong')
             raw = first_attr(card, '(.//img[contains(@class,"imgHover")]/@src)[1]')
             photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
@@ -93,13 +93,13 @@ class HoloGirlsVRClient(Client):
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw, scene.site.base_url)
 
-        push(scene.sel.xpath('(//div[contains(@class,"vidCover")]//img/@src)[1]').get() or '')
-        for raw in scene.sel.xpath('//div[contains(@class,"vid-flex-container")]//span//img/@src').getall():
+        push(sel.xpath('(//div[contains(@class,"vidCover")]//img/@src)[1]').get() or '')
+        for raw in sel.xpath('//div[contains(@class,"vid-flex-container")]//span//img/@src').getall():
             push((raw or '').replace('_thumb', ''))
         metadata.art = images

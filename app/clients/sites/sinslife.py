@@ -37,12 +37,12 @@ class SinsLifeClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"section")]//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"section")]//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, _SUMMARY_XP) or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, _SUMMARY_XP) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,23 +54,23 @@ class SinsLifeClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, _DATE_XP)
+        sel = scene.require_sel()
+        raw = first_text(sel, _DATE_XP)
         if raw.lower().startswith('release date'):
             raw = raw[len('release date') :].lstrip(': ').strip()
         metadata.release_date = iso_date(raw, '%B %d, %Y') if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        count = len(scene.sel.xpath(_ACTORS_XP))
+        sel = scene.require_sel()
+        count = len(sel.xpath(_ACTORS_XP))
         group = self.group_genre_for(count)
         metadata.genres = [group] if group else []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_ACTORS_XP):
+        for el in sel.xpath(_ACTORS_XP):
             name = first_attr(el, 'normalize-space(.)')
             if name and name not in seen:
                 seen.add(name)
@@ -78,8 +78,8 @@ class SinsLifeClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        src = (scene.sel.xpath(_POSTER_XP + '/@src').get() or '').strip()
+        sel = scene.require_sel()
+        src = (sel.xpath(_POSTER_XP + '/@src').get() or '').strip()
         if not src:
             return
         metadata.art = [src if src.startswith('http') else f'https:{src}']

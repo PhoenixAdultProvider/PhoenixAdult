@@ -88,12 +88,12 @@ class PlumperPassClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"vidinfo")]//p')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"vidinfo")]//p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'PlumperPass'
@@ -108,29 +108,29 @@ class PlumperPassClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        tag_links = scene.sel.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
+        tag_links = sel.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
         if tag_links:
             for a in tag_links:
                 g = first_attr(a, 'normalize-space(.)')
                 if g and g not in genres:
                     genres.append(g)
         else:
-            for g in (scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').split(','):
+            for g in (sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').split(','):
                 t = g.strip()
                 if t and t not in genres:
                     genres.append(t)
-        cast = len(scene.sel.xpath('//h3[contains(@class,"releases")]//a'))
+        cast = len(sel.xpath('//h3[contains(@class,"releases")]//a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//h3[contains(@class,"releases")]//a'):
+        for el in sel.xpath('//h3[contains(@class,"releases")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -144,13 +144,13 @@ class PlumperPassClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: raw if 'http' in raw else f'{base}/t1/{raw}')
-        script = scene.sel.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
+        script = sel.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
         m = _IMAGE_RE.search(script)
         if m:
             coll['push']((m.group(1) or '').strip())
-        for raw in scene.sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
+        for raw in sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

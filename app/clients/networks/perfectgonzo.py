@@ -37,12 +37,12 @@ class PerfectGonzoClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h2)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h2)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath(f'(//div[@class="{_SUMMARY_DIV}"]/p)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath(f'(//div[@class="{_SUMMARY_DIV}"]/p)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,8 +54,8 @@ class PerfectGonzoClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath(f'(//div[@class="{_DATE_DIV}"]/span)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath(f'(//div[@class="{_DATE_DIV}"]/span)[1]').xpath('string(.)').get() or '').strip()
         if raw:
             after = raw.split('Added')[-1].strip()
             if after:
@@ -64,20 +64,20 @@ class PerfectGonzoClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath(f'//div[@class="{_TAGS_DIV}"]//a'):
+        for a in sel.xpath(f'//div[@class="{_TAGS_DIV}"]//a'):
             g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
+        for el in sel.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -90,11 +90,11 @@ class PerfectGonzoClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for poster in scene.sel.xpath('//video/@poster').getall():
+        for poster in sel.xpath('//video/@poster').getall():
             coll['push'](poster)
-        for img in scene.sel.xpath('//ul[@class="bxslider_screenshots"]//img'):
+        for img in sel.xpath('//ul[@class="bxslider_screenshots"]//img'):
             coll['push'](img.xpath('@src').get() or img.xpath('@data-original').get())
         images: list[str] = coll['list']
         metadata.art = images

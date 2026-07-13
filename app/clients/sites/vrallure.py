@@ -39,12 +39,12 @@ class VRAllureClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"desc")]//span') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"desc")]//span') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -56,8 +56,8 @@ class VRAllureClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, _DATE_XP)
+        sel = scene.require_sel()
+        raw = first_text(sel, _DATE_XP)
         if raw:
             parsed = iso_date(raw)
             if parsed:
@@ -67,18 +67,16 @@ class VRAllureClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[contains(@class,"label") and contains(@class,"label-tag")]')
-        ]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[contains(@class,"label") and contains(@class,"label-tag")]')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(_ACTOR_LINK_XP):
+        for a in sel.xpath(_ACTOR_LINK_XP):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if not name or name in seen:
@@ -94,15 +92,15 @@ class VRAllureClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw)
 
-        push(to_https(meta_content(scene.sel, 'og:image')))
-        for href in scene.sel.xpath(f'{_ACTOR_LINK_XP}/@href').getall():
+        push(to_https(meta_content(sel, 'og:image')))
+        for href in sel.xpath(f'{_ACTOR_LINK_XP}/@href').getall():
             href = (href or '').strip()
             if not href:
                 continue

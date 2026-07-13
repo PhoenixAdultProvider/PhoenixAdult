@@ -70,12 +70,12 @@ class PenthouseGoldClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _PREFIX_RE.sub('', first_text(scene.sel, _H1_XP)).strip()
+        sel = scene.require_sel()
+        metadata.title = _PREFIX_RE.sub('', first_text(sel, _H1_XP)).strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//p')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -84,19 +84,19 @@ class PenthouseGoldClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath(_UPLOAD_XP).get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath(_UPLOAD_XP).get() or '').strip()
         metadata.release_date = (iso_date(raw, '%m/%d/%Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"scene-tags")]//li//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in sel.xpath('//ul[contains(@class,"scene-tags")]//li//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for card in scene.sel.xpath('//ul[@id="featured_pornstars"]//div[contains(@class,"model")]'):
+        for card in sel.xpath('//ul[@id="featured_pornstars"]//div[contains(@class,"model")]'):
             name = first_text(card, './/h3')
             raw = first_attr(card, '(.//img/@src)[1]')
             photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
@@ -104,8 +104,8 @@ class PenthouseGoldClient(Client):
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//div[@id="trailer_player_finished"]//img/@src)[1]')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//div[@id="trailer_player_finished"]//img/@src)[1]')
         if not raw:
             return
         metadata.art = [absolute_url(raw, scene.site.base_url)]

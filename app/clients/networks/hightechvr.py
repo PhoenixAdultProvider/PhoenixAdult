@@ -47,18 +47,18 @@ class HighTechVRClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw) if raw else None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = _profile(scene.site.name)
-        metadata.summary = (scene.sel.xpath(f'({p["summary"]})[1]').xpath('string(.)').get() or '').strip() or ''
+        metadata.summary = (sel.xpath(f'({p["summary"]})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -71,21 +71,21 @@ class HighTechVRClient(Client):
         metadata.collections = [tagline] if tagline else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = _profile(scene.site.name)
-        el = scene.sel.xpath(f'({p["release_date"]})[1]')
+        el = sel.xpath(f'({p["release_date"]})[1]')
         raw = (el.xpath(f'@{p["date_attr"]}').get() if p['date_attr'] else el.xpath('string(.)').get()) or ''
         raw = raw.strip()
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = _profile(scene.site.name)
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath(p['genres'])]
+        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath(p['genres'])]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = _profile(scene.site.name)
         base = scene.site.base_url.rstrip('/')
 
@@ -93,7 +93,7 @@ class HighTechVRClient(Client):
             return (sel.xpath(f'({p["actor_photo"]})[1]/@src').get() or '').strip()
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(p['actors']):
+        for el in sel.xpath(p['actors']):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if name:
@@ -101,7 +101,7 @@ class HighTechVRClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = _profile(scene.site.name)
         is_sexbabes = scene.site.name == 'SexBabesVR'
         images: list[str] = []
@@ -113,10 +113,10 @@ class HighTechVRClient(Client):
             if url.startswith('http') and url not in images:
                 images.append(url)
 
-        for el in scene.sel.xpath(p['gallery']):
+        for el in sel.xpath(p['gallery']):
             push((el.xpath(f'@{p["gallery_attr"]}').get() or '').strip())
 
-        poster_el = scene.sel.xpath(f'({p["poster"]})[1]')
+        poster_el = sel.xpath(f'({p["poster"]})[1]')
         if poster_el:
             poster_attr = first_attr(poster_el, '@poster')
             if poster_attr:

@@ -51,16 +51,16 @@ class RomeroClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//meta[@itemprop="name"]/@content | //h1/text())[1]')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//meta[@itemprop="name"]/@content | //h1/text())[1]')
         metadata.title = _clean_detail_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if scene.site.name in _FULLSTORY_ONLY:
-            paras = scene.sel.xpath('//div[@id="fullstory"]/p')
+            paras = sel.xpath('//div[@id="fullstory"]/p')
         else:
-            paras = scene.sel.xpath(
+            paras = sel.xpath(
                 '//div[@class="cont"]/p | //div[@class="cont"]//div[@id="fullstory"]/p | //div[@class="zapdesc"]//div[not(contains(.,"Including"))][.//br]'
             )
         parts: list[str] = []
@@ -80,38 +80,38 @@ class RomeroClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').split('T')[0].strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').split('T')[0].strip()
         if raw:
             metadata.release_date = iso_date(raw, '%Y-%m-%d') or iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            t for t in scene.sel.xpath('//div[@class="Cats"]//a/text() | //div[@class="zapdesc"]/div/div/div[contains(.,"Including:")]/text()').getall()
+            t for t in sel.xpath('//div[@class="Cats"]//a/text() | //div[@class="zapdesc"]/div/div/div[contains(.,"Including:")]/text()').getall()
         ]
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if scene.site.name in _LOOSE_ACTOR:
-            links = scene.sel.xpath('//div[contains(@class,"tagsmodels")]//a')
+            links = sel.xpath('//div[contains(@class,"tagsmodels")]//a')
         else:
-            links = scene.sel.xpath('//div[contains(@class,"tagsmodels")][./img[@alt="model icon"]]//a')
+            links = sel.xpath('//div[contains(@class,"tagsmodels")][./img[@alt="model icon"]]//a')
         entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in links]
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[contains(@class,"director")]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//div[contains(@class,"director")]//a')]
         metadata.directors = self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(_clean_poster)
-        for el in scene.sel.xpath('//img'):
+        for el in sel.xpath('//img'):
             cls = el.xpath('@class').get() or ''
             if 'wp-image-4512' in cls or 'wp-image-492' in cls:
                 continue
@@ -123,7 +123,7 @@ class RomeroClient(Client):
             '//div[@class="gallery"]//a/@href',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images or []

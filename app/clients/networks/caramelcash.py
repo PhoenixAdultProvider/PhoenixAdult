@@ -63,13 +63,13 @@ class CaramelCashClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"content-title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"content-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         # Legacy uses the SECOND content-desc block.
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"content-desc")])[2]').xpath('string(.)').get() or '').strip() or ''
+        metadata.summary = (sel.xpath('(//div[contains(@class,"content-desc")])[2]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -81,29 +81,29 @@ class CaramelCashClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"content-date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"content-date")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = _parse_caramel_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath('//div[contains(@class,"content-tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath('//div[contains(@class,"content-tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries = [
             ActorResult(name=first_attr(a))
-            for a in scene.sel.xpath('//section[contains(@class,"content-sec") and contains(@class,"backdrop")]//div[contains(@class,"main__models")]//a')
+            for a in sel.xpath('//section[contains(@class,"content-sec") and contains(@class,"backdrop")]//div[contains(@class,"main__models")]//a')
         ]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
-        for href in scene.sel.xpath('//section[contains(@class,"content-gallery-sec")]//a[@data-lightbox="gallery"]/@href').getall():
+        for href in sel.xpath('//section[contains(@class,"content-gallery-sec")]//a[@data-lightbox="gallery"]/@href').getall():
             coll['push'](href)
         metadata.art = coll['list']

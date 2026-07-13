@@ -61,24 +61,24 @@ class LittleCapriceClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        cls = scene.sel.xpath('(//div[@id="main-project-content"])[1]/@class').get() or ''
+        sel = scene.require_sel()
+        cls = sel.xpath('(//div[@id="main-project-content"])[1]/@class').get() or ''
         for token in cls.split():
             if token in _CATEGORY_TAGLINES:
                 return _CATEGORY_TAGLINES[token]
         return scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        title = (scene.sel.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        title = (sel.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
         tagline = self._tagline_of(scene)
         if title.lower().startswith(tagline.lower()):
             title = title[len(tagline) :].strip()
         metadata.title = title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -90,13 +90,13 @@ class LittleCapriceClient(Client):
         metadata.collections = [self._tagline_of(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        text = scene.sel.xpath('(//div[contains(@class,"relese-date")])[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        text = sel.xpath('(//div[contains(@class,"relese-date")])[1]').xpath('string(.)').get() or ''
         raw = text.split('Release:')[1].strip() if 'Release:' in text else ''
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
 
         def add(sel: Any) -> None:
@@ -105,20 +105,20 @@ class LittleCapriceClient(Client):
                 if g and g not in genres:
                     genres.append(g)
 
-        add(scene.sel)
+        add(sel)
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
             add(gallery)
-        cast = len(scene.sel.xpath('//div[contains(@class,"project-models")]//a'))
+        cast = len(sel.xpath('//div[contains(@class,"project-models")]//a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('//div[contains(@class,"project-models")]//a'):
+        for el in sel.xpath('//div[contains(@class,"project-models")]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -135,11 +135,11 @@ class LittleCapriceClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: join_url(raw, base))
 
-        coll['push'](first_attr(scene.sel, '(//meta[@property="og:image"])[1]/@content'))
+        coll['push'](first_attr(sel, '(//meta[@property="og:image"])[1]/@content'))
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
             coll['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))

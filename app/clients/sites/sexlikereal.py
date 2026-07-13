@@ -51,42 +51,42 @@ class SexLikeRealClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1')
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         parts: list[str] = []
-        for p in scene.sel.xpath(f'//p[contains(@class,"{_SUMMARY_CLASS}")]'):
+        for p in sel.xpath(f'//p[contains(@class,"{_SUMMARY_CLASS}")]'):
             t = first_attr(p, 'normalize-space(.)')
             if t and 'Video specifications' not in t:
                 parts.append(t)
         metadata.summary = '\n'.join(parts)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.studio = first_text(scene.sel, _STUDIO_XP)
+        sel = scene.require_sel()
+        metadata.studio = first_text(sel, _STUDIO_XP)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        studio = first_text(scene.sel, _STUDIO_XP)
+        sel = scene.require_sel()
+        studio = first_text(sel, _STUDIO_XP)
         metadata.collections = [studio] if studio else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath(f'(//p[contains(@class,"{_DATE_CLASS}")]//time/@datetime)[1]').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath(f'(//p[contains(@class,"{_DATE_CLASS}")]//time/@datetime)[1]').get() or '').strip()
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in scene.sel.xpath(f'//a[contains(@class,"{_GENRE_CLASS}")]//span')]
+        sel = scene.require_sel()
+        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in sel.xpath(f'//a[contains(@class,"{_GENRE_CLASS}")]//span')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(f'//a[contains(@class,"{_ACTOR_CLASS}")]'):
+        for el in sel.xpath(f'//a[contains(@class,"{_ACTOR_CLASS}")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -100,9 +100,9 @@ class SexLikeRealClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: (raw or '').strip().replace('.webp', '.jpg'))
-        coll['push'](scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        for raw in scene.sel.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
+        coll['push'](sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        for raw in sel.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
             coll['push'](raw)
         metadata.art = coll['list']

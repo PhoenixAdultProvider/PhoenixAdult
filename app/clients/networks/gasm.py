@@ -58,17 +58,17 @@ class GasmClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else ''
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = scene.sel.xpath('(//h2[contains(@class,"post_description")])[1]').xpath('string(.)').get() or ''
+        sel = scene.require_sel()
+        raw = sel.xpath('(//h2[contains(@class,"post_description")])[1]').xpath('string(.)').get() or ''
         metadata.summary = raw.replace('´', "'").replace('’', "'").strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -78,36 +78,36 @@ class GasmClient(Client):
         metadata.tagline = self._tagline_of(scene) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         out: list[str] = []
         tagline = self._tagline_of(scene)
         if tagline:
             out.append(tagline)
-        dvd = (scene.sel.xpath('(//div[contains(@class,"post_item") and contains(@class,"dvd")]//h1)[1]').xpath('string(.)').get() or '').strip()
+        dvd = (sel.xpath('(//div[contains(@class,"post_item") and contains(@class,"dvd")]//h1)[1]').xpath('string(.)').get() or '').strip()
         if dvd:
             out.append(title_case(dvd.lower(), site_name=scene.site.name))
         metadata.collections = out or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"/search?s=")]')) if g]
+        sel = scene.require_sel()
+        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@href,"/search?s=")]')) if g]
         metadata.genres = out or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        out = [ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@href,"models/")]')) if n]
+        sel = scene.require_sel()
+        out = [ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@href,"models/")]')) if n]
         metadata.actors = out or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for src in scene.sel.xpath('//img[contains(@class,"item_cover")]/@src').getall():
+        for src in sel.xpath('//img[contains(@class,"item_cover")]/@src').getall():
             coll['push'](src)
-        coll['push'](scene.sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
+        coll['push'](sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
         images: list[str] = coll['list']
         metadata.art = images or []

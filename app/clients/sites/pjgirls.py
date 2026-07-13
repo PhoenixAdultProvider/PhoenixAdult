@@ -32,12 +32,12 @@ class PJGirlsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//title').split('- porn video')[0].strip()
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//title').split('- porn video')[0].strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"text")]/p')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"text")]/p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'PJGirls'
@@ -49,21 +49,21 @@ class PJGirlsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '(//div[contains(@class,"info")]/h3)[1]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '(//div[contains(@class,"info")]/h3)[1]')
         metadata.release_date = (iso_date(raw, '%B %d, %Y') if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"detailTagy") and contains(@class,"clear")]//a')
+            a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"detailTagy") and contains(@class,"clear")]//a')
         ]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
-        for el in scene.sel.xpath('(//div[contains(@class,"info")]/h3)[3]//a'):
+        for el in sel.xpath('(//div[contains(@class,"info")]/h3)[3]//a'):
             name = first_attr(el, 'normalize-space(.)')
             if not name:
                 continue
@@ -77,8 +77,8 @@ class PJGirlsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in scene.sel.xpath('//div[contains(@class,"videoObal")]//img/@src').getall():
+        for raw in sel.xpath('//div[contains(@class,"videoObal")]//img/@src').getall():
             coll['push']((raw or '').strip())
         metadata.art = coll['list']

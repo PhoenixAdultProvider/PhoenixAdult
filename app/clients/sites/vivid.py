@@ -72,12 +72,12 @@ class VividClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h2[contains(@class,"scene-h2-heading")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h2[contains(@class,"scene-h2-heading")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"indie-model-p")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"indie-model-p")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -89,8 +89,8 @@ class VividClient(Client):
         metadata.collections = [self._sub_site(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = _RELEASED_RE.sub('', first_text(scene.sel, '//h5[contains(.,"Released:")]')).strip()
+        sel = scene.require_sel()
+        raw = _RELEASED_RE.sub('', first_text(sel, '//h5[contains(.,"Released:")]')).strip()
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
@@ -100,13 +100,13 @@ class VividClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//h5[contains(.,"Categories:")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//h5[contains(.,"Categories:")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '')) for a in scene.sel.xpath('//h4[contains(.,"Starring:")]//a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '')) for a in sel.xpath('//h4[contains(.,"Starring:")]//a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:

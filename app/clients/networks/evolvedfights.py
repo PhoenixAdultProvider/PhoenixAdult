@@ -46,12 +46,12 @@ class EvolvedFightsClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -63,17 +63,17 @@ class EvolvedFightsClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//span[contains(@class,"tour_update_tags")]//a')) if g]
+        sel = scene.require_sel()
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//span[contains(@class,"tour_update_tags")]//a')) if g]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -81,7 +81,7 @@ class EvolvedFightsClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in scene.sel.xpath(
+        for a in sel.xpath(
             '//div[contains(@class,"update_block_info") and contains(@class,"model_update_block_info")]//span[contains(@class,"tour_update_models")]//a'
         ):
             name = first_attr(a, 'normalize-space(.)')
@@ -91,8 +91,8 @@ class EvolvedFightsClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//span[contains(@class,"model_update_thumb")]//img)[1]/@src0_4x')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//span[contains(@class,"model_update_thumb")]//img)[1]/@src0_4x')
         if not raw:
             return
         poster = absolute_url(raw, scene.site.base_url)

@@ -60,47 +60,47 @@ class JulesJordanClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = _desc_row(scene.sel, 'Description:').replace('Description:', '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = _desc_row(sel, 'Description:').replace('Description:', '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.tagline = _desc_row(scene.sel, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or None
+        sel = scene.require_sel()
+        metadata.tagline = _desc_row(sel, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         if scene.scene_date:
             metadata.release_date = scene.scene_date
             return
-        raw = _desc_row(scene.sel, 'Date:').replace('Date:', '').strip()
+        raw = _desc_row(sel, 'Date:').replace('Date:', '').strip()
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//span[contains(text(),"Categories")]//a'):
+        for a in sel.xpath('//span[contains(text(),"Categories")]//a'):
             g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         if scene.site.name == 'GirlGirl':
-            anchors = scene.sel.xpath('//div[contains(@class,"item")]//span//div//a')
+            anchors = sel.xpath('//div[contains(@class,"item")]//span//div//a')
         else:
-            anchors = scene.sel.xpath('//div[contains(@class,"player-scene-description")]//span[contains(text(),"Starring:")]/..//a')
+            anchors = sel.xpath('//div[contains(@class,"player-scene-description")]//span[contains(text(),"Starring:")]/..//a')
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for el in anchors:
@@ -120,13 +120,13 @@ class JulesJordanClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: join_url(raw, base))
 
-        coll['push'](first_attr(scene.sel, '(//video[@id="video-player"])[1]/@poster'))
+        coll['push'](first_attr(sel, '(//video[@id="video-player"])[1]/@poster'))
 
-        title = (scene.sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip()
+        title = (sel.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip()
         if title:
             search_url = base + scene.site.search_path.replace('{query}', quote(title))
             loaded = await self.fetch_and_load(search_url, None, f'GET {search_url} (slideshow)')

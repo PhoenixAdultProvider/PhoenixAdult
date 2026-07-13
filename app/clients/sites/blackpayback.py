@@ -109,8 +109,8 @@ class BlackPayBackClient(Client):
         metadata.title = self._extra(scene).title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -122,9 +122,9 @@ class BlackPayBackClient(Client):
         metadata.release_date = self._extra(scene).release_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         values: list[str | None] = [
-            li.xpath('normalize-space(.)').get() for li in scene.sel.xpath('//div[contains(@class,"featuring") and contains(@class,"clear")]//li[.//a]')
+            li.xpath('normalize-space(.)').get() for li in sel.xpath('//div[contains(@class,"featuring") and contains(@class,"clear")]//li[.//a]')
         ]
         metadata.genres = self.dedup_strings(values)
 
@@ -132,9 +132,9 @@ class BlackPayBackClient(Client):
         metadata.actors = self._extra(scene).actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for script in scene.sel.xpath('//div[contains(@class,"player")]//script'):
+        for script in sel.xpath('//div[contains(@class,"player")]//script'):
             text = script.xpath('string(.)').get() or ''
             m = _POSTER_RE.search(text)
             if not m:

@@ -40,12 +40,12 @@ class BelAmiClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, _TITLE_XP)
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, _TITLE_XP)
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]')
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Bel Ami Online'
@@ -57,28 +57,28 @@ class BelAmiClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, _RELEASED_XP)
+        sel = scene.require_sel()
+        raw = first_text(sel, _RELEASED_XP)
         metadata.release_date = iso_date(raw, '%m/%d/%Y') if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
         tags_xp = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTags")]//a'
-        for a in scene.sel.xpath(tags_xp):
+        for a in sel.xpath(tags_xp):
             g = first_attr(a, 'normalize-space(.)')
             if g and g not in genres:
                 genres.append(g)
-        actor_count = len(scene.sel.xpath(_ACTORS_XP))
+        actor_count = len(sel.xpath(_ACTORS_XP))
         if (group := self.group_genre_for(actor_count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(_ACTORS_XP):
+        for a in sel.xpath(_ACTORS_XP):
             name = first_attr(a, 'normalize-space(.)')
             if not name or name in seen:
                 continue

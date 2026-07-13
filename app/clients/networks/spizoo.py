@@ -68,22 +68,22 @@ class SpizooClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
-        raw = (scene.sel.xpath(f'(//{p["detail_title"]})[1]').xpath('string(.)').get() or '').strip()
+        raw = (sel.xpath(f'(//{p["detail_title"]})[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            raw = first_attr(scene.sel, '(//video)[1]/@data-video')
+            raw = first_attr(sel, '(//video)[1]/@data-video')
         metadata.title = _strip_4k(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         summary_xpaths = (
             '//p[contains(@class,"description") and not(contains(@class,"description-scene"))]',
             '//p[contains(@class,"description-scene")]',
             '(//h2)[1]/following-sibling::p[1]',
         )
         for xpath in summary_xpaths:
-            text = (scene.sel.xpath(f'({xpath})[1]').xpath('string(.)').get() or '').strip()
+            text = (sel.xpath(f'({xpath})[1]').xpath('string(.)').get() or '').strip()
             if text:
                 metadata.summary = text
                 return
@@ -93,8 +93,8 @@ class SpizooClient(Client):
         metadata.studio = STUDIO
 
     def _tagline(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        inline = first_attr(scene.sel, '(//i[@id="site"])[1]/@value')
+        sel = scene.require_sel()
+        inline = first_attr(sel, '(//i[@id="site"])[1]/@value')
         if inline:
             return inline
         return scene.site.name if 'Spizoo' not in scene.site.name else STUDIO
@@ -106,8 +106,8 @@ class SpizooClient(Client):
         metadata.collections = [self._tagline(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//p[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//p[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             head = raw[:10]
             parsed = iso_date(head, '%Y-%m-%d') or iso_date(head)
@@ -117,11 +117,11 @@ class SpizooClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
         genre_xpaths = ('//div[contains(@class,"categories-holder")]//a', '//div[h3[contains(.,"Categories")]]//a')
         for xpath in genre_xpaths:
-            for el in scene.sel.xpath(xpath):
+            for el in sel.xpath(xpath):
                 for part in (el.xpath('string(.)').get() or '').split(','):
                     g = part.strip().lower()
                     if g and g not in genres:
@@ -129,12 +129,12 @@ class SpizooClient(Client):
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         p = self._profile(scene.site.name)
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(f'//{p["actor_container"]}'):
+        for el in sel.xpath(f'//{p["actor_container"]}'):
             name = (el.xpath('string(.)').get() or '').replace('.', '').strip()
             href = first_attr(el, '@href')
             if not name or name in seen:
@@ -153,7 +153,7 @@ class SpizooClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
             '//section[@id="photos-tour"]//img[contains(@class,"update_thumb") and contains(@class,"thumbs")]/@src',
@@ -164,7 +164,7 @@ class SpizooClient(Client):
             '//div[@id="block-content"]//img[@class]/@src',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images or []

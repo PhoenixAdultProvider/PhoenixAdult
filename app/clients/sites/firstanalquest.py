@@ -36,13 +36,13 @@ class FirstAnalQuestClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         xp = '//div[contains(@class,"container") and contains(@class,"content")]//div[contains(@class,"page-header")]//span[contains(@class,"title")]'
-        metadata.title = first_text(scene.sel, xp) or ''
+        metadata.title = first_text(sel, xp) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"text-desc")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"text-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Pioneer'
@@ -57,21 +57,21 @@ class FirstAnalQuestClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = self.dedup_strings(
-            [first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"media-body")]//ul[contains(.,"Categories")]//a')]
+            [first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"media-body")]//ul[contains(.,"Categories")]//a')]
         )
         if 'porn-movie' not in scene.url:
-            count = len(scene.sel.xpath(_MODELS_XP))
+            count = len(sel.xpath(_MODELS_XP))
             if (group := self.group_genre_for(count)) and group not in genres:
                 genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_MODELS_XP):
+        for el in sel.xpath(_MODELS_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -87,12 +87,12 @@ class FirstAnalQuestClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
-        for raw in scene.sel.xpath('//img[contains(@class,"player-preview")]/@src').getall():
+        for raw in sel.xpath('//img[contains(@class,"player-preview")]/@src').getall():
             coll['push'](raw)
-        for raw in scene.sel.xpath('//a[contains(@class,"fancybox") and contains(@class,"img-album")]/@href').getall():
+        for raw in sel.xpath('//a[contains(@class,"fancybox") and contains(@class,"img-album")]/@href').getall():
             coll['push'](raw)
-        for raw in scene.sel.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
+        for raw in sel.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
             coll['push'](raw)
         metadata.art = coll['list']

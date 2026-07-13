@@ -40,12 +40,12 @@ class LustomicClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _sibling_text(scene.sel, 'Video Preview', 'p') or ''
+        sel = scene.require_sel()
+        metadata.title = _sibling_text(sel, 'Video Preview', 'p') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = _sibling_text(scene.sel, 'Video Description', 'div') or ''
+        sel = scene.require_sel()
+        metadata.summary = _sibling_text(sel, 'Video Description', 'div') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Lustomic'
@@ -60,15 +60,15 @@ class LustomicClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        cast = len(_cast_names(scene.sel))
+        sel = scene.require_sel()
+        cast = len(_cast_names(sel))
         if group := self.group_genre_for(cast):
             metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.actors = [ActorResult(name=name, photo_url='', gender='') for name in _cast_names(scene.sel)]
+        sel = scene.require_sel()
+        metadata.actors = [ActorResult(name=name, photo_url='', gender='') for name in _cast_names(sel)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.art = self.dedup_strings([first_attr(a, '@href') for a in scene.sel.xpath('//a[contains(@href,"video_preview_images")]')])
+        sel = scene.require_sel()
+        metadata.art = self.dedup_strings([first_attr(a, '@href') for a in sel.xpath('//a[contains(@href,"video_preview_images")]')])

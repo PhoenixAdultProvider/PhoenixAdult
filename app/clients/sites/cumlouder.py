@@ -29,12 +29,12 @@ class CumLouderClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[@id="content-more-less"]/p') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[@id="content-more-less"]/p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'CumLouder'
@@ -46,26 +46,26 @@ class CumLouderClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"added")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"added")]')
         metadata.release_date = relative_iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//ul[contains(@class,"tags")]/li/a')])
-        actor_count = len(scene.sel.xpath('//a[contains(@class,"pornstar-link")]'))
+        sel = scene.require_sel()
+        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//ul[contains(@class,"tags")]/li/a')])
+        actor_count = len(sel.xpath('//a[contains(@class,"pornstar-link")]'))
         if (group := self.group_genre_for(actor_count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//a[contains(@class,"pornstar-link")]')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//a[contains(@class,"pornstar-link")]')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in scene.sel.xpath('//div[contains(@class,"box-video-html5")]/video'):
+        for el in sel.xpath('//div[contains(@class,"box-video-html5")]/video'):
             coll['push'](first_attr(el, '@lazy'))
         metadata.art = coll['list']

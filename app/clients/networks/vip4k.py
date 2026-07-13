@@ -56,21 +56,19 @@ class VIP4KClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _clean_title(scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '') or ''
+        sel = scene.require_sel()
+        metadata.title = _clean_title(sel.xpath('(//title)[1]').xpath('string(.)').get() or '') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"player-description__text")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"player-description__text")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     def _tagline(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        raw = (
-            scene.sel.xpath('(//a[contains(@class,"player-additional__site") and contains(@class,"ph_register")])[1]').xpath('string(.)').get() or ''
-        ).strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//a[contains(@class,"player-additional__site") and contains(@class,"ph_register")])[1]').xpath('string(.)').get() or '').strip()
         return raw.replace('Sis', 'Sis.Porn') if raw else scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -80,34 +78,34 @@ class VIP4KClient(Client):
         metadata.collections = [self._tagline(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//span[contains(@class,"player-additional__text")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//span[contains(@class,"player-additional__text")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = list(_GENRES.get(scene.site.name, []))
-        for el in scene.sel.xpath('//div[contains(@class,"tags")]//a'):
+        for el in sel.xpath('//div[contains(@class,"tags")]//a'):
             g = (el.xpath('string(.)').get() or '').replace('#', '').strip()
             if g and g not in genres:
                 genres.append(g)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries = [
             ActorResult(name=(el.xpath('(.//div[contains(@class,"model__name")])[1]').xpath('string(.)').get() or '').strip())
-            for el in scene.sel.xpath('//a[contains(@class,"player-description__model") and contains(@class,"model") and contains(@class,"ph_register")]')
+            for el in sel.xpath('//a[contains(@class,"player-description__model") and contains(@class,"model") and contains(@class,"ph_register")]')
         ]
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: raw if raw.startswith('http') else (f'https:{raw}' if raw.startswith('//') else raw))
-        for el in scene.sel.xpath('//div[contains(@class,"player-item__block")]//img'):
+        for el in sel.xpath('//div[contains(@class,"player-item__block")]//img'):
             coll['push']((el.xpath('@data-src').get() or el.xpath('@src').get() or '').strip())
         images: list[str] = coll['list']
         metadata.art = images or []

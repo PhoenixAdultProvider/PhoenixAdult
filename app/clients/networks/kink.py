@@ -74,18 +74,18 @@ class KinkClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        link = scene.sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//a[contains(@href,"/channel/")])[1]')
+        sel = scene.require_sel()
+        link = sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//a[contains(@href,"/channel/")])[1]')
         channel_text = f'{link.xpath("string(.)").get() or ""} {link.xpath("@href").get() or ""}'
         return _kink_tagline(channel_text, scene.site.name)
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        span_html = scene.sel.xpath('(//div[contains(@class,"description")]//span[contains(@class,"fw-200")])[1]').get() or ''
+        sel = scene.require_sel()
+        span_html = sel.xpath('(//div[contains(@class,"description")]//span[contains(@class,"fw-200")])[1]').get() or ''
         if not span_html:
             return
         text = _TAG_RE.sub('', _BR_RE.sub(' ', span_html))
@@ -101,21 +101,17 @@ class KinkClient(Client):
         metadata.collections = [self._tagline_for(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (
-            scene.sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//span[contains(@class,"text-muted")])[1]').xpath('string(.)').get() or ''
-        ).strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//span[contains(@class,"text-muted")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
             metadata.release_date = iso_date(raw)
             return
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = self.dedup_strings(
-            [(a.xpath('normalize-space(.)').get() or '').replace(',', '').strip() for a in scene.sel.xpath('//a[contains(@href,"/tag/")]')]
-        )
-        cast = len(scene.sel.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
+        sel = scene.require_sel()
+        genres = self.dedup_strings([(a.xpath('normalize-space(.)').get() or '').replace(',', '').strip() for a in sel.xpath('//a[contains(@href,"/tag/")]')])
+        cast = len(sel.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
@@ -127,14 +123,14 @@ class KinkClient(Client):
         metadata.directors = await self._collect_people(scene, '//span[contains(@class,"director-name")]//a') or None
 
     async def _collect_people(self, scene: LoadedScene, xp: str) -> list[ActorResult]:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
             return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath(xp):
+        for el in sel.xpath(xp):
             name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
             href = first_attr(el, '@href')
             if name:
@@ -142,7 +138,7 @@ class KinkClient(Client):
         return await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector()
         xpaths = (
             '//video/@poster',
@@ -150,7 +146,7 @@ class KinkClient(Client):
             '//div[@id="galleryWrapper"]//img/@data-image-file',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

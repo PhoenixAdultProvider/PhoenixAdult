@@ -89,15 +89,15 @@ class BellaPassClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _title_of(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return _title_from(scene.sel, _title_selector_for(scene.site.name))
+        sel = scene.require_sel()
+        return _title_from(sel, _title_selector_for(scene.site.name))
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._title_of(scene) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _studio_for(scene.site.name)
@@ -110,24 +110,22 @@ class BellaPassClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"videoInfo")]//p)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"videoInfo")]//p)[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres = [
-            g
-            for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/categories/")]'))
-            if g
+            g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/categories/")]')) if g
         ]
-        cast = len(scene.sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/models/")]'))
+        cast = len(sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/models/")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
 
         def extract_photo(sel: Selector) -> str:
@@ -135,7 +133,7 @@ class BellaPassClient(Client):
             return (rel if rel.startswith('http') else base + rel) if rel else ''
 
         refs: list[tuple[str, str]] = []
-        for el in scene.sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/models/")]'):
+        for el in sel.xpath('//div[contains(@class,"featuring")]//a[contains(@href,"/models/")]'):
             name = _strip_punct(first_attr(el, 'normalize-space(.)'))
             href = first_attr(el, '@href')
             if name:
@@ -143,7 +141,7 @@ class BellaPassClient(Client):
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda rel: rel if rel.startswith('http') else base + rel)
 
@@ -152,13 +150,11 @@ class BellaPassClient(Client):
             '//div[contains(@class,"item-thumb")]//img/@src0_3x',
         )
         for xpath in xpaths:
-            for raw in scene.sel.xpath(xpath).getall():
+            for raw in sel.xpath(xpath).getall():
                 coll['push'](raw)
 
         set_id = (
-            scene.sel.xpath('(//img[contains(@class,"thumbs")])[1]/@id').get()
-            or scene.sel.xpath('(//div[contains(@class,"item-thumb")]//img)[1]/@id').get()
-            or ''
+            sel.xpath('(//img[contains(@class,"thumbs")])[1]/@id').get() or sel.xpath('(//div[contains(@class,"item-thumb")]//img)[1]/@id').get() or ''
         ).strip()
         title = self._title_of(scene)
         if set_id and title:

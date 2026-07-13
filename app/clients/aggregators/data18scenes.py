@@ -124,8 +124,8 @@ class Data18ScenesClient(Client):
     # ── Field hooks ─────────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        title = xp_ns(scene.sel, _TITLE_XP)
+        sel = scene.require_sel()
+        title = xp_ns(sel, _TITLE_XP)
         m = re.match(r'^Scene[^:-]*(?::|-)', title)
         if m:
             scene_num = re.sub(r'[^A-Za-z0-9\s]+', '', m.group(0)).strip()
@@ -133,14 +133,14 @@ class Data18ScenesClient(Client):
         metadata.title = title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         tries = [
             ('//div[contains(@class,"gen12")]//div[contains(.,"Story")]', 'Story -'),
             ('//div[contains(@class,"gen12")]//div[contains(@class,"hideContent") and contains(@class,"boxdesc") and contains(.,"Description")]', '---'),
             ('//div[contains(@class,"gen12")]//div[contains(.,"Movie Description")]', '--'),
         ]
         for xp, split_on in tries:
-            nodes = scene.sel.xpath(xp)
+            nodes = sel.xpath(xp)
             if not nodes:
                 continue
             raw = nodes[0].xpath('string(.)').get() or ''
@@ -160,16 +160,16 @@ class Data18ScenesClient(Client):
         metadata.collections = c or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = iso_date(xp_ns(scene.sel, _RELEASE_DATE_XP)) or scene.scene_date or None
+        sel = scene.require_sel()
+        metadata.release_date = iso_date(xp_ns(sel, _RELEASE_DATE_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[./b[contains(.,"Categories")]]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[./b[contains(.,"Categories")]]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
@@ -180,11 +180,11 @@ class Data18ScenesClient(Client):
                 actors.append(ActorResult(name=n))
 
         base = '(//h3[contains(.,"Cast")])[1]/following-sibling::*'
-        for el in scene.sel.xpath(f'{base}//div//p[contains(.,"No Profile")]//span'):
+        for el in sel.xpath(f'{base}//div//p[contains(.,"No Profile")]//span'):
             add(el.xpath('normalize-space(.)').get() or '')
-        for el in scene.sel.xpath(f'{base}//a[contains(@href,"/name/")]//img'):
+        for el in sel.xpath(f'{base}//a[contains(@href,"/name/")]//img'):
             add(el.xpath('@alt').get() or '')
-        no_profile = scene.sel.xpath('(//h3[contains(.,"Cast")])[1]/following-sibling::p[contains(.,"No profile")]//b[1]')
+        no_profile = sel.xpath('(//h3[contains(.,"Cast")])[1]/following-sibling::p[contains(.,"No profile")]//b[1]')
         if no_profile:
             for n in (no_profile[0].xpath('normalize-space(.)').get() or '').split(','):
                 add(n)

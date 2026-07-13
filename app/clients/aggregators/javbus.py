@@ -82,9 +82,9 @@ class JavBusClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
-        jav_title = re.sub(r' - JavBus$', '', first_attr(scene.sel, '(//head//title)[1]/text()'))
+        sel = scene.require_sel()
+        studio = first_attr(sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
+        jav_title = re.sub(r' - JavBus$', '', first_attr(sel, '(//head//title)[1]/text()'))
         if not jav_title:
             return
         id_digits = re.sub(r'[-_ ]', '', _javbus_id(scene.url))
@@ -97,31 +97,31 @@ class JavBusClient(Client):
         metadata.title = f'[{jid}] {rest}'.strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()') or ''
+        sel = scene.require_sel()
+        metadata.studio = first_attr(sel, '(//p//a[contains(@href,"/studio/")])[1]/text()') or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
+        sel = scene.require_sel()
+        label = first_attr(sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
             metadata.tagline = label
             return
-        series = first_attr(scene.sel, '(//p//a[contains(@href,"/series/")])[1]/text()')
+        series = first_attr(sel, '(//p//a[contains(@href,"/series/")])[1]/text()')
         metadata.tagline = f'Series: {series}' if series else None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
+        sel = scene.require_sel()
+        label = first_attr(sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
             metadata.collections = [label]
             return
-        studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
+        studio = first_attr(sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
         metadata.collections = [studio] if studio else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         raw = ''
-        for p in scene.sel.xpath('//div[contains(@class,"col-md-3") and contains(@class,"info")]//p'):
+        for p in sel.xpath('//div[contains(@class,"col-md-3") and contains(@class,"info")]//p'):
             t = p.xpath('string(.)').get() or ''
             if re.search(r'Release Date', t, re.IGNORECASE):
                 raw = re.sub(r'.*Release Date:\s*', '', t, flags=re.IGNORECASE).strip()
@@ -133,18 +133,15 @@ class JavBusClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         metadata.genres = self.dedup_strings(
-            [
-                (el.xpath('normalize-space(.)').get() or '').lower().strip()
-                for el in scene.sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]')
-            ]
+            [(el.xpath('normalize-space(.)').get() or '').lower().strip() for el in sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]')]
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         out: list[ActorResult] = []
-        for el in scene.sel.xpath('//a[contains(@class,"avatar-box")]'):
+        for el in sel.xpath('//a[contains(@class,"avatar-box")]'):
             name = first_attr(el, '(.//img/@title)[1]')
             if not name:
                 continue
@@ -157,12 +154,12 @@ class JavBusClient(Client):
         metadata.actors = out
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        director = first_attr(scene.sel, '(//p//a[contains(@href,"/director/")])[1]/text()')
+        sel = scene.require_sel()
+        director = first_attr(sel, '(//p//a[contains(@href,"/director/")])[1]/text()')
         metadata.directors = [ActorResult(name=director)] if director else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         out: list[str] = []
 
@@ -173,12 +170,12 @@ class JavBusClient(Client):
             if abs_url not in out:
                 out.append(abs_url)
 
-        for href in scene.sel.xpath('//a[contains(@href,"/cover/")]/@href').getall():
+        for href in sel.xpath('//a[contains(@href,"/cover/")]/@href').getall():
             push(href)
-        for href in scene.sel.xpath('//a[contains(@class,"sample-box")]/@href').getall():
+        for href in sel.xpath('//a[contains(@class,"sample-box")]/@href').getall():
             push(href)
-        cover_raw = (scene.sel.xpath('(//a[contains(@href,"/cover/")]/@href)[1]').get() or '') or (
-            scene.sel.xpath('(//img[contains(@src,"/sample/")]/@src)[1]').get() or ''
+        cover_raw = (sel.xpath('(//a[contains(@href,"/cover/")]/@href)[1]').get() or '') or (
+            sel.xpath('(//img[contains(@src,"/sample/")]/@src)[1]').get() or ''
         )
         if cover_raw:
             push(_derive_cover_thumb(absolute_url(cover_raw, base)))

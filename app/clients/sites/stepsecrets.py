@@ -34,12 +34,12 @@ class StepSecretsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1[contains(@class,"font-cond")]') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1[contains(@class,"font-cond")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"descripton")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"descripton")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,11 +54,11 @@ class StepSecretsClient(Client):
         metadata.genres = list(_FIXED_GENRES)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for href in scene.sel.xpath('//p[contains(@class,"mb-2")]//a/@href').getall():
+        for href in sel.xpath('//p[contains(@class,"mb-2")]//a/@href').getall():
             href = (href or '').strip()
             if not href:
                 continue
@@ -76,9 +76,9 @@ class StepSecretsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        images = self.dedup_strings([(src or '').strip() for src in scene.sel.xpath('//video/@poster').getall()])
-        for src in scene.sel.xpath('//div[@id="photoCarousel"]//img/@src').getall():
+        sel = scene.require_sel()
+        images = self.dedup_strings([(src or '').strip() for src in sel.xpath('//video/@poster').getall()])
+        for src in sel.xpath('//div[@id="photoCarousel"]//img/@src').getall():
             s = (src or '').strip()
             if s and s not in images:
                 images.append(s)

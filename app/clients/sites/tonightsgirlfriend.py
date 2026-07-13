@@ -60,8 +60,8 @@ class TonightsGirlfriendClient(Client):
         metadata.title = ', '.join(names) if names else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//p[contains(@class,"scene-description")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//p[contains(@class,"scene-description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -87,10 +87,10 @@ class TonightsGirlfriendClient(Client):
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in scene.sel.xpath(f'{_GREY_XP}//a'):
+        for a in sel.xpath(f'{_GREY_XP}//a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if not name or name in seen:
@@ -114,8 +114,8 @@ class TonightsGirlfriendClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        src = first_attr(scene.sel, '(//img[contains(@class,"playcard")]/@src)[1]')
+        sel = scene.require_sel()
+        src = first_attr(sel, '(//img[contains(@class,"playcard")]/@src)[1]')
         if not src:
             return
         poster = _https(src)
@@ -129,13 +129,13 @@ class TonightsGirlfriendClient(Client):
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     def _linked_actor_names(self, scene: LoadedScene) -> list[str]:
-        assert scene.sel is not None
-        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath(f'{_GREY_XP}//a')])
+        sel = scene.require_sel()
+        names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath(f'{_GREY_XP}//a')])
         return names
 
     def _male_actor_names(self, scene: LoadedScene, linked: list[str]) -> list[str]:
-        assert scene.sel is not None
-        nodes = scene.sel.xpath(_GREY_XP)
+        sel = scene.require_sel()
+        nodes = sel.xpath(_GREY_XP)
         info = first_attr(nodes[0], 'normalize-space(.)') if nodes else ''
         if not info:
             return []

@@ -59,17 +59,15 @@ class InterracialPassClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         tag = _title_selector_for(scene.site.name)
         metadata.title = (
-            scene.sel.xpath(f'(//div[contains(@class,"video-player")]//{tag}[contains(@class,"section-title")])[1]').xpath('string(.)').get() or ''
+            sel.xpath(f'(//div[contains(@class,"video-player")]//{tag}[contains(@class,"section-title")])[1]').xpath('string(.)').get() or ''
         ).strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (
-            (scene.sel.xpath('(//div[contains(@class,"update-info-block")])[2]').xpath('string(.)').get() or '').replace('Description:', '').strip()
-        )
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"update-info-block")])[2]').xpath('string(.)').get() or '').replace('Description:', '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _studio_for(scene.site.name)
@@ -81,21 +79,21 @@ class InterracialPassClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//div[contains(@class,"update-info-row")])[1]').xpath('string(.)').get() or '').replace('Released:', '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//div[contains(@class,"update-info-row")])[1]').xpath('string(.)').get() or '').replace('Released:', '').strip()
         metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath('//ul[contains(@class,"tags")]//li//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath('//ul[contains(@class,"tags")]//li//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         is_bbc = scene.site.name == 'BBC Surprise'
         actors: list[ActorResult] = []
-        for li in scene.sel.xpath('//div[contains(@class,"models-list-thumbs")]//li'):
+        for li in sel.xpath('//div[contains(@class,"models-list-thumbs")]//li'):
             name = (li.xpath('(.//span)[1]').xpath('string(.)').get() or '').strip()
             if not name:
                 continue
@@ -109,10 +107,10 @@ class InterracialPassClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: raw if raw.startswith('http') else base + raw)
-        for src in scene.sel.xpath('//div[contains(@class,"player-thumb")]//img/@src0_1x').getall():
+        for src in sel.xpath('//div[contains(@class,"player-thumb")]//img/@src0_1x').getall():
             coll['push'](src)
         images: list[str] = coll['list']
         metadata.art = images

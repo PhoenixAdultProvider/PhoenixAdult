@@ -126,16 +126,16 @@ class AdultEmpireCashClient(Client):
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str:
-        assert scene.sel is not None
-        return first_attr(scene.sel, '(//div[@class="studio"]//span)[2]/text()')
+        sel = scene.require_sel()
+        return first_attr(sel, '(//div[@class="studio"]//span)[2]/text()')
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_attr(scene.sel, '(//h1[@class="description"])[1]/text()') or ''
+        sel = scene.require_sel()
+        metadata.title = first_attr(sel, '(//h1[@class="description"])[1]/text()') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_attr(scene.sel, '(//div[@class="synopsis"]/p)[1]/text()') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_attr(sel, '(//div[@class="synopsis"]/p)[1]/text()') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _studio_for(scene.site.name)
@@ -148,31 +148,31 @@ class AdultEmpireCashClient(Client):
         metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_attr(scene.sel, '(//div[@class="release-date"])[1]/text()')
+        sel = scene.require_sel()
+        raw = first_attr(sel, '(//div[@class="release-date"])[1]/text()')
         metadata.release_date = iso_date(raw) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         xp = _GENRE_XPATH_OVERRIDES.get(scene.site.name, _DEFAULT_GENRE_XPATH)
         genres: list[str] = []
-        for a in scene.sel.xpath(xp):
+        for a in sel.xpath(xp):
             g = first_attr(a, 'normalize-space(.)')
             if g:
                 genres.extend(p.strip() for p in g.split('/') if p.strip())
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for img in scene.sel.xpath('//div[@class="video-performer"]//img'):
+        for img in sel.xpath('//div[@class="video-performer"]//img'):
             name = first_attr(img, '@title')
             photo = first_attr(img, '@data-bgsrc')
             if name and name.lower() not in seen:
                 seen.add(name.lower())
                 actors.append(ActorResult(name=name, photo_url=photo))
-        for a in scene.sel.xpath('(//div[contains(@class,"video-performer-container")])[2]/a'):
+        for a in sel.xpath('(//div[contains(@class,"video-performer-container")])[2]/a'):
             name = first_attr(a, 'normalize-space(.)')
             if name and name.lower() not in seen:
                 seen.add(name.lower())
@@ -180,16 +180,16 @@ class AdultEmpireCashClient(Client):
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         # TS reads the whole "Director: Name" text and slices after the colon.
-        raw = scene.sel.xpath('string((//div[@class="director"])[1])').get() or ''
+        raw = sel.xpath('string((//div[@class="director"])[1])').get() or ''
         name = raw.split(':')[-1].strip()
         metadata.directors = [ActorResult(name=name)] if name else None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(_upgrade_image)
-        for raw in scene.sel.xpath('//div[@id="dv_frames"]//img/@src').getall():
+        for raw in sel.xpath('//div[@id="dv_frames"]//img/@src').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
         metadata.art = images

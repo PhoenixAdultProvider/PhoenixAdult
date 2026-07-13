@@ -36,12 +36,12 @@ class FuckingAwesomeClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//h1') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = first_text(scene.sel, '//div[contains(@class,"more") and contains(@class,"text-justify")]') or ''
+        sel = scene.require_sel()
+        metadata.summary = first_text(sel, '//div[contains(@class,"more") and contains(@class,"text-justify")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -53,27 +53,27 @@ class FuckingAwesomeClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"videodate")]//strong')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"videodate")]//strong')
         metadata.release_date = iso_date(raw, '%B %d, %Y') or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//div[contains(@class,"tags")]//ul//li//a'):
+        for a in sel.xpath('//div[contains(@class,"tags")]//ul//li//a'):
             g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
-        count = len(scene.sel.xpath(_ACTOR_XP))
+        count = len(sel.xpath(_ACTOR_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in scene.sel.xpath(_ACTOR_XP):
+        for el in sel.xpath(_ACTOR_XP):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href or name in seen:
@@ -89,14 +89,14 @@ class FuckingAwesomeClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
 
-        for raw in scene.sel.xpath('//span[contains(@class,"et_pb_image_wrap")]//img/@content').getall():
+        for raw in sel.xpath('//span[contains(@class,"et_pb_image_wrap")]//img/@content').getall():
             coll['push'](raw)
 
-        photos_href = first_attr(scene.sel, '(//li[contains(@class,"photos")]//a/@href)[1]')
+        photos_href = first_attr(sel, '(//li[contains(@class,"photos")]//a/@href)[1]')
         if photos_href:
             photos_url = absolute_url(photos_href, scene.site.base_url)
             photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')

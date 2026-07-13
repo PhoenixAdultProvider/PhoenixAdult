@@ -63,12 +63,12 @@ class HegreClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = meta_content(scene.sel, 'og:title') or ''
+        sel = scene.require_sel()
+        metadata.title = meta_content(sel, 'og:title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//div[contains(@class,"record-description-content") and contains(@class,"record-box-content")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//div[contains(@class,"record-description-content") and contains(@class,"record-box-content")]')
         if not raw:
             return
         idx = raw.find('Runtime')
@@ -84,26 +84,26 @@ class HegreClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = first_text(scene.sel, '//span[contains(@class,"date")]')
+        sel = scene.require_sel()
+        raw = first_text(sel, '//span[contains(@class,"date")]')
         metadata.release_date = iso_date(raw) if raw else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         genres: list[str] = []
-        for a in scene.sel.xpath('//a[contains(@class,"tag")]'):
+        for a in sel.xpath('//a[contains(@class,"tag")]'):
             g = first_attr(a, 'normalize-space(.)').lower()
             if g and g not in genres:
                 genres.append(g)
-        count = len(scene.sel.xpath('//a[contains(@class,"record-model")]'))
+        count = len(sel.xpath('//a[contains(@class,"record-model")]'))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         entries: list[ActorResult] = []
-        for a in scene.sel.xpath('//a[contains(@class,"record-model")]'):
+        for a in sel.xpath('//a[contains(@class,"record-model")]'):
             name = first_attr(a, '@title')
             raw = first_attr(a, '(.//img/@src)[1]')
             entries.append(ActorResult(name=name, photo_url=raw.replace('240x', '480x') if raw else ''))
@@ -113,8 +113,8 @@ class HegreClient(Client):
         metadata.directors = [_DIRECTOR]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        raw = meta_content(scene.sel, 'twitter:image')
+        sel = scene.require_sel()
+        raw = meta_content(sel, 'twitter:image')
         if not raw:
             return
         images: list[str] = []

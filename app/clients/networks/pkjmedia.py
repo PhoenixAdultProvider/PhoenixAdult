@@ -34,16 +34,16 @@ class PKJMediaClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"brxe-post-title")])[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1[contains(@class,"brxe-post-title")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        span = (scene.sel.xpath('(//div[contains(@class,"brxe-post-content")]//p//span)[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        span = (sel.xpath('(//div[contains(@class,"brxe-post-content")]//p//span)[1]').xpath('string(.)').get() or '').strip()
         if span:
             metadata.summary = span
             return
-        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"brxe-post-content")]//p)[1]').xpath('string(.)').get() or '').strip()
+        metadata.summary = (sel.xpath('(//div[contains(@class,"brxe-post-content")]//p)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -61,14 +61,14 @@ class PKJMediaClient(Client):
         metadata.genres = _GENRES.get(scene.site.name) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[contains(@class,"brxe-post-meta")]//span/a')]
+        sel = scene.require_sel()
+        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//div[contains(@class,"brxe-post-meta")]//span/a')]
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for poster in scene.sel.xpath('//video[contains(@class,"bricks-plyr")]/@poster').getall():
+        for poster in sel.xpath('//video[contains(@class,"bricks-plyr")]/@poster').getall():
             coll['push'](poster)
         images: list[str] = coll['list']
         metadata.art = images

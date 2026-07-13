@@ -118,8 +118,7 @@ class FamilyTherapyClient(Client):
             metadata.collections = [STUDIO]
             return
 
-        assert scene.sel is not None
-        sel = scene.sel
+        sel = scene.require_sel()
 
         # Title
         metadata.title = _to_title_case((sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip())

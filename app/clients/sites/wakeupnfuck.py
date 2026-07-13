@@ -37,8 +37,8 @@ class WakeUpNFuckClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = first_text(scene.sel, '//div[contains(@class,"block")]//h2') or ''
+        sel = scene.require_sel()
+        metadata.title = first_text(sel, '//div[contains(@class,"block")]//h2') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -47,8 +47,8 @@ class WakeUpNFuckClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        desc = first_text(scene.sel, '//div[contains(@class,"description")]')
+        sel = scene.require_sel()
+        desc = first_text(sel, '//div[contains(@class,"description")]')
         parts = desc.split('Publish Date :')
         if len(parts) >= 2:
             raw = parts[-1].strip()
@@ -61,15 +61,15 @@ class WakeUpNFuckClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"tags")]//a')]
+        sel = scene.require_sel()
+        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"tags")]//a')]
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         entries: list[ActorResult] = []
-        for el in scene.sel.xpath('//div[contains(@class,"starring")]//a[contains(@class,"item")]'):
+        for el in sel.xpath('//div[contains(@class,"starring")]//a[contains(@class,"item")]'):
             name = first_text(el, './/p')
             src = first_attr(el, '(.//img/@src)[1]')
             photo = (absolute_url(src, base)) if src else ''
@@ -77,17 +77,17 @@ class WakeUpNFuckClient(Client):
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         base = scene.site.base_url
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw, base)
 
-        for poster in scene.sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
+        for poster in sel.xpath('//video[contains(@class,"player_video")]/@poster').getall():
             push(poster)
         if not images:
-            for script in scene.sel.xpath('//script/text()').getall():
+            for script in sel.xpath('//script/text()').getall():
                 m = _IMAGE_RE.search(script)
                 if m:
                     push(m.group(1).strip())

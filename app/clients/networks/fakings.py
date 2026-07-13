@@ -73,9 +73,9 @@ class FAKingsClient(Client):
         return coalesce_future(cache, url, lambda: self.fetch_and_load(url, None, f'GET {url} (model)'))
 
     def _actor_refs(self, scene: LoadedScene) -> list[tuple[str, str]]:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         refs: list[tuple[str, str]] = []
-        for a in scene.sel.xpath('(//strong[contains(.,"Actr")])[1]/following-sibling::a'):
+        for a in sel.xpath('(//strong[contains(.,"Actr")])[1]/following-sibling::a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
             if name and href:
@@ -83,17 +83,17 @@ class FAKingsClient(Client):
         return refs
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        raw = (scene.sel.xpath('(//strong[contains(.,"Serie")])[1]/following-sibling::a[1]').xpath('string(.)').get() or '').strip()
+        sel = scene.require_sel()
+        raw = (sel.xpath('(//strong[contains(.,"Serie")])[1]/following-sibling::a[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//span[@class="grisoscuro"])[1]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//span[@class="grisoscuro"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -109,8 +109,8 @@ class FAKingsClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('(//strong[contains(.,"Categori")])[1]/following-sibling::a')) if g]
+        sel = scene.require_sel()
+        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('(//strong[contains(.,"Categori")])[1]/following-sibling::a')) if g]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:

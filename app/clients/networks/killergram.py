@@ -63,12 +63,12 @@ class KillergramClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.title = _extract_title(scene.sel) or ''
+        sel = scene.require_sel()
+        metadata.title = _extract_title(sel) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.summary = (scene.sel.xpath('(//table[contains(@class,"episodetext")]//tr)[5]//td[2]').xpath('string(.)').get() or '').strip() or ''
+        sel = scene.require_sel()
+        metadata.summary = (sel.xpath('(//table[contains(@class,"episodetext")]//tr)[5]//td[2]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -80,17 +80,17 @@ class KillergramClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
-        metadata.release_date = iso_date(_header_sibling(scene.sel, 'published'))
+        sel = scene.require_sel()
+        metadata.release_date = iso_date(_header_sibling(sel, 'published'))
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['British']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for span in scene.sel.xpath('//span[contains(@class,"episodeheader")]'):
+        for span in sel.xpath('//span[contains(@class,"episodeheader")]'):
             if 'starring' not in (span.xpath('string(.)').get() or '').lower():
                 continue
             for a in span.xpath('../span[contains(@class,"modelstarring")]//a'):
@@ -101,11 +101,11 @@ class KillergramClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        assert scene.sel is not None
+        sel = scene.require_sel()
         images: list[str] = []
         n = 1
         while True:
-            src = (scene.sel.xpath(f'(//img[@id="episode_{n:03d}"])[1]/@src').get() or '').strip()
+            src = (sel.xpath(f'(//img[@id="episode_{n:03d}"])[1]/@src').get() or '').strip()
             if not src:
                 break
             images.append(src)
