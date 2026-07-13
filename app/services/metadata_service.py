@@ -120,7 +120,9 @@ class MetadataService:
 
         site_name = parsed['site_name']
         cur_id = parsed['cur_id']
-        assert site_name and cur_id
+        if not (site_name and cur_id):
+            logger.warn(provider.id, f'Incomplete ratingKey (missing siteName/curID): {rating_key}')
+            return None
 
         site = find_site(site_name)
         if not site:
