@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.sinx import SinXClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search() -> None:
             200, text='<div class="view_grid--container"><div class="video_item--content"><a href="/v/7" title="Cool Scene"></a></div></div>'
         )
     )
-    results = await SinXClient().search(_ctx())
+    results: list[SearchResult] = []
+    await SinXClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://sinx.com/v/7'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.firstanalquest import FirstAnalQuestClient
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ async def test_search_parses_thumb_cards() -> None:
       </li>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await FirstAnalQuestClient().search(SearchContext(title='quest', encoded='quest', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await FirstAnalQuestClient().search(results, SearchContext(title='quest', encoded='quest', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Quest One'
     assert results[0].scene_url == 'http://www.firstanalquest.com/scene/quest-1'

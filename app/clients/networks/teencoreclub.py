@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 
@@ -14,13 +14,12 @@ _CAMEL_RE = re.compile(r'(\w)([A-Z])')
 
 
 class TeenCoreClubClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         api_base = f'{ctx.site_info.base_url.rstrip("/")}/api'
         scene_id = ctx.scene_id or ''
         text = ctx.title.strip()
         encoded = quote(text)
 
-        results: list[SearchResult] = []
         page = 1
         last_page = 1
         while page <= last_page:
@@ -47,9 +46,10 @@ class TeenCoreClubClient(Client):
                     )
                 )
             page += 1
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    # ── Context loader ──────────────────────────────────────────────────────────
+
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         data = await self.fetch_json(payload, FetchCtx(capture=ctx.capture if ctx else None))
         v = data.get('video') if isinstance(data, dict) else None
         if not isinstance(v, dict):
@@ -63,6 +63,14 @@ class TeenCoreClubClient(Client):
             title = ' & '.join(names) if len(names) == 2 else ', '.join(names)
         if not title:
             return None
+
+        return LoadedScene(url=payload, site=site, capture=ctx.capture if ctx else None, extra={'v': v, 'title': title, 'actors': actors})
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        v = scene.extra['v']
+        title = scene.extra['title']
+        actors = scene.extra['actors']
 
         tagline = site.name
         label = (v.get('labels') or [{}])[0].get('name') if v.get('labels') else None
@@ -83,15 +91,12 @@ class TeenCoreClubClient(Client):
             coll['push'](s)
         images: list[str] = coll['list']
 
-        return SceneDetail(
-            title=title,
-            summary=((v.get('description') or {}).get('en') or '').strip(),
-            studio=STUDIO,
-            tagline=tagline if tagline and tagline != STUDIO else None,
-            collections=[tagline] if tagline else None,
-            release_date=iso_date(v.get('publication_date') or '') or None,
-            genres=genres,
-            actors=actors,
-            raw_image_urls=images,
-            scene_url=payload,
-        )
+        metadata.title = title
+        metadata.summary = ((v.get('description') or {}).get('en') or '').strip()
+        metadata.studio = STUDIO
+        metadata.tagline = tagline if tagline and tagline != STUDIO else None
+        metadata.collections = [tagline] if tagline else None
+        metadata.release_date = iso_date(v.get('publication_date') or '') or None
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = images

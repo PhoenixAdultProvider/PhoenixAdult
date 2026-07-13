@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_text, web_search_urls
 
@@ -21,7 +21,7 @@ def _normalize_web_url(raw: str) -> str:
 
 
 class TeenyTabooClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         slug = _slugify(ctx.title)
         direct_url = base + ctx.site_info.search_path.replace('{query}', slug)
@@ -34,7 +34,6 @@ class TeenyTabooClient(Client):
                 seen.add(normalized)
                 candidates.append(normalized)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not loaded:
@@ -55,38 +54,37 @@ class TeenyTabooClient(Client):
                     cur_id=pack_cur_id([p for p in (scene_url, release_date or ctx.search_date) if p]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//h1[contains(@class,"customhcolor")]')
-        return raw.replace('-', ' ') if raw else None
+        metadata.title = raw.replace('-', ' ') if raw else ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h2[contains(@class,"customhcolor2")]') or None
+        metadata.summary = first_text(scene.sel, '//h2[contains(@class,"customhcolor2")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"date")]')
-        return iso_date(raw) if raw else None
+        metadata.release_date = iso_date(raw) if raw else None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('string((//h3)[1])').get() or ''
         if not raw:
-            return []
+            return
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for piece in _ACTOR_SPLIT_RE.split(raw):
@@ -94,9 +92,9 @@ class TeenyTabooClient(Client):
             if name and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -107,4 +105,4 @@ class TeenyTabooClient(Client):
             abs_url = absolute_url(s, base)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

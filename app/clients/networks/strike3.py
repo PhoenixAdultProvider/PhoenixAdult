@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app.clients.aggregators.data18 import Data18Client, mapping_slug
-from app.clients.base import ActorResult, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
@@ -44,13 +44,12 @@ class Strike3Client(GraphQLClient):
             self._last_fetch = time.monotonic()
             return await self.graphql(endpoint, query, variables, headers={'Referer': base_url}, capture_label=label, capture_sink=sink, use_bypass=True)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         endpoint = f'{ctx.site_info.base_url.rstrip("/")}/graphql'
         site_var = ctx.site_info.name.replace(' ', '').upper()
         text = ctx.title.strip()
         scene_id = ctx.scene_id if ctx.scene_id and len(ctx.scene_id) > 4 else ''
 
-        results: list[SearchResult] = []
         if scene_id:
             data = await self._gql(
                 endpoint,
@@ -73,7 +72,7 @@ class Strike3Client(GraphQLClient):
                         cur_id=pack_cur_id([v['slug']]),
                     )
                 )
-            return results
+            return
 
         data = await self._gql(
             endpoint,
@@ -98,9 +97,8 @@ class Strike3Client(GraphQLClient):
                     cur_id=pack_cur_id([v['slug']]),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         endpoint = f'{site.base_url.rstrip("/")}/graphql'
         sink = ctx.capture if ctx else None
         data = await self._gql(
@@ -109,9 +107,12 @@ class Strike3Client(GraphQLClient):
         v = data.get('findOneVideo') if isinstance(data, dict) else None
         if not isinstance(v, dict) or not v.get('title'):
             return None
+        return LoadedScene(url=payload, site=site, capture=sink, extra=v)
 
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        v = scene.extra
         title = v['title'].strip()
-
         release_date = iso_date(v.get('releaseDate') or '') or None
 
         genres: list[str] = []
@@ -140,23 +141,19 @@ class Strike3Client(GraphQLClient):
             if uri and uri not in raw_images:
                 raw_images.append(uri)
 
-        data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
             date_obj = datetime.fromisoformat(release_date) if release_date else None
-            data18_url = await self._data18.enrich_images(
+            metadata.data18_url = await self._data18.enrich_images(
                 scope=site.name, images=raw_images, scene_id=mapping_slug(title, site.name), title=title, providers=[site.name], scene_date=date_obj
             )
 
-        return SceneDetail(
-            title=title,
-            summary=(v.get('description') or '').strip(),
-            studio=site.name,
-            collections=[site.name],
-            release_date=release_date,
-            genres=genres,
-            actors=actors,
-            directors=directors or None,
-            raw_image_urls=raw_images,
-            data18_url=data18_url,
-        )
+        metadata.title = title
+        metadata.summary = (v.get('description') or '').strip()
+        metadata.studio = site.name
+        metadata.collections = [site.name]
+        metadata.release_date = release_date
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.directors = directors or None
+        metadata.raw_image_urls = raw_images

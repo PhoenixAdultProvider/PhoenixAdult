@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -30,43 +30,43 @@ class XSinsVRClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//title')
-        return raw.split('•')[0].strip() or None if raw else None
+        metadata.title = (raw.split('•')[0].strip() if raw else '') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts = [p.xpath('string(.)').get() or '' for p in scene.sel.xpath('//li/div[contains(@class,"small")]//p')]
         joined = ''.join(parts).strip()
-        return joined or None
+        metadata.summary = joined or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span//time')
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in scene.sel.xpath('//div[contains(@class,"tags-item")]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -86,9 +86,9 @@ class XSinsVRClient(Client):
                     if raw:
                         photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -101,4 +101,4 @@ class XSinsVRClient(Client):
                 push(src.replace('sceneGallerySmall', 'sceneGallery'))
         for poster in scene.sel.xpath('//dl8-video/@poster').getall():
             push(poster)
-        return images
+        metadata.raw_image_urls = images

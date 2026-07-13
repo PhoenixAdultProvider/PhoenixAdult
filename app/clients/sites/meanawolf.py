@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -9,13 +9,12 @@ _LI_XP = '//div[contains(@class,"videoContent")]//ul/li'
 
 
 class MeanaWolfClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
         if not loaded:
-            return []
-        results: list[SearchResult] = []
+            return
         for card in loaded['sel'].xpath('//div[contains(@class,"videoBlock")]'):
             anchor = card.xpath('(.//p/a)[1]')
             title = first_attr(anchor, 'normalize-space(.)')
@@ -33,7 +32,6 @@ class MeanaWolfClient(Client):
                     cur_id=pack_cur_id([scene_url, poster]),
                 )
             )
-        return results
 
     # ── Context loader (curID packs the search-card poster) ───────────────────
 
@@ -48,34 +46,34 @@ class MeanaWolfClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"trailerArea")]//h3') or None
+        metadata.title = first_text(scene.sel, '//div[contains(@class,"trailerArea")]//h3') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"trailerContent")]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"trailerContent")]//p') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Meana Wolf'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Meana Wolf'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, f'({_LI_XP})[2]').replace('ADDED:', '').strip()
-        return iso_date(raw, '%B %d, %Y') if raw else None
+        metadata.release_date = iso_date(raw, '%B %d, %Y') if raw else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath(f'({_LI_XP})[last()]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         for el in scene.sel.xpath(f'({_LI_XP})[3]//a'):
@@ -89,10 +87,10 @@ class MeanaWolfClient(Client):
                 raw = first_attr(loaded['sel'], '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = scene.extra.get('poster', '') if isinstance(scene.extra, dict) else ''
         if not poster:
-            return []
-        return [absolute_url(poster, scene.site.base_url)]
+            return
+        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]

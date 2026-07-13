@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx2
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.logger import logger
@@ -17,7 +17,7 @@ def _srcset_entry(srcset: str, index: int, drop_chars: int) -> str:
 
 
 class RealityLoversClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         search_url = base + ctx.site_info.search_path
         try:
@@ -29,9 +29,8 @@ class RealityLoversClient(Client):
             contents = (r.json() or {}).get('contents', [])
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn(ctx.site_info.name, f'search POST threw: {err}')
-            return []
+            return
 
-        results: list[SearchResult] = []
         for c in contents:
             title = (c.get('title') or '').strip()
             uri = (c.get('videoUri') or '').strip()
@@ -49,36 +48,35 @@ class RealityLoversClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1[contains(@class,"video-detail-name")]') or None
+        metadata.title = first_text(scene.sel, '//h1[contains(@class,"video-detail-name")]')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//p[@itemprop="description"]').replace('…', '').replace('Read more', '')
-        return ' '.join(raw.split()) or None
+        metadata.summary = ' '.join(raw.split())
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"videoClip__Details-infoValue")]')
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//span[@itemprop="keywords"]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         for el in scene.sel.xpath('//span[@itemprop="actors"]//a'):
@@ -93,9 +91,9 @@ class RealityLoversClient(Client):
                 if srcset:
                     photo = _srcset_entry(srcset, 1, 3)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for data_big in scene.sel.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
@@ -105,4 +103,4 @@ class RealityLoversClient(Client):
             url = _srcset_entry(data_big, len(data_big.split(',')) - 1, 6)
             if url and url not in images:
                 images.append(url)
-        return images
+        metadata.raw_image_urls = images

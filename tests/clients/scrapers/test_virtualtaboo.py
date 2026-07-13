@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.virtualtaboo import VirtualTabooClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ async def test_search_cards() -> None:
       </a>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await VirtualTabooClient().search(SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VirtualTabooClient().search(results, SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 2
     assert results[0].scene_url == 'https://virtualtaboo.com/movie/123/wild-scene'
     assert results[0].title == 'wild scene'

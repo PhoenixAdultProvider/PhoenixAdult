@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.kellymadison import KellyMadisonClient
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search_scene_id_score() -> None:
             </a>""",
         )
     )
-    results = await KellyMadisonClient().search(_ctx(scene_id='1234'))
+    results: list[SearchResult] = []
+    await KellyMadisonClient().search(results, _ctx(scene_id='1234'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.pornfidelity.com/episodes/777/cool-scene'

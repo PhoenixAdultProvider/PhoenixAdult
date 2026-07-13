@@ -6,7 +6,7 @@ import respx
 
 import app.clients.aggregators.javlibrary as jl_module
 from app.clients.aggregators.javlibrary import JavLibraryClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('JAVLibrary')
@@ -19,7 +19,8 @@ async def test_search_video_cards(monkeypatch: pytest.MonkeyPatch, no_web_search
     respx.get('https://www.javlibrary.com/en/vl_searchbyid.php?keyword=ABP-060').mock(
         return_value=httpx.Response(200, text='<html><body><div class="video"><a title="ABP-060 Some Movie" href="./?v=javabc"></a></div></body></html>')
     )
-    results = await JavLibraryClient().search(SearchContext(title='ABP 060', encoded='ABP%20060', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JavLibraryClient().search(results, SearchContext(title='ABP 060', encoded='ABP%20060', search_site=SITE.name, site_info=SITE))
     hit = next((r for r in results if r.scene_url == 'https://www.javlibrary.com/en/?v=javabc'), None)
     assert hit is not None
     assert hit.title == '[ABP-060] ABP-060 Some Movie'
@@ -41,7 +42,8 @@ async def test_search_web_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
             </body></html>""",
         )
     )
-    results = await JavLibraryClient().search(SearchContext(title='XYZ 789', encoded='XYZ%20789', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JavLibraryClient().search(results, SearchContext(title='XYZ 789', encoded='XYZ%20789', search_site=SITE.name, site_info=SITE))
     hit = next((r for r in results if r.scene_url == 'https://www.javlibrary.com/en/?v=javxyz'), None)
     assert hit is not None
     assert hit.title == '[XYZ-789] The Movie Title'

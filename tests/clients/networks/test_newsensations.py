@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.newsensations as ns_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.newsensations import NewSensationsClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_url_guess(monkeypatch: pytest.MonkeyPatch) -> None:
     hit = 'http://www.newsensations.com/tour_ns/updates/Cool-Scene.html'
     respx.get(hit).mock(return_value=httpx.Response(200, text='<div class="indScene"><h1>Cool Scene</h1></div>'))
     respx.get(url__startswith='http://www.newsensations.com/tour_ns/').mock(return_value=httpx.Response(404, text=''))
-    results = await NewSensationsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await NewSensationsClient().search(results, _ctx())
     assert any(r.title == 'Cool Scene' and r.scene_url == hit for r in results)
 
 

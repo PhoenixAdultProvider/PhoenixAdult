@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.ftv as ftv_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('FTVGirls')
@@ -21,7 +21,8 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ftv_mod, 'web_search_available', lambda: False)
     url = 'https://www.ftvgirls.com/update/s-555.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene Released March 4, 2021!</title>'))
-    results = await ftv_mod.FTVClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await ftv_mod.FTVClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url

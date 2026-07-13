@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.processors.title_case import title_case
@@ -30,31 +30,31 @@ class ScrewboxClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"item-details-right")]//h1') or None
+        metadata.title = first_text(scene.sel, '//div[contains(@class,"item-details-right")]//h1')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"shorter")]') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"shorter")]')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Screwbox'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Screwbox'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['Screwbox']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['Screwbox']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, f'({_INFO_LI})[2]').replace('RELEASE DATE:', '').strip()
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [title_case(a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath(f'({_INFO_LI})[3]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -70,11 +70,11 @@ class ScrewboxClient(Client):
                 raw = first_attr(loaded['sel'], '(//img[contains(@class,"model_bio_thumb")]/@src0_1x)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//div[contains(@class,"fakeplayer")]//img/@src0_1x)[1]')
         if not raw:
-            return []
-        return [absolute_url(raw, scene.site.base_url)]
+            return
+        metadata.raw_image_urls = [absolute_url(raw, scene.site.base_url)]

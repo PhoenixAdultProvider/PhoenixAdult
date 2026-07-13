@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.fakings import FAKingsClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search_both_surfaces() -> None:
     </div>"""
     respx.get('https://www.fakings.com/en/buscar/cool-scene').mock(return_value=httpx.Response(200, text=row))
     respx.get('https://www.fakings.com/buscar/cool-scene').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await FAKingsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await FAKingsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.fakings.com/en/video/77/cool-scene'

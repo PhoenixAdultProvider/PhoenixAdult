@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.vrpfilms import VRPFilmsClient
 from app.registry import find_site
 
@@ -17,7 +17,8 @@ async def test_search_direct_slug() -> None:
     respx.get(url).mock(
         return_value=httpx.Response(200, text='<html><body><section class="login-banner parallax"><h1>Wild Scene Title</h1></section></body></html>')
     )
-    results = await VRPFilmsClient().search(SearchContext(title='Wild Scene Title', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VRPFilmsClient().search(results, SearchContext(title='Wild Scene Title', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Wild Scene Title'
@@ -26,7 +27,8 @@ async def test_search_direct_slug() -> None:
 @respx.mock
 async def test_search_empty_on_404() -> None:
     respx.get('https://vrpfilms.com/m/no-such-scene').mock(return_value=httpx.Response(404, text=''))
-    results = await VRPFilmsClient().search(SearchContext(title='No Such Scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VRPFilmsClient().search(results, SearchContext(title='No Such Scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert results == []
 
 

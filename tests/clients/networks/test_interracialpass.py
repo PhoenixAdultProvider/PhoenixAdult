@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.interracialpass import InterracialPassClient
 from app.registry import find_site
 
@@ -25,7 +25,8 @@ async def test_search_direct_and_onsite() -> None:
         )
     )
     respx.get('https://www.interracialpass.com/t1/search.php?query=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await InterracialPassClient().search(_ctx(SITE))
+    results: list[SearchResult] = []
+    await InterracialPassClient().search(results, _ctx(SITE))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == direct

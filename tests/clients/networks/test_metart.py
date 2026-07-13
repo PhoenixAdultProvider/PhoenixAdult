@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.metart import MetArtClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
             json={'items': [{'item': {'name': 'Cool Scene', 'path': '/movies/2021-03-04/cool-scene', 'publishedAt': '2021-03-04T00:00:00Z'}}]},
         )
     )
-    results = await MetArtClient().search(_ctx())
+    results: list[SearchResult] = []
+    await MetArtClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.metart.com/api/movie?name=cool-scene&date=2021-03-04'

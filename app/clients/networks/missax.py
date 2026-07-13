@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
@@ -37,7 +37,7 @@ class MissaXClient(Client):
     def _cast_names(self, sel: Any) -> list[str]:
         return [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath(_CAST_XP)) if n]
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         title = (scene.sel.xpath('(//span[@class="update_title"] | //p[@class="raiting-section__title"])[1]').xpath('string(.)').get() or '').strip()
         if scene.site.name == 'House of Fyre':
@@ -46,9 +46,9 @@ class MissaXClient(Client):
                 if title.endswith(suffix):
                     title = title[: -len(suffix)]
                     break
-        return title or None
+        metadata.title = title or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts: list[str] = []
         for el in scene.sel.xpath('//span[@class="latest_update_description"] | //div[@class="container"]//p[@class="dvd-scenes__title"]/following-sibling::p'):
@@ -56,20 +56,20 @@ class MissaXClient(Client):
             if t:
                 parts.append(t)
         if not parts:
-            return None
+            return
         joined = '\n'.join(parts).replace('Includes:', '').replace('Synopsis:', '').split('You Might Also Like')[0].strip()
-        return joined or None
+        metadata.summary = joined or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         update = (
             (scene.sel.xpath('(//span[@class="update_date"] | //span[contains(@class,"availdate")])[1]').xpath('string(.)').get() or '')
@@ -77,20 +77,21 @@ class MissaXClient(Client):
             .strip()
         )
         if update:
-            return iso_date(update) or scene.scene_date or None
+            metadata.release_date = iso_date(update) or scene.scene_date or None
+            return
         dvd_text = scene.sel.xpath('(//p[@class="dvd-scenes__data"])[1]').xpath('string(.)').get() or ''
         parts = dvd_text.split('|')
         dvd = parts[1].replace('Added:', '').strip() if len(parts) > 1 else ''
-        return (iso_date(dvd) if dvd else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(dvd) if dvd else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//span[contains(@class,"update_tags")]//a | //p[@class="dvd-scenes__data"][2]//a')
         ]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -108,9 +109,9 @@ class MissaXClient(Client):
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -129,4 +130,4 @@ class MissaXClient(Client):
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
                 push(raw)
-        return images or None
+        metadata.raw_image_urls = images

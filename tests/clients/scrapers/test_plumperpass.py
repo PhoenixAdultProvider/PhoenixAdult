@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import plumperpass as pp_module
 from app.clients.sites.plumperpass import PlumperPassClient
 from app.registry import find_site
@@ -36,7 +36,8 @@ async def test_search_refstat_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
     ref = 'https://plumperpass.com/t1/refstat.php?lid=2222&sid=584'
     respx.get(ref).mock(return_value=httpx.Response(302, headers={'Location': CONTENT_URL}))
     respx.get(CONTENT_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await PlumperPassClient().search(SearchContext(title='big fun', encoded='big+fun', search_site=SITE.name, site_info=SITE, scene_id='2222'))
+    results: list[SearchResult] = []
+    await PlumperPassClient().search(results, SearchContext(title='big fun', encoded='big+fun', search_site=SITE.name, site_info=SITE, scene_id='2222'))
     assert len(results) == 1
     assert results[0].title == 'Big Fun'
     assert results[0].scene_url == CONTENT_URL

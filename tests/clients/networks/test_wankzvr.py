@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.wankzvr import WankzVRClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ async def test_direct_scene() -> None:
     respx.get('https://www.wankzvr.com/12345').mock(
         return_value=httpx.Response(200, text='<h1 class="detail__title">Cool Scene</h1><span class="detail__date">March 4, 2021</span>')
     )
-    results = await WankzVRClient().search(_ctx(title='12345'))
+    results: list[SearchResult] = []
+    await WankzVRClient().search(results, _ctx(title='12345'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100
@@ -35,7 +36,8 @@ async def test_search() -> None:
         '<div class="card__date">March 4, 2021</div></li></ul>'
     )
     respx.get('https://www.wankzvr.com/search?q=cool+scene').mock(return_value=httpx.Response(200, text=html))
-    results = await WankzVRClient().search(_ctx())
+    results: list[SearchResult] = []
+    await WankzVRClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.wankzvr.com/v/7'

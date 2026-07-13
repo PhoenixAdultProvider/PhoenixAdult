@@ -5,7 +5,7 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import api_date, build_search_result, load_site_json, pack_cur_id
 
@@ -51,7 +51,7 @@ class ModelCentroClient(Client):
     def _quote_token(self, token: str) -> str:
         return quote(token, safe="-_.!~*'()").replace('%2F', '/')
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         api_base = base + ctx.site_info.search_path
 
@@ -60,13 +60,12 @@ class ModelCentroClient(Client):
 
         token = await self._get_api_token(f'{base}/videos/', ctx.capture)
         if not token:
-            return []
+            return
 
         list_url = f'{api_base}{self._quote_token(token)}{_LIST_QUERY}'
         body = await self.fetch_json(list_url, FetchCtx(capture=ctx.capture))
         scenes = _collection_items(body.get('response', {}).get('collection') if isinstance(body, dict) else None)
 
-        results: list[SearchResult] = []
         for scene in scenes:
             if not isinstance(scene, dict) or scene.get('id') is None or not scene.get('title'):
                 continue
@@ -86,9 +85,8 @@ class ModelCentroClient(Client):
                     cur_id=pack_cur_id([json.dumps(payload)]),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
             parsed = json.loads(payload)
         except (ValueError, TypeError):
@@ -112,13 +110,33 @@ class ModelCentroClient(Client):
             return None
         scene = scenes[0]
 
-        sites = (scene.get('sites') or {}).get('collection') or {}
+        model_body = await self.fetch_json(f'{api_base}{quoted}{_MODEL_QUERY}{sid}', FetchCtx(capture=capture))
+        return LoadedScene(
+            url=f'{base}/scene/{sid}/',
+            site=site,
+            capture=capture,
+            extra={'sid': sid, 'search_title': search_title, 'search_date': search_date, 'art': art, 'scene': scene, 'model_body': model_body},
+            subsite=ctx.subsite if ctx else None,
+        )
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        e = scene.extra
+        sid = e['sid']
+        search_title = e['search_title']
+        search_date = e['search_date']
+        art = e['art']
+        scene_json = e['scene']
+        model_body = e['model_body']
+
+        sites = (scene_json.get('sites') or {}).get('collection') or {}
         date = api_date((sites.get(str(sid)) or {}).get('publishDate')) or search_date
 
         tags_are_actors = site.name == 'Jerk Off With Me'
-        tag_aliases = [alias for alias in ((t.get('alias') or '').strip() for t in _collection_items((scene.get('tags') or {}).get('collection'))) if alias]
+        tag_aliases = [
+            alias for alias in ((t.get('alias') or '').strip() for t in _collection_items((scene_json.get('tags') or {}).get('collection'))) if alias
+        ]
 
-        model_body = await self.fetch_json(f'{api_base}{quoted}{_MODEL_QUERY}{sid}', FetchCtx(capture=capture))
         actor_names: list[str] = []
         for entry in _collection_items(model_body.get('response', {}).get('collection') if isinstance(model_body, dict) else None):
             for model in _collection_items((entry.get('modelId') or {}).get('collection')):
@@ -133,15 +151,12 @@ class ModelCentroClient(Client):
 
         actors = [ActorResult(name=n) for n in dict.fromkeys(actor_names)]
 
-        return SceneDetail(
-            title=(scene.get('title') or search_title or '').strip(),
-            summary=(scene.get('description') or '').strip(),
-            studio=site.name,
-            tagline=site.name,
-            collections=[site.name],
-            release_date=date or None,
-            genres=[] if tags_are_actors else tag_aliases,
-            actors=actors,
-            raw_image_urls=art,
-            scene_url=f'{base}/scene/{sid}/',
-        )
+        metadata.title = (scene_json.get('title') or search_title or '').strip()
+        metadata.summary = (scene_json.get('description') or '').strip()
+        metadata.studio = site.name
+        metadata.tagline = site.name
+        metadata.collections = [site.name]
+        metadata.release_date = date or None
+        metadata.genres = [] if tags_are_actors else tag_aliases
+        metadata.actors = actors
+        metadata.raw_image_urls = art

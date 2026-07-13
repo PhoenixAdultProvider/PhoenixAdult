@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.cherrypimps import CherryPimpsClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search_two_pages() -> None:
     </div></div>"""
     respx.get('https://www.cherrypimps.com/search.php?query=cool+scene&page=1').mock(return_value=httpx.Response(200, text=page1))
     respx.get('https://www.cherrypimps.com/search.php?query=cool+scene&page=2').mock(return_value=httpx.Response(200, text='<div class="item-updates"></div>'))
-    results = await CherryPimpsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await CherryPimpsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.cherrypimps.com/scene/1/cool-scene'

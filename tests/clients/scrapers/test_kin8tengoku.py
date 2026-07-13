@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.kin8tengoku import Kin8tengokuClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ async def test_search_direct_by_sceneid() -> None:
     direct = 'https://en.kin8tengoku.com/moviepages/3210/index.html'
     respx.get(direct).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, text='<html><body></body></html>'))
-    results = await Kin8tengokuClient().search(SearchContext(title='blonde', encoded='blonde', search_site=SITE.name, site_info=SITE, scene_id='3210'))
+    results: list[SearchResult] = []
+    await Kin8tengokuClient().search(results, SearchContext(title='blonde', encoded='blonde', search_site=SITE.name, site_info=SITE, scene_id='3210'))
     assert any(r.scene_url == direct for r in results)
     hit = next(r for r in results if r.scene_url == direct)
     assert hit.title == 'Blonde Beauty'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 
@@ -13,25 +13,25 @@ def _numeric_id(url: str) -> str:
 
 
 class ManyvidsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_id = ctx.title.strip().split()[0] if ctx.title.strip() else ''
         if not scene_id:
-            return []
+            return
         scene_url = f'{base}{ctx.site_info.search_path}{scene_id}'
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] sceneID {scene_id}')
         if not loaded:
-            return []
+            return
         raw = loaded['sel'].xpath('(//script[@type="application/ld+json"])[1]/text()').get() or ''
         try:
             data = json.loads(raw)
         except (ValueError, TypeError):
-            return []
+            return
         title = (data.get('name') or '').strip()
         if not title:
-            return []
+            return
         date = iso_date(data['uploadDate']) if data.get('uploadDate') else None
-        return [
+        results.append(
             build_search_result(
                 title=title,
                 scene_url=scene_url,
@@ -41,7 +41,7 @@ class ManyvidsClient(Client):
                 score=100 if _numeric_id(scene_url) == scene_id else None,
                 cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
             )
-        ]
+        )
 
     # ── Context loader (detail is a JSON API) ─────────────────────────────────
 
@@ -62,34 +62,34 @@ class ManyvidsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (self._data(scene).get('title') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (self._data(scene).get('title') or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return (self._data(scene).get('description') or '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = (self._data(scene).get('description') or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'ManyVids'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'ManyVids'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return ((self._data(scene).get('model') or {}).get('displayName') or '').strip() or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = ((self._data(scene).get('model') or {}).get('displayName') or '').strip() or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = ((self._data(scene).get('model') or {}).get('displayName') or '').strip()
-        return [name] if name else None
+        metadata.collections = [name] if name else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         values: list[str | None] = [tag.get('label') for tag in (self._data(scene).get('tagList') or [])]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         model = self._data(scene).get('model') or {}
         name = (model.get('displayName') or '').strip()
-        return [ActorResult(name=name, photo_url=model.get('avatar') or '')] if name else []
+        metadata.actors = [ActorResult(name=name, photo_url=model.get('avatar') or '')] if name else []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         shot = self._data(scene).get('screenshot')
-        return [shot] if shot else []
+        metadata.raw_image_urls = [shot] if shot else []

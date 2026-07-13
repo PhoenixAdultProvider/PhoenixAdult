@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.pornstarplatinum import PornstarPlatinumClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -27,7 +27,8 @@ async def test_search_cards() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await PornstarPlatinumClient().search(SearchContext(title='platinum', encoded='platinum', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await PornstarPlatinumClient().search(results, SearchContext(title='platinum', encoded='platinum', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Platinum Scene'
     assert results[0].scene_url == 'https://www.pornstarplatinum.com/scene/platinum'

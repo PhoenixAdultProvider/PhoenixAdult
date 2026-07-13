@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.porncz import PornCZClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search() -> None:
         '<div class="card--item"><div class="card-body"><a href="/en/video/7">Cool Scene</a></div><div class="card__img"><img data-src="/t.jpg" /></div></div>'
     )
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await PornCZClient().search(_ctx(SITE))
+    results: list[SearchResult] = []
+    await PornCZClient().search(results, _ctx(SITE))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.czechsexcasting.com/en/video/7'

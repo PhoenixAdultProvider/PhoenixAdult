@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.bang as bang_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.bang import BangClient, __testing__
 from app.registry import find_site
 
@@ -36,7 +36,8 @@ async def test_search_grid_only_when_no_engine(monkeypatch: pytest.MonkeyPatch) 
             </div>""",
         )
     )
-    results = await BangClient().search(_ctx())
+    results: list[SearchResult] = []
+    await BangClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.bang.com/video/77/cool-scene'
@@ -53,7 +54,8 @@ async def test_search_web_augmentation(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bang_mod, 'web_search', fake_web_search)
     respx.get('https://www.bang.com/video/123/slug').mock(return_value=httpx.Response(200, text=f'<html><body>{_VIDEO_LD}</body></html>'))
     respx.get('https://www.bang.com/videos?term=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await BangClient().search(_ctx())
+    results: list[SearchResult] = []
+    await BangClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.bang.com/video/123/slug'
     assert results[0].title == 'Cool Scene'

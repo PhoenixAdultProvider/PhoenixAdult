@@ -6,7 +6,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -31,7 +31,7 @@ def _last_tour_page(sel: Selector) -> int:
 
 
 class JesseLoadsMonsterFacialsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         def tour_url(idx: int) -> str:
@@ -39,10 +39,9 @@ class JesseLoadsMonsterFacialsClient(Client):
 
         first = await self.fetch_and_load(tour_url(1), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {tour_url(1)}')
         if not first:
-            return []
+            return
         last_page = _last_tour_page(first['sel'])
 
-        results: list[SearchResult] = []
         for idx in range(1, last_page + 1):
             loaded = first if idx == 1 else await self.fetch_and_load(tour_url(idx), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {tour_url(idx)}')
             if not loaded:
@@ -50,7 +49,6 @@ class JesseLoadsMonsterFacialsClient(Client):
             saw_scene, exact_hit = self._collect_scenes(loaded['sel'], results, ctx)
             if not saw_scene or exact_hit:
                 break
-        return results
 
     def _collect_scenes(self, sel: Selector, results: list[SearchResult], ctx: SearchContext) -> tuple[bool, bool]:
         current_date = ''
@@ -109,27 +107,27 @@ class JesseLoadsMonsterFacialsClient(Client):
         assert isinstance(scene.extra, dict)
         return scene.extra
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return f'{" and ".join(self._data(scene)["actors"])} from JesseLoadsMonsterFacials.com'
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = f'{" and ".join(self._data(scene)["actors"])} from JesseLoadsMonsterFacials.com'
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return self._data(scene).get('summary') or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = self._data(scene).get('summary') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Jesse Loads Monster Facials'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Jesse Loads Monster Facials'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['Jesse Loads Monster Facials']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['Jesse Loads Monster Facials']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return self._data(scene).get('releaseDate') or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = self._data(scene).get('releaseDate') or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['Facial']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Facial']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return [ActorResult(name=n) for n in self._data(scene).get('actors', []) if n != 'Compilation']
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = [ActorResult(name=n) for n in self._data(scene).get('actors', []) if n != 'Compilation']
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._data(scene).get('poster')
-        return [absolute_url(poster, scene.site.base_url)] if poster else []
+        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)] if poster else []

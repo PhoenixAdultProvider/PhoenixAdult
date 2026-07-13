@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.wankz import WankzClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search() -> None:
         '<div class="series-container"><a class="sitename">Wankz TV</a></div></div>'
     )
     respx.get('https://wankz.com/search?q=cool+scene').mock(return_value=httpx.Response(200, text=html))
-    results = await WankzClient().search(_ctx())
+    results: list[SearchResult] = []
+    await WankzClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://wankz.com/v/7'

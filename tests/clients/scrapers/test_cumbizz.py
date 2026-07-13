@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.cumbizz import CumbizzClient
 from app.registry import find_site
 
@@ -26,7 +26,8 @@ DETAIL_HTML = """<html><body>
 async def test_search_direct_url_single_result() -> None:
     url = 'https://cumbizz.com/film/wild-film'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await CumbizzClient().search(SearchContext(title='wild film', encoded='wild+film', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await CumbizzClient().search(results, SearchContext(title='wild film', encoded='wild+film', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Film'
     assert results[0].scene_url == 'https://cumbizz.com/film/wild-film'
@@ -37,7 +38,8 @@ async def test_search_direct_url_single_result() -> None:
 async def test_search_returns_empty_when_no_title() -> None:
     url = 'https://cumbizz.com/film/missing'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><body></body></html>'))
-    results = await CumbizzClient().search(SearchContext(title='missing', encoded='missing', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await CumbizzClient().search(results, SearchContext(title='missing', encoded='missing', search_site=SITE.name, site_info=SITE))
     assert results == []
 
 

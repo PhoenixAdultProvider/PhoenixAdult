@@ -6,7 +6,7 @@ import httpx
 import respx
 
 import app.clients.networks.gammaentother as geo_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.gammaentother import GammaEntOtherClient
 from app.registry import find_site
 
@@ -56,7 +56,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 @respx.mock
 async def test_search() -> None:
     _mock_common()
-    results = await GammaEntOtherClient().search(_ctx())
+    results: list[SearchResult] = []
+    await GammaEntOtherClient().search(results, _ctx())
     assert any(r.title == 'Cool Scene' for r in results)
     assert next(r for r in results if r.title == 'Cool Scene').subsite == "Mommy's Girl"
     r = next(r for r in results if r.title == 'Cool Scene')

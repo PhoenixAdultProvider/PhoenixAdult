@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
@@ -13,9 +13,8 @@ _RELEASED_RE = re.compile(r'Released:', re.IGNORECASE)
 
 
 class VividClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
         for scene_type in _ENDPOINTS:
             api_url = f'{base}/{scene_type}/api/?flagType=video&search={ctx.encoded}'
@@ -43,7 +42,6 @@ class VividClient(Client):
                         subsite=real_sub or None,
                     )
                 )
-        return results
 
     # ── Context loader: unpack subsite + poster ───────────────────────────────
 
@@ -73,44 +71,44 @@ class VividClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h2[contains(@class,"scene-h2-heading")]') or None
+        metadata.title = first_text(scene.sel, '//h2[contains(@class,"scene-h2-heading")]') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"indie-model-p")]') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"indie-model-p")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._sub_site(scene)
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._sub_site(scene)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._sub_site(scene)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._sub_site(scene)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = _RELEASED_RE.sub('', first_text(scene.sel, '//h5[contains(.,"Released:")]')).strip()
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//h5[contains(.,"Categories:")]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=(a.xpath('normalize-space(.)').get() or '')) for a in scene.sel.xpath('//h4[contains(.,"Starring:")]//a')]
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = scene.extra.get('poster_url') if isinstance(scene.extra, dict) else ''
-        return [poster] if poster else []
+        metadata.raw_image_urls = [poster] if poster else []

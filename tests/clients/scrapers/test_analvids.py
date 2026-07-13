@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.analvids import AnalVidsClient
 from app.registry import find_site
 
@@ -37,7 +37,8 @@ async def test_search_json_api() -> None:
         ]
     }
     respx.get(api).mock(return_value=httpx.Response(200, json=payload))
-    results = await AnalVidsClient().search(SearchContext(title='123 deep scene', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await AnalVidsClient().search(results, SearchContext(title='123 deep scene', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Deep Scene'
     assert results[0].scene_url == 'https://analvids.com/watch/123'

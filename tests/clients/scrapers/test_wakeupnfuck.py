@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.wakeupnfuck import WakeUpNFuckClient
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ async def test_search_per_row_actors() -> None:
       <a class="scene item light_background" href="/scene/b"><h3>Wild B</h3><p class="sub">Mary Roe</p></a>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await WakeUpNFuckClient().search(SearchContext(title='wild', encoded='wild', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await WakeUpNFuckClient().search(results, SearchContext(title='wild', encoded='wild', search_site=SITE.name, site_info=SITE))
     assert len(results) == 2
     assert results[0].title == 'Wild A [Jane Doe]'
     assert results[1].title == 'Wild B [Mary Roe]'

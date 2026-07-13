@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
@@ -37,17 +37,17 @@ __testing__ = {
 
 
 class AbbyWintersClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         encoded = ctx.encoded.replace('%20', '+')
         search_url = base + ctx.site_info.search_path.replace('{query}', encoded)
 
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
         if not loaded:
-            return []
+            return
         total_raw = first_attr(loaded['sel'], '(//span[@id="browse-total-count"])[1]/text()')
         if total_raw.isdigit() and int(total_raw) == 0:
-            return []
+            return
 
         model_hrefs: list[str] = []
         for href in loaded['sel'].xpath('//div[@id="browse-grid"]//main//article//a[@class]/@href').getall():
@@ -71,7 +71,6 @@ class AbbyWintersClient(Client):
         name = ctx.site_info.name
         logger.debug(name, f'AbbyWinters: {len(model_hrefs)} model page(s) -> {len(scene_urls)} scene URL(s)')
 
-        results: list[SearchResult] = []
         actor_cache: dict[str, Any] = {}
         for scene_url in scene_urls:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'GET {scene_url}')
@@ -85,7 +84,6 @@ class AbbyWintersClient(Client):
             display_date = await self._lookup_date(sel, ctx, title, sub_site, actor_cache)
             logger.debug(name, f'AbbyWinters: scene "{title}" [{sub_site}] -> date {display_date or "NOT FOUND"}')
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=display_date, search_date=ctx.search_date))
-        return results
 
     async def _lookup_date(self, sel: Any, ctx: SearchContext, title: str, sub_site: str, cache: dict[str, Any]) -> str | None:
         name = ctx.site_info.name
@@ -118,38 +116,38 @@ class AbbyWintersClient(Client):
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _parse_page_title(scene.sel) or None
+        metadata.title = _parse_page_title(scene.sel) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//aside//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').replace('\n', '').strip()
-        return raw or None
+        metadata.summary = raw or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
     def _subsite(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
         return (scene.sel.xpath('(//div[@id="shoot-featured-image"]//h4)[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._subsite(scene) or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._subsite(scene) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._subsite(scene)
-        return [tagline] if tagline else [STUDIO]
+        metadata.collections = [tagline] if tagline else [STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//aside//div[contains(@class,"description")]//a')) if g]
-        return genres or None
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
@@ -165,9 +163,9 @@ class AbbyWintersClient(Client):
             page = await self.fetch_and_load(href, None, f'GET {href} (actor)')
             photo = first_attr(page['sel'], '(//img[contains(@class,"img-responsive")]/@src)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector()
         xpaths = (
@@ -178,4 +176,4 @@ class AbbyWintersClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

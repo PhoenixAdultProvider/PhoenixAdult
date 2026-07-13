@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import httpx2
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.best_effort import best_effort
@@ -32,8 +32,15 @@ def _release_text(sel: Selector) -> str:
     return ''
 
 
+def _tagline_for(url: str) -> str:
+    for token, tagline in _TOUR_TAGLINES:
+        if token in url:
+            return tagline
+    return 'PlumperPass'
+
+
 class PlumperPassClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         def refstat(scene_id: str) -> str:
@@ -51,7 +58,6 @@ class PlumperPassClient(Client):
                     if ref not in ref_urls:
                         ref_urls.append(ref)
 
-        results: list[SearchResult] = []
         for ref_url in ref_urls:
             try:
                 r = await self.http.get(ref_url)
@@ -78,34 +84,30 @@ class PlumperPassClient(Client):
                     cur_id=pack_cur_id([x for x in (content_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip() or None
+        metadata.title = (scene.sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"vidinfo")]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"vidinfo")]//p')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'PlumperPass'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'PlumperPass'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        for token, tagline in _TOUR_TAGLINES:
-            if token in scene.url:
-                return tagline
-        return 'PlumperPass'
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = _tagline_for(scene.url)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [await self.fetch_tagline(scene) or 'PlumperPass']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [_tagline_for(scene.url)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         tag_links = scene.sel.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
@@ -126,9 +128,9 @@ class PlumperPassClient(Client):
             genres.append('Foursome')
         elif cast > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
@@ -143,9 +145,9 @@ class PlumperPassClient(Client):
                 raw = first_attr(loaded['sel'], '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]') if loaded else ''
                 photo = (raw if raw.startswith('http') else f'{base}/t1/{raw}') if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -164,4 +166,4 @@ class PlumperPassClient(Client):
             push(m.group(1))
         for raw in scene.sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
             push(raw)
-        return images
+        metadata.raw_image_urls = images

@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.bellapass as bp_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.bellapass import BellaPassClient, __testing__
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
             text='<h3>Cool Scene</h3><div class="videoInfo"><p>Mar 4, 2021</p></div>',
         )
     )
-    results = await BellaPassClient().search(_ctx(BELLA))
+    results: list[SearchResult] = []
+    await BellaPassClient().search(results, _ctx(BELLA))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://bellapass.com/trailers/cool-scene.html'

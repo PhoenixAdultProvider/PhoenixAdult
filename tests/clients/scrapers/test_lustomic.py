@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.lustomic import LustomicClient
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ _PAGE = """<html><body>
 @respx.mock
 async def test_search_reads_preview_title() -> None:
     respx.get(_URL).mock(return_value=httpx.Response(200, text=_PAGE))
-    results = await LustomicClient().search(SearchContext(title='42', encoded='42', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await LustomicClient().search(results, SearchContext(title='42', encoded='42', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Some Comic'
 

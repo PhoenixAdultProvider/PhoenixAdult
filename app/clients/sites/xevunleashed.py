@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -10,9 +10,8 @@ _AVAILDATE_XP = '(//span[contains(@class,"availdate")]/text())[1]'
 
 
 class XevUnleashedClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         slug = slugify(ctx.title, replacements=[("'", '')])
@@ -60,52 +59,51 @@ class XevUnleashedClient(Client):
                         cur_id=pack_cur_id([scene_url, date or '']),
                     )
                 )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//span[contains(@class,"update_title")]') or None
+        metadata.title = first_text(scene.sel, '//span[contains(@class,"update_title")]') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//span[contains(@class,"latest_update_description")]') or None
+        metadata.summary = first_text(scene.sel, '//span[contains(@class,"latest_update_description")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = STUDIO
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [STUDIO]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         date_raw = (scene.sel.xpath(_AVAILDATE_XP).get() or '').strip()
         if date_raw:
             parsed = iso_date(date_raw, '%m/%d/%Y') or iso_date(date_raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//span[contains(@class,"update_tags")]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors = [ActorResult(name='Xev Bellringer', photo_url=_XEV_PHOTO)]
         keywords = (scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').lower()
         if 'princess leia' in keywords:
             actors.append(ActorResult(name='Princess Leia'))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -116,4 +114,4 @@ class XevUnleashedClient(Client):
             abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_attr
 
@@ -17,9 +17,8 @@ def _title_selector_for(site_name: str) -> str:
 
 
 class InterracialPassClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         direct_url = f'{base}/t1/trailers/{ctx.title.strip().replace(" ", "-")}.html'
@@ -56,41 +55,42 @@ class InterracialPassClient(Client):
                         title=title, scene_url=scene_url, query=ctx.title, display_date=iso_date(date_tok) if date_tok else None, search_date=ctx.search_date
                     )
                 )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         tag = _title_selector_for(scene.site.name)
-        return (
+        metadata.title = (
             scene.sel.xpath(f'(//div[contains(@class,"video-player")]//{tag}[contains(@class,"section-title")])[1]').xpath('string(.)').get() or ''
-        ).strip() or None
+        ).strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"update-info-block")])[2]').xpath('string(.)').get() or '').replace('Description:', '').strip() or None
+        metadata.summary = (
+            (scene.sel.xpath('(//div[contains(@class,"update-info-block")])[2]').xpath('string(.)').get() or '').replace('Description:', '').strip()
+        )
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _studio_for(scene.site.name)
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _studio_for(scene.site.name)
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"update-info-row")])[1]').xpath('string(.)').get() or '').replace('Released:', '').strip()
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath('//ul[contains(@class,"tags")]//li//a')]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         is_bbc = scene.site.name == 'BBC Surprise'
@@ -106,13 +106,13 @@ class InterracialPassClient(Client):
                 actors.append(ActorResult(name='Sami White', photo_url=photo))
             else:
                 actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: raw if raw.startswith('http') else base + raw)
         for src in scene.sel.xpath('//div[contains(@class,"player-thumb")]//img/@src0_1x').getall():
             coll['push'](src)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

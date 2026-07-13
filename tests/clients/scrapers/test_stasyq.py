@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.stasyq import StasyQClient
 from app.registry import find_site
 
@@ -22,8 +22,9 @@ SCENE_HTML = """<html><body>
 @respx.mock
 async def test_search_by_scene_id() -> None:
     respx.get('https://www.stasyq.com/r/Q/1234').mock(return_value=httpx.Response(200, text=SCENE_HTML))
-    results = await StasyQClient().search(
-        SearchContext(title='Crystal 1234', encoded='Crystal 1234', search_site=SITE.name, site_info=SITE, full_title='Crystal 1234')
+    results: list[SearchResult] = []
+    await StasyQClient().search(
+        results, SearchContext(title='Crystal 1234', encoded='Crystal 1234', search_site=SITE.name, site_info=SITE, full_title='Crystal 1234')
     )
     assert len(results) == 1
     assert results[0].title == 'Crystal Blue'
@@ -33,7 +34,8 @@ async def test_search_by_scene_id() -> None:
 
 @respx.mock
 async def test_search_no_numeric_token() -> None:
-    results = await StasyQClient().search(SearchContext(title='no digits here', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await StasyQClient().search(results, SearchContext(title='no digits here', encoded='x', search_site=SITE.name, site_info=SITE))
     assert results == []
 
 

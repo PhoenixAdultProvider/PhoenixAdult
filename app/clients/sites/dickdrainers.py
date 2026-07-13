@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from app.utils.processors.title_case import title_case
@@ -15,12 +15,11 @@ _SLUG_RE = re.compile(r'/s/([^/]+)\.html$')
 
 
 class DickDrainersClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         onsite_query = re.sub(r'\s+', '+', ctx.title.strip().lower())
         onsite_url = base + ctx.site_info.search_path.replace('{query}', onsite_query)
 
-        results: list[SearchResult] = []
         onsite_hrefs: set[str] = set()
 
         loaded = await self.fetch_and_load(onsite_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
@@ -49,8 +48,6 @@ class DickDrainersClient(Client):
             date = iso_date(raw_date) if raw_date else None
             results.append(self._result(raw_title, scene_url, ctx, date))
 
-        return results
-
     def _result(self, title: str, scene_url: str, ctx: SearchContext, date: str | None) -> SearchResult:
         return build_search_result(
             title=title,
@@ -63,38 +60,39 @@ class DickDrainersClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h3') or None
+        metadata.title = first_text(scene.sel, '//h3') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts = [
             s.xpath('normalize-space(.)').get() or '' for s in scene.sel.xpath('//div[contains(@class,"videoDetails") and contains(@class,"clear")]//p/span')
         ]
         parts = [p for p in parts if p]
         if not parts:
-            return None
+            return
         joined = ' '.join(parts).replace('FULL VIDEO', '').strip()
-        return joined or None
+        metadata.summary = joined or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
+            return
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
-        return iso_date(raw) if raw else None
+        metadata.release_date = iso_date(raw) if raw else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
@@ -104,16 +102,16 @@ class DickDrainersClient(Client):
             g = title_case(raw, site_name=scene.site.name)
             if g not in genres:
                 genres.append(g)
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         items = scene.sel.xpath('//li[contains(@class,"update_models")]')
         if not items:
             m = _SLUG_RE.search(scene.url)
             if m:
-                return [ActorResult(name=name) for name in _SLUG_ACTORS.get(m.group(1).lower(), [])]
-            return []
+                metadata.actors = [ActorResult(name=name) for name in _SLUG_ACTORS.get(m.group(1).lower(), [])]
+            return
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -131,9 +129,9 @@ class DickDrainersClient(Client):
                     raw = first_attr(actor_page['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
                     photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -150,4 +148,4 @@ class DickDrainersClient(Client):
             for m in _SRC0_3X_RE.finditer(text):
                 push(m.group(1))
 
-        return images
+        metadata.raw_image_urls = images

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.momcomesfirst import MomComesFirstClient
 from app.registry import find_site
 
@@ -21,7 +21,8 @@ async def test_search_strips_relationship_words() -> None:
       </article>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await MomComesFirstClient().search(SearchContext(title='moms sons secret lesson', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MomComesFirstClient().search(results, SearchContext(title='moms sons secret lesson', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Secret Lesson'
     assert results[0].scene_url == 'https://momcomesfirst.com/scene/secret-lesson'

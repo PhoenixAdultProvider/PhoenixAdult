@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.sicflics import SicflicsClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ async def test_search_packs_curid() -> None:
       </li>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await SicflicsClient().search(SearchContext(title='Wild', encoded='Wild', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await SicflicsClient().search(results, SearchContext(title='Wild', encoded='Wild', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://www.sicflics.com/v6/v6.pop.php?id=9999'

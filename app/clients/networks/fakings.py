@@ -4,7 +4,7 @@ import asyncio
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.coalescer import coalesce_future
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
@@ -17,14 +17,13 @@ _DATE_P_XP = '(.//p[contains(@class,"txtmininfo") and contains(@class,"calen") a
 
 
 class FAKingsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         encoded = _WS_RE.sub('-', ctx.title.strip())
         en_path = ctx.site_info.search_path.replace('{query}', encoded)
         es_path = en_path.replace('/en/', '/')
         search_urls = [base + en_path, base + es_path]
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
         for search_url in search_urls:
             loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
@@ -54,7 +53,6 @@ class FAKingsClient(Client):
                         cur_id=pack_cur_id([x for x in (scene_url, carried) if x]),
                     )
                 )
-        return results
 
     # ── Detail ──────────────────────────────────────────────────────────────────
 
@@ -78,44 +76,47 @@ class FAKingsClient(Client):
                 refs.append((name, absolute_url(href, scene.site.base_url)))
         return refs
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//span[@class="grisoscuro"])[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//strong[contains(.,"Serie")])[1]/following-sibling::a[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tagline = await self.fetch_tagline(scene)
-        return [tagline] if tagline else None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.summary = (scene.sel.xpath('(//span[@class="grisoscuro"])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene)
+        metadata.collections = [tagline] if tagline else None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('(//strong[contains(.,"Categori")])[1]/following-sibling::a')) if g]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url
         actors: list[ActorResult] = []
         for name, href in self._actor_refs(scene):
             page = await self._load_model(scene, href)
             raw = first_attr(page['sel'], '(//div[@class="zona-imagen"]//img[@class])[1]/@src') if page else ''
             actors.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url
         for _name, href in self._actor_refs(scene):
             page = await self._load_model(scene, href)
@@ -126,5 +127,5 @@ class FAKingsClient(Client):
                 if row_href and absolute_url(row_href, base) == scene.url:
                     poster = first_attr(row, '(.//img[@class])[1]/@src')
                     if poster:
-                        return [absolute_url(poster, base)]
-        return None
+                        metadata.raw_image_urls = [absolute_url(poster, base)]
+                        return

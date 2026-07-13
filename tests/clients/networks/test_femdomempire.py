@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.femdomempire import FemdomEmpireClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_advanced() -> None:
             text='<div class="item-info"><a href="/tour/trailers/cool.html">Cool Scene</a><span class="date">March 4, 2021</span></div>',
         )
     )
-    results = await FemdomEmpireClient().search(_ctx())
+    results: list[SearchResult] = []
+    await FemdomEmpireClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://femdomempire.com/tour/trailers/cool.html'
@@ -35,7 +36,8 @@ async def test_search_advanced() -> None:
 async def test_search_manual_match() -> None:
     url = 'https://femdomempire.com/tour/search.php?st=advanced&qany=Cock+Locked'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await FemdomEmpireClient().search(_ctx(title='Cock Locked'))
+    results: list[SearchResult] = []
+    await FemdomEmpireClient().search(results, _ctx(title='Cock Locked'))
     assert len(results) == 1
     assert results[0].title == 'Cock Locked'
     assert results[0].scene_url == 'https://femdomempire.com/tour/trailers/CockLocked.html'

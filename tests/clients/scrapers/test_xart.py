@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import app.clients.sites.xart as xart_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.xart import XartClient
 from app.registry import find_site
 
@@ -46,7 +46,8 @@ async def test_search_row(monkeypatch: pytest.MonkeyPatch, no_web_search: object
       </a>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await XartClient().search(SearchContext(title='Wild Ride', encoded=quote('Wild Ride'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await XartClient().search(results, SearchContext(title='Wild Ride', encoded=quote('Wild Ride'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Ride'
     assert results[0].scene_url == 'https://x-art.com/videos/wild_ride'
@@ -57,7 +58,8 @@ async def test_search_row(monkeypatch: pytest.MonkeyPatch, no_web_search: object
 async def test_search_manual_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(xart_module, 'web_search', no_web_search)
     respx.get('https://x-art.com/search/?input_search_sm=Sunset').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await XartClient().search(SearchContext(title='Sunset', encoded='Sunset', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await XartClient().search(results, SearchContext(title='Sunset', encoded='Sunset', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Sunset [X-Art]'
     assert results[0].scene_url == 'https://x-art.com/videos/sunset'

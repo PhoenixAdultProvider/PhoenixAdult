@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -31,40 +31,40 @@ class DarkRoomVRClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[@data-id="description" and contains(@class,"hidden")]')
         if not raw:
-            return None
-        return _READ_LESS_RE.sub('', raw).strip() or None
+            return
+        metadata.summary = _READ_LESS_RE.sub('', raw).strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'DarkRoomVR'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'DarkRoomVR'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[contains(@class,"video-info__time")]')
         if not raw:
-            return None
+            return
         after = raw.split(' • ')[-1].strip()
-        return iso_date(after) or None
+        metadata.release_date = iso_date(after) or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[contains(@class,"tags__item")]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -81,9 +81,9 @@ class DarkRoomVRClient(Client):
                 raw = first_attr(actor_page['sel'], '(//img[contains(@class,"pornstar-detail__picture")]/@src)[1]')
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for href in scene.sel.xpath('//div[contains(@class,"video-detail__gallery-item")]//a/@href').getall():
@@ -93,4 +93,4 @@ class DarkRoomVRClient(Client):
             abs_url = absolute_url(href, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

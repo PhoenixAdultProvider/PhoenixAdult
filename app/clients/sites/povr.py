@@ -5,7 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -24,14 +24,13 @@ def _parse_ld(sel: Selector) -> dict[str, Any] | None:
 
 
 class POVRClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {scene_url}')
         if not loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"thumbnail-wrap")]/div'):
             title = first_attr(card, 'normalize-space((.//h6[contains(@class,"thumbnail__title")])[1])')
             href = first_attr(card, '(.//a[contains(@class,"thumbnail__link")]/@href)[1]')
@@ -55,7 +54,6 @@ class POVRClient(Client):
                     subsite=sub_site or None,
                 )
             )
-        return results
 
     # ── Context loader (ld+json detail; channel packed in curID) ──────────────
 
@@ -81,28 +79,28 @@ class POVRClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (self._ld(scene).get('name') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (self._ld(scene).get('name') or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return (self._ld(scene).get('description') or '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = (self._ld(scene).get('description') or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return self._sub_site(scene) or scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = self._sub_site(scene) or scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._sub_site(scene) or scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._sub_site(scene) or scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         raw = (self._ld(scene).get('uploadDate') or '').strip()
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"category-link")]//li//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         for a in self._ld(scene).get('actor') or []:
             name = (a.get('name') or '').strip()
@@ -115,8 +113,8 @@ class POVRClient(Client):
                 ld = _parse_ld(loaded['sel']) if loaded else None
                 photo = (ld or {}).get('image') or ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         thumb = (self._ld(scene).get('thumbnailUrl') or '').strip()
-        return [thumb.replace('tiny', 'large')] if thumb else []
+        metadata.raw_image_urls = [thumb.replace('tiny', 'large')] if thumb else []

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_attr
 
@@ -47,7 +47,7 @@ __testing__ = {
 class AdultPrimeClient(Client):
     # ── Search (full override: direct sceneID lookup + video/performer search) ───
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         if ctx.scene_id:
@@ -57,7 +57,7 @@ class AdultPrimeClient(Client):
                 title = _clean_title(loaded['sel'].xpath(f'string({_TITLE_XP})').get() or '')
                 if title:
                     release = _parse_euro_date(loaded['sel'].xpath(f'string({_DATE_XP})').get() or '')
-                    return [
+                    results.append(
                         build_search_result(
                             title=title,
                             scene_url=url,
@@ -66,9 +66,9 @@ class AdultPrimeClient(Client):
                             search_date=ctx.search_date,
                             score=100,
                         )
-                    ]
+                    )
+                    return
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
         qplus = ctx.encoded.replace('%20', '+')
         search_base = base + ctx.site_info.search_path
@@ -97,51 +97,51 @@ class AdultPrimeClient(Client):
                         search_date=ctx.search_date,
                     )
                 )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        return _clean_title(scene.sel.xpath(f'string({_TITLE_XP})').get() or '') or None
+        return (scene.sel.xpath(f'{_info_line_xp("Studio")}//a[1]/text()').get() or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.title = _clean_title(scene.sel.xpath(f'string({_TITLE_XP})').get() or '') or ''
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         summary = first_attr(scene.sel, 'string((//p[contains(@class,"description")])[1])')
         if not summary:
-            return None
+            return
         low = summary.lower()
         if any(low.startswith(p.lower()) for p in _SKIP_PREFIXES):
-            return None
-        return summary
+            return
+        metadata.summary = summary
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _studio_for(scene.site.name)
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _studio_for(scene.site.name)
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath(f'{_info_line_xp("Studio")}//a[1]/text()').get() or '').strip() or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tagline = await self.fetch_tagline(scene)
-        if tagline:
-            return [tagline]
-        return [_studio_for(scene.site.name)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene)
+        metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath(f'string({_DATE_XP})').get() or ''
-        return _parse_euro_date(raw) or scene.scene_date or None
+        metadata.release_date = _parse_euro_date(raw) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         text = scene.sel.xpath(f'string({_info_line_xp("Niches")})').get() or ''
         if ':' not in text:
-            return None
+            return
         genres = [g.strip() for g in text.split(':')[-1].split(',') if g.strip()]
-        return genres or None
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         names = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath(f'{_info_line_xp("Performer")}/a')])
@@ -156,12 +156,12 @@ class AdultPrimeClient(Client):
                 else ''
             )
             actors.append(ActorResult(name=name, photo_url=css_bg_image(style)))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for raw in scene.sel.xpath('//video[@id]/@poster').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

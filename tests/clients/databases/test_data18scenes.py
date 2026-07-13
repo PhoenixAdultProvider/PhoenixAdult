@@ -8,7 +8,7 @@ import respx
 
 import app.clients.aggregators.data18scenes as d18s_module
 from app.clients.aggregators.data18scenes import Data18ScenesClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Data18 Scenes')
@@ -67,7 +67,8 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search:
     monkeypatch.setattr(d18s_module, 'web_search', no_web_search)
     q = quote('Fun Scene')
     respx.get(f'https://www.data18.com/sys/live.php?index=&key={q}&key2={q}&next=1&page=0').mock(return_value=httpx.Response(200, text=SEARCH_PAGE))
-    results = await Data18ScenesClient().search(SearchContext(title='Fun Scene', encoded=q, search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Data18ScenesClient().search(results, SearchContext(title='Fun Scene', encoded=q, search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Fun Scene'
     assert results[0].scene_url == 'https://www.data18.com/scenes/9999'
@@ -79,7 +80,8 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch, no_web_se
     monkeypatch.setattr(d18s_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE))
-    results = await Data18ScenesClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999'))
+    results: list[SearchResult] = []
+    await Data18ScenesClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999'))
     direct = [r for r in results if r.scene_url == 'https://www.data18.com/scenes/9999']
     assert direct and direct[0].score == 100
     assert direct[0].subsite == 'Teens Like It Big'
@@ -90,7 +92,8 @@ async def test_search_direct_scene_id_falls_back_to_studio(monkeypatch: pytest.M
     monkeypatch.setattr(d18s_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE_STUDIO_ONLY))
-    results = await Data18ScenesClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999'))
+    results: list[SearchResult] = []
+    await Data18ScenesClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999'))
     assert results[0].subsite == 'Hussie Pass'
 
 
@@ -148,8 +151,9 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(d18s_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE))
-    results = await Data18ScenesClient().search(
-        SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Fun Scene')
+    results: list[SearchResult] = []
+    await Data18ScenesClient().search(
+        results, SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Fun Scene')
     )
     by_url = {r.scene_url: r.score for r in results}
     assert by_url['https://www.data18.com/scenes/9999'] == 100
@@ -161,7 +165,8 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
 async def test_without_scene_id_scoring_falls_back_to_date_then_title(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18s_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
-    results = await Data18ScenesClient().search(SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Data18ScenesClient().search(results, SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE))
     by_url = {r.scene_url: r.score for r in results}
     assert by_url['https://www.data18.com/scenes/1234'] == 100
     assert by_url['https://www.data18.com/scenes/9999'] < 100

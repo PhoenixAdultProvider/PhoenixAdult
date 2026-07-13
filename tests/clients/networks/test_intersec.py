@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.intersec import IntersecClient
 from app.registry import find_site
 
@@ -29,7 +29,8 @@ async def test_search_packs_cover() -> None:
             </div></div>""",
         )
     )
-    results = await IntersecClient().search(_ctx())
+    results: list[SearchResult] = []
+    await IntersecClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.insexondemand.com/iod/scene_123.php'

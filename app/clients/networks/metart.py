@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import api_date, build_search_result
 
@@ -14,14 +14,13 @@ def _capitalize(s: str) -> str:
 
 
 class MetArtClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         api = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path
         url = f'{api}/search-results?query[contentType]=movies&searchPhrase={ctx.encoded}'
         data = await self.fetch_json(url, FetchCtx(capture=ctx.capture), label=f'GET {url}')
         if not isinstance(data, dict) or not data.get('items'):
-            return []
+            return
 
-        results: list[SearchResult] = []
         for entry in data['items']:
             it = entry.get('item') if isinstance(entry, dict) else None
             if not isinstance(it, dict) or not it.get('name') or not it.get('path'):
@@ -36,17 +35,21 @@ class MetArtClient(Client):
                     title=it['name'], scene_url=scene_url, query=ctx.title, display_date=api_date(it.get('publishedAt')), search_date=ctx.search_date
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
+        capture = ctx.capture if ctx else None
 
-        d = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None), label=f'GET {url}')
+        d = await self.fetch_json(url, FetchCtx(capture=capture), label=f'GET {url}')
         if not isinstance(d, dict):
             return None
+        return LoadedScene(url=url, site=site, capture=capture, extra=d, scene_date=fallback_date or None, subsite=ctx.subsite if ctx else None)
 
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        d = scene.extra
         base = site.base_url.rstrip('/')
         cdn = f'https://cdn.metartnetwork.com/{d["siteUUID"]}' if d.get('siteUUID') else ''
 
@@ -66,16 +69,13 @@ class MetArtClient(Client):
         if cdn and d.get('splashImagePath'):
             raw_images.append(cdn + d['splashImagePath'])
 
-        return SceneDetail(
-            title=d.get('name') or '',
-            summary=d.get('description') or '',
-            studio='MetArt',
-            tagline=site.name,
-            release_date=api_date(d.get('publishedAt')) or fallback_date or None,
-            collections=[site.name],
-            genres=genres,
-            actors=actors,
-            directors=directors or None,
-            raw_image_urls=raw_images,
-            scene_url=url,
-        )
+        metadata.title = d.get('name') or ''
+        metadata.summary = d.get('description') or ''
+        metadata.studio = 'MetArt'
+        metadata.tagline = site.name
+        metadata.release_date = api_date(d.get('publishedAt')) or scene.scene_date or None
+        metadata.collections = [site.name]
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.directors = directors or None
+        metadata.raw_image_urls = raw_images

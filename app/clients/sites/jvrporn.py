@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id
 from app.utils.helpers.html_helpers import first_text
 from app.utils.logging.best_effort import best_effort
@@ -10,7 +10,7 @@ from app.utils.searchengines import SearchOptions, web_search
 
 
 class JVRPornClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_id = ctx.scene_id
         rest = ctx.title.strip()
@@ -25,7 +25,6 @@ class JVRPornClient(Client):
                     if '/video/' in url and url not in candidates:
                         candidates.append(url)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
             if not loaded:
@@ -44,38 +43,37 @@ class JVRPornClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, ctx.search_date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//pre') or None
+        metadata.summary = first_text(scene.sel, '//pre') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'JVR Porn'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'JVR Porn'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['JVR Porn']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['JVR Porn']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in scene.sel.xpath('//td[contains(@class,"tags")]//span')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=s.xpath('normalize-space(.)').get() or '') for s in scene.sel.xpath('//a[contains(@class,"actress")]//span')]
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -86,4 +84,4 @@ class JVRPornClient(Client):
             push(raw)
         for raw in scene.sel.xpath('//deo-video/@cover-image').getall():
             push(raw)
-        return images
+        metadata.raw_image_urls = images

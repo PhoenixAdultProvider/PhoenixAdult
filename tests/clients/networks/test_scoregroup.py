@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.scoregroup as sg_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.scoregroup import ScoreGroupClient
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ async def test_search_card() -> None:
         '<small class="i-model">Jane Doe</small><img src="https://cdn/t.jpg" /></div>'
     )
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await ScoreGroupClient().search(_ctx(scene_id='777'))
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(scene_id='777'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

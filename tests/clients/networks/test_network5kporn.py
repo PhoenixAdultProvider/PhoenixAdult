@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.network5kporn import Network5KPClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ async def test_search_json_html() -> None:
     url = 'https://www.5kporn.com/episodes/search?search=Jane%20Doe'
     inner = '<div class="col ep"><div class="ep-body"><a href="https://www.5kporn.com/video/5KP1"></a><h3 class="ep-title">Cool Scene</h3></div></div>'
     respx.get(url).mock(return_value=httpx.Response(200, json={'html': inner}))
-    results = await Network5KPClient().search(_ctx())
+    results: list[SearchResult] = []
+    await Network5KPClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.5kporn.com/video/5KP1'

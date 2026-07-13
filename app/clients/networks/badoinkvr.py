@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
@@ -29,7 +29,7 @@ __testing__ = {'mangle': _mangle, 'title_clean_lower': _title_clean_lower}
 class BadoinkVrClient(Client):
     # ── Search (full override: direct sceneID lookup + search page) ──────────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         cleaned = _mangle(ctx.title)
 
@@ -40,9 +40,11 @@ class BadoinkVrClient(Client):
                 title = (loaded['sel'].xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip()
                 if title:
                     thumb = first_attr(loaded['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
-                    return [build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=100, thumb_url=thumb or None)]
+                    results.append(
+                        build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=100, thumb_url=thumb or None)
+                    )
+                    return
 
-        results: list[SearchResult] = []
         query_clean_lower = cleaned.lower()
         enc = quote(cleaned, safe='')
         enc = re.sub(r'a%20Parody', '', enc, flags=re.IGNORECASE)
@@ -51,7 +53,7 @@ class BadoinkVrClient(Client):
         search_url = base + ctx.site_info.search_path.replace('{query}', enc)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
         if not loaded:
-            return results
+            return
         for el in loaded['sel'].xpath('//div[contains(@class,"tile-grid-item")]'):
             a = el.xpath('(.//a[contains(@class,"video-card-title")])[1]')
             title_attr = (a.xpath('@title').get() or a.xpath('string(.)').get() or '').strip()
@@ -68,38 +70,37 @@ class BadoinkVrClient(Client):
             results.append(
                 build_search_result(title=title_attr, scene_url=abs_href, query=ctx.title, display_date=release, search_date=ctx.search_date, score=score)
             )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name if scene.site.name != STUDIO else None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//p[@itemprop="uploadDate"])[1]/@content')
-        return iso_date(raw) or scene.scene_date or None
+        metadata.release_date = iso_date(raw) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//a[contains(@class,"video-tag")]')) if g]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
@@ -114,9 +115,9 @@ class BadoinkVrClient(Client):
             # Full resolved photo URL (no ?-strip), per the image-URL policy.
             photo = first_attr(loaded['sel'], '(//img[contains(@class,"girl-details-photo")])[1]/@src') if loaded else ''
             actors.append(ActorResult(name=name, photo_url=photo, gender='female'))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         out: list[str] = []
         video_img = first_attr(scene.sel, '(//img[contains(@class,"video-image")])[1]/@src')
@@ -134,4 +135,4 @@ class BadoinkVrClient(Client):
                 out.append(f'{base_img}_{i}.jpg')
 
         deduped = list(dict.fromkeys(u for u in out if u))
-        return deduped or None
+        metadata.raw_image_urls = deduped or []

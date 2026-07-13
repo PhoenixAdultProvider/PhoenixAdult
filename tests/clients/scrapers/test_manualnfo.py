@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import app.clients.sites.manualnfo as mn_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.manualnfo import ManualNfoClient
 from app.registry import find_site
 
@@ -56,7 +56,8 @@ def _ctx(title: str) -> SearchContext:
 async def test_search_folder_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     _write_folder(tmp_path, BASENAME, poster=True, fanart=True)
-    results = await ManualNfoClient().search(_ctx(BASENAME))
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx(BASENAME))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
     assert results[0].release_date == '2024-03-15'
@@ -67,7 +68,9 @@ async def test_search_folder_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 async def test_search_no_match(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     _write_folder(tmp_path, BASENAME)
-    assert await ManualNfoClient().search(_ctx('no.such.basename')) == []
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx('no.such.basename'))
+    assert results == []
 
 
 async def test_search_miss_driven_refresh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -75,9 +78,10 @@ async def test_search_miss_driven_refresh(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(mn_module, '_MISS_THROTTLE_S', 0.0)
     _write_folder(tmp_path, BASENAME)
     client = ManualNfoClient()
-    await client.search(_ctx(BASENAME))
+    await client.search([], _ctx(BASENAME))
     _write_folder(tmp_path, 'latecomer.basename')
-    results = await client.search(_ctx('latecomer.basename'))
+    results: list[SearchResult] = []
+    await client.search(results, _ctx('latecomer.basename'))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
 
@@ -85,7 +89,8 @@ async def test_search_miss_driven_refresh(tmp_path: Path, monkeypatch: pytest.Mo
 async def test_search_flat_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     (tmp_path / 'flat.example.nfo').write_text(SAMPLE_NFO, encoding='utf-8')
-    results = await ManualNfoClient().search(_ctx('flat.example'))
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx('flat.example'))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
 
@@ -99,7 +104,8 @@ async def test_search_nested_and_shallowest_wins(tmp_path: Path, monkeypatch: py
     shallow = tmp_path / BASENAME
     shallow.mkdir()
     (shallow / f'{BASENAME}.nfo').write_text('<?xml version="1.0"?><movie><title>Shallow Winner</title></movie>', encoding='utf-8')
-    results = await ManualNfoClient().search(_ctx(BASENAME))
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx(BASENAME))
     assert results[0].title == 'Shallow Winner'
 
 
@@ -109,7 +115,8 @@ async def test_search_nested_thumb_url_encoded(tmp_path: Path, monkeypatch: pyte
     nested.mkdir(parents=True)
     (nested / f'{BASENAME}.nfo').write_text(SAMPLE_NFO, encoding='utf-8')
     (nested / f'{BASENAME}-poster.jpg').write_text('', encoding='utf-8')
-    results = await ManualNfoClient().search(_ctx(BASENAME))
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx(BASENAME))
     assert results[0].thumb_url is not None
     assert '/images/manual-nfo/Studios/Paradise%20Films/' in results[0].thumb_url
     assert f'{BASENAME}-poster.jpg' in results[0].thumb_url

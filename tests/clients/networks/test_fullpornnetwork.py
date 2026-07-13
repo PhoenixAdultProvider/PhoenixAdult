@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.fullpornnetwork as fpn_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('James Deen')
@@ -28,7 +28,8 @@ async def test_search_model_crawl(monkeypatch: pytest.MonkeyPatch) -> None:
             </div></div>""",
         )
     )
-    results = await fpn_mod.FullPornNetworkClient().search(_ctx())
+    results: list[SearchResult] = []
+    await fpn_mod.FullPornNetworkClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://jamesdeen.com/trailers/cool.html'

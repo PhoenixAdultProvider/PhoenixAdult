@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
@@ -23,7 +23,7 @@ class KarupsClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'warningHidden=hide'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         slug = re.sub(r'\s+', '-', ctx.title.strip())
 
@@ -31,18 +31,17 @@ class KarupsClient(Client):
             f'{base}{ctx.site_info.search_path}{slug}/', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model search {slug}'
         )
         if not search_loaded:
-            return []
+            return
         model_href = first_attr(search_loaded['sel'], '(//div[contains(@class,"item-inside")]//a)[1]/@href')
         if not model_href:
-            return []
+            return
 
         model_loaded = await self.fetch_and_load(
             absolute_url(model_href, ctx.site_info.base_url), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model page'
         )
         if not model_loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for card in model_loaded['sel'].xpath('//div[contains(@class,"listing-videos")]//div[contains(@class,"item")]'):
             title = (card.xpath(f'(.//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip()
             href = first_attr(card, '(.//a)[1]/@href')
@@ -55,7 +54,6 @@ class KarupsClient(Client):
                     title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
                 )
             )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
@@ -63,24 +61,24 @@ class KarupsClient(Client):
         assert scene.sel is not None
         return (scene.sel.xpath('(//h1//span[contains(@class,"sup-title")]//span)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath(f'(//h1//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath(f'(//h1//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"content-information-description")]//p)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"content-information-description")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline_of(scene)
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_of(scene)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._tagline_of(scene)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._tagline_of(scene)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         tagline = self._tagline_of(scene)
         raw = (
@@ -89,17 +87,16 @@ class KarupsClient(Client):
             .replace('Video added on', '')
             .strip()
         )
-        return (iso_date(_de_ordinal(raw)) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(_de_ordinal(raw)) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._tagline_of(scene)
         if tagline == 'KarupsHA':
-            return ['Amateur']
-        if tagline == 'KarupsOW':
-            return ['MILF']
-        return None
+            metadata.genres = ['Amateur']
+        elif tagline == 'KarupsOW':
+            metadata.genres = ['MILF']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -115,9 +112,9 @@ class KarupsClient(Client):
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
@@ -129,4 +126,4 @@ class KarupsClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

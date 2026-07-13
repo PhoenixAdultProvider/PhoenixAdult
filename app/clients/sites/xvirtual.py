@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -28,37 +28,37 @@ class XVirtualClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"title")]//h2') or None
+        metadata.title = first_text(scene.sel, '//div[contains(@class,"title")]//h2')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"description")]//div[contains(@class,"desc-text")]') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"description")]//div[contains(@class,"desc-text")]')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
-            return None
-        return iso_date(scene.scene_date) or scene.scene_date
+            return
+        metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//ul[contains(@class,"tags")]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return []
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -73,4 +73,4 @@ class XVirtualClient(Client):
         push(scene.sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
         for el in scene.sel.xpath('//div[contains(@class,"thumbnails")]//img'):
             push(el.xpath('@src').get() or '')
-        return images
+        metadata.raw_image_urls = images

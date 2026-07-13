@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
@@ -69,33 +69,37 @@ class KellyMadisonClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline_of(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw, scene.site.name)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [await self.fetch_tagline(scene) or scene.site.name]
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.summary = (scene.sel.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_of(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._tagline_of(scene) or scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//p[contains(.,"Published")]//strong)[1]').xpath('string(.)').get() or '').strip()
         if raw:
-            return iso_date(raw, '%Y-%m-%d') or iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw, '%Y-%m-%d') or iso_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = ['Hardcore', 'Heterosexual']
         cast = len(scene.sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
@@ -105,9 +109,9 @@ class KellyMadisonClient(Client):
             genres.append('Foursome')
         elif cast > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
@@ -127,10 +131,10 @@ class KellyMadisonClient(Client):
             raw = first_attr(page['sel'], '(//div[contains(@class,"one")]//img)[1]/@src') if page else ''
             photo = (absolute_url(raw, base)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         slug = scene.url.rstrip('/').split('/')[-1]
         if not slug:
-            return None
-        return [t.replace('{slug}', slug) for t in _POSTER_TEMPLATES]
+            return
+        metadata.raw_image_urls = [t.replace('{slug}', slug) for t in _POSTER_TEMPLATES]

@@ -6,7 +6,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx2
 
-from app.clients.base import ActorResult, Client, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.single_flight import SingleFlight
@@ -33,16 +33,15 @@ def _actor_overrides(scene_id: str) -> list[ActorResult]:
 class GammaEntOtherClient(Client):
     # ── Search (Algolia) ────────────────────────────────────────────────────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         title = ctx.title.strip()
         scene_id = ctx.scene_id
         api_key = await self._get_api_key(ctx.site_info)
         if not api_key:
             logger.warn(ctx.site_info.name, 'could not resolve Algolia apiKey')
-            return []
+            return
 
         site_norm = ctx.site_info.name.replace(' ', '').lower()
-        results: list[SearchResult] = []
         for scene_type in ('scenes', 'movies'):
             id_field = 'clip_id' if scene_type == 'scenes' else 'movie_id'
             params = f'filters={id_field}={scene_id}' if scene_id and not title else f'query={quote(title)}'
@@ -81,17 +80,15 @@ class GammaEntOtherClient(Client):
                         subsite=sub_site or None,
                     )
                 )
-        return results
 
     # ── Detail (Algolia; end-to-end JSON override) ──────────────────────────────
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
         scene_id = parts[0] if parts else ''
         scene_type: SceneType = 'movies' if len(parts) > 1 and parts[1] == 'movies' else 'scenes'
         scene_date = parts[2] if len(parts) > 2 else ''
         id_field = 'clip_id' if scene_type == 'scenes' else 'movie_id'
-        base_lower = site.base_url.lower()
 
         api_key = await self._get_api_key(site)
         hits = await self._algolia(site, api_key, f'all_{scene_type}', f'filters={id_field}={scene_id}')
@@ -106,6 +103,23 @@ class GammaEntOtherClient(Client):
                 await self._algolia(site, api_key, 'all_scenes', f'query={quote(url_title)}'),
                 key=lambda h: h.get('clip_id') or 0,
             )
+        return LoadedScene(
+            url=site.base_url,
+            site=site,
+            scene_date=(iso_date(scene_date) or scene_date) if scene_date else None,
+            subsite=ctx.subsite if ctx else None,
+            extra={'d': d, 'scene_list': scene_list, 'scene_id': scene_id, 'scene_type': scene_type, 'api_key': api_key},
+        )
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        base_lower = site.base_url.lower()
+        d: dict[str, Any] = scene.extra['d']
+        scene_list: list[dict[str, Any]] = scene.extra['scene_list']
+        scene_id: str = scene.extra['scene_id']
+        scene_type: SceneType = scene.extra['scene_type']
+        api_key: str = scene.extra['api_key']
+        url_title = d.get('url_title') or ''
 
         title = ''
         if 'dogfart' in base_lower:
@@ -209,18 +223,14 @@ class GammaEntOtherClient(Client):
             else:
                 raw_images.insert(0, picture_url)
 
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=studio,
-            tagline=tagline,
-            release_date=(iso_date(scene_date) or scene_date) if scene_date else None,
-            collections=collections or None,
-            genres=genres,
-            actors=actors,
-            raw_image_urls=raw_images,
-            scene_url=site.base_url,
-        )
+        metadata.title = title
+        metadata.summary = summary
+        metadata.studio = studio
+        metadata.tagline = tagline
+        metadata.collections = collections or None
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

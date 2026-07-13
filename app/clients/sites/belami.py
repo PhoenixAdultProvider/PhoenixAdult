@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -39,29 +39,29 @@ class BelAmiClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _TITLE_XP) or None
+        metadata.title = first_text(scene.sel, _TITLE_XP)
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]') or None
+        metadata.summary = first_text(scene.sel, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Bel Ami Online'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Bel Ami Online'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, _RELEASED_XP)
-        return iso_date(raw, '%m/%d/%Y') if raw else None
+        metadata.release_date = iso_date(raw, '%m/%d/%Y') if raw else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         tags_xp = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTags")]//a'
@@ -76,9 +76,9 @@ class BelAmiClient(Client):
             genres.append('Foursome')
         elif actor_count > 4 and 'Orgy' not in genres:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -89,10 +89,10 @@ class BelAmiClient(Client):
             seen.add(name)
             photo = first_attr(a, '(.//img/@src)[1]')
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         m = _VIDEO_ID_RE.search(scene.url)
         if not m:
-            return []
-        return [f'https://freecdn.belamionline.com/Data/Contents/Content_{m.group(1)}/Thumbnail8.jpg']
+            return
+        metadata.raw_image_urls = [f'https://freecdn.belamionline.com/Data/Contents/Content_{m.group(1)}/Thumbnail8.jpg']

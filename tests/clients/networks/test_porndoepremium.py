@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.porndoepremium import PorndoePremiumClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
         '<div class="-g-vc-item-date">2021-03-04</div></div></div>'
     )
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await PorndoePremiumClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PorndoePremiumClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://mamacitaz.com/v/7'

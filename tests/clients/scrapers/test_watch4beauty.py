@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.watch4beauty import Watch4BeautyClient
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ async def test_search_first_word_candidate() -> None:
             200, json=[{'Issues': [{'issue_title': 'Wild Scene', 'issue_simple_title': 'wild-scene', 'issue_datetime': '2024-01-05T12:30:00Z'}]}]
         )
     )
-    results = await Watch4BeautyClient().search(SearchContext(title='jane scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Watch4BeautyClient().search(results, SearchContext(title='jane scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].release_date == '2024-01-05'
@@ -33,7 +34,8 @@ async def test_search_veronica_special_case() -> None:
             200, json=[{'Issues': [{'issue_title': 'Veronica Scene', 'issue_simple_title': 'veronica-scene', 'issue_datetime': '2024-02-10T09:00:00Z'}]}]
         )
     )
-    results = await Watch4BeautyClient().search(SearchContext(title='Veronica Da Souza', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Watch4BeautyClient().search(results, SearchContext(title='Veronica Da Souza', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Veronica Scene'
 
@@ -48,7 +50,8 @@ async def test_search_fallback_scene_models_lookup() -> None:
             200, json=[{'Issues': [{'issue_title': 'Real Scene', 'issue_simple_title': 'real-scene', 'issue_datetime': '2024-03-15T10:00:00Z'}]}]
         )
     )
-    results = await Watch4BeautyClient().search(SearchContext(title='unknown scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Watch4BeautyClient().search(results, SearchContext(title='unknown scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Real Scene'
 

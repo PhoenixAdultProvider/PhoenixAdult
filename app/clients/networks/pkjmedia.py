@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
@@ -33,41 +33,42 @@ class PKJMediaClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h1[contains(@class,"brxe-post-title")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"brxe-post-title")])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         span = (scene.sel.xpath('(//div[contains(@class,"brxe-post-content")]//p//span)[1]').xpath('string(.)').get() or '').strip()
         if span:
-            return span
-        return (scene.sel.xpath('(//div[contains(@class,"brxe-post-content")]//p)[1]').xpath('string(.)').get() or '').strip() or None
+            metadata.summary = span
+            return
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"brxe-post-content")]//p)[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return _GENRES.get(scene.site.name) or None
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = _GENRES.get(scene.site.name) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//div[contains(@class,"brxe-post-meta")]//span/a')]
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for poster in scene.sel.xpath('//video[contains(@class,"bricks-plyr")]/@poster').getall():
             coll['push'](poster)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

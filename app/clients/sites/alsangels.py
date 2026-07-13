@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -24,11 +24,11 @@ class AlsAngelsClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'age_verified=true'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         loaded = await self.fetch_and_load(f'{base}/dailyvideos.html', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] dailyvideos')
         if not loaded:
-            return []
+            return
 
         if ctx.search_date:
 
@@ -37,7 +37,7 @@ class AlsAngelsClient(Client):
         else:
             m = re.match(rf'^(.+?)\s+({"|".join(_VIDEO_TYPES)})\b', ctx.title.lower(), re.IGNORECASE)
             if not m:
-                return []
+                return
             model, vtype = m.group(1).strip(), m.group(2).strip()
 
             def match_row(row: Any) -> bool:
@@ -45,7 +45,6 @@ class AlsAngelsClient(Client):
                 t = (row.xpath('(.//span[contains(@class,"videotype")])[1]').xpath('string(.)').get() or '').lower()
                 return model in name and vtype in t
 
-        results: list[SearchResult] = []
         for row in loaded['sel'].xpath('//tr'):
             if not match_row(row):
                 continue
@@ -71,7 +70,6 @@ class AlsAngelsClient(Client):
                     score=100,
                 )
             )
-        return results
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -122,39 +120,39 @@ class AlsAngelsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ex = self._ex(scene)
         num = re.match(r'\d+', ex['scene_num'])
         n = int(num.group()) if num else 0
-        return f'{ex["model_name"]} #{n}: {self._subject(scene)}'
+        metadata.title = f'{ex["model_name"]} #{n}: {self._subject(scene)}'
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         row = self._ex(scene)['row']
-        return (row.xpath('(.//span[contains(@class,"videodescription")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (row.xpath('(.//span[contains(@class,"videodescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return self._ex(scene).get('scene_date') or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = self._ex(scene).get('scene_date') or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         subject = self._subject(scene)
-        return [subject] if subject else None
+        metadata.genres = [subject] if subject else []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ex = self._ex(scene)
         base = scene.site.base_url.rstrip('/')
         photo = first_attr(scene.sel, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
         if photo.startswith('..'):
             photo = photo.replace('..', base)
-        return [ActorResult(name=ex['model_name'], photo_url=photo, gender='female')] if ex.get('model_name') else None
+        metadata.actors = [ActorResult(name=ex['model_name'], photo_url=photo, gender='female')] if ex.get('model_name') else []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         row = self._ex(scene)['row']
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda u: u.replace('..', base) if u.startswith('..') else u)
@@ -163,4 +161,4 @@ class AlsAngelsClient(Client):
         for href in row.xpath('.//td[contains(@class,"videothumbnail")]//a/@href').getall():
             coll['push'](href)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

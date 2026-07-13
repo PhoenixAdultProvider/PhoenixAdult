@@ -4,7 +4,7 @@ import json
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
 
@@ -24,7 +24,7 @@ class BellesaClient(Client):
         except (ValueError, TypeError):
             return None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_id = ctx.scene_id if ctx.scene_id and ctx.scene_id.isdigit() else ''
 
@@ -32,9 +32,9 @@ class BellesaClient(Client):
             data = await self._get_json(base, f'videos?filter[id]={scene_id}', ctx.capture)
             video = data[0] if isinstance(data, list) and data else None
             if not isinstance(video, dict) or not video.get('title'):
-                return []
+                return
             date = epoch_date(video.get('posted_on'))
-            return [
+            results.append(
                 build_search_result(
                     title=str(video['title']).strip(),
                     scene_url=str(video.get('id')),
@@ -44,11 +44,11 @@ class BellesaClient(Client):
                     score=100,
                     cur_id=pack_cur_id([str(video.get('id')), date or '']),
                 )
-            ]
+            )
+            return
 
         data = await self._get_json(base, f'search?limit=40&order[relevance]=DESC&q={quote(ctx.title)}&providers=bellesa', ctx.capture)
         videos = data.get('videos') or [] if isinstance(data, dict) else []
-        results: list[SearchResult] = []
         for v in videos:
             title = str(v.get('title') or '').strip()
             vid = v.get('id')
@@ -60,7 +60,6 @@ class BellesaClient(Client):
                     title=title, scene_url=str(vid), query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([str(vid), date or ''])
                 )
             )
-        return results
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
@@ -86,45 +85,45 @@ class BellesaClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return str(self._v(scene).get('title') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = str(self._v(scene).get('title') or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return str(self._v(scene).get('description') or '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = str(self._v(scene).get('description') or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
     def _tagline(self, scene: LoadedScene) -> str:
         providers = self._v(scene).get('content_provider') or []
         return str(providers[0].get('name')).strip() if providers and isinstance(providers[0], dict) else ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline(scene) or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         t = self._tagline(scene)
-        return [t] if t else None
+        metadata.collections = [t] if t else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return epoch_date(self._v(scene).get('posted_on')) or scene.scene_date
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = epoch_date(self._v(scene).get('posted_on')) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         raw = self._v(scene).get('tags')
         tags = raw.split(',') if isinstance(raw, str) else (raw or [])
         genres = [str(t).strip() for t in tags if str(t).strip()]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = [
             ActorResult(name=str(p.get('name') or '').strip(), photo_url=str(p.get('image') or '').strip())
             for p in (self._v(scene).get('performers') or [])
             if str(p.get('name') or '').strip()
         ]
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         coll = self.image_collector()
         coll['push'](self._v(scene).get('image'))
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

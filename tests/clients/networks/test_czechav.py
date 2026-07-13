@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.czechav import CzechAVClient
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search_scene_id_boost() -> None:
             </div>""",
         )
     )
-    results = await CzechAVClient().search(_ctx(SITE, scene_id='555'))
+    results: list[SearchResult] = []
+    await CzechAVClient().search(results, _ctx(SITE, scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://czechmassage.com/video/cool-scene-555/'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.processors.title_case import title_case
@@ -36,40 +36,40 @@ class MomComesFirstClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts: list[str] = []
         for p in scene.sel.xpath('//div[contains(@class,"entry-content")]//p'):
             t = first_attr(p, 'normalize-space(.)')
             if t and 'starring' not in t.lower():
                 parts.append(t)
-        return '\n'.join(parts) or None
+        metadata.summary = '\n'.join(parts) or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Mom Comes First'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Mom Comes First'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['Mom Comes First']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['Mom Comes First']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"published")]')
-        return (iso_date(raw, '%b %d, %Y') if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw, '%b %d, %Y') if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
             g = title_case(first_attr(a, 'normalize-space(.)'))
             if g and g.lower() not in _ACTORS and g not in genres:
                 genres.append(g)
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         names: list[str] = []
         for a in scene.sel.xpath('//a[contains(@rel,"tag")]'):
@@ -91,4 +91,4 @@ class MomComesFirstClient(Client):
             if name and name.lower() not in seen:
                 seen.add(name.lower())
                 actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors

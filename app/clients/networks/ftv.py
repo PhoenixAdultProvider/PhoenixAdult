@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
 from app.utils.searchengines import SearchOptions, web_search, web_search_available, web_search_filtered
 
@@ -49,7 +49,7 @@ __testing__ = {'photo_lookup': _photo_lookup, 'parse_title_and_date': _parse_tit
 
 
 class FTVClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         host = urlsplit(ctx.site_info.base_url).netloc.removeprefix('www.')
         candidates: list[str] = []
@@ -63,7 +63,6 @@ class FTVClient(Client):
             except Exception:  # noqa: BLE001 - best-effort
                 pass
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not loaded:
@@ -75,7 +74,6 @@ class FTVClient(Client):
             results.append(
                 build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=score)
             )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
@@ -88,31 +86,31 @@ class FTVClient(Client):
                 names.append(n)
         return names
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _parse_title_and_date(scene.sel)[0] or None
+        metadata.title = _parse_title_and_date(scene.sel)[0] or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _parse_title_and_date(scene.sel)[1] or None
+        metadata.release_date = _parse_title_and_date(scene.sel)[1] or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return _GENRES.get(scene.site.name) or None
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = _GENRES.get(scene.site.name) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         summary = (scene.sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
@@ -128,9 +126,9 @@ class FTVClient(Client):
                 name = m.group(1)
             photo_raw = thumbs[idx] if idx < len(thumbs) else ''
             actors.append(ActorResult(name=name, photo_url=absolute_url(photo_raw, base) if photo_raw else ''))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         out: list[str] = []
@@ -164,4 +162,4 @@ class FTVClient(Client):
 
         for raw in _collect_images(scene.sel):
             push(raw)
-        return out or None
+        metadata.raw_image_urls = out or []

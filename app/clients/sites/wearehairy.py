@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, to_https
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -35,43 +35,43 @@ class WeAreHairyClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//title') or None
+        metadata.title = first_text(scene.sel, '//title') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"desc")]/div[1]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"desc")]/div[1]//p') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"added")]//time')
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//div[contains(@class,"tagline")]//p//a')])
         for g in _FIXED_GENRES:
             if g not in genres:
                 genres.append(g)
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -81,19 +81,19 @@ class WeAreHairyClient(Client):
                 continue
             seen.add(name)
             actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=(p.xpath('normalize-space(.)').get() or '')) for p in scene.sel.xpath('//div[contains(@class,"desc")]/div[2]//p')]
         directors = self.dedup_people(entries)
-        return directors or None
+        metadata.directors = directors or None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for src in scene.sel.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
             url = to_https((src or '').strip())
             if url and url not in images:
                 images.append(url)
-        return images
+        metadata.raw_image_urls = images

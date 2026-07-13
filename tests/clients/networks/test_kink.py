@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.kink import KinkClient, _kink_tagline
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_direct_scene_id() -> None:
     url = 'https://www.kink.com/shoot/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1 class="fs-0">Cool Scene</h1>'))
-    results = await KinkClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await KinkClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

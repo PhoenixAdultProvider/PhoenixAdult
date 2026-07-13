@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.puffy import PuffyClient
 from app.registry import find_site
 
@@ -21,7 +21,8 @@ async def test_search() -> None:
     respx.get(url).mock(
         return_value=httpx.Response(200, text='<div style="position:relative; background:black;"><a href="/v/cool-video-77" title="Cool Scene"></a></div>')
     )
-    results = await PuffyClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PuffyClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.puffynetwork.com/v/cool-video-77'

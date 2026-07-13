@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from app.clients.aggregators.data18 import Data18Client
-from app.clients.base import ActorResult, Client, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import iso_date, slugify
@@ -65,23 +65,23 @@ class ReptyleClient(Client):
                 return cur, t, bucket[cur]
         return None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         slug = slugify(ctx.title.replace("'", ''))
         if not slug:
-            return []
+            return
         url = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path.replace('{query}', slug)
         state = await self._fetch_initial_state(url, ctx.capture)
         if not state:
-            return []
+            return
         picked = self._pick_scene(state)
         if not picked:
-            return []
+            return
         cur, scene_type, scene_json = picked
         composite = f'{cur}|{scene_type}|{url}'
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
         result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None
-        return [
+        results.append(
             SearchResult(
                 title=scene_json.get('title') or '',
                 scene_url=url,
@@ -91,9 +91,9 @@ class ReptyleClient(Client):
                 display_date=release_date,
                 subsite=result_sub,
             )
-        ]
+        )
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
         scene_id = parts[0]
         scene_type = parts[1] if len(parts) > 1 else 'moviesContent'
@@ -109,6 +109,12 @@ class ReptyleClient(Client):
         scene_json = bucket.get(scene_id)
         if not isinstance(scene_json, dict):
             return None
+        return LoadedScene(url=url, site=site, capture=capture, extra=scene_json, subsite=ctx.subsite if ctx else None)
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        scene_json = scene.extra
+        capture = scene.capture
 
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip() or site.name
         title = (scene_json.get('title') or '').strip()
@@ -138,28 +144,24 @@ class ReptyleClient(Client):
         if scene_json.get('img'):
             raw_images.append(scene_json['img'])
 
-        data18_url: str | None = None
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
             date_obj = datetime.fromisoformat(release_date) if release_date else None
             sid = scene_json.get('id')
-            search_sub = (sub_site if sub_site != site.name else None) or (ctx.subsite if ctx else None)
+            search_sub = (sub_site if sub_site != site.name else None) or scene.subsite
             mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
             providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
-            data18_url = await self._data18.enrich_images(
+            metadata.data18_url = await self._data18.enrich_images(
                 scope=site.name, images=raw_images, scene_id=mapping_id, title=title, providers=providers, scene_date=date_obj
             )
 
         has_sub = bool(sub_site) and sub_site != site.name
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=site.name,
-            tagline=sub_site if has_sub else None,
-            release_date=release_date,
-            collections=[sub_site] if has_sub else [site.name],
-            genres=genres,
-            actors=actors,
-            raw_image_urls=raw_images,
-            data18_url=data18_url,
-        )
+        metadata.title = title
+        metadata.summary = summary
+        metadata.studio = site.name
+        metadata.tagline = sub_site if has_sub else None
+        metadata.release_date = release_date
+        metadata.collections = [sub_site] if has_sub else [site.name]
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images

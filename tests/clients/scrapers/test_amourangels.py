@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.amourangels import AmourAngelsClient
 from app.registry import find_site
 
@@ -30,7 +30,8 @@ ACTOR_HTML = """<html><body>
 async def test_search_direct_url_single_result() -> None:
     url = 'https://amourangels.com/z_cover_sunny day.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await AmourAngelsClient().search(SearchContext(title='sunny day', encoded='sunny%20day', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await AmourAngelsClient().search(results, SearchContext(title='sunny day', encoded='sunny%20day', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Sunny Day'
     assert results[0].scene_url == url

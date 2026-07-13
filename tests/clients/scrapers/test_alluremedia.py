@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.alluremedia import AllureMediaClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
         '<div class="update_date">Added: 03/04/2021</div></div>'
     )
     respx.get(url__startswith='https://amateurallure.com/tour/search.php').mock(return_value=httpx.Response(200, text=html))
-    results = await AllureMediaClient().search(_ctx())
+    results: list[SearchResult] = []
+    await AllureMediaClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://amateurallure.com/v/7'

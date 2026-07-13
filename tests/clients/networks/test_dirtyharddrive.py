@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.dirtyharddrive as dhd_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Dirty Hard Drive')
@@ -25,7 +25,8 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(dhd_mod, 'web_search_filtered', fake_filtered)
     respx.get('https://dirtyharddrive.com/tour1/cool-scene.html').mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1>'))
-    results = await dhd_mod.DirtyHardDriveClient().search(_ctx(search_date='2021-03-04'))
+    results: list[SearchResult] = []
+    await dhd_mod.DirtyHardDriveClient().search(results, _ctx(search_date='2021-03-04'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://dirtyharddrive.com/tour1/cool-scene.html'
@@ -34,7 +35,9 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
 @respx.mock
 async def test_search_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dhd_mod, 'web_search_available', lambda: False)
-    assert await dhd_mod.DirtyHardDriveClient().search(_ctx()) == []
+    results: list[SearchResult] = []
+    await dhd_mod.DirtyHardDriveClient().search(results, _ctx())
+    assert results == []
 
 
 @respx.mock

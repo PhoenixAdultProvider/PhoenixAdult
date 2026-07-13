@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.vivid import VividClient
 from app.registry import find_site
 
@@ -47,7 +47,8 @@ async def test_search_fans_videos_and_dvds() -> None:
             },
         )
     )
-    results = await VividClient().search(SearchContext(title='wild scene', encoded=q, search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VividClient().search(results, SearchContext(title='wild scene', encoded=q, search_site=SITE.name, site_info=SITE))
     assert len(results) == 2
     assert results[0].scene_url == 'https://www.vivid.com/scenes/wild-scene'
     assert results[0].release_date == '2024-01-05'

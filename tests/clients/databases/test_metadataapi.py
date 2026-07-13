@@ -6,7 +6,7 @@ import httpx
 import respx
 
 from app.clients.aggregators.metadataapi import MetadataAPIClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('MetadataAPI')
@@ -19,7 +19,8 @@ async def test_search() -> None:
     respx.get('https://api.theporndb.net/scenes?parse=' + quote('some scene')).mock(
         return_value=httpx.Response(200, json={'data': [{'_id': 'sc1', 'title': 'Some Scene', 'site': {'name': 'Brazzers'}}]})
     )
-    results = await MetadataAPIClient().search(SearchContext(title='some scene', encoded=quote('some scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MetadataAPIClient().search(results, SearchContext(title='some scene', encoded=quote('some scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Some Scene'
     assert results[0].scene_url == 'https://api.theporndb.net/scenes/sc1'

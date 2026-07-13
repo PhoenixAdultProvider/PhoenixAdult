@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.radicalcashother as rc_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.radicalcashother import RadicalCashOtherClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ async def test_search_purgatoryx() -> None:
             text='<div class="content-item"><h3><a href="/view/7">Cool Scene</a></h3><span class="pub-date">Mar 4, 2021</span></div>',
         )
     )
-    results = await RadicalCashOtherClient().search(_ctx())
+    results: list[SearchResult] = []
+    await RadicalCashOtherClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://purgatoryx.com/view/7'

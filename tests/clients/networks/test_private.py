@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.private import PrivateClient, _lang_headers
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ async def test_search() -> None:
             text='<ul id="search_results"><li class="card"><h3><a href="/scene/7">Cool Scene</a></h3><span class="scene-date">March 4, 2021</span></li></ul>',
         )
     )
-    results = await PrivateClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PrivateClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.private.com/scene/7'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json, pack_cur_id, pad_jav_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import fetch_javbus_images
@@ -32,7 +32,7 @@ class JavLibraryClient(Client):
                 out.append(normalized)
         return out
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         tokens = ctx.title.strip().split()
         if tokens:
@@ -40,7 +40,6 @@ class JavLibraryClient(Client):
         search_javid = f'{tokens[0]}-{tokens[1]}' if len(tokens) > 1 and re.fullmatch(r'\d+', tokens[1]) else None
         encoded = search_javid or ctx.encoded
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         def add(scene_url: str, jav_id: str, title: str, score: float | None = None) -> None:
@@ -94,7 +93,6 @@ class JavLibraryClient(Client):
                 add(scene_url, jav_id, title, sceneid_distance_score(search_javid.lower(), jav_id.lower()) if search_javid else None)
         except Exception as err:  # noqa: BLE001
             logger.debug(ctx.site_info.name, f'webSearch fallback: {err}')
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -115,42 +113,45 @@ class JavLibraryClient(Client):
         title = ' '.join(og.split(' ')[1:]).replace(' - JAVLibrary', '').replace(jav_id, '').strip()
         return jav_id, title
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        jav_id, title = self._og_title_parts(scene)
-        if not jav_id:
-            return None
-        return f'[{jav_id.upper()}] {title}'
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        _, title = self._og_title_parts(scene)
-        return title_case(title) if len(title) > 80 else None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return self._table_link(scene, 'Maker:') or None
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._table_link(scene, 'Label:') or None
-
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        label = self._table_link(scene, 'Label:')
-        maker = self._table_link(scene, 'Maker:')
-        return [label or maker or 'Japan Adult Video']
-
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        name = self._table_link(scene, 'Director:')
-        return [ActorResult(name=name)] if name else None
-
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    def _release_date(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//td[contains(.,"Release Date:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
         return (iso_date(raw, '%Y-%m-%d') if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        jav_id, title = self._og_title_parts(scene)
+        if not jav_id:
+            return
+        metadata.title = f'[{jav_id.upper()}] {title}'
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        _, title = self._og_title_parts(scene)
+        metadata.summary = title_case(title) if len(title) > 80 else ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = self._table_link(scene, 'Maker:') or ''
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._table_link(scene, 'Label:') or None
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        label = self._table_link(scene, 'Label:')
+        maker = self._table_link(scene, 'Maker:')
+        metadata.collections = [label or maker or 'Japan Adult Video']
+
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        name = self._table_link(scene, 'Director:')
+        metadata.directors = [ActorResult(name=name)] if name else None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = self._release_date(scene)
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[@rel="category tag"]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -167,9 +168,9 @@ class JavLibraryClient(Client):
                 add(name)
         for el in scene.sel.xpath('//span[contains(@class,"star")]//a'):
             add(el.xpath('normalize-space(.)').get() or '')
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -193,7 +194,7 @@ class JavLibraryClient(Client):
                     jav_id = bus_id
                     break
             jav_id = pad_jav_id(jav_id, _IGNORE_LIST)
-            date = await self.fetch_release_date(scene)
+            date = self._release_date(scene)
             for u in await fetch_javbus_images(self.http, jav_id, date):
                 push(u)
-        return images
+        metadata.raw_image_urls = images

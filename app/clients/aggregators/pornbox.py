@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.processors.title_case import collapse_initial_pairs, expand_initial_pairs, title_case
@@ -30,11 +30,10 @@ def _clean_summary(summary: str) -> str:
 
 
 class PornboxClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         tokens = ctx.title.strip().split()
         source_id = ctx.scene_id or (tokens[0] if tokens and re.fullmatch(r'\d+', tokens[0]) else None)
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         def push(scene: dict[str, Any], content_id: Any, score: float | None = None, prefix: str = '') -> None:
@@ -78,7 +77,6 @@ class PornboxClient(Client):
             cid = scene.get('content_id') or ''
             if cid:
                 push({**scene, 'scene_name': title}, cid, score, prefix)
-        return results
 
     # ── Context loader (JSON detail) ──────────────────────────────────────────
 
@@ -94,36 +92,39 @@ class PornboxClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (self._data(scene).get('scene_name') or '').strip() or None
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        raw = self._data(scene).get('small_description')
-        if not raw:
-            return None
-        stripped = _TAG_RE.sub('', raw).strip()
-        return _clean_summary(stripped) if stripped else None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Pornbox'
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str | None:
         raw = (self._data(scene).get('studio') or '').strip()
         return title_case(raw) if raw else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tagline = await self.fetch_tagline(scene)
-        return [tagline] if tagline else None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (self._data(scene).get('scene_name') or '').strip() or ''
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        raw = self._data(scene).get('small_description')
+        if not raw:
+            return
+        stripped = _TAG_RE.sub('', raw).strip()
+        metadata.summary = _clean_summary(stripped) if stripped else ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Pornbox'
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene)
+        metadata.collections = [tagline] if tagline else None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         raw = self._data(scene).get('publish_date')
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         values: list[str | None] = [n.get('niche') for n in (self._data(scene).get('niches') or [])]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url.rstrip('/')
         data = self._data(scene)
         models = [*(data.get('models') or []), *(data.get('male_models') or [])]
@@ -138,15 +139,14 @@ class PornboxClient(Client):
                 if isinstance(info, dict) and info.get('headshot'):
                     photo = info['headshot']
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        tagline = await self.fetch_tagline(scene) or ''
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene) or ''
         if tagline == 'Giorgio Grandi' or "Giorgio's Lab" in tagline:
-            return [ActorResult(name='Giorgio Grandi')]
-        return None
+            metadata.directors = [ActorResult(name='Giorgio Grandi')]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         data = self._data(scene)
         images: list[str] = []
         if data.get('player_poster'):
@@ -158,4 +158,4 @@ class PornboxClient(Client):
             u = shots[x].get('xga_size')
             if u and u not in images:
                 images.append(u)
-        return images
+        metadata.raw_image_urls = images

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
@@ -13,7 +13,7 @@ _DATE_FMT = '%m/%d/%Y'
 
 
 class EvolvedFightsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         candidates: list[str] = []
         slug = slugify(ctx.title)
@@ -29,7 +29,6 @@ class EvolvedFightsClient(Client):
             except Exception:  # noqa: BLE001 - search is best-effort
                 pass
 
-        results: list[SearchResult] = []
         for url in candidates:
             loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')
             if not loaded:
@@ -40,38 +39,37 @@ class EvolvedFightsClient(Client):
             raw = (loaded['sel'].xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
             date_iso = iso_date(raw, _DATE_FMT) if raw else None
             results.append(build_search_result(title=title, scene_url=url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name if scene.site.name != STUDIO else None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [STUDIO]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
-        return (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//span[contains(@class,"tour_update_tags")]//a')) if g]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
@@ -92,16 +90,16 @@ class EvolvedFightsClient(Client):
                     if raw:
                         photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//span[contains(@class,"model_update_thumb")]//img)[1]/@src0_4x')
         if not raw:
-            return None
+            return
         poster = absolute_url(raw, scene.site.base_url)
         out = [poster]
         poster2 = poster.replace('0-4x', '1-4x')
         if poster2 != poster:
             out.append(poster2)
-        return out
+        metadata.raw_image_urls = out

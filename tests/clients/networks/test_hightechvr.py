@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.hightechvr import HighTechVRClient, _rewrite_sexbabes
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_direct() -> None:
     url = 'https://realjamvr.com/scene/cool-scene'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1>'))
-    results = await HighTechVRClient().search(_ctx())
+    results: list[SearchResult] = []
+    await HighTechVRClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url

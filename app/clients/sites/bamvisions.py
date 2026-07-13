@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -28,35 +28,35 @@ class BAMVisionsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"item-info")]//h4//a') or None
+        metadata.title = first_text(scene.sel, '//div[contains(@class,"item-info")]//h4//a')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"description")]') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"description")]')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'BAMVisions'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'BAMVisions'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return 'BAMVisions'
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = 'BAMVisions'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['BAMVisions']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['BAMVisions']
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['Anal', 'Hardcore']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Anal', 'Hardcore']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         li = first_text(scene.sel, '//ul[contains(@class,"item-meta")]//li')
         if not li:
-            return None
+            return
         after = li.split('Release Date:')[-1].strip()
-        return iso_date(after, '%B %d, %Y') or None
+        metadata.release_date = iso_date(after, '%B %d, %Y') or None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -73,9 +73,9 @@ class BAMVisionsClient(Client):
                 raw = first_attr(actor_page['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//img[contains(@class,"update_thumb")]'):
@@ -85,4 +85,4 @@ class BAMVisionsClient(Client):
             abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

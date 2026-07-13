@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
-from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
@@ -34,7 +34,7 @@ class NVGClient(Client):
                 return tt
         return None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_id = int(ctx.scene_id) if ctx.scene_id else None
         cast_query = ctx.title.strip()
@@ -46,8 +46,6 @@ class NVGClient(Client):
             with best_effort('Net Video Girls', 'webSearch', level='debug'):
                 found = await web_search(SearchOptions(query=cast_query or ctx.title, site=urlparse(base).netloc, num=10))
                 urls = [u for u in found if '/tag/' not in u and '/page/' not in u and '/category/' not in u]
-
-        results: list[SearchResult] = []
 
         if not urls:
             updates = (page_scene or {}).get('updates') or {}
@@ -66,7 +64,7 @@ class NVGClient(Client):
                         cur_id=pack_cur_id([f'{sid}|{date}|{cast_query}']),
                     )
                 )
-            return results
+            return
 
         for scene_url in urls:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture))
@@ -98,9 +96,8 @@ class NVGClient(Client):
                     cur_id=pack_cur_id([f'{scene_url}|{date}|{cast_query}|{video_id}']),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
         head = parts[0] if parts else ''
         date = parts[1] if len(parts) > 1 else ''
@@ -139,15 +136,23 @@ class NVGClient(Client):
         if not title:
             return None
 
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=STUDIO,
-            tagline=site.name,
-            collections=[site.name],
-            release_date=date or None,
-            genres=[],
-            actors=_actors_from(cast_str),
-            raw_image_urls=[poster] if poster else [],
-            scene_url=scene_url,
+        return LoadedScene(
+            url=scene_url or payload,
+            site=site,
+            scene_date=date or None,
+            capture=capture,
+            extra={'title': title, 'summary': summary, 'poster': poster, 'cast_str': cast_str, 'scene_url': scene_url},
         )
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        extra = scene.extra
+        metadata.title = extra['title']
+        metadata.summary = extra['summary']
+        metadata.studio = STUDIO
+        metadata.tagline = scene.site.name
+        metadata.collections = [scene.site.name]
+        metadata.release_date = scene.scene_date or None
+        metadata.genres = []
+        metadata.actors = _actors_from(extra['cast_str'])
+        metadata.raw_image_urls = [extra['poster']] if extra['poster'] else []
+        metadata.scene_url = extra['scene_url']

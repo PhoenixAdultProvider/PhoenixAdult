@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.spizoo import SpizooClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
             text='<div class="model-update row"><a href="/v/7"></a><h3>Cool Scene 4K</h3><div><h4>date</h4>March 4, 2021</div></div>',
         )
     )
-    results = await SpizooClient().search(_ctx())
+    results: list[SearchResult] = []
+    await SpizooClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.spizoo.com/v/7'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.queensnake import QueenSnakeClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
             text='<div class="contentBlock"><span class="contentFilmName">Cool Scene</span><span class="contentFileDate">2021 March 4 • HD</span></div>',
         )
     )
-    results = await QueenSnakeClient().search(_ctx())
+    results: list[SearchResult] = []
+    await QueenSnakeClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
@@ -38,7 +39,8 @@ async def test_search_no_match_pager() -> None:
             200, text='<div class="pagerWrapper"><a href="/previewmovies/0"></a></div><div class="contentBlock"><span class="contentFilmName">X</span></div>'
         )
     )
-    results = await QueenSnakeClient().search(_ctx('nope'))
+    results: list[SearchResult] = []
+    await QueenSnakeClient().search(results, _ctx('nope'))
     assert results == []
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.thickcash import ThickCashClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_and_detail_roundtrip() -> None:
             text='<div class="updateBlock clear"><h3>Cool Scene</h3><p>A summary.</p><h4>Added: March 4, 2021</h4><img src="https://cdn/p.jpg" /></div>',
         )
     )
-    results = await ThickCashClient().search(_ctx())
+    results: list[SearchResult] = []
+    await ThickCashClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'

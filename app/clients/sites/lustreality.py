@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, append_unique, build_search_result, css_bg_image, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.best_effort import best_effort
@@ -17,7 +17,7 @@ _DATE_XP = (
 
 
 class LustRealityClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         candidates = [f'{base}{ctx.site_info.search_path}{slugify(ctx.title)}']
         host = urlsplit(ctx.site_info.base_url).hostname or ''
@@ -26,7 +26,6 @@ class LustRealityClient(Client):
                 if '/scene/' in url and url not in candidates:
                     candidates.append(url)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
             if not loaded:
@@ -43,34 +42,33 @@ class LustRealityClient(Client):
                     search_date=ctx.search_date,
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"u-mb--six")]') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"u-mb--six")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return iso_date(first_text(scene.sel, _DATE_XP)) or scene.scene_date or None
+        metadata.release_date = iso_date(first_text(scene.sel, _DATE_XP)) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[contains(@href,"/list/category/")]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -86,9 +84,9 @@ class LustRealityClient(Client):
                 raw = first_attr(loaded['sel'], '(//div[contains(@class,"u-ratio--model-poster")]//img/@data-src)[1]') if loaded else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -99,4 +97,4 @@ class LustRealityClient(Client):
             push(css_bg_image(el.xpath('@style').get()))
         for href in scene.sel.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
             push(href)
-        return images
+        metadata.raw_image_urls = images

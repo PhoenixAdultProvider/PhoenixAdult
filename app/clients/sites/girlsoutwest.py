@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text, meta_content, web_search_urls
 
@@ -11,7 +11,7 @@ _CAST_XP = _TRAILER_P_XP + '//a'
 
 
 class GirlsOutWestClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         direct = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
         candidates = [direct]
@@ -19,7 +19,6 @@ class GirlsOutWestClient(Client):
             if u not in candidates:
                 candidates.append(u)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page or page['html'].strip() == 'Page not found':
@@ -38,7 +37,6 @@ class GirlsOutWestClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     def _date_from(self, sel: Any) -> str | None:
         text = first_text(sel, _TRAILER_P_XP)
@@ -49,24 +47,24 @@ class GirlsOutWestClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return meta_content(scene.sel, 'twitter:title') or None
+        metadata.title = meta_content(scene.sel, 'twitter:title') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'GirlsOutWest'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'GirlsOutWest'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return self._date_from(scene.sel)
+        metadata.release_date = self._date_from(scene.sel)
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = ['Amateur', 'Australian']
         count = len(scene.sel.xpath(_CAST_XP))
@@ -76,9 +74,9 @@ class GirlsOutWestClient(Client):
             genres.append('Foursome')
         elif count > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -95,9 +93,9 @@ class GirlsOutWestClient(Client):
                 raw = first_attr(actor_page['sel'], '(//div[contains(@class,"profilePic")]//img/@src0_3x)[1]')
                 photo = join_url(raw, scene.site.base_url) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for raw in scene.sel.xpath('//div[contains(@class,"videoplayer")]//img/@src0_3x').getall():
@@ -107,4 +105,4 @@ class GirlsOutWestClient(Client):
             abs_url = join_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

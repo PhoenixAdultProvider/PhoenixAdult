@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
 from app.registry import find_site
 
@@ -30,7 +30,8 @@ async def test_search_standard_variant() -> None:
             </div></div>""",
         )
     )
-    results = await AdultEmpireCashClient().search(_ctx(STANDARD, search_date='2020-08-27'))
+    results: list[SearchResult] = []
+    await AdultEmpireCashClient().search(results, _ctx(STANDARD, search_date='2020-08-27'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://conorcoxxx.com/123/cool-scene.html'
@@ -49,7 +50,8 @@ async def test_search_imgfullfluid_variant() -> None:
             </div></div>""",
         )
     )
-    results = await AdultEmpireCashClient().search(_ctx(IMGFLUID))
+    results: list[SearchResult] = []
+    await AdultEmpireCashClient().search(results, _ctx(IMGFLUID))
     assert [r.title for r in results] == ['Cool Scene']
     assert results[0].scene_url == 'https://jayspov.net/9/x.html'
 
@@ -65,7 +67,8 @@ async def test_search_scenetitlep_variant() -> None:
             </div></div>""",
         )
     )
-    results = await AdultEmpireCashClient().search(_ctx(SCENEP))
+    results: list[SearchResult] = []
+    await AdultEmpireCashClient().search(results, _ctx(SCENEP))
     assert [r.title for r in results] == ['Cool Scene']
     assert results[0].scene_url == 'https://www.bizarrevideo.com/7/y.html'
 
@@ -75,7 +78,8 @@ async def test_search_direct_scene_id() -> None:
     direct = 'https://conorcoxxx.com/555/cool-scene.html'
     respx.get(direct).mock(return_value=httpx.Response(200, text='<h1 class="description">Cool Scene</h1>'))
     respx.get('https://conorcoxxx.com/MemberSceneSearch?q=cool+scene').mock(return_value=httpx.Response(200, text='<div></div>'))
-    results = await AdultEmpireCashClient().search(_ctx(STANDARD, scene_id='555'))
+    results: list[SearchResult] = []
+    await AdultEmpireCashClient().search(results, _ctx(STANDARD, scene_id='555'))
     assert results[0].scene_url == direct
     assert results[0].score == 100
 

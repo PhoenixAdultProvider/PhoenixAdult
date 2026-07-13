@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.meanawolf import MeanaWolfClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -35,7 +35,8 @@ async def test_search_cards() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await MeanaWolfClient().search(SearchContext(title='hypno', encoded='hypno', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MeanaWolfClient().search(results, SearchContext(title='hypno', encoded='hypno', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Hypno Session'
     assert results[0].scene_url == 'https://meanawolf.elxcomplete.com/scene/hypno'

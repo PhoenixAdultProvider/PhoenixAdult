@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.couplescinema import CouplesCinemaClient
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_direct_scene_id() -> None:
     url = 'https://www.couplescinema.com/post/details/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="mediaHeader"><span class="title">Cool Scene</span></div>'))
-    results = await CouplesCinemaClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await CouplesCinemaClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'
@@ -39,7 +40,8 @@ async def test_search_keyword_packs_cover() -> None:
             </div>""",
         )
     )
-    results = await CouplesCinemaClient().search(_ctx(search_date='2021-03-04'))
+    results: list[SearchResult] = []
+    await CouplesCinemaClient().search(results, _ctx(search_date='2021-03-04'))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.couplescinema.com/post/details/77'
     assert results[0].score == 100

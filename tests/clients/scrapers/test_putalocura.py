@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import putalocura as pl_module
 from app.clients.sites.putalocura import PutalocuraClient
 from app.registry import find_site
@@ -35,7 +35,8 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(pl_module, 'web_search', _web)
     respx.get(scene_url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await PutalocuraClient().search(SearchContext(title='alika', encoded='alika', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await PutalocuraClient().search(results, SearchContext(title='alika', encoded='alika', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Casting Alika'
     assert results[0].release_date == '2021-05-05'

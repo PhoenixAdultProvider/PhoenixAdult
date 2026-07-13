@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.abbywinters import AbbyWintersClient, __testing__
 from app.registry import find_site
 
@@ -51,7 +51,8 @@ async def test_search_walks_model_to_scene() -> None:
             </body></html>""",
         )
     )
-    results = await AbbyWintersClient().search(SearchContext(title='foo', encoded='foo', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await AbbyWintersClient().search(results, SearchContext(title='foo', encoded='foo', search_site=SITE.name, site_info=SITE))
     assert [r.title for r in results] == ['Scene Title One']
     assert results[0].scene_url == 'https://www.abbywinters.com/scenes/scene-1'
     assert results[0].display_date == '2021-03-04'
@@ -60,7 +61,8 @@ async def test_search_walks_model_to_scene() -> None:
 @respx.mock
 async def test_search_zero_total_short_circuits() -> None:
     respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, text='<html><body><span id="browse-total-count">0</span></body></html>'))
-    results = await AbbyWintersClient().search(SearchContext(title='foo', encoded='foo', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await AbbyWintersClient().search(results, SearchContext(title='foo', encoded='foo', search_site=SITE.name, site_info=SITE))
     assert results == []
 
 

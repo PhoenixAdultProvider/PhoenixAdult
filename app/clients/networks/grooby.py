@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
@@ -24,16 +24,15 @@ def _added_date(sel: Any, scope_xp: str) -> str | None:
 
 
 class GroobyClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         if not web_search_available():
-            return []
+            return
         host = urlsplit(ctx.site_info.base_url).netloc
         try:
             candidates = [strip_query(u) for u in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/trailers/')]
         except Exception:  # noqa: BLE001 - best-effort
-            return []
+            return
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
         for scene_url in candidates:
             if scene_url in seen:
@@ -49,40 +48,39 @@ class GroobyClient(Client):
                 loaded['sel'], '//div[contains(@class,"trailer_videoinfo")]'
             )
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ps = scene.sel.xpath('//div[contains(@class,"trailer_videoinfo")]//p | //div[contains(@class,"trailerpage_info")]//p[not(@class)]')
         if not ps:
-            return None
-        return (ps[-1].xpath('string(.)').get() or '').strip() or None
+            return
+        metadata.summary = (ps[-1].xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (
+        metadata.release_date = (
             _added_date(scene.sel, '//div[contains(@class,"setdesc")]')
             or _added_date(scene.sel, '//div[contains(@class,"trailer_videoinfo")]')
             or scene.scene_date
             or None
         )
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         refs: list[tuple[str, str]] = []
@@ -104,9 +102,9 @@ class GroobyClient(Client):
                     or ''
                 ).strip()
             actors.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         xpaths = (
@@ -118,4 +116,4 @@ class GroobyClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

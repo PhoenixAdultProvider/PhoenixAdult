@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
@@ -37,10 +37,9 @@ class RadicalCashOtherClient(Client):
             return None
         return (iso_date(cleaned, fmt) if fmt else None) or iso_date(cleaned)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         p = self._profile(ctx.site_info.name)
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         raw_path = ctx.site_info.search_path.replace('{query}', ctx.title.strip().lower())
@@ -89,52 +88,52 @@ class RadicalCashOtherClient(Client):
             elif url not in seen:
                 seen.add(url)
                 results.append(build_search_result(title=ctx.title, scene_url=url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([url])))
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         p = self._profile(scene.site.name)
-        return (scene.sel.xpath(f'(//{p["title"]})[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath(f'(//{p["title"]})[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         p = self._profile(scene.site.name)
         parts = [first_attr(el) for el in scene.sel.xpath(f'//{p["summary"]}')]
         parts = [t for t in parts if t]
-        return '\n\n'.join(parts) if parts else None
+        metadata.summary = '\n\n'.join(parts) if parts else ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         studio: str = self._profile(scene.site.name)['studio']
-        return studio
+        metadata.studio = studio
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         p = self._profile(scene.site.name)
         if p['release_date']:
             raw = (scene.sel.xpath(f'(//{p["release_date"]})[1]').xpath('string(.)').get() or '').strip()
             if raw:
-                return iso_date(_strip_ordinals(raw), p['date_format']) or iso_date(_strip_ordinals(raw))
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+                metadata.release_date = iso_date(_strip_ordinals(raw), p['date_format']) or iso_date(_strip_ordinals(raw))
+                return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         director = self._profile(scene.site.name)['director']
-        return [ActorResult(name=director)] if director else None
+        metadata.directors = [ActorResult(name=director)] if director else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('(//meta[@name="keywords"])[1]/@content').get() or ''
         values: list[str | None] = [g.strip() for g in raw.split(',')]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         p = self._profile(scene.site.name)
         base = scene.site.base_url.rstrip('/')
@@ -152,7 +151,8 @@ class RadicalCashOtherClient(Client):
                 seen.add(name)
                 photo = (block.xpath(f'(.//{p["actor_photo_inline"]})[1]/@src').get() or '').strip() if p['actor_photo_inline'] else ''
                 actors.append(ActorResult(name=name, photo_url=photo))
-            return actors or None
+            metadata.actors = actors or []
+            return
 
         refs: list[tuple[str, str]] = []
         for el in scene.sel.xpath(f'//{p["actors"]}'):
@@ -171,9 +171,9 @@ class RadicalCashOtherClient(Client):
                 if page:
                     photo = (page['sel'].xpath(f'(//{p["actor_photo_page"]})[1]/@{attr}').get() or '').strip()
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda raw: join_url(raw, base))
@@ -186,4 +186,4 @@ class RadicalCashOtherClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

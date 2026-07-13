@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.perfectgonzo import PerfectGonzoClient
 from app.registry import find_site
 
@@ -21,7 +21,8 @@ async def test_search() -> None:
     respx.get(url).mock(
         return_value=httpx.Response(200, text='<div class="itemm"><a href="/movie/7" title="Cool Scene"></a><span class="nm-date">March 4, 2021</span></div>')
     )
-    results = await PerfectGonzoClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PerfectGonzoClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.perfectgonzo.com/movie/7'

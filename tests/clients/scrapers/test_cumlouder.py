@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.cumlouder import CumLouderClient
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ async def test_search_parses_medida_cards() -> None:
       </div></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await CumLouderClient().search(SearchContext(title='wild scene', encoded='wild%20scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await CumLouderClient().search(results, SearchContext(title='wild scene', encoded='wild%20scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://cumlouder.com/scene/wild'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
@@ -23,7 +23,7 @@ class _BpbExtra:
 
 
 class BlackPayBackClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         text = _LEADING_NUM_RE.sub('', ctx.title).strip()
         slug = re.sub(r'\s+', '-', text.lower())
@@ -33,7 +33,6 @@ class BlackPayBackClient(Client):
             if u not in candidates:
                 candidates.append(u)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not loaded:
@@ -50,7 +49,6 @@ class BlackPayBackClient(Client):
                     cur_id=pack_cur_id([scene_url]),
                 )
             )
-        return results
 
     # ── Detail: main page + two-hop IAFD lookup, stashed for the field hooks ──
 
@@ -107,33 +105,33 @@ class BlackPayBackClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return self._extra(scene).title or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = self._extra(scene).title or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return self._extra(scene).release_date
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = self._extra(scene).release_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             li.xpath('normalize-space(.)').get() for li in scene.sel.xpath('//div[contains(@class,"featuring") and contains(@class,"clear")]//li[.//a]')
         ]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return self._extra(scene).actors
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = self._extra(scene).actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for script in scene.sel.xpath('//div[contains(@class,"player")]//script'):
@@ -145,4 +143,4 @@ class BlackPayBackClient(Client):
             abs_url = absolute_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -22,7 +22,7 @@ class Network5KPClient(Client):
     def __init__(self) -> None:
         super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         title_no_actors = ' '.join(ctx.title.split(' ')[2:])
         if title_no_actors.startswith('and '):
             title_no_actors = ' '.join(title_no_actors.split(' ')[3:])
@@ -32,7 +32,7 @@ class Network5KPClient(Client):
         try:
             r = await self.http.get(url)
         except Exception:  # noqa: BLE001 - upstream failure yields no results
-            return []
+            return
         try:
             body = r.json() if 'json' in r.headers.get('content-type', '') else None
         except ValueError:
@@ -45,7 +45,6 @@ class Network5KPClient(Client):
             ctx.capture.append(RawCaptureEntry(f'GET {url}', 'json', body if body is not None else html))
 
         sel = Selector(text=html)
-        results: list[SearchResult] = []
         seen: set[str] = set()
         # Whole-token `ep` match (mirrors the TS `div.ep`); a substring contains()
         # also hits nested `ep-*` wrappers and duplicates every card.
@@ -64,9 +63,8 @@ class Network5KPClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, ctx.search_date) if x]),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
         scene_url = parts[0]
         fallback_date = parts[1] if len(parts) > 1 else ''
@@ -75,7 +73,15 @@ class Network5KPClient(Client):
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=capture), f'[{site.name}] detail {scene_url}')
         if not loaded:
             return None
-        sel = loaded['sel']
+        return LoadedScene(url=scene_url, site=site, scene_date=fallback_date or None, capture=capture, sel=loaded['sel'], html=loaded['html'])
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        sel = scene.sel
+        assert sel is not None
+        scene_url = scene.url
+        capture = scene.capture
+        fallback_date = scene.scene_date or ''
 
         title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
         summary = (sel.xpath('(//div[contains(@class,"video-summary")]//p[not(@class) or @class=""])[1]').xpath('string(.)').get() or '').strip()
@@ -113,15 +119,12 @@ class Network5KPClient(Client):
                 if src and 'full' not in src:
                     raw_images.append(src)
 
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=STUDIO,
-            tagline=tagline if tagline != STUDIO else None,
-            release_date=release_date or None,
-            collections=[tagline],
-            genres=[],
-            actors=actors,
-            raw_image_urls=raw_images,
-            scene_url=scene_url,
-        )
+        metadata.title = title
+        metadata.summary = summary
+        metadata.studio = STUDIO
+        metadata.tagline = tagline if tagline != STUDIO else None
+        metadata.release_date = release_date or None
+        metadata.collections = [tagline]
+        metadata.genres = []
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images

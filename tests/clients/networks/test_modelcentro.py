@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.modelcentro import ModelCentroClient
 from app.registry import find_site
 
@@ -36,7 +36,8 @@ async def test_search() -> None:
         }
     }
     respx.get(url__startswith='https://www.romirain.com/sapi/XYZ/99/content.load').mock(return_value=httpx.Response(200, json=list_body))
-    results = await ModelCentroClient().search(_ctx(SITE, '5 cool scene', scene_id='5'))
+    results: list[SearchResult] = []
+    await ModelCentroClient().search(results, _ctx(SITE, '5 cool scene', scene_id='5'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.romirain.com/scene/5/'

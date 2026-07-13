@@ -5,7 +5,7 @@ import re
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
@@ -46,9 +46,8 @@ __testing__ = {'bangify': _bangify, 'strip_html': _strip_html, 'find_video_ld': 
 class BangClient(Client):
     # ── Search (web-search augmentation + on-page grid) ─────────────────────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         if web_search_available():
@@ -102,7 +101,6 @@ class BangClient(Client):
                         title=_bangify(title), scene_url=scene_url, query=ctx.title, display_date=release, search_date=ctx.search_date, score=score
                     )
                 )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
@@ -124,55 +122,57 @@ class BangClient(Client):
                 return _bangify(first_attr(el, 'normalize-space(.)'))
         return ''
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ld = _find_video_ld(scene.sel)
         raw = _strip_html(ld.get('name')) if ld and ld.get('name') else (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
-        return _bangify(raw) or None
+        metadata.title = _bangify(raw) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ld = _find_video_ld(scene.sel)
         if ld and ld.get('description'):
-            return _strip_html(ld['description']) or None
+            metadata.summary = _strip_html(ld['description']) or ''
+            return
         desc = (scene.sel.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
         if desc:
-            return desc
+            metadata.summary = desc
+            return
         meta = first_attr(scene.sel, '(//meta[@name="description"])[1]/@content')
         og = first_attr(scene.sel, '(//meta[@property="og:description"])[1]/@content')
-        return meta or og or None
+        metadata.summary = meta or og or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return self._studio_of(scene)
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = self._studio_of(scene)
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline_of(scene) or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_of(scene) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         tagline = self._tagline_of(scene)
         collections = [tagline] if tagline else [self._studio_of(scene)]
         dvd_title = (scene.sel.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
         if dvd_title:
             collections.append(_bangify(dvd_title))
-        return collections
+        metadata.collections = collections
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ld = _find_video_ld(scene.sel)
         iso = iso_date(ld['datePublished']) if ld and ld.get('datePublished') else None
-        return iso or scene.scene_date or None
+        metadata.release_date = iso or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [
             g
             for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]'))
             if g
         ]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         scene_els = scene.sel.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
         if scene_els:
@@ -183,7 +183,8 @@ class BangClient(Client):
                 photo = img if img and 'placeholder' not in img else ''
                 if name:
                     actors.append(ActorResult(name=name, photo_url=photo))
-            return actors or None
+            metadata.actors = actors or []
+            return
 
         dvd_actors: list[ActorResult] = []
         for el in scene.sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
@@ -203,9 +204,9 @@ class BangClient(Client):
                         photo = blob['image'].strip()
                         break
             dvd_actors.append(ActorResult(name=name, photo_url=photo))
-        return dvd_actors or None
+        metadata.actors = dvd_actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ld = _find_video_ld(scene.sel)
         out: list[str] = []
@@ -246,4 +247,4 @@ class BangClient(Client):
         for u in out:
             if u and u not in deduped:
                 deduped.append(u)
-        return deduped or None
+        metadata.raw_image_urls = deduped or []

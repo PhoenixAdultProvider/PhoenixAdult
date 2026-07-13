@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
@@ -76,38 +76,37 @@ class NewSensationsOtherClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//span[@class="update_description"])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//span[@class="update_description"])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             title_case((a.xpath('normalize-space(.)').get() or '').replace('-', '')) for a in scene.sel.xpath('//span[@class="update_tags"]/a')
         ]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        actors = (scene.extra or {}).get('actors') or []
-        return actors or None
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = (scene.extra or {}).get('actors') or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -132,4 +131,4 @@ class NewSensationsOtherClient(Client):
                     continue
                 for src in block.xpath('.//div[@class="cell"]//img/@src0_3x').getall():
                     push(src)
-        return images or None
+        metadata.raw_image_urls = images

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr
 
@@ -30,31 +30,32 @@ class SinXClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h1[contains(@class,"title--3")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//h1[contains(@class,"title--3")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[h5]//p)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[h5]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//tr[td[contains(.,"Date")]]/td[2])[1]').xpath('string(.)').get() or '').strip()
         if raw:
-            return iso_date(raw, _DATE_FMT) or iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw, _DATE_FMT) or iso_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = self.dedup_strings(
             [(a.xpath('string(.)').get() or '').split('#')[-1].strip() for a in scene.sel.xpath('//div[contains(@class,"tags-wrap")]//a')]
@@ -66,9 +67,9 @@ class SinXClient(Client):
             genres.append('Foursome')
         elif cast > 4 and 'Orgy' not in genres:
             genres.append('Orgy')
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         figures = scene.sel.xpath('//figure[contains(@class,"girls-item")]')
         single = len(figures) == 1
@@ -77,12 +78,12 @@ class SinXClient(Client):
             name = (fig.xpath('(.//h4)[1]').xpath('string(.)').get() or '').strip()
             photo = first_attr(fig, '(.//img)[1]/@src') if single else ''
             entries.append(ActorResult(name=name, photo_url=photo))
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries) or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
         for src in scene.sel.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
             coll['push'](src)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.femjoy import FemjoyClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -38,7 +38,8 @@ ACTOR_PAYLOAD = {'results': [{'id': 2, 'thumb': {'image': 'https://cdn.fj.com/be
 @respx.mock
 async def test_search_json_api() -> None:
     respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, json=PAYLOAD))
-    results = await FemjoyClient().search(SearchContext(title='mirror', encoded='mirror', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await FemjoyClient().search(results, SearchContext(title='mirror', encoded='mirror', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Girl In The Mirror'
     assert results[0].scene_url == SEARCH_URL

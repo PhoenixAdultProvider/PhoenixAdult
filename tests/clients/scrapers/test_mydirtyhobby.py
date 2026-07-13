@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.mydirtyhobby import MyDirtyHobbyClient
 from app.registry import find_site
 
@@ -36,7 +36,8 @@ DETAIL_HTML = f'<html><body><div><div id="profile_page"></div><script>window.__D
 @respx.mock
 async def test_search_json_post() -> None:
     respx.post(SEARCH_API).mock(return_value=httpx.Response(200, json=SEARCH_BODY))
-    results = await MyDirtyHobbyClient().search(SearchContext(title='homemade', encoded='homemade', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MyDirtyHobbyClient().search(results, SearchContext(title='homemade', encoded='homemade', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Homemade Fun'
     assert results[0].scene_url == 'https://www.mydirtyhobby.com/profil/7-lola/videos/99-Homemade-Fun'

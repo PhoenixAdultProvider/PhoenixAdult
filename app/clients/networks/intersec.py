@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
@@ -19,14 +19,13 @@ def _resolve_tagline(link_text: str) -> str:
 
 
 class IntersecClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {scene_url}')
         if not loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"is-multiline")]/div[contains(@class,"column")]'):
             href = first_attr(card, '(.//a)[1]/@href')
             title = (card.xpath('(.//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip()
@@ -52,22 +51,10 @@ class IntersecClient(Client):
                     cur_id=pack_cur_id([detail_url, f'{date or ""}|{cover_packed}']),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[3]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
         links = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         if not links:
@@ -76,18 +63,33 @@ class IntersecClient(Client):
         link_text = f'{last.xpath("string(.)").get() or ""} {last.xpath("@href").get() or ""}'
         return _resolve_tagline(link_text)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tag = await self.fetch_tagline(scene)
-        return [tag] if tag else None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.title = (scene.sel.xpath('(//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[3]').xpath('string(.)').get() or '').strip()
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tag = self._tagline(scene)
+        metadata.collections = [tag] if tag else None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//span[contains(@class,"is-dark")][1]').xpath('string(.)').get() or '').strip()
         if raw:
-            return iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw)
+        else:
+            metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = ['BDSM']
         dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
@@ -98,15 +100,15 @@ class IntersecClient(Client):
             genres.append('Foursome')
         elif actor_count > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         dark = scene.sel.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
         entries = [ActorResult(name=first_attr(el)) for el in dark[:-1]]
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector()
 
@@ -125,4 +127,4 @@ class IntersecClient(Client):
             for raw in scene.sel.xpath(xpath).getall():
                 coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

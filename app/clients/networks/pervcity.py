@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
@@ -17,9 +17,8 @@ class PervCityClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'warning_cookie=1'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         if (ctx.site_info.search_path or '').strip():
@@ -71,7 +70,6 @@ class PervCityClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Context loader (resolves cast; crawls model pages for a date) ───────────
 
@@ -150,41 +148,42 @@ class PervCityClient(Client):
             return scene.site.name
         return STUDIO
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         info = (scene.sel.xpath('(//div[contains(@class,"infoBox")]//p)[1]').xpath('string(.)').get() or '').strip()
         if info:
-            return info
-        return (scene.sel.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip() or None
+            metadata.summary = info
+            return
+        metadata.summary = (scene.sel.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline_for(scene)
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_for(scene)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._tagline_for(scene)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._tagline_for(scene)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return (scene.extra or {}).get('crawled_date')
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
+            return
+        metadata.release_date = (scene.extra or {}).get('crawled_date')
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[@class="tagcats"]/a')]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        actors = (scene.extra or {}).get('actors') or []
-        return actors or None
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = (scene.extra or {}).get('actors') or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -194,4 +193,4 @@ class PervCityClient(Client):
             abs_url = absolute_url(raw, base)
             if abs_url not in images:
                 images.append(abs_url)
-        return images or None
+        metadata.raw_image_urls = images

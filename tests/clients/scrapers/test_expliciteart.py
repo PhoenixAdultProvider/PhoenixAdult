@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.expliciteart import ExpliciteArtClient
 from app.registry import find_site
 
@@ -32,7 +32,8 @@ _ACTOR = '<html><body><div class="pornstar-bio-left"><img src="https://cdn.examp
 @respx.mock
 async def test_search_parses_video_cards() -> None:
     respx.get('https://www.explicite-art.com/visitor/search/videos/wild-ride/page1.html').mock(return_value=httpx.Response(200, text=_SEARCH))
-    results = await ExpliciteArtClient().search(SearchContext(title='Wild Ride', encoded='Wild%20Ride', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ExpliciteArtClient().search(results, SearchContext(title='Wild Ride', encoded='Wild%20Ride', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Ride'
     assert results[0].scene_url == _URL

@@ -5,7 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, join_url
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -33,35 +33,35 @@ class XillimiteClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         nodes = scene.sel.xpath('//div[@id="synopsis"]/node()').getall()
         raw_html = ''.join(nodes) if nodes else (scene.sel.xpath('(//meta[@name="twitter:description"]/@content)[1]').get() or '')
         if not raw_html:
-            return None
+            return
         with_newlines = _BR_RE.sub('\n', raw_html)
         stripped = (Selector(text=f'<div>{with_newlines}</div>').xpath('string(.)').get() or '').strip()
-        return stripped or None
+        metadata.summary = stripped or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
-            return None
-        return iso_date(scene.scene_date) or scene.scene_date
+            return
+        metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         entries: list[ActorResult] = []
@@ -70,9 +70,9 @@ class XillimiteClient(Client):
             data_src = first_attr(img, '@data-src')
             photo = join_url(data_src, base) if data_src else ''
             entries.append(ActorResult(name=name, photo_url=photo))
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -89,4 +89,4 @@ class XillimiteClient(Client):
             push(href)
         for href in scene.sel.xpath('//div[contains(@class,"screenshots")]//div[contains(@class,"slides")]//a/@href').getall():
             push(href)
-        return images
+        metadata.raw_image_urls = images

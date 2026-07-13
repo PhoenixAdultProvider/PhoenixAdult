@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.naughtyamerica as na
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.naughtyamerica import NaughtyAmericaClient
 from app.registry import find_site
 
@@ -58,7 +58,8 @@ async def test_search_keyword_paginates() -> None:
     )
     respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1').mock(return_value=httpx.Response(200, text=page1))
     respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1&page=2').mock(return_value=httpx.Response(200, text=page2))
-    results = await NaughtyAmericaClient().search(_ctx())
+    results: list[SearchResult] = []
+    await NaughtyAmericaClient().search(results, _ctx())
     titles = {r.title for r in results}
     assert titles == {'Scene One', 'Scene Two'}  # page 2 accumulated (legacy pagination)
     # curID/sceneURL are the full slug path, not the dead numeric /scene/0<id> form

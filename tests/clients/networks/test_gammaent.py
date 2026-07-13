@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.gammaent import GammaEntClient
 from app.registry import find_site
 
@@ -17,7 +17,9 @@ def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext
 
 
 async def test_search_disabled_site() -> None:
-    assert await GammaEntClient().search(_ctx(TERA)) == []
+    results: list[SearchResult] = []
+    await GammaEntClient().search(results, _ctx(TERA))
+    assert results == []
 
 
 @respx.mock
@@ -27,7 +29,8 @@ async def test_search() -> None:
     </div>"""
     respx.get('http://www.sunnyleone.com/en/search/scene/cool%20scene').mock(return_value=httpx.Response(200, text=row))
     respx.get('http://www.sunnyleone.com/en/search/scene/cool%20scene/2').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await GammaEntClient().search(_ctx(SITE))
+    results: list[SearchResult] = []
+    await GammaEntClient().search(results, _ctx(SITE))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'http://www.sunnyleone.com/en/movie/cool/123'

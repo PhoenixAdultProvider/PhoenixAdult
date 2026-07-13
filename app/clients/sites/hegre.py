@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import append_year_param, first_attr, first_text, meta_content
 
@@ -11,7 +11,7 @@ _DIRECTOR = ActorResult(
 
 
 class HegreClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         direct = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
@@ -21,7 +21,7 @@ class HegreClient(Client):
             if title:
                 raw_date = first_text(direct_page['sel'], '//span[contains(@class,"date")]')
                 date = iso_date(raw_date) if raw_date else None
-                return [
+                results.append(
                     build_search_result(
                         title=title,
                         scene_url=direct,
@@ -31,14 +31,14 @@ class HegreClient(Client):
                         score=100,
                         cur_id=pack_cur_id([direct]),
                     )
-                ]
+                )
+                return
 
         search_url = append_year_param(f'{base}/search?q={ctx.encoded}', 'year', year=ctx.year, search_date=ctx.search_date)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if not loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item")]'):
             href = first_attr(card, '(.//a/@href)[1]')
             if not href or not ('/films/' in href or '/massage/' in href):
@@ -59,37 +59,36 @@ class HegreClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return meta_content(scene.sel, 'og:title') or None
+        metadata.title = meta_content(scene.sel, 'og:title') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[contains(@class,"record-description-content") and contains(@class,"record-box-content")]')
         if not raw:
-            return None
+            return
         idx = raw.find('Runtime')
-        return raw[:idx].strip() if idx >= 0 else raw
+        metadata.summary = raw[:idx].strip() if idx >= 0 else raw
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Hegre'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Hegre'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"date")]')
-        return iso_date(raw) if raw else None
+        metadata.release_date = iso_date(raw) if raw else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//a[contains(@class,"tag")]'):
@@ -103,25 +102,25 @@ class HegreClient(Client):
             genres.append('Foursome')
         elif count > 4 and 'Orgy' not in genres:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for a in scene.sel.xpath('//a[contains(@class,"record-model")]'):
             name = first_attr(a, '@title')
             raw = first_attr(a, '(.//img/@src)[1]')
             entries.append(ActorResult(name=name, photo_url=raw.replace('240x', '480x') if raw else ''))
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return [_DIRECTOR]
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.directors = [_DIRECTOR]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = meta_content(scene.sel, 'twitter:image')
         if not raw:
-            return []
+            return
         images: list[str] = []
         small = raw.replace('board-image', 'poster-image').replace('1600x', '640x')
         if small != raw:
@@ -129,4 +128,4 @@ class HegreClient(Client):
         large = raw.replace('1600x', '1920x')
         if large not in images:
             images.append(large)
-        return images
+        metadata.raw_image_urls = images

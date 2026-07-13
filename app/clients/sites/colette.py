@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
@@ -21,14 +21,13 @@ class ColetteClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': '_warning=True'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         candidates: list[str] = [f'{base}/videos/{ctx.title.replace(" ", "_")}']
         for u in await web_search_urls(ctx.title, ctx.site_info, include=['/videos/']):
             if u not in candidates:
                 candidates.append(u)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not loaded:
@@ -47,45 +46,44 @@ class ColetteClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _TITLE_XP) or None
+        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '(//div[contains(@class,"info")]//p)[2]') or None
+        metadata.summary = first_text(scene.sel, '(//div[contains(@class,"info")]//p)[2]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Colette'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Colette'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if scene.scene_date:
-            return scene.scene_date
+            metadata.release_date = scene.scene_date
+            return
         assert scene.sel is not None
-        return iso_date(first_text(scene.sel, '//h2')) or None
+        metadata.release_date = iso_date(first_text(scene.sel, '//h2')) or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         count = len(scene.sel.xpath(_CAST_XP))
         if count == 3:
-            return ['Threesome']
-        if count == 4:
-            return ['Foursome']
-        if count > 4:
-            return ['Orgy']
-        return None
+            metadata.genres = ['Threesome']
+        elif count == 4:
+            metadata.genres = ['Foursome']
+        elif count > 4:
+            metadata.genres = ['Orgy']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         links: list[tuple[str, str]] = []
         for el in scene.sel.xpath(_CAST_XP):
@@ -100,9 +98,9 @@ class ColetteClient(Client):
             page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             interchange = (page['sel'].xpath('(//img[contains(@class,"info-img")]/@data-interchange)[1]').get() or '') if page else ''
             actors.append(ActorResult(name=name, photo_url=_parse_interchange(interchange)))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -125,4 +123,4 @@ class ColetteClient(Client):
                 add(_parse_interchange(raw or ''))
             for raw in page.xpath('//div[contains(@class,"columns")]/img/@data-interchange').getall():
                 add(_parse_interchange(raw or ''))
-        return images
+        metadata.raw_image_urls = images

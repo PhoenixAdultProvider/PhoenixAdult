@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.hollyrandall import HollyRandallClient
 from app.registry import find_site
 from app.utils.helpers.helpers import b64url_encode, pack_cur_id
@@ -35,7 +35,8 @@ async def test_search_parses_cards() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await HollyRandallClient().search(SearchContext(title='glam', encoded='glam', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await HollyRandallClient().search(results, SearchContext(title='glam', encoded='glam', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Glam Shoot'
     assert results[0].scene_url == 'https://hollyrandall.com/scene/glam-1'

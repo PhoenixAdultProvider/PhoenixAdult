@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.desperateamateurs import DesperateAmateursClient
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ async def test_search_parses_rows() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await DesperateAmateursClient().search(SearchContext(title='wild scene', encoded='wild%20scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await DesperateAmateursClient().search(results, SearchContext(title='wild scene', encoded='wild%20scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://desperateamateurs.com/fintour/sets/wild.html'

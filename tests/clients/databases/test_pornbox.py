@@ -4,7 +4,7 @@ import httpx
 import respx
 
 from app.clients.aggregators.pornbox import PornboxClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Pornbox')
@@ -16,7 +16,8 @@ async def test_search_lifts_match_id() -> None:
     respx.get('https://www.pornbox.com/store/search?q=Jane').mock(
         return_value=httpx.Response(200, json={'content': {'contents': [{'scene_name': 'Jane Scene abc1', 'content_id': 99, 'publish_date': '2024-01-05'}]}})
     )
-    results = await PornboxClient().search(SearchContext(title='Jane', encoded='Jane', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await PornboxClient().search(results, SearchContext(title='Jane', encoded='Jane', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == '[abc1] Jane Scene'
     assert results[0].scene_url == 'https://www.pornbox.com/contents/99'
@@ -28,7 +29,8 @@ async def test_search_direct_scene_id() -> None:
         return_value=httpx.Response(200, json={'scene_name': 'Direct Scene', 'publish_date': '2024-03-01'})
     )
     respx.get('https://www.pornbox.com/store/search?q=').mock(return_value=httpx.Response(200, json={'content': {'contents': []}}))
-    results = await PornboxClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='42001', full_title='42001'))
+    results: list[SearchResult] = []
+    await PornboxClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='42001', full_title='42001'))
     direct = next((r for r in results if r.score == 100), None)
     assert direct is not None
     assert direct.title == 'Direct Scene'

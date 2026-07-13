@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.killergram import KillergramClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ def _ctx(title: str = '123', **kw: object) -> SearchContext:
 async def test_search() -> None:
     url = 'https://killergram.com/episodes.asp?page=episodes&id=123'
     respx.get(url).mock(return_value=httpx.Response(200, text=_PAGE))
-    results = await KillergramClient().search(_ctx())
+    results: list[SearchResult] = []
+    await KillergramClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

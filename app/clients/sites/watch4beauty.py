@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from app.utils.logging.logger import logger
@@ -19,7 +19,7 @@ def _titleize(slug: str) -> str:
 
 
 class Watch4BeautyClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         model_strings: list[str] = []
@@ -60,9 +60,8 @@ class Watch4BeautyClient(Client):
 
         if updates is None:
             logger.info(ctx.site_info.name, f'Watch4Beauty search "{ctx.title}" → no model match')
-            return []
+            return
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
         issues = updates[0].get('Issues') if isinstance(updates[0], dict) else None
         for issue in issues or []:
@@ -85,9 +84,8 @@ class Watch4BeautyClient(Client):
                     cur_id=pack_cur_id([model_string, scene_slug, date or '']),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
         model_slug = ''
         scene_slug = ''
@@ -110,13 +108,30 @@ class Watch4BeautyClient(Client):
         scene = scene_arr[0] if isinstance(scene_arr, list) and scene_arr else None
         if not isinstance(scene, dict):
             return None
+        return LoadedScene(
+            url=f'{base}/api/issues/{scene_slug}',
+            site=site,
+            capture=ctx.capture if ctx else None,
+            extra={'scene': scene, 'model_slug': model_slug, 'scene_slug': scene_slug, 'cur_id_date': cur_id_date},
+            subsite=ctx.subsite if ctx else None,
+        )
 
-        title = (scene.get('issue_title') or '').strip()
-        summary = (scene.get('issue_text') or '').strip()
-        datetime = scene.get('issue_datetime') or ''
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        base = site.base_url.rstrip('/')
+        data = scene.extra
+        scene_json = data['scene']
+        scene_slug = data['scene_slug']
+        model_slug = data['model_slug']
+        cur_id_date = data['cur_id_date']
+        capture = scene.capture
+
+        title = (scene_json.get('issue_title') or '').strip()
+        summary = (scene_json.get('issue_text') or '').strip()
+        datetime = scene_json.get('issue_datetime') or ''
         release_date = (iso_date(datetime) or cur_id_date) if datetime else (cur_id_date or None)
         year = int(release_date[:4]) if release_date else None
-        genres = self.dedup_strings(list((scene.get('issue_tags') or '').split(','))) if scene.get('issue_tags') else []
+        genres = self.dedup_strings(list((scene_json.get('issue_tags') or '').split(','))) if scene_json.get('issue_tags') else []
 
         date_compact = re.sub(r'[^0-9]', '', datetime)[:8] if datetime else (release_date or '').replace('-', '')
         art_prefix = f'{ART_BASE}{date_compact}' if date_compact else ART_BASE
@@ -128,7 +143,7 @@ class Watch4BeautyClient(Client):
 
         actors: list[ActorResult] = []
         models_arr = await self.fetch_json(
-            f'{base}/api/issues/{scene_slug}/models', FetchCtx(capture=ctx.capture if ctx else None), label=f'[{site.name}] issues/{scene_slug}/models'
+            f'{base}/api/issues/{scene_slug}/models', FetchCtx(capture=capture), label=f'[{site.name}] issues/{scene_slug}/models'
         )
         models = models_arr[0].get('Models') if isinstance(models_arr, list) and models_arr and isinstance(models_arr[0], dict) else None
         for m in models or []:
@@ -145,20 +160,17 @@ class Watch4BeautyClient(Client):
         if not actors and model_slug:
             actors.append(ActorResult(name=_titleize(model_slug)))
 
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=STUDIO,
-            tagline=TAGLINE,
-            collections=[TAGLINE],
-            genres=genres,
-            actors=actors,
-            directors=[ActorResult(name=DIRECTOR)],
-            raw_image_urls=images,
-            release_date=release_date,
-            year=year,
-            scene_url=f'{base}/api/issues/{scene_slug}',
-        )
+        metadata.title = title
+        metadata.summary = summary
+        metadata.studio = STUDIO
+        metadata.tagline = TAGLINE
+        metadata.collections = [TAGLINE]
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.directors = [ActorResult(name=DIRECTOR)]
+        metadata.raw_image_urls = images
+        metadata.release_date = release_date
+        metadata.year = year
 
 
 def _first_model_nickname(data: Any) -> str:

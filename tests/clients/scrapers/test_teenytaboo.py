@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.sites.teenytaboo as tt_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.teenytaboo import TeenyTabooClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ SCENE_HTML = """<html><body>
 async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(tt_module, 'web_search_urls', no_web_search)
     respx.get('https://teenytaboo.com/video/wild-scene').mock(return_value=httpx.Response(200, text=SCENE_HTML))
-    results = await TeenyTabooClient().search(SearchContext(title='Wild Scene', encoded='Wild%20Scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await TeenyTabooClient().search(results, SearchContext(title='Wild Scene', encoded='Wild%20Scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'wild scene title'
     assert results[0].scene_url == 'https://teenytaboo.com/video/wild-scene'

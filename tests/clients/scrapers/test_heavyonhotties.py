@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import heavyonhotties as hoh_module
 from app.clients.sites.heavyonhotties import HeavyOnHottiesClient
 from app.registry import find_site
@@ -35,7 +35,8 @@ async def test_search_direct_variant(monkeypatch: pytest.MonkeyPatch) -> None:
     # Other variants 404
     respx.get('https://www.heavyonhotties.com/movies/bob-wild-night').mock(return_value=httpx.Response(404))
     respx.get('https://www.heavyonhotties.com/movies/wild-night').mock(return_value=httpx.Response(404))
-    results = await HeavyOnHottiesClient().search(SearchContext(title='Alice Bob Wild Night', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await HeavyOnHottiesClient().search(results, SearchContext(title='Alice Bob Wild Night', encoded='', search_site=SITE.name, site_info=SITE))
     assert any(r.scene_url == url for r in results)
     hit = next(r for r in results if r.scene_url == url)
     assert hit.title == 'Alice and Bob - Wild Night'

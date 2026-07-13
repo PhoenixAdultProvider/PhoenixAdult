@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -43,40 +43,40 @@ class VIPissyClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _TITLE_XP) or None
+        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         all_text = first_text(scene.sel, _SUMMARY_BLOCK_XP)
         if not all_text:
-            return None
+            return
         tags = first_text(scene.sel, _TAGS_BLOCK_XP)
         summary = all_text.replace(tags, '').strip() if tags else all_text
-        return summary.split('Show more...')[0].strip() or None
+        metadata.summary = summary.split('Show more...')[0].strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, _DATE_XP)
         if raw:
             parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath(_TAGS_LINK_XP):
@@ -87,9 +87,9 @@ class VIPissyClient(Client):
         extra = {3: 'Threesome', 4: 'Foursome'}.get(count) or ('Orgy' if count > 4 else None)
         if extra and extra not in genres:
             genres.append(extra)
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -109,9 +109,9 @@ class VIPissyClient(Client):
                     if raw:
                         photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         images: list[str] = []
@@ -127,4 +127,4 @@ class VIPissyClient(Client):
             twitter_bg = f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg'
             if twitter_bg not in images:
                 images.insert(0, twitter_bg)
-        return images
+        metadata.raw_image_urls = images

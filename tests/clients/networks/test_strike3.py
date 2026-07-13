@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.strike3 as s3
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.strike3 import Strike3Client
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_text() -> None:
     body = {'data': {'searchVideos': {'edges': [{'node': {'videoId': '99', 'title': 'Cool Scene', 'releaseDate': '2021-03-04', 'slug': 'cool-scene'}}]}}}
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
-    results = await Strike3Client().search(_ctx())
+    results: list[SearchResult] = []
+    await Strike3Client().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert Strike3Client().decode(results[0].cur_id) == 'cool-scene'
@@ -38,7 +39,8 @@ async def test_search_text() -> None:
 async def test_search_by_id() -> None:
     body = {'data': {'findOneVideo': {'videoId': '12345', 'title': 'Cool Scene', 'releaseDate': '2021-03-04', 'slug': 'cool-scene'}}}
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
-    results = await Strike3Client().search(_ctx(scene_id='12345'))
+    results: list[SearchResult] = []
+    await Strike3Client().search(results, _ctx(scene_id='12345'))
     assert len(results) == 1
     assert results[0].score == 100
 
@@ -54,7 +56,8 @@ async def test_search_recovers_via_bypass(monkeypatch: pytest.MonkeyPatch) -> No
     envelope = {'status': 'ok', 'solution': {'url': _ENDPOINT, 'status': 200, 'response': _json.dumps(gql), 'headers': {}, 'cookies': []}}
     respx.post('http://localhost:8191/v1').mock(return_value=httpx.Response(200, json=envelope))
 
-    results = await Strike3Client().search(_ctx(title='x'))
+    results: list[SearchResult] = []
+    await Strike3Client().search(results, _ctx(title='x'))
     assert len(results) == 1 and results[0].title == 'Bypassed'
 
 

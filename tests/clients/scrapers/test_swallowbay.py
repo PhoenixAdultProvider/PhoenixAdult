@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.swallowbay import SwallowBayClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ SCENE_HTML = """<html><head>
 @respx.mock
 async def test_search_direct_url() -> None:
     respx.get('https://swallowbay.com/video/wild-vr-session.html').mock(return_value=httpx.Response(200, text=SCENE_HTML))
-    results = await SwallowBayClient().search(SearchContext(title='Wild VR Session', encoded='Wild%20VR%20Session', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await SwallowBayClient().search(results, SearchContext(title='Wild VR Session', encoded='Wild%20VR%20Session', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild VR Session'
     assert results[0].scene_url == 'https://swallowbay.com/video/wild-vr-session.html'

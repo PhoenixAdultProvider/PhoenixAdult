@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
 from app.utils.searchengines import web_search_available
@@ -28,7 +28,7 @@ __testing__ = {'parse_caramel_date': _parse_caramel_date}
 
 
 class CaramelCashClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         candidates: list[str] = []
         if ctx.scene_id:
@@ -40,7 +40,6 @@ class CaramelCashClient(Client):
                 if clean not in candidates:
                     candidates.append(clean)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page:
@@ -60,52 +59,51 @@ class CaramelCashClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"content-title")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//div[contains(@class,"content-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         # Legacy uses the SECOND content-desc block.
-        return (scene.sel.xpath('(//div[contains(@class,"content-desc")])[2]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"content-desc")])[2]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"content-date")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
-            return _parse_caramel_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = _parse_caramel_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('string(.)').get() or '' for a in scene.sel.xpath('//div[contains(@class,"content-tags")]//a')]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [
             ActorResult(name=first_attr(a))
             for a in scene.sel.xpath('//section[contains(@class,"content-sec") and contains(@class,"backdrop")]//div[contains(@class,"main__models")]//a')
         ]
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector()
         for href in scene.sel.xpath('//section[contains(@class,"content-gallery-sec")]//a[@data-lightbox="gallery"]/@href').getall():
             coll['push'](href)
-        images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = coll['list']

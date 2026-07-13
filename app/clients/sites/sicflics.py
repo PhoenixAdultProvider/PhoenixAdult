@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -28,12 +28,12 @@ class SicflicsClient(Client):
         sources = list(loaded['sel'].xpath('//li[contains(@class,"col-sm-6") and contains(@class,"col-lg-4")]'))
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
-    async def build_search_results(self, source: Any, loaded: LoadedSearch) -> list[SearchResult]:
+    async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         title = first_text(source, './/div[contains(@class,"vidtitle")]/p[1]')
         img_url = first_attr(source, '(.//div[contains(@class,"vidthumb")]//a[contains(@class,"diagrad")]//img/@src)[1]')
         scene_id = first_attr(source, '(.//a[@data-movie]/@data-movie)[1]')
         if not title or not scene_id:
-            return []
+            return
         desc_raw = first_text(source, './/div[contains(@class,"collapse")]/p')
         description = desc_raw.split(':', 1)[1].strip() if ':' in desc_raw else desc_raw
         raw_date = first_text(source, './/div[contains(@class,"vidtitle")]/p[2]')
@@ -48,7 +48,7 @@ class SicflicsClient(Client):
             }
         )
         popup_url = f'{base}/v6/v6.pop.php?id={scene_id}'
-        return [
+        results.append(
             build_search_result(
                 title=title,
                 scene_url=popup_url,
@@ -57,7 +57,7 @@ class SicflicsClient(Client):
                 search_date=loaded.ctx.search_date,
                 cur_id=pack_cur_id([packed]),
             )
-        ]
+        )
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -78,42 +78,42 @@ class SicflicsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//h4[contains(@class,"red")]')
-        return raw.lower() or None
+        metadata.title = raw.lower() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return (self._packed(scene).get('description') or '').replace('\n', '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = (self._packed(scene).get('description') or '').replace('\n', '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[@title="Date Added"]')
         if not raw:
-            return None
+            return
         tail = raw.split(':', 1)[1].strip() if ':' in raw else raw
-        return iso_date(tail) if tail else None
+        metadata.release_date = iso_date(tail) if tail else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             (a.xpath('normalize-space(.)').get() or '').replace('#', '') for a in scene.sel.xpath('//div[contains(@class,"vidwrap")]//p//a')
         ]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = _actor_from_description(self._packed(scene).get('description') or '')
-        return [ActorResult(name=name)] if name else []
+        metadata.actors = [ActorResult(name=name)] if name else []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         img = (self._packed(scene).get('imgURL') or '').strip()
-        return [img] if img else []
+        metadata.raw_image_urls = [img] if img else []

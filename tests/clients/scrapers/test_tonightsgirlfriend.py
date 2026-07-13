@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.tonightsgirlfriend import TonightsGirlfriendClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_paginates_stops_short() -> None:
     respx.get(f'https://www.tonightsgirlfriend.com/pornstar/{slug}/?p=1').mock(return_value=httpx.Response(200, text=f'<html><body>{p1}</body></html>'))
     respx.get(f'https://www.tonightsgirlfriend.com/pornstar/{slug}/?p=2').mock(return_value=httpx.Response(200, text=f'<html><body>{p2}</body></html>'))
     p3 = respx.get(f'https://www.tonightsgirlfriend.com/pornstar/{slug}/?p=3').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await TonightsGirlfriendClient().search(SearchContext(title='jane doe and john smith', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await TonightsGirlfriendClient().search(results, SearchContext(title='jane doe and john smith', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 10
     assert results[0].scene_url == 'https://www.tonightsgirlfriend.com/scene/wild-0'
     assert results[0].title == 'Jane Doe'
@@ -37,7 +38,8 @@ async def test_search_multi_actor_title() -> None:
     respx.get('https://www.tonightsgirlfriend.com/pornstar/jane-doe/?p=1').mock(
         return_value=httpx.Response(200, text=f'<html><body>{_row("/scene/threesome", "Jane Doe, Mary Roe", "2024-03-05")}</body></html>')
     )
-    results = await TonightsGirlfriendClient().search(SearchContext(title='jane doe', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await TonightsGirlfriendClient().search(results, SearchContext(title='jane doe', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Jane Doe, Mary Roe'
 

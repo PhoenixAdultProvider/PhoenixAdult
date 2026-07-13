@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.brandnewamateurs import BrandNewAmateursClient
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ DETAIL_HTML = """<html><head>
 async def test_search_lists_model_scenes() -> None:
     model_url = 'https://brandnewamateurs.com/models/JaneDoe.html'
     respx.get(model_url).mock(return_value=httpx.Response(200, text=MODEL_HTML))
-    results = await BrandNewAmateursClient().search(SearchContext(title='Jane Doe', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await BrandNewAmateursClient().search(results, SearchContext(title='Jane Doe', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'First Scene'
     assert results[0].scene_url == 'https://brandnewamateurs.com/scenes/first.html'

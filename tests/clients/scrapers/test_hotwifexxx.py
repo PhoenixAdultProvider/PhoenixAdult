@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import hotwifexxx as hwxxx_module
 from app.clients.sites.hotwifexxx import HotwifeXXXClient
 from app.registry import find_site
@@ -34,7 +34,8 @@ async def test_search_web_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(hwxxx_module, 'web_search', _web)
     respx.get(SCENE_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await HotwifeXXXClient().search(SearchContext(title='wild wife', encoded='wild-wife', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await HotwifeXXXClient().search(results, SearchContext(title='wild wife', encoded='wild-wife', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Wife'
     assert results[0].scene_url == SCENE_URL

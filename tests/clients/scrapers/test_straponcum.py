@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.straponcum import StraponCumClient
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ SCENE_HTML = """<html><body>
 @respx.mock
 async def test_search_direct_url() -> None:
     respx.get('https://straponcum.com/updates/Wild-Strapon.html').mock(return_value=httpx.Response(200, text=SCENE_HTML))
-    results = await StraponCumClient().search(SearchContext(title='Wild Strapon', encoded='Wild%20Strapon', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await StraponCumClient().search(results, SearchContext(title='Wild Strapon', encoded='Wild%20Strapon', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Strapon'
     assert results[0].scene_url == 'https://straponcum.com/updates/Wild-Strapon.html'

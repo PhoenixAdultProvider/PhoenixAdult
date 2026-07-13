@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.adultprime import AdultPrimeClient, __testing__
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ async def test_search_keyword_video_and_performer() -> None:
     respx.get('https://adultprime.com/studios/search?type=performer&q=cool+scene').mock(
         return_value=httpx.Response(200, text='<ul id="studio-videos-container"></ul>')
     )
-    results = await AdultPrimeClient().search(_ctx(search_date='2020-08-27'))
+    results: list[SearchResult] = []
+    await AdultPrimeClient().search(results, _ctx(search_date='2020-08-27'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://adultprime.com/studios/video/9001'
@@ -45,7 +46,8 @@ async def test_search_direct_scene_id() -> None:
             <p class="update-info-line regular"><i class="fa calendar"></i><b>27.08.2020</b></p>""",
         )
     )
-    results = await AdultPrimeClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await AdultPrimeClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

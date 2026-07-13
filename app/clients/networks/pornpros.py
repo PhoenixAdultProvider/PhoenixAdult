@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, slugify
 
@@ -27,7 +27,7 @@ class PornProsClient(Client):
                 return data
         return None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         title = ctx.title
         if ctx.site_info.name != 'Casting Couch-X':
@@ -38,9 +38,9 @@ class PornProsClient(Client):
         slug = _query_slug(title)
         release = await self._release(base, slug, ctx.capture)
         if not release:
-            return []
+            return
         date = iso_date(release.get('releasedAt') or '')
-        return [
+        results.append(
             build_search_result(
                 title=(release.get('title') or '').strip(),
                 scene_url=f'{base}/api/releases/{slug}',
@@ -49,7 +49,7 @@ class PornProsClient(Client):
                 search_date=ctx.search_date,
                 cur_id=pack_cur_id([slug, date or '']),
             )
-        ]
+        )
 
     # ── Context loader — re-fetch the release JSON by slug ──────────────────────
 
@@ -70,37 +70,36 @@ class PornProsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (str(self._r(scene).get('title') or '')).strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = str(self._r(scene).get('title') or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         summary = str(self._r(scene).get('description') or '').strip()
-        return summary if summary and summary.lower() != 'n/a' else None
+        metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'PornPros'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'PornPros'
 
     def _tagline(self, scene: LoadedScene) -> str:
         return str((self._r(scene).get('sponsor') or {}).get('name') or '').strip()
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline(scene) or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         t = self._tagline(scene)
-        return [t] if t else None
+        metadata.collections = [t] if t else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = iso_date(self._r(scene).get('releasedAt') or '')
-        return d or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
+        metadata.release_date = d or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        genres = self.dedup_strings(
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = self.dedup_strings(
             [str(g).replace('_', ' ').replace('-', ' ').strip() for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]]
         )
-        return genres or None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for a in self._r(scene).get('actors') or []:
@@ -110,9 +109,9 @@ class PornProsClient(Client):
                 if name and name not in seen:
                     seen.add(name)
                     actors.append(ActorResult(name=name))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         # Full URLs kept incl. query strings (image-URL policy); legacy '?'-strip dropped.
         release = self._r(scene)
         coll = self.image_collector()
@@ -120,4 +119,4 @@ class PornProsClient(Client):
         for img in release.get('thumbUrls') or []:
             coll['push'](img)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

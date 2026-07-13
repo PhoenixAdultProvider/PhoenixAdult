@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.puba import PubaClient
 from app.registry import find_site
 
@@ -26,7 +26,8 @@ DETAIL_HTML = """<html><body>
 async def test_search_direct_by_sceneid() -> None:
     url = 'https://www.puba.com/pornstarnetwork/show_video.php?galid=42'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await PubaClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='42'))
+    results: list[SearchResult] = []
+    await PubaClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='42'))
     assert len(results) == 1
     assert results[0].title == 'Network Scene'
     assert results[0].scene_url == url

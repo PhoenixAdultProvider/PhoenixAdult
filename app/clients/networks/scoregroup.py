@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
@@ -45,27 +45,28 @@ class ScoreGroupClient(Client):
         sources.extend({'_url': u} for u in candidate_urls)
         return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
 
-    async def build_search_results(self, source: Any, loaded: LoadedSearch) -> list[SearchResult]:
+    async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         ctx = loaded.ctx
         if isinstance(source, dict) and '_url' in source:
             page = await self.fetch_and_load(source['_url'], FetchCtx(capture=ctx.capture), f'[{loaded.site.name}] candidate {source["_url"]}')
             if not page:
-                return []
+                return
             title = (page['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
             if not title or '404' in title or _LATEST_RE.search(title):
-                return []
+                return
             packed = json.dumps({'url': source['_url'], 'date': ctx.search_date, 'title': title})
-            return [
+            results.append(
                 build_search_result(
                     title=_clean_title(title), scene_url=source['_url'], query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([packed])
                 )
-            ]
+            )
+            return
 
         anchor = source.xpath('(.//a[contains(@class,"title")])[1]')
         raw_title = first_attr(anchor)
         href = first_attr(anchor, '@href').split('?')[0]
         if not raw_title or not href:
-            return []
+            return
         scene_url = absolute_url(href, loaded.site.base_url)
         m = _ID_RE.search(scene_url)
         score = 100 if ctx.scene_id and m and m.group(1) == ctx.scene_id else None
@@ -78,11 +79,11 @@ class ScoreGroupClient(Client):
                 'img': first_attr(source, '(.//img)[1]/@src'),
             }
         )
-        return [
+        results.append(
             build_search_result(
                 title=_clean_title(raw_title), scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=score, cur_id=pack_cur_id([packed])
             )
-        ]
+        )
 
     # ── Context loader ──────────────────────────────────────────────────────────
 
@@ -119,46 +120,50 @@ class ScoreGroupClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         packed, is_latest = self._data(scene)
         if is_latest and packed.get('title'):
-            return _clean_title(packed['title'])
+            metadata.title = _clean_title(packed['title'])
+            return
         raw = (scene.sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not raw:
             names = [n for n in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div//span[@class="value"]/a')) if n]
             raw = ' and '.join(names)
-        return _clean_title(raw) or None if raw else None
+        metadata.title = _clean_title(raw) if raw else ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (
+            scene.sel.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or ''
+        ).strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
         if raw:
-            return iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             a.xpath('normalize-space(.)').get()
             for a in scene.sel.xpath('//div[@class="mb-3"]//a | //div[contains(@class,"desc")]//a[contains(@href,"tag") or contains(@href,"category")]')
         ]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         packed, is_latest = self._data(scene)
         actors: list[ActorResult] = []
@@ -170,7 +175,8 @@ class ScoreGroupClient(Client):
                 if name and name not in seen:
                     seen.add(name)
                     actors.append(ActorResult(name=name))
-            return actors or None
+            metadata.actors = actors or []
+            return
 
         base = scene.site.base_url
         for el in scene.sel.xpath('//div//span[@class="value"]/a'):
@@ -188,9 +194,9 @@ class ScoreGroupClient(Client):
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):
             actors.append(ActorResult(name='Christy Marks'))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -227,4 +233,4 @@ class ScoreGroupClient(Client):
         for xpath in xpaths:
             for raw in scene.sel.xpath(xpath).getall():
                 push(raw)
-        return images or None
+        metadata.raw_image_urls = images or []

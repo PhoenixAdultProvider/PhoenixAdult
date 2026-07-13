@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -37,14 +37,13 @@ def _clean_srcset_image(raw: str) -> str:
 
 
 class DorcelClubClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title))
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
         if not loaded:
-            return []
+            return
         sel = loaded['sel']
-        results: list[SearchResult] = []
 
         def card_result(title: str, scene_url: str) -> SearchResult:
             return build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url]))
@@ -76,41 +75,39 @@ class DorcelClubClient(Client):
                 scene_url = absolute_url(scene_href, ctx.site_info.base_url)
                 results.append(card_result(scene_title, scene_url))
 
-        return results
-
     # ── Detail field hooks (branch on movie vs scene URL) ─────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//span[contains(@class,"full")]') or None
+        metadata.summary = first_text(scene.sel, '//span[contains(@class,"full")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         out = [scene.site.name]
         movie_name = first_text(scene.sel, '//span[contains(@class,"movie")]/a')
         if movie_name:
             out.append(movie_name)
-        return out
+        metadata.collections = out
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         if _is_movie_url(scene.url):
             raw = first_text(scene.sel, '//span[contains(@class,"out_date")]').replace('Year :', '').strip()
         else:
             raw = first_text(scene.sel, '//span[contains(@class,"publish_date")]')
-        return iso_date(raw) or None
+        metadata.release_date = iso_date(raw) or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = list(_FIXED_GENRES)
         if not _is_movie_url(scene.url):
@@ -121,9 +118,9 @@ class DorcelClubClient(Client):
                 genres.append('Foursome')
             elif count > 4:
                 genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         if _is_movie_url(scene.url):
             els = scene.sel.xpath('//div[contains(@class,"actor") and contains(@class,"thumbnail")]/a/div[contains(@class,"name")]')
@@ -137,14 +134,14 @@ class DorcelClubClient(Client):
                 continue
             seen.add(name)
             actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[contains(@class,"director")]').replace('Director :', '').strip()
-        return [ActorResult(name=raw)] if raw else None
+        metadata.directors = [ActorResult(name=raw)] if raw else None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -159,4 +156,4 @@ class DorcelClubClient(Client):
                 add(cover)
         for raw in scene.sel.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
             add((raw or '').strip())
-        return images
+        metadata.raw_image_urls = images

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.playboyplus import PlayboyPlusClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -33,7 +33,8 @@ async def test_search_cards() -> None:
       </li></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await PlayboyPlusClient().search(SearchContext(title='golden', encoded='golden', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await PlayboyPlusClient().search(results, SearchContext(title='golden', encoded='golden', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Golden Hour'
     assert results[0].scene_url == 'https://www.playboyplus.com/scene/golden'

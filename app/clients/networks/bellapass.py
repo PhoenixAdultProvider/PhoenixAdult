@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
@@ -44,7 +44,7 @@ __testing__ = {'strip_punct': _strip_punct, 'studio_for': _studio_for, 'title_se
 class BellaPassClient(Client):
     # ── Search (direct URL + on-site search + web-search augmentation) ───────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         candidates: list[str] = [f'{base}/trailers/{slugify(ctx.title)}.html']
 
@@ -73,7 +73,6 @@ class BellaPassClient(Client):
                     candidates.append(url)
 
         primary = _title_selector_for(ctx.site_info.name)
-        results: list[SearchResult] = []
         for scene_url in candidates:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'GET {scene_url}')
             if not page:
@@ -84,7 +83,6 @@ class BellaPassClient(Client):
             date_raw = (page['sel'].xpath('(//div[contains(@class,"videoInfo")]//p)[1]').xpath('string(.)').get() or '').strip()
             release = iso_date(date_raw) or ctx.search_date
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=release, search_date=ctx.search_date))
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
@@ -92,29 +90,29 @@ class BellaPassClient(Client):
         assert scene.sel is not None
         return _title_from(scene.sel, _title_selector_for(scene.site.name))
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return self._title_of(scene) or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = self._title_of(scene) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _studio_for(scene.site.name)
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _studio_for(scene.site.name)
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         # Only the umbrella keeps a tagline; sub-brands stand alone (legacy).
-        return scene.site.name if _studio_for(scene.site.name) == STUDIO else None
+        metadata.tagline = scene.site.name if _studio_for(scene.site.name) == STUDIO else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"videoInfo")]//p)[1]').xpath('string(.)').get() or '').strip()
-        return iso_date(raw) or scene.scene_date or None
+        metadata.release_date = iso_date(raw) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [
             g
@@ -128,9 +126,9 @@ class BellaPassClient(Client):
             genres.append('Foursome')
         elif cast > 4:
             genres.append('Orgy')
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         refs: list[tuple[str, str]] = []
@@ -145,9 +143,9 @@ class BellaPassClient(Client):
             rel = first_attr(loaded['sel'], '(//div[@class="profile-pic"]//img)[1]/@src0_3x') if loaded else ''
             photo = (rel if rel.startswith('http') else base + rel) if rel else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         out: list[str] = []
@@ -190,4 +188,4 @@ class BellaPassClient(Client):
             if preview:
                 for src in preview['sel'].xpath(f'//img[@id="{set_id}"]/@src0_3x').getall():
                     add(src)
-        return out or None
+        metadata.raw_image_urls = out or []

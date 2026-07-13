@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id
 from app.utils.logging.logger import logger
 
@@ -29,66 +29,66 @@ def _strip_suffix(name: str | None) -> str:
 
 
 class VirtualRealClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         slug = ctx.title.lower().replace(' ', '-')
         if not slug:
-            return []
+            return
         search_url = f'{base}{ctx.site_info.search_path}{slug}'
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct {search_url}')
         if not loaded:
-            return []
+            return
         ld = _ld_from_sel(loaded['sel'])
         if not ld:
-            return []
+            return
         title = _strip_suffix(ld.get('name'))
         if not title:
-            return []
+            return
         scene_url = (ld.get('url') or '').strip() or search_url
         date = iso_date(ld['datePublished']) if ld.get('datePublished') else None
         logger.info(ctx.site_info.name, f'VirtualReal direct hit "{title}" ({scene_url})')
-        return [
+        results.append(
             build_search_result(
                 title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url, date or ''])
             )
-        ]
+        )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ld = _last_json_ld(scene)
-        return _strip_suffix(ld.get('name') if ld else None) or None
+        metadata.title = _strip_suffix(ld.get('name') if ld else None) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ld = _last_json_ld(scene)
-        return ((ld.get('description') if ld else '') or '').strip() or None
+        metadata.summary = ((ld.get('description') if ld else '') or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ld = _last_json_ld(scene)
         if ld and ld.get('datePublished'):
             parsed = iso_date(ld['datePublished'])
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ld = _last_json_ld(scene)
         keywords = (ld.get('keywords') if ld else '') or ''
         parts: list[str | None] = list(keywords.split(','))
-        return self.dedup_strings(parts)
+        metadata.genres = self.dedup_strings(parts)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         ld = _last_json_ld(scene)
         names = [(a.get('name') or '').strip() for a in (ld.get('actors') if ld else None) or [] if (a.get('name') or '').strip()]
@@ -100,9 +100,9 @@ class VirtualRealClient(Client):
                 continue
             seen.add(name)
             actors.append(ActorResult(name=name, photo_url=photos[idx] if idx < len(photos) else ''))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         ld = _last_json_ld(scene)
@@ -114,4 +114,4 @@ class VirtualRealClient(Client):
         push((ld.get('image') if ld else '') or '')
         for href in scene.sel.xpath('//figure[@itemprop="associatedMedia"]//a/@href').getall():
             push(href)
-        return images
+        metadata.raw_image_urls = images

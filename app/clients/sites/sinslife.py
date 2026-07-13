@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -36,42 +36,43 @@ class SinsLifeClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"section")]//h1') or None
+        metadata.title = first_text(scene.sel, '//div[contains(@class,"section")]//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _SUMMARY_XP) or None
+        metadata.summary = first_text(scene.sel, _SUMMARY_XP) or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, _DATE_XP)
         if raw.lower().startswith('release date'):
             raw = raw[len('release date') :].lstrip(': ').strip()
-        return iso_date(raw, '%B %d, %Y') if raw else None
+        metadata.release_date = iso_date(raw, '%B %d, %Y') if raw else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         count = len(scene.sel.xpath(_ACTORS_XP))
         if count == 3:
-            return ['Threesome']
-        if count == 4:
-            return ['Foursome']
-        if count > 4:
-            return ['Orgy']
-        return []
+            metadata.genres = ['Threesome']
+        elif count == 4:
+            metadata.genres = ['Foursome']
+        elif count > 4:
+            metadata.genres = ['Orgy']
+        else:
+            metadata.genres = []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -80,11 +81,11 @@ class SinsLifeClient(Client):
             if name and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         src = (scene.sel.xpath(_POSTER_XP + '/@src').get() or '').strip()
         if not src:
-            return []
-        return [src if src.startswith('http') else f'https:{src}']
+            return
+        metadata.raw_image_urls = [src if src.startswith('http') else f'https:{src}']

@@ -4,7 +4,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -49,39 +49,39 @@ class MomPOVClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//a[contains(@class,"title")]') or first_attr(scene.sel, '//meta[@property="og:title"]/@content') or None
+        metadata.title = first_text(scene.sel, '//a[contains(@class,"title")]') or first_attr(scene.sel, '//meta[@property="og:title"]/@content') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"entry_content")]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"entry_content")]//p') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'MomPOV'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'MomPOV'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _holder_date(scene.sel) or scene.scene_date or None
+        metadata.release_date = _holder_date(scene.sel) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['MILF']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['MILF']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return []
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         first_div = scene.sel.xpath('//div[@id="inner_content"]/div')
         if not first_div:
-            return []
+            return
         raw = first_attr(first_div[0], '(.//a//img/@src)[1]')
         if not raw:
-            return []
-        return [absolute_url(raw, scene.site.base_url)]
+            return
+        metadata.raw_image_urls = [absolute_url(raw, scene.site.base_url)]

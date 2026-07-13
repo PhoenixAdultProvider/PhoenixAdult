@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.virtualreal import VirtualRealClient
 from app.registry import find_site
 
@@ -25,7 +25,8 @@ async def test_search_last_ld_strip_suffix() -> None:
       {_ld({'name': 'Wild Scene | VirtualRealPorn', 'url': url, 'datePublished': '2024-01-05', 'actors': [{'name': 'Jane Doe'}]})}
     </head><body></body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await VirtualRealClient().search(SearchContext(title='wild scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VirtualRealClient().search(results, SearchContext(title='wild scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == url

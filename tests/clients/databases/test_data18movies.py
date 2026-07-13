@@ -8,7 +8,7 @@ import respx
 
 import app.clients.aggregators.data18movies as d18m_module
 from app.clients.aggregators.data18movies import Data18MoviesClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Data18 Movies')
@@ -54,7 +54,8 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search:
     monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     q = quote('Big Movie')
     respx.get(f'https://www.data18.com/sys/live.php?index=&key={q}&key2={q}&next=1&page=0').mock(return_value=httpx.Response(200, text=SEARCH_PAGE))
-    results = await Data18MoviesClient().search(SearchContext(title='Big Movie', encoded=q, search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await Data18MoviesClient().search(results, SearchContext(title='Big Movie', encoded=q, search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Big Movie'
     assert results[0].scene_url == 'https://www.data18.com/movies/12345'
@@ -66,9 +67,8 @@ async def test_search_direct_id(monkeypatch: pytest.MonkeyPatch, no_web_search: 
     monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/movies/12345').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await Data18MoviesClient().search(
-        SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='12345', full_title='12345')
-    )
+    results: list[SearchResult] = []
+    await Data18MoviesClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='12345', full_title='12345'))
     direct = [r for r in results if r.scene_url == 'https://www.data18.com/movies/12345']
     assert direct and direct[0].score == 100
     assert direct[0].title == 'Big Movie'
@@ -132,8 +132,9 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(d18m_module, 'web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     respx.get('https://www.data18.com/movies/9999').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await Data18MoviesClient().search(
-        SearchContext(title='Big Movie', encoded='Big+Movie', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Big Movie')
+    results: list[SearchResult] = []
+    await Data18MoviesClient().search(
+        results, SearchContext(title='Big Movie', encoded='Big+Movie', search_site=SITE.name, site_info=SITE, scene_id='9999', full_title='9999 Big Movie')
     )
     by_url = {r.scene_url: r.score for r in results}
     assert by_url['https://www.data18.com/movies/9999'] == 100

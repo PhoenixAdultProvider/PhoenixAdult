@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.dorcelclub import DorcelClubClient
 from app.registry import find_site
 
@@ -50,7 +50,8 @@ async def test_search_scenes_and_movie_subscenes() -> None:
     movie_url = 'https://www.dorcelclub.com/en/porn-movie/9/big-movie'
     respx.get(search_url).mock(return_value=httpx.Response(200, text=SEARCH_HTML))
     respx.get(movie_url).mock(return_value=httpx.Response(200, text=MOVIE_HTML))
-    results = await DorcelClubClient().search(SearchContext(title='big', encoded='big', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await DorcelClubClient().search(results, SearchContext(title='big', encoded='big', search_site=SITE.name, site_info=SITE))
     titles = [r.title for r in results]
     assert titles == ['Scene One', 'Big Movie - Full Movie', 'Movie Scene A']
     assert results[1].scene_url == movie_url

@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.vna as mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.vna import VNAClient
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ _SCENE = """<html><body>
 async def test_search_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod, 'web_search_available', lambda: False)
     respx.get('https://sarajay.com/videos/12345').mock(return_value=httpx.Response(200, text=_SCENE))
-    results = await VNAClient().search(_ctx(scene_id='12345'))
+    results: list[SearchResult] = []
+    await VNAClient().search(results, _ctx(scene_id='12345'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://sarajay.com/videos/12345'

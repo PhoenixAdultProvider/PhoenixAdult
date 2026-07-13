@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import lustreality as lr_module
 from app.clients.sites.lustreality import LustRealityClient
 from app.registry import find_site
@@ -34,7 +34,8 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lr_module, 'web_search', _no_web)
     url = 'https://www.lustreality.com/virtualreality/scene/id/vr-lust'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await LustRealityClient().search(SearchContext(title='VR Lust', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await LustRealityClient().search(results, SearchContext(title='VR Lust', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'VR Lust'
     assert results[0].scene_url == url

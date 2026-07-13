@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import girlsrimming as gr_module
 from app.clients.sites.girlsrimming import GirlsRimmingClient
 from app.registry import find_site
@@ -32,7 +32,8 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gr_module, 'web_search_urls', _no_web)
     url = 'https://www.girlsrimming.com/tour/trailers/rim-session.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await GirlsRimmingClient().search(SearchContext(title='Rim Session', encoded='', search_site=SITE.name, site_info=SITE, search_date='2021-05-05'))
+    results: list[SearchResult] = []
+    await GirlsRimmingClient().search(results, SearchContext(title='Rim Session', encoded='', search_site=SITE.name, site_info=SITE, search_date='2021-05-05'))
     assert len(results) == 1
     assert results[0].title == 'Rim Session'
     assert results[0].scene_url == url

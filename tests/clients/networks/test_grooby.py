@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.grooby as grooby_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Grooby Girls')
@@ -27,7 +27,8 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get('https://www.groobygirls.com/tour/trailers/cool.html').mock(
         return_value=httpx.Response(200, text='<div class="trailer_videoinfo"><h3>Cool Scene</h3></div><div class="setdesc">Added - March 4, 2021</div>')
     )
-    results = await grooby_mod.GroobyClient().search(_ctx())
+    results: list[SearchResult] = []
+    await grooby_mod.GroobyClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.groobygirls.com/tour/trailers/cool.html'

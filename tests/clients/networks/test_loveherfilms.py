@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.loveherfilms import LoveHerFilmsClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
             text='<div class="item-video-overlay"><a href="/scene/77" title="Cool Scene"></a><p class="video-date">March 4, 2021</p></div>',
         )
     )
-    results = await LoveHerFilmsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await LoveHerFilmsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.loveherfeet.com/scene/77'

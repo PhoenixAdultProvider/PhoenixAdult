@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.newsensationsother import NewSensationsOtherClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search() -> None:
             text='<div class="update_details"><a href="/scene/7.html">Cool Scene</a><div class="date_small">Date: 03/04/2021</div></div>',
         )
     )
-    results = await NewSensationsOtherClient().search(_ctx())
+    results: list[SearchResult] = []
+    await NewSensationsOtherClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://thetabutales.com/scene/7.html'

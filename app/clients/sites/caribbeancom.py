@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -33,33 +33,33 @@ class CaribbeancomClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//title') or None
+        metadata.title = first_text(scene.sel, '//title') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'caribbeancom'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'caribbeancom'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return 'caribbeancom'
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = 'caribbeancom'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['caribbeancom']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['caribbeancom']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//span[@itemprop="uploadDate"]')
         if not raw:
-            return None
+            return
         m = _UPLOAD_DATE_RE.search(raw)
-        return f'{m.group(1)}-{m.group(2)}-{m.group(3)}' if m else None
+        metadata.release_date = f'{m.group(1)}-{m.group(2)}-{m.group(3)}' if m else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//a[@itemprop="genre"]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for a in scene.sel.xpath('//a[@itemprop="actor"]'):
@@ -67,9 +67,9 @@ class CaribbeancomClient(Client):
             for name in (n.strip() for n in text.split(',')):
                 if name:
                     entries.append(ActorResult(name=name))
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         constructed = scene.url.replace('/eng', '').replace('index.html', 'images/poster_en.jpg')
@@ -82,4 +82,4 @@ class CaribbeancomClient(Client):
             abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

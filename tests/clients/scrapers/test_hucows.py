@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.hucows import HucowsClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ async def test_search_keyword_articles() -> None:
       </article>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await HucowsClient().search(SearchContext(title='milk time', encoded='milk+time', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await HucowsClient().search(results, SearchContext(title='milk time', encoded='milk+time', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Milk Time'
     assert results[0].scene_url == 'https://www.hucows.com/scene/milk-time'

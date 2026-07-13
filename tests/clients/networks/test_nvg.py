@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.nvg as nvg_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.nvg import NVGClient
 from app.registry import find_site
 
@@ -40,7 +40,8 @@ def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
 async def test_search_fallback_to_page_data(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(nvg_mod, 'web_search_available', lambda: False)
     respx.get(nvg_mod._PAGE_DATA_URL).mock(return_value=httpx.Response(200, json=_PAGE_DATA))
-    results = await NVGClient().search(_ctx(scene_id='123'))
+    results: list[SearchResult] = []
+    await NVGClient().search(results, _ctx(scene_id='123'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

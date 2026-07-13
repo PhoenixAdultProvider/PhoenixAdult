@@ -6,7 +6,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
@@ -135,7 +135,7 @@ class AdultEmpireClient(Client):
         logger.debug('AdultEmpire', f'_load: HTTP {loaded.get("status")} {len(loaded.get("html") or "")} bytes for {url}')
         return loaded['sel']
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         name = ctx.site_info.name
         base = ctx.site_info.base_url.rstrip('/')
         await self._ensure_age_confirmed(base)
@@ -180,7 +180,6 @@ class AdultEmpireClient(Client):
                 logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {added} new movie URL(s)')
 
         logger.debug(name, f'movie URLs to process: {len(movie_urls)}')
-        results: list[SearchResult] = []
         for movie_url, result_type in movie_urls.items():
             sel = await self._load(movie_url, ctx.capture, f'[{name}] movie {movie_url}')
             if sel is None:
@@ -239,7 +238,6 @@ class AdultEmpireClient(Client):
                     )
                 )
         logger.debug(name, f'search "{ctx.title}" -> {len(results)} result(s)')
-        return results
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -262,24 +260,24 @@ class AdultEmpireClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         title = _h1_title(scene.sel)
         if not title:
-            return None
+            return
         scene_num = self._packed(scene).get('sceneNum')
-        return f'{title} [Scene {scene_num}]' if scene_num is not None else title
+        metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in scene.sel.xpath('//div[@class="container"][.//h2]//parent::p')) if t]
-        return '\n'.join(parts) or None
+        metadata.summary = '\n'.join(parts) or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _studio(scene.sel) or None
+        metadata.studio = _studio(scene.sel) or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline_value(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         series = first_attr(scene.sel, '(//h2//a[@label="Series"])[1]/text()')
         if not series:
@@ -290,13 +288,16 @@ class AdultEmpireClient(Client):
         cleaned = re.sub(r'\(.*\)', '', parts[1]).strip()
         return cleaned or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_value(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         collections: list[str] = []
         studio = _studio(scene.sel)
         if studio:
             collections.append(studio)
-        tagline = await self.fetch_tagline(scene)
+        tagline = self._tagline_value(scene)
         if tagline:
             if tagline not in collections:
                 collections.append(tagline)
@@ -304,18 +305,18 @@ class AdultEmpireClient(Client):
             h1 = _h1_title(scene.sel)
             if h1 and h1 not in collections:
                 collections.append(h1)
-        return collections or None
+        metadata.collections = collections or None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _release_date(scene.sel)
+        metadata.release_date = _release_date(scene.sel)
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//li//a[@label="Category"]')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         packed = self._packed(scene)
         split_scene = packed.get('sceneNum') is not None
@@ -344,9 +345,9 @@ class AdultEmpireClient(Client):
 
         for extra_name in _SCENE_ACTORS.get(re.sub(r'.*/', '', packed.get('movieURL', '')), []):
             add(extra_name)
-        return actors
+        metadata.actors = actors or []
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         directors: list[ActorResult] = []
         seen: set[str] = set()
@@ -355,9 +356,9 @@ class AdultEmpireClient(Client):
             if name and name not in seen:
                 seen.add(name)
                 directors.append(ActorResult(name=name))
-        return directors or None
+        metadata.directors = directors or None
 
-    async def fetch_producers(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         producers: list[ActorResult] = []
         seen: set[str] = set()
@@ -366,9 +367,9 @@ class AdultEmpireClient(Client):
             if name and name not in seen:
                 seen.add(name)
                 producers.append(ActorResult(name=name))
-        return producers or None
+        metadata.producers = producers or None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         cover = first_attr(scene.sel, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
@@ -389,4 +390,4 @@ class AdultEmpireClient(Client):
             h = (href or '').strip()
             if h and h not in images:
                 images.append(h)
-        return images
+        metadata.raw_image_urls = images or []

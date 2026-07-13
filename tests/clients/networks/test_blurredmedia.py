@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.blurredmedia import BlurredMediaClient
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search() -> None:
             </article>""",
         )
     )
-    results = await BlurredMediaClient().search(_ctx())
+    results: list[SearchResult] = []
+    await BlurredMediaClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://gayhoopla.com/videos/77/cool-scene'

@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit
 
 from app.clients.aggregators.data18 import Data18Client, mapping_slug
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.single_flight import SingleFlight
@@ -97,11 +97,11 @@ class Project1ServiceClient(Client):
 
         return await _TOKENS.get(host, _fetch)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         token = await self._get_token(ctx.site_info)
         if not token:
             logger.warn(ctx.site_info.name, 'no Instance token; aborting search')
-            return []
+            return
         headers = {'Instance': token}
 
         scene_id: str | None = None
@@ -113,16 +113,14 @@ class Project1ServiceClient(Client):
 
         match_target_key = _normalize(ctx.search_site or ctx.site_info.name)
         forced_sub = _FORCED_SUBSITES.get(match_target_key)
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         if scene_id:
             await self._search_phase(ctx, headers, f'id={quote(scene_id)}', scene_id, q, match_target_key, forced_sub, results, seen)
             if any(r.score == 100 for r in results):
-                return results
+                return
         if q or not scene_id:
             await self._search_phase(ctx, headers, f'search={quote(q)}', scene_id, q, match_target_key, forced_sub, results, seen)
-        return results
 
     async def _search_phase(
         self,
@@ -185,7 +183,7 @@ class Project1ServiceClient(Client):
                     )
                 )
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
         scene_id = parts[0]
         scene_type = parts[1] if len(parts) > 1 else 'scene'
@@ -202,7 +200,13 @@ class Project1ServiceClient(Client):
         releases = body.get('result') or [] if isinstance(body, dict) else []
         if not releases or not isinstance(releases[0], dict):
             return None
-        detail = releases[0]
+        return LoadedScene(url=url, site=site, capture=capture, extra={'detail': releases[0], 'headers': headers}, subsite=ctx.subsite if ctx else None)
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        detail = scene.extra['detail']
+        headers = scene.extra['headers']
+        capture = scene.capture
 
         title = (detail.get('title') or '').strip().replace('�', "'")
         summary = detail.get('description') or (detail.get('parent') or {}).get('description') or ''
@@ -242,24 +246,22 @@ class Project1ServiceClient(Client):
         if site.scraper_config.data18_enrichment and env.data18_enabled:
             self._data18 = self._data18 or Data18Client()
             date_obj = datetime.fromisoformat(release_date) if release_date else None
-            search_sub = sub_site or (ctx.subsite if ctx else None)
+            search_sub = sub_site or scene.subsite
             providers = [p for p in (site.name, search_sub) if p]
             data18_url = await self._data18.enrich_images(
                 scope=site.name, images=raw_images, scene_id=mapping_slug(title, search_sub), title=title, providers=providers, scene_date=date_obj
             )
 
-        return SceneDetail(
-            title=title,
-            summary=summary,
-            studio=studio,
-            tagline=tagline,
-            release_date=release_date,
-            collections=collections,
-            genres=genres,
-            actors=actors,
-            raw_image_urls=raw_images,
-            data18_url=data18_url,
-        )
+        metadata.title = title
+        metadata.summary = summary
+        metadata.studio = studio
+        metadata.tagline = tagline
+        metadata.release_date = release_date
+        metadata.collections = collections
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images
+        metadata.data18_url = data18_url
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'

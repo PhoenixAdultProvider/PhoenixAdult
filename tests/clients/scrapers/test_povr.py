@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.povr import POVRClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -37,7 +37,8 @@ async def test_search_cards() -> None:
       </div></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await POVRClient().search(SearchContext(title='encounter', encoded='encounter', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await POVRClient().search(results, SearchContext(title='encounter', encoded='encounter', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'VR Encounter'
     assert results[0].scene_url == 'https://povr.com/scene/vr-encounter'

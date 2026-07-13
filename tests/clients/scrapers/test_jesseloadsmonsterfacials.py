@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.jesseloadsmonsterfacials import JesseLoadsMonsterFacialsClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -27,7 +27,8 @@ TOUR_HTML = """<html><body>
 @respx.mock
 async def test_search_walks_tour() -> None:
     respx.get('http://jesseloadsmonsterfacials.com/visitors/tour_01.html').mock(return_value=httpx.Response(200, text=TOUR_HTML))
-    results = await JesseLoadsMonsterFacialsClient().search(SearchContext(title='aaliyah', encoded='aaliyah', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JesseLoadsMonsterFacialsClient().search(results, SearchContext(title='aaliyah', encoded='aaliyah', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Aaliyah Love'
     assert results[0].release_date == '2021-06-06'

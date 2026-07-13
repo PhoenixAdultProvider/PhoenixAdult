@@ -2,21 +2,20 @@ from __future__ import annotations
 
 import json
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class BrandNewAmateursClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         actor_url = f'{base}/models/{ctx.title.replace(" ", "")}.html'
         loaded = await self.fetch_and_load(actor_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model "{ctx.title}"')
         if not loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"item-video")]'):
             title = first_attr(card, '(.//div[contains(@class,"item-thumb")]//a/@title)[1]')
             href = first_attr(card, '(.//div[contains(@class,"item-thumb")]//a/@href)[1]')
@@ -33,7 +32,6 @@ class BrandNewAmateursClient(Client):
                     cur_id=pack_cur_id([packed]),
                 )
             )
-        return results
 
     # ── Context loader (JSON-packed payload carries the actor page URL) ───────
 
@@ -58,40 +56,40 @@ class BrandNewAmateursClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h3') or None
+        metadata.title = first_text(scene.sel, '//h3') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or ''
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//ul[li[contains(.,"Tags:")]]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         poster = first_attr(scene.sel, '(//meta[contains(@name,"twitter:image")]/@content)[1]')
         if not poster:
-            return []
-        return [absolute_url(poster, scene.site.base_url)]
+            return
+        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)]
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actor_url = scene.extra if isinstance(scene.extra, str) else ''
         if not actor_url:
-            return []
+            return
         model = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] model page')
         if not model:
-            return []
+            return
         name = first_text(model['sel'], '//h3')
         if not name:
-            return []
+            return
         photo = first_attr(model['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
         if photo and not photo.startswith('http'):
             photo = absolute_url(photo, scene.site.base_url)
-        return [ActorResult(name=name, photo_url=photo)]
+        metadata.actors = [ActorResult(name=name, photo_url=photo)]

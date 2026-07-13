@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 import httpx2
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import api_date, build_search_result
@@ -26,14 +26,13 @@ class MetadataAPIClient(Client):
             self._http = make_http(self._extra_headers, verify=True)
         return self._http
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         url = f'{_API_BASE}/scenes?parse={ctx.encoded}'
         if ctx.ohash:
             url += f'&hash={quote(ctx.ohash)}'
         data = await self.fetch_json(url, FetchCtx(capture=ctx.capture), headers=_auth_headers(), label=f'GET {url}')
         if not isinstance(data, dict) or not data.get('data'):
-            return []
-        results: list[SearchResult] = []
+            return
         for s in data['data']:
             scene_id = s.get('_id') or s.get('id')
             if not scene_id:
@@ -48,22 +47,26 @@ class MetadataAPIClient(Client):
                     subsite=((s.get('site') or {}).get('name') or '').strip() or None,
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
         fallback_date = tail.strip()
-        headers = _auth_headers()
-        res = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None), headers=headers, label=f'GET {url}')
+        res = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None), headers=_auth_headers(), label=f'GET {url}')
         d = res.get('data') if isinstance(res, dict) else None
         if not isinstance(d, dict):
             return None
+        return LoadedScene(url=url, site=site, scene_date=fallback_date or None, capture=ctx.capture if ctx else None, extra=d)
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        d = scene.extra
+        site = scene.site
+        headers = _auth_headers()
 
         site_obj = d.get('site') or {}
         studio = site_obj.get('name') or site.name
         collections: list[str] = [site_obj['name']] if site_obj.get('name') else []
         if site_obj.get('network_id') and site_obj.get('id') != site_obj.get('network_id'):
-            parent = await self.fetch_json(f'{_API_BASE}/sites/{site_obj["network_id"]}', FetchCtx(capture=ctx.capture if ctx else None), headers=headers)
+            parent = await self.fetch_json(f'{_API_BASE}/sites/{site_obj["network_id"]}', FetchCtx(capture=scene.capture), headers=headers)
             parent_name = (parent.get('data') or {}).get('name') if isinstance(parent, dict) else None
             if parent_name:
                 studio = parent_name
@@ -89,15 +92,12 @@ class MetadataAPIClient(Client):
         if (d.get('background') or {}).get('large'):
             raw_images.append(d['background']['large'])
 
-        return SceneDetail(
-            title=d.get('title') or '',
-            summary=d.get('description') or '',
-            studio=studio,
-            tagline=studio,
-            collections=collections or None,
-            release_date=api_date(d.get('date')) or fallback_date or None,
-            genres=genres,
-            actors=actors,
-            raw_image_urls=raw_images,
-            scene_url=url,
-        )
+        metadata.title = d.get('title') or ''
+        metadata.summary = d.get('description') or ''
+        metadata.studio = studio
+        metadata.tagline = studio
+        metadata.collections = collections or None
+        metadata.release_date = api_date(d.get('date')) or scene.scene_date or None
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images

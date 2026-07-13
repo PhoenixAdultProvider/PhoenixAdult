@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
@@ -18,13 +18,12 @@ def _page_studio_override(scene: LoadedScene) -> str:
 
 
 class DorcelVisionClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title))
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
         if not loaded:
-            return []
-        results: list[SearchResult] = []
+            return
         for el in loaded['sel'].xpath('//a[contains(@class,"movies")]'):
             title = first_attr(el, '(.//img/@alt)[1]')
             href = first_attr(el, '@href')
@@ -32,39 +31,38 @@ class DorcelVisionClient(Client):
                 continue
             scene_url = absolute_url(href, ctx.site_info.base_url)
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])))
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         meta = meta_content(scene.sel, 'twitter:description')
-        return meta or first_text(scene.sel, '//div[@id="summaryList"]') or None
+        metadata.summary = meta or first_text(scene.sel, '//div[@id="summaryList"]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _page_studio_override(scene) or UMBRELLA_STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _page_studio_override(scene) or UMBRELLA_STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return _page_studio_override(scene) or UMBRELLA_STUDIO
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = _page_studio_override(scene) or UMBRELLA_STUDIO
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         override = _page_studio_override(scene)
-        return [UMBRELLA_STUDIO, override] if override else [UMBRELLA_STUDIO]
+        metadata.collections = [UMBRELLA_STUDIO, override] if override else [UMBRELLA_STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         year_entries = scene.sel.xpath('//div[contains(@class,"entries")]//strong[contains(.,"Production year")]')
         if not year_entries:
-            return None
+            return
         text = ''.join(year_entries[0].xpath('following-sibling::text()').getall())
         m = _YEAR_RE.search(text)
-        return f'{m.group(0)}-01-01' if m else None
+        metadata.release_date = f'{m.group(0)}-01-01' if m else None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -76,9 +74,9 @@ class DorcelVisionClient(Client):
             photo_raw = first_attr(card, '(.//img/@data-src)[1]')
             photo = absolute_url(photo_raw, scene.site.base_url) if photo_raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -98,4 +96,4 @@ class DorcelVisionClient(Client):
             '//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href'
         ).getall():
             add(href)
-        return images
+        metadata.raw_image_urls = images

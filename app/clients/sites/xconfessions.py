@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx2
 
-from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.logging.logger import logger
@@ -65,13 +65,12 @@ class XConfessionsClient(Client):
         except (httpx2.HTTPError, ValueError):
             return None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base_url = ctx.site_info.base_url.rstrip('/')
         token = await self._fetch_token(base_url)
         if not token:
-            return []
+            return
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         for hit in await self._api_search(base_url, ctx.site_info.search_path, ctx.title, token):
@@ -107,7 +106,6 @@ class XConfessionsClient(Client):
                         cur_id=pack_cur_id([direct_slug, ctx.search_date or '']),
                     )
                 )
-        return results
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base_url = site.base_url.rstrip('/')
@@ -133,40 +131,40 @@ class XConfessionsClient(Client):
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (self._data(scene).get('title') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (self._data(scene).get('title') or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return (self._data(scene).get('synopsis_clean') or '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = (self._data(scene).get('synopsis_clean') or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _full_name(self._data(scene).get('producer')) or None
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _full_name(self._data(scene).get('producer')) or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         raw = self._data(scene).get('release_date')
         if raw:
             parsed = iso_date(raw)
             if parsed:
-                return parsed
+                metadata.release_date = parsed
+                return
         if scene.scene_date:
-            return iso_date(scene.scene_date) or scene.scene_date
-        return None
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._data(scene)
         genres = self.dedup_strings([(t.get('title') or '').strip() for t in d.get('tags') or []])
         hay = f'{(d.get("title") or "").lower()} {(d.get("synopsis_clean") or "").lower()}'
         if (d.get('is_compilation') or 'compilation' in hay) and 'Compilation' not in genres:
             genres.append('Compilation')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for p in self._data(scene).get('performers') or []:
@@ -175,23 +173,23 @@ class XConfessionsClient(Client):
                 continue
             seen.add(name)
             actors.append(ActorResult(name=name, photo_url=strip_query(p.get('poster_image'))))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = _full_name(self._data(scene).get('director'))
-        return [ActorResult(name=name)] if name else None
+        metadata.directors = [ActorResult(name=name)] if name else None
 
-    async def fetch_producers(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         producer = self._data(scene).get('producer')
         name = _full_name(producer)
         if not name or not isinstance(producer, dict):
-            return None
-        return [ActorResult(name=name, photo_url=strip_query(producer.get('poster_image')))]
+            return
+        metadata.producers = [ActorResult(name=name, photo_url=strip_query(producer.get('poster_image')))]
 
     # Legacy set `rating = data.rating * 2`; SceneDetail has no rating slot, so
     # the rating is dropped (parity with the TS port).
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._data(scene)
         images: list[str] = []
 
@@ -205,4 +203,4 @@ class XConfessionsClient(Client):
         for a in d.get('album') or []:
             if a.get('path'):
                 push(strip_query(a['path']))
-        return images
+        metadata.raw_image_urls = images

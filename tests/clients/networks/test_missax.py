@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.missax import MissaXClient
 from app.registry import find_site
 
@@ -25,7 +25,8 @@ async def test_search() -> None:
             text='<div class="updateItem"><a href="/scene/77"></a><h4><a>Cool Scene</a></h4><span class="update_thumb_date">March 4, 2021</span></div>',
         )
     )
-    results = await MissaXClient().search(_ctx(SITE))
+    results: list[SearchResult] = []
+    await MissaXClient().search(results, _ctx(SITE))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://missax.com/scene/77'

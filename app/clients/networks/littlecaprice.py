@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, iso_date, join_url, load_site_json
 from app.utils.helpers.html_helpers import first_attr
@@ -68,34 +68,34 @@ class LittleCapriceClient(Client):
                 return _CATEGORY_TAGLINES[token]
         return scene.site.name
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         title = (scene.sel.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
         tagline = self._tagline_of(scene)
         if title.lower().startswith(tagline.lower()):
             title = title[len(tagline) :].strip()
-        return title or None
+        metadata.title = title or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline_of(scene)
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_of(scene)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._tagline_of(scene)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._tagline_of(scene)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         text = scene.sel.xpath('(//div[contains(@class,"relese-date")])[1]').xpath('string(.)').get() or ''
         raw = text.split('Release:')[1].strip() if 'Release:' in text else ''
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
 
@@ -116,9 +116,9 @@ class LittleCapriceClient(Client):
             genres.append('Foursome')
         elif cast > 4:
             genres.append('Orgy')
-        return genres or None
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -136,9 +136,9 @@ class LittleCapriceClient(Client):
                 if raw:
                     photo = absolute_url(raw, base)
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -156,4 +156,4 @@ class LittleCapriceClient(Client):
             push(first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
             for src in gallery.xpath('//div[contains(@class,"gallery") and contains(@class,"spotlight-group")]//img/@src').getall():
                 push(src)
-        return images or None
+        metadata.raw_image_urls = images

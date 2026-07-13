@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.fittingroom import FittingRoomClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ DETAIL_HTML = """<html><head>
 async def test_search_direct_sceneid() -> None:
     url = 'https://www.fitting-room.com/video/777/1'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await FittingRoomClient().search(SearchContext(title='777 tight squeeze', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await FittingRoomClient().search(results, SearchContext(title='777 tight squeeze', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Tight Squeeze'
     assert results[0].scene_url == url

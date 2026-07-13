@@ -10,6 +10,7 @@ from app.clients.base import (
     LoadedScene,
     RawCaptureEntry,
     SceneContext,
+    SceneDetail,
     SearchContext,
     SearchResult,
 )
@@ -47,10 +48,10 @@ __testing__ = {'actors_for_scene_id': _actors_for_scene_id, 'scenes_for_actor_na
 class DirtyFlixClient(Client):
     # ── Search (paginated listing + shared tour-date resolution) ────────────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         cfg = _SITES.get(ctx.site_info.name)
         if not cfg:
-            return []
+            return
         actor_scene_ids = _scenes_for_actor_name(ctx.title)
         date_by_scene_id = await self._fetch_tour_dates(int(cfg['tour_key']), ctx.capture)
 
@@ -90,12 +91,14 @@ class DirtyFlixClient(Client):
             )
 
         # No dedup: scene_url is the shared page URL; identity lives in cur_id.
-        return await self.paginate_search(
-            fetch_rows=fetch_rows,
-            build_row=build_row,
-            max_pages=int(cfg['search_pages']),
-            dedup=False,
-            should_continue=lambda results: not any((r.score or 0) >= 100 for r in results),
+        results.extend(
+            await self.paginate_search(
+                fetch_rows=fetch_rows,
+                build_row=build_row,
+                max_pages=int(cfg['search_pages']),
+                dedup=False,
+                should_continue=lambda built: not any((r.score or 0) >= 100 for r in built),
+            )
         )
 
     # ── Detail (search-page-as-detail: re-find the row by sceneID) ──────────────
@@ -161,34 +164,32 @@ class DirtyFlixClient(Client):
 
     # ── Field hooks (read the row extract stashed in scene.extra) ────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (scene.extra or {}).get('title') or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (scene.extra or {}).get('title') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return (scene.extra or {}).get('summary') or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = (scene.extra or {}).get('summary') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         cfg = _SITES.get(scene.site.name)
-        genres = list(cfg['genres']) if cfg else []
-        return genres or None
+        metadata.genres = list(cfg['genres']) if cfg else []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         scene_id = (scene.extra or {}).get('scene_id', '')
-        actors = [ActorResult(name=n) for n in _actors_for_scene_id(scene_id)]
-        return actors or None
+        metadata.actors = [ActorResult(name=n) for n in _actors_for_scene_id(scene_id)]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = (scene.extra or {}).get('poster', '')
-        return [absolute_url(poster, scene.site.base_url)] if poster else None
+        metadata.raw_image_urls = [absolute_url(poster, scene.site.base_url)] if poster else []

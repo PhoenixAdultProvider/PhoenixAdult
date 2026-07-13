@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.reidmylips import ReidMyLipsClient
 from app.registry import find_site
 
@@ -23,7 +23,8 @@ DETAIL_HTML = """<html><body>
 async def test_search_direct_slug() -> None:
     url = 'https://www.reidmylips.com/updates/lip-service.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await ReidMyLipsClient().search(SearchContext(title='Lip Service', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ReidMyLipsClient().search(results, SearchContext(title='Lip Service', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Lip Service'
     assert results[0].scene_url == url

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.julesjordan import JulesJordanClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ async def test_search_direct() -> None:
     direct = 'https://www.julesjordan.com/trial/scenes/cool-scene_vids.html'
     respx.get(direct).mock(return_value=httpx.Response(200, text='<html></html>'))
     respx.get('https://www.julesjordan.com/trial/search.php?query=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await JulesJordanClient().search(_ctx())
+    results: list[SearchResult] = []
+    await JulesJordanClient().search(results, _ctx())
     assert results[0].scene_url == direct
     assert results[0].score == 100
 

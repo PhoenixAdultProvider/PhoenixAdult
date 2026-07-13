@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import blackpayback as bpb_module
 from app.clients.sites.blackpayback import BlackPayBackClient
 from app.registry import find_site
@@ -41,7 +41,8 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch, no_web_s
     monkeypatch.setattr(bpb_module, 'web_search_urls', no_web_search)
     url = 'https://blackpayback.com/tour/trailers/birfday-bitch.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><body><h1>Birfday Bitch</h1></body></html>'))
-    results = await BlackPayBackClient().search(SearchContext(title='12 birfday bitch', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await BlackPayBackClient().search(results, SearchContext(title='12 birfday bitch', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Birfday Bitch'
     assert results[0].scene_url == url

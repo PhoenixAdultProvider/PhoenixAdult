@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, sceneid_distance_score, strip_query, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
@@ -31,13 +31,12 @@ class JavBusClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'existmag=all; dv=1'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         parts = ctx.title.strip().split()
         javid = f'{parts[0]}-{parts[1]}' if len(parts) > 1 and re.fullmatch(r'\d+', parts[1]) else None
         encoded = javid or ctx.encoded
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         for label, sub in _SEARCH_SURFACES:
@@ -79,45 +78,47 @@ class JavBusClient(Client):
                             title=f'[Direct][{javid}] {jav_title}', scene_url=direct_url, query=ctx.title, search_date=ctx.search_date, score=100
                         )
                     )
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
         jav_title = re.sub(r' - JavBus$', '', first_attr(scene.sel, '(//head//title)[1]/text()'))
         if not jav_title:
-            return None
+            return
         id_digits = re.sub(r'[-_ ]', '', _javbus_id(scene.url))
         if id_digits and re.fullmatch(r'\d+', id_digits):
-            return f'[{studio}] {jav_title}'.strip()
+            metadata.title = f'[{studio}] {jav_title}'.strip()
+            return
         sp = jav_title.find(' ')
         jid = jav_title if sp < 0 else jav_title[:sp]
         rest = '' if sp < 0 else jav_title[sp + 1 :]
-        return f'[{jid}] {rest}'.strip()
+        metadata.title = f'[{jid}] {rest}'.strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()') or None
+        metadata.studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()') or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
-            return label
+            metadata.tagline = label
+            return
         series = first_attr(scene.sel, '(//p//a[contains(@href,"/series/")])[1]/text()')
-        return f'Series: {series}' if series else None
+        metadata.tagline = f'Series: {series}' if series else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         label = first_attr(scene.sel, '(//p//a[contains(@href,"/label/")])[1]/text()')
         if label:
-            return [label]
+            metadata.collections = [label]
+            return
         studio = first_attr(scene.sel, '(//p//a[contains(@href,"/studio/")])[1]/text()')
-        return [studio] if studio else None
+        metadata.collections = [studio] if studio else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = ''
         for p in scene.sel.xpath('//div[contains(@class,"col-md-3") and contains(@class,"info")]//p'):
@@ -127,20 +128,20 @@ class JavBusClient(Client):
         if raw and raw != '0000-00-00':
             iso = iso_date(raw)
             if iso:
-                return iso
-        return scene.scene_date or None
+                metadata.release_date = iso
+                return
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        genres = self.dedup_strings(
+        metadata.genres = self.dedup_strings(
             [
                 (el.xpath('normalize-space(.)').get() or '').lower().strip()
                 for el in scene.sel.xpath('//span[contains(@class,"genre")]//a[contains(@href,"/genre/")]')
             ]
         )
-        return genres or None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         out: list[ActorResult] = []
         for el in scene.sel.xpath('//a[contains(@class,"avatar-box")]'):
@@ -153,14 +154,14 @@ class JavBusClient(Client):
             if photo.split('/')[-1] == 'nowprinting.gif':
                 photo = ''
             out.append(ActorResult(name=name, photo_url=photo))
-        return out or None
+        metadata.actors = out
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         director = first_attr(scene.sel, '(//p//a[contains(@href,"/director/")])[1]/text()')
-        return [ActorResult(name=director)] if director else None
+        metadata.directors = [ActorResult(name=director)] if director else None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         out: list[str] = []
@@ -181,4 +182,4 @@ class JavBusClient(Client):
         )
         if cover_raw:
             push(_derive_cover_thumb(absolute_url(cover_raw, base)))
-        return out or None
+        metadata.raw_image_urls = out

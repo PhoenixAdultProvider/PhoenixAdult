@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.clips4sale import Clips4SaleClient
 from app.registry import find_site
 
@@ -36,7 +36,8 @@ def _ctx(title: str, **kw: object) -> SearchContext:
 async def test_direct_clip_search() -> None:
     url = 'https://clips4sale.com/studio/57445/99999999/'
     respx.get(url).mock(return_value=httpx.Response(200, text=_page(_CLIP)))
-    results = await Clips4SaleClient().search(_ctx('57445 99999999'))
+    results: list[SearchResult] = []
+    await Clips4SaleClient().search(results, _ctx('57445 99999999'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

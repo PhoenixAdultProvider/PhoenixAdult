@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.gasm import GasmClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext
 async def test_search_direct_scene_id() -> None:
     url = 'https://www.gasm.com/post/details/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1 class="post_title"><span>Cool Scene</span></h1><h3 class="post_date">Mar 4, 2021</h3>'))
-    results = await GasmClient().search(_ctx(SITE, scene_id='555'))
+    results: list[SearchResult] = []
+    await GasmClient().search(results, _ctx(SITE, scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url
@@ -32,7 +33,8 @@ async def test_search_direct_scene_id() -> None:
 async def test_search_keyword_with_channel() -> None:
     url = 'https://www.gasm.com/search/videos?s=cool+scene&channel=8118'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="results_item"><a class="post_title" href="/post/details/77">Cool Scene</a></div>'))
-    results = await GasmClient().search(_ctx(MAGMA))
+    results: list[SearchResult] = []
+    await GasmClient().search(results, _ctx(MAGMA))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.gasm.com/post/details/77'
 

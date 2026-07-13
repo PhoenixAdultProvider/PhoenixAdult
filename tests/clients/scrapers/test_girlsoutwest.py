@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import girlsoutwest as gow_module
 from app.clients.sites.girlsoutwest import GirlsOutWestClient
 from app.registry import find_site
@@ -29,7 +29,8 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gow_module, 'web_search_urls', _no_web)
     url = 'https://tour.girlsoutwest.com/trailers/outback-fun.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await GirlsOutWestClient().search(SearchContext(title='Outback Fun', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await GirlsOutWestClient().search(results, SearchContext(title='Outback Fun', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Outback Fun'
     assert results[0].scene_url == url

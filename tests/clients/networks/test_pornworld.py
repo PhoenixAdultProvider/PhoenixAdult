@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.pornworld import PornWorldClient
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_direct_id() -> None:
     url = 'https://ddfbusty.com/watch/12345'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene - PornWorld</title>'))
-    results = await PornWorldClient().search(_ctx(scene_id='12345'))
+    results: list[SearchResult] = []
+    await PornWorldClient().search(results, _ctx(scene_id='12345'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100
@@ -34,7 +35,8 @@ async def test_search_onsite() -> None:
             text='<h1 class="section__title">Results</h1><div class="card-scene"><div class="card-scene__text"><a href="/watch/7">Cool Scene</a></div></div>',
         )
     )
-    results = await PornWorldClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PornWorldClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://ddfbusty.com/watch/7'

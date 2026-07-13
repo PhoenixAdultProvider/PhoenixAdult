@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.pervcity as pc_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.pervcity import PervCityClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ async def test_search_native() -> None:
             text='<div class="videoBlock"><h2><a href="https://analoverdose.com/scene/7">Cool Scene</a></h2><div class="date">March 4, 2021</div></div>',
         )
     )
-    results = await PervCityClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PervCityClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://analoverdose.com/scene/7'

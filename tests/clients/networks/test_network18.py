@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.network18 import Network18Client
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ async def test_search() -> None:
         }
     }
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
-    results = await Network18Client().search(_ctx())
+    results: list[SearchResult] = []
+    await Network18Client().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert Network18Client().decode(results[0].cur_id) == 'model1:scene7'

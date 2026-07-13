@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.wownetwork import WowNetworkClient
 from app.registry import find_site
 
@@ -21,7 +21,8 @@ async def test_search() -> None:
     respx.get('https://wowgirlsblog.com/?s=cool+scene').mock(return_value=httpx.Response(200, text=page1))
     respx.get('https://wowgirlsblog.com/page/2/?s=cool+scene').mock(return_value=httpx.Response(200, text=''))
     respx.get('https://wowgirlsblog.com/v/7').mock(return_value=httpx.Response(200, text='<html><body></body></html>'))
-    results = await WowNetworkClient().search(_ctx())
+    results: list[SearchResult] = []
+    await WowNetworkClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://wowgirlsblog.com/v/7'

@@ -6,7 +6,7 @@ import respx
 
 import app.clients.aggregators.data18empire as d18e_module
 from app.clients.aggregators.data18empire import Data18EmpireClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Data18 Empire')
@@ -58,7 +58,8 @@ def _ctx() -> SearchContext:
 async def test_search_direct_id_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await Data18EmpireClient().search(_ctx())
+    results: list[SearchResult] = []
+    await Data18EmpireClient().search(results, _ctx())
     assert len(results) == 2
     assert results[0].title == 'The Big Movie'
     assert results[0].score == 100
@@ -70,7 +71,8 @@ async def test_detail_movie(monkeypatch: pytest.MonkeyPatch, no_web_search: obje
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = Data18EmpireClient()
-    results = await client.search(_ctx())
+    results: list[SearchResult] = []
+    await client.search(results, _ctx())
     detail = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
     assert detail is not None
     assert detail.title == 'The Big Movie'
@@ -87,7 +89,8 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = Data18EmpireClient()
-    results = await client.search(_ctx())
+    results: list[SearchResult] = []
+    await client.search(results, _ctx())
     detail = await client.fetch_scene_detail(client.decode(results[1].cur_id), SITE)
     assert detail is not None
     assert detail.title == 'The Big Movie [Scene 1]'
@@ -99,7 +102,7 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search
 async def test_search_sends_age_gate_cookie(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     route = respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    await Data18EmpireClient().search(_ctx())
+    await Data18EmpireClient().search([], _ctx())
     assert 'ageConfirmed=true' in route.calls[0].request.headers['Cookie']
 
 
@@ -109,7 +112,8 @@ async def test_search_direct_id_matches_numeric_path_segment(monkeypatch: pytest
     url = 'https://data18.empirestores.co/1234567/big-movie-porn-movies.html'
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(301, headers={'Location': url}))
     respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await Data18EmpireClient().search(_ctx())
+    results: list[SearchResult] = []
+    await Data18EmpireClient().search(results, _ctx())
     assert results[0].score == 100
 
 
@@ -118,7 +122,8 @@ async def test_detail_legacy_grid_shape_still_parses(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE_LEGACY_GRID))
     client = Data18EmpireClient()
-    results = await client.search(_ctx())
+    results: list[SearchResult] = []
+    await client.search(results, _ctx())
     assert len(results) == 2
     movie = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
     assert movie is not None and [a.name for a in movie.actors] == ['Jane Doe']
@@ -145,7 +150,8 @@ def test_is_movie_url_accepts_real_empire_urls() -> None:
 async def test_scene_id_scores_via_id_distance(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await Data18EmpireClient().search(_ctx())
+    results: list[SearchResult] = []
+    await Data18EmpireClient().search(results, _ctx())
     assert results and all(r.score == 100 for r in results)
 
 
@@ -156,7 +162,8 @@ async def test_without_scene_id_scoring_falls_back_to_title(monkeypatch: pytest.
     respx.get(url__regex=r'.*/Search\?q=.*').mock(return_value=httpx.Response(200, text=search_page))
     respx.get('https://data18.empirestores.co/1234567/big-movie-porn-movies.html').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     ctx = SearchContext(title='The Big Movie', encoded='The+Big+Movie', search_site=SITE.name, site_info=SITE)
-    results = await Data18EmpireClient().search(ctx)
+    results: list[SearchResult] = []
+    await Data18EmpireClient().search(results, ctx)
     assert results and results[0].score == 100
 
 

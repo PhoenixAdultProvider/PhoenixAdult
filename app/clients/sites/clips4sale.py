@@ -5,7 +5,7 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
@@ -128,11 +128,11 @@ def _apply_rules(user_id: str, tagline: str, title: str, summary: str, genre_lis
 
 
 class Clips4SaleClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         parts = ctx.title.strip().split()
         if len(parts) < 2:
-            return []
+            return
         user_id = parts[0]
         rest = ' '.join(parts[1:])
         direct_id = parts[1] if parts[1].isdigit() and int(parts[1]) > 10_000_000 else ''
@@ -141,12 +141,12 @@ class Clips4SaleClient(Client):
             clip_url = f'{base}{ctx.site_info.search_path}{user_id}/{direct_id}/'
             loaded = await self.fetch_and_load(clip_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct clip {direct_id}')
             if not loaded:
-                return []
+                return
             clip = _clip_from_context(_remix_context(loaded['html']))
             if not clip or not clip.get('title'):
-                return []
+                return
             date = iso_date((clip.get('dateDisplay') or '').split(' ')[0], '%m/%d/%y')
-            return [
+            results.append(
                 build_search_result(
                     title=_clean_title(clip['title']),
                     scene_url=clip_url,
@@ -156,18 +156,18 @@ class Clips4SaleClient(Client):
                     score=100,
                     cur_id=pack_cur_id([clip_url]),
                 )
-            ]
+            )
+            return
 
         search_url = f'{base}{ctx.site_info.search_path}{user_id}/{quote(rest)}'
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] studio {user_id} "{rest}"')
         if not loaded:
-            return []
+            return
         remix = _remix_context(loaded['html'])
         loader = (remix or {}).get('state', {}).get('loaderData', {}) if isinstance(remix, dict) else {}
         studio_route = loader.get('routes/($lang).studio.$id_.$studioSlug.$') if isinstance(loader, dict) else None
         clips = studio_route.get('clips', []) if isinstance(studio_route, dict) else []
 
-        results: list[SearchResult] = []
         for c in clips:
             if not c.get('clipId') or not c.get('title'):
                 continue
@@ -183,15 +183,19 @@ class Clips4SaleClient(Client):
                     cur_id=pack_cur_id([clip_url]),
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         loaded = await self.fetch_and_load(payload, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {payload}')
         if not loaded:
             return None
         clip = _clip_from_context(_remix_context(loaded['html']))
         if not clip or not clip.get('title'):
             return None
+        return LoadedScene(url=payload, site=site, capture=ctx.capture if ctx else None, extra=clip, subsite=ctx.subsite if ctx else None)
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        payload = scene.url
+        clip = scene.extra
 
         user_id = payload.split('/studio/')[1].split('/')[0] if '/studio/' in payload else ''
 
@@ -229,15 +233,12 @@ class Clips4SaleClient(Client):
         tagline = tagline_override or clip.get('studioTitle') or None
         collections = [tagline_override] if tagline_override else ([clip['studioTitle']] if clip.get('studioTitle') else None)
 
-        return SceneDetail(
-            title=ruled['title'],
-            summary=summary,
-            studio=STUDIO,
-            tagline=tagline,
-            collections=collections,
-            release_date=release_date,
-            genres=ruled['genres'],
-            actors=actors,
-            raw_image_urls=coll['list'],
-            scene_url=payload,
-        )
+        metadata.title = ruled['title']
+        metadata.summary = summary
+        metadata.studio = STUDIO
+        metadata.tagline = tagline
+        metadata.collections = collections
+        metadata.release_date = release_date
+        metadata.genres = ruled['genres']
+        metadata.actors = actors
+        metadata.raw_image_urls = coll['list']

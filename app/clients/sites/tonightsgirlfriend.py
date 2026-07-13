@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -20,10 +20,10 @@ def _https(src: str) -> str:
 
 
 class TonightsGirlfriendClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         slug = ctx.title.lower().split('and ')[0].strip().replace(' ', '-')
         if not slug:
-            return []
+            return
         base = ctx.site_info.base_url.rstrip('/')
         path = ctx.site_info.search_path
 
@@ -51,42 +51,42 @@ class TonightsGirlfriendClient(Client):
                 cur_id=pack_cur_id([scene_url, date or '']),
             )
 
-        return await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=MAX_PAGES, full_page=FULL_PAGE_THRESHOLD)
+        results.extend(await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=MAX_PAGES, full_page=FULL_PAGE_THRESHOLD))
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         names = self._linked_actor_names(scene)
-        return ', '.join(names) if names else None
+        metadata.title = ', '.join(names) if names else ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"scene-description")]') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"scene-description")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return TAGLINE
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = TAGLINE
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [TAGLINE]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [TAGLINE]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
-            return None
-        return iso_date(scene.scene_date) or scene.scene_date
+            return
+        metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = list(_FIXED_GENRES)
         linked = self._linked_actor_names(scene)
         male = self._male_actor_names(scene, linked)
         if len(linked) + len(male) == 3:
             genres.append('Threesome')
             genres.append('BGG' if len(linked) == 2 else 'BBG')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -111,20 +111,20 @@ class TonightsGirlfriendClient(Client):
             if name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         src = first_attr(scene.sel, '(//img[contains(@class,"playcard")]/@src)[1]')
         if not src:
-            return []
+            return
         poster = _https(src)
         out = [poster]
         head = poster.split('scene/image')[0].split('scene/horizontal')[0]
         vertical = f'{head}scene/vertical/390x590cdynamic.jpg'
         if vertical != poster:
             out.append(vertical)
-        return out
+        metadata.raw_image_urls = out
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

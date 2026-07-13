@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import sexlikereal as slr_module
 from app.clients.sites.sexlikereal import SexLikeRealClient
 from app.registry import find_site
@@ -35,7 +35,8 @@ async def test_search_direct_slug(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(slr_module, 'web_search_urls', _no_web)
     url = 'https://www.sexlikereal.com/scenes/vr-real'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await SexLikeRealClient().search(SearchContext(title='VR Real', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await SexLikeRealClient().search(results, SearchContext(title='VR Real', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'VR Real'
     assert results[0].scene_url == url

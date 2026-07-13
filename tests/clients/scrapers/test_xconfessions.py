@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.xconfessions import XConfessionsClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ async def test_search_movies_plus_direct_slug() -> None:
         )
     )
     respx.get('https://api.xconfessions.com/api/movies/slug/wild-scene').mock(return_value=httpx.Response(200, json={'data': {'title': 'Wild Scene Direct'}}))
-    results = await XConfessionsClient().search(SearchContext(title='wild scene', encoded='x', search_site=XC.name, site_info=XC))
+    results: list[SearchResult] = []
+    await XConfessionsClient().search(results, SearchContext(title='wild scene', encoded='x', search_site=XC.name, site_info=XC))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://api.xconfessions.com/api/movies/slug/wild-scene'
@@ -40,7 +41,8 @@ async def test_search_lustcinema_token_prefix() -> None:
         return_value=httpx.Response(200, json={'data': [{'resourceType': 'movies', 'slug': 'lc-scene', 'title': 'LC Scene'}]})
     )
     respx.get('https://next-prod-api.lustcinema.com/api/movies/slug/lc-scene').mock(return_value=httpx.Response(404))
-    results = await XConfessionsClient().search(SearchContext(title='lc scene', encoded='x', search_site=LC.name, site_info=LC))
+    results: list[SearchResult] = []
+    await XConfessionsClient().search(results, SearchContext(title='lc scene', encoded='x', search_site=LC.name, site_info=LC))
     assert len(results) == 1
     assert results[0].title == 'LC Scene'
 

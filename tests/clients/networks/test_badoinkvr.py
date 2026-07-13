@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.badoinkvr import BadoinkVrClient, __testing__
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search_page() -> None:
             </div>""",
         )
     )
-    results = await BadoinkVrClient().search(_ctx())
+    results: list[SearchResult] = []
+    await BadoinkVrClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://badoinkvr.com/vrpornvideo/77/cool-scene'
@@ -38,7 +39,8 @@ async def test_search_page() -> None:
 async def test_search_direct_scene_id() -> None:
     url = 'https://badoinkvr.com/vrpornvideo/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1 class="video-title">Cool Scene</h1><img class="video-image" src="https://cdn/t.jpg?x=1" />'))
-    results = await BadoinkVrClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await BadoinkVrClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].score == 100

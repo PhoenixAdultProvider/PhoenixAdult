@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.caramelcash as cc_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.caramelcash import CaramelCashClient, __testing__
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cc_mod, 'web_search_available', lambda: False)
     url = 'https://alexlegend.com/video/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1><div class="content-date">04.03.2021</div>'))
-    results = await CaramelCashClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await CaramelCashClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

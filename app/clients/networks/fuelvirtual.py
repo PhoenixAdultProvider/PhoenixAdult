@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import append_unique, build_search_result, iso_date, load_site_json
 from app.utils.helpers.html_helpers import first_attr
 
@@ -22,13 +22,12 @@ def _actors_for_scene(site_name: str, scene_id: str) -> list[str] | None:
 
 
 class FuelVirtualClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         sp = _server_path(ctx.site_info.name)
         loaded = await self.fetch_and_load(base + ctx.site_info.search_path + ctx.encoded, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search')
         if not loaded:
-            return []
-        results: list[SearchResult] = []
+            return
         for row in loaded['sel'].xpath('//div[@align="left"]'):
             a = row.xpath('(.//td[@valign="top"])[2]//a[1]')
             title = first_attr(a)
@@ -39,31 +38,31 @@ class FuelVirtualClient(Client):
             date_iso = iso_date(date_raw) if date_raw else None
             scene_url = f'{base}{sp}{href}'
             results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
         if scene.site.name == 'NewGirlPOV':
             parts = raw.split(' ')
-            return (parts[1].strip() if len(parts) > 1 else '') or None
-        return raw.split('-')[0].strip() or None
+            metadata.title = (parts[1].strip() if len(parts) > 1 else '') or ''
+            return
+        metadata.title = raw.split('-')[0].strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [
             g
@@ -81,21 +80,22 @@ class FuelVirtualClient(Client):
             genres.append('Foursome')
         elif cast > 4:
             genres.append('Orgy')
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actor_els = scene.sel.xpath('//div[@id="description"]//td[@align="left"]//a')
         if not actor_els:
-            return None
+            return
         m = _SCENE_ID_RE.search(scene.url)
         db_names = _actors_for_scene(scene.site.name, m.group(1)) if m else None
         if db_names is not None:
-            return [ActorResult(name=n) for n in db_names]
+            metadata.actors = [ActorResult(name=n) for n in db_names]
+            return
         actors = [ActorResult(name=name) for name in (first_attr(a, 'normalize-space(.)') for a in actor_els) if name]
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         out: list[str] = []
@@ -120,4 +120,4 @@ class FuelVirtualClient(Client):
             m = _IMG_SCRIPT_RE.search(script.xpath('string(.)').get() or '')
             if m:
                 push(base + m.group(1))
-        return out or None
+        metadata.raw_image_urls = out or []

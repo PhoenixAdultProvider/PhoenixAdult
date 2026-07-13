@@ -4,7 +4,7 @@ import math
 import re
 from datetime import date
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
@@ -27,13 +27,14 @@ def _iso_date_obj(raw: str) -> date | None:
 
 
 class PornWorldClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         if ctx.search_date and _ISO_RE.match(ctx.search_date):
             dated = await self._date_crawl(ctx, base)
             if dated:
-                return dated
+                results.extend(dated)
+                return
 
         first_word = ctx.scene_id or (ctx.title.strip().split()[0] if ctx.title.strip() else '')
         if first_word.isdigit() and len(first_word) > 3:
@@ -42,30 +43,31 @@ class PornWorldClient(Client):
             if page:
                 title = _clean_title((page['sel'].xpath('(//title)[1]').xpath('string(.)').get() or '').strip())
                 if title:
-                    return [
+                    results.append(
                         build_search_result(
                             title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url])
                         )
-                    ]
+                    )
+                    return
 
         slug = re.sub(r'\s+', '+', ctx.title.strip())
         search_url = base + ctx.site_info.search_path.replace('{query}', slug)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if not loaded:
-            return []
+            return
         sel = loaded['sel']
 
         if not sel.xpath('//h1[contains(@class,"section__title")]'):
             title = _clean_title((sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip())
             href = first_attr(sel, '(//a[contains(@class,"__pagination_button--more")])[1]/@href')
             if title and href:
-                return [
+                results.append(
                     build_search_result(
                         title=title, scene_url=join_url(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([join_url(href, base)])
                     )
-                ]
+                )
+                return
 
-        results: list[SearchResult] = []
         for a in sel.xpath('//div[contains(@class,"card-scene")]//div[contains(@class,"card-scene__text")]/a'):
             title = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
@@ -76,7 +78,6 @@ class PornWorldClient(Client):
                     title=title, scene_url=join_url(href, base), query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([join_url(href, base)])
                 )
             )
-        return results
 
     async def _date_crawl(self, ctx: SearchContext, base: str) -> list[SearchResult]:
         assert ctx.search_date is not None
@@ -133,45 +134,46 @@ class PornWorldClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
-        return _clean_title(raw) or None if raw else None
+        metadata.title = _clean_title(raw) if raw else ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//div[text()="Description:"]/following-sibling::div)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//div[text()="Description:"]/following-sibling::div)[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//i[contains(@class,"bi-calendar")])[1]').xpath('string(.)').get() or '').strip()
         if raw:
-            return iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"genres-list")]//a')]
-        return self.dedup_strings(values) or None
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in scene.sel.xpath('//h1[contains(@class,"watch__title")]//a')]
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for raw in scene.sel.xpath('//video/@data-poster').getall():
             if raw and raw not in images:
                 images.append(raw)
-        return images or None
+        metadata.raw_image_urls = images

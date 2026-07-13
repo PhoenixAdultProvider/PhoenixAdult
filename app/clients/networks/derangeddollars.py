@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import urlsplit
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
@@ -16,16 +16,15 @@ _NURSE_RE = re.compile(r'\bNurses?\b')
 
 
 class DerangedDollarsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         if not web_search_available():
-            return []
+            return
         host = urlsplit(ctx.site_info.base_url).netloc
         try:
             candidates = await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS)
         except Exception:  # noqa: BLE001 - search is best-effort
-            return []
+            return
 
-        results: list[SearchResult] = []
         for url in candidates:
             loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')
             if not loaded:
@@ -37,22 +36,21 @@ class DerangedDollarsClient(Client):
             date_raw = ','.join(lch.split(',')[-2:]).strip()
             date_iso = iso_date(date_raw) if date_raw else None
             results.append(build_search_result(title=title, scene_url=url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
-        return results
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         raw = scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
         segments = [s.strip() for s in raw.split('|')]
@@ -60,29 +58,31 @@ class DerangedDollarsClient(Client):
             return None
         return re.sub(r'\.com$', '', segments[1], flags=re.IGNORECASE).strip() or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tag = await self.fetch_tagline(scene)
-        return [tag] if tag else None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene)
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tag = self._tagline(scene)
+        metadata.collections = [tag] if tag else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[contains(@class,"tags")]//a')) if g]
-        return out or None
+        metadata.genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[contains(@class,"tags")]//a')) if g]
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         lch = (scene.sel.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
         blob = ','.join(lch.split(',')[:-2]).strip()
         if not blob:
-            return None
+            return
         if ':' in blob:
             blob = blob.split(':', 1)[1].strip()
         raw_names = [n for n in (_NURSE_RE.sub('', re.sub(r'\W+', ' ', s)).strip() for s in _NAME_SPLIT_RE.split(blob)) if n]
         if not raw_names:
-            return None
+            return
 
         model_dir = await self._load_model_directory(scene)
         out: list[ActorResult] = []
@@ -93,9 +93,9 @@ class DerangedDollarsClient(Client):
                     name, photo = display_name, photo_url
                     break
             out.append(ActorResult(name=name, photo_url=photo))
-        return out or None
+        metadata.actors = out
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         coll = self.image_collector(lambda raw: absolute_url(raw, base))
@@ -106,7 +106,7 @@ class DerangedDollarsClient(Client):
             for m in _QUOTED_URL_RE.findall(text):
                 coll['push'](m)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

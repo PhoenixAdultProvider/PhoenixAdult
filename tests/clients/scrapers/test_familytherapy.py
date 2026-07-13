@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.familytherapy import FamilyTherapyClient
 from app.registry import find_site
 
@@ -19,7 +19,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search_direct() -> None:
     html = '<article><h2><a href="/v/7">Cool Scene</a></h2><p><span>March 4, 2021</span></p></article>'
     respx.get(url__startswith='https://familytherapyxxx.com/?s=').mock(return_value=httpx.Response(200, text=html))
-    results = await FamilyTherapyClient().search(_ctx())
+    results: list[SearchResult] = []
+    await FamilyTherapyClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://familytherapyxxx.com/v/7'

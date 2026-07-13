@@ -4,7 +4,7 @@ import asyncio
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.concurrency.coalescer import coalesce_future
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date
@@ -35,9 +35,9 @@ _BR_RE = re.compile(r'<\s*/?\s*br\s*/?\s*>', re.IGNORECASE)
 class GammaEntClient(Client):
     # ── Search ────────────────────────────────────────────────────────────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         if ctx.site_info.name in _SEARCH_DISABLED:
-            return []
+            return
         base = ctx.site_info.base_url.rstrip('/')
         encoded = ctx.encoded.replace('%27', '').replace('%3F', '').replace('%2C', '')
         search_base = base + ctx.site_info.search_path
@@ -66,7 +66,6 @@ class GammaEntClient(Client):
         if rows2 and rows1 and rows2[0]['scene_url'] == rows1[0]['scene_url']:
             rows2 = []
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
         for row in [*rows1, *rows2]:
             if not row['title'] or row['scene_url'] in seen:
@@ -81,7 +80,6 @@ class GammaEntClient(Client):
             results.append(
                 build_search_result(title=row['title'], scene_url=row['scene_url'], query=ctx.title, display_date=date_iso, search_date=ctx.search_date)
             )
-        return results
 
     # ── Detail ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +93,7 @@ class GammaEntClient(Client):
         assert scene.sel is not None
         return (scene.sel.xpath('(//div[contains(@class,"studioLink")])[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         sel = scene.sel
         title = (
@@ -114,9 +112,9 @@ class GammaEntClient(Client):
             names = [a.name for a in await self._resolve_actors_cached(scene) if a.name not in _HOUSE_ACTORS]
             if names:
                 title = f'{title} - {", ".join(names)}'
-        return title.replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ').strip() or None
+        metadata.title = title.replace('BONUS-', 'BONUS - ').replace('BTS-', 'BTS - ').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         sel = scene.sel
         summary = first_attr(sel, '(//meta[@name="twitter:description"])[1]/@content')
@@ -131,41 +129,44 @@ class GammaEntClient(Client):
                 summary = (sel.xpath('(//div[contains(@class,"sceneDescText")])[1]').xpath('string(.)').get() or '').strip() or (
                     sel.xpath('(//p[contains(@class,"descriptionText")])[1]').xpath('string(.)').get() or ''
                 ).strip()
-        return _BR_RE.sub('\n', summary).strip() or None
+        metadata.summary = _BR_RE.sub('\n', summary).strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.sub_group or scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.sub_group or scene.site.name
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return self._tagline_of(scene)
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline_of(scene)
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [self._tagline_of(scene)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [self._tagline_of(scene)]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         sel = scene.sel
         updated = (sel.xpath('(//*[contains(@class,"updatedDate")])[1]').xpath('string(.)').get() or '').replace('|', '').strip()
         if updated and iso_date(updated):
-            return iso_date(updated)
+            metadata.release_date = iso_date(updated)
+            return
         updated_on = (sel.xpath('(//*[contains(@class,"updatedOn")])[1]').xpath('string(.)').get() or '').strip()
         if updated_on and iso_date(updated_on[8:].strip()):
-            return iso_date(updated_on[8:].strip())
+            metadata.release_date = iso_date(updated_on[8:].strip())
+            return
         m = _DATE_PUBLISHED_RE.search(scene.html or '')
         if m and iso_date(m.group(1)):
-            return iso_date(m.group(1))
-        return scene.scene_date or None
+            metadata.release_date = iso_date(m.group(1))
+            return
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = [g for g in (first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath(_GENRE_SEL)) if g]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = await self._resolve_actors_cached(scene)
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         directors = [
             ActorResult(name=n)
@@ -177,9 +178,9 @@ class GammaEntClient(Client):
             )
             if n
         ]
-        return directors or None
+        metadata.directors = directors or None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         sel = scene.sel
         base = scene.site.base_url
@@ -216,7 +217,7 @@ class GammaEntClient(Client):
             for xpath in xpaths:
                 for raw in sel.xpath(xpath).getall():
                     push(raw)
-        return out or None
+        metadata.raw_image_urls = out or []
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

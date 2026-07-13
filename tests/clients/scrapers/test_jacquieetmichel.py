@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.jacquieetmichel import JacquieEtMichelClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ async def test_search_cards() -> None:
       </a>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await JacquieEtMichelClient().search(SearchContext(title='ibiza', encoded='ibiza', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JacquieEtMichelClient().search(results, SearchContext(title='ibiza', encoded='ibiza', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Ibiza 1'
     assert results[0].scene_url == 'https://www.jacquieetmicheltv.net/en/content/4554/ibiza-1-crumb-in-the-mouth'

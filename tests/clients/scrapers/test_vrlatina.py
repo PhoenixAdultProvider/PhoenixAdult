@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.sites.vrlatina as vrl_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.vrlatina import VRLatinaClient
 from app.registry import find_site
 
@@ -18,7 +18,8 @@ async def test_search_direct_og_title(monkeypatch: pytest.MonkeyPatch, no_web_se
     monkeypatch.setattr(vrl_module, 'web_search_urls', no_web_search)
     url = 'https://vrlatina.com/video/wild-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><head><meta property="og:title" content="Wild Scene" /></head></html>'))
-    results = await VRLatinaClient().search(SearchContext(title='Wild Scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VRLatinaClient().search(results, SearchContext(title='Wild Scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Wild Scene'

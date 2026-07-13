@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.karups import KarupsClient
 from app.registry import find_site
 
@@ -26,7 +26,8 @@ async def test_search_model_to_videos() -> None:
         '<span class="date">March 4th, 2021</span></div></div>'
     )
     respx.get('https://www.karups.com/models/jane-doe').mock(return_value=httpx.Response(200, text=model_html))
-    results = await KarupsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await KarupsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.karups.com/video/77'

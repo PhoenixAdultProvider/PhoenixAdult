@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -32,14 +32,13 @@ def _date_from_clock(node: Any) -> str | None:
 
 
 class StraponCumClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         slug = _WS_RE.sub('-', ctx.title.strip())
         scene_url = base + ctx.site_info.search_path.replace('{query}', slug)
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct-URL {slug}')
         if not loaded:
-            return []
-        results: list[SearchResult] = []
+            return
         for card in loaded['sel'].xpath('//div[contains(@class,"card")]'):
             title = first_text(card, './/h1[contains(@class,"card-title")]')
             if not title:
@@ -57,7 +56,6 @@ class StraponCumClient(Client):
                     cur_id=pack_cur_id([p for p in (scene_url, release_date) if p]),
                 )
             )
-        return results
 
     # ── Context loader (default fetches the scene URL) ─────────────────────────
 
@@ -70,30 +68,30 @@ class StraponCumClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1[contains(@class,"card-title")]') or None
+        metadata.title = first_text(scene.sel, '//h1[contains(@class,"card-title")]') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"card-text") and contains(@class,"mb-2")]') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"card-text") and contains(@class,"mb-2")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         cards = scene.sel.xpath('//div[contains(@class,"card")]')
         tok = _date_from_clock(cards[0]) if cards else None
-        return _parse_date(tok) if tok else None
+        metadata.release_date = _parse_date(tok) if tok else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = list(_FIXED_GENRES)
         for el in scene.sel.xpath('//div[contains(@class,"tag-cloud")]//a'):
@@ -107,9 +105,9 @@ class StraponCumClient(Client):
             genres.append('Foursome')
         elif count > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -124,12 +122,12 @@ class StraponCumClient(Client):
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = first_attr(page['sel'], '(//img[starts-with(@id,"set-target")]/@data-src0_1x)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         scene_id = first_attr(scene.sel, '(//div[contains(@class,"trailer")]//img/@alt)[1]')
         if not scene_id:
-            return []
-        return [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]
+            return
+        metadata.raw_image_urls = [f'{base}/content/{scene_id}/{idx}.jpg' for idx in range(4)]

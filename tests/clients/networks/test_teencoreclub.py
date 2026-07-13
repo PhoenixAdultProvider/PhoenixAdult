@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.teencoreclub import TeenCoreClubClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search() -> None:
     body = {'videos': {'last_page': 1, 'data': [{'id': 77, 'title': {'en': 'Cool Scene'}, 'publication_date': '2021-03-04'}]}}
     respx.get(url__startswith=f'{_API}/videos/browse/search/').mock(return_value=httpx.Response(200, json=body))
-    results = await TeenCoreClubClient().search(_ctx(scene_id='77'))
+    results: list[SearchResult] = []
+    await TeenCoreClubClient().search(results, _ctx(scene_id='77'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, append_unique, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -35,28 +35,28 @@ class FirstAnalQuestClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         xp = '//div[contains(@class,"container") and contains(@class,"content")]//div[contains(@class,"page-header")]//span[contains(@class,"title")]'
-        return first_text(scene.sel, xp) or None
+        metadata.title = first_text(scene.sel, xp) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"text-desc")]') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"text-desc")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Pioneer'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Pioneer'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return scene.scene_date or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = self.dedup_strings(
             [first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//div[contains(@class,"media-body")]//ul[contains(.,"Categories")]//a')]
@@ -69,9 +69,9 @@ class FirstAnalQuestClient(Client):
                 genres.append('Foursome')
             elif count > 4 and 'Orgy' not in genres:
                 genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -88,9 +88,9 @@ class FirstAnalQuestClient(Client):
                 raw = first_attr(actor_page['sel'], '(//div[contains(@class,"model-box")]//img/@src)[1]')
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -103,4 +103,4 @@ class FirstAnalQuestClient(Client):
             push(raw)
         for raw in scene.sel.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
             push(raw)
-        return images
+        metadata.raw_image_urls = images

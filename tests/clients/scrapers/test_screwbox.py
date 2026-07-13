@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.screwbox import ScrewboxClient
 from app.registry import find_site
 
@@ -31,7 +31,8 @@ async def test_search_cards() -> None:
       <div class="item"><h4><a href="//screwbox.com/scene/box">Box Scene</a></h4></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await ScrewboxClient().search(SearchContext(title='box', encoded='box', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ScrewboxClient().search(results, SearchContext(title='box', encoded='box', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Box Scene'
     assert results[0].scene_url == 'https://screwbox.com/scene/box'

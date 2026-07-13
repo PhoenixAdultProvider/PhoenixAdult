@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.evolvedfights as ef_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Evolved Fights')
@@ -21,7 +21,8 @@ async def test_search_direct_guess(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ef_mod, 'web_search_available', lambda: False)
     url = 'https://evolvedfights.com/cool-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene</title><span class="update_date">03/04/2021</span>'))
-    results = await ef_mod.EvolvedFightsClient().search(_ctx(search_date='2021-03-04'))
+    results: list[SearchResult] = []
+    await ef_mod.EvolvedFightsClient().search(results, _ctx(search_date='2021-03-04'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url

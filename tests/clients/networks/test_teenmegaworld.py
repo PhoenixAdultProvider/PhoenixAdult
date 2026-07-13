@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.teenmegaworld import TeenMegaWorldClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ async def test_search() -> None:
     card = '<div class="thumb thumb-video"><a class="thumb__title-link" href="/v/7">Cool Scene</a><time>March 4, 2021</time></div>'
     respx.get('https://old-n-young.com/search.php?query=cool+scene&page=1').mock(return_value=httpx.Response(200, text=card))
     respx.get('https://old-n-young.com/search.php?query=cool+scene&page=2').mock(return_value=httpx.Response(200, text=''))
-    results = await TeenMegaWorldClient().search(_ctx())
+    results: list[SearchResult] = []
+    await TeenMegaWorldClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://old-n-young.com/v/7'

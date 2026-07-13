@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.dorcelvision import DorcelVisionClient
 from app.registry import find_site
 
@@ -33,7 +33,8 @@ async def test_search_movie_cards() -> None:
       <a class="movies" href="/en/movies/9/vision-movie"><img alt="Vision Movie"></a>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await DorcelVisionClient().search(SearchContext(title='vision', encoded='vision', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await DorcelVisionClient().search(results, SearchContext(title='vision', encoded='vision', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Vision Movie'
     assert results[0].scene_url == 'https://www.dorcelvision.com/en/movies/9/vision-movie'

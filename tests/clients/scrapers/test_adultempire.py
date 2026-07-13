@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import app.clients.sites.adultempire as ae_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.adultempire import AdultEmpireClient
 from app.registry import find_site
 
@@ -64,7 +64,7 @@ async def test_requests_carry_age_cookie(no_web_search: object) -> None:
         return httpx.Response(200, text=MOVIE_PAGE)
 
     respx.get('https://www.adultempire.com/1234567').mock(side_effect=cap)
-    await AdultEmpireClient().search(_ctx(scene_id='1234567'))
+    await AdultEmpireClient().search([], _ctx(scene_id='1234567'))
     assert seen.get('cookie') is not None
     assert 'ageConfirmed=true' in (seen['cookie'] or '')
 
@@ -73,7 +73,8 @@ async def test_requests_carry_age_cookie(no_web_search: object) -> None:
 async def test_search_direct_id_with_split_scene(no_web_search: object) -> None:
     _mock_age_gate()
     respx.get('https://www.adultempire.com/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
-    results = await AdultEmpireClient().search(_ctx(scene_id='1234567'))
+    results: list[SearchResult] = []
+    await AdultEmpireClient().search(results, _ctx(scene_id='1234567'))
     assert len(results) == 2
     assert results[0].title == 'Big Compilation [Empire Studios]'
     assert results[0].score == 100
@@ -90,7 +91,8 @@ async def test_search_onsite_vol_scoring(monkeypatch: pytest.MonkeyPatch, no_web
     )
     respx.get('https://www.adultempire.com/allsearch/search?q=Anal+Vol+3').mock(return_value=httpx.Response(200, text=search_results))
     respx.get('https://www.adultempire.com/9999-anal-compilation-blu-ray.html').mock(return_value=httpx.Response(200, text=vol_movie))
-    results = await AdultEmpireClient().search(_ctx(title='Anal Vol 3'))
+    results: list[SearchResult] = []
+    await AdultEmpireClient().search(results, _ctx(title='Anal Vol 3'))
     assert len(results) >= 1
     assert results[0].title == '[Vol. 3] Anal Compilation [Empire Studios] [Blu-Ray]'
     assert 0 < (results[0].score or 0) <= 100
@@ -115,7 +117,8 @@ async def test_search_skips_interview_siblings() -> None:
     </body></html>"""
     respx.get('https://www.adultempire.com/8888888').mock(return_value=httpx.Response(200, text=interview_page))
     client = AdultEmpireClient()
-    results = await client.search(_ctx(scene_id='8888888'))
+    results: list[SearchResult] = []
+    await client.search(results, _ctx(scene_id='8888888'))
     detail = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
     assert detail is not None
     assert [a.name for a in detail.actors] == ['Samantha Saint', 'Julia Ann', 'Evan Stone']
@@ -133,7 +136,8 @@ async def test_search_strips_sale_banner_h1() -> None:
       <ul><li>Studio: <a>Evil Angel</a></li></ul>
     </body></html>"""
     respx.get('https://www.adultempire.com/7654321').mock(return_value=httpx.Response(200, text=sale_page))
-    results = await AdultEmpireClient().search(_ctx(scene_id='7654321'))
+    results: list[SearchResult] = []
+    await AdultEmpireClient().search(results, _ctx(scene_id='7654321'))
     assert results[0].title == 'Un-Pure Evil [Evil Angel]'
 
 
@@ -142,7 +146,8 @@ async def test_detail_movie() -> None:
     _mock_age_gate()
     respx.get('https://www.adultempire.com/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = AdultEmpireClient()
-    results = await client.search(_ctx(scene_id='1234567'))
+    results: list[SearchResult] = []
+    await client.search(results, _ctx(scene_id='1234567'))
     detail = await client.fetch_scene_detail(client.decode(results[0].cur_id), SITE)
     assert detail is not None
     assert detail.title == 'Big Compilation'
@@ -168,7 +173,8 @@ async def test_detail_split_scene() -> None:
     _mock_age_gate()
     respx.get('https://www.adultempire.com/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = AdultEmpireClient()
-    results = await client.search(_ctx(scene_id='1234567'))
+    results: list[SearchResult] = []
+    await client.search(results, _ctx(scene_id='1234567'))
     detail = await client.fetch_scene_detail(client.decode(results[1].cur_id), SITE)
     assert detail is not None
     assert detail.title == 'Big Compilation [Scene 1]'

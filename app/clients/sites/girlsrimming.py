@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, meta_content, web_search_urls
 
@@ -15,7 +15,7 @@ def _py_title(s: str) -> str:
 
 
 class GirlsRimmingClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         direct = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
         candidates = [direct]
@@ -24,7 +24,6 @@ class GirlsRimmingClient(Client):
             if lc not in candidates:
                 candidates.append(lc)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page or page['html'].strip() == 'Page not found':
@@ -43,35 +42,34 @@ class GirlsRimmingClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//h2[contains(@class,"title")]/text())[1]') or None
+        metadata.title = first_attr(scene.sel, '(//h2[contains(@class,"title")]/text())[1]') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return meta_content(scene.sel, 'description') or None
+        metadata.summary = meta_content(scene.sel, 'description') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Girls Rimming'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Girls Rimming'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     def _keywords(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
         return scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres: list[str] = []
         for part in self._keywords(scene).split(','):
             entry = part.strip()
@@ -82,9 +80,9 @@ class GirlsRimmingClient(Client):
                 genres.append(titled)
         if 'Rim Job' not in genres:
             genres.append('Rim Job')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for part in self._keywords(scene).split(','):
@@ -96,7 +94,7 @@ class GirlsRimmingClient(Client):
                 continue
             seen.add(name)
             actors.append(ActorResult(name=name, photo_url=await self._resolve_actor_photo(name, scene)))
-        return actors
+        metadata.actors = actors
 
     async def _resolve_actor_photo(self, name: str, scene: LoadedScene) -> str:
         base = scene.site.base_url.rstrip('/')
@@ -115,7 +113,7 @@ class GirlsRimmingClient(Client):
         raw = first_attr(page['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
         return join_url(raw, base) if raw else ''
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for raw in scene.sel.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
@@ -125,4 +123,4 @@ class GirlsRimmingClient(Client):
             abs_url = join_url(raw, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

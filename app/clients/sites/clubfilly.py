@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -35,33 +35,33 @@ class ClubFillyClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _TITLE_XP) or None
+        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//p[contains(@class,"description")]')
         if not raw:
-            return None
-        return _DESC_PREFIX.sub('', raw).strip() or None
+            return
+        metadata.summary = _DESC_PREFIX.sub('', raw).strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'ClubFilly'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'ClubFilly'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[contains(@class,"fltRight")]')
         date_text = _DATE_PREFIX.sub('', raw).strip()
-        return iso_date(date_text, '%Y-%m-%d') or None
+        metadata.release_date = iso_date(date_text, '%Y-%m-%d') or None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    def _collect_actors(self, scene: LoadedScene) -> list[ActorResult]:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//p[contains(@class,"starring")]')
         text = _STARRING_PREFIX.sub('', raw).strip()
@@ -70,18 +70,21 @@ class ClubFillyClient(Client):
         names = [n.strip() for n in text.split(',') if n.strip()]
         return [ActorResult(name=name) for name in names]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = self._collect_actors(scene)
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = ['Lesbian']
-        n = len(await self.fetch_actors(scene) or [])
+        n = len(self._collect_actors(scene))
         if n == 3:
             genres.append('Threesome')
         elif n == 4:
             genres.append('Foursome')
         elif n > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//ul[@id="lstSceneFocus"]/li/img'):
@@ -91,4 +94,4 @@ class ClubFillyClient(Client):
             abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

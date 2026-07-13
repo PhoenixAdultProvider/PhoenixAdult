@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.vrallure import VRAllureClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_canonical_adoption() -> None:
             </body></html>""",
         )
     )
-    results = await VRAllureClient().search(SearchContext(title='wild scene', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VRAllureClient().search(results, SearchContext(title='wild scene', encoded='x', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == canonical
     assert results[0].title == 'Wild Scene'
@@ -34,7 +35,8 @@ async def test_search_canonical_adoption() -> None:
 @respx.mock
 async def test_search_empty_on_404() -> None:
     respx.get('https://www.vrallure.com/scenes/no_such').mock(return_value=httpx.Response(404, text=''))
-    results = await VRAllureClient().search(SearchContext(title='no such', encoded='x', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await VRAllureClient().search(results, SearchContext(title='no such', encoded='x', search_site=SITE.name, site_info=SITE))
     assert results == []
 
 

@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.stepsecrets import StepSecretsClient
 from app.registry import find_site
 
@@ -38,7 +38,8 @@ async def test_search_cards() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await StepSecretsClient().search(SearchContext(title='Wild Scene', encoded=quote('Wild Scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await StepSecretsClient().search(results, SearchContext(title='Wild Scene', encoded=quote('Wild Scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://www.stepsecrets.com/scene/wild-scene'

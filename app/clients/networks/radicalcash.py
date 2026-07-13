@@ -4,7 +4,7 @@ import json
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 
@@ -16,14 +16,13 @@ class RadicalCashClient(Client):
     def _profile(self, name: str) -> dict[str, str]:
         return _PROFILES.get(name, _DEFAULT)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_path = self._profile(ctx.site_info.name)['scene_path']
         url = f'{base}/api/search/{quote(ctx.title.lower())}'
         data = await self.fetch_json(url, FetchCtx(capture=ctx.capture))
         scenes = data.get('scenes') or [] if isinstance(data, dict) else []
 
-        results: list[SearchResult] = []
         for s in scenes:
             title = (s.get('title') or '').strip()
             slug = s.get('slug')
@@ -40,7 +39,6 @@ class RadicalCashClient(Client):
                     cur_id=pack_cur_id([scene_url]),
                 )
             )
-        return results
 
     # ── Context loader — fetch page, pull the embedded Next.js content blob ─────
 
@@ -64,43 +62,43 @@ class RadicalCashClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return (self._content(scene).get('title') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = (self._content(scene).get('title') or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         summary = (self._content(scene).get('description') or '').strip()
         if summary and summary[-1] not in '.!?':
             summary += '.'
-        return summary or None
+        metadata.summary = summary or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return self._profile(scene.site.name)['studio']
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = self._profile(scene.site.name)['studio']
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         site = (self._content(scene).get('site') or '').strip()
         studio = self._profile(scene.site.name)['studio']
-        return site if site and site != studio else None
+        metadata.tagline = site if site and site != studio else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         site = (self._content(scene).get('site') or '').strip()
-        return [site] if site else None
+        metadata.collections = [site] if site else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
-        return iso_date(self._content(scene).get('publish_date') or '') or None
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = iso_date(self._content(scene).get('publish_date') or '') or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [t.strip() for t in (self._content(scene).get('tags') or []) if t and t.strip()]
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = [
             ActorResult(name=(a.get('name') or '').strip(), photo_url=(a.get('thumb') or '').strip())
             for a in (self._content(scene).get('models_thumbs') or [])
             if (a.get('name') or '').strip()
         ]
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         content = self._content(scene)
         coll = self.image_collector()
         coll['push'](content.get('trailer_screencap'))
@@ -112,4 +110,4 @@ class RadicalCashClient(Client):
             for img in content.get('thumbs') or []:
                 coll['push'](img)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

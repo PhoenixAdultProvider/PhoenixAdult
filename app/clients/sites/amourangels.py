@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -16,16 +16,16 @@ def _strip_video_label(s: str) -> str:
 
 
 class AmourAngelsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = base + ctx.site_info.search_path.replace('{query}', ctx.title.strip())
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
         if not loaded:
-            return []
+            return
         title = _strip_video_label(first_text(loaded['sel'], _TITLE_XP))
         if not title:
-            return []
-        return [
+            return
+        results.append(
             build_search_result(
                 title=title,
                 scene_url=scene_url,
@@ -35,33 +35,33 @@ class AmourAngelsClient(Client):
                 search_url=scene_url,
                 cur_id=pack_cur_id([scene_url]),
             )
-        ]
+        )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _strip_video_label(first_text(scene.sel, _TITLE_XP)) or None
+        metadata.title = _strip_video_label(first_text(scene.sel, _TITLE_XP))
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['Softcore', 'European Girls']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Softcore', 'European Girls']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         cell_text = first_text(scene.sel, _DATE_CELL_XP)
         parts = cell_text.split('Added')
         if len(parts) < 2:
-            return None
+            return
         candidate = parts[1].strip()[:10]
-        return iso_date(candidate, '%Y-%m-%d') or None
+        metadata.release_date = iso_date(candidate, '%Y-%m-%d') or None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -84,9 +84,9 @@ class AmourAngelsClient(Client):
             if lname not in seen:
                 seen.add(lname)
                 actors.append(ActorResult(name=lname, photo_url=photo, gender='female'))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for el in scene.sel.xpath('//td[contains(@class,"noisebg")]//div//img'):
@@ -96,4 +96,4 @@ class AmourAngelsClient(Client):
             abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

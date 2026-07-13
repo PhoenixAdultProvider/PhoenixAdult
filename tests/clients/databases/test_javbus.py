@@ -6,7 +6,7 @@ import httpx
 import respx
 
 from app.clients.aggregators.javbus import JavBusClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('JavBus')
@@ -28,7 +28,8 @@ async def test_search_censored_cards() -> None:
         )
     )
     respx.get('https://www.javbus.com/en/uncensored/search/' + quote('amazing scene')).mock(return_value=httpx.Response(200, text='<html></html>'))
-    results = await JavBusClient().search(SearchContext(title='amazing scene', encoded=quote('amazing scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JavBusClient().search(results, SearchContext(title='amazing scene', encoded=quote('amazing scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == '[Censored][XYZ-007] Amazing Scene'
     assert results[0].scene_url == 'https://www.javbus.com/en/XYZ-007'
@@ -42,7 +43,8 @@ async def test_search_direct_javid() -> None:
     respx.get('https://www.javbus.com/en/SONE-555').mock(
         return_value=httpx.Response(200, text='<html><head><title>SONE-555 Direct Hit - JavBus</title></head><body></body></html>')
     )
-    results = await JavBusClient().search(SearchContext(title='SONE 555', encoded=quote('SONE 555'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JavBusClient().search(results, SearchContext(title='SONE 555', encoded=quote('SONE 555'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == '[Direct][SONE-555] SONE-555 Direct Hit'
     assert results[0].scene_url == 'https://www.javbus.com/en/SONE-555'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.finishesthejob import FinishesTheJobClient
 from app.registry import find_site
 
@@ -22,7 +22,8 @@ async def test_search_parses_scene_cards() -> None:
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await FinishesTheJobClient().search(SearchContext(title='hand job', encoded='hand%20job', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await FinishesTheJobClient().search(results, SearchContext(title='hand job', encoded='hand%20job', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Hand Job'
     assert results[0].scene_url == 'https://www.finishesthejob.com/scene/manojob/hand-job/'

@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import colette as colette_module
 from app.clients.sites.colette import ColetteClient
 from app.registry import find_site
@@ -36,7 +36,8 @@ async def test_search_constructed_candidate(monkeypatch: pytest.MonkeyPatch) -> 
     url = 'https://colette.com/videos/Hot_Scene'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     respx.get('https://colette.com/galleries/Hot_Scene').mock(return_value=httpx.Response(200, text=GALLERY_HTML))
-    results = await ColetteClient().search(SearchContext(title='Hot Scene', encoded='', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ColetteClient().search(results, SearchContext(title='Hot Scene', encoded='', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Hot Scene'
     assert results[0].scene_url == url

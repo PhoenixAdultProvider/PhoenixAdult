@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.nubiles as nub_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.nubiles import NubilesClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ async def test_search_scene_id() -> None:
             text='<div class="content-pane-title"><h2>Cool Scene</h2><span class="date">March 4, 2021</span></div><video poster="//cdn/p.jpg"></video>',
         )
     )
-    results = await NubilesClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await NubilesClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

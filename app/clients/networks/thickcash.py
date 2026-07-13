@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -13,20 +13,19 @@ _GENRES: dict[str, list[str]] = load_site_json(__file__, 'thickcash_genres')
 
 
 class ThickCashClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         words = ctx.title.strip().split()
         model_id = '-'.join(words[:2])
         scene_title = ' '.join(words[2:])
         if not model_id:
-            return []
+            return
 
         search_url = base + ctx.site_info.search_path.replace('{query}', model_id)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if not loaded:
-            return []
+            return
 
-        results: list[SearchResult] = []
         for block in loaded['sel'].xpath('//div[contains(@class,"updateBlock") and contains(@class,"clear")]'):
             title = (block.xpath('(.//h3)[1]').xpath('string(.)').get() or '').strip()
             if not title:
@@ -41,7 +40,6 @@ class ThickCashClient(Client):
                     title=title, scene_url=search_url, query=scene_title or ctx.title, display_date=date or None, search_date=ctx.search_date, cur_id=packed
                 )
             )
-        return results
 
     # ── Context loader — decode the JSON-packed scene; no detail fetch ──────────
 
@@ -59,31 +57,31 @@ class ThickCashClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return self._packed(scene).get('title') or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = self._packed(scene).get('title') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return self._packed(scene).get('summary') or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = self._packed(scene).get('summary') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._packed(scene).get('release_date')
-        return (iso_date(d) or d) if d else None
+        metadata.release_date = (iso_date(d) or d) if d else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return list(_GENRES.get(scene.site.name, [])) or None
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = list(_GENRES.get(scene.site.name, [])) or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
-        return None
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        return
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')
-        return [poster] if poster else None
+        metadata.raw_image_urls = [poster] if poster else []

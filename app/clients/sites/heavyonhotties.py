@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
@@ -24,7 +24,7 @@ def _lift_scheme(url: str) -> str:
 
 
 class HeavyOnHottiesClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         words = ctx.title.strip().split()
 
@@ -48,7 +48,6 @@ class HeavyOnHottiesClient(Client):
             if u not in candidates:
                 candidates.append(u)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
             if not page:
@@ -69,35 +68,35 @@ class HeavyOnHottiesClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('normalize-space((//h1)[1])').get() or ''
         if not raw:
-            return None
-        return _detail_title_strip(raw) or None
+            return
+        metadata.title = _detail_title_strip(raw) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_attr(scene.sel, 'normalize-space((//div[contains(@class,"video_text")])[1])') or None
+        metadata.summary = first_attr(scene.sel, 'normalize-space((//div[contains(@class,"video_text")])[1])') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Heavy on Hotties'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Heavy on Hotties'
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return ['Heavy on Hotties']
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = ['Heavy on Hotties']
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath(f'normalize-space(({_RELEASED_XP})[1])').get() or '').strip()
         if raw:
-            return iso_date(raw)
-        return (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+            metadata.release_date = iso_date(raw)
+            return
+        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
@@ -115,9 +114,9 @@ class HeavyOnHottiesClient(Client):
                 raw = first_attr(actor_page['sel'], '(//div[h1]//img/@src)[1]')
                 photo = _lift_scheme(raw) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         for raw in scene.sel.xpath('//video[@poster]/@poster').getall():
@@ -127,4 +126,4 @@ class HeavyOnHottiesClient(Client):
             abs_url = _lift_scheme(raw)
             if abs_url not in images:
                 images.append(abs_url)
-        return images
+        metadata.raw_image_urls = images

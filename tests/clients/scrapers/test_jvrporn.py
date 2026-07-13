@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.jvrporn import JVRPornClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ DETAIL_HTML = """<html><body>
 async def test_search_direct_by_sceneid() -> None:
     url = 'https://jvrporn.com/video/321'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await JVRPornClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='321'))
+    results: list[SearchResult] = []
+    await JVRPornClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='321'))
     assert len(results) == 1
     assert results[0].title == 'VR Adventure'
     assert results[0].scene_url == url

@@ -13,7 +13,9 @@ class ScraperRouter:
         client = get_client(search_data.site_info.scraper_config.type)
         if client is None:
             return None
-        return await client.search(search_data)
+        results: list[SearchResult] = []
+        await client.search(results, search_data)
+        return results
 
     async def fetch_scene_detail(self, scene_url: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         client = get_client(site.scraper_config.type)

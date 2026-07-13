@@ -4,7 +4,7 @@ import re
 from typing import Any
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -28,14 +28,13 @@ def _ptx_srcs(script: str, key: str) -> list[str]:
 
 
 class AllureMediaClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         search_url = _search_url_for(ctx.site_info, ctx.title)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
         if not loaded:
-            return []
+            return
 
         swallow_salon = ctx.site_info.name == 'Swallow Salon'
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"update_details")]'):
             if swallow_salon:
                 anchor = card.xpath('(.//a)[2]')
@@ -54,33 +53,32 @@ class AllureMediaClient(Client):
                     title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
-        return iso_date(raw) or None
+        metadata.release_date = iso_date(raw) or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for el in scene.sel.xpath('//span[contains(@class,"update_tags")]//a'):
@@ -89,9 +87,9 @@ class AllureMediaClient(Client):
                 genres.append(g)
         if 'Amateur' not in genres:
             genres.append('Amateur')
-        return genres or None
+        metadata.genres = genres or []
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         title = (scene.sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
@@ -116,9 +114,9 @@ class AllureMediaClient(Client):
             if (name in title or name in summary) and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))
-        return actors or None
+        metadata.actors = actors or []
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         coll = self.image_collector(lambda u: join_url(u, base))
@@ -165,7 +163,7 @@ class AllureMediaClient(Client):
                 photos_href = first_attr(a, '@href')
                 break
         photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
-        scene.raw_image_referer = photos_url or scene.url
+        metadata.raw_image_referer = photos_url or scene.url
 
         if photos_url:
             photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
@@ -177,4 +175,4 @@ class AllureMediaClient(Client):
                     coll['push'](u)
 
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images or []

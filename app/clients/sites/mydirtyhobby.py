@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx2
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.logging.logger import logger
@@ -26,7 +26,7 @@ def _slug(s: str) -> str:
 
 
 class MyDirtyHobbyClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         search_url = base + ctx.site_info.search_path
         lang = _primary_lang(ctx.language) or 'en'
@@ -39,9 +39,8 @@ class MyDirtyHobbyClient(Client):
             items = (r.json() or {}).get('items', [])
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn(ctx.site_info.name, f'search POST threw: {err}')
-            return []
+            return
 
-        results: list[SearchResult] = []
         for item in items:
             if item.get('contentType') != 'video':
                 continue
@@ -62,7 +61,6 @@ class MyDirtyHobbyClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Context loader (detail JSON embedded in the scene HTML) ───────────────
 
@@ -109,40 +107,40 @@ class MyDirtyHobbyClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        return ((self._content(scene).get('title') or {}).get('text') or '').strip() or None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.title = ((self._content(scene).get('title') or {}).get('text') or '').strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return ((self._content(scene).get('description') or {}).get('text') or '').strip() or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = ((self._content(scene).get('description') or {}).get('text') or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'My Dirty Hobby'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'My Dirty Hobby'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return (self._avatar(scene).get('title') or '').strip() or None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = (self._avatar(scene).get('title') or '').strip() or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = (self._avatar(scene).get('title') or '').strip()
-        return [name] if name else None
+        metadata.collections = [name] if name else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         raw = ((self._content(scene).get('subtitle') or {}).get('text') or '').strip()
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         items = (self._content(scene).get('categories') or {}).get('items') or []
         values: list[str | None] = [(it.get('text') or '').strip().lower() for it in items]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         avatar = self._avatar(scene)
         name = (avatar.get('title') or '').strip()
         if not name:
-            return []
+            return
         photo = ((avatar.get('thumbImg') or {}).get('src') or '').strip()
-        return [ActorResult(name=name, photo_url=photo)]
+        metadata.actors = [ActorResult(name=name, photo_url=photo)]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         src = ((self._content(scene).get('videoNotPurchased') or {}).get('thumbnail') or {}).get('src')
         src = (src or '').strip()
-        return [src] if src else []
+        metadata.raw_image_urls = [src] if src else []

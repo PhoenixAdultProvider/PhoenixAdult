@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.twotgirls import TwoTGirlsClient
 from app.registry import find_site
 
@@ -17,7 +17,8 @@ assert SITE is not None
 async def test_search_direct_hit() -> None:
     url = 'https://twotgirls.com/video/wild-scene'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><body><div class="video-details"><h1>Wild Scene</h1></div></body></html>'))
-    results = await TwoTGirlsClient().search(SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await TwoTGirlsClient().search(results, SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Wild Scene'
@@ -38,7 +39,8 @@ async def test_search_fallback_to_onsite() -> None:
             </body></html>""",
         )
     )
-    results = await TwoTGirlsClient().search(SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await TwoTGirlsClient().search(results, SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == 'https://twotgirls.com/video/wild-scene-123'
 

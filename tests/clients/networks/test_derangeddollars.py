@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import app.clients.networks.derangeddollars as dd_mod
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('Deranged Dollars')
@@ -27,7 +27,8 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get('https://derangeddollars.com/session/77/cool-scene').mock(
         return_value=httpx.Response(200, text='<h3 class="mas_title">Cool Scene</h3><div class="lch"><span>Nurse Jane, March 4, 2021</span></div>')
     )
-    results = await dd_mod.DerangedDollarsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await dd_mod.DerangedDollarsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://derangeddollars.com/session/77/cool-scene'
@@ -37,7 +38,8 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
 @respx.mock
 async def test_search_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dd_mod, 'web_search_available', lambda: False)
-    results = await dd_mod.DerangedDollarsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await dd_mod.DerangedDollarsClient().search(results, _ctx())
     assert results == []
 
 

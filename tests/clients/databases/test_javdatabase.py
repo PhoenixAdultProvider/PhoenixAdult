@@ -4,7 +4,7 @@ import httpx
 import respx
 
 from app.clients.aggregators.javdatabase import JAVDatabaseClient
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.registry import find_site
 
 SITE = find_site('JAVDatabase')
@@ -24,7 +24,8 @@ async def test_search_builds_javid_card() -> None:
             </body></html>""",
         )
     )
-    results = await JAVDatabaseClient().search(SearchContext(title='QWE 999', encoded='QWE%20999', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await JAVDatabaseClient().search(results, SearchContext(title='QWE 999', encoded='QWE%20999', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == '[QWE-999] Some Movie'
     assert results[0].scene_url == 'https://www.javdatabase.com/movies/qwe-999/'

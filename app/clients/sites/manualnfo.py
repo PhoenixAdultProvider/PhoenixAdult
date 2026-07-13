@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 from lxml import etree as lxml_etree
 
 from app.clients.aggregators.data18 import Data18Client, scene_url_from_ref
-from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config import config
 from app.config.env import env
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
@@ -264,21 +264,21 @@ class ManualNfoClient(Client):
         super().__init__()
         self._data18: Data18Client | None = None
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         tag = ctx.site_info.name
         basename = ctx.title.strip()
         if not basename:
-            return []
+            return
         located = _locate_nfo(basename)
         if not located:
             logger.debug(tag, f'search: no NFO for basename="{basename}" under {_manual_nfo_root()}')
-            return []
+            return
         nfo = _load_and_parse(located)
         if not nfo:
-            return []
+            return
         title = nfo.title or basename
         thumb = _find_sibling_image(located, '-poster')
-        return [
+        results.append(
             build_search_result(
                 title=title,
                 scene_url=str(located.nfo_path),
@@ -290,7 +290,7 @@ class ManualNfoClient(Client):
                 cur_id=pack_cur_id([basename]),
                 thumb_url=thumb,
             )
-        ]
+        )
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -320,52 +320,52 @@ class ManualNfoClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return (nfo.title if nfo else '') or None
+        metadata.title = (nfo.title if nfo else '') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         if not nfo:
-            return None
-        return nfo.plot or nfo.outline or None
+            return
+        metadata.summary = nfo.plot or nfo.outline or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return (nfo.studio if nfo else None) or None
+        metadata.studio = (nfo.studio if nfo else '') or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return (nfo.tagline if nfo else None) or None
+        metadata.tagline = (nfo.tagline if nfo else None) or None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return _nfo_release_date(nfo) if nfo else None
+        metadata.release_date = _nfo_release_date(nfo) if nfo else None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return nfo.genres if nfo else None
+        metadata.genres = (nfo.genres if nfo else None) or []
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
-        return [nfo.set] if nfo and nfo.set else None
+        metadata.collections = [nfo.set] if nfo and nfo.set else None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         if not nfo:
-            return None
+            return
         out: list[ActorResult] = []
         for a in nfo.actors:
             g = a.get('gender', '').lower().strip()
             thumb = a.get('thumb', '')
             out.append(ActorResult(name=a['name'], photo_url=thumb if _is_http(thumb) else '', gender=g if g in _ALLOWED_GENDERS else ''))
-        return out
+        metadata.actors = out
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         located = self._located(scene)
         if not nfo or not located:
-            return None
+            return
         images: list[str] = []
         poster = _find_sibling_image(located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
         fanart = _find_sibling_image(located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
@@ -381,7 +381,7 @@ class ManualNfoClient(Client):
             self._data18 = self._data18 or Data18Client()
             date_iso = _nfo_release_date(nfo)
             date_obj = datetime.fromisoformat(date_iso) if date_iso else None
-            scene.data18_url = await self._data18.enrich_images(
+            metadata.data18_url = await self._data18.enrich_images(
                 scope=scene.site.name,
                 images=images,
                 scene_id=slugify(nfo.title.replace("'", '')) if nfo.title else None,
@@ -390,7 +390,7 @@ class ManualNfoClient(Client):
                 scene_date=date_obj,
                 forced_url=forced_url,
             )
-        return images
+        metadata.raw_image_urls = images
 
 
 __testing__ = {'locate_nfo': _locate_nfo, 'parse_nfo': _parse_nfo, 'manual_nfo_root': _manual_nfo_root, 'reset_index_cache': _reset_index_cache}

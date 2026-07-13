@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -13,20 +13,22 @@ _DIGITS_RE = re.compile(r'^\d+$')
 
 
 class StasyQClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         tokens = (ctx.full_title or ctx.title).split()
         scene_id = next((t for t in tokens if _DIGITS_RE.match(t)), None)
         if not scene_id:
-            return []
+            return
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = base + ctx.site_info.search_path.replace('{query}', scene_id)
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture, headers=_COOKIE), f'[{ctx.site_info.name}] sceneID {scene_id}')
         if not loaded:
-            return []
+            return
         title = first_text(loaded['sel'], '//h1')
         if not title:
-            return []
-        return [build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))]
+            return
+        results.append(
+            build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
+        )
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -40,31 +42,31 @@ class StasyQClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1') or None
+        metadata.title = first_text(scene.sel, '//h1') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"about-section__text")]/p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"about-section__text")]/p') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = STUDIO
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [STUDIO]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [STUDIO]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//section[contains(@class,"about-section")]//div[contains(@class,"tags")]//a')
         ]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -73,9 +75,10 @@ class StasyQClient(Client):
             if name and name not in seen:
                 seen.add(name)
                 actors.append(ActorResult(name=name))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        out = self.dedup_strings([(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()])
-        return out
+        metadata.raw_image_urls = self.dedup_strings(
+            [(href or '').strip() for href in scene.sel.xpath('//div[contains(@class,"js-release-gallery")]//a/@href').getall()]
+        )

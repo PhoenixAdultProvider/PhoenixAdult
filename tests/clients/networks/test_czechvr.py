@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.czechvr import CzechVRClient, __testing__
 from app.registry import find_site
 
@@ -29,7 +29,8 @@ async def test_search_scene_id_score() -> None:
             </div>""",
         )
     )
-    results = await CzechVRClient().search(_ctx(scene_id='555'))
+    results: list[SearchResult] = []
+    await CzechVRClient().search(results, _ctx(scene_id='555'))
     assert len(results) == 1
     assert results[0].title == '555 - Cool Scene'
     assert results[0].scene_url == 'https://czechvr.com/video/555-cool-scene'

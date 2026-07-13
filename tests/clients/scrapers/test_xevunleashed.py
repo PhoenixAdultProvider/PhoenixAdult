@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.xevunleashed import XevUnleashedClient
 from app.registry import find_site
 
@@ -32,7 +32,8 @@ async def test_search_direct_plus_onsite_dedup() -> None:
             </body></html>""",
         )
     )
-    results = await XevUnleashedClient().search(SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await XevUnleashedClient().search(results, SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 2
     assert results[0].scene_url == direct_url
     assert results[0].release_date == '2024-01-05'

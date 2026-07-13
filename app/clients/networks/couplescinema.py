@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
@@ -14,29 +14,29 @@ class CouplesCinemaClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'WarningModal=true'})
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
 
         if ctx.scene_id:
             scene_url = f'{base}/post/details/{ctx.scene_id}'
             page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
             if not page:
-                return []
+                return
             title = (page['sel'].xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
             if not title:
-                return []
-            return [
+                return
+            results.append(
                 build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
-            ]
+            )
+            return
 
         slug = '+'.join(ctx.title.split())
         search_url = base + ctx.site_info.search_path.replace('{query}', slug)
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
         if not loaded:
-            return []
+            return
 
         requested = ctx.site_info.name.lower()
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[contains(@class,"Post")]'):
             title = (card.xpath('(.//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
             href = first_attr(card, '(.//a[contains(@class,"media")])[1]/@href')
@@ -62,7 +62,6 @@ class CouplesCinemaClient(Client):
                     cur_id=pack_cur_id([scene_url, ctx.search_date or '', cover_packed]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -76,42 +75,48 @@ class CouplesCinemaClient(Client):
             return scene.scene_date.split('|', 1)[1]
         return ''
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        assert scene.sel is not None
-        return (scene.sel.xpath('(//span[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or None
-
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str | None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
         return raw.split('|')[0].strip() or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tag = await self.fetch_tagline(scene)
-        return [tag] if tag else None
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.title = (
+            scene.sel.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or ''
+        ).strip() or ''
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        assert scene.sel is not None
+        metadata.summary = (scene.sel.xpath('(//span[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene)
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tag = self._tagline(scene)
+        metadata.collections = [tag] if tag else None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         date_part = self._date_part(scene)
         if date_part:
-            return iso_date(date_part) or date_part
+            metadata.release_date = iso_date(date_part) or date_part
+            return
         raw = (scene.sel.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('|')]
         year = parts[1] if len(parts) > 1 else ''
-        return f'{year}-01-01' if _YEAR_RE.match(year) else None
+        metadata.release_date = f'{year}-01-01' if _YEAR_RE.match(year) else None
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=first_attr(a)) for a in scene.sel.xpath('//div[contains(@class,"cast")]//a')]
-        return self.dedup_people(entries) or None
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
 
@@ -125,4 +130,4 @@ class CouplesCinemaClient(Client):
         for raw in scene.sel.xpath('//video/@poster').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

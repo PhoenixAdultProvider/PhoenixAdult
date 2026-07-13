@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -12,9 +12,8 @@ _PREFIX_RE = re.compile(r'^(Video|Movie)\s*-\s*')
 
 
 class PenthouseGoldClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         search_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
@@ -67,35 +66,34 @@ class PenthouseGoldClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _PREFIX_RE.sub('', first_text(scene.sel, _H1_XP)).strip() or None
+        metadata.title = _PREFIX_RE.sub('', first_text(scene.sel, _H1_XP)).strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//p')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath(_UPLOAD_XP).get() or '').strip()
-        return (iso_date(raw, '%m/%d/%Y') if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw, '%m/%d/%Y') if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in scene.sel.xpath('//ul[contains(@class,"scene-tags")]//li//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries: list[ActorResult] = []
         for card in scene.sel.xpath('//ul[@id="featured_pornstars"]//div[contains(@class,"model")]'):
@@ -103,11 +101,11 @@ class PenthouseGoldClient(Client):
             raw = first_attr(card, '(.//img/@src)[1]')
             photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
             entries.append(ActorResult(name=name, photo_url=photo))
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//div[@id="trailer_player_finished"]//img/@src)[1]')
         if not raw:
-            return []
-        return [absolute_url(raw, scene.site.base_url)]
+            return
+        metadata.raw_image_urls = [absolute_url(raw, scene.site.base_url)]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.unzipvr import UnzipVRClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search() -> None:
     body = {'data': {'videos': [{'title': 'Cool Scene', 'slug': 'cool-scene'}]}}
     respx.get(f'{_BASE}/api/content/v1/search/cool%20scene').mock(return_value=httpx.Response(200, json=body))
-    results = await UnzipVRClient().search(_ctx())
+    results: list[SearchResult] = []
+    await UnzipVRClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert UnzipVRClient().decode(results[0].cur_id) == 'cool-scene'

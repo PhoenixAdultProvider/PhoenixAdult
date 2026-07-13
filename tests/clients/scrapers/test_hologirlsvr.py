@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.hologirlsvr import HoloGirlsVRClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ DETAIL_HTML = """<html><body>
 async def test_search_direct_by_sceneid() -> None:
     url = 'https://www.hologirlsvr.com/Scenes/Videos/555'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await HoloGirlsVRClient().search(SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='555'))
+    results: list[SearchResult] = []
+    await HoloGirlsVRClient().search(results, SearchContext(title='', encoded='', search_site=SITE.name, site_info=SITE, scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Holo Scene'
     assert results[0].scene_url == url
@@ -41,7 +42,8 @@ async def test_search_on_site_cards() -> None:
       <div class="memVid"><div class="memVidTitle"><a href="/Scenes/Videos/9" title="Holo Nine">x</a></div></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await HoloGirlsVRClient().search(SearchContext(title='holo', encoded='holo', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await HoloGirlsVRClient().search(results, SearchContext(title='holo', encoded='holo', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Holo Nine'
     assert results[0].scene_url == 'https://www.hologirlsvr.com/Scenes/Videos/9'

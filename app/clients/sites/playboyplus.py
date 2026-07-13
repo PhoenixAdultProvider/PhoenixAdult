@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PlayboyPlusClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = f'{base}{ctx.site_info.search_path}/{ctx.encoded}'
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {scene_url}')
         if not loaded:
-            return []
+            return
         page_poster = (loaded['sel'].xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '').split('?')[0]
 
-        results: list[SearchResult] = []
         for card in loaded['sel'].xpath('//div[@id="search-results-gallery"]//li[contains(@class,"item")]'):
             title = first_text(card, './/h3[contains(@class,"title")]')
             href = first_attr(card, '(.//a[contains(@class,"cardLink")]/@href)[1]')
@@ -28,7 +27,6 @@ class PlayboyPlusClient(Client):
                     title=title, scene_url=url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([url, page_poster])
                 )
             )
-        return results
 
     # ── Context loader (curID packs the search-card poster) ───────────────────
 
@@ -43,37 +41,37 @@ class PlayboyPlusClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1[contains(@class,"title")]') or None
+        metadata.title = first_text(scene.sel, '//h1[contains(@class,"title")]')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//p[contains(@class,"description-truncated")]').replace('...', '') or None
+        metadata.summary = first_text(scene.sel, '//p[contains(@class,"description-truncated")]').replace('...', '')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'Playboy Plus'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Playboy Plus'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//p[contains(@class,"date")]')
-        return (iso_date(raw, '%B %d, %Y') if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw, '%B %d, %Y') if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['Glamour']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['Glamour']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in scene.sel.xpath('//p[contains(@class,"contributorName")]//a')]
-        return self.dedup_people(entries)
+        metadata.actors = self.dedup_people(entries)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -89,4 +87,4 @@ class PlayboyPlusClient(Client):
         push(scene.sel.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
         for raw in scene.sel.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
             push(raw)
-        return images
+        metadata.raw_image_urls = images

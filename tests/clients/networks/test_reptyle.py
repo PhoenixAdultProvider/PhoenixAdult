@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import app.clients.networks.reptyle as reptyle_module
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.reptyle import ReptyleClient
 from app.registry import find_site
 
@@ -39,7 +39,8 @@ _SCENE = {
 async def test_search() -> None:
     url = 'https://www.teamskeet.com/movies/cool-scene'
     respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': _SCENE}})))
-    results = await ReptyleClient().search(_ctx())
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].thumb_url == 'https://cdn/p.jpg'

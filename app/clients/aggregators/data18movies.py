@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from app.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, url_id, xp_first_ns, xp_ns
-from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr
@@ -59,7 +59,7 @@ class Data18MoviesClient(Client):
         super().__init__()
         self._data18 = Data18Client()
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         scene_id = ctx.scene_id if ctx.scene_id and ctx.scene_id.isdigit() and int(ctx.scene_id) > 100 else ''
         text = ctx.title.strip()
@@ -79,7 +79,6 @@ class Data18MoviesClient(Client):
                 if '/movies/' in cleaned and '.html' not in cleaned:
                     movie_urls.add(cleaned)
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         for c in candidates:
@@ -132,7 +131,6 @@ class Data18MoviesClient(Client):
                     subsite=subsite or None,
                 )
             )
-        return results
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -146,29 +144,29 @@ class Data18MoviesClient(Client):
 
     # ── Field hooks ─────────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = xp_ns(scene.sel, _TITLE_XP)
-        return raw or None
+        metadata.title = raw or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         for div in scene.sel.xpath('//div[contains(@class,"gen12")]//div'):
             t = div.xpath('string(.)').get() or ''
             if 'Description' in t and re.search(r'Studio|Network', t):
                 summary = t.split('---')[-1].split('Description -')[-1].strip()
-                return summary.replace('\xa0', ' ') if len(summary) > 1 else None
-        return None
+                metadata.summary = summary.replace('\xa0', ' ') if len(summary) > 1 else ''
+                return
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _resolve_studio(scene.sel) or None
+        metadata.studio = _resolve_studio(scene.sel) or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _resolve_series(scene.sel, _resolve_studio(scene.sel)) or None
+        metadata.tagline = _resolve_series(scene.sel, _resolve_studio(scene.sel)) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         studio = _resolve_studio(scene.sel)
         series = _resolve_series(scene.sel, studio)
@@ -177,18 +175,18 @@ class Data18MoviesClient(Client):
             out.append(studio)
         if series and series not in out:
             out.append(series)
-        return out or None
+        metadata.collections = out or None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _release_date(scene.sel) or scene.scene_date or None
+        metadata.release_date = _release_date(scene.sel) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//p[./b[contains(.,"Categories")]]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -206,17 +204,17 @@ class Data18MoviesClient(Client):
             for img in imgs:
                 add(img.xpath('@alt').get() or '', first_attr(img, '@data-src'))
             break
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         block = scene.sel.xpath('(//p[./b[contains(.,"Director")]])[1]')
         if not block:
-            return None
+            return
         raw = (block[0].xpath('string(.)').get() or '').split(':')[-1].split('-')[0].strip()
         if not raw or raw == 'Unknown':
-            return None
-        return [ActorResult(name=raw)]
+            return
+        metadata.directors = [ActorResult(name=raw)]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
-        return await self._data18.fetch_movie_images(scene.url, scene.sel)
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.raw_image_urls = await self._data18.fetch_movie_images(scene.url, scene.sel) or []

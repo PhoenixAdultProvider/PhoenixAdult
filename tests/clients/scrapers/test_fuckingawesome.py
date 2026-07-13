@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.fuckingawesome import FuckingAwesomeClient
 from app.registry import find_site
 
@@ -21,7 +21,8 @@ async def test_search_parses_gallery_cards() -> None:
       </div></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await FuckingAwesomeClient().search(SearchContext(title='awesome', encoded='awesome', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await FuckingAwesomeClient().search(results, SearchContext(title='awesome', encoded='awesome', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Awesome One'
     assert results[0].scene_url == 'https://fuckingawesome.com/scene/awesome-1'

@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 import app.utils.images.fansite_adapters  # noqa: F401 - registers the fansite adapters
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
@@ -27,12 +27,11 @@ register_fanart_overrides(no_match=_overrides.get('noMatch'), bad_match=_overrid
 
 
 class XartClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         search_url = f'{base}{ctx.site_info.search_path}?input_search_sm={ctx.encoded}'
         loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
 
-        results: list[SearchResult] = []
         seen: set[str] = set()
 
         if loaded:
@@ -68,33 +67,32 @@ class XartClient(Client):
                         title=manual['title'], scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url])
                     )
                 )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _TITLE_XP) or None
+        metadata.title = first_text(scene.sel, _TITLE_XP) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in scene.sel.xpath(_SUMMARY_XP)) if t]
-        return '\n\n'.join(parts) or None
+        metadata.summary = '\n\n'.join(parts) or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [STUDIO]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = re.sub(r'.$', '', first_text(scene.sel, '(//h2)[3]'))
         if not raw:
-            return None
-        return iso_date(raw, '%b %d, %Y') or iso_date(raw)
+            return
+        metadata.release_date = iso_date(raw, '%b %d, %Y') or iso_date(raw)
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres = ['Artistic', 'Glamorous']
         count = len(scene.sel.xpath('//h2//a'))
@@ -104,9 +102,9 @@ class XartClient(Client):
             genres.append('Foursome')
         elif count > 4:
             genres.append('Orgy')
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -121,9 +119,9 @@ class XartClient(Client):
             page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = first_attr(page['sel'], '(//img[contains(@class,"info-img")]/@src)[1]') if page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
 
@@ -152,7 +150,7 @@ class XartClient(Client):
             harvest(gallery['sel'] if gallery else None)
         harvest(scene.sel)
 
-        title = await self.fetch_title(scene) or ''
+        title = first_text(scene.sel, _TITLE_XP) or ''
         actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in scene.sel.xpath('//h2//a')])
 
         if title and actor_names:
@@ -168,4 +166,4 @@ class XartClient(Client):
             for u in fan.images:
                 add(u)
 
-        return images
+        metadata.raw_image_urls = images

@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.realitylovers import RealityLoversClient
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ ACTOR_HTML = '<html><body><img class="girlDetails-posterImage" srcset="https://c
 @respx.mock
 async def test_search_json_post() -> None:
     respx.post(SEARCH_API).mock(return_value=httpx.Response(200, json=SEARCH_BODY))
-    results = await RealityLoversClient().search(SearchContext(title='vr dream', encoded='vr%20dream', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await RealityLoversClient().search(results, SearchContext(title='vr dream', encoded='vr%20dream', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'VR Dream'
     assert results[0].scene_url == 'https://realitylovers.com/video/vr-dream'

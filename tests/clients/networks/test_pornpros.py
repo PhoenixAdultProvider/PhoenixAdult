@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.pornpros import PornProsClient
 from app.registry import find_site
 
@@ -29,7 +29,8 @@ def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
 @respx.mock
 async def test_search() -> None:
     respx.get('https://cum4k.com/api/releases/cool-scene').mock(return_value=httpx.Response(200, json=_RELEASE))
-    results = await PornProsClient().search(_ctx())
+    results: list[SearchResult] = []
+    await PornProsClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert PornProsClient().decode(results[0].cur_id).startswith('cool-scene|')

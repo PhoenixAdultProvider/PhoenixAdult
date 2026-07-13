@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites import dickdrainers as dd_module
 from app.clients.sites.dickdrainers import DickDrainersClient
 from app.registry import find_site
@@ -24,7 +24,8 @@ async def test_search_onsite_cards(monkeypatch: pytest.MonkeyPatch, no_web_searc
       </div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await DickDrainersClient().search(SearchContext(title='wild scene', encoded='wild+scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await DickDrainersClient().search(results, SearchContext(title='wild scene', encoded='wild+scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'http://dickdrainers.com/s/wild-scene.html'
@@ -46,7 +47,8 @@ async def test_search_web_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
       <div class="videoInfo clear"><p>2020-02-02<span>extra</span></p></div>
     </body></html>"""
     respx.get(fallback_url).mock(return_value=httpx.Response(200, text=detail_html))
-    results = await DickDrainersClient().search(SearchContext(title='extra', encoded='extra', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await DickDrainersClient().search(results, SearchContext(title='extra', encoded='extra', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Extra Scene'
     assert results[0].scene_url == fallback_url

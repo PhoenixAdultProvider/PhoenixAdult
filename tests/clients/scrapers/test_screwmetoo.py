@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.screwmetoo import ScrewMeTooClient
 from app.registry import find_site
 
@@ -36,7 +36,8 @@ async def test_search_cards() -> None:
       </article></div>
     </body></html>"""
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
-    results = await ScrewMeTooClient().search(SearchContext(title='wild screw', encoded='wild+screw', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ScrewMeTooClient().search(results, SearchContext(title='wild screw', encoded='wild+screw', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Screw'
     assert results[0].scene_url == 'https://screwmetoo.com/content/wild-screw/'

@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.melonechallenge import MeloneChallengeClient
 from app.registry import find_site
 
@@ -37,7 +37,8 @@ async def test_detail_fields() -> None:
 async def test_search_via_websearch() -> None:
     respx.route(method='GET', url__regex=r'duckduckgo\.com/html').mock(return_value=httpx.Response(200, text=_DDG))
     respx.get(_URL).mock(return_value=httpx.Response(200, text=_PAGE))
-    results = await MeloneChallengeClient().search(SearchContext(title='Melone Scene', encoded='Melone%20Scene', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MeloneChallengeClient().search(results, SearchContext(title='Melone Scene', encoded='Melone%20Scene', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].scene_url == _URL
     assert results[0].title == 'Melone Scene'

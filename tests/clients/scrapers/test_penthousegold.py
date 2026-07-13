@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.penthousegold import PenthouseGoldClient
 from app.registry import find_site
 
@@ -25,7 +25,8 @@ async def test_search_onsite_and_guess() -> None:
     video_url = 'https://penthousegold.com/scenes/video---gold-night_vids.html'
     respx.get(video_url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     respx.get('https://penthousegold.com/scenes/movie---gold-night_vids.html').mock(return_value=httpx.Response(404))
-    results = await PenthouseGoldClient().search(SearchContext(title='gold night', encoded='gold%20night', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await PenthouseGoldClient().search(results, SearchContext(title='gold night', encoded='gold%20night', search_site=SITE.name, site_info=SITE))
     assert any(r.scene_url == video_url for r in results)
     hit = next(r for r in results if r.scene_url == video_url)
     assert hit.title == 'Video - Gold Night'

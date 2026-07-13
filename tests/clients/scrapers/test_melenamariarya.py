@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.melenamariarya import MelenaMariaRyaClient
 from app.registry import find_site
 
@@ -20,7 +20,8 @@ _SCENE = """<html><head>
 @respx.mock
 async def test_search_scene_id_scored_100() -> None:
     respx.get(_URL).mock(return_value=httpx.Response(200, text=_SCENE))
-    results = await MelenaMariaRyaClient().search(SearchContext(title='77', encoded='77', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await MelenaMariaRyaClient().search(results, SearchContext(title='77', encoded='77', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].score == 100
     assert results[0].title == 'Hot Scene with Anna Smith 4K'

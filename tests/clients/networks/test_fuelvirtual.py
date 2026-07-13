@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.fuelvirtual import FuelVirtualClient
 from app.registry import find_site
 
@@ -28,7 +28,8 @@ async def test_search() -> None:
             </div>""",
         )
     )
-    results = await FuelVirtualClient().search(_ctx())
+    results: list[SearchResult] = []
+    await FuelVirtualClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://fuckedhard18.com/membersarea/vids.php?id=434'

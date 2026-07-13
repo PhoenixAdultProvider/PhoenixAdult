@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, strip_query
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -33,27 +33,27 @@ class StepSecretsClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//h1[contains(@class,"font-cond")]') or None
+        metadata.title = first_text(scene.sel, '//h1[contains(@class,"font-cond")]') or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"descripton")]') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"descripton")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return TAGLINE
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = TAGLINE
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [TAGLINE]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [TAGLINE]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return list(_FIXED_GENRES)
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = list(_FIXED_GENRES)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url
         actors: list[ActorResult] = []
@@ -73,13 +73,13 @@ class StepSecretsClient(Client):
             raw = first_attr(page['sel'], '(//div[contains(@class,"model-about")]//img/@src)[1]')
             photo = strip_query(raw) if raw else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images = self.dedup_strings([(src or '').strip() for src in scene.sel.xpath('//video/@poster').getall()])
         for src in scene.sel.xpath('//div[@id="photoCarousel"]//img/@src').getall():
             s = (src or '').strip()
             if s and s not in images:
                 images.append(s)
-        return images
+        metadata.raw_image_urls = images

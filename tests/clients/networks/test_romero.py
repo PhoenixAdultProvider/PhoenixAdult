@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.romero import RomeroClient, _clean_poster
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ def test_clean_poster() -> None:
 async def test_search() -> None:
     url = 'https://hentaied.com/?s=cool+scene'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="half"><a href="/scene/7"></a><h2>Cool Scene</h2></div>'))
-    results = await RomeroClient().search(_ctx())
+    results: list[SearchResult] = []
+    await RomeroClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://hentaied.com/scene/7'

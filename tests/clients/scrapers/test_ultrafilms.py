@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.ultrafilms import UltrafilmsClient
 from app.registry import find_site
 
@@ -24,7 +24,8 @@ async def test_search_quoted_hit_skips_fallback() -> None:
     respx.get(quoted).mock(
         return_value=httpx.Response(200, text=f'<html><body>{_row("1", "Wild Scene", "/scene/wild", "https://cdn/uf/thumb.jpg")}</body></html>')
     )
-    results = await UltrafilmsClient().search(SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await UltrafilmsClient().search(results, SearchContext(title='wild scene', encoded=quote('wild scene'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Wild Scene'
     assert results[0].scene_url == 'https://www.ultrafilms.xxx/scene/wild'
@@ -39,7 +40,8 @@ async def test_search_falls_back_to_unquoted() -> None:
     respx.get(unquoted).mock(
         return_value=httpx.Response(200, text=f'<html><body>{_row("2", "Nothing Found", "/scene/nf", "https://cdn/uf/nf.jpg")}</body></html>')
     )
-    results = await UltrafilmsClient().search(SearchContext(title='nothing', encoded=quote('nothing'), search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await UltrafilmsClient().search(results, SearchContext(title='nothing', encoded=quote('nothing'), search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Nothing Found'
 

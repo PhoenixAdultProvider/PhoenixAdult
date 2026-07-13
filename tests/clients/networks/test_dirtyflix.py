@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.dirtyflix import DirtyFlixClient, __testing__
 from app.registry import find_site
 
@@ -30,7 +30,8 @@ async def test_search_and_detail_roundtrip() -> None:
     respx.get('https://dirtyflix.com/index.php/main/show_one_tour/11/2').mock(return_value=httpx.Response(200, text='<html></html>'))
     respx.get('https://trickyagent.com/detailedTrailer/').mock(return_value=httpx.Response(200, text=_LISTING))
 
-    results = await DirtyFlixClient().search(_ctx(search_date='2021-03-04'))
+    results: list[SearchResult] = []
+    await DirtyFlixClient().search(results, _ctx(search_date='2021-03-04'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].release_date == '2021-03-04'

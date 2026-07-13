@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Literal, cast
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify
 from app.utils.helpers.html_helpers import first_attr
@@ -85,11 +85,10 @@ class AdultEmpireCashClient(Client):
 
     # ── Search (full override: direct sceneID lookup + per-variant rows) ─────────
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         await self._ensure_age_confirmed(base)
         variant = _variant_for(ctx.site_info.name)
-        results: list[SearchResult] = []
 
         if ctx.scene_id:
             direct_url = f'{base}/{ctx.scene_id}/{slugify(ctx.title)}.html'
@@ -119,7 +118,6 @@ class AdultEmpireCashClient(Client):
                         search_date=ctx.search_date,
                     )
                 )
-        return results
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         await self._ensure_age_confirmed(site.base_url.rstrip('/'))
@@ -127,27 +125,30 @@ class AdultEmpireCashClient(Client):
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    def _tagline(self, scene: LoadedScene) -> str:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//h1[@class="description"])[1]/text()') or None
+        return first_attr(scene.sel, '(//div[@class="studio"]//span)[2]/text()')
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//div[@class="synopsis"]/p)[1]/text()') or None
+        metadata.title = first_attr(scene.sel, '(//h1[@class="description"])[1]/text()') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return _studio_for(scene.site.name)
-
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_attr(scene.sel, '(//div[@class="studio"]//span)[2]/text()') or None
+        metadata.summary = first_attr(scene.sel, '(//div[@class="synopsis"]/p)[1]/text()') or ''
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = _studio_for(scene.site.name)
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = self._tagline(scene) or None
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_attr(scene.sel, '(//div[@class="release-date"])[1]/text()')
-        return iso_date(raw) or scene.scene_date or None
+        metadata.release_date = iso_date(raw) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         xp = _GENRE_XPATH_OVERRIDES.get(scene.site.name, _DEFAULT_GENRE_XPATH)
         genres: list[str] = []
@@ -155,9 +156,9 @@ class AdultEmpireCashClient(Client):
             g = first_attr(a, 'normalize-space(.)')
             if g:
                 genres.extend(p.strip() for p in g.split('/') if p.strip())
-        return genres or None
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -172,25 +173,23 @@ class AdultEmpireCashClient(Client):
             if name and name.lower() not in seen:
                 seen.add(name.lower())
                 actors.append(ActorResult(name=name))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         # TS reads the whole "Director: Name" text and slices after the colon.
         raw = scene.sel.xpath('string((//div[@class="director"])[1])').get() or ''
         name = raw.split(':')[-1].strip()
-        return [ActorResult(name=name)] if name else None
+        metadata.directors = [ActorResult(name=name)] if name else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        tagline = await self.fetch_tagline(scene)
-        if tagline:
-            return [tagline]
-        return [_studio_for(scene.site.name)]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        tagline = self._tagline(scene)
+        metadata.collections = [tagline] if tagline else [_studio_for(scene.site.name)]
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         coll = self.image_collector(_upgrade_image)
         for raw in scene.sel.xpath('//div[@id="dv_frames"]//img/@src').getall():
             coll['push'](raw)
         images: list[str] = coll['list']
-        return images or None
+        metadata.raw_image_urls = images

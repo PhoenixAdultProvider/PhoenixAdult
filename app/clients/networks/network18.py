@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.clients.base import ActorResult, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
 from app.utils.helpers.helpers import build_search_result
@@ -30,14 +30,13 @@ class Network18Client(GraphQLClient):
         headers = {'argonath-api-key': cfg['api_key'], 'Referer': base_url}
         return await self.graphql(cfg['endpoint'], query, {variable: value}, headers=headers, capture_label=label, capture_sink=sink)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         if ctx.site_info.name not in _SITE_CONFIG:
-            return []
+            return
         site = ctx.site_info
         data = await self._gql(site.name, site.base_url, _SEARCH_QUERY, 'query', ctx.title, f'[{site.name}] search "{ctx.title}"', ctx.capture)
         items = (((data or {}).get('search') or {}).get('search') or {}).get('result') or []
 
-        results: list[SearchResult] = []
         for item in items:
             if not isinstance(item, dict) or item.get('type') != 'VIDEO' or not item.get('itemId'):
                 continue
@@ -53,9 +52,8 @@ class Network18Client(GraphQLClient):
                     thumb_url=thumb,
                 )
             )
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         if site.name not in _SITE_CONFIG:
             return None
         video_id = payload
@@ -73,24 +71,39 @@ class Network18Client(GraphQLClient):
         if not isinstance(detail, dict):
             return None
 
+        return LoadedScene(
+            url=video_id,
+            site=site,
+            capture=sink,
+            extra={'detail': detail, 'model_id': model_id, 'scene': scene, 'scene_num': scene_num},
+            subsite=ctx.subsite if ctx else None,
+        )
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        e = scene.extra
+        detail = e['detail']
+        model_id = e['model_id']
+        scene_id = e['scene']
+        scene_num = e['scene_num']
+        sink = scene.capture
+
         summary = ((detail.get('description') or {}).get('long') or '').strip()
         if summary and summary[-1] not in '!.?':
             summary += '.'
 
         talent = detail.get('talent') or []
         actors = await self._fetch_actors(site, talent, sink)
-        raw_images = await self._fetch_image_urls(site, model_id, scene, scene_num, detail.get('galleryCount') or 0, sink)
+        raw_images = await self._fetch_image_urls(site, model_id, scene_id, scene_num, detail.get('galleryCount') or 0, sink)
 
-        return SceneDetail(
-            title=detail.get('title') or '',
-            summary=summary,
-            studio=site.name,
-            tagline=site.name,
-            collections=[site.name],
-            genres=list(_SITE_CONFIG[site.name]['genres']),
-            actors=actors,
-            raw_image_urls=raw_images,
-        )
+        metadata.title = detail.get('title') or ''
+        metadata.summary = summary
+        metadata.studio = site.name
+        metadata.tagline = site.name
+        metadata.collections = [site.name]
+        metadata.genres = list(_SITE_CONFIG[site.name]['genres'])
+        metadata.actors = actors
+        metadata.raw_image_urls = raw_images
 
     async def _fetch_actors(self, site: ResolvedSiteInfo, talent: list[Any], sink: list[RawCaptureEntry] | None) -> list[ActorResult]:
         talent = [t for t in talent if isinstance(t, dict) and isinstance(t.get('talent'), dict) and t['talent'].get('talentId')]

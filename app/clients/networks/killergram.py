@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
@@ -26,19 +26,19 @@ def _header_sibling(sel: Any, needle: str) -> str:
 
 
 class KillergramClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         scene_id = ctx.title.strip().split()[0] if ctx.title.strip() else ''
         if not scene_id:
-            return []
+            return
         base = ctx.site_info.base_url.rstrip('/')
         scene_url = base + ctx.site_info.search_path.replace('{query}', scene_id)
         loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] sceneID {scene_id}')
         if not loaded:
-            return []
+            return
         title = _extract_title(loaded['sel'])
         if not title:
-            return []
-        return [
+            return
+        results.append(
             build_search_result(
                 title=title,
                 scene_url=scene_url,
@@ -48,7 +48,7 @@ class KillergramClient(Client):
                 score=100,
                 cur_id=pack_cur_id([scene_id]),
             )
-        ]
+        )
 
     # ── Context loader (curID is an episode id, not a URL) ──────────────────────
 
@@ -62,31 +62,31 @@ class KillergramClient(Client):
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _extract_title(scene.sel) or None
+        metadata.title = _extract_title(scene.sel) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return (scene.sel.xpath('(//table[contains(@class,"episodetext")]//tr)[5]//td[2]').xpath('string(.)').get() or '').strip() or None
+        metadata.summary = (scene.sel.xpath('(//table[contains(@class,"episodetext")]//tr)[5]//td[2]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return iso_date(_header_sibling(scene.sel, 'published'))
+        metadata.release_date = iso_date(_header_sibling(scene.sel, 'published'))
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
-        return ['British']
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.genres = ['British']
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -98,9 +98,9 @@ class KillergramClient(Client):
                 if name and name not in seen:
                     seen.add(name)
                     actors.append(ActorResult(name=name))
-        return actors or None
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         images: list[str] = []
         n = 1
@@ -110,4 +110,4 @@ class KillergramClient(Client):
                 break
             images.append(src)
             n += 1
-        return images or None
+        metadata.raw_image_urls = images

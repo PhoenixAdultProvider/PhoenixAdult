@@ -5,7 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
 from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score, to_https
@@ -49,9 +49,8 @@ class NubilesClient(Client):
             capture.append(RawCaptureEntry(label, 'html', r.text))
         return Selector(text=r.text)
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
-        results: list[SearchResult] = []
 
         scene_id = ctx.scene_id or None
         if scene_id:
@@ -104,7 +103,6 @@ class NubilesClient(Client):
                             score=title_distance_score(ctx.title, parts[0]),
                         )
                     )
-        return results
 
     # ── Context loader (curID is a numeric scene id) ────────────────────────────
 
@@ -128,30 +126,30 @@ class NubilesClient(Client):
         paragraphs = [first_attr(p) for p in scene.sel.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
         return '\n\n'.join(p for p in paragraphs if p).strip()
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('-')]
-        return (f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or None
+        metadata.title = (f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
-        return self._summary_of(scene) or None
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.summary = self._summary_of(scene)
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return STUDIO
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name if scene.site.name != STUDIO else None
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = (scene.sel.xpath('(//div[contains(@class,"content-pane")]//span[@class="date"])[1]').xpath('string(.)').get() or '').strip()
-        return (iso_date(raw) if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         genres: list[str] = []
         for a in scene.sel.xpath('//div[@class="categories"]/a'):
@@ -159,9 +157,9 @@ class NubilesClient(Client):
             lc = g.lower()
             if g and '.com' not in lc and '.xxx' not in lc:
                 genres.append(g)
-        return genres or None
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
@@ -178,7 +176,7 @@ class NubilesClient(Client):
             if candidate in summary and candidate.lower() not in existing:
                 actors.append(ActorResult(name=candidate, gender='male'))
                 existing.add(candidate.lower())
-        return actors or None
+        metadata.actors = actors
 
     async def _fetch_actor(self, name: str, profile_url: str, base_url: str) -> ActorResult:
         sel = await self._get(profile_url, base_url, None, f'GET {profile_url} (actor)')
@@ -188,7 +186,7 @@ class NubilesClient(Client):
         gender = 'female' if sel.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
         return ActorResult(name=name, photo_url=photo, gender=gender)
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         out: list[str] = []
         poster = first_attr(scene.sel, '(//video)[1]/@poster')
@@ -205,7 +203,7 @@ class NubilesClient(Client):
                     first = srcset.split(',')[0].strip().split(' ')[0]
                     if first:
                         out.append(to_https(first))
-        return out or None
+        metadata.raw_image_urls = out
 
     def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
         for a in sel.xpath('//div[contains(@class,"content-pane-related-links")]/a'):

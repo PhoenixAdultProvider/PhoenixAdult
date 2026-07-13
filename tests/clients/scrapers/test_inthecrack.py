@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.inthecrack import InTheCrackClient
 from app.registry import find_site
 
@@ -34,7 +34,8 @@ DETAIL_HTML = """<html><head><title>InTheCrack #1234 Alice Wonder & Bea Star</ti
 async def test_search_three_hop() -> None:
     respx.get('https://inthecrack.com/Collections/Name/a').mock(return_value=httpx.Response(200, text=INDEX_HTML))
     respx.get('https://inthecrack.com/model/alice-wonder').mock(return_value=httpx.Response(200, text=MODEL_HTML))
-    results = await InTheCrackClient().search(SearchContext(title='alice', encoded='alice', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await InTheCrackClient().search(results, SearchContext(title='alice', encoded='alice', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == '1234'
     assert results[0].scene_url == 'https://inthecrack.com/Collections/1234'

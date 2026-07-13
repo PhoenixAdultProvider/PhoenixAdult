@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SearchContext
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -61,27 +61,27 @@ class SexMexClient(Client):
         assert scene.sel is not None
         return [first_attr(a, 'normalize-space(.)') for a in scene.sel.xpath('//p[@class]//a') if first_attr(a, 'normalize-space(.)')]
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//h4')
         if not raw:
-            return None
-        return _cleanup_title(raw, self._actor_names(scene)) or None
+            return
+        metadata.title = _cleanup_title(raw, self._actor_names(scene)) or ''
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"panel-body")]//p') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"panel-body")]//p') or ''
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name or ''
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = scene.sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
         actor_lower = {n.lower() for n in self._actor_names(scene)}
@@ -90,9 +90,9 @@ class SexMexClient(Client):
             g = raw_g.strip()
             if g and g.lower() not in actor_lower and g not in genres:
                 genres.append(g)
-        return genres
+        metadata.genres = genres
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
@@ -106,9 +106,9 @@ class SexMexClient(Client):
             actor_page = await self.fetch_and_load(f'{base}/tour/{href}', FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = first_attr(actor_page['sel'], '(//img/@src)[1]') if actor_page else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         base = scene.site.base_url.rstrip('/')
         images: list[str] = []
@@ -125,4 +125,4 @@ class SexMexClient(Client):
             push(raw)
         for raw in scene.sel.xpath('//video/@poster').getall():
             push(raw)
-        return images
+        metadata.raw_image_urls = images

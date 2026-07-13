@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.manyvids import ManyvidsClient
 from app.registry import find_site
 from app.utils.helpers.helpers import pack_cur_id
@@ -29,7 +29,8 @@ API_BODY = {
 async def test_search_ldjson() -> None:
     url = 'https://www.manyvids.com/video/12345'
     respx.get(url).mock(return_value=httpx.Response(200, text=SCENE_HTML))
-    results = await ManyvidsClient().search(SearchContext(title='12345', encoded='12345', search_site=SITE.name, site_info=SITE))
+    results: list[SearchResult] = []
+    await ManyvidsClient().search(results, SearchContext(title='12345', encoded='12345', search_site=SITE.name, site_info=SITE))
     assert len(results) == 1
     assert results[0].title == 'Solo Show'
     assert results[0].scene_url == url

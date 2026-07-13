@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from parsel import Selector
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.logging.best_effort import best_effort
@@ -31,7 +31,7 @@ def _parsed_title(sel: Selector) -> str:
 
 
 class PutalocuraClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         host = urlsplit(ctx.site_info.base_url).hostname or ''
         found: list[str] = []
         with best_effort(ctx.site_info.name, 'webSearch'):
@@ -48,7 +48,6 @@ class PutalocuraClient(Client):
                 if twin not in candidates:
                     candidates.append(twin)
 
-        results: list[SearchResult] = []
         for scene_url in candidates:
             loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
             if not loaded:
@@ -67,42 +66,41 @@ class PutalocuraClient(Client):
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return _parsed_title(scene.sel) or None
+        metadata.title = _parsed_title(scene.sel)
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[contains(@class,"description") and contains(@class,"clearfix")]')
         if not raw:
-            return None
-        return _WS_NL_RE.sub(' ', raw.split(':')[-1].strip()) or None
+            return
+        metadata.summary = _WS_NL_RE.sub(' ', raw.split(':')[-1].strip())
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return scene.site.name
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
-        return [scene.site.name]
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//div[contains(@class,"released-views")]//span')
-        return (iso_date(raw, '%d/%m/%Y') if raw else None) or scene.scene_date or None
+        metadata.release_date = (iso_date(raw, '%d/%m/%Y') if raw else None) or scene.scene_date or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"categories")]//a')]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         title = _parsed_title(scene.sel)
         if not title:
-            return []
+            return
         base = scene.site.base_url.rstrip('/')
         is_english = '/en/' in scene.url
 
@@ -128,7 +126,7 @@ class PutalocuraClient(Client):
             index = await self._fetch_model_index(scene, base, actor_name[0] if actor_name else '')
             hit = next((m for m in index if m['name'].lower() == actor_name.lower()), None)
             actors.append(ActorResult(name=actor_name, photo_url=hit['photoURL'] if hit else ''))
-        return actors
+        metadata.actors = actors
 
     async def _fetch_model_index(self, scene: LoadedScene, base: str, letter: str) -> list[dict[str, str]]:
         if not letter:
@@ -146,8 +144,8 @@ class PutalocuraClient(Client):
             models.append({'name': name, 'photoURL': absolute_url(raw, base) if raw else ''})
         return models
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         script = scene.sel.xpath('string((//div[contains(@class,"top-area-content")]//script)[1])').get() or ''
         m = _POSTER_RE.search(script)
-        return [m.group(1)] if m and m.group(1) else []
+        metadata.raw_image_urls = [m.group(1)] if m and m.group(1) else []

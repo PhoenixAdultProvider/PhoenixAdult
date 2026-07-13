@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.caribbeancom import CaribbeancomClient
 from app.registry import find_site
 
@@ -24,8 +24,9 @@ DETAIL_HTML = """<html><head><title>012345-678</title></head><body>
 async def test_search_direct_url_single_result() -> None:
     url = 'https://en.caribbeancom.com/eng/moviepages/012345-678/index.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    results = await CaribbeancomClient().search(
-        SearchContext(title='012345 678', encoded='012345-678', search_site=SITE.name, site_info=SITE, full_title='012345 678')
+    results: list[SearchResult] = []
+    await CaribbeancomClient().search(
+        results, SearchContext(title='012345 678', encoded='012345-678', search_site=SITE.name, site_info=SITE, full_title='012345 678')
     )
     assert len(results) == 1
     assert results[0].title == '012345-678'

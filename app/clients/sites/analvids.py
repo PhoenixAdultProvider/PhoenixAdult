@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text
 
@@ -12,7 +12,7 @@ _GENRES_LIST_FIRST_A = '//div[contains(@class,"genres-list")]//a'
 
 
 class AnalVidsClient(Client):
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         m = _LEADING_ID_RE.match(ctx.title.strip())
         source_id = m.group(1) if m else None
@@ -24,7 +24,6 @@ class AnalVidsClient(Client):
             label=f'[{ctx.site_info.name}] AnalVids search "{text}"',
         )
 
-        results: list[SearchResult] = []
         for term in (data or {}).get('terms', []):
             if term.get('type') != 'scene' or not term.get('url') or not term.get('name'):
                 continue
@@ -41,44 +40,43 @@ class AnalVidsClient(Client):
                     cur_id=pack_cur_id([scene_url]),
                 )
             )
-        return results
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene) -> str | None:
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//h1[contains(@class,"watch__title")]')
-        return raw.split('featuring')[0].strip() or None
+        metadata.title = raw.split('featuring')[0].strip()
 
-    async def fetch_summary(self, scene: LoadedScene) -> str | None:
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, '//div[contains(@class,"text-mob-more")]') or None
+        metadata.summary = first_text(scene.sel, '//div[contains(@class,"text-mob-more")]')
 
-    async def fetch_studio(self, scene: LoadedScene) -> str | None:
-        return 'AnalVids'
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'AnalVids'
 
-    async def fetch_tagline(self, scene: LoadedScene) -> str | None:
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
-        return first_text(scene.sel, _GENRES_LIST_FIRST_A) or None
+        metadata.tagline = first_text(scene.sel, _GENRES_LIST_FIRST_A) or None
 
-    async def fetch_collections(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         tagline = first_text(scene.sel, _GENRES_LIST_FIRST_A)
-        return [tagline] if tagline else None
+        metadata.collections = [tagline] if tagline else None
 
-    async def fetch_release_date(self, scene: LoadedScene) -> str | None:
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         raw = first_text(scene.sel, '//i[contains(@class,"bi-calendar3")]')
-        return iso_date(raw) or None
+        metadata.release_date = iso_date(raw) or None
 
-    async def fetch_genres(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         values: list[str | None] = [
             a.xpath('normalize-space(.)').get() for a in scene.sel.xpath('//div[contains(@class,"genres-list")]//a[contains(@href,"/genre/")]')
         ]
-        return self.dedup_strings(values)
+        metadata.genres = self.dedup_strings(values)
 
-    async def fetch_actors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         links: list[tuple[str, str]] = []
         seen: set[str] = set()
@@ -96,9 +94,9 @@ class AnalVidsClient(Client):
             loaded = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
             photo = first_attr(loaded['sel'], '(//div[contains(@class,"model")]//img/@src)[1]') if loaded else ''
             actors.append(ActorResult(name=name, photo_url=photo))
-        return actors
+        metadata.actors = actors
 
-    async def fetch_directors(self, scene: LoadedScene) -> list[ActorResult] | None:
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         directors: list[ActorResult] = []
         seen: set[str] = set()
@@ -114,9 +112,9 @@ class AnalVidsClient(Client):
             add('Giorgio Grandi')
         for el in scene.sel.xpath('//p[contains(@class,"director")]//a'):
             add(el.xpath('normalize-space(.)').get() or '')
-        return directors or None
+        metadata.directors = directors or None
 
-    async def fetch_image_urls(self, scene: LoadedScene) -> list[str] | None:
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         assert scene.sel is not None
         poster = first_attr(scene.sel, '(//div[contains(@class,"watch__video")]//video/@data-poster)[1]')
-        return [poster] if poster else []
+        metadata.raw_image_urls = [poster] if poster else []

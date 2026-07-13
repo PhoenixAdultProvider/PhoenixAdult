@@ -4,7 +4,7 @@ import dataclasses
 import re
 from urllib.parse import quote
 
-from app.clients.base import ActorResult, Client, FetchCtx, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.clients.sites.clips4sale import Clips4SaleClient
 from app.models.scraper_config import ScraperConfig
 from app.registry import ResolvedSiteInfo
@@ -35,12 +35,11 @@ class FamilyTherapyClient(Client):
             scraper_config=ScraperConfig(type='clips4sale'),
         )
 
-    async def search(self, ctx: SearchContext) -> list[SearchResult]:
+    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
         base = ctx.site_info.base_url.rstrip('/')
         url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title))
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
 
-        results: list[SearchResult] = []
         if loaded:
             for card in loaded['sel'].xpath('//article'):
                 a = card.xpath('(.//h2//a)[1]')
@@ -66,12 +65,13 @@ class FamilyTherapyClient(Client):
             if actress:
                 c4s_query = f'{_C4S_STUDIO_ID} {actress}'
                 c4s_ctx = dataclasses.replace(ctx, title=c4s_query, encoded=quote(c4s_query), site_info=self._c4s_site(ctx.site_info, 'Family Therapy (C4S)'))
-                for r in await self._clips4sale.search(c4s_ctx):
+                c4s_results: list[SearchResult] = []
+                await self._clips4sale.search(c4s_results, c4s_ctx)
+                for r in c4s_results:
                     head = unpack_cur_id(r.cur_id)['head'] or ''
                     results.append(dataclasses.replace(r, cur_id=pack_cur_id([head, '|1'])))
-        return results
 
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         first_pipe = payload.find('|')
         url = payload[:first_pipe] if first_pipe >= 0 else payload
         tail = payload[first_pipe + 1 :] if first_pipe >= 0 else ''
@@ -83,23 +83,52 @@ class FamilyTherapyClient(Client):
             c4s_detail = await self._clips4sale.fetch_scene_detail(url, self._c4s_site(site), ctx)
             if not c4s_detail:
                 return None
-            return dataclasses.replace(c4s_detail, studio=STUDIO, tagline=STUDIO, collections=[STUDIO])
+            return LoadedScene(
+                url=url,
+                site=site,
+                capture=ctx.capture if ctx else None,
+                extra={'mode': '1', 'c4s': c4s_detail},
+                subsite=ctx.subsite if ctx else None,
+            )
 
         loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
         if not loaded:
             return None
         sel = loaded['sel']
-
-        title_raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
-        if not title_raw:
+        if not (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip():
             return None
+        return LoadedScene(
+            url=url,
+            site=site,
+            scene_date=fallback_date or None,
+            capture=ctx.capture if ctx else None,
+            sel=sel,
+            html=loaded['html'],
+            extra={'mode': '0'},
+            subsite=ctx.subsite if ctx else None,
+        )
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        extra = scene.extra or {}
+        if extra.get('mode') == '1':
+            c4s = extra['c4s']
+            for f in dataclasses.fields(c4s):
+                setattr(metadata, f.name, getattr(c4s, f.name))
+            metadata.studio = STUDIO
+            metadata.tagline = STUDIO
+            metadata.collections = [STUDIO]
+            return
+
+        assert scene.sel is not None
+        sel = scene.sel
+        title_raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
         nodes = sel.xpath('//div[contains(@class,"entry-content")]/p')
         summary = (nodes[0].xpath('string(.)').get() if nodes else sel.xpath('(//div[contains(@class,"entry-content")])[1]').xpath('string(.)').get()) or ''
         summary = summary.strip()
 
         date_raw = (sel.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
-        release_date = iso_date(date_raw, '%b %d, %Y') or fallback_date or None
+        release_date = iso_date(date_raw, '%b %d, %Y') or scene.scene_date or None
 
         genres = self.dedup_strings([first_attr(el) for el in sel.xpath('//a[@rel="category tag"]')])
 
@@ -114,15 +143,12 @@ class FamilyTherapyClient(Client):
                     seen.add(name)
                     actors.append(ActorResult(name=name))
 
-        return SceneDetail(
-            title=_to_title_case(title_raw),
-            summary=summary,
-            studio=STUDIO,
-            tagline=STUDIO,
-            collections=[STUDIO],
-            release_date=release_date,
-            genres=genres,
-            actors=actors,
-            raw_image_urls=[],
-            scene_url=url,
-        )
+        metadata.title = _to_title_case(title_raw)
+        metadata.summary = summary
+        metadata.studio = STUDIO
+        metadata.tagline = STUDIO
+        metadata.collections = [STUDIO]
+        metadata.release_date = release_date
+        metadata.genres = genres
+        metadata.actors = actors
+        metadata.raw_image_urls = []

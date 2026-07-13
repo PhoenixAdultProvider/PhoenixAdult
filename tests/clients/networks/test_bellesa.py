@@ -5,7 +5,7 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext
+from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.bellesa import BellesaClient
 from app.registry import find_site
 
@@ -27,7 +27,8 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 async def test_search() -> None:
     body = {'videos': [{'id': 4321, 'title': 'Cool Scene', 'posted_on': 1614816000}]}
     respx.get(url__startswith=f'{_API}/search').mock(return_value=httpx.Response(200, text=_body(body)))
-    results = await BellesaClient().search(_ctx())
+    results: list[SearchResult] = []
+    await BellesaClient().search(results, _ctx())
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
@@ -38,7 +39,8 @@ async def test_search() -> None:
 async def test_search_by_id() -> None:
     video = {'id': 4321, 'title': 'Cool Scene', 'posted_on': 1614816000}
     respx.get(url__startswith=f'{_API}/videos').mock(return_value=httpx.Response(200, text=_body([video])))
-    results = await BellesaClient().search(_ctx(scene_id='4321'))
+    results: list[SearchResult] = []
+    await BellesaClient().search(results, _ctx(scene_id='4321'))
     assert len(results) == 1
     assert results[0].score == 100
 
