@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, TypedDict
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import decensor, iso_date, load_site_json, sceneid_distance_score
@@ -41,6 +41,11 @@ def _label_link_value(sel: Any, label: str) -> str:
     return ''
 
 
+class _SearchExtra(TypedDict):
+    search_javid: str | None
+    base: str
+
+
 class JAVDatabaseClient(Client):
     async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
         base = ctx.site_info.base_url.rstrip('/')
@@ -54,7 +59,8 @@ class JAVDatabaseClient(Client):
         if not loaded:
             return None
         sources = list(loaded['sel'].xpath('//div[contains(@class,"card h-100")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture, extra={'search_javid': search_javid, 'base': base})
+        extra: _SearchExtra = {'search_javid': search_javid, 'base': base}
+        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture, extra=extra)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         raw_title = first_attr(source, '(.//div[contains(@class,"mt-auto")]//a)[1]/text()')
@@ -65,7 +71,8 @@ class JAVDatabaseClient(Client):
         href = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/@href')
         if not href:
             return ''
-        base = loaded.extra['base']
+        extra: _SearchExtra = loaded.extra
+        base = extra['base']
         return href if href.startswith('http') else f'{base}{href}'
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -74,7 +81,8 @@ class JAVDatabaseClient(Client):
         return iso_date(tok) if tok else None
 
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
-        search_javid = loaded.extra['search_javid']
+        extra: _SearchExtra = loaded.extra
+        search_javid = extra['search_javid']
         if not search_javid:
             return None
         jav_id = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/text()')

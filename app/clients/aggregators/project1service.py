@@ -6,7 +6,7 @@ import json
 import re
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import quote, urlsplit
 
 from app.clients.aggregators.data18 import Data18Client, mapping_slug
@@ -68,6 +68,11 @@ def _best_image_url(release: dict[str, Any], base: str) -> str | None:
             if u:
                 return u
     return None
+
+
+class _SceneExtra(TypedDict):
+    detail: dict[str, Any]
+    headers: dict[str, str]
 
 
 class Project1ServiceClient(Client):
@@ -200,12 +205,14 @@ class Project1ServiceClient(Client):
         releases = body.get('result') or [] if isinstance(body, dict) else []
         if not releases or not isinstance(releases[0], dict):
             return None
-        return LoadedScene(url=url, site=site, capture=capture, extra={'detail': releases[0], 'headers': headers}, subsite=ctx.subsite if ctx else None)
+        extra: _SceneExtra = {'detail': releases[0], 'headers': headers}
+        return LoadedScene(url=url, site=site, capture=capture, extra=extra, subsite=ctx.subsite if ctx else None)
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site
-        detail = scene.extra['detail']
-        headers = scene.extra['headers']
+        extra: _SceneExtra = scene.extra
+        detail = extra['detail']
+        headers = extra['headers']
         capture = scene.capture
 
         # Title

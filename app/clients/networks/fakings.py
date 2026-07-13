@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any
+from typing import Any, TypedDict
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
@@ -14,6 +14,10 @@ from app.utils.processors.title_case import title_case
 STUDIO = 'FAKings'
 _WS_RE = re.compile(r'\s+')
 _DATE_P_XP = '(.//p[contains(@class,"txtmininfo") and contains(@class,"calen") and contains(@class,"sinlimite")])[1]'
+
+
+class _SceneExtra(TypedDict):
+    model_cache: dict[str, asyncio.Future[dict[str, Any] | None]]
 
 
 class FAKingsClient(Client):
@@ -59,11 +63,13 @@ class FAKingsClient(Client):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         scene = await super().load_scene_context(payload, site, ctx)
         if scene:
-            scene.extra = {'model_cache': {}}
+            extra: _SceneExtra = {'model_cache': {}}
+            scene.extra = extra
         return scene
 
     def _load_model(self, scene: LoadedScene, url: str) -> asyncio.Future[dict[str, Any] | None]:
-        cache: dict[str, asyncio.Future[dict[str, Any] | None]] = scene.extra['model_cache']
+        extra: _SceneExtra = scene.extra
+        cache = extra['model_cache']
         return coalesce_future(cache, url, lambda: self.fetch_and_load(url, None, f'GET {url} (model)'))
 
     def _actor_refs(self, scene: LoadedScene) -> list[tuple[str, str]]:

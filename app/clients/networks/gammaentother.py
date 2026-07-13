@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 from urllib.parse import quote, urlsplit
 
 import httpx2
@@ -24,6 +24,14 @@ _ACTOR_DB: dict[str, list[str]] = {'218114': ['Lara Lee']}
 _API_KEYS: SingleFlight[str, str] = SingleFlight()  # per-host Algolia key; stable, so cached without expiry
 
 SceneType = Literal['scenes', 'movies']
+
+
+class _SceneExtra(TypedDict):
+    d: dict[str, Any]
+    scene_list: list[dict[str, Any]]
+    scene_id: str
+    scene_type: SceneType
+    api_key: str
 
 
 def _actor_overrides(scene_id: str) -> list[ActorResult]:
@@ -103,22 +111,24 @@ class GammaEntOtherClient(Client):
                 await self._algolia(site, api_key, 'all_scenes', f'query={quote(url_title)}'),
                 key=lambda h: h.get('clip_id') or 0,
             )
+        extra: _SceneExtra = {'d': d, 'scene_list': scene_list, 'scene_id': scene_id, 'scene_type': scene_type, 'api_key': api_key}
         return LoadedScene(
             url=site.base_url,
             site=site,
             scene_date=(iso_date(scene_date) or scene_date) if scene_date else None,
             subsite=ctx.subsite if ctx else None,
-            extra={'d': d, 'scene_list': scene_list, 'scene_id': scene_id, 'scene_type': scene_type, 'api_key': api_key},
+            extra=extra,
         )
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site
         base_lower = site.base_url.lower()
-        d: dict[str, Any] = scene.extra['d']
-        scene_list: list[dict[str, Any]] = scene.extra['scene_list']
-        scene_id: str = scene.extra['scene_id']
-        scene_type: SceneType = scene.extra['scene_type']
-        api_key: str = scene.extra['api_key']
+        extra: _SceneExtra = scene.extra
+        d = extra['d']
+        scene_list = extra['scene_list']
+        scene_id = extra['scene_id']
+        scene_type = extra['scene_type']
+        api_key = extra['api_key']
         url_title = d.get('url_title') or ''
 
         # Title

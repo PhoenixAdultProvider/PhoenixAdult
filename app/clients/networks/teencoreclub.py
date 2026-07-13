@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any, TypedDict
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
@@ -11,6 +12,12 @@ STUDIO = 'Teen Core Club'
 _SEARCH_QS = 'sg=false&sort=release&video_type=scene&lang=en&site_id=10&genre=0&dach=false'
 _MAX_PAGES = 10
 _CAMEL_RE = re.compile(r'(\w)([A-Z])')
+
+
+class _SceneExtra(TypedDict):
+    v: dict[str, Any]
+    title: str
+    actors: list[ActorResult]
 
 
 class TeenCoreClubClient(Client):
@@ -64,13 +71,15 @@ class TeenCoreClubClient(Client):
         if not title:
             return None
 
-        return LoadedScene(url=payload, site=site, capture=ctx.capture if ctx else None, extra={'v': v, 'title': title, 'actors': actors})
+        extra: _SceneExtra = {'v': v, 'title': title, 'actors': actors}
+        return LoadedScene(url=payload, site=site, capture=ctx.capture if ctx else None, extra=extra)
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site
-        v = scene.extra['v']
-        title = scene.extra['title']
-        actors = scene.extra['actors']
+        extra: _SceneExtra = scene.extra
+        v = extra['v']
+        title = extra['title']
+        actors = extra['actors']
 
         # Title
         metadata.title = title
