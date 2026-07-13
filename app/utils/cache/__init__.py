@@ -36,6 +36,7 @@ _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access den
 _index: dict[str, str] | None = None
 _index_dir: str | None = None
 _write_locks: dict[str, asyncio.Lock] = {}
+_write_lock_users: dict[str, int] = {}
 
 
 def enabled() -> bool:
@@ -261,10 +262,18 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     if final_dir is None:
         return False
 
-    # Concurrent writes for the same scene share {hash}.tmp — serialize them.
+    # Concurrent writes for the same scene share {hash}.tmp — serialize them, ref-counting so
+    # the lock is dropped once its last writer leaves and the map can't grow without bound.
     lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
-    async with lock:
-        return await _write_locked(response, scene_hash, rel_path, final_dir)
+    _write_lock_users[scene_hash] = _write_lock_users.get(scene_hash, 0) + 1
+    try:
+        async with lock:
+            return await _write_locked(response, scene_hash, rel_path, final_dir)
+    finally:
+        _write_lock_users[scene_hash] -= 1
+        if _write_lock_users[scene_hash] == 0:
+            del _write_lock_users[scene_hash]
+            _write_locks.pop(scene_hash, None)
 
 
 async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path) -> bool:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -20,32 +21,35 @@ _CROP_MIN_FACES = 1.8  # below this achievable side the source is already ~a clo
 _cv2: Any = None
 _np: Any = None
 _unavailable_reason: str | None = None
+_libs_lock = threading.Lock()
 
 
 def _libs() -> tuple[Any, Any] | None:
-    """Lazily import cv2/numpy and confirm the model exists. Logs once on failure."""
+    """Lazily import cv2/numpy and confirm the model exists. Logs once on failure.
+    Locked so concurrent to_thread workers init exactly once."""
     global _cv2, _np, _unavailable_reason
-    if _cv2 is not None and _np is not None:
+    with _libs_lock:
+        if _cv2 is not None and _np is not None:
+            return _cv2, _np
+        if _unavailable_reason is not None:
+            return None
+        try:
+            import cv2  # noqa: PLC0415
+            import numpy as np  # noqa: PLC0415
+        except ImportError as err:
+            _unavailable_reason = f'opencv/numpy not installed ({err}); install opencv-python-headless to enable'
+            logger.warn('face-crop', _unavailable_reason)
+            return None
+        if not hasattr(cv2, 'FaceDetectorYN'):
+            _unavailable_reason = f'cv2 {cv2.__version__} lacks FaceDetectorYN (need >= 4.5.4)'
+            logger.warn('face-crop', _unavailable_reason)
+            return None
+        if not _MODEL_PATH.exists():
+            _unavailable_reason = f'YuNet model missing at {_MODEL_PATH}'
+            logger.warn('face-crop', _unavailable_reason)
+            return None
+        _cv2, _np = cv2, np
         return _cv2, _np
-    if _unavailable_reason is not None:
-        return None
-    try:
-        import cv2  # noqa: PLC0415
-        import numpy as np  # noqa: PLC0415
-    except ImportError as err:
-        _unavailable_reason = f'opencv/numpy not installed ({err}); install opencv-python-headless to enable'
-        logger.warn('face-crop', _unavailable_reason)
-        return None
-    if not hasattr(cv2, 'FaceDetectorYN'):
-        _unavailable_reason = f'cv2 {cv2.__version__} lacks FaceDetectorYN (need >= 4.5.4)'
-        logger.warn('face-crop', _unavailable_reason)
-        return None
-    if not _MODEL_PATH.exists():
-        _unavailable_reason = f'YuNet model missing at {_MODEL_PATH}'
-        logger.warn('face-crop', _unavailable_reason)
-        return None
-    _cv2, _np = cv2, np
-    return _cv2, _np
 
 
 def available() -> bool:

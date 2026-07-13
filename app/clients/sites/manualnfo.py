@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -66,6 +67,7 @@ class _CachedIndex:
 
 _cached_index: _CachedIndex | None = None
 _last_build_started = 0.0
+_index_lock = threading.Lock()
 
 
 def _manual_nfo_root() -> str:
@@ -100,16 +102,17 @@ def _build_index(root: str) -> _CachedIndex:
 
 def _get_index(root: str, force_refresh: bool = False) -> _CachedIndex:
     global _cached_index, _last_build_started
-    now = time.monotonic()
-    fresh = _cached_index is not None and _cached_index.root == root and now - _cached_index.built_at < _INDEX_TTL_S
-    if fresh and not force_refresh:
-        assert _cached_index is not None
+    with _index_lock:
+        now = time.monotonic()
+        fresh = _cached_index is not None and _cached_index.root == root and now - _cached_index.built_at < _INDEX_TTL_S
+        if fresh and not force_refresh:
+            assert _cached_index is not None
+            return _cached_index
+        if force_refresh and _cached_index is not None and _cached_index.root == root and now - _last_build_started < _MISS_THROTTLE_S:
+            return _cached_index
+        _last_build_started = now
+        _cached_index = _build_index(root)
         return _cached_index
-    if force_refresh and _cached_index is not None and _cached_index.root == root and now - _last_build_started < _MISS_THROTTLE_S:
-        return _cached_index
-    _last_build_started = now
-    _cached_index = _build_index(root)
-    return _cached_index
 
 
 def _locate_nfo(basename: str) -> LocatedNfo | None:
