@@ -21,7 +21,6 @@ __all__ = [
     'get_provider',
     'find_site',
     'get_sites_for_provider',
-    'find_site_provider',
 ]
 
 PROVIDER_DEFINITIONS: list[ProviderInfo] = [
@@ -29,7 +28,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.17',
+        version='1.0.0-alpha.18',
         media_type='movie',
     ),
 ]
@@ -99,8 +98,3 @@ def canonical_site_display(token: str) -> str | None:
 
 def get_sites_for_provider(provider_id: str) -> list[ResolvedSiteInfo]:
     return sites_by_provider.get(provider_id, [])
-
-
-def find_site_provider(token: str) -> ProviderInfo | None:
-    site = find_site(token)
-    return provider_by_id.get(site.provider_id) if site else None

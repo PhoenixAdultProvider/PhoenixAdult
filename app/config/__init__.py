@@ -26,11 +26,8 @@ class _Config:
 
 
 def _normalize_base_url(raw: str | None, port: int) -> str:
-    # base_url is emitted verbatim into image/link URLs, so it must be absolute.
-    # Default it from PORT (not a hardcoded :3000); if PHOENIX_BASE_URL is set but
-    # lacks a scheme, assume http:// so it doesn't become a relative path. The port
-    # is deliberately NOT injected into an explicit value — a tunnel/proxy FQDN has
-    # its own (often schemeless-of-port) public address.
+    # base_url goes verbatim into image/link URLs, so it must be absolute. An explicit value is
+    # never port-injected — a tunnel/proxy FQDN carries its own public address.
     if not raw or not raw.strip():
         return f'http://localhost:{port}'
     value = raw.strip()
@@ -65,9 +62,8 @@ _local_ip_cache: dict[tuple[socket.AddressFamily, str], tuple[float, str]] = {}
 
 
 def _local_ip(family: socket.AddressFamily, probe: str) -> str:
-    # No packets are sent — connect() on a UDP socket just picks the local address
-    # the OS would route through to reach `probe`. TTL'd so a DHCP/VPN address
-    # change doesn't keep serving the stale IP for the process lifetime.
+    # No packets are sent — connect() on a UDP socket just picks the local address the OS would
+    # route to reach `probe`. TTL'd so a DHCP/VPN change doesn't serve a stale IP for the process life.
     hit = _local_ip_cache.get((family, probe))
     if hit and time.monotonic() - hit[0] < _LOCAL_IP_TTL:
         return hit[1]

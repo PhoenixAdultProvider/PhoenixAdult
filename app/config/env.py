@@ -30,9 +30,8 @@ class _Env:
 
     @property
     def log_redact_token(self) -> bool:
-        # Secret query values (?token=…) are masked when this is on. Defaults to the
-        # production posture: masked in production (where logs persist/ship), visible
-        # in dev so the admin URL in the startup banner stays clickable.
+        # Secret query values (?token=…) are masked when on; defaults to the production posture:
+        # masked in prod (logs persist/ship), visible in dev so the banner's admin URL stays clickable.
         raw = os.environ.get('LOG_REDACT_TOKEN')
         if raw is None or raw.strip() == '':
             return self.is_production
