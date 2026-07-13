@@ -255,11 +255,13 @@ class _TitleCaseEngine:
 
     def _handle_contraction_word(self, word: str) -> str:
         out: list[str] = []
-        for part in word.split("'"):
+        for idx, part in enumerate(word.split("'")):
             if not part:
                 out.append(part)
                 continue
-            norm = part.lower() if _strip_non_word(part).lower() in _CONTRACTIONS else self._normalize_word(part)
+            # A contraction suffix ('d, 's, ...) lowercases only right of an apostrophe, never the leading word ("D'd").
+            is_suffix = idx > 0 and _strip_non_word(part).lower() in _CONTRACTIONS
+            norm = part.lower() if is_suffix else self._normalize_word(part)
             out.append(self._manual_word_fix(norm))
         return "'".join(out)
 

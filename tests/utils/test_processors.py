@@ -96,6 +96,13 @@ def test_title_case_possessive_s_ending() -> None:
     assert title_case("it's complicated") == "It's Complicated"
 
 
+def test_title_case_contraction_suffix_never_lowers_the_leading_word() -> None:
+    # A word whose left side reads as a contraction ('d, 's, ...) still capitalizes.
+    assert title_case("gets d'd while milf cleans") == "Gets D'd While MILF Cleans"
+    assert title_case("d'angelo returns") == "D'Angelo Returns"
+    assert title_case("they'd never do that") == "They'd Never Do That"
+
+
 def test_title_case_honorifics_get_a_period() -> None:
     assert title_case('mr big') == 'Mr. Big'
     assert title_case('dr love') == 'Dr. Love'
