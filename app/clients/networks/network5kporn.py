@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from parsel import Selector
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
@@ -131,3 +132,6 @@ class Network5KPClient(Client):
             for src in page['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
                 if src and 'full' not in src:
                     metadata.art.append(src)
+
+        # Posters from Data18
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, tagline), providers=[tagline, STUDIO])

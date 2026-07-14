@@ -5,6 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
@@ -115,6 +116,11 @@ class NubilesClient(Client):
         if sel is None:
             return None
         return LoadedScene(url=url, site=site, scene_date=fallback or None, capture=ctx.capture if ctx else None, sel=sel, html='')
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        await super().update(metadata, scene)
+        subsite = scene.site.name
+        await self.enrich_from_data18(metadata, scene.site, scene_id=mapping_slug(metadata.title, subsite), providers=[subsite, STUDIO])
 
     # ── Field hooks ────────────────────────────────────────────────────────────
 
