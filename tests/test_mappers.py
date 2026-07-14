@@ -1,10 +1,31 @@
 from __future__ import annotations
 
+import pytest
+
+import app.mappers.metadata_mapper as mapper_mod
 from app.clients.base import SceneDetail, SearchResult
 from app.mappers.metadata_mapper import MetadataMapper
 from app.registry import find_site, normalize_site_key
 from app.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
+
+POSTER, BG, SQ, UNK = 'http://x/poster.jpg', 'http://x/bg.jpg', 'http://x/sq.jpg', 'http://x/unk.jpg'
+_DIMS = {POSTER: (1000, 1500), BG: (1920, 1080), SQ: (1000, 1000), UNK: (1000, 1300)}
+
+
+async def _image_types(monkeypatch: pytest.MonkeyPatch, urls: list[str]) -> dict[str, list[str]]:
+    async def fake_dims(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        w, h = _DIMS[url]
+        return {'width': w, 'height': h}
+
+    monkeypatch.setattr(mapper_mod, 'fetch_dimensions', fake_dims)
+    monkeypatch.setattr(mapper_mod, 'proxy_url', lambda url, *a, **k: url)
+    detail = SceneDetail(title='A Scene', summary='', studio='X', genres=[], actors=[], art=urls)
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    by_type: dict[str, list[str]] = {}
+    for img in md.Image or []:
+        by_type.setdefault(img.type, []).append(img.url)
+    return by_type
 
 
 def _detail(studio: str, tagline: str | None = None, collections: list[str] | None = None) -> SceneDetail:
@@ -102,3 +123,24 @@ async def test_metadata_tagline_chain_blank_when_no_subsite() -> None:
 async def test_metadata_tagline_dropped_when_equal_to_studio() -> None:
     tagline, collections = await _to_meta(_detail('Brazzers', tagline='Brazzers'))
     assert tagline is None and collections == ['Brazzers']
+
+
+async def test_images_emitted_by_class_without_promotion(monkeypatch: pytest.MonkeyPatch) -> None:
+    by_type = await _image_types(monkeypatch, [POSTER, BG, SQ])
+    assert by_type == {'coverPoster': [POSTER], 'background': [BG], 'backgroundSquare': [SQ]}
+
+
+async def test_images_no_poster_promotes_background_not_square(monkeypatch: pytest.MonkeyPatch) -> None:
+    by_type = await _image_types(monkeypatch, [BG, SQ])
+    assert by_type['coverPoster'] == [BG]
+    assert by_type['background'] == [BG] and by_type['backgroundSquare'] == [SQ]
+
+
+async def test_images_square_is_last_resort_for_both_slots(monkeypatch: pytest.MonkeyPatch) -> None:
+    by_type = await _image_types(monkeypatch, [SQ])
+    assert by_type == {'backgroundSquare': [SQ], 'coverPoster': [SQ], 'background': [SQ]}
+
+
+async def test_images_unknown_promotes_to_poster_but_not_emitted_raw(monkeypatch: pytest.MonkeyPatch) -> None:
+    by_type = await _image_types(monkeypatch, [UNK])
+    assert by_type == {'coverPoster': [UNK]}

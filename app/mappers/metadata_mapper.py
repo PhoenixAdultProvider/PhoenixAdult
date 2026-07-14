@@ -99,16 +99,31 @@ class MetadataMapper:
 
         images: list[PlexImage] = []
         for p in valid:
-            if p['image_class'] in ('coverPoster', 'background'):
+            if p['image_class'] in ('coverPoster', 'background', 'backgroundSquare'):
                 images.append(PlexImage(url=p['url'], type=p['image_class']))
             else:
                 logger.debug(f'Image {p["dims"]["width"]}x{p["dims"]["height"]} unknown: {p["url"]}')
 
         has_poster = any(img.type == 'coverPoster' for img in images)
+        has_background = any(img.type == 'background' for img in images)
+
+        # Group valid images by detected class for easy promotion
+        img_by_class: dict[str, list[dict[str, Any]]] = {}
+        for p in valid:
+            img_by_class.setdefault(p['image_class'], []).append(p)
+
+        # If no portrait poster, promote candidates to coverPoster.
         if not has_poster and valid:
-            logger.info(f'No portrait posters; promoting all {len(valid)} image(s) to coverPoster')
-            for p in valid:
+            logger.info(f'No portrait posters; promoting {len(valid)} image(s) to coverPoster')
+            candidates = img_by_class.get('background', valid) if has_background else valid
+            for p in candidates:
                 images.append(PlexImage(url=p['url'], type='coverPoster'))
+
+        # If no background but we have backgroundSquare, promote those to background
+        if not has_background and (sq := img_by_class.get('backgroundSquare')):
+            logger.info(f'No background; promoting {len(sq)} backgroundSquare image(s) to background')
+            for p in sq:
+                images.append(PlexImage(url=p['url'], type='background'))
 
         thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
         art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)

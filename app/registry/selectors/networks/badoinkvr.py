@@ -19,6 +19,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='badoinkvr',
+        data18_enrichment=True,
     )
 
 

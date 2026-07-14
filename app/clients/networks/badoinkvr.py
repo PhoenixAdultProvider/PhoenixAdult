@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
@@ -136,3 +137,6 @@ class BadoinkVrClient(Client):
 
         deduped = list(dict.fromkeys(u for u in out if u))
         metadata.art = deduped or []
+
+        # Posters from Data18
+        await self.enrich_from_data18(metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO])
