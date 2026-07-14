@@ -20,7 +20,7 @@ from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
 from app.utils.logging.logger import logger
 from app.utils.people.generic import generic_image_url
-from app.utils.people.types import Gender, Role, parse_person_filename
+from app.utils.people.types import Gender, PersonType, parse_person_filename
 
 
 def people_cache_dir() -> str:
@@ -41,26 +41,26 @@ def _slug(name: str) -> str:
     return re.sub(r'\s+', '-', re.sub(r'\.{2,}', '.', re.sub(r'[/\\]', '-', name))).lower()
 
 
-_ORIGINALS_DIR = 'originals'  # backing store of pre-crop originals (not a browsable role folder)
+_ORIGINALS_DIR = 'originals'  # backing store of pre-crop originals (not a browsable type folder)
 
 
-def _base_name(name: str, role: Role) -> str:
-    return f'{role}.{_slug(name)}'
+def _base_name(name: str, type: PersonType) -> str:
+    return f'{type}.{_slug(name)}'
 
 
-def _subdir(role: Role, gender: Gender) -> str:
+def _subdir(type: PersonType, gender: Gender) -> str:
     """On-disk subfolder for a person: 'directors' / 'producers', or for actors
     'actors/<male|female|trans|unknown>' (anything but male/female/trans is 'unknown')."""
-    if role == 'actor':
+    if type == 'actor':
         bucket = gender if gender in ('male', 'female', 'trans') else 'unknown'
         return f'actors/{bucket}'
-    return f'{role}s'
+    return f'{type}s'
 
 
 def _subdir_for(filename: str) -> str:
-    """The subfolder a cached filename belongs in, derived from its role+gender."""
-    role, _, gender = parse_person_filename(filename)
-    return _subdir(role, gender)  # type: ignore[arg-type]
+    """The subfolder a cached filename belongs in, derived from its type+gender."""
+    type, _, gender = parse_person_filename(filename)
+    return _subdir(type, gender)  # type: ignore[arg-type]
 
 
 _bust_cache: dict[str, tuple[float, str]] = {}
@@ -106,7 +106,7 @@ _SIG_CHECK_INTERVAL = 30.0  # seconds between full-tree signature walks
 
 
 def _served_files(root: Path) -> Iterator[Path]:
-    """Cached served images across the role/gender subfolders — skips the originals/
+    """Cached served images across the type/gender subfolders — skips the originals/
     backing store, per-folder .face_crop_log.json, and non-images."""
     for entry in root.rglob('*'):
         if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
@@ -173,10 +173,10 @@ def _invalidate_index() -> None:
 # ── Public ─────────────────────────────────────────────────────────────────────
 
 
-def lookup_cached(name: str, role: Role) -> dict[str, str] | None:
+def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
     if not cache_enabled():
         return None
-    key = _base_name(name, role)
+    key = _base_name(name, type)
     relpath = _get_index().get(key)
     if not relpath:
         return None
@@ -217,7 +217,7 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
 
 
 async def cache_photo(
-    upstream_url: str, name: str, role: Role, gender: Gender, headers: dict[str, str] | None = None, source: str = ''
+    upstream_url: str, name: str, type: PersonType, gender: Gender, headers: dict[str, str] | None = None, source: str = ''
 ) -> dict[str, str] | None:
     if not cache_enabled():
         return None
@@ -225,7 +225,7 @@ async def cache_photo(
     os.makedirs(directory, exist_ok=True)
 
     if not cache_replace_enabled():
-        existing = lookup_cached(name, role)
+        existing = lookup_cached(name, type)
         if existing:
             return existing
 
@@ -255,10 +255,10 @@ async def cache_photo(
         if out is not None:
             data, ext, cropped = out, '.jpg', True
 
-    base = _base_name(name, role)
+    base = _base_name(name, type)
     name_base = f'{base}_{gender}' if gender else base
     filename = f'{name_base}{ext}'
-    subdir = _subdir(role, gender)
+    subdir = _subdir(type, gender)
     relpath = f'{subdir}/{filename}'
     # Defense in depth: never write outside the cache dir even if _slug misses.
     filepath = safe_join(directory, subdir, filename)
@@ -372,14 +372,14 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     if new_gender not in _GENDERS:
         return None
     directory = people_cache_dir()
-    role, slug, old_gender = parse_person_filename(filename)  # role.slug[_gender]
-    root = f'{role}.{slug}' if role else slug  # gender-less role.slug
+    type, slug, old_gender = parse_person_filename(filename)  # type.slug[_gender]
+    root = f'{type}.{slug}' if type else slug  # gender-less type.slug
     if not root:
         return None
     ext = Path(filename).suffix
     new_base = f'{root}_{new_gender}' if new_gender else root
     new_filename = f'{new_base}{ext}'
-    old_subdir, new_subdir = _subdir(role, old_gender), _subdir(role, new_gender)  # type: ignore[arg-type]
+    old_subdir, new_subdir = _subdir(type, old_gender), _subdir(type, new_gender)  # type: ignore[arg-type]
 
     src = safe_join(directory, old_subdir, filename)
     dst = safe_join(directory, new_subdir, new_filename)

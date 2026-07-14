@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal, Protocol
 
 Gender = Literal['male', 'female', 'trans', '']
-Role = Literal['actor', 'director', 'producer']
+PersonType = Literal['actor', 'director', 'producer']
 
 # Gendered suffix values a cache filename may carry (Gender minus the empty string).
 GENDER_SUFFIXES = ('male', 'female', 'trans')
@@ -29,19 +29,21 @@ class PersonInput:
     name: str
     photo: str = ''
     gender: Gender = ''
+    role: str = ''
 
 
 @dataclass
 class ResolvedPerson:
     name: str
     photo: str
+    role: str
     gender: Gender
-    role: Role
+    type: PersonType
 
 
 @dataclass
 class PersonLookupContext:
-    role: Role
+    type: PersonType
     studio: str = ''
     site_name: str = ''
 

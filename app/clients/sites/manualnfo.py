@@ -365,11 +365,13 @@ class ManualNfoClient(Client):
         located = self._located(scene)
         if not nfo or not located:
             return
+
         images: list[str] = []
         poster = _find_sibling_image(located, '-poster') or (nfo.thumb if _is_http(nfo.thumb) else None)
-        fanart = _find_sibling_image(located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
         if poster:
             images.append(poster)
+
+        fanart = _find_sibling_image(located, '-fanart') or (nfo.fanart if _is_http(nfo.fanart) else None)
         if fanart and fanart != poster:
             images.append(fanart)
 
@@ -377,16 +379,15 @@ class ManualNfoClient(Client):
             forced_url = scene_url_from_ref(nfo.data18)
             if nfo.data18 and not forced_url:
                 logger.warn(scene.site.name, f'ignoring unusable <data18> value: {nfo.data18!r}')
+
+            scene_id = slugify(nfo.title.replace("'", '')) if nfo.title else None
+            scene_date = _nfo_release_date(nfo)
+            providers = [p for p in (nfo.studio, nfo.set) if p]
+            title = nfo.title or ''
             await self.enrich_from_data18(
-                metadata,
-                scene.site,
-                scene_id=slugify(nfo.title.replace("'", '')) if nfo.title else None,
-                providers=[p for p in (nfo.studio, nfo.set) if p],
-                title=nfo.title or '',
-                scene_date=_nfo_release_date(nfo),
-                images=images,
-                forced_url=forced_url,
+                metadata, scene.site, scene_id=scene_id, providers=providers, title=title, scene_date=scene_date, images=images, forced_url=forced_url
             )
+
         metadata.art = images
 
 

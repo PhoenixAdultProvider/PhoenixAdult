@@ -176,7 +176,7 @@ async def test_scene_image_skipped_when_absent(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_to_plex_roles_proxies_photo() -> None:
-    people = [ResolvedPerson(name='Jane Doe', photo='https://cdn.example.com/j.jpg', gender='female', role='actor')]
+    people = [ResolvedPerson(name='Jane Doe', photo='https://cdn.example.com/j.jpg', role='', gender='female', type='actor')]
     roles = to_plex_roles(people, 'http://localhost:3000')
     assert roles[0].tag == 'Jane Doe'
     assert roles[0].thumb is not None

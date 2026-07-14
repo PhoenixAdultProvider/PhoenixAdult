@@ -119,13 +119,13 @@ class MetadataMapper:
         people = PeopleManager()
         for a in detail.actors or []:
             if a.name:
-                people.add_actor(a.name, a.photo_url, a.gender or '')  # type: ignore[arg-type]
+                people.add_actor(a.name, a.photo_url, a.gender or '', a.role)  # type: ignore[arg-type]
         for d in detail.directors or []:
             if d.name:
-                people.add_director(d.name, d.photo_url)
+                people.add_director(d.name, d.photo_url, d.role)
         for pr in detail.producers or []:
             if pr.name:
-                people.add_producer(pr.name, pr.photo_url)
+                people.add_producer(pr.name, pr.photo_url, pr.role)
         resolved = await people.resolve_all(studio=detail.studio, site_name=detail.studio, referers=referers, cookies=cookies)
 
         people_base = people_image_base()

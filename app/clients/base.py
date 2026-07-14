@@ -79,6 +79,7 @@ class ActorResult:
     name: str
     photo_url: str = ''
     gender: str = ''
+    role: str = ''
 
 
 @dataclass

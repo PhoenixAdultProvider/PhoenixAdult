@@ -12,9 +12,9 @@ class _LocalStorageSource:
         if cache_replace_enabled():
             logger.debug('localStorageSource', f'cache-replace forced; skipping cache for "{actor_name}"')
             return None
-        hit = lookup_cached(actor_name, ctx.role)
+        hit = lookup_cached(actor_name, ctx.type)
         if not hit:
-            logger.debug('localStorageSource', f'no cached photo for "{actor_name}" (role={ctx.role})')
+            logger.debug('localStorageSource', f'no cached photo for "{actor_name}" (type={ctx.type})')
             return None
         logger.debug('localStorageSource', f'hit "{actor_name}" → {hit["served_url"]} (gender={hit["gender"]})')
         return PhotoHit(url=hit['served_url'], gender=hit['gender'])  # type: ignore[arg-type]

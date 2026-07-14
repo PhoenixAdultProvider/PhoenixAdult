@@ -19,8 +19,8 @@ from app.utils.people.types import (
     Gender,
     PersonInput,
     PersonLookupContext,
+    PersonType,
     ResolvedPerson,
-    Role,
     parse_person_filename,
 )
 from app.utils.processors.title_case import title_case
@@ -90,20 +90,20 @@ class PeopleManager:
         self._producers: list[PersonInput] = []
         self._sem = asyncio.Semaphore(_MAX_CONCURRENT_LOOKUPS)
 
-    def add_actor(self, name: str, photo: str, gender: Gender = '') -> None:
+    def add_actor(self, name: str, photo: str, gender: Gender = '', role: str = '') -> None:
         if any(a.name == name for a in self._actors):
             return
-        self._actors.append(PersonInput(name=name, photo=photo, gender=gender))
+        self._actors.append(PersonInput(name=name, photo=photo, gender=gender, role=role))
 
-    def add_director(self, name: str, photo: str) -> None:
+    def add_director(self, name: str, photo: str, role: str = '') -> None:
         if any(a.name == name for a in self._directors):
             return
-        self._directors.append(PersonInput(name=name, photo=photo))
+        self._directors.append(PersonInput(name=name, photo=photo, role=role))
 
-    def add_producer(self, name: str, photo: str) -> None:
+    def add_producer(self, name: str, photo: str, role: str = '') -> None:
         if any(a.name == name for a in self._producers):
             return
-        self._producers.append(PersonInput(name=name, photo=photo))
+        self._producers.append(PersonInput(name=name, photo=photo, role=role))
 
     async def resolve_all(
         self, *, studio: str, site_name: str, referers: list[str] | None = None, cookies: list[str] | None = None
@@ -117,11 +117,11 @@ class PeopleManager:
         )
         return {'actors': actors, 'directors': directors, 'producers': producers}
 
-    async def _resolve_group(self, raw: list[PersonInput], role: Role, ctx: _ResolveCtx) -> list[ResolvedPerson]:
-        nested = await asyncio.gather(*(self._resolve_entry(e, role, ctx) for e in raw))
+    async def _resolve_group(self, raw: list[PersonInput], type: PersonType, ctx: _ResolveCtx) -> list[ResolvedPerson]:
+        nested = await asyncio.gather(*(self._resolve_entry(e, type, ctx) for e in raw))
         return [p for group in nested for p in group]
 
-    async def _resolve_entry(self, entry: PersonInput, role: Role, ctx: _ResolveCtx) -> list[ResolvedPerson]:
+    async def _resolve_entry(self, entry: PersonInput, type: PersonType, ctx: _ResolveCtx) -> list[ResolvedPerson]:
         cleaned = _clean_name(entry.name)
         display = re.sub(r'\s+', ' ', title_case(cleaned, type='name', site_name=ctx.site_name)).strip()
         if display in _SKIP_NAMES:
@@ -130,23 +130,25 @@ class PeopleManager:
 
         if ',' in display:
             parts = [p.strip() for p in display.split(',') if p.strip()]
-            nested = await asyncio.gather(*(self._resolve_entry(PersonInput(name=part, photo=entry.photo, gender=entry.gender), role, ctx) for part in parts))
+            nested = await asyncio.gather(
+                *(self._resolve_entry(PersonInput(name=part, photo=entry.photo, gender=entry.gender, role=entry.role), type, ctx) for part in parts)
+            )
             return [p for group in nested for p in group]
 
         async with self._sem:
-            resolved = await self._resolve_photo(display, entry, role, ctx)
+            resolved = await self._resolve_photo(display, entry, type, ctx)
 
         # Male actors are always resolved + cached (caching their image/gender speeds up
         # future scenes); the male-actor filter is applied at serve time, not here, so it
         # also covers already-cached snapshots. See filter_male_actors.
         return [resolved]
 
-    async def _detect_gender(self, name: str, role: Role, gender: Gender) -> Gender:
-        if gender or role != 'actor' or not gender_detect_enabled():
+    async def _detect_gender(self, name: str, type: PersonType, gender: Gender) -> Gender:
+        if gender or type != 'actor' or not gender_detect_enabled():
             return gender
         return await iafd_gender_check(name) or gender
 
-    async def _resolve_scene_photo(self, name: str, entry: PersonInput, role: Role, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
+    async def _resolve_scene_photo(self, name: str, entry: PersonInput, type: PersonType, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
         """The actor image from the scene page (entry.photo), HEAD-checked and cached with the
         scene's Referer/Cookie. Returns (photo, gender); ('', gender) when there's nothing usable."""
         if not entry.photo:
@@ -154,61 +156,61 @@ class PeopleManager:
         headers = _image_headers(ctx)
         if not await _head_is_ok(entry.photo, headers):
             return '', gender
-        gender = await self._detect_gender(name, role, gender)
+        gender = await self._detect_gender(name, type, gender)
         if not cache_enabled():
             return entry.photo, gender
-        cached = await cache_photo(entry.photo, name, role, gender, headers)
+        cached = await cache_photo(entry.photo, name, type, gender, headers)
         if cached:
             return cached['served_url'], gender or cached['gender']  # type: ignore[return-value]
         return '', gender
 
-    async def _resolve_photo(self, name: str, entry: PersonInput, role: Role, ctx: _ResolveCtx) -> ResolvedPerson:
-        lookup_ctx = PersonLookupContext(role=role, studio=ctx.studio, site_name=ctx.site_name)
+    async def _resolve_photo(self, name: str, entry: PersonInput, type: PersonType, ctx: _ResolveCtx) -> ResolvedPerson:
+        lookup_ctx = PersonLookupContext(type=type, studio=ctx.studio, site_name=ctx.site_name)
         photo = ''
         gender: Gender = entry.gender or ''
         use_scene, scene_first = scene_image_pref()
 
         if cache_enabled() and not cache_replace_enabled():
-            cached = lookup_cached(name, role)
+            cached = lookup_cached(name, type)
             if cached:
                 photo = cached['served_url']
                 gender = gender or cached['gender']  # type: ignore[assignment]
 
         if not photo and use_scene and scene_first:
-            photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
+            photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
 
         if not photo:
             found = await find_photo(name, lookup_ctx)
             gender = gender or found.gender
             if found.url:
-                gender = await self._detect_gender(name, role, gender)
+                gender = await self._detect_gender(name, type, gender)
                 if cache_enabled():
-                    cached = await cache_photo(found.url, name, role, gender, source=found.source)
+                    cached = await cache_photo(found.url, name, type, gender, source=found.source)
                     photo = cached['served_url'] if cached else found.url
                 else:
                     photo = found.url
 
         if not photo and use_scene and not scene_first:
-            photo, gender = await self._resolve_scene_photo(name, entry, role, gender, ctx)
+            photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
 
         # 6d — generic fallback. Cache the silhouette under this person too, so the
         # next lookup is a local-cache hit instead of re-running the whole source chain.
         if not photo and generic_image_enabled() and gender in ('male', 'female'):
             generic_url = generic_image_url(gender)
             if cache_enabled():
-                cached = await cache_photo(generic_url, name, role, gender)
+                cached = await cache_photo(generic_url, name, type, gender)
                 photo = cached['served_url'] if cached else generic_url
             else:
                 photo = generic_url
 
-        label = role.capitalize()
+        label = type.capitalize()
         if photo:
             logger.info(f'{label}: {name} {photo}')
             if gender:
                 logger.info(f'Gender: {gender}')
         else:
             logger.info(f'{name} image not found')
-        return ResolvedPerson(name=name, photo=photo, gender=gender, role=role)
+        return ResolvedPerson(name=name, photo=photo, role=entry.role, gender=gender, type=type)
 
 
 # ── Convenience: resolved people → Plex Role[] ────────────────────────────────
@@ -221,7 +223,10 @@ def _proxy_photo(base_url: str, photo: str, referers: list[str], cookies: list[s
 def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[str] | None = None, cookies: list[str] | None = None) -> list[PlexRole]:
     referers = referers or []
     cookies = cookies or []
-    return [PlexRole(tag=p.name, thumb=_proxy_photo(base_url, p.photo, referers, cookies), gender=p.gender or None, order=idx) for idx, p in enumerate(people)]
+    return [
+        PlexRole(tag=p.name, role=p.role or None, thumb=_proxy_photo(base_url, p.photo, referers, cookies), gender=p.gender or None, order=idx)
+        for idx, p in enumerate(people)
+    ]
 
 
 def _is_male_role(role: PlexRole) -> bool:

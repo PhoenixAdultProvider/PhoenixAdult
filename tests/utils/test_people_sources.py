@@ -13,7 +13,7 @@ from app.utils.people.sources.indexxx import indexxx_source
 from app.utils.people.sources.javBus import jav_bus_source
 from app.utils.people.types import PersonLookupContext, PhotoHit
 
-CTX = PersonLookupContext(role='actor')
+CTX = PersonLookupContext(type='actor')
 
 FREEONES_SEARCH = '<html><body><div class="grid-item"><a href="/jane-doe/feed">x</a></div></body></html>'
 FREEONES_BIO = """<html><body>
