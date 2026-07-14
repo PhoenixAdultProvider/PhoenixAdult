@@ -149,6 +149,30 @@ def test_manual_mapping_movie_type_builds_movie_url(monkeypatch: pytest.MonkeyPa
     assert manual_mapping_url('2-broke-girls-a-xxx-parody-somesite') == 'https://www.data18.com/movies/1227431'
 
 
+async def test_enrich_images_allow_square_false_drops_squares(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.clients.aggregators.data18 as data18_module
+
+    client = Data18Client()
+    urls = ['https://cdn.example/sq.jpg', 'https://cdn.example/wide.jpg', 'https://cdn.example/unprobed.jpg']
+
+    async def fake_fetch(scene_url: str) -> list[str]:
+        return urls
+
+    async def fake_dims(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        return {'sq': {'width': 800, 'height': 800}, 'wide': {'width': 1920, 'height': 1080}}.get(url.rsplit('/', 1)[-1].split('.')[0])
+
+    monkeypatch.setattr(client, 'fetch_images', fake_fetch)
+    monkeypatch.setattr(data18_module, 'fetch_dimensions', fake_dims)
+
+    images: list[str] = []
+    await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/scenes/1150700', allow_square=False)
+    assert images == ['https://cdn.example/wide.jpg', 'https://cdn.example/unprobed.jpg']
+
+    images = []
+    await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/scenes/1150700')
+    assert images == urls
+
+
 async def test_enrich_images_routes_by_resolved_url_type(monkeypatch: pytest.MonkeyPatch) -> None:
     client = Data18Client()
     calls: list[str] = []

@@ -139,4 +139,6 @@ class BadoinkVrClient(Client):
         metadata.art = deduped or []
 
         # Posters from Data18
-        await self.enrich_from_data18(metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO])
+        await self.enrich_from_data18(
+            metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO], allow_square=False
+        )

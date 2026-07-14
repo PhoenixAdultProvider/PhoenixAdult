@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from app.clients.base import Client, SearchContext, SearchResult
 from app.config.env import env
 from app.utils.helpers.helpers import append_unique, build_search_result, load_site_json, pack_cur_id, sceneid_distance_score, slugify
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.images.image_classifier import classify_image
+from app.utils.images.image_fetcher import fetch_dimensions
 from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
@@ -379,23 +382,39 @@ class Data18Client(Client):
         scene_date: datetime | None = None,
         forced_url: str | None = None,
         kind: Data18Kind = 'scene',
+        allow_square: bool = True,
     ) -> str | None:
         """Resolve a scene's data18 page — a forced URL, a manual mapping, or a search —
         append its images to `images` in place (de-duplicated), and return the resolved
         URL (or None). The resolved URL's own type picks the image fetcher, so a scene
-        mapped to a movie page still collects movie images. Wrapped in best_effort so a
-        data18 failure never breaks the host scrape; shared by every network that enriches
-        from data18."""
+        mapped to a movie page still collects movie images. `allow_square=False` drops
+        square images (their dimension probe is cached for the mapper's own pass).
+        Wrapped in best_effort so a data18 failure never breaks the host scrape; shared
+        by every network that enriches from data18."""
         with best_effort(scope, 'data18 enrichment'):
             url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
             if url:
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
                 ref = data18_ref(url)
                 fetched = await (self.fetch_movie_images(url) if ref and ref['type'] == 'movie' else self.fetch_images(url))
+                if not allow_square:
+                    fetched = await self._drop_square(scope, fetched)
                 for u in fetched:
                     append_unique(images, u)
                 return url
         return None
+
+    @staticmethod
+    async def _drop_square(scope: str, urls: list[str]) -> list[str]:
+        async def is_square(u: str) -> bool:
+            dims = await fetch_dimensions(u, [_BASE])
+            return dims is not None and classify_image(dims['width'], dims['height']).orientation == 'square'
+
+        flags = await asyncio.gather(*(is_square(u) for u in urls))
+        kept = [u for u, square in zip(urls, flags, strict=True) if not square]
+        if dropped := len(urls) - len(kept):
+            logger.info(scope, f'dropped {dropped} square data18 image(s)')
+        return kept
 
     async def fetch_page(self, url: str) -> Selector | None:
         loaded = await self.fetch_and_load(url, label=f'[data18] {url}')
