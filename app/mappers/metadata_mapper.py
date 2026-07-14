@@ -15,6 +15,7 @@ from app.models.metadata import (
     PlexMatchResult,
     PlexMetadata,
     PlexMetadataResponse,
+    PlexRole,
 )
 from app.registry import ResolvedSiteInfo, normalize_site_key
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -87,6 +88,44 @@ class MetadataMapper:
         site_cookies = resolve_image_cookies(site) if site else []
         cookies = [detail.art_cookie, *site_cookies] if detail.art_cookie else site_cookies
 
+        thumb, art, images_proxied = await self._resolve_artwork(detail, referers, cookies)
+        plex_actors, plex_directors, plex_producers = await self._resolve_people(detail, referers, cookies)
+
+        effective_date = detail.release_date or fallback_date
+        year = _year_of(effective_date)
+
+        studio, tagline, collections = self._resolve_labels(detail, filename_site)
+
+        return PlexMetadata(
+            type='movie',
+            ratingKey=rating_key,
+            guid=to_guid(rating_key, plex_identifier),
+            title=clean_title,
+            titleSort=title_sort(clean_title),
+            originalTitle=detail.original_title,
+            summary=normalize_text(detail.summary) or None,
+            tagline=tagline,
+            data18=PlexData18.model_validate(ref) if (ref := data18_ref(detail.data18_url)) else None,
+            studio=studio,
+            contentRating='XXX',
+            isAdult=True,
+            rating=detail.rating,
+            audienceRating=detail.audience_rating,
+            duration=detail.duration,
+            originallyAvailableAt=effective_date or None,
+            year=year,
+            thumb=thumb,
+            art=art,
+            Genre=[PlexGenre(tag=tag) for tag in normalize_genres(detail.genres, NormalizeGenresOptions(title=clean_title, site_name=detail.studio))],
+            Role=plex_actors,
+            Director=plex_directors or None,
+            Producer=plex_producers or None,
+            Image=images_proxied,
+            Collection=[PlexCollection(tag=tag) for tag in collections],
+            Country=[PlexCountry(tag=c) for c in detail.countries] if detail.countries else None,
+        )
+
+    async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         async def probe(raw_url: str) -> dict[str, Any] | None:
             dims = await fetch_dimensions(raw_url, referers, cookies)
             if not dims:
@@ -127,10 +166,10 @@ class MetadataMapper:
 
         thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
         art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)
-        thumb = self._proxy(thumb_raw, referers, cookies)
-        art = self._proxy(art_raw, referers, cookies)
         images_proxied = [PlexImage(url=self._proxy(img.url, referers, cookies) or img.url, type=img.type) for img in images]
+        return self._proxy(thumb_raw, referers, cookies), self._proxy(art_raw, referers, cookies), images_proxied
 
+    async def _resolve_people(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[list[PlexRole], list[PlexRole], list[PlexRole]]:
         people = PeopleManager()
         for a in detail.actors or []:
             if a.name:
@@ -144,13 +183,13 @@ class MetadataMapper:
         resolved = await people.resolve_all(studio=detail.studio, site_name=detail.studio, referers=referers, cookies=cookies)
 
         people_base = people_image_base()
-        plex_actors = to_plex_roles(resolved['actors'], people_base, referers, cookies)
-        plex_directors = to_plex_roles(resolved['directors'], people_base, referers, cookies)
-        plex_producers = to_plex_roles(resolved['producers'], people_base, referers, cookies)
+        return (
+            to_plex_roles(resolved['actors'], people_base, referers, cookies),
+            to_plex_roles(resolved['directors'], people_base, referers, cookies),
+            to_plex_roles(resolved['producers'], people_base, referers, cookies),
+        )
 
-        effective_date = detail.release_date or fallback_date
-        year = _year_of(effective_date)
-
+    def _resolve_labels(self, detail: SceneDetail, filename_site: str | None) -> tuple[str, str | None, list[str]]:
         studio = normalize_studio(detail.studio)
         if detail.tagline:
             tagline = normalize_studio(detail.tagline)
@@ -163,35 +202,7 @@ class MetadataMapper:
             collections = list(dict.fromkeys(normalize_studio(c) for c in (detail.collections or [detail.studio]) if c))
         if tagline and normalize_site_key(tagline) == normalize_site_key(studio):
             tagline = None
-
-        return PlexMetadata(
-            type='movie',
-            ratingKey=rating_key,
-            guid=to_guid(rating_key, plex_identifier),
-            title=clean_title,
-            titleSort=title_sort(clean_title),
-            originalTitle=detail.original_title,
-            summary=normalize_text(detail.summary) or None,
-            tagline=tagline,
-            data18=PlexData18.model_validate(ref) if (ref := data18_ref(detail.data18_url)) else None,
-            studio=studio,
-            contentRating='XXX',
-            isAdult=True,
-            rating=detail.rating,
-            audienceRating=detail.audience_rating,
-            duration=detail.duration,
-            originallyAvailableAt=effective_date or None,
-            year=year,
-            thumb=thumb,
-            art=art,
-            Genre=[PlexGenre(tag=tag) for tag in normalize_genres(detail.genres, NormalizeGenresOptions(title=clean_title, site_name=detail.studio))],
-            Role=plex_actors,
-            Director=plex_directors or None,
-            Producer=plex_producers or None,
-            Image=images_proxied,
-            Collection=[PlexCollection(tag=tag) for tag in collections],
-            Country=[PlexCountry(tag=c) for c in detail.countries] if detail.countries else None,
-        )
+        return studio, tagline, collections
 
 
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
