@@ -180,6 +180,16 @@ def _parse_xml(raw: bytes, label: str) -> Any:
     return root
 
 
+def _parse_data18(movie: Any) -> str | None:
+    """The <data18> ref: nested <id>/<type> (type defaults to scene) or legacy flat text."""
+    el = movie.find('data18')
+    if el is None:
+        return None
+    if ref_id := _txt(el.findtext('id')):
+        return f'{_txt(el.findtext("type")) or "scene"}s/{ref_id}'
+    return _txt(el.text)
+
+
 def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
     raw = data.encode('utf-8') if isinstance(data, str) else data
     root = _parse_xml(raw, f' in {label}' if label else '')
@@ -220,7 +230,7 @@ def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
         studio=_txt(movie.findtext('studio')),
         thumb=_txt(movie.findtext('thumb')),
         fanart=fanart,
-        data18=_txt(movie.findtext('data18')),
+        data18=_parse_data18(movie),
     )
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import httpx
+import pytest
 import respx
 
 from app.clients.aggregators.data18 import Data18Client, data18_ref, manual_mapping_url, mapping_slug, scene_url_from_ref
@@ -54,6 +55,15 @@ async def test_find_scene_url_scores_match() -> None:
 
 
 @respx.mock
+async def test_find_scene_url_movie_kind_matches_movie_hrefs() -> None:
+    movie_search = _SEARCH.replace('/scenes/123-some-title', '/movies/123-some-title')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=movie_search))
+    client = Data18Client()
+    assert await client.find_scene_url(None, 'Some Title', ['BangBros'], datetime(2024, 1, 2), kind='movie') == 'https://www.data18.com/movies/123-some-title'
+    assert await client.find_scene_url(None, 'Some Title', ['BangBros'], datetime(2024, 1, 2)) is None
+
+
+@respx.mock
 async def test_find_scene_url_rejects_low_accuracy() -> None:
     respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=_SEARCH))
     url = await Data18Client().find_scene_url(None, 'Totally Different', ['OtherStudio'], datetime(2010, 5, 5))
@@ -76,6 +86,19 @@ async def test_fetch_images_poster_only() -> None:
     assert imgs == ['https://cdn.example/poster.jpg']
 
 
+@respx.mock
+async def test_fetch_images_includes_related_scene_cover() -> None:
+    scene = (
+        '<html><div id="galleriesoff"></div>'
+        '<div id="moviewrap"><img src="https://cdn.example/poster.jpg"></div>'
+        '<a href="https://cdn.dt18.com/full_covers/8/1227431-front-dvd.jpg" data-lightbox="relatedscenecover">x</a>'
+        '</html>'
+    )
+    respx.route(method='GET', url__regex=r'data18\.com/scenes/').mock(return_value=httpx.Response(200, text=scene))
+    imgs = await Data18Client().fetch_images('https://www.data18.com/scenes/123-x')
+    assert imgs == ['https://cdn.example/poster.jpg', 'https://cdn.dt18.com/full_covers/8/1227431-front-dvd.jpg']
+
+
 def test_scene_url_from_ref_accepts_id_slug_and_url() -> None:
     url = 'https://www.data18.com/scenes/1150700'
     assert scene_url_from_ref('1150700') == url
@@ -87,6 +110,14 @@ def test_scene_url_from_ref_accepts_id_slug_and_url() -> None:
     assert scene_url_from_ref('delicious-firsts-hussiepass') == 'https://www.data18.com/scenes/delicious-firsts-hussiepass'
 
 
+def test_scene_url_from_ref_accepts_movie_refs() -> None:
+    url = 'https://www.data18.com/movies/1227431'
+    assert scene_url_from_ref('movies/1227431') == url
+    assert scene_url_from_ref('/movies/1227431/') == url
+    assert scene_url_from_ref(url) == url
+    assert scene_url_from_ref('http://data18.com/movies/1227431') == url
+
+
 def test_scene_url_from_ref_refuses_off_host_and_junk() -> None:
     for bad in (
         None,
@@ -94,9 +125,11 @@ def test_scene_url_from_ref_refuses_off_host_and_junk() -> None:
         '/',
         'scenes',
         'scenes/',
+        'movies',
+        'movies/',
         'https://evil.com/scenes/1150700',
         'https://www.data18.com.evil.com/scenes/1',
-        'https://www.data18.com/movies/5',
+        'https://evil.com/movies/1227431',
         '../../etc/passwd',
         'scenes/a b',
         '1150700?x=1',
@@ -109,19 +142,57 @@ def test_manual_mapping_list_values_resolve_to_the_shared_scene() -> None:
     assert manual_mapping_url('valentines-day-affair-unseen-moments-brazzerslive') == 'https://www.data18.com/scenes/1233354'
 
 
+def test_manual_mapping_movie_type_builds_movie_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
+
+    monkeypatch.setitem(DATA18_MANUAL_MAPPINGS, '1227431', {'slug': '2-broke-girls-a-xxx-parody-somesite', 'type': 'movie'})
+    assert manual_mapping_url('2-broke-girls-a-xxx-parody-somesite') == 'https://www.data18.com/movies/1227431'
+
+
+async def test_enrich_images_routes_by_resolved_url_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Data18Client()
+    calls: list[str] = []
+
+    async def fake_scene(url: str) -> list[str]:
+        calls.append(f'scene:{url}')
+        return ['https://cdn.example/s.jpg']
+
+    async def fake_movie(url: str, page_sel: object = None) -> list[str]:
+        calls.append(f'movie:{url}')
+        return ['https://cdn.example/m.jpg']
+
+    monkeypatch.setattr(client, 'fetch_images', fake_scene)
+    monkeypatch.setattr(client, 'fetch_movie_images', fake_movie)
+
+    images: list[str] = []
+    await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/movies/1227431')
+    await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/scenes/1150700')
+    assert calls == ['movie:https://www.data18.com/movies/1227431', 'scene:https://www.data18.com/scenes/1150700']
+    assert images == ['https://cdn.example/m.jpg', 'https://cdn.example/s.jpg']
+
+
 def test_manual_mappings_have_no_duplicate_keys() -> None:
     import collections
     import json
     import pathlib
 
     raw = pathlib.Path('app/clients/aggregators/_data/json/data18_manual_mappings.json').read_text(encoding='utf-8')
-    seen: collections.Counter[str] = collections.Counter()
+    dupes: list[str] = []
 
     def hook(pairs: list[tuple[str, object]]) -> dict[str, object]:
-        for k, _ in pairs:
-            seen[k] += 1
+        keys = collections.Counter(k for k, _ in pairs)
+        dupes.extend(k for k, n in keys.items() if n > 1)
         return dict(pairs)
 
     json.loads(raw, object_pairs_hook=hook)
-    dupes = [k for k, n in seen.items() if n > 1]
     assert not dupes, f'duplicate mapping keys silently shadow earlier entries: {dupes}'
+
+
+def test_manual_mappings_entries_are_well_formed() -> None:
+    from app.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
+
+    for d18, entry in DATA18_MANUAL_MAPPINGS.items():
+        assert d18.isdigit(), d18
+        assert entry['type'] in ('scene', 'movie'), d18
+        slug = entry['slug']
+        assert slug and (isinstance(slug, str) or (isinstance(slug, list) and all(s for s in slug))), d18

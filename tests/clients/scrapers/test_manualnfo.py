@@ -165,7 +165,7 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
     calls: dict[str, object] = {}
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> str:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> str:
             calls['providers'] = providers
             calls['query'] = query
             return 'https://www.data18.com/scenes/123'
@@ -188,7 +188,7 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
     queries: list[str] = []
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> None:
             queries.append(query)
             return None
 
@@ -232,6 +232,41 @@ def test_parse_nfo_reads_data18_tag() -> None:
     assert mn_module.__testing__['parse_nfo'](SAMPLE_NFO).data18 is None
 
 
+def test_parse_nfo_reads_nested_data18_tag() -> None:
+    parse_nfo = mn_module.__testing__['parse_nfo']
+    nested = SAMPLE_NFO.replace('</movie>', '  <data18>\n    <id>1209186</id>\n    <type>scene</type>\n  </data18>\n</movie>')
+    assert parse_nfo(nested).data18 == 'scenes/1209186'
+    movie = SAMPLE_NFO.replace('</movie>', '  <data18>\n    <id>1227431</id>\n    <type>movie</type>\n  </data18>\n</movie>')
+    assert parse_nfo(movie).data18 == 'movies/1227431'
+    untyped = SAMPLE_NFO.replace('</movie>', '  <data18>\n    <id>1209186</id>\n  </data18>\n</movie>')
+    assert parse_nfo(untyped).data18 == 'scenes/1209186'
+
+
+async def test_detail_nested_data18_movie_fetches_movie_images(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    nfo = SAMPLE_NFO.replace('</movie>', '  <data18>\n    <id>1227431</id>\n    <type>movie</type>\n  </data18>\n</movie>')
+    _write_folder(tmp_path, BASENAME, nfo=nfo)
+    fetched: list[str] = []
+
+    class FakeData18(data18_module.Data18Client):
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> None:
+            raise AssertionError('an explicit <data18> ref must not run the data18 search')
+
+        async def fetch_images(self, scene_url: str) -> list[str]:
+            raise AssertionError('a movie ref must use fetch_movie_images')
+
+        async def fetch_movie_images(self, movie_url: str, page_sel: object = None) -> list[str]:
+            fetched.append(movie_url)
+            return ['https://cdn.data18.com/movie.jpg']
+
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
+    detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
+    assert detail is not None
+    assert fetched == ['https://www.data18.com/movies/1227431']
+    assert 'https://cdn.data18.com/movie.jpg' in detail.art
+
+
 @pytest.mark.parametrize(
     'ref',
     ['1150700', 'scenes/1150700', '/scenes/1150700', 'https://www.data18.com/scenes/1150700', '  1150700  '],
@@ -243,7 +278,7 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
     fetched: list[str] = []
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> None:
             raise AssertionError('an explicit <data18> ref must not run the data18 search')
 
         async def fetch_images(self, scene_url: str) -> list[str]:
@@ -264,7 +299,7 @@ async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: P
     queries: list[str] = []
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> None:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> None:
             queries.append(query)
             return None
 

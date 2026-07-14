@@ -438,6 +438,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         scene_date: str | None = None,
         images: list[str] | None = None,
         forced_url: str | None = None,
+        kind: Literal['scene', 'movie'] = 'scene',
     ) -> None:
         """Resolve the scene's data18 page and merge its images into `images` (default
         metadata.art), recording metadata.data18_url. No-op unless the site opts into
@@ -457,6 +458,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             providers=providers,
             scene_date=datetime.fromisoformat(date) if date else None,
             forced_url=forced_url,
+            kind=kind,
         )
 
     # ── Detail orchestrator ──────────────────────────────────────────────────────

@@ -87,7 +87,7 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     captured: dict[str, object] = {}
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object) -> str:
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> str:
             captured['mapping_id'] = scene_id
             return 'https://www.data18.com/scenes/999'
 

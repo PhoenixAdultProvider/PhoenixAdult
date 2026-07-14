@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal, TypedDict
 from urllib.parse import urlsplit
 
 from dateutil import parser as date_parser
@@ -31,7 +31,15 @@ def data18_scene_id(raw: str | None) -> str:
     return raw if raw and raw.isdigit() and int(raw) > 100 else ''
 
 
-DATA18_MANUAL_MAPPINGS: dict[str, str | list[str]] = load_site_json(__file__, 'data18_manual_mappings')
+Data18Kind = Literal['scene', 'movie']
+
+
+class ManualMapping(TypedDict):
+    slug: str | list[str]
+    type: Data18Kind
+
+
+DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = load_site_json(__file__, 'data18_manual_mappings')
 
 
 def mapping_slug(title: str, sub_site: str | None) -> str | None:
@@ -44,13 +52,14 @@ def mapping_slug(title: str, sub_site: str | None) -> str | None:
 
 
 def manual_mapping_url(mapping_key: str | None) -> str | None:
-    """The data18 scene URL forced for `mapping_key` (a mapping_slug value), else None.
-    A mapping value may be a list when several scenes share one data18 page."""
+    """The data18 scene/movie URL forced for `mapping_key` (a mapping_slug value), else None.
+    An entry's slug may be a list when several scenes share one data18 page."""
     if not mapping_key:
         return None
-    for d18, slug in DATA18_MANUAL_MAPPINGS.items():
+    for d18, entry in DATA18_MANUAL_MAPPINGS.items():
+        slug = entry['slug']
         if mapping_key == slug or (isinstance(slug, list) and mapping_key in slug):
-            return f'{_BASE}/scenes/{d18}'
+            return f'{_BASE}/{"movies" if entry["type"] == "movie" else "scenes"}/{d18}'
     return None
 
 
@@ -104,8 +113,9 @@ _DATA18_HOSTS = ('data18.com', 'www.data18.com')
 
 
 def scene_url_from_ref(ref: str | None) -> str | None:
-    """Scene URL from a hand-written reference: a numeric id, a slug, 'scenes/<x>', or a full
-    data18 URL. None when empty, off-host, or not a plain scene ref."""
+    """Scene/movie URL from a hand-written reference: a numeric id, a slug, 'scenes/<x>',
+    'movies/<x>', or a full data18 URL. Bare refs are scenes. None when empty, off-host,
+    or not a plain ref."""
     if not ref:
         return None
     ref = ref.strip()
@@ -115,11 +125,14 @@ def scene_url_from_ref(ref: str | None) -> str | None:
             return None
         ref = parts.path
     ref = ref.strip('/')
-    if ref.lower() == 'scenes':
+    kind = 'scenes'
+    if ref.lower() in ('scenes', 'movies'):
         return None
-    if ref.lower().startswith('scenes/'):
+    if ref.lower().startswith('movies/'):
+        kind, ref = 'movies', ref[len('movies/') :].strip('/')
+    elif ref.lower().startswith('scenes/'):
         ref = ref[len('scenes/') :].strip('/')
-    return f'{_BASE}/scenes/{ref}' if _SCENE_REF_RE.match(ref) else None
+    return f'{_BASE}/{kind}/{ref}' if _SCENE_REF_RE.match(ref) else None
 
 
 @dataclass
@@ -291,20 +304,22 @@ class Data18Client(Client):
             return None
         return loaded['html'], loaded['sel']
 
-    async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
-        logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date}')
+    async def find_scene_url(
+        self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene'
+    ) -> str | None:
+        logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date} kind={kind}')
         if forced := manual_mapping_url(scene_id):
             return forced
 
-        url = await self._search_scene_url(query, providers, scene_date)
+        url = await self._search_scene_url(query, providers, scene_date, kind)
         if not url and (alt := convert_sequence_numbers(query)):
             logger.info('data18', f'no match for "{query}" — retrying as "{alt}"')
-            url = await self._search_scene_url(alt, providers, scene_date)
+            url = await self._search_scene_url(alt, providers, scene_date, kind)
         if not url:
             logger.info('data18', f'no match for "{query}"')
         return url
 
-    async def _search_scene_url(self, query: str, providers: list[str], scene_date: datetime | None) -> str | None:
+    async def _search_scene_url(self, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene') -> str | None:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
         if not clean_query:
             return None
@@ -318,10 +333,11 @@ class Data18Client(Client):
         pages_match = re.search(r'pages:\s*(\d+)', html)
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, 50)
 
+        path_segment = f'/{kind}s/'
         for page in range(num_pages):
             for a in sel.xpath('//a'):
                 href = a.xpath('./@href').get() or ''
-                if '/scenes/' not in href:
+                if path_segment not in href:
                     continue
                 title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
                 if not title_node:
@@ -362,16 +378,21 @@ class Data18Client(Client):
         providers: list[str] | None = None,
         scene_date: datetime | None = None,
         forced_url: str | None = None,
+        kind: Data18Kind = 'scene',
     ) -> str | None:
         """Resolve a scene's data18 page — a forced URL, a manual mapping, or a search —
         append its images to `images` in place (de-duplicated), and return the resolved
-        scene URL (or None). Wrapped in best_effort so a data18 failure never breaks the
-        host scrape; shared by every network that enriches from data18."""
+        URL (or None). The resolved URL's own type picks the image fetcher, so a scene
+        mapped to a movie page still collects movie images. Wrapped in best_effort so a
+        data18 failure never breaks the host scrape; shared by every network that enriches
+        from data18."""
         with best_effort(scope, 'data18 enrichment'):
-            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date)
+            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
             if url:
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
-                for u in await self.fetch_images(url):
+                ref = data18_ref(url)
+                fetched = await (self.fetch_movie_images(url) if ref and ref['type'] == 'movie' else self.fetch_images(url))
+                for u in fetched:
                     append_unique(images, u)
                 return url
         return None
@@ -451,6 +472,10 @@ class Data18Client(Client):
         poster = sel.xpath('//div[@id="moviewrap"]//*[@src][1]/@src').get()
         if poster and poster not in out:
             out.append(poster)
+
+        for cover in sel.xpath('//a[@data-lightbox="relatedscenecover"]/@href').getall():
+            if cover and cover not in out:
+                out.append(cover)
         logger.info('data18', f'Collected {len(out)} image URL(s) from {scene_url}')
         return out
 
