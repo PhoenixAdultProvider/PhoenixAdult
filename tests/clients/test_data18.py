@@ -79,6 +79,23 @@ async def test_find_scene_url_retries_with_digit_title() -> None:
 
 
 @respx.mock
+async def test_fetch_images_retries_id_url_via_manual_redirect_hop() -> None:
+    scene = '<html><div id="galleriesoff"></div><div id="moviewrap"><img src="https://cdn.example/poster.jpg"></div></html>'
+    slug_url = 'https://www.data18.com/scenes/1209198-vr-captain-marvel-parody'
+    respx.get('https://www.data18.com/scenes/1209198').mock(side_effect=[httpx.Response(403), httpx.Response(301, headers={'location': slug_url})])
+    respx.get(slug_url).mock(return_value=httpx.Response(200, text=scene))
+    imgs = await Data18Client().fetch_images('https://www.data18.com/scenes/1209198')
+    assert imgs == ['https://cdn.example/poster.jpg']
+
+
+@respx.mock
+async def test_fetch_images_refuses_off_host_redirect() -> None:
+    respx.get('https://www.data18.com/scenes/1209198').mock(side_effect=[httpx.Response(403), httpx.Response(301, headers={'location': 'https://evil.com/x'})])
+    imgs = await Data18Client().fetch_images('https://www.data18.com/scenes/1209198')
+    assert imgs == []
+
+
+@respx.mock
 async def test_fetch_images_poster_only() -> None:
     scene = '<html><div id="galleriesoff"></div><div id="moviewrap"><img src="https://cdn.example/poster.jpg"></div></html>'
     respx.route(method='GET', url__regex=r'data18\.com/scenes/').mock(return_value=httpx.Response(200, text=scene))

@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal, TypedDict
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
+import httpx2
 from dateutil import parser as date_parser
 from parsel import Selector
 
@@ -127,6 +128,7 @@ def strip_reptyle_suffix(studio: str) -> str:
 
 _SCENE_REF_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
 _DATA18_HOSTS = ('data18.com', 'www.data18.com')
+_ID_ONLY_RE = re.compile(r'/(?:scenes|movies)/\d+/?$')
 
 
 def scene_url_from_ref(ref: str | None) -> str | None:
@@ -430,8 +432,27 @@ class Data18Client(Client):
             logger.info(scope, f'dropped {dropped} square data18 image(s)')
         return kept
 
+    async def _resolve_id_url(self, url: str) -> str:
+        """data18 301s bare id URLs to their slug form but can 403 clients that follow the
+        redirect; hop it manually so the slug URL can be fetched directly."""
+        if not _ID_ONLY_RE.search(url):
+            return url
+        try:
+            r = await self.http.get(url, follow_redirects=False)
+        except httpx2.HTTPError:
+            return url
+        loc: str = r.headers.get('location', '')
+        if r.status_code in (301, 302, 307, 308) and loc:
+            resolved = urljoin(url, loc)
+            if (urlsplit(resolved).hostname or '').lower() in _DATA18_HOSTS:
+                logger.debug('data18', f'resolved {url} -> {resolved}')
+                return resolved
+        return url
+
     async def fetch_page(self, url: str) -> Selector | None:
         loaded = await self.fetch_and_load(url, label=f'[data18] {url}')
+        if not loaded and (resolved := await self._resolve_id_url(url)) != url:
+            loaded = await self.fetch_and_load(resolved, label=f'[data18] {resolved}')
         if not loaded:
             logger.warn('data18', f'page fetch {url} failed - possible IP ban')
             return None
@@ -449,6 +470,9 @@ class Data18Client(Client):
     async def fetch_images(self, scene_url: str) -> list[str]:
         out: list[str] = []
         loaded = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
+        if not loaded and (resolved := await self._resolve_id_url(scene_url)) != scene_url:
+            scene_url = resolved
+            loaded = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
         if not loaded:
             logger.warn('data18', 'sceneURL fetch failed - possible IP ban')
             return out
