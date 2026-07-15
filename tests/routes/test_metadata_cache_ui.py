@@ -58,6 +58,8 @@ def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
     page = TestClient(create_app()).get('/metadata-cache?token=tok')
     assert 'purgeShown()' in page.text
     assert 'This cannot be undone.' in page.text
+    assert 'exportShown()' in page.text
+    assert 'f-data18' in page.text
 
 
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:

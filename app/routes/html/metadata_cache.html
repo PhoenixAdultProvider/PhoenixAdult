@@ -56,6 +56,9 @@
     .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .purge-btn:hover { background: #dc2626; }
     .purge-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .export-btn { padding: 8px 16px; border: 1px solid #2563eb; border-radius: 6px; background: #1e293b; color: #60a5fa; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
+    .export-btn:hover { background: #1d4ed8; color: #fff; }
+    .export-btn:disabled { border-color: #334155; background: #1e293b; color: #64748b; cursor: not-allowed; }
     .dup-toggle { padding: 8px 16px; border: 1px solid #f59e0b; border-radius: 6px; background: #1e293b; color: #f59e0b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
     .dup-toggle.on { background: #b45309; color: #fff; }
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
@@ -97,9 +100,18 @@
       <label>Collection</label>
       <select id="f-collection" onchange="render()"><option value="">All</option></select>
     </div>
+    <div class="filter-group">
+      <label>Data18</label>
+      <select id="f-data18" onchange="render()">
+        <option value="">All</option>
+        <option value="__set__">Not Blank</option>
+        <option value="__blank__">Blank</option>
+      </select>
+    </div>
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
     <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
     <span class="count-badge" id="count"></span>
   </div>
@@ -115,6 +127,7 @@
           <th class="sortable" data-key="title" onclick="sort('title')">Scene Title</th>
           <th class="sortable" data-key="tagline" onclick="sort('tagline')">Tagline</th>
           <th class="sortable" data-key="year" onclick="sort('year')">Year</th>
+          <th class="sortable" data-key="data18_id" onclick="sort('data18_id')">Data18</th>
           <th>Purge</th>
         </tr>
       </thead>
@@ -131,6 +144,7 @@
     const DUP_COUNT = DUP_KEYS.length;
     let showDupsOnly = false;
     let shownKeys = [];
+    let shownRows = [];
 
     ALL.forEach(e => {
       e.year = e.date ? e.date.slice(0, 4) : '';
@@ -200,7 +214,7 @@
     }
 
     function reset() {
-      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection'].forEach(id => { document.getElementById(id).value = ''; });
+      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'].forEach(id => { document.getElementById(id).value = ''; });
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applyHeaderIndicator();
@@ -221,10 +235,11 @@
         pred: (e, v) => v === '__blank__' ? !(e.collections || []).length : (e.collections || []).includes(v),
         val: e => (e.collections || []).length ? e.collections : ['__blank__'],
       },
+      'f-data18': {pred: (e, v) => v === '__blank__' ? !e.data18_id : !!e.data18_id, val: e => e.data18_id ? '__set__' : '__blank__'},
     };
 
     function textPred(e, q) {
-      return !q || [e.title, e.studio, e.tagline, e.date, ...(e.collections || [])].join(' ').toLowerCase().includes(q);
+      return !q || [e.title, e.studio, e.tagline, e.date, e.data18_id, ...(e.collections || [])].join(' ').toLowerCase().includes(q);
     }
 
     // Rows passing the text query + every facet EXCEPT the one named (so a facet
@@ -278,10 +293,14 @@
 
       document.getElementById('count').textContent = `${rows.length} of ${ALL.length} snapshot(s)`;
 
+      shownRows = rows;
       shownKeys = rows.map(e => e.key);
       const bulkBtn = document.getElementById('purgeAllBtn');
       bulkBtn.disabled = !rows.length;
       bulkBtn.textContent = rows.length === ALL.length ? `Purge All (${rows.length})` : `Purge Filtered (${rows.length})`;
+      const exportBtn = document.getElementById('exportBtn');
+      exportBtn.disabled = !rows.length;
+      exportBtn.textContent = `Export Mappings (${rows.length})`;
 
       const tbody = document.getElementById('tbody');
       const empty = document.getElementById('empty');
@@ -296,6 +315,7 @@
         const date = e.date ? esc(e.date) : '<span class="blank">—</span>';
         const tagline = e.tagline ? esc(e.tagline) : '<span class="blank">—</span>';
         const year = e.year ? esc(e.year) : '<span class="blank">—</span>';
+        const data18 = e.data18_id ? esc(e.data18_id) : '<span class="blank">—</span>';
         const key = esc(JSON.stringify(e.key));
         return `<tr>
           <td class="thumb-cell">${thumb}</td>
@@ -305,6 +325,7 @@
           <td>${esc(e.title)}</td>
           <td>${tagline}</td>
           <td>${year}</td>
+          <td>${data18}</td>
           <td><button class="purge-btn" onclick="purge(${key})">Purge</button></td>
         </tr>`;
       }).join('');
@@ -317,6 +338,19 @@
       const r = await fetch('/metadata-cache/purge', {method: 'POST', headers, body: JSON.stringify({key})});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) location.reload(); else alert('Purge failed');
+    }
+
+    function exportShown() {
+      if (!shownRows.length) return;
+      const lines = shownRows.map(e =>
+        `  ${JSON.stringify(e.data18_id || '')}: { "slug": ${JSON.stringify(e.mapping_slug || '')}, "type": ${JSON.stringify(e.data18_type || 'scene')} }`
+      );
+      const blob = new Blob(['{\n' + lines.join(',\n') + '\n}\n'], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'data18_manual_mappings.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
 
     async function purgeShown() {

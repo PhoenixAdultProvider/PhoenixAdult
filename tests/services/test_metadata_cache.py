@@ -129,6 +129,7 @@ def _resp(
     thumb: str | None = None,
     role_thumb: str | None = None,
     images: list[str] | None = None,
+    data18: dict[str, str] | None = None,
 ) -> PlexMetadataResponse:
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title}
     if studio:
@@ -141,6 +142,8 @@ def _resp(
         md['Role'] = [{'tag': 'Jane Doe', 'thumb': role_thumb}]
     if images:
         md['Image'] = [{'url': u, 'type': 'coverPoster'} for u in images]
+    if data18:
+        md['data18'] = data18
     return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': 'id', 'size': 1, 'Metadata': [md]}})
 
 
@@ -244,6 +247,20 @@ async def test_disabled_is_noop(tmp_path: pytest.TempPathFactory, monkeypatch: p
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     assert await mc.write('Site', 'c', _resp()) is False
     assert mc.read('Site', 'c') is None
+
+
+async def test_entries_expose_data18_and_mapping_slug(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    assert await mc.write('Brazzers', 'a1', _resp(studio='Brazzers', tagline='Baby Got Boobs', data18={'type': 'scene', 'id': '1209186'})) is True
+    assert await mc.write('Vixen', 'b2', _resp(studio='Vixen')) is True
+
+    by_studio = {e['studio']: e for e in mc.entries()}
+    assert by_studio['Brazzers']['data18_id'] == '1209186'
+    assert by_studio['Brazzers']['data18_type'] == 'scene'
+    assert by_studio['Brazzers']['mapping_slug'] == 'cool-scene-babygotboobs'
+    assert by_studio['Vixen']['data18_id'] == '' and by_studio['Vixen']['data18_type'] == ''
+    assert by_studio['Vixen']['mapping_slug'] == 'cool-scene'
 
 
 async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:

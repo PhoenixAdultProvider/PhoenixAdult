@@ -349,6 +349,8 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
 
 def entries() -> list[dict[str, Any]]:
     """All snapshots, newest first, for the /metadata-cache UI."""
+    from app.clients.aggregators.data18 import mapping_slug
+
     out: list[dict[str, Any]] = []
     root = Path(cache_dir())
     if not root.exists():
@@ -365,6 +367,7 @@ def entries() -> list[dict[str, Any]]:
             continue
         rel = scene.relative_to(root).as_posix()
         segs = rel.split('/')
+        d18 = md.get('data18') or {}
         out.append(
             {
                 'key': rel,
@@ -379,6 +382,9 @@ def entries() -> list[dict[str, Any]]:
                 'thumb': md.get('thumb', ''),
                 'images': len(md.get('Image', [])),
                 'mtime': mtime,
+                'data18_id': d18.get('id', ''),
+                'data18_type': d18.get('type', ''),
+                'mapping_slug': mapping_slug(md.get('title', ''), md.get('tagline')) or '',
             }
         )
     out.sort(key=lambda e: e['mtime'], reverse=True)
