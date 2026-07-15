@@ -46,6 +46,19 @@ async def purge(request: Request) -> JSONResponse:
     return JSONResponse({'ok': ok})
 
 
+@router.post('/purge-bulk')
+async def purge_bulk(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    keys = data.get('keys')
+    if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
+        return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
+    purged = 0
+    for key in keys:
+        if await asyncio.to_thread(metadata_cache.purge, key):
+            purged += 1
+    return JSONResponse({'ok': True, 'purged': purged})
+
+
 @router.post('/purge-duplicates')
 async def purge_duplicates() -> JSONResponse:
     # Recomputed server-side; the client never supplies paths.

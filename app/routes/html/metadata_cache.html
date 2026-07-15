@@ -55,6 +55,7 @@
     .cached-ts { color: #94a3b8; white-space: nowrap; }
     .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .purge-btn:hover { background: #dc2626; }
+    .purge-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
     .dup-toggle { padding: 8px 16px; border: 1px solid #f59e0b; border-radius: 6px; background: #1e293b; color: #f59e0b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
     .dup-toggle.on { background: #b45309; color: #fff; }
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
@@ -99,6 +100,7 @@
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
     <span class="count-badge" id="count"></span>
   </div>
 
@@ -128,6 +130,7 @@
     const DUP_SET = new Set(DUP_KEYS);
     const DUP_COUNT = DUP_KEYS.length;
     let showDupsOnly = false;
+    let shownKeys = [];
 
     ALL.forEach(e => {
       e.year = e.date ? e.date.slice(0, 4) : '';
@@ -275,6 +278,11 @@
 
       document.getElementById('count').textContent = `${rows.length} of ${ALL.length} snapshot(s)`;
 
+      shownKeys = rows.map(e => e.key);
+      const bulkBtn = document.getElementById('purgeAllBtn');
+      bulkBtn.disabled = !rows.length;
+      bulkBtn.textContent = rows.length === ALL.length ? `Purge All (${rows.length})` : `Purge Filtered (${rows.length})`;
+
       const tbody = document.getElementById('tbody');
       const empty = document.getElementById('empty');
       if (!rows.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
@@ -307,6 +315,19 @@
       const headers = {'Content-Type': 'application/json'};
       if (TOKEN) headers['x-admin-token'] = TOKEN;
       const r = await fetch('/metadata-cache/purge', {method: 'POST', headers, body: JSON.stringify({key})});
+      const j = await r.json().catch(() => ({ok: false}));
+      if (j.ok) location.reload(); else alert('Purge failed');
+    }
+
+    async function purgeShown() {
+      if (!shownKeys.length) return;
+      const msg = shownKeys.length === ALL.length
+        ? `Purge ALL ${shownKeys.length} cached snapshot(s)? This cannot be undone.`
+        : `Purge the ${shownKeys.length} snapshot(s) matching the current filters? This cannot be undone.`;
+      if (!confirm(msg)) return;
+      const headers = {'Content-Type': 'application/json'};
+      if (TOKEN) headers['x-admin-token'] = TOKEN;
+      const r = await fetch('/metadata-cache/purge-bulk', {method: 'POST', headers, body: JSON.stringify({keys: shownKeys})});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) location.reload(); else alert('Purge failed');
     }
