@@ -30,57 +30,62 @@ __testing__ = {'mangle': _mangle, 'title_clean_lower': _title_clean_lower}
 class BadoinkVrClient(Client):
     # ── Search (full override: direct sceneID lookup + search page) ──────────────
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        cleaned = _mangle(ctx.title)
+    async def search(self, results: list[SearchResult], searchData: SearchContext) -> None:
+        base = searchData.site_info.base_url.rstrip('/')
+        cleaned = _mangle(searchData.title)
 
-        if ctx.scene_id:
-            url = f'{base}/vrpornvideo/{ctx.scene_id}'
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'GET {url}')
-            if loaded:
-                title = (loaded['sel'].xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip()
+        if searchData.scene_id:
+            url = f'{base}/vrpornvideo/{searchData.scene_id}'
+            directPageElements = await self.fetch_and_load(url, FetchCtx(capture=searchData.capture), f'GET {url}')
+            if directPageElements:
+                title = (directPageElements['sel'].xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip()
                 if title:
-                    thumb = first_attr(loaded['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
+                    thumb = first_attr(directPageElements['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
                     results.append(
-                        build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=100, thumb_url=thumb or None)
+                        build_search_result(
+                            title=title, scene_url=url, query=searchData.title, search_date=searchData.search_date, score=100, thumb_url=thumb or None
+                        )
                     )
                     return
 
         query_clean_lower = cleaned.lower()
         enc = quote(cleaned, safe='')
-        enc = re.sub(r'a%20Parody', '', enc, flags=re.IGNORECASE)
-        enc = enc.replace('180', '')
-        enc = re.sub(r'Parody', '', enc, flags=re.IGNORECASE)
-        search_url = base + ctx.site_info.search_path.replace('{query}', enc)
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
-        if not loaded:
+        search_url = base + searchData.site_info.search_path.replace('{query}', enc)
+        searchResults = await self.fetch_and_load(search_url, FetchCtx(capture=searchData.capture), f'GET {search_url}')
+        if not searchResults:
             return
-        for el in loaded['sel'].xpath('//div[contains(@class,"tile-grid-item")]'):
-            a = el.xpath('(.//a[contains(@class,"video-card-title")])[1]')
+
+        for searchResult in searchResults['sel'].xpath('//div[contains(@class,"tile-grid-item")]'):
+            a = searchResult.xpath('(.//a[contains(@class,"video-card-title")])[1]')
             title_attr = (a.xpath('@title').get() or a.xpath('string(.)').get() or '').strip()
             href = first_attr(a, '@href')
             if not title_attr or not href:
                 continue
-            abs_href = absolute_url(href, ctx.site_info.base_url)
-            date_raw = first_attr(el, '(.//span[contains(@class,"video-card-upload-date")])[1]/@content')
+
+            abs_href = absolute_url(href, searchData.site_info.base_url)
+
+            date_raw = first_attr(searchResult, '(.//span[contains(@class,"video-card-upload-date")])[1]/@content')
             release = iso_date(date_raw)
-            if ctx.search_date and release:
-                score: float = date_distance_score(ctx.search_date, release)
+            if searchData.search_date and release:
+                score: float = date_distance_score(searchData.search_date, release)
             else:
                 score = title_distance_score(query_clean_lower, _title_clean_lower(title_attr))
+
             results.append(
-                build_search_result(title=title_attr, scene_url=abs_href, query=ctx.title, display_date=release, search_date=ctx.search_date, score=score)
+                build_search_result(
+                    title=title_attr, scene_url=abs_href, query=searchData.title, display_date=release, search_date=searchData.search_date, score=score
+                )
             )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        detailsPageElements = scene.require_sel()
+        metadata.title = (detailsPageElements.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        detailsPageElements = scene.require_sel()
+        metadata.summary = (detailsPageElements.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -92,50 +97,65 @@ class BadoinkVrClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//p[@itemprop="uploadDate"])[1]/@content')
-        metadata.release_date = iso_date(raw) or scene.scene_date or None
+        detailsPageElements = scene.require_sel()
+
+        date = first_attr(detailsPageElements, '(//p[@itemprop="uploadDate"])[1]/@content')
+        metadata.release_date = iso_date(date) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@class,"video-tag")]')) if g]
+        detailsPageElements = scene.require_sel()
+
+        genres = [genre for genre in (first_attr(a, 'normalize-space(.)') for a in detailsPageElements.xpath('//a[contains(@class,"video-tag")]')) if genre]
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        base = scene.site.base_url
+        detailsPageElements = scene.require_sel()
+
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath('//a[contains(@class,"video-actor-link")]'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, base)))
+        for actorLink in detailsPageElements.xpath('//a[contains(@class,"video-actor-link")]'):
+            actorName = first_attr(actorLink, 'normalize-space(.)')
+            actorPhotoURL = first_attr(actorLink, '@href')
+
+            if actorName and actorPhotoURL:
+                refs.append((actorName, absolute_url(actorPhotoURL, scene.site.base_url)))
+
         actors: list[ActorResult] = []
-        for name, href in refs:
-            loaded = await self.fetch_and_load(href, None, f'GET {href} (actor)')
-            # Full resolved photo URL (no ?-strip), per the image-URL policy.
-            photo = first_attr(loaded['sel'], '(//img[contains(@class,"girl-details-photo")])[1]/@src') if loaded else ''
-            actors.append(ActorResult(name=name, photo_url=photo, gender='female'))
+        for actorName, href in refs:
+            modelPageElements = await self.fetch_and_load(href, None, f'GET {href} (actor)')
+            actorPhotoURL = first_attr(modelPageElements['sel'], '(//img[contains(@class,"girl-details-photo")])[1]/@src') if modelPageElements else ''
+
+            actors.append(ActorResult(name=actorName, photo_url=actorPhotoURL, gender='female'))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        out: list[str] = []
-        video_img = first_attr(sel, '(//img[contains(@class,"video-image")])[1]/@src')
-        if video_img:
-            out.append(video_img)
+        detailsPageElements = scene.require_sel()
+        images: list[str] = []
 
-        gallery_big = first_attr(sel, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
+        video_img = first_attr(detailsPageElements, '(//img[contains(@class,"video-image")])[1]/@src')
+        if video_img:
+            images.append(video_img)
+
+        gallery_imgs = detailsPageElements.xpath('(//div[contains(@class,"gallery-item")])/@data-big-image')
+        images.extend(u for u in gallery_imgs.getall() if u)
+
+        gallery_big = first_attr(detailsPageElements, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
         if gallery_big:
-            base_img = re.sub(r'_\d+\.jpg.*$', '', gallery_big)
-            base_img = re.sub(r'\.jpg.*$', '', base_img)
-            zip_info = sel.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
+            raw_img_url = re.sub(r'_\d+\.jpg.*$', '', gallery_big)
+            base_img = re.sub(r'\.jpg.*$', '', raw_img_url)
+            zip_info = detailsPageElements.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
             m = re.search(r'(\d+)\s*photos', zip_info, re.IGNORECASE)
             count = int(m.group(1)) if m else 0
-            for i in range(1, count + 2):
-                out.append(f'{base_img}_{i}.jpg')
+            if '@' in base_img:
+                parts = re.match(r'^(.*/\d+)_\d+_(\d+@.*)$', base_img)
+                if parts:
+                    images.extend(f'{parts.group(1)}_{i}_{parts.group(2)}.jpg' for i in range(1, count + 1))
+                else:
+                    images.append(f'{base_img}.jpg')
+            elif base_img:
+                images.extend(f'{base_img}_{i}.jpg' for i in range(1, count + 2))
 
-        deduped = list(dict.fromkeys(u for u in out if u))
+        deduped = list(dict.fromkeys(u for u in images if u))
         metadata.art = deduped or []
 
         # Posters from Data18

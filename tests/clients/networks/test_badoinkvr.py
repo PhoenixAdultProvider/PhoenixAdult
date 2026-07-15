@@ -82,10 +82,32 @@ async def test_detail_fields() -> None:
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg?sig=z'
     assert detail.art == [
         'https://cdn/main.jpg?token=abc',
+        'https://cdn/g/base_1.jpg?v=9',
         'https://cdn/g/base_1.jpg',
         'https://cdn/g/base_2.jpg',
         'https://cdn/g/base_3.jpg',
         'https://cdn/g/base_4.jpg',
+    ]
+
+
+@respx.mock
+async def test_detail_at_style_gallery_iterates_middle_index() -> None:
+    url = 'https://badoinkvr.com/vrpornvideo/323737'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text="""<html><body>
+              <h1 class="video-title">Cool Scene</h1>
+              <div class="gallery-item" data-big-image="https://img2.badoink.com/content/scenes/323737/1_1_27@1500-1x.jpg"></div>
+              <span class="gallery-zip-info">2 photos</span>
+            </body></html>""",
+        )
+    )
+    detail = await BadoinkVrClient().fetch_scene_detail(url, SITE)
+    assert detail is not None
+    assert detail.art == [
+        'https://img2.badoink.com/content/scenes/323737/1_1_27@1500-1x.jpg',
+        'https://img2.badoink.com/content/scenes/323737/1_2_27@1500-1x.jpg',
     ]
 
 
