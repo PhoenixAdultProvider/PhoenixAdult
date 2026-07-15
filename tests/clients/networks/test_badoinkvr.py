@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
+import app.clients.networks.badoinkvr as badoinkvr_module
 from app.clients.base import SearchContext, SearchResult
 from app.clients.networks.badoinkvr import BadoinkVrClient, __testing__
 from app.registry import find_site
@@ -14,6 +16,13 @@ assert SITE is not None and COSPLAY is not None
 
 def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
     return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
+
+
+def _mock_dims(monkeypatch: pytest.MonkeyPatch, existing: set[str]) -> None:
+    async def fake_dims(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        return {'width': 1500, 'height': 1000} if url in existing else None
+
+    monkeypatch.setattr(badoinkvr_module, 'fetch_dimensions', fake_dims)
 
 
 @respx.mock
@@ -48,7 +57,8 @@ async def test_search_direct_scene_id() -> None:
 
 
 @respx.mock
-async def test_detail_fields() -> None:
+async def test_detail_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_dims(monkeypatch, {'https://cdn/g/base_1.jpg', 'https://cdn/g/base_2.jpg', 'https://cdn/g/base_3.jpg'})
     url = 'https://badoinkvr.com/vrpornvideo/77'
     respx.get(url).mock(
         return_value=httpx.Response(
@@ -86,12 +96,12 @@ async def test_detail_fields() -> None:
         'https://cdn/g/base_1.jpg',
         'https://cdn/g/base_2.jpg',
         'https://cdn/g/base_3.jpg',
-        'https://cdn/g/base_4.jpg',
     ]
 
 
 @respx.mock
-async def test_detail_at_style_gallery_iterates_middle_index() -> None:
+async def test_detail_at_style_gallery_iterates_middle_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_dims(monkeypatch, {'https://img2.badoink.com/content/scenes/323737/1_2_27@1500-1x.jpg'})
     url = 'https://badoinkvr.com/vrpornvideo/323737'
     respx.get(url).mock(
         return_value=httpx.Response(
@@ -108,6 +118,32 @@ async def test_detail_at_style_gallery_iterates_middle_index() -> None:
     assert detail.art == [
         'https://img2.badoink.com/content/scenes/323737/1_1_27@1500-1x.jpg',
         'https://img2.badoink.com/content/scenes/323737/1_2_27@1500-1x.jpg',
+    ]
+
+
+@respx.mock
+async def test_detail_mixed_family_gallery_recovers_slug_tail(monkeypatch: pytest.MonkeyPatch) -> None:
+    shots = 'https://img2.badoink.com/content/screenshots/1/b/b/6/9'
+    scenes = 'https://img2.badoink.com/content/scenes/323582'
+    _mock_dims(monkeypatch, {f'{shots}/323582_1_2.jpg', f'{scenes}/cream-of-legends-323582.jpg', f'{scenes}/cream-of-legends-323582_1.jpg'})
+    url = 'https://vrcosplayx.com/cosplaypornvideo/cream_of_legends-323582/'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text=f"""<html><body>
+              <h1 class="video-title">Cream of Legends</h1>
+              <div class="gallery-item" data-big-image="{shots}/323582_1_1.jpg"></div>
+              <span class="gallery-zip-info">4 photos</span>
+            </body></html>""",
+        )
+    )
+    detail = await BadoinkVrClient().fetch_scene_detail(url, COSPLAY)
+    assert detail is not None
+    assert detail.art == [
+        f'{shots}/323582_1_1.jpg',
+        f'{shots}/323582_1_2.jpg',
+        f'{scenes}/cream-of-legends-323582.jpg',
+        f'{scenes}/cream-of-legends-323582_1.jpg',
     ]
 
 

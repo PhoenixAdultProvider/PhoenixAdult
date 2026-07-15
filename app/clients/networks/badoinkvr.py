@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import re
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.images.image_fetcher import fetch_dimensions
 
 STUDIO = 'BaDoink VR'
 
@@ -136,24 +138,30 @@ class BadoinkVrClient(Client):
         if video_img:
             images.append(video_img)
 
-        gallery_imgs = detailsPageElements.xpath('(//div[contains(@class,"gallery-item")])/@data-big-image')
-        images.extend(u for u in gallery_imgs.getall() if u)
+        # The DOM gallery is a trusted-but-truncated teaser (~5 items); the zip photo count is
+        # the real total. Expand candidates past the teaser and keep only the ones that exist.
+        gallery_imgs = [u for u in detailsPageElements.xpath('//div[contains(@class,"gallery-item")]/@data-big-image').getall() if u]
+        images.extend(gallery_imgs)
 
-        gallery_big = first_attr(detailsPageElements, '(//div[contains(@class,"gallery-item")])[1]/@data-big-image')
-        if gallery_big:
-            raw_img_url = re.sub(r'_\d+\.jpg.*$', '', gallery_big)
-            base_img = re.sub(r'\.jpg.*$', '', raw_img_url)
-            zip_info = detailsPageElements.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
-            m = re.search(r'(\d+)\s*photos', zip_info, re.IGNORECASE)
-            count = int(m.group(1)) if m else 0
-            if '@' in base_img:
-                parts = re.match(r'^(.*/\d+)_\d+_(\d+@.*)$', base_img)
-                if parts:
-                    images.extend(f'{parts.group(1)}_{i}_{parts.group(2)}.jpg' for i in range(1, count + 1))
-                else:
-                    images.append(f'{base_img}.jpg')
-            elif base_img:
-                images.extend(f'{base_img}_{i}.jpg' for i in range(1, count + 2))
+        zip_info = detailsPageElements.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
+        m = re.search(r'(\d+)\s*photos', zip_info, re.IGNORECASE)
+        count = int(m.group(1)) if m else 0
+
+        candidates: list[str] = []
+        gallery_big = gallery_imgs[0] if gallery_imgs else ''
+        if gallery_big and count:
+            base_img = re.sub(r'\.jpg.*$', '', re.sub(r'_\d+\.jpg.*$', '', gallery_big))
+            # e.g. .../1_1_27@1500-1x — the middle number is the gallery index
+            parts = re.match(r'^(.*/\d+)_\d+_(\d+@.*)$', base_img)
+            if parts:
+                candidates.extend(f'{parts.group(1)}_{i}_{parts.group(2)}.jpg' for i in range(1, count + 1))
+            elif '@' not in base_img and base_img:
+                candidates.extend(f'{base_img}_{i}.jpg' for i in range(1, count + 1))
+            candidates.extend(self._slug_family(scene.url, gallery_big, count))
+
+        known = set(images)
+        fresh = [c for c in dict.fromkeys(candidates) if c not in known]
+        images.extend(await self._existing(fresh))
 
         deduped = list(dict.fromkeys(u for u in images if u))
         metadata.art = deduped or []
@@ -162,3 +170,26 @@ class BadoinkVrClient(Client):
         await self.enrich_from_data18(
             metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO], allow_square=False
         )
+
+    @staticmethod
+    def _slug_family(scene_url: str, gallery_big: str, count: int) -> list[str]:
+        """Galleries can switch to /content/scenes/{id}/{slug}-{id}[_i].jpg past the teaser;
+        derive that family from the scene URL so the members-only tail is reachable."""
+        cdn = re.match(r'^(https?://[^/]+)/content/', gallery_big)
+        segments = [s for s in urlsplit(scene_url).path.split('/') if s]
+        slug_id = re.match(r'^(.+)-(\d+)$', segments[-1]) if segments else None
+        if slug_id:
+            slug, scene_id = slug_id.group(1).replace('_', '-'), slug_id.group(2)
+        elif len(segments) >= 2 and segments[-2].isdigit():
+            slug, scene_id = segments[-1], segments[-2]
+        else:
+            return []
+        if not cdn:
+            return []
+        base = f'{cdn.group(1)}/content/scenes/{scene_id}/{slug}-{scene_id}'
+        return [f'{base}.jpg', *(f'{base}_{i}.jpg' for i in range(1, count + 1))]
+
+    @staticmethod
+    async def _existing(urls: list[str]) -> list[str]:
+        dims = await asyncio.gather(*(fetch_dimensions(u) for u in urls))
+        return [u for u, d in zip(urls, dims, strict=True) if d]
