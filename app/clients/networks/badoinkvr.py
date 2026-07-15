@@ -168,7 +168,12 @@ class BadoinkVrClient(Client):
 
         # Posters from Data18
         await self.enrich_from_data18(
-            metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO], allow_square=False
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, scene.site.name),
+            providers=[scene.site.name, STUDIO],
+            title=metadata.title.replace('Remastered', '').strip(),
+            allow_square=False,
         )
 
     @staticmethod

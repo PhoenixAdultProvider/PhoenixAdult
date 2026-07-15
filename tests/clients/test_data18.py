@@ -200,15 +200,21 @@ def test_manual_mappings_have_no_duplicate_keys() -> None:
     import json
     import pathlib
 
-    raw = pathlib.Path('app/clients/aggregators/_data/json/data18_manual_mappings.json').read_text(encoding='utf-8')
     dupes: list[str] = []
+    owner: dict[str, str] = {}
 
     def hook(pairs: list[tuple[str, object]]) -> dict[str, object]:
         keys = collections.Counter(k for k, _ in pairs)
         dupes.extend(k for k, n in keys.items() if n > 1)
         return dict(pairs)
 
-    json.loads(raw, object_pairs_hook=hook)
+    for f in sorted(pathlib.Path('app/clients/aggregators/_data/json').glob('data18_manual_mappings*.json')):
+        data = json.loads(f.read_text(encoding='utf-8'), object_pairs_hook=hook)
+        for k in data:
+            if k in owner:
+                dupes.append(f'{k} ({owner[k]} vs {f.name})')
+            owner[k] = f.name
+
     assert not dupes, f'duplicate mapping keys silently shadow earlier entries: {dupes}'
 
 
@@ -220,3 +226,25 @@ def test_manual_mappings_entries_are_well_formed() -> None:
         assert entry['type'] in ('scene', 'movie'), d18
         slug = entry['slug']
         assert slug and (isinstance(slug, str) or (isinstance(slug, list) and all(s for s in slug))), d18
+
+
+def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -> None:
+    import json
+    from pathlib import Path
+
+    from app.clients.aggregators.data18 import _load_manual_mappings
+
+    folder = Path(str(tmp_path))
+    (folder / 'data18_manual_mappings.json').write_text(
+        json.dumps({'1': {'slug': 'base-scene', 'type': 'scene'}, '2': {'slug': 'overridden', 'type': 'scene'}}), encoding='utf-8'
+    )
+    (folder / 'data18_manual_mappings_brazzers.json').write_text(json.dumps({'2': {'slug': 'brazzers-wins', 'type': 'movie'}}), encoding='utf-8')
+    (folder / 'data18_manual_mappings_vrcosplayx.json').write_text(json.dumps({'3': {'slug': 'cosplay-scene', 'type': 'scene'}}), encoding='utf-8')
+    (folder / 'unrelated.json').write_text(json.dumps({'9': {'slug': 'ignored', 'type': 'scene'}}), encoding='utf-8')
+
+    merged = _load_manual_mappings(folder)
+    assert merged == {
+        '1': {'slug': 'base-scene', 'type': 'scene'},
+        '2': {'slug': 'brazzers-wins', 'type': 'movie'},
+        '3': {'slug': 'cosplay-scene', 'type': 'scene'},
+    }

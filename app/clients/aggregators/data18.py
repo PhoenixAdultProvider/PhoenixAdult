@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal, TypedDict
 from urllib.parse import urlsplit
 
@@ -13,7 +15,7 @@ from parsel import Selector
 
 from app.clients.base import Client, SearchContext, SearchResult
 from app.config.env import env
-from app.utils.helpers.helpers import append_unique, build_search_result, load_site_json, pack_cur_id, sceneid_distance_score, slugify
+from app.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_dimensions
@@ -42,7 +44,19 @@ class ManualMapping(TypedDict):
     type: Data18Kind
 
 
-DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = load_site_json(__file__, 'data18_manual_mappings')
+def _load_manual_mappings(folder: Path | None = None) -> dict[str, ManualMapping]:
+    """Merge data18_manual_mappings.json with every data18_manual_mappings_*.json sibling
+    (sorted by name, later files win on a duplicate id)."""
+    folder = folder if folder is not None else Path(__file__).parent / '_data' / 'json'
+    merged: dict[str, ManualMapping] = {}
+    base = folder / 'data18_manual_mappings.json'
+    for f in [base, *sorted(p for p in folder.glob('data18_manual_mappings_*.json'))]:
+        if f.exists():
+            merged.update(json.loads(f.read_text(encoding='utf-8')))
+    return merged
+
+
+DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = _load_manual_mappings()
 
 
 def mapping_slug(title: str, sub_site: str | None) -> str | None:
