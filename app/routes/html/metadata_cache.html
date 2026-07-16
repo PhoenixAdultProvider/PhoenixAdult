@@ -346,9 +346,15 @@
         `  ${JSON.stringify(e.data18_id || '')}: { "slug": ${JSON.stringify(e.mapping_slug || '')}, "type": ${JSON.stringify(e.data18_type || 'scene')} }`
       );
       const blob = new Blob(['{\n' + lines.join(',\n') + '\n}\n'], {type: 'application/json'});
+      // Name per the active filter (tagline > collection > studio) so the file drops
+      // straight in next to the base mappings file.
+      const scope = ['f-tagline', 'f-collection', 'f-studio']
+        .map(id => document.getElementById(id).value)
+        .find(v => v && v !== '__blank__');
+      const suffix = scope ? `_${scope.replace(/\W/g, '').toLowerCase()}` : '';
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'data18_manual_mappings.json';
+      a.download = `data18_manual_mappings${suffix}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     }

@@ -60,6 +60,7 @@ def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'This cannot be undone.' in page.text
     assert 'exportShown()' in page.text
     assert 'f-data18' in page.text
+    assert 'data18_manual_mappings${suffix}.json' in page.text
 
 
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
