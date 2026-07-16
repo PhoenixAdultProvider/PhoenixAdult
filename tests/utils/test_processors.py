@@ -156,6 +156,13 @@ def test_title_case_an_heals_back_before_consonant_sound_vowels() -> None:
     assert title_case('an angel') == 'An Angel'
 
 
+def test_title_case_subtitle_boundary_after_punctuated_segment() -> None:
+    assert title_case('Popping Off - the best of cumshots!') == 'Popping Off - The Best of Cumshots!'
+    assert title_case('Gear Up! - the best of sex toys') == 'Gear Up! - The Best of Sex Toys'
+    assert title_case('Busted! - the best of getting caught') == 'Busted! - The Best of Getting Caught'
+    assert title_case('really? - the truth comes out') == 'Really? - The Truth Comes Out'
+
+
 def test_title_case_sequence_marker_colon() -> None:
     assert title_case('Becoming Johnny Sins: Part One') == 'Becoming Johnny Sins: Part One'
     assert title_case('Becoming Johnny Sins - Part Two') == 'Becoming Johnny Sins: Part Two'

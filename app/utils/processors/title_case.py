@@ -317,7 +317,7 @@ class _TitleCaseEngine:
         return re.sub(r'"(?!\s)(?=(?:(?:[^"]*"){2})*[^"]*$)', '" ', output)
 
     def _capitalize_boundaries(self, output: str) -> str:
-        output = re.sub(r'(?<!vs\.)([!:?.\-–])(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
+        output = re.sub(r'(?<!vs\.)([!:?.\-–](?:\s*[!:?.\-–])*)(\s)(\S)', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
         output = re.sub(r'([\])])(\s)([a-z])', lambda m: m.group(1) + m.group(2) + m.group(3).upper(), output)
         output = re.sub(r'(?<=[(|&"\[*~])([a-z])', lambda m: m.group(1).upper(), output)
         output = re.sub(r'\S+[\])"~:]', lambda m: _capitalize(m.group(0)), output)
