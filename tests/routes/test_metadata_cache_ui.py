@@ -63,6 +63,33 @@ def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'data18_manual_mappings${suffix}.json' in page.text
 
 
+def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import app.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
+    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [{'key': 'studio/abc'}])
+    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
+    client = TestClient(create_app())
+    assert client.get('/metadata-cache/state').status_code == 401
+    hdr = {'x-admin-token': 'tok'}
+    assert client.get('/metadata-cache/state', headers=hdr).json() == {'token': '3:123.0'}
+    assert client.get('/metadata-cache/entries', headers=hdr).json() == {'entries': [{'key': 'studio/abc'}], 'dup_keys': ['studio/abc']}
+
+
+def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import app.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
+    page = TestClient(create_app()).get('/metadata-cache?token=tok')
+    assert 'metadata-cache-filters' in page.text
+    assert 'restoreFilters()' in page.text
+    assert "fetch('/metadata-cache/state'" in page.text
+    assert 'setInterval(pollState' in page.text
+
+
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import app.routes.metadata_cache_routes as mcr

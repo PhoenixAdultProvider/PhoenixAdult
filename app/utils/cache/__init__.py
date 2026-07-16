@@ -391,6 +391,24 @@ def entries() -> list[dict[str, Any]]:
     return out
 
 
+def change_token() -> str:
+    """Cheap fingerprint of the snapshot set (count + newest mtime), stat-only —
+    the UI polls this and refetches entries only when it changes."""
+    root = Path(cache_dir())
+    if not root.exists():
+        return '0:0'
+    count, newest = 0, 0.0
+    for mj in root.rglob('meta.json'):
+        if mj.parent.name.endswith('.tmp'):
+            continue
+        try:
+            newest = max(newest, mj.stat().st_mtime)
+        except OSError:
+            continue
+        count += 1
+    return f'{count}:{newest}'
+
+
 def purge(key: str) -> bool:
     """Remove one snapshot by its relative path ('<studio>/<hash>' or
     '<studio>/<sub-site>/<hash>'). Leaf dirs only — an intermediate studio dir

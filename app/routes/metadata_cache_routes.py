@@ -36,6 +36,21 @@ async def page(request: Request) -> HTMLResponse:
     return HTMLResponse(body)
 
 
+@router.get('/state')
+async def state() -> JSONResponse:
+    return JSONResponse({'token': await asyncio.to_thread(metadata_cache.change_token)})
+
+
+@router.get('/entries')
+async def entries_json() -> JSONResponse:
+    return JSONResponse(
+        {
+            'entries': await asyncio.to_thread(metadata_cache.entries),
+            'dup_keys': await asyncio.to_thread(metadata_cache.duplicate_entries),
+        }
+    )
+
+
 @router.post('/purge')
 async def purge(request: Request) -> JSONResponse:
     data = await read_json_body(request)

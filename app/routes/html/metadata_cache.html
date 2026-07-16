@@ -138,67 +138,87 @@
 
   <script>
     const TOKEN = __TOKEN__;
-    const ALL = __ENTRIES_JSON__;
     const DUP_KEYS = __DUP_KEYS__;
-    const DUP_SET = new Set(DUP_KEYS);
-    const DUP_COUNT = DUP_KEYS.length;
+    let ALL = __ENTRIES_JSON__;
+    let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     let shownKeys = [];
     let shownRows = [];
+    const STORE_KEY = 'metadata-cache-filters';
+    const FILTER_IDS = ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
 
-    ALL.forEach(e => {
-      e.year = e.date ? e.date.slice(0, 4) : '';
-      e.month = e.date ? e.date.slice(5, 7) : '';
-      e.day = e.date ? e.date.slice(8, 10) : '';
-      e.cached_display = e.mtime
-        ? new Date(e.mtime * 1000).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})
-        : '';
-    });
-
-    const studios = [...new Set(ALL.map(e => e.studio).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    const studioSel = document.getElementById('f-studio');
-    studios.forEach(s => {
-      const o = document.createElement('option'); o.value = s; o.textContent = s; studioSel.appendChild(o);
-    });
-
-    const taglines = [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-    const taglineSel = document.getElementById('f-tagline');
-    taglines.forEach(t => {
-      const o = document.createElement('option'); o.value = t; o.textContent = t; taglineSel.appendChild(o);
-    });
-    if (ALL.some(e => !e.tagline)) {
-      const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; taglineSel.appendChild(o);
-    }
-
-    const collections = [...new Set(ALL.flatMap(e => e.collections || []))].sort((a, b) => a.localeCompare(b));
-    const collectionSel = document.getElementById('f-collection');
-    collections.forEach(c => {
-      const o = document.createElement('option'); o.value = c; o.textContent = c; collectionSel.appendChild(o);
-    });
-    if (ALL.some(e => !(e.collections || []).length)) {
-      const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; collectionSel.appendChild(o);
+    function decorate() {
+      ALL.forEach(e => {
+        e.year = e.date ? e.date.slice(0, 4) : '';
+        e.month = e.date ? e.date.slice(5, 7) : '';
+        e.day = e.date ? e.date.slice(8, 10) : '';
+        e.cached_display = e.mtime
+          ? new Date(e.mtime * 1000).toLocaleString(undefined, {dateStyle: 'short', timeStyle: 'short'})
+          : '';
+      });
     }
 
     const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    function fillDatePart(selId, values, labelFn, hasBlank) {
-      const sel = document.getElementById(selId);
-      values.forEach(v => {
-        const o = document.createElement('option'); o.value = v; o.textContent = labelFn ? labelFn(v) : v; sel.appendChild(o);
-      });
-      if (hasBlank) {
-        const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; sel.appendChild(o);
+
+    function ensureOption(sel, value) {
+      if (value && ![...sel.options].some(o => o.value === value)) {
+        const o = document.createElement('option');
+        o.value = value; o.textContent = value === '__blank__' ? '(Blank)' : value;
+        sel.appendChild(o);
+      }
+      sel.value = value;
+    }
+
+    // Rebuild the dynamic facet dropdowns from ALL, preserving the current selection
+    // (re-added as an option if its rows vanished, so an active filter never resets).
+    function buildFacetOptions() {
+      const cmp = (a, b) => a.localeCompare(b);
+      const specs = {
+        'f-studio': {values: [...new Set(ALL.map(e => e.studio).filter(Boolean))].sort(cmp)},
+        'f-tagline': {values: [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort(cmp), blank: ALL.some(e => !e.tagline)},
+        'f-collection': {values: [...new Set(ALL.flatMap(e => e.collections || []))].sort(cmp), blank: ALL.some(e => !(e.collections || []).length)},
+        'f-year': {values: [...new Set(ALL.map(e => e.year).filter(Boolean))].sort().reverse(), blank: ALL.some(e => !e.date)},
+        'f-month': {values: [...new Set(ALL.map(e => e.month).filter(Boolean))].sort(), label: m => `${m} – ${MONTH_NAMES[+m]}`},
+        'f-day': {values: [...new Set(ALL.map(e => e.day).filter(Boolean))].sort()},
+      };
+      for (const [id, spec] of Object.entries(specs)) {
+        const sel = document.getElementById(id);
+        const prev = sel.value;
+        while (sel.options.length > 1) sel.remove(1); // keep "All"
+        spec.values.forEach(v => {
+          const o = document.createElement('option'); o.value = v; o.textContent = spec.label ? spec.label(v) : v; sel.appendChild(o);
+        });
+        if (spec.blank) {
+          const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; sel.appendChild(o);
+        }
+        ensureOption(sel, prev);
       }
     }
-    const hasBlankDate = ALL.some(e => !e.date);
-    fillDatePart('f-year', [...new Set(ALL.map(e => e.year).filter(Boolean))].sort().reverse(), null, hasBlankDate);
-    fillDatePart('f-month', [...new Set(ALL.map(e => e.month).filter(Boolean))].sort(), m => `${m} – ${MONTH_NAMES[+m]}`, false);
-    fillDatePart('f-day', [...new Set(ALL.map(e => e.day).filter(Boolean))].sort(), null, false);
 
     const DEFAULT_SORT_KEY = 'mtime';
     const DEFAULT_SORT_DIR = -1; // newest first
 
     let sortKey = DEFAULT_SORT_KEY;
     let sortDir = DEFAULT_SORT_DIR;
+
+    function saveFilters() {
+      const facets = {};
+      FILTER_IDS.forEach(id => { facets[id] = document.getElementById(id).value; });
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({facets, sortKey, sortDir, showDupsOnly})); } catch {}
+    }
+
+    function restoreFilters() {
+      let saved;
+      try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch {}
+      if (!saved) return;
+      FILTER_IDS.forEach(id => {
+        const v = (saved.facets || {})[id] || '';
+        const el = document.getElementById(id);
+        if (el.tagName === 'SELECT') ensureOption(el, v); else el.value = v;
+      });
+      if (saved.sortKey) { sortKey = saved.sortKey; sortDir = saved.sortDir === 1 ? 1 : -1; }
+      if (saved.showDupsOnly && DUP_SET.size) setDupsOnly(true);
+    }
 
     function applyHeaderIndicator() {
       document.querySelectorAll('thead th[data-key]').forEach(th => {
@@ -272,6 +292,7 @@
     }
 
     function render() {
+      saveFilters();
       refreshFacets();
       const q = document.getElementById('q').value.toLowerCase();
 
@@ -331,13 +352,17 @@
       }).join('');
     }
 
+    function authHeaders(extra) {
+      const h = Object.assign({}, extra || {});
+      if (TOKEN) h['x-admin-token'] = TOKEN;
+      return h;
+    }
+
     async function purge(key) {
       if (!confirm('Purge this snapshot?')) return;
-      const headers = {'Content-Type': 'application/json'};
-      if (TOKEN) headers['x-admin-token'] = TOKEN;
-      const r = await fetch('/metadata-cache/purge', {method: 'POST', headers, body: JSON.stringify({key})});
+      const r = await fetch('/metadata-cache/purge', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({key})});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) location.reload(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert('Purge failed');
     }
 
     function exportShown() {
@@ -365,41 +390,87 @@
         ? `Purge ALL ${shownKeys.length} cached snapshot(s)? This cannot be undone.`
         : `Purge the ${shownKeys.length} snapshot(s) matching the current filters? This cannot be undone.`;
       if (!confirm(msg)) return;
-      const headers = {'Content-Type': 'application/json'};
-      if (TOKEN) headers['x-admin-token'] = TOKEN;
-      const r = await fetch('/metadata-cache/purge-bulk', {method: 'POST', headers, body: JSON.stringify({keys: shownKeys})});
+      const r = await fetch('/metadata-cache/purge-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: shownKeys})});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) location.reload(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert('Purge failed');
     }
 
     async function purgeDuplicates() {
-      if (!DUP_COUNT) return;
-      if (!confirm(`Purge ${DUP_COUNT} superseded duplicate snapshot(s)? The newer sub-site entry is kept.`)) return;
-      const headers = {'Content-Type': 'application/json'};
-      if (TOKEN) headers['x-admin-token'] = TOKEN;
-      const r = await fetch('/metadata-cache/purge-duplicates', {method: 'POST', headers});
+      const n = DUP_SET.size;
+      if (!n) return;
+      if (!confirm(`Purge ${n} superseded duplicate snapshot(s)? The newer sub-site entry is kept.`)) return;
+      const r = await fetch('/metadata-cache/purge-duplicates', {method: 'POST', headers: authHeaders()});
       const j = await r.json().catch(() => ({ok: false}));
-      if (j.ok) location.reload(); else alert('Purge failed');
+      if (j.ok) refreshNow(); else alert('Purge failed');
+    }
+
+    function setDupsOnly(on) {
+      showDupsOnly = on;
+      const t = document.getElementById('dupToggle');
+      t.classList.toggle('on', on);
+      t.textContent = on ? 'Showing Duplicates Only' : 'Show Duplicates';
     }
 
     function toggleDuplicates() {
-      showDupsOnly = !showDupsOnly;
-      const t = document.getElementById('dupToggle');
-      t.classList.toggle('on', showDupsOnly);
-      t.textContent = showDupsOnly ? 'Showing Duplicates Only' : 'Show Duplicates';
+      setDupsOnly(!showDupsOnly);
       render();
     }
 
-    (function initDupBtn() {
+    function updateDupButtons() {
+      const n = DUP_SET.size;
       const btn = document.getElementById('dupBtn');
-      btn.textContent = DUP_COUNT ? `Purge ${DUP_COUNT} Duplicate ${DUP_COUNT === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
-      btn.disabled = !DUP_COUNT;
-      btn.classList.toggle('active', DUP_COUNT > 0);
-      document.getElementById('dupToggle').hidden = !DUP_COUNT;
-    })();
+      btn.textContent = n ? `Purge ${n} Duplicate ${n === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
+      btn.disabled = !n;
+      btn.classList.toggle('active', n > 0);
+      document.getElementById('dupToggle').hidden = !n;
+      if (!n && showDupsOnly) setDupsOnly(false);
+    }
 
+    // ── Live refresh: poll a cheap change token; refetch entries only when it moves ──
+    let stateToken = null;
+
+    async function refreshEntries() {
+      try {
+        const r = await fetch('/metadata-cache/entries', {headers: authHeaders()});
+        if (!r.ok) return;
+        const j = await r.json();
+        ALL = j.entries;
+        DUP_SET = new Set(j.dup_keys);
+        decorate();
+        buildFacetOptions();
+        updateDupButtons();
+        applyHeaderIndicator();
+        render();
+      } catch {}
+    }
+
+    async function refreshNow() {
+      try {
+        const r = await fetch('/metadata-cache/state', {headers: authHeaders()});
+        if (r.ok) stateToken = (await r.json()).token;
+      } catch {}
+      await refreshEntries();
+    }
+
+    async function pollState() {
+      if (document.hidden) return;
+      try {
+        const r = await fetch('/metadata-cache/state', {headers: authHeaders()});
+        if (!r.ok) return;
+        const token = (await r.json()).token;
+        if (stateToken !== null && token !== stateToken) await refreshEntries();
+        stateToken = token;
+      } catch {}
+    }
+
+    decorate();
+    buildFacetOptions();
+    restoreFilters();
+    updateDupButtons();
     applyHeaderIndicator();
     render();
+    pollState();
+    setInterval(pollState, 4000);
   </script>
 </body>
 </html>

@@ -350,7 +350,7 @@ class Data18Client(Client):
             return None
         html, sel = page_zero
         pages_match = re.search(r'pages:\s*(\d+)', html)
-        num_pages = min(int(pages_match.group(1)) if pages_match else 1, 50)
+        num_pages = min(int(pages_match.group(1)) if pages_match else 1, 150)
 
         path_segment = f'/{kind}s/'
         for page in range(num_pages):

@@ -263,6 +263,18 @@ async def test_entries_expose_data18_and_mapping_slug(tmp_path: pytest.TempPathF
     assert by_studio['Vixen']['mapping_slug'] == 'cool-scene'
 
 
+async def test_change_token_moves_on_write_and_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    empty = mc.change_token()
+    assert await mc.write('Brazzers', 'c1', _resp(studio='Brazzers')) is True
+    written = mc.change_token()
+    assert written != empty
+    assert mc.change_token() == written
+    assert mc.purge(mc.entries()[0]['key']) is True
+    assert mc.change_token() != written
+
+
 async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
