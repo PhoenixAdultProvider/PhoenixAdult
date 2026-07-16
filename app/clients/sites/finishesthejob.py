@@ -16,14 +16,15 @@ def _norm(s: str) -> str:
 
 
 class FinishesTheJobClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[contains(@class,"scene")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"scene")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h3[@itemprop="name"]')
@@ -32,6 +33,7 @@ class FinishesTheJobClient(Client):
         href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -51,12 +53,14 @@ class FinishesTheJobClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//span[@itemprop="name"]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//span[@itemprop="name"]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//p[@itemprop="description"]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//p[@itemprop="description"]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Finishes The Job'
@@ -71,29 +75,40 @@ class FinishesTheJobClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//p[contains(.,"Categories")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//p[contains(.,"Categories")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//h2[contains(.,"Starring")]//a')]
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
+            for actor_link in details_page_elements.xpath('//h2[contains(.,"Starring")]//a')
+        ]
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         images: list[str] = []
 
         def push(raw: str) -> None:
             append_unique(images, raw, scene.site.base_url)
 
-        for el in sel.xpath('//video[@poster]'):
+        for el in details_page_elements.xpath('//video[@poster]'):
             push(el.xpath('@poster').get() or '')
 
-        title = first_text(sel, '//span[@itemprop="name"]').lower()
+        title = first_text(details_page_elements, '//span[@itemprop="name"]').lower()
         if title:
-            for el in sel.xpath('//div[contains(@class,"first-set")]//img'):
+            for el in details_page_elements.xpath('//div[contains(@class,"first-set")]//img'):
                 alt = first_attr(el, '@alt').lower()
                 if alt == title:
                     push(el.xpath('@src').get() or '')
+
         metadata.art = images

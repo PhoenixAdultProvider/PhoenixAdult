@@ -15,60 +15,76 @@ class GasmClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'WarningModal=true'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
 
-        if ctx.scene_id:
-            scene_url = f'{base}/post/details/{ctx.scene_id}'
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct {scene_url}')
-            if not loaded:
+        if search_data.scene_id:
+            scene_url = f'{base}/post/details/{search_data.scene_id}'
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] direct {scene_url}')
+            if not search_results:
                 return
-            title = (loaded['sel'].xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip()
+
+            title = (search_results['sel'].xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 return
-            date_raw = (loaded['sel'].xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
+
+            date_raw = (search_results['sel'].xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
             date_iso = iso_date(date_raw, _DATE_FMT) if date_raw else None
+
             results.append(
-                build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=100)
+                build_search_result(
+                    title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date, score=100
+                )
             )
             return
 
-        encoded = slugify(ctx.title).replace('-', '+')
-        search_url = base + ctx.site_info.search_path + encoded
-        channel = _CHANNELS.get(ctx.site_info.name)
+        encoded = slugify(search_data.title).replace('-', '+')
+        search_url = base + search_data.site_info.search_path + encoded
+        channel = _CHANNELS.get(search_data.site_info.name)
         if channel:
             search_url += f'&channel={channel}'
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search')
-        if not loaded:
+
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search')
+        if not search_results:
             return
 
-        for row in loaded['sel'].xpath('//div[contains(@class,"results_item")]'):
-            a = row.xpath('(.//a[contains(@class,"post_title")])[1]')
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"results_item")]'):
+            a = search_result.xpath('(.//a[contains(@class,"post_title")])[1]')
             title = first_attr(a)
             href = first_attr(a, '@href')
             if not title or not href:
                 continue
-            scene_url = absolute_url(href, ctx.site_info.base_url)
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=title_distance_score(ctx.title, title)
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    score=title_distance_score(search_data.title, title),
                 )
             )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        raw = (details_page_elements.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else ''
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = sel.xpath('(//h2[contains(@class,"post_description")])[1]').xpath('string(.)').get() or ''
+        details_page_elements = scene.require_sel()
+
+        raw = details_page_elements.xpath('(//h2[contains(@class,"post_description")])[1]').xpath('string(.)').get() or ''
+
         metadata.summary = raw.replace('´', "'").replace('’', "'").strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -78,36 +94,55 @@ class GasmClient(Client):
         metadata.tagline = self._tagline_of(scene) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         out: list[str] = []
         tagline = self._tagline_of(scene)
         if tagline:
             out.append(tagline)
-        dvd = (sel.xpath('(//div[contains(@class,"post_item") and contains(@class,"dvd")]//h1)[1]').xpath('string(.)').get() or '').strip()
+
+        dvd = (details_page_elements.xpath('(//div[contains(@class,"post_item") and contains(@class,"dvd")]//h1)[1]').xpath('string(.)').get() or '').strip()
         if dvd:
             out.append(title_case(dvd.lower(), site_name=scene.site.name))
+
         metadata.collections = out or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
-        metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//h3[contains(@class,"post_date")])[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.release_date = (iso_date(date, _DATE_FMT) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        out = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@href,"/search?s=")]')) if g]
+        details_page_elements = scene.require_sel()
+
+        out = [
+            genre_name
+            for genre_name in (first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//a[contains(@href,"/search?s=")]'))
+            if genre_name
+        ]
+
         metadata.genres = out or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        out = [ActorResult(name=n) for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//a[contains(@href,"models/")]')) if n]
+        details_page_elements = scene.require_sel()
+
+        out = [
+            ActorResult(name=n)
+            for n in (first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath('//a[contains(@href,"models/")]'))
+            if n
+        ]
+
         metadata.actors = out or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for src in sel.xpath('//img[contains(@class,"item_cover")]/@src').getall():
-            coll['push'](src)
-        coll['push'](sel.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
-        images: list[str] = coll['list']
-        metadata.art = images or []
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for src in details_page_elements.xpath('//img[contains(@class,"item_cover")]/@src').getall():
+            images['push'](src)
+
+        images['push'](details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
+
+        metadata.art = images['list'] or []

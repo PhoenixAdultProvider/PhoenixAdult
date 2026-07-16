@@ -19,14 +19,15 @@ _POSTERS_XP = '//div[contains(@id,"pics2")]//div//ul//li//div//div//img/@src'
 
 
 class VIPissyClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath(_SEARCH_ROW_XP))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath(_SEARCH_ROW_XP))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a/@title)[1]')
@@ -35,6 +36,7 @@ class VIPissyClient(Client):
         href = first_attr(source, '(.//a/@href)[1]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -44,16 +46,20 @@ class VIPissyClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, _TITLE_XP) or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        all_text = first_text(sel, _SUMMARY_BLOCK_XP)
+        details_page_elements = scene.require_sel()
+
+        all_text = first_text(details_page_elements, _SUMMARY_BLOCK_XP)
         if not all_text:
             return
-        tags = first_text(sel, _TAGS_BLOCK_XP)
+
+        tags = first_text(details_page_elements, _TAGS_BLOCK_XP)
         summary = all_text.replace(tags, '').strip() if tags else all_text
+
         metadata.summary = summary.split('Show more...')[0].strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -66,60 +72,70 @@ class VIPissyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, _DATE_XP)
-        if raw:
-            parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, _DATE_XP)
+        if date:
+            parsed = iso_date(date, '%b %d, %Y') or iso_date(date)
             if parsed:
                 metadata.release_date = parsed
                 return
+
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for el in sel.xpath(_TAGS_LINK_XP):
-            t = first_attr(el, 'normalize-space(.)').lower()
+        for genre_link in details_page_elements.xpath(_TAGS_LINK_XP):
+            t = first_attr(genre_link, 'normalize-space(.)').lower()
             if t and t not in genres:
                 genres.append(t)
-        count = len(sel.xpath(_ACTORS_XP))
+
+        count = len(details_page_elements.xpath(_ACTORS_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath(_ACTORS_XP):
-            name = first_attr(a, 'normalize-space(.)')
-            href = first_attr(a, '@href')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath(_ACTORS_XP):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             photo = ''
             if href:
                 url = absolute_url(href, base)
-                page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-                if page:
-                    raw = (page['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()
+                model_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+                if model_page_elements:
+                    raw = (model_page_elements['sel'].xpath(f'({_ACTOR_PHOTO_XP})[1]').get() or '').strip()
                     if raw:
                         photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), base))
-        for raw in sel.xpath(_POSTERS_XP).getall():
-            coll['push'](raw)
-        images = coll['list']
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
+
         idx = scene.url.find('/updates')
         if idx >= 0:
-            twitter_bg = f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg'
-            if twitter_bg not in images:
-                images.insert(0, twitter_bg)
-        metadata.art = images
+            images['push'](f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg')
+
+        for image_url in details_page_elements.xpath(_POSTERS_XP).getall():
+            images['push'](image_url)
+
+        metadata.art = images['list']

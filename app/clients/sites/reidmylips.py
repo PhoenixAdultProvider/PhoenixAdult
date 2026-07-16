@@ -8,16 +8,18 @@ from app.utils.helpers.html_helpers import first_text
 
 
 class ReidMyLipsClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = '-'.join(ctx.title.strip().lower().split())
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = '-'.join(search_data.title.strip().lower().split())
         scene_url = f'{base}/updates/{slug}.html'
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] guess {scene_url}')
-        if not loaded:
+        search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] guess {scene_url}')
+        if not search_results:
             return None
-        if not first_text(loaded['sel'], '//span[contains(@class,"update_title")]'):
+
+        if not first_text(search_results['sel'], '//span[contains(@class,"update_title")]'):
             return None
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=[loaded['sel']], capture=ctx.capture, extra=scene_url)
+
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=[search_results['sel']], capture=search_data.capture, extra=scene_url)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, '//span[contains(@class,"update_title")]')
@@ -34,12 +36,14 @@ class ReidMyLipsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//span[contains(@class,"update_title")]')
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//span[contains(@class,"update_title")]')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//span[contains(@class,"latest_update_description")]')
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//span[contains(@class,"latest_update_description")]')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'ReidMyLips'
@@ -51,21 +55,29 @@ class ReidMyLipsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//span[contains(@class,"availdate")]')
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//span[contains(@class,"availdate")]')
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//span[contains(@class,"update_tags")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = [ActorResult(name='Riley Reid')]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in sel.xpath('//div[contains(@class,"update_image")]//img/@src0_2x').getall():
-            coll['push']((raw or '').strip())
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for image_url in details_page_elements.xpath('//div[contains(@class,"update_image")]//img/@src0_2x').getall():
+            images['push']((image_url or '').strip())
+
+        metadata.art = images['list']

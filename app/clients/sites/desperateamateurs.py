@@ -14,14 +14,15 @@ _ADDED_PREFIX = re.compile(r'^Added:\s*', re.IGNORECASE)
 
 
 class DesperateAmateursClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[@align="left"]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[@align="left"]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, _TITLE_LINK_XP)
@@ -30,6 +31,7 @@ class DesperateAmateursClient(Client):
         href = (source.xpath(f'({_TITLE_LINK_XP}/@href)[1]').get() or '').strip()
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -40,12 +42,14 @@ class DesperateAmateursClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//div[contains(@class,"title_bar")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//div[contains(@class,"title_bar")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"gallery_description")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"gallery_description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Desperate Amateurs'
@@ -57,20 +61,28 @@ class DesperateAmateursClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//td[contains(@class,"date")]')
-        if not raw:
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//td[contains(@class,"date")]')
+        if not date:
             return
-        after = raw.split('Added:')[-1].strip()
+
+        after = date.split('Added:')[-1].strip()
+
         metadata.release_date = iso_date(after) if after else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[starts-with(@href,"category")]')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[starts-with(@href,"category")]')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -78,16 +90,19 @@ class DesperateAmateursClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath('//a[starts-with(@href,"sets")]'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, base)))
+        for actor_link in details_page_elements.xpath('//a[starts-with(@href,"sets")]'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, base)))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for el in sel.xpath('//div[contains(@class,"gal")]//img'):
-            coll['push'](first_attr(el, '@src'))
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for el in details_page_elements.xpath('//div[contains(@class,"gal")]//img'):
+            images['push'](first_attr(el, '@src'))
+
+        metadata.art = images['list']

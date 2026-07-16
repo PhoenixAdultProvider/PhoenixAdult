@@ -13,14 +13,15 @@ _CAST_XP = '//div[contains(@class,"update_block")]/span[@class="tour_update_mode
 
 
 class MissaXClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[@class="updateItem"] | //div[@class="photo-thumb video-thumb"] | //div[@class="update_details"]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[@class="updateItem"] | //div[@class="photo-thumb video-thumb"] | //div[@class="update_details"]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h4//a | .//p[@class="thumb-title"] | ./a[./preceding-sibling::a])[1]').xpath('string(.)').get() or '').strip()
@@ -38,26 +39,36 @@ class MissaXClient(Client):
         return [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath(_CAST_XP)) if n]
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        title = (sel.xpath('(//span[@class="update_title"] | //p[@class="raiting-section__title"])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        title = (
+            details_page_elements.xpath('(//span[@class="update_title"] | //p[@class="raiting-section__title"])[1]').xpath('string(.)').get() or ''
+        ).strip()
         if scene.site.name == 'House of Fyre':
-            for name in self._cast_names(sel):
+            for name in self._cast_names(details_page_elements):
                 suffix = f': {name}'
                 if title.endswith(suffix):
                     title = title[: -len(suffix)]
                     break
+
         metadata.title = title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         parts: list[str] = []
-        for el in sel.xpath('//span[@class="latest_update_description"] | //div[@class="container"]//p[@class="dvd-scenes__title"]/following-sibling::p'):
+        for el in details_page_elements.xpath(
+            '//span[@class="latest_update_description"] | //div[@class="container"]//p[@class="dvd-scenes__title"]/following-sibling::p'
+        ):
             t = (el.xpath('string(.)').get() or '').replace('\xa0', '').strip()
             if t:
                 parts.append(t)
+
         if not parts:
             return
+
         joined = '\n'.join(parts).replace('Includes:', '').replace('Synopsis:', '').split('You Might Also Like')[0].strip()
+
         metadata.summary = joined or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -67,57 +78,69 @@ class MissaXClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         update = (
-            (sel.xpath('(//span[@class="update_date"] | //span[contains(@class,"availdate")])[1]').xpath('string(.)').get() or '')
+            (details_page_elements.xpath('(//span[@class="update_date"] | //span[contains(@class,"availdate")])[1]').xpath('string(.)').get() or '')
             .replace('Available to Members Now', '')
             .strip()
         )
         if update:
             metadata.release_date = iso_date(update) or scene.scene_date or None
             return
-        dvd_text = sel.xpath('(//p[@class="dvd-scenes__data"])[1]').xpath('string(.)').get() or ''
+
+        dvd_text = details_page_elements.xpath('(//p[@class="dvd-scenes__data"])[1]').xpath('string(.)').get() or ''
         parts = dvd_text.split('|')
         dvd = parts[1].replace('Added:', '').strip() if len(parts) > 1 else ''
+
         metadata.release_date = (iso_date(dvd) if dvd else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get() for a in sel.xpath('//span[contains(@class,"update_tags")]//a | //p[@class="dvd-scenes__data"][2]//a')
+            genre_link.xpath('normalize-space(.)').get()
+            for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a | //p[@class="dvd-scenes__data"][2]//a')
         ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath(_CAST_XP):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath(_CAST_XP):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = first_attr(page['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x') if page else ''
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
+                raw = first_attr(model_page_elements['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x') if model_page_elements else ''
                 if raw:
                     photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
+        images = self.image_collector(lambda image: absolute_url(image, base))
 
         xpaths = (
             '//img[contains(@class,"update_thumb")]/@src0_4x',
             '//img[contains(@class,"update_thumb")]/@src0_1x',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        metadata.art = coll['list']
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list']

@@ -21,50 +21,58 @@ def _normalize_web_url(raw: str) -> str:
 
 
 class TeenyTabooClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = _slugify(ctx.title)
-        direct_url = base + ctx.site_info.search_path.replace('{query}', slug)
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = _slugify(search_data.title)
+        direct_url = base + search_data.site_info.search_path.replace('{query}', slug)
 
         seen = {direct_url}
         candidates = [direct_url]
-        for raw in await web_search_urls(ctx.title, ctx.site_info):
+        for raw in await web_search_urls(search_data.title, search_data.site_info):
             normalized = _normalize_web_url(raw)
             if '/video/' in normalized and normalized not in seen:
                 seen.add(normalized)
                 candidates.append(normalized)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            raw = first_text(loaded['sel'], '//h1[contains(@class,"customhcolor")]')
+
+            raw = first_text(details_page_elements['sel'], '//h1[contains(@class,"customhcolor")]')
             if not raw:
                 continue
+
             title = raw.replace('-', ' ')
-            date_raw = first_text(loaded['sel'], '//span[contains(@class,"date")]')
+            date_raw = first_text(details_page_elements['sel'], '//span[contains(@class,"date")]')
             release_date = iso_date(date_raw) if date_raw else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=release_date,
-                    search_date=ctx.search_date,
-                    cur_id=pack_cur_id([p for p in (scene_url, release_date or ctx.search_date) if p]),
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([p for p in (scene_url, release_date or search_data.search_date) if p]),
                 )
             )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//h1[contains(@class,"customhcolor")]')
+        details_page_elements = scene.require_sel()
+
+        raw = first_text(details_page_elements, '//h1[contains(@class,"customhcolor")]')
+
         metadata.title = raw.replace('-', ' ') if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//h2[contains(@class,"customhcolor2")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//h2[contains(@class,"customhcolor2")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -73,28 +81,35 @@ class TeenyTabooClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//span[contains(@class,"date")]')
-        metadata.release_date = iso_date(raw) if raw else None
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//span[contains(@class,"date")]')
+
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = sel.xpath('string((//h3)[1])').get() or ''
+        details_page_elements = scene.require_sel()
+
+        raw = details_page_elements.xpath('string((//h3)[1])').get() or ''
         if not raw:
             return
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for piece in _ACTOR_SPLIT_RE.split(raw):
-            name = re.sub(r'\d', '', piece).replace('&nbsp', '').replace('\xa0', ' ').strip()
-            if name and name not in seen:
-                seen.add(name)
-                actors.append(ActorResult(name=name))
+            actor_name = re.sub(r'\d', '', piece).replace('&nbsp', '').replace('\xa0', ' ').strip()
+            if actor_name and actor_name not in seen:
+                seen.add(actor_name)
+                actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda src: absolute_url((src or '').strip(), base))
-        for src in sel.xpath('//center//img/@src').getall():
-            coll['push'](src)
-        metadata.art = coll['list']
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
+        for src in details_page_elements.xpath('//center//img/@src').getall():
+            images['push'](src)
+
+        metadata.art = images['list']

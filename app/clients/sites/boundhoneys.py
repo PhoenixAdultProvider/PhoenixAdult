@@ -12,14 +12,15 @@ _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " u
 
 
 class BoundHoneysClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title, safe=''))
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title, safe=''))
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath(_UPDATE_CARD_XP))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath(_UPDATE_CARD_XP))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/div[contains(@class,"updateTitle")]')
@@ -28,17 +29,20 @@ class BoundHoneysClient(Client):
         href = first_attr(source, '(.//div[contains(@class,"updateTitle")]//a/@href)[1]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//div[contains(@class,"updateVideoTitle")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//div[contains(@class,"updateVideoTitle")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"updateDescription")]//b') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"updateDescription")]//b') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Bound Honeys'
@@ -50,38 +54,48 @@ class BoundHoneysClient(Client):
         metadata.collections = [scene.site.name]
 
     async def _collect_actors(self, scene: LoadedScene) -> list[ActorResult]:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath('//div[contains(@class,"updateModelsList")]//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if not name or not href or name in seen:
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"updateModelsList")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if not actor_name or not href or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             actor_url = absolute_url(href, scene.site.base_url)
-            actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
+            model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
             photo = ''
-            if actor_page:
-                raw = first_attr(actor_page['sel'], '(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]')
+            if model_page_elements:
+                raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]')
                 photo = absolute_url(raw, scene.site.base_url) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         return actors
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"updateCategoriesList")]//a')])
+        details_page_elements = scene.require_sel()
+
+        genres = self.dedup_strings(
+            [first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//div[contains(@class,"updateCategoriesList")]//a')]
+        )
         n = len(await self._collect_actors(scene))
         if group := self.group_genre_for(n):
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = await self._collect_actors(scene)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
-        for href in sel.xpath('//link[@rel="preload"]/@href').getall():
-            coll['push'](href)
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
+        for href in details_page_elements.xpath('//link[@rel="preload"]/@href').getall():
+            images['push'](href)
+
+        metadata.art = images['list']

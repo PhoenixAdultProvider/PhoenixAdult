@@ -54,6 +54,7 @@ def _load_manual_mappings(folder: Path | None = None) -> dict[str, ManualMapping
     for f in [base, *sorted(p for p in folder.glob('data18_manual_mappings_*.json'))]:
         if f.exists():
             merged.update(json.loads(f.read_text(encoding='utf-8')))
+
     return merged
 
 
@@ -66,6 +67,7 @@ def mapping_slug(title: str, sub_site: str | None) -> str | None:
     sid = slugify(title, replacements=[("'", '')])
     if not sid:
         return None
+
     return f'{sid}-{re.sub(r"\W", "", sub_site).lower()}' if sub_site else sid
 
 
@@ -74,10 +76,12 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
     An entry's slug may be a list when several scenes share one data18 page."""
     if not mapping_key:
         return None
+
     for d18, entry in DATA18_MANUAL_MAPPINGS.items():
         slug = entry['slug']
         if mapping_key == slug or (isinstance(slug, list) and mapping_key in slug):
             return f'{_BASE}/{"movies" if entry["type"] == "movie" else "scenes"}/{d18}'
+
     return None
 
 
@@ -91,6 +95,7 @@ def xp_first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
     for xpath in xpaths:
         if value := xp_ns(sel, xpath):
             return value
+
     return ''
 
 
@@ -112,9 +117,11 @@ def data18_ref(url: str | None) -> dict[str, str] | None:
     id, slug tail dropped), or None when it isn't a scene/movie URL."""
     if not url:
         return None
+
     m = _DATA18_REF_RE.search(url)
     if not m:
         return None
+
     return {'type': 'scene' if m.group(1) == 'scenes' else 'movie', 'id': m.group(2)}
 
 
@@ -137,20 +144,25 @@ def scene_url_from_ref(ref: str | None) -> str | None:
     or not a plain ref."""
     if not ref:
         return None
+
     ref = ref.strip()
     if '://' in ref:
         parts = urlsplit(ref)
         if (parts.hostname or '').lower() not in _DATA18_HOSTS:
             return None
+
         ref = parts.path
+
     ref = ref.strip('/')
     kind = 'scenes'
     if ref.lower() in ('scenes', 'movies'):
         return None
+
     if ref.lower().startswith('movies/'):
         kind, ref = 'movies', ref[len('movies/') :].strip('/')
     elif ref.lower().startswith('scenes/'):
         ref = ref[len('scenes/') :].strip('/')
+
     return f'{_BASE}/{kind}/{ref}' if _SCENE_REF_RE.match(ref) else None
 
 
@@ -170,8 +182,10 @@ class Data18Candidate:
 def _similarity(a: str, b: str) -> float:
     if not a and not b:
         return 1.0
+
     if not a or not b:
         return 0.0
+
     return compare_string(a, b).dice
 
 
@@ -182,12 +196,14 @@ def _provider_similarity(a: str | list[str], b: str | list[str]) -> float:
     for x in a_list:
         for y in b_list:
             best = max(best, _similarity(x, y))
+
     return best
 
 
 def _date_match(a: datetime | None, b: datetime | None, tolerance_days: int = 7) -> int:
     if not a or not b:
         return 0
+
     diff = abs((a - b).total_seconds()) / 86_400
     return 1 if diff <= tolerance_days else 0
 
@@ -207,6 +223,7 @@ def _accuracy_score(a: _ScoreInputs, b: _ScoreInputs, use_title: bool = True) ->
     score += _provider_similarity(a.provider, b.provider) * w_provider
     if use_title:
         score += _similarity(a.title, b.title) * w_title
+
     return round(score * 100 * 100) / 100
 
 
@@ -215,6 +232,7 @@ def _parse_date(raw: str) -> datetime | None:
         parsed: datetime = date_parser.parse(raw)
     except (ValueError, OverflowError):
         return None
+
     return parsed
 
 
@@ -233,7 +251,7 @@ class Data18Client(Client):
 
     async def data18_search(
         self,
-        ctx: SearchContext,
+        search_data: SearchContext,
         results: list[SearchResult],
         *,
         kind: str,
@@ -245,20 +263,20 @@ class Data18Client(Client):
         """Shared scenes/movies search: candidate lookup + web-search url harvest, then per-url detail.
         `clean_ws_url` normalises a raw web-search hit (None to drop it); `extract_detail(sel, url)`
         returns (title, release_date, subsite) for a direct-url page, or None to skip it."""
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = data18_scene_id(ctx.scene_id)
-        text = ctx.title.strip()
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_id = data18_scene_id(search_data.scene_id)
+        text = search_data.title.strip()
 
         urls: set[str] = set()
         if scene_id:
             urls.add(f'{base}/{kind}/{scene_id}')
 
         candidates: list[Data18Candidate] = []
-        with best_effort(ctx.site_info.name, 'find_candidates'):
-            candidates = await self.find_candidates(text or ctx.title, kind, max_pages=max_pages)
+        with best_effort(search_data.site_info.name, 'find_candidates'):
+            candidates = await self.find_candidates(text or search_data.title, kind, max_pages=max_pages)
 
-        with best_effort(ctx.site_info.name, 'webSearch', level='debug'):
-            host = urlsplit(ctx.site_info.base_url).hostname or ''
+        with best_effort(search_data.site_info.name, 'webSearch', level='debug'):
+            host = urlsplit(search_data.site_info.base_url).hostname or ''
             for u in await web_search(SearchOptions(query=ws_query, site=host, num=10)):
                 if cleaned := clean_ws_url(u):
                     urls.add(cleaned)
@@ -268,6 +286,7 @@ class Data18Client(Client):
         for c in candidates:
             if c.url in seen:
                 continue
+
             seen.add(c.url)
             urls.discard(c.url)
             title = c.title_raw
@@ -275,14 +294,16 @@ class Data18Client(Client):
                 loaded = await self.fetch_page(c.url)
                 if loaded is not None:
                     title = xp_ns(loaded, _TITLE_XP) or title
+
             score = sceneid_distance_score(scene_id, c.url_id) if scene_id else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=c.url,
-                    query=text or ctx.title,
+                    query=text or search_data.title,
                     display_date=c.release_date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (c.url, c.release_date) if p]),
                     subsite=c.provider or None,
@@ -292,22 +313,26 @@ class Data18Client(Client):
         for url in urls:
             if url in seen:
                 continue
+
             seen.add(url)
             loaded = await self.fetch_page(url)
             if loaded is None:
                 continue
+
             detail = extract_detail(loaded, url)
             if detail is None:
                 continue
+
             title, release_date, subsite = detail
             score = sceneid_distance_score(scene_id, url_id(url)) if scene_id else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=url,
-                    query=text or ctx.title,
+                    query=text or search_data.title,
                     display_date=release_date or None,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=score,
                     cur_id=pack_cur_id([p for p in (url, release_date) if p]),
                     subsite=subsite or None,
@@ -318,10 +343,11 @@ class Data18Client(Client):
         from urllib.parse import quote
 
         url = f'{_SEARCH_URL_TPL}{quote(clean_query)}&key2={quote(clean_query)}&next=1&page={page}'
-        loaded = await self.fetch_and_load(url, label=f'[data18] search "{clean_query}" p{page}')
-        if not loaded:
+        search_results = await self.fetch_and_load(url, label=f'[data18] search "{clean_query}" p{page}')
+        if not search_results:
             return None
-        return loaded['html'], loaded['sel']
+
+        return search_results['html'], search_results['sel']
 
     async def find_scene_url(
         self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene'
@@ -334,20 +360,24 @@ class Data18Client(Client):
         if not url and (alt := convert_sequence_numbers(query)):
             logger.info('data18', f'no match for "{query}" — retrying as "{alt}"')
             url = await self._search_scene_url(alt, providers, scene_date, kind)
+
         if not url:
             logger.info('data18', f'no match for "{query}"')
+
         return url
 
     async def _search_scene_url(self, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene') -> str | None:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
         if not clean_query:
             return None
+
         query_clean = re.sub(r'\W', '', query).lower()
         min_accuracy = env.data18_accuracy
 
         page_zero = await self._fetch_search_page(clean_query, 0)
         if not page_zero:
             return None
+
         html, sel = page_zero
         pages_match = re.search(r'pages:\s*(\d+)', html)
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, 150)
@@ -358,9 +388,11 @@ class Data18Client(Client):
                 href = a.xpath('./@href').get() or ''
                 if path_segment not in href:
                     continue
+
                 title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
                 if not title_node:
                     continue
+
                 title_raw = first_attr(title_node[0], 'normalize-space(.)')
                 title_clean = re.sub(r'\W', '', title_raw).lower()
 
@@ -383,6 +415,7 @@ class Data18Client(Client):
                 next_page = await self._fetch_search_page(clean_query, page + 1)
                 if not next_page:
                     break
+
                 _, sel = next_page
 
         return None
@@ -415,9 +448,12 @@ class Data18Client(Client):
                 fetched = await (self.fetch_movie_images(url) if ref and ref['type'] == 'movie' else self.fetch_images(url))
                 if not allow_square:
                     fetched = await self._drop_square(scope, fetched)
+
                 for u in fetched:
                     append_unique(images, u)
+
                 return url
+
         return None
 
     @staticmethod
@@ -430,6 +466,7 @@ class Data18Client(Client):
         kept = [u for u, square in zip(urls, flags, strict=True) if not square]
         if dropped := len(urls) - len(kept):
             logger.info(scope, f'dropped {dropped} square data18 image(s)')
+
         return kept
 
     async def _resolve_id_url(self, url: str) -> str:
@@ -437,26 +474,31 @@ class Data18Client(Client):
         redirect; hop it manually so the slug URL can be fetched directly."""
         if not _ID_ONLY_RE.search(url):
             return url
+
         try:
             r = await self.http.get(url, follow_redirects=False)
         except httpx2.HTTPError:
             return url
+
         loc: str = r.headers.get('location', '')
         if r.status_code in (301, 302, 307, 308) and loc:
             resolved = urljoin(url, loc)
             if (urlsplit(resolved).hostname or '').lower() in _DATA18_HOSTS:
                 logger.debug('data18', f'resolved {url} -> {resolved}')
                 return resolved
+
         return url
 
     async def fetch_page(self, url: str) -> Selector | None:
-        loaded = await self.fetch_and_load(url, label=f'[data18] {url}')
-        if not loaded and (resolved := await self._resolve_id_url(url)) != url:
-            loaded = await self.fetch_and_load(resolved, label=f'[data18] {resolved}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, label=f'[data18] {url}')
+        if not details_page_elements and (resolved := await self._resolve_id_url(url)) != url:
+            details_page_elements = await self.fetch_and_load(resolved, label=f'[data18] {resolved}')
+
+        if not details_page_elements:
             logger.warn('data18', f'page fetch {url} failed - possible IP ban')
             return None
-        sel: Selector = loaded['sel']
+
+        sel: Selector = details_page_elements['sel']
         return sel
 
     @staticmethod
@@ -469,14 +511,16 @@ class Data18Client(Client):
 
     async def fetch_images(self, scene_url: str) -> list[str]:
         out: list[str] = []
-        loaded = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
-        if not loaded and (resolved := await self._resolve_id_url(scene_url)) != scene_url:
+        details_page_elements = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
+        if not details_page_elements and (resolved := await self._resolve_id_url(scene_url)) != scene_url:
             scene_url = resolved
-            loaded = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
-        if not loaded:
+            details_page_elements = await self.fetch_and_load(scene_url, label=f'[data18] images {scene_url}')
+
+        if not details_page_elements:
             logger.warn('data18', 'sceneURL fetch failed - possible IP ban')
             return out
-        sel = loaded['sel']
+
+        sel = details_page_elements['sel']
 
         id_match = re.search(r'/scenes/(\d+)', scene_url)
         scene_id = id_match.group(1) if id_match else ''
@@ -487,6 +531,7 @@ class Data18Client(Client):
         for gallery in sel.xpath('//div[@id="galleriesoff"]//div'):
             if stop_after_photoset:
                 break
+
             id_attr = gallery.xpath('./@id').get() or ''
             try:
                 gallery_id = int(id_attr.replace('gallery', ''))
@@ -494,14 +539,16 @@ class Data18Client(Client):
                 continue
 
             viewer_url = f'{_BASE}/sys/media_photos.php?s={scene_prefix}&scene={scene_suffix}&pic={gallery_id}'
-            viewer_loaded = await self.fetch_and_load(viewer_url, label=f'[data18] gallery {gallery_id}')
-            if not viewer_loaded:
+            viewer_page_elements = await self.fetch_and_load(viewer_url, label=f'[data18] gallery {gallery_id}')
+            if not viewer_page_elements:
                 continue
-            viewer = viewer_loaded['sel']
+
+            viewer = viewer_page_elements['sel']
 
             for img in self._thumbs_from_page(viewer):
                 if '/th8_2' in img:
                     continue
+
                 full = _clean_thumb(img)
                 if full not in out:
                     out.append(full)
@@ -519,8 +566,10 @@ class Data18Client(Client):
                             img = f'{re.sub(r"_2[^_]*$", "", seed)}/t{padded}.jpg'
                         else:
                             img = f'{re.sub(r"/[^/]*$", "", seed)}/{padded}.jpg'
+
                         if img not in out:
                             out.append(img)
+
                     if not env.data18_extra_enabled and gallery_id == 1901:
                         stop_after_photoset = True
                 except (ValueError, IndexError):
@@ -533,6 +582,7 @@ class Data18Client(Client):
         for cover in sel.xpath('//a[@data-lightbox="relatedscenecover"]/@href').getall():
             if cover and cover not in out:
                 out.append(cover)
+
         logger.info('data18', f'Collected {len(out)} image URL(s) from {scene_url}')
         return out
 
@@ -546,6 +596,7 @@ class Data18Client(Client):
         page_zero = await self._fetch_search_page(clean_query, 0)
         if not page_zero:
             return out
+
         html, sel = page_zero
         pages_match = re.search(r'pages:\s*(\d+)', html)
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, max_pages)
@@ -556,9 +607,11 @@ class Data18Client(Client):
                 href = (a.xpath('./@href').get() or '').split('-')[0]
                 if path_segment not in href or href in seen:
                     continue
+
                 title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
                 if not title_node:
                     continue
+
                 title_raw = first_attr(title_node[0], 'normalize-space(.)')
                 provider = first_attr(a, './/span[contains(@class,"gen11")]//i[1]/text()')
                 span = a.xpath('.//span[contains(@class,"gen11")]')
@@ -575,6 +628,7 @@ class Data18Client(Client):
                 next_page = await self._fetch_search_page(clean_query, page + 1)
                 if not next_page:
                     break
+
                 _, sel = next_page
 
         return out
@@ -595,6 +649,7 @@ class Data18Client(Client):
         add(sel.xpath('//img[@id="imgposter"][1]/@src').get())
         for u in sel.xpath('//img[contains(@src,"th8")]/@src').getall():
             add(_clean_thumb(u))
+
         for u in sel.xpath('//img[contains(@data-original,"th8")]/@data-original').getall():
             add(_clean_thumb(u))
 
@@ -606,11 +661,14 @@ class Data18Client(Client):
                 gallery_id = (gallery.xpath('./@id').get() or '').replace('gallery', '')
                 if not gallery_id:
                     continue
+
                 viewer = await self.fetch_page(f'{_BASE}/sys/media_photos.php?movie={movie_prefix}&pic={gallery_id}')
                 if not viewer:
                     continue
+
                 for u in viewer.xpath('//img[contains(@src,"th8")]/@src').getall():
                     add(_clean_thumb(u))
+
                 for u in viewer.xpath('//img[contains(@data-original,"th8")]/@data-original').getall():
                     add(_clean_thumb(u))
 

@@ -20,6 +20,7 @@ def _added_date(sel: Any, scope_xp: str) -> str | None:
     at = txt.find('Added')
     if at < 0:
         return None
+
     after = txt[at + len('Added') :]
     dash = after.find('-')
     raw = (after[dash + 1 :] if dash >= 0 else after).split('\n')[0].strip()
@@ -27,43 +28,57 @@ def _added_date(sel: Any, scope_xp: str) -> str | None:
 
 
 class GroobyClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         if not web_search_available():
             return
-        host = urlsplit(ctx.site_info.base_url).netloc
+
+        host = urlsplit(search_data.site_info.base_url).netloc
         try:
-            candidates = [strip_query(u) for u in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/trailers/')]
+            candidates = [
+                strip_query(u) for u in await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains='/trailers/')
+            ]
         except Exception as err:  # noqa: BLE001 - best-effort
-            logger.debug(ctx.site_info.name, f'webSearch: {err}')
+            logger.debug(search_data.site_info.name, f'webSearch: {err}')
             return
 
         seen: set[str] = set()
         for scene_url in candidates:
             if scene_url in seen:
                 continue
+
             seen.add(scene_url)
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title = (loaded['sel'].xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            date_iso = _added_date(loaded['sel'], '//div[contains(@class,"setdesc")]') or _added_date(
-                loaded['sel'], '//div[contains(@class,"trailer_videoinfo")]'
+
+            date_iso = _added_date(details_page_elements['sel'], '//div[contains(@class,"setdesc")]') or _added_date(
+                details_page_elements['sel'], '//div[contains(@class,"trailer_videoinfo")]'
             )
-            results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
+
+            results.append(
+                build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date)
+            )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath(f'({_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        ps = sel.xpath('//div[contains(@class,"trailer_videoinfo")]//p | //div[contains(@class,"trailerpage_info")]//p[not(@class)]')
+        details_page_elements = scene.require_sel()
+
+        ps = details_page_elements.xpath('//div[contains(@class,"trailer_videoinfo")]//p | //div[contains(@class,"trailerpage_info")]//p[not(@class)]')
         if not ps:
             return
+
         metadata.summary = (ps[-1].xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -76,13 +91,18 @@ class GroobyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         metadata.release_date = (
-            _added_date(sel, '//div[contains(@class,"setdesc")]') or _added_date(sel, '//div[contains(@class,"trailer_videoinfo")]') or scene.scene_date or None
+            _added_date(details_page_elements, '//div[contains(@class,"setdesc")]')
+            or _added_date(details_page_elements, '//div[contains(@class,"trailer_videoinfo")]')
+            or scene.scene_date
+            or None
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -94,25 +114,27 @@ class GroobyClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath(
+        for actor_link in details_page_elements.xpath(
             '//div[contains(@class,"trailer_videoinfo")]//p[contains(.,"Featuring")]//a | //div[contains(@class,"setdesc")]//a[contains(@href,"/models/")]'
         ):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, base)))
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, base)))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         xpaths = (
             '//div[contains(@class,"trailerpage_photoblock_fullsize")]//a/@href',
             '//div[contains(@class,"trailerposter")]//img/@src0_4x',
             '//div[contains(@class,"player-thumb")]//img/@src0_4x',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list'] or []

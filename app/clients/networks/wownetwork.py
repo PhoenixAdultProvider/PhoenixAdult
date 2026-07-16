@@ -11,14 +11,16 @@ _SEARCH_PAGES = 5
 
 
 class WowNetworkClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = ctx.encoded
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = search_data.encoded
 
         async def fetch_rows(page: int) -> list[Any] | None:
             page_url = f'{base}/?s={slug}' if page == 1 else f'{base}/page/{page}/?s={slug}'
-            loaded = await self.fetch_and_load(page_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search p{page} {page_url}')
-            return list(loaded['sel'].xpath('//article[contains(@class,"thumb-block")]')) if loaded else None
+            search_results = await self.fetch_and_load(
+                page_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search p{page} {page_url}'
+            )
+            return list(search_results['sel'].xpath('//article[contains(@class,"thumb-block")]')) if search_results else None
 
         def build_row(el: Any) -> SearchResult | None:
             anchor = el.xpath('(.//a)[1]')
@@ -26,15 +28,16 @@ class WowNetworkClient(Client):
             href = first_attr(anchor, '@href')
             if not title or not href:
                 return None
-            scene_url = absolute_url(href, ctx.site_info.base_url)
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
             image = first_attr(el, '(.//img)[1]/@src')
             image_packed = self.encode(image) if image else ''
             return build_search_result(
                 title=title,
                 scene_url=scene_url,
-                query=ctx.title,
-                search_date=ctx.search_date,
-                cur_id=pack_cur_id([scene_url, f'{ctx.search_date or ""}|{image_packed}']),
+                query=search_data.title,
+                search_date=search_data.search_date,
+                cur_id=pack_cur_id([scene_url, f'{search_data.search_date or ""}|{image_packed}']),
             )
 
         results.extend(await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=_SEARCH_PAGES, stop_on_empty_page=True))
@@ -42,8 +45,9 @@ class WowNetworkClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"entry-title")])[last()]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"entry-title")])[last()]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -55,43 +59,53 @@ class WowNetworkClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[@id="video-date"])[1]').xpath('string(.)').get() or '').replace('Date:', '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div[@id="video-date"])[1]').xpath('string(.)').get() or '').replace('Date:', '').strip()
+        if date:
+            metadata.release_date = iso_date(date)
             return
-        meta = first_attr(sel, '(//meta[@property="article:published_time"])[1]/@content')
+
+        meta = first_attr(details_page_elements, '(//meta[@property="article:published_time"])[1]/@content')
         if meta:
             metadata.release_date = iso_date(meta.split('T')[0])
             return
+
         packed_date = scene.scene_date.split('|')[0].strip() if scene.scene_date else ''
+
         metadata.release_date = iso_date(packed_date) if packed_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = self.dedup_strings(
             [
-                (el.xpath('string(.)').get() or '').replace('Movies', '').strip()
-                for el in sel.xpath('//div[contains(@class,"tags-list")]//a[.//i[contains(@class,"fa-folder-open")]]')
+                (genre_link.xpath('string(.)').get() or '').replace('Movies', '').strip()
+                for genre_link in details_page_elements.xpath('//div[contains(@class,"tags-list")]//a[.//i[contains(@class,"fa-folder-open")]]')
             ]
         )
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//div[@id="video-actors"]//a')]
+        details_page_elements = scene.require_sel()
+
+        entries = [ActorResult(name=first_attr(actor_link, 'normalize-space(.)')) for actor_link in details_page_elements.xpath('//div[@id="video-actors"]//a')]
+
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector()
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector()
         if scene.scene_date and '|' in scene.scene_date:
             b64 = scene.scene_date.split('|', 1)[1]
             if b64:
                 try:
-                    coll['push'](self.decode(b64))
+                    images['push'](self.decode(b64))
                 except (ValueError, TypeError):
                     pass
-        coll['push'](first_attr(sel, '(//meta[@property="og:image"])[1]/@content'))
-        images: list[str] = coll['list']
-        metadata.art = images or []
+
+        images['push'](first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
+
+        metadata.art = images['list'] or []

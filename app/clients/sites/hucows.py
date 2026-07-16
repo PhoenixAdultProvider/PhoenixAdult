@@ -10,18 +10,20 @@ _FIXED_GENRES: list[str] = ['BDSM', 'Breast Torture', 'Breasts', 'Fetish', 'HuCo
 
 
 class HucowsClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        if ctx.search_date:
-            y, m = ctx.search_date.split('-')[:2]
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        if search_data.search_date:
+            y, m = search_data.search_date.split('-')[:2]
             url = f'{base}/{y}/{m}'
         else:
-            url = f'{base}/?s={ctx.title.strip().replace(" ", "+")}'
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+            url = f'{base}/?s={search_data.title.strip().replace(" ", "+")}'
+
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//article'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//article'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, '(.//h1|.//h2)')
@@ -30,6 +32,7 @@ class HucowsClient(Client):
         href = first_attr(source, '(.//a/@href)[2]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -39,13 +42,16 @@ class HucowsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//head//title').replace(' - HuCows.com', '').strip()
+        details_page_elements = scene.require_sel()
+
+        raw = first_text(details_page_elements, '//head//title').replace(' - HuCows.com', '').strip()
+
         metadata.title = raw or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//article//div[contains(@class,"entry-content")]//p') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//article//div[contains(@class,"entry-content")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'HuCows'
@@ -54,29 +60,38 @@ class HucowsClient(Client):
         metadata.collections = ['HuCows']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//div[@itemprop="datePublished"]').replace('Release Date:', '').strip()
-        metadata.release_date = (iso_date(raw, '%d %b %Y') if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//div[@itemprop="datePublished"]').replace('Release Date:', '').strip()
+
+        metadata.release_date = (iso_date(date, '%d %b %Y') if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = list(_FIXED_GENRES)
-        for a in sel.xpath('//a[@rel="category tag"]'):
-            g = first_attr(a, 'normalize-space(.)')
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//a[@rel="category tag"]'):
+            genre_name = first_attr(genre_link, 'normalize-space(.)')
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//a[@rel="tag"]')]
+        details_page_elements = scene.require_sel()
+
+        entries = [ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '') for actor_link in details_page_elements.xpath('//a[@rel="tag"]')]
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw.strip(), scene.site.base_url))
-        for raw in sel.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
-            coll['push'](raw)
-        for raw in sel.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
-            coll['push'](raw)
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image.strip(), scene.site.base_url))
+        for image_url in details_page_elements.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
+            images['push'](image_url)
+
+        for image_url in details_page_elements.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
+            images['push'](image_url)
+
+        metadata.art = images['list']

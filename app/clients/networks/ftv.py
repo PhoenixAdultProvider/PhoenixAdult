@@ -43,6 +43,7 @@ def _collect_images(sel: Any) -> list[str]:
     out: list[str] = []
     for xp in _POSTER_RULES:
         out.extend(v for v in sel.xpath(xp).getall() if v)
+
     return out
 
 
@@ -50,50 +51,66 @@ __testing__ = {'photo_lookup': _photo_lookup, 'parse_title_and_date': _parse_tit
 
 
 class FTVClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        host = urlsplit(ctx.site_info.base_url).netloc.removeprefix('www.')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        host = urlsplit(search_data.site_info.base_url).netloc.removeprefix('www.')
         candidates: list[str] = []
-        if ctx.scene_id:
-            candidates.append(f'{base}{ctx.site_info.search_path}{ctx.scene_id}.html')
+        if search_data.scene_id:
+            candidates.append(f'{base}{search_data.site_info.search_path}{search_data.scene_id}.html')
+
         if web_search_available():
             try:
-                for url in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains='/update/'):
+                for url in await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains='/update/'):
                     if url not in candidates:
                         candidates.append(url)
             except Exception as err:  # noqa: BLE001 - best-effort
-                logger.debug(ctx.site_info.name, f'webSearch: {err}')
+                logger.debug(search_data.site_info.name, f'webSearch: {err}')
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title, date_iso = _parse_title_and_date(loaded['sel'])
+
+            title, date_iso = _parse_title_and_date(details_page_elements['sel'])
             if not title:
                 continue
-            score = date_distance_score(ctx.search_date, date_iso) if ctx.search_date and date_iso else title_distance_score(ctx.title, title)
+
+            score = (
+                date_distance_score(search_data.search_date, date_iso)
+                if search_data.search_date and date_iso
+                else title_distance_score(search_data.title, title)
+            )
+
             results.append(
-                build_search_result(title=title, scene_url=scene_url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date, score=score)
+                build_search_result(
+                    title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date, score=score
+                )
             )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _cast_base_names(self, scene: LoadedScene) -> list[str]:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         names = []
-        for el in sel.xpath('//div[@id="ModelDescription"]//h1'):
+        for el in details_page_elements.xpath('//div[@id="ModelDescription"]//h1'):
             n = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if n:
                 names.append(n)
+
         return names
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = _parse_title_and_date(sel)[0] or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = _parse_title_and_date(details_page_elements)[0] or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -105,34 +122,40 @@ class FTVClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.release_date = _parse_title_and_date(sel)[1] or None
+        details_page_elements = scene.require_sel()
+
+        metadata.release_date = _parse_title_and_date(details_page_elements)[1] or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = _GENRES.get(scene.site.name) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        summary = (sel.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
-        thumbs = sel.xpath('//div[@id="Thumbs"]//img/@src').getall()
+        summary = (details_page_elements.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
+        thumbs = details_page_elements.xpath('//div[@id="Thumbs"]//img/@src').getall()
         actors: list[ActorResult] = []
-        for idx, el in enumerate(sel.xpath('//div[@id="ModelDescription"]//h1')):
+        for idx, el in enumerate(details_page_elements.xpath('//div[@id="ModelDescription"]//h1')):
             base_name = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if not base_name:
                 continue
-            name = base_name
+
+            actor_name = base_name
             m = re.search(rf'\s({re.escape(base_name)} [A-Z]\w+)\s', summary)
             if m:
-                name = m.group(1)
+                actor_name = m.group(1)
+
             photo_raw = thumbs[idx] if idx < len(thumbs) else ''
-            actors.append(ActorResult(name=name, photo_url=absolute_url(photo_raw, base) if photo_raw else ''))
+            actors.append(ActorResult(name=actor_name, photo_url=absolute_url(photo_raw, base) if photo_raw else ''))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
+        images = self.image_collector(lambda image: absolute_url(image, base))
 
         m = _SCENE_ID_RE.search(scene.url)
         scene_id = int(m.group(1)) if m else 0
@@ -145,16 +168,19 @@ class FTVClient(Client):
             except Exception as err:  # noqa: BLE001 - best-effort
                 logger.debug(scene.site.name, f'webSearch: {err}')
                 gallery_results = []
+
             for photo_url in gallery_results:
                 is_gallery = 'galleries' in photo_url or 'preview' in photo_url
                 slug_match = any(s == 'none' or s in photo_url for s in slugs)
                 if not is_gallery or not slug_match:
                     continue
-                g = await self.fetch_and_load(photo_url, None, f'GET {photo_url} (gallery)')
-                if g:
-                    for raw in _collect_images(g['sel']):
-                        coll['push'](raw)
 
-        for raw in _collect_images(sel):
-            coll['push'](raw)
-        metadata.art = coll['list'] or []
+                gallery_page_elements = await self.fetch_and_load(photo_url, None, f'GET {photo_url} (gallery)')
+                if gallery_page_elements:
+                    for raw in _collect_images(gallery_page_elements['sel']):
+                        images['push'](raw)
+
+        for raw in _collect_images(details_page_elements):
+            images['push'](raw)
+
+        metadata.art = images['list'] or []

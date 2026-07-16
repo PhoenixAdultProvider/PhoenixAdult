@@ -38,28 +38,34 @@ def _resolve_studio(sel: Any) -> str:
 def _resolve_subsite(sel: Any) -> str:
     if bold := xp_first_ns(sel, _SUBSITE_XPATHS):
         return bold
+
     texts: list[str] = sel.xpath(_BARE_SUBSITE_XP).getall()
     for text in texts:
         stripped = text.strip()
         if stripped.startswith('|') and (bare := stripped.lstrip('|').strip()) and not bare.endswith(':'):
             return bare
+
     return ''
 
 
 def _resolve_tagline(sel: Any, studio: str) -> str:
     if not xp_ns(sel, _NETWORK_XP):
         return ''
+
     if site_name := xp_ns(sel, _SITE_XP):
         return site_name
+
     sub_site = _resolve_subsite(sel)
     if sub_site and squash(sub_site) != squash(studio):
         return sub_site
+
     return xp_first_ns(sel, _SERIE_XPATHS) or xp_first_ns(sel, _MOVIE_XPATHS)
 
 
 def _apply_reptyle(studio: str, tagline: str) -> tuple[str, str]:
     if strip_reptyle_suffix(studio).lower() not in _REPTYLE_NETWORKS:
         return studio, tagline
+
     sub = resolve_reptyle_subnetwork(tagline)
     return (sub['network'], sub['subsite']) if sub else (strip_reptyle_suffix(studio), tagline)
 
@@ -73,6 +79,7 @@ def _extract_detail(loaded: Any, url: str) -> tuple[str, str, str] | None:
     title = xp_ns(loaded, _TITLE_XP)
     if not title or 'Error 404' in title:
         return None
+
     release_date = iso_date(xp_ns(loaded, _RELEASE_DATE_XP)) or ''
     studio = _resolve_studio(loaded)
     subsite = _resolve_tagline(loaded, studio) or studio
@@ -84,12 +91,12 @@ class Data18ScenesClient(Client):
         super().__init__()
         self._data18 = Data18Client()
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         await self._data18.data18_search(
-            ctx,
+            search_data,
             results,
             kind='scenes',
-            ws_query=ctx.title.strip() or ctx.title,
+            ws_query=search_data.title.strip() or search_data.title,
             clean_ws_url=_clean_ws_url,
             extract_detail=_extract_detail,
             max_pages=50,
@@ -103,10 +110,12 @@ class Data18ScenesClient(Client):
         loaded = await self._data18.fetch_page(url)
         if loaded is None:
             return None
+
         studio = _resolve_studio(loaded)
         tagline = _resolve_tagline(loaded, studio)
         if studio:
             studio, tagline = _apply_reptyle(studio, tagline)
+
         same = not tagline or squash(tagline) == squash(studio)
         collections = [tagline] if tagline and not same else ([studio] if studio else [])
         return LoadedScene(
@@ -124,25 +133,29 @@ class Data18ScenesClient(Client):
     # ── Field hooks ─────────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        title = xp_ns(sel, _TITLE_XP)
+        details_page_elements = scene.require_sel()
+
+        title = xp_ns(details_page_elements, _TITLE_XP)
         m = re.match(r'^Scene[^:-]*(?::|-)', title)
         if m:
             scene_num = re.sub(r'[^A-Za-z0-9\s]+', '', m.group(0)).strip()
             title = f'{title[len(m.group(0)) :].strip()} - {scene_num}'
+
         metadata.title = title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         tries = [
             ('//div[contains(@class,"gen12")]//div[contains(.,"Story")]', 'Story -'),
             ('//div[contains(@class,"gen12")]//div[contains(@class,"hideContent") and contains(@class,"boxdesc") and contains(.,"Description")]', '---'),
             ('//div[contains(@class,"gen12")]//div[contains(.,"Movie Description")]', '--'),
         ]
         for xp, split_on in tries:
-            nodes = sel.xpath(xp)
+            nodes = details_page_elements.xpath(xp)
             if not nodes:
                 continue
+
             raw = nodes[0].xpath('string(.)').get() or ''
             summary = raw.split(split_on)[-1].strip()
             if summary:
@@ -157,19 +170,26 @@ class Data18ScenesClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         c = self._extra(scene).get('collections') or []
+
         metadata.collections = c or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.release_date = iso_date(xp_ns(sel, _RELEASE_DATE_XP)) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        metadata.release_date = iso_date(xp_ns(details_page_elements, _RELEASE_DATE_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[./b[contains(.,"Categories")]]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[./b[contains(.,"Categories")]]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
@@ -180,16 +200,20 @@ class Data18ScenesClient(Client):
                 actors.append(ActorResult(name=n))
 
         base = '(//h3[contains(.,"Cast")])[1]/following-sibling::*'
-        for el in sel.xpath(f'{base}//div//p[contains(.,"No Profile")]//span'):
-            add(el.xpath('normalize-space(.)').get() or '')
-        for el in sel.xpath(f'{base}//a[contains(@href,"/name/")]//img'):
-            add(el.xpath('@alt').get() or '')
-        no_profile = sel.xpath('(//h3[contains(.,"Cast")])[1]/following-sibling::p[contains(.,"No profile")]//b[1]')
+        for actor_link in details_page_elements.xpath(f'{base}//div//p[contains(.,"No Profile")]//span'):
+            add(actor_link.xpath('normalize-space(.)').get() or '')
+
+        for actor_link in details_page_elements.xpath(f'{base}//a[contains(@href,"/name/")]//img'):
+            add(actor_link.xpath('@alt').get() or '')
+
+        no_profile = details_page_elements.xpath('(//h3[contains(.,"Cast")])[1]/following-sibling::p[contains(.,"No profile")]//b[1]')
         if no_profile:
             for n in (no_profile[0].xpath('normalize-space(.)').get() or '').split(','):
                 add(n)
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.data18_url = scene.url
+
         metadata.art = await self._data18.fetch_images(scene.url) or []

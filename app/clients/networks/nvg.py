@@ -27,24 +27,26 @@ class NVGClient(Client):
         data = await self.fetch_json(_PAGE_DATA_URL, FetchCtx(capture=capture), headers={'Referer': referer})
         if not isinstance(data, dict):
             return None
+
         edges = (((data.get('result') or {}).get('data') or {}).get('allMysqlTourStats') or {}).get('edges') or []
         for edge in edges:
             tt = (edge.get('node') or {}).get('tour_thumbs') if isinstance(edge, dict) else None
             if isinstance(tt, dict) and (tt.get('updates') or {}).get('mysqlId') == scene_id:
                 return tt
+
         return None
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = int(ctx.scene_id) if ctx.scene_id else None
-        cast_query = ctx.title.strip()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_id = int(search_data.scene_id) if search_data.scene_id else None
+        cast_query = search_data.title.strip()
 
-        page_scene = await self._get_page_data(scene_id, ctx.capture, base) if scene_id is not None else None
+        page_scene = await self._get_page_data(scene_id, search_data.capture, base) if scene_id is not None else None
 
         urls: list[str] = []
         if web_search_available():
             with best_effort('Net Video Girls', 'webSearch', level='debug'):
-                found = await web_search(SearchOptions(query=cast_query or ctx.title, site=urlparse(base).netloc, num=10))
+                found = await web_search(SearchOptions(query=cast_query or search_data.title, site=urlparse(base).netloc, num=10))
                 urls = [u for u in found if '/tag/' not in u and '/page/' not in u and '/category/' not in u]
 
         if not urls:
@@ -52,25 +54,28 @@ class NVGClient(Client):
             if updates.get('mysqlId') is not None:
                 sid = updates['mysqlId']
                 own_date = iso_date(updates.get('release_date') or '') or None
-                date = own_date or ctx.search_date or ''
+                date = own_date or search_data.search_date or ''
+
                 results.append(
                     build_search_result(
                         title=(updates.get('short_title') or '').strip(),
                         scene_url=base,
-                        query=ctx.title,
+                        query=search_data.title,
                         display_date=own_date,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         score=100,
                         cur_id=pack_cur_id([f'{sid}|{date}|{cast_query}']),
                     )
                 )
+
             return
 
         for scene_url in urls:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture))
-            if not loaded:
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture))
+            if not search_results:
                 continue
-            sel = loaded['sel']
+
+            sel = search_results['sel']
             m = _VIDEO_ID_RE.search(sel.xpath('(//source)[1]/@src').get() or '')
             video_id = m.group(1) if m else ''
 
@@ -82,16 +87,21 @@ class NVGClient(Client):
             else:
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
                 own_date = iso_date(sel.xpath('(//meta[@itemprop])[1]/@content').get() or '') or None
-                score = date_distance_score(ctx.search_date, own_date) if ctx.search_date and own_date else title_distance_score(ctx.title, title)
-            date = own_date or ctx.search_date or ''
+                score = (
+                    date_distance_score(search_data.search_date, own_date)
+                    if search_data.search_date and own_date
+                    else title_distance_score(search_data.title, title)
+                )
+
+            date = own_date or search_data.search_date or ''
 
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=own_date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=score,
                     cur_id=pack_cur_id([f'{scene_url}|{date}|{cast_query}|{video_id}']),
                 )
@@ -113,12 +123,13 @@ class NVGClient(Client):
 
         if _HTTP_RE.match(head):
             scene_url = head
-            loaded = await self.fetch_and_load(head, FetchCtx(capture=capture))
-            if loaded:
-                sel = loaded['sel']
+            details_page_elements = await self.fetch_and_load(head, FetchCtx(capture=capture))
+            if details_page_elements:
+                sel = details_page_elements['sel']
                 title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').split('|')[0].strip()
                 summary = (sel.xpath('(//div[contains(@class,"the-content")]/p)[1]').xpath('string(.)').get() or '').strip()
                 poster = first_attr(sel, '(//video)[1]/@poster')
+
             # Legacy merge: prefer the page-data fluid src when the mysqlId resolves.
             if video_id.isdigit():
                 scene = await self._get_page_data(int(video_id), capture, base)

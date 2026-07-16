@@ -11,14 +11,15 @@ STUDIO = 'Wankz'
 
 
 class WankzClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources: list[Any] = list(loaded['sel'].xpath('//div[contains(@class,"scene")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"scene")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//div[contains(@class,"title-wrapper")]//a[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
@@ -40,12 +41,14 @@ class WankzClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//div[contains(@class,"title")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"title")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[contains(@class,"description")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"description")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,33 +57,42 @@ class WankzClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[contains(@class,"views")]//span)[1]').xpath('string(.)').get() or '').replace('Added', '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div[contains(@class,"views")]//span)[1]').xpath('string(.)').get() or '').replace('Added', '').strip()
+        if date:
+            metadata.release_date = iso_date(date)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [el.xpath('normalize-space(.)').get() for el in sel.xpath('//a[contains(@class,"cat")] | //p[@style]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"cat")] | //p[@style]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         entries = [
             ActorResult(
-                name=(el.xpath('(.//span)[1]').xpath('string(.)').get() or '').strip(),
-                photo_url=first_attr(el, '(.//img)[1]/@src'),
+                name=(actor_link.xpath('(.//span)[1]').xpath('string(.)').get() or '').strip(),
+                photo_url=first_attr(actor_link, '(.//img)[1]/@src'),
             )
-            for el in sel.xpath('//div[contains(@class,"actors")]//a[contains(@class,"model")]')
+            for actor_link in details_page_elements.xpath('//div[contains(@class,"actors")]//a[contains(@class,"model")]')
         ]
+
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in sel.xpath('//a[contains(@class,"noplayer")]//img/@src').getall():
-            coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for image_url in details_page_elements.xpath('//a[contains(@class,"noplayer")]//img/@src').getall():
+            images['push'](image_url)
+
+        metadata.art = images['list'] or []

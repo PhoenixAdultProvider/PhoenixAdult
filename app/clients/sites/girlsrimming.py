@@ -15,30 +15,35 @@ def _py_title(s: str) -> str:
 
 
 class GirlsRimmingClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        direct = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        direct = base + search_data.site_info.search_path.replace('{query}', slugify(search_data.title))
         candidates = [direct]
-        for u in await web_search_urls(ctx.title, ctx.site_info, include=['/trailers/']):
+        for u in await web_search_urls(search_data.title, search_data.site_info, include=['/trailers/']):
             lc = u.lower()
             if lc not in candidates:
                 candidates.append(lc)
 
         for scene_url in candidates:
-            page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not page or page['html'].strip() == 'Page not found':
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements or details_page_elements['html'].strip() == 'Page not found':
                 continue
-            title = first_attr(page['sel'], '(//h2[contains(@class,"title")]/text())[1]')
+
+            title = first_attr(details_page_elements['sel'], '(//h2[contains(@class,"title")]/text())[1]')
             if not title:
                 continue
-            date = ctx.search_date
+
+            date = search_data.search_date
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -46,12 +51,14 @@ class GirlsRimmingClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_attr(sel, '(//h2[contains(@class,"title")]/text())[1]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_attr(details_page_elements, '(//h2[contains(@class,"title")]/text())[1]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = meta_content(sel, 'description') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = meta_content(details_page_elements, 'description') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Girls Rimming'
@@ -66,8 +73,9 @@ class GirlsRimmingClient(Client):
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     def _keywords(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        return sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
+        details_page_elements = scene.require_sel()
+
+        return details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres: list[str] = []
@@ -75,11 +83,14 @@ class GirlsRimmingClient(Client):
             entry = part.strip()
             if not entry or _ID_SEPARATOR in entry:
                 continue
+
             titled = _py_title(entry)
             if titled not in genres:
                 genres.append(titled)
+
         if 'Rim Job' not in genres:
             genres.append('Rim Job')
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -89,33 +100,40 @@ class GirlsRimmingClient(Client):
             entry = part.strip()
             if _ID_SEPARATOR not in entry:
                 continue
-            name = entry.split(_ID_SEPARATOR)[0].strip()
-            if not name or name in seen:
+
+            actor_name = entry.split(_ID_SEPARATOR)[0].strip()
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
-            actors.append(ActorResult(name=name, photo_url=await self._resolve_actor_photo(name, scene)))
+
+            seen.add(actor_name)
+            actors.append(ActorResult(name=actor_name, photo_url=await self._resolve_actor_photo(actor_name, scene)))
+
         metadata.actors = actors
 
-    async def _resolve_actor_photo(self, name: str, scene: LoadedScene) -> str:
+    async def _resolve_actor_photo(self, actor_name: str, scene: LoadedScene) -> str:
         base = scene.site.base_url.rstrip('/')
-        slug = re.sub(r'\s+', '-', name.lower())
+        slug = re.sub(r'\s+', '-', actor_name.lower())
         direct_url = f'{base}/tour/models/{slug}.html'
-        page = await self.fetch_and_load(direct_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-direct {name}')
-        if not page or page['html'].strip() == 'Page not found':
-            page = None
-            for u in (x.lower() for x in await web_search_urls(name, scene.site, include=['/models/'])):
-                candidate = await self.fetch_and_load(u, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-fallback {name}')
-                if candidate and candidate['html'].strip() != 'Page not found':
-                    page = candidate
+        model_page_elements = await self.fetch_and_load(direct_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-direct {actor_name}')
+        if not model_page_elements or model_page_elements['html'].strip() == 'Page not found':
+            model_page_elements = None
+            for u in (x.lower() for x in await web_search_urls(actor_name, scene.site, include=['/models/'])):
+                candidate_page_elements = await self.fetch_and_load(u, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-fallback {actor_name}')
+                if candidate_page_elements and candidate_page_elements['html'].strip() != 'Page not found':
+                    model_page_elements = candidate_page_elements
                     break
-        if not page:
+
+        if not model_page_elements:
             return ''
-        raw = first_attr(page['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
+
+        raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
         return join_url(raw, base) if raw else ''
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: join_url(raw, scene.site.base_url))
-        for raw in sel.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
-            coll['push']((raw or '').strip())
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: join_url(image, scene.site.base_url))
+        for image_url in details_page_elements.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
+            images['push']((image_url or '').strip())
+
+        metadata.art = images['list']

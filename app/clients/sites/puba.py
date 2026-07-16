@@ -15,35 +15,41 @@ class PubaClient(Client):
     def __init__(self) -> None:
         super().__init__({'Referer': 'https://www.puba.com/pornstarnetwork/index.php', 'Cookie': 'PHPSESSID=rvo9ieo5bhoh81knnmu88c3lf3'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        stem = f'{base}{ctx.site_info.search_path}'
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        stem = f'{base}{search_data.site_info.search_path}'
 
         candidates: list[str] = []
-        if ctx.scene_id:
-            candidates.append(f'{stem}show_video.php?galid={ctx.scene_id}')
-        host = urlsplit(ctx.site_info.base_url).hostname or ''
-        with best_effort(ctx.site_info.name, 'webSearch'):
-            for url in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
+        if search_data.scene_id:
+            candidates.append(f'{stem}show_video.php?galid={search_data.scene_id}')
+
+        host = urlsplit(search_data.site_info.base_url).hostname or ''
+        with best_effort(search_data.site_info.name, 'webSearch'):
+            for url in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
                 if 'show_video' in url and 'index' not in url and url not in candidates:
                     candidates.append(url)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
-            if not loaded:
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {scene_url}')
+            if not search_results:
                 continue
-            card_title = first_text(loaded['sel'], _TITLE_XP)
+
+            card_title = first_text(search_results['sel'], _TITLE_XP)
             if not card_title:
                 continue
+
             results.append(
-                build_search_result(title=card_title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url]))
+                build_search_result(
+                    title=card_title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, cur_id=pack_cur_id([scene_url])
+                )
             )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, _TITLE_XP)
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, _TITLE_XP)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -52,19 +58,31 @@ class PubaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//center//div//a[contains(@class,"btn-outline-secondary")]')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get()
+            for genre_link in details_page_elements.xpath('//center//div//a[contains(@class,"btn-outline-secondary")]')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//center//div//a[contains(@class,"btn-secondary")]')]
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
+            for actor_link in details_page_elements.xpath('//center//div//a[contains(@class,"btn-secondary")]')
+        ]
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        style = sel.xpath('(//div[@id="body-player-container"]/div/a/img/@style)[1]').get() or ''
+        details_page_elements = scene.require_sel()
+
+        style = details_page_elements.xpath('(//div[@id="body-player-container"]/div/a/img/@style)[1]').get() or ''
         bg = css_bg_image(style)
         if not bg:
             return
+
         metadata.art = [absolute_url(bg, scene.site.base_url)]

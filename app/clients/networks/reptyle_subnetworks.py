@@ -14,9 +14,11 @@ def _norm(s: str) -> str:
 def resolve_reptyle_subnetwork(tagline: str) -> dict[str, str] | None:
     if not tagline:
         return None
+
     tagline_norm = _norm(tagline)
     for network, subsites in _SUBNETWORKS.items():
         for subsite in subsites:
             if _norm(subsite) == tagline_norm:
                 return {'network': network, 'subsite': subsite}
+
     return None

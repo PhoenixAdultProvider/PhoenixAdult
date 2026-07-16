@@ -11,16 +11,20 @@ _UPLOAD_DATE_RE = re.compile(r'(\d{4})/(\d{2})/(\d{2})')
 
 
 class CaribbeancomClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = (ctx.full_title or ctx.title).replace(' ', '-')
-        scene_url = base + ctx.site_info.search_path.replace('{query}', scene_id)
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_id = (search_data.full_title or search_data.title).replace(' ', '-')
+        scene_url = base + search_data.site_info.search_path.replace('{query}', scene_id)
+        direct_page_elements = await self.fetch_and_load(
+            scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
+        )
+        if not direct_page_elements:
             return None
-        if not first_text(loaded['sel'], '//title'):
+
+        if not first_text(direct_page_elements['sel'], '//title'):
             return None
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=[loaded['sel']], capture=ctx.capture, extra=scene_url)
+
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=[direct_page_elements['sel']], capture=search_data.capture, extra=scene_url)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, '//title')
@@ -34,8 +38,9 @@ class CaribbeancomClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//title') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//title') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'caribbeancom'
@@ -44,39 +49,50 @@ class CaribbeancomClient(Client):
         metadata.collections = ['caribbeancom']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//span[@itemprop="uploadDate"]')
-        if not raw:
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//span[@itemprop="uploadDate"]')
+        if not date:
             return
-        m = _UPLOAD_DATE_RE.search(raw)
+
+        m = _UPLOAD_DATE_RE.search(date)
+
         metadata.release_date = f'{m.group(1)}-{m.group(2)}-{m.group(3)}' if m else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//a[@itemprop="genre"]')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[@itemprop="genre"]')]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         entries: list[ActorResult] = []
-        for a in sel.xpath('//a[@itemprop="actor"]'):
-            text = first_text(a, './/span[@itemprop="name"]')
-            for name in (n.strip() for n in text.split(',')):
-                if name:
-                    entries.append(ActorResult(name=name))
+        for actor_link in details_page_elements.xpath('//a[@itemprop="actor"]'):
+            text = first_text(actor_link, './/span[@itemprop="name"]')
+            for actor_name in (n.strip() for n in text.split(',')):
+                if actor_name:
+                    entries.append(ActorResult(name=actor_name))
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         images: list[str] = []
         constructed = scene.url.replace('/eng', '').replace('index.html', 'images/poster_en.jpg')
         if constructed != scene.url:
             images.append(constructed)
-        for el in sel.xpath('//img[contains(@class,"gallery-image")]'):
+
+        for el in details_page_elements.xpath('//img[contains(@class,"gallery-image")]'):
             src = first_attr(el, '@src')
             if not src:
                 continue
+
             abs_url = absolute_url(src, scene.site.base_url)
             if abs_url not in images:
                 images.append(abs_url)
+
         metadata.art = images

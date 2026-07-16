@@ -13,14 +13,15 @@ _CATEGORY_TAGLINES: dict[str, str] = load_site_json(__file__, 'littlecaprice_cat
 
 
 class LittleCapriceClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = f'{base}/?s={ctx.encoded}'
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = f'{base}/?s={search_data.encoded}'
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[@id="left-area"]/article'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[@id="left-area"]/article'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h2[contains(@class,"entry-title")]/a)[1]').xpath('string(.)').get() or '').strip()
@@ -39,15 +40,19 @@ class LittleCapriceClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
 
-        gallery = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] gallery {url}')
-        if not gallery:
+        gallery_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] gallery {url}')
+        if not gallery_page_elements:
             return None
-        detail = gallery
-        video_href = first_attr(gallery['sel'], '(//a[contains(@class,"et_pb_button")])[2]/@href')
+
+        detail = gallery_page_elements
+        video_href = first_attr(gallery_page_elements['sel'], '(//a[contains(@class,"et_pb_button")])[2]/@href')
         if video_href:
-            video = await self.fetch_and_load(absolute_url(video_href, site.base_url), FetchCtx(capture=ctx.capture if ctx else None), f'GET {video_href}')
-            if video:
-                detail = video
+            video_page_elements = await self.fetch_and_load(
+                absolute_url(video_href, site.base_url), FetchCtx(capture=ctx.capture if ctx else None), f'GET {video_href}'
+            )
+            if video_page_elements:
+                detail = video_page_elements
+
         return LoadedScene(
             url=url,
             site=site,
@@ -55,30 +60,35 @@ class LittleCapriceClient(Client):
             capture=ctx.capture if ctx else None,
             sel=detail['sel'],
             html=detail['html'],
-            extra={'gallery': gallery['sel']},
+            extra={'gallery': gallery_page_elements['sel']},
         )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        cls = sel.xpath('(//div[@id="main-project-content"])[1]/@class').get() or ''
+        details_page_elements = scene.require_sel()
+
+        cls = details_page_elements.xpath('(//div[@id="main-project-content"])[1]/@class').get() or ''
         for token in cls.split():
             if token in _CATEGORY_TAGLINES:
                 return _CATEGORY_TAGLINES[token]
+
         return scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        title = (sel.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        title = (details_page_elements.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
         tagline = self._tagline_of(scene)
         if title.lower().startswith(tagline.lower()):
             title = title[len(tagline) :].strip()
+
         metadata.title = title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -90,59 +100,71 @@ class LittleCapriceClient(Client):
         metadata.collections = [self._tagline_of(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        text = sel.xpath('(//div[contains(@class,"relese-date")])[1]').xpath('string(.)').get() or ''
-        raw = text.split('Release:')[1].strip() if 'Release:' in text else ''
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        text = details_page_elements.xpath('(//div[contains(@class,"relese-date")])[1]').xpath('string(.)').get() or ''
+        date = text.split('Release:')[1].strip() if 'Release:' in text else ''
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
 
         def add(sel: Any) -> None:
-            for a in sel.xpath('//div[contains(@class,"project-tags")]/div[contains(@class,"list")]/a'):
-                g = first_attr(a, 'normalize-space(.)').lower()
-                if g and g not in genres:
-                    genres.append(g)
+            for genre_link in sel.xpath('//div[contains(@class,"project-tags")]/div[contains(@class,"list")]/a'):
+                genre_name = first_attr(genre_link, 'normalize-space(.)').lower()
+                if genre_name and genre_name not in genres:
+                    genres.append(genre_name)
 
-        add(sel)
+        add(details_page_elements)
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
             add(gallery)
-        cast = len(sel.xpath('//div[contains(@class,"project-models")]//a'))
+
+        cast = len(details_page_elements.xpath('//div[contains(@class,"project-models")]//a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in sel.xpath('//div[contains(@class,"project-models")]//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"project-models")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
                 continue
-            if name == 'LittleCaprice':
-                name = 'Little Caprice'
+
+            if actor_name == 'LittleCaprice':
+                actor_name = 'Little Caprice'
+
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = first_attr(page['sel'], '(//img[contains(@class,"img-poster")])[1]/@src') if page else ''
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
+                raw = first_attr(model_page_elements['sel'], '(//img[contains(@class,"img-poster")])[1]/@src') if model_page_elements else ''
                 if raw:
                     photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda raw: join_url(raw, base))
+        details_page_elements = scene.require_sel()
 
-        coll['push'](first_attr(sel, '(//meta[@property="og:image"])[1]/@content'))
+        base = scene.site.base_url.rstrip('/')
+        images = self.image_collector(lambda image: join_url(image, base))
+
+        images['push'](first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
-            coll['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
+            images['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
             for src in gallery.xpath('//div[contains(@class,"gallery") and contains(@class,"spotlight-group")]//img/@src').getall():
-                coll['push'](src)
-        metadata.art = coll['list']
+                images['push'](src)
+
+        metadata.art = images['list']

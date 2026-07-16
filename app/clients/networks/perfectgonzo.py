@@ -14,14 +14,15 @@ _DATE_DIV = 'col-sm-6 col-md-6 no-padding-left no-padding-right text-right'
 
 
 class PerfectGonzoClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[@class="itemm"]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[@class="itemm"]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a)[1]/@title')
@@ -37,12 +38,14 @@ class PerfectGonzoClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h2)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h2)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath(f'(//div[@class="{_SUMMARY_DIV}"]/p)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath(f'(//div[@class="{_SUMMARY_DIV}"]/p)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -54,47 +57,56 @@ class PerfectGonzoClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath(f'(//div[@class="{_DATE_DIV}"]/span)[1]').xpath('string(.)').get() or '').strip()
-        if raw:
-            after = raw.split('Added')[-1].strip()
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath(f'(//div[@class="{_DATE_DIV}"]/span)[1]').xpath('string(.)').get() or '').strip()
+        if date:
+            after = date.split('Added')[-1].strip()
             if after:
                 metadata.release_date = iso_date(after)
                 return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for a in sel.xpath(f'//div[@class="{_TAGS_DIV}"]//a'):
-            g = first_attr(a, 'normalize-space(.)').lower()
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath(f'//div[@class="{_TAGS_DIV}"]//a'):
+            genre_name = first_attr(genre_link, 'normalize-space(.)').lower()
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if not name or not href or name in seen:
+        for actor_link in details_page_elements.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if not actor_name or not href or actor_name in seen:
                 continue
-            seen.add(name)
-            page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-            raw = first_attr(page['sel'], '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src') if page else ''
+
+            seen.add(actor_name)
+            model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {actor_name}')
+            raw = first_attr(model_page_elements['sel'], '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src') if model_page_elements else ''
             photo = (absolute_url(raw, base)) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for poster in sel.xpath('//video/@poster').getall():
-            coll['push'](poster)
-        for img in sel.xpath('//ul[@class="bxslider_screenshots"]//img'):
-            coll['push'](img.xpath('@src').get() or img.xpath('@data-original').get())
-        images: list[str] = coll['list']
-        metadata.art = images
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for poster in details_page_elements.xpath('//video/@poster').getall():
+            images['push'](poster)
+
+        for img in details_page_elements.xpath('//ul[@class="bxslider_screenshots"]//img'):
+            images['push'](img.xpath('@src').get() or img.xpath('@data-original').get())
+
+        metadata.art = images['list']

@@ -19,11 +19,11 @@ def _titleize(slug: str) -> str:
 
 
 class Watch4BeautyClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
 
         model_strings: list[str] = []
-        lowered = ctx.title.lower()
+        lowered = search_data.title.lower()
         if 'veronica da souza' in lowered:
             model_strings.append('veronica-da-souza')
         else:
@@ -37,7 +37,9 @@ class Watch4BeautyClient(Client):
         updates: list[Any] | None = None
         for candidate in model_strings:
             data = await self.fetch_json(
-                f'{base}/api/models/{candidate}/updates', FetchCtx(capture=ctx.capture), label=f'[{ctx.site_info.name}] models/{candidate}/updates'
+                f'{base}/api/models/{candidate}/updates',
+                FetchCtx(capture=search_data.capture),
+                label=f'[{search_data.site_info.name}] models/{candidate}/updates',
             )
             if isinstance(data, list) and data:
                 model_string = candidate
@@ -45,21 +47,25 @@ class Watch4BeautyClient(Client):
                 break
 
         if updates is None:
-            title_slug = slugify(ctx.title, replacements=[("'", '')])
+            title_slug = slugify(search_data.title, replacements=[("'", '')])
             data = await self.fetch_json(
-                f'{base}/api/issues/{title_slug}/models', FetchCtx(capture=ctx.capture), label=f'[{ctx.site_info.name}] issues/{title_slug}/models'
+                f'{base}/api/issues/{title_slug}/models',
+                FetchCtx(capture=search_data.capture),
+                label=f'[{search_data.site_info.name}] issues/{title_slug}/models',
             )
             fallback_slug = _first_model_nickname(data)
             if fallback_slug:
                 model_string = fallback_slug
                 u = await self.fetch_json(
-                    f'{base}/api/models/{model_string}/updates', FetchCtx(capture=ctx.capture), label=f'[{ctx.site_info.name}] models/{model_string}/updates'
+                    f'{base}/api/models/{model_string}/updates',
+                    FetchCtx(capture=search_data.capture),
+                    label=f'[{search_data.site_info.name}] models/{model_string}/updates',
                 )
                 if isinstance(u, list) and u:
                     updates = u
 
         if updates is None:
-            logger.info(ctx.site_info.name, f'Watch4Beauty search "{ctx.title}" → no model match')
+            logger.info(search_data.site_info.name, f'Watch4Beauty search "{search_data.title}" → no model match')
             return
 
         seen: set[str] = set()
@@ -69,18 +75,21 @@ class Watch4BeautyClient(Client):
             scene_slug = (issue.get('issue_simple_title') or '').strip()
             if not scene_name or not scene_slug:
                 continue
+
             date = iso_date(issue['issue_datetime']) if issue.get('issue_datetime') else None
             key = f'{model_string}|{scene_slug}'
             if key in seen:
                 continue
+
             seen.add(key)
+
             results.append(
                 build_search_result(
                     title=scene_name,
                     scene_url=f'{base}/api/issues/{scene_slug}',
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([model_string, scene_slug, date or '']),
                 )
             )
@@ -98,6 +107,7 @@ class Watch4BeautyClient(Client):
         elif '/api/issues/' in payload:
             m = re.search(r'/api/issues/([^/?#]+)', payload)
             scene_slug = m.group(1) if m else ''
+
         if not scene_slug:
             logger.warn(site.name, f'Watch4Beauty detail: unrecognized payload "{payload}"')
             return None
@@ -108,6 +118,7 @@ class Watch4BeautyClient(Client):
         scene = scene_arr[0] if isinstance(scene_arr, list) and scene_arr else None
         if not isinstance(scene, dict):
             return None
+
         return LoadedScene(
             url=f'{base}/api/issues/{scene_slug}',
             site=site,
@@ -167,11 +178,13 @@ class Watch4BeautyClient(Client):
             slug = (m.get('model_simple_nickname') or '').strip()
             if not name:
                 continue
+
             photo = f'{art_prefix}model-{slug}-320.jpg' if slug else ''
             metadata.actors.append(ActorResult(name=name, photo_url=photo))
             if slug:
                 metadata.art.append(f'{ART_BASE}model-{slug}-wide-2560.jpg')
                 metadata.art.append(f'{ART_BASE}model-{slug}-1280.jpg')
+
         if not metadata.actors and model_slug:
             metadata.actors.append(ActorResult(name=_titleize(model_slug)))
 
@@ -184,4 +197,5 @@ def _first_model_nickname(data: Any) -> str:
         models = data[0].get('Models')
         if isinstance(models, list) and models and isinstance(models[0], dict):
             return (models[0].get('model_simple_nickname') or '').strip()
+
     return ''

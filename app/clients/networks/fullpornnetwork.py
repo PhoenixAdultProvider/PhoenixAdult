@@ -19,10 +19,10 @@ def _after_colon(text: str) -> str:
 
 
 class FullPornNetworkClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        host = urlsplit(ctx.site_info.base_url).netloc.removeprefix('www.')
-        q = ctx.title.strip()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        host = urlsplit(search_data.site_info.base_url).netloc.removeprefix('www.')
+        q = search_data.title.strip()
 
         google: list[str] = []
         if web_search_available():
@@ -37,6 +37,7 @@ class FullPornNetworkClient(Client):
         for url in google:
             if '/trailers/' in url and url not in trailer_urls:
                 trailer_urls.append(url)
+
             if '/models/' in url and 'models_' not in url and 'join' not in url and url not in model_urls:
                 model_urls.append(url)
 
@@ -45,23 +46,27 @@ class FullPornNetworkClient(Client):
         for scene_url in trailer_urls:
             if scene_url in seen:
                 continue
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] trailer {scene_url}')
-            if not loaded:
+
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] trailer {scene_url}')
+            if not search_results:
                 continue
-            title = _after_colon(loaded['sel'].xpath('(//h1[contains(@class,"title_bar")])[1]').xpath('string(.)').get() or '')
+
+            title = _after_colon(search_results['sel'].xpath('(//h1[contains(@class,"title_bar")])[1]').xpath('string(.)').get() or '')
             if not title:
                 continue
-            date_raw = (loaded['sel'].xpath('(//div[contains(@class,"video-info")]//p)[1]').xpath('string(.)').get() or '').strip()
+
+            date_raw = (search_results['sel'].xpath('(//div[contains(@class,"video-info")]//p)[1]').xpath('string(.)').get() or '').strip()
             date_iso = iso_date(date_raw) if date_raw else None
             seen.add(scene_url)
-            carried = date_iso or ctx.search_date or ''
+            carried = date_iso or search_data.search_date or ''
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
                     query=q,
                     display_date=date_iso,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, carried) if x]),
                 )
             )
@@ -71,36 +76,46 @@ class FullPornNetworkClient(Client):
                 href = first_attr(el, '(.//a[@class="updateimg"])[1]/@href')
                 if not href:
                     continue
-                scene_url = absolute_url(href, ctx.site_info.base_url)
+
+                scene_url = absolute_url(href, search_data.site_info.base_url)
                 if scene_url in seen:
                     continue
+
                 title = _after_colon(el.xpath('string(.)').get() or '')
                 if not title:
                     continue
+
                 seen.add(scene_url)
-                results.append(build_search_result(title=title, scene_url=scene_url, query=q, search_date=ctx.search_date))
+
+                results.append(build_search_result(title=title, scene_url=scene_url, query=q, search_date=search_data.search_date))
 
         for model_url in model_urls:
-            loaded = await self.fetch_and_load(model_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model {model_url}')
-            if not loaded:
+            search_results = await self.fetch_and_load(model_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] model {model_url}')
+            if not search_results:
                 continue
-            harvest(loaded['sel'])
-            next_href = first_attr(loaded['sel'], '(//a[contains(@class,"pagenav")])[1]/@href')
+
+            harvest(search_results['sel'])
+            next_href = first_attr(search_results['sel'], '(//a[contains(@class,"pagenav")])[1]/@href')
             if next_href:
-                nxt = await self.fetch_and_load(absolute_url(next_href, ctx.site_info.base_url), FetchCtx(capture=ctx.capture), 'GET model page 2')
-                if nxt:
-                    harvest(nxt['sel'])
+                next_page_elements = await self.fetch_and_load(
+                    absolute_url(next_href, search_data.site_info.base_url), FetchCtx(capture=search_data.capture), 'GET model page 2'
+                )
+                if next_page_elements:
+                    harvest(next_page_elements['sel'])
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = _after_colon(sel.xpath('(//h1[contains(@class,"title_bar")])[1]').xpath('string(.)').get() or '') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = _after_colon(details_page_elements.xpath('(//h1[contains(@class,"title_bar")])[1]').xpath('string(.)').get() or '') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         metadata.summary = (
-            sel.xpath('(//div[contains(@class,"video-description")]//p[contains(@class,"description-text")])[1]').xpath('string(.)').get() or ''
+            details_page_elements.xpath('(//div[contains(@class,"video-description")]//p[contains(@class,"description-text")])[1]').xpath('string(.)').get()
+            or ''
         ).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -113,19 +128,29 @@ class FullPornNetworkClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[contains(@class,"video-info")]//p)[1]').xpath('string(.)').get() or '').strip()
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div[contains(@class,"video-info")]//p)[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         out = [
-            g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/categories/")]')) if g
+            genre_name
+            for genre_name in (
+                first_attr(genre_link, 'normalize-space(.)')
+                for genre_link in details_page_elements.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/categories/")]')
+            )
+            if genre_name
         ]
+
         metadata.genres = out or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -133,19 +158,22 @@ class FullPornNetworkClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in sel.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/models/")]'):
-            name = first_attr(a, 'normalize-space(.)')
-            href = first_attr(a, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, base)))
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"video-info")]//a[contains(@href,"/models/")]'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, base)))
+
         if not refs:
             return
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: (raw if 'http' in raw else absolute_url(raw, scene.site.base_url)).replace('-1x.jpg', '-3x.jpg'))
-        for raw in sel.xpath('//video/@poster').getall():
-            coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: (image if 'http' in image else absolute_url(image, scene.site.base_url)).replace('-1x.jpg', '-3x.jpg'))
+        for image_url in details_page_elements.xpath('//video/@poster').getall():
+            images['push'](image_url)
+
+        metadata.art = images['list'] or []

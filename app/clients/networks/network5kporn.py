@@ -23,27 +23,31 @@ class Network5KPClient(Client):
     def __init__(self) -> None:
         super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        title_no_actors = ' '.join(ctx.title.split(' ')[2:])
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        title_no_actors = ' '.join(search_data.title.split(' ')[2:])
         if title_no_actors.startswith('and '):
             title_no_actors = ' '.join(title_no_actors.split(' ')[3:])
-        actor_query = ctx.title.replace(title_no_actors, '').strip()
 
-        url = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path.replace('{query}', quote(actor_query))
+        actor_query = search_data.title.replace(title_no_actors, '').strip()
+
+        url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', quote(actor_query))
         try:
             r = await self.http.get(url)
         except Exception:  # noqa: BLE001 - upstream failure yields no results
             return
+
         try:
             body = r.json() if 'json' in r.headers.get('content-type', '') else None
         except ValueError:
             body = None
+
         if isinstance(body, dict) and isinstance(body.get('html'), str):
             html = body['html']
         else:
             html = r.text
-        if ctx.capture is not None:
-            ctx.capture.append(RawCaptureEntry(f'GET {url}', 'json', body if body is not None else html))
+
+        if search_data.capture is not None:
+            search_data.capture.append(RawCaptureEntry(f'GET {url}', 'json', body if body is not None else html))
 
         sel = Selector(text=html)
         seen: set[str] = set()
@@ -54,14 +58,16 @@ class Network5KPClient(Client):
             scene_url = first_attr(el, '(.//a)[1]/@href')
             if not title or not scene_url or scene_url in seen:
                 continue
+
             seen.add(scene_url)
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
                     query=actor_query,
-                    search_date=ctx.search_date,
-                    cur_id=pack_cur_id([x for x in (scene_url, ctx.search_date) if x]),
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([x for x in (scene_url, search_data.search_date) if x]),
                 )
             )
 
@@ -71,10 +77,13 @@ class Network5KPClient(Client):
         fallback_date = parts[1] if len(parts) > 1 else ''
         capture = ctx.capture if ctx else None
 
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=capture), f'[{site.name}] detail {scene_url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(scene_url, FetchCtx(capture=capture), f'[{site.name}] detail {scene_url}')
+        if not details_page_elements:
             return None
-        return LoadedScene(url=scene_url, site=site, scene_date=fallback_date or None, capture=capture, sel=loaded['sel'], html=loaded['html'])
+
+        return LoadedScene(
+            url=scene_url, site=site, scene_date=fallback_date or None, capture=capture, sel=details_page_elements['sel'], html=details_page_elements['html']
+        )
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site
@@ -105,6 +114,7 @@ class Network5KPClient(Client):
             if 'Published' in txt:
                 release_date = iso_date(txt.replace('Published:', '').strip())
                 break
+
         metadata.release_date = release_date or fallback_date or None
 
         # Genres
@@ -116,20 +126,23 @@ class Network5KPClient(Client):
             href = first_attr(a, '@href')
             if not name or not href:
                 continue
-            page = await self.fetch_and_load(href, FetchCtx(capture=capture), f'GET {href} (actor)')
-            photo = first_attr(page['sel'], '(//img[contains(@class,"model-image")])[1]/@src') if page else ''
+
+            model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture), f'GET {href} (actor)')
+            photo = first_attr(model_page_elements['sel'], '(//img[contains(@class,"model-image")])[1]/@src') if model_page_elements else ''
             metadata.actors.append(ActorResult(name=name, photo_url=photo))
 
         # Posters
         for src in sel.xpath('//div[contains(@class,"gal")]//img/@src').getall():
             if src:
                 metadata.art.append(src)
+
         for page_num in (1, 2):
             photo_url = f'{scene_url.rstrip("/")}/photoset?page={page_num}'
-            page = await self.fetch_and_load(photo_url, FetchCtx(capture=capture), f'GET {photo_url}')
-            if not page:
+            model_page_elements = await self.fetch_and_load(photo_url, FetchCtx(capture=capture), f'GET {photo_url}')
+            if not model_page_elements:
                 continue
-            for src in page['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
+
+            for src in model_page_elements['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
                 if src and 'full' not in src:
                     metadata.art.append(src)
 

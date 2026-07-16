@@ -13,14 +13,15 @@ _DATE_FMT = '%B %d, %Y'
 
 
 class LoveHerFilmsClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[contains(@class,"item-video-overlay")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"item-video-overlay")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a)[1]/@title')
@@ -36,12 +37,14 @@ class LoveHerFilmsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//div[contains(@class,"main-info-left")]/h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"main-info-left")]/h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//p[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -53,25 +56,33 @@ class LoveHerFilmsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw, _DATE_FMT)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
+        if date:
+            metadata.release_date = iso_date(date, _DATE_FMT)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = self.dedup_strings([first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"video-tags")]/a')])
+        details_page_elements = scene.require_sel()
+
+        genres = self.dedup_strings(
+            [first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//div[contains(@class,"video-tags")]/a')]
+        )
         if 'Foot Sex' not in genres:
             genres.append('Foot Sex')
-        cast = len(sel.xpath('//div[contains(@class,"featured")]/a'))
+
+        cast = len(details_page_elements.xpath('//div[contains(@class,"featured")]/a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -79,23 +90,25 @@ class LoveHerFilmsClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in sel.xpath('//div[contains(@class,"featured")]/a'):
-            name = first_attr(a, 'normalize-space(.)')
-            href = first_attr(a, '@href')
-            if name:
-                refs.append((name, absolute_url(href, base) if href else ''))
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"featured")]/a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
+        images = self.image_collector(lambda image: absolute_url(image, base))
         xpaths = (
             '//meta[@property="og:image"]/@content',
             '//div[contains(@class,"photos")]//a//img/@src',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list']

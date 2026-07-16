@@ -19,34 +19,38 @@ class PornProsClient(Client):
         data = await self.fetch_json(f'{base}/api/releases/{slug}', FetchCtx(capture=capture), headers=headers)
         if isinstance(data, dict) and data.get('title'):
             return data
+
         # Legacy fallback: a single '-' often needs doubling to hit the release.
         if '-' in slug and '--' not in slug:
             head, _sep, tail = slug.rpartition('-')
             data = await self.fetch_json(f'{base}/api/releases/{head}--{tail}', FetchCtx(capture=capture), headers=headers)
             if isinstance(data, dict) and data.get('title'):
                 return data
+
         return None
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        title = ctx.title
-        if ctx.site_info.name != 'Casting Couch-X':
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        title = search_data.title
+        if search_data.site_info.name != 'Casting Couch-X':
             title = ' '.join(title.split(' ')[2:])
             if title.startswith('and '):
                 title = ' '.join(title.split(' ')[3:])
 
         slug = _query_slug(title)
-        release = await self._release(base, slug, ctx.capture)
+        release = await self._release(base, slug, search_data.capture)
         if not release:
             return
+
         date = iso_date(release.get('releasedAt') or '')
+
         results.append(
             build_search_result(
                 title=(release.get('title') or '').strip(),
                 scene_url=f'{base}/api/releases/{slug}',
                 query=title,
                 display_date=date,
-                search_date=ctx.search_date,
+                search_date=search_data.search_date,
                 cur_id=pack_cur_id([slug, date or '']),
             )
         )
@@ -61,6 +65,7 @@ class PornProsClient(Client):
         release = await self._release(base, slug, ctx.capture if ctx else None)
         if not release:
             return None
+
         return LoadedScene(
             url=f'{base}/api/releases/{slug}', site=site, scene_date=scene_date or None, capture=ctx.capture if ctx else None, sel=None, html='', extra=release
         )
@@ -75,6 +80,7 @@ class PornProsClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         summary = str(self._r(scene).get('description') or '').strip()
+
         metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -88,15 +94,20 @@ class PornProsClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         t = self._tagline(scene)
+
         metadata.collections = [t] if t else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = iso_date(self._r(scene).get('releasedAt') or '')
+
         metadata.release_date = d or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = self.dedup_strings(
-            [str(g).replace('_', ' ').replace('-', ' ').strip() for g in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]]
+            [
+                str(genre_name).replace('_', ' ').replace('-', ' ').strip()
+                for genre_name in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
+            ]
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -105,18 +116,19 @@ class PornProsClient(Client):
         for a in self._r(scene).get('actors') or []:
             raw = str(a.get('name') or '').strip()
             names = [p.strip() for p in raw.split('&')] if '&' in raw else [raw]
-            for name in names:
-                if name and name not in seen:
-                    seen.add(name)
-                    actors.append(ActorResult(name=name))
+            for actor_name in names:
+                if actor_name and actor_name not in seen:
+                    seen.add(actor_name)
+                    actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         # Full URLs kept incl. query strings (image-URL policy); legacy '?'-strip dropped.
         release = self._r(scene)
-        coll = self.image_collector()
-        coll['push'](release.get('posterUrl'))
+        images = self.image_collector()
+        images['push'](release.get('posterUrl'))
         for img in release.get('thumbUrls') or []:
-            coll['push'](img)
-        images: list[str] = coll['list']
-        metadata.art = images
+            images['push'](img)
+
+        metadata.art = images['list']

@@ -15,34 +15,39 @@ _STUDIO_XP = f'//a[contains(@class,"{_STUDIO_CLASS}")]'
 
 
 class SexLikeRealClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = '-'.join(ctx.title.strip().lower().split())
-        direct_url = base + ctx.site_info.search_path.replace('{query}', slug)
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = '-'.join(search_data.title.strip().lower().split())
+        direct_url = base + search_data.site_info.search_path.replace('{query}', slug)
 
         seen = {direct_url}
         candidates = [direct_url]
-        for u in await web_search_urls(ctx.title, ctx.site_info, include=['/scenes/']):
+        for u in await web_search_urls(search_data.title, search_data.site_info, include=['/scenes/']):
             if u not in seen:
                 seen.add(u)
                 candidates.append(u)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title = first_text(loaded['sel'], '//h1')
+
+            title = first_text(details_page_elements['sel'], '//h1')
             if not title:
                 continue
-            raw = first_attr(loaded['sel'], '(//time/@datetime)[1]')
+
+            raw = first_attr(details_page_elements['sel'], '(//time/@datetime)[1]')
             date = iso_date(raw) if raw else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=100 if scene_url == direct_url else None,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
@@ -51,58 +56,77 @@ class SexLikeRealClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h1')
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h1')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         parts: list[str] = []
-        for p in sel.xpath(f'//p[contains(@class,"{_SUMMARY_CLASS}")]'):
+        for p in details_page_elements.xpath(f'//p[contains(@class,"{_SUMMARY_CLASS}")]'):
             t = first_attr(p, 'normalize-space(.)')
             if t and 'Video specifications' not in t:
                 parts.append(t)
+
         metadata.summary = '\n'.join(parts)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.studio = first_text(sel, _STUDIO_XP)
+        details_page_elements = scene.require_sel()
+
+        metadata.studio = first_text(details_page_elements, _STUDIO_XP)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        studio = first_text(sel, _STUDIO_XP)
+        details_page_elements = scene.require_sel()
+
+        studio = first_text(details_page_elements, _STUDIO_XP)
+
         metadata.collections = [studio] if studio else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath(f'(//p[contains(@class,"{_DATE_CLASS}")]//time/@datetime)[1]').get() or '').strip()
-        metadata.release_date = iso_date(raw) if raw else None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath(f'(//p[contains(@class,"{_DATE_CLASS}")]//time/@datetime)[1]').get() or '').strip()
+
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in sel.xpath(f'//a[contains(@class,"{_GENRE_CLASS}")]//span')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in details_page_elements.xpath(f'//a[contains(@class,"{_GENRE_CLASS}")]//span')]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath(f'//a[contains(@class,"{_ACTOR_CLASS}")]'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if not name or not href or name in seen:
+        for actor_link in details_page_elements.xpath(f'//a[contains(@class,"{_ACTOR_CLASS}")]'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if not actor_name or not href or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             actor_url = absolute_url(href, scene.site.base_url)
-            actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            src = (actor_page['sel'].xpath(f'(//div[contains(@class,"{_ACTOR_AVATAR_CLASS}")]//img/@src)[1]').get() or '').strip() if actor_page else ''
+            model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+            src = (
+                (model_page_elements['sel'].xpath(f'(//div[contains(@class,"{_ACTOR_AVATAR_CLASS}")]//img/@src)[1]').get() or '').strip()
+                if model_page_elements
+                else ''
+            )
             photo = (absolute_url(src, scene.site.base_url)) if src else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: (raw or '').strip().replace('.webp', '.jpg'))
-        coll['push'](sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        for raw in sel.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
-            coll['push'](raw)
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: (image or '').strip().replace('.webp', '.jpg'))
+        images['push'](details_page_elements.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        for image_url in details_page_elements.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
+            images['push'](image_url)
+
+        metadata.art = images['list']

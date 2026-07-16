@@ -19,35 +19,48 @@ _PLAYLIST_THUMB_RE = re.compile(r"""<media:thumbnail[^>]*\burl=["']([^"']+)["']"
 
 
 class DirtyHardDriveClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         if not web_search_available():
             return
-        host = httpx2.URL(ctx.site_info.base_url).host
+
+        host = httpx2.URL(search_data.site_info.base_url).host
         try:
-            candidates = await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS, url_ends_with=_URL_ENDS_WITH)
+            candidates = await web_search_filtered(
+                SearchOptions(query=search_data.title, site=host, num=10), url_contains=_URL_CONTAINS, url_ends_with=_URL_ENDS_WITH
+            )
         except Exception:  # noqa: BLE001 - search is best-effort
             return
 
         for url in candidates:
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')
+            if not details_page_elements:
                 continue
-            title = (loaded['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
+
             results.append(
-                build_search_result(title=title, scene_url=url, query=ctx.title, search_date=ctx.search_date, score=title_distance_score(ctx.title, title))
+                build_search_result(
+                    title=title,
+                    scene_url=url,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    score=title_distance_score(search_data.title, title),
+                )
             )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[@id="video-page-desc"])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[@id="video-page-desc"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -62,10 +75,12 @@ class DirtyHardDriveClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        spans = sel.xpath('//div[@id="video-specs"]//span')
+        details_page_elements = scene.require_sel()
+
+        spans = details_page_elements.xpath('//div[@id="video-specs"]//span')
         if not spans:
             return
+
         last = spans[-1]
         actor_name = first_attr(last)
         href = (last.xpath('(.//a)[1]/@href').get() or last.xpath('@href').get() or '').strip()
@@ -73,21 +88,24 @@ class DirtyHardDriveClient(Client):
         if not actor_name and href:
             tail = href.split('/')[-1]
             actor_name = re.sub(r'\.html$', '', tail, flags=re.IGNORECASE).replace('pornstar_', '', 1).replace('_', ' ').strip().title()
+
         if not actor_name:
             return
 
         photo = ''
         if href:
-            page = await self.fetch_and_load(absolute_url(href, scene.site.base_url), None, f'[{scene.site.name}] actor')
-            if page:
-                raw = first_attr(page['sel'], '(//div[@id="global-model-img"]//img)[1]/@src')
+            model_page_elements = await self.fetch_and_load(absolute_url(href, scene.site.base_url), None, f'[{scene.site.name}] actor')
+            if model_page_elements:
+                raw = first_attr(model_page_elements['sel'], '(//div[@id="global-model-img"]//img)[1]/@src')
                 if raw:
                     photo = absolute_url(raw, scene.site.base_url)
+
         metadata.actors = [ActorResult(name=actor_name, photo_url=photo)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.html:
             return
+
         m = _PLAYLIST_RE.search(scene.html)
         if m:
             playlist_url = absolute_url(m.group(1), scene.site.base_url)

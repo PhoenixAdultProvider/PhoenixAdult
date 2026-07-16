@@ -20,59 +20,66 @@ def _title_of(sel: Selector) -> str:
 
 
 class Kin8tengokuClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
-        keyword = ctx.title.strip()
-        if ctx.scene_id:
-            direct_url = f'{base}/moviepages/{ctx.scene_id}/index.html'
-            loaded = await self.fetch_and_load(direct_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {direct_url}')
-            raw_title = _title_of(loaded['sel']) if loaded else ''
+        keyword = search_data.title.strip()
+        if search_data.scene_id:
+            direct_url = f'{base}/moviepages/{search_data.scene_id}/index.html'
+            search_results = await self.fetch_and_load(
+                direct_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {direct_url}'
+            )
+            raw_title = _title_of(search_results['sel']) if search_results else ''
             if raw_title:
-                date = _table_value(loaded['sel'], 'Date') if loaded else ''
+                date = _table_value(search_results['sel'], 'Date') if search_results else ''
                 seen.add(direct_url)
+
                 results.append(
                     build_search_result(
                         title=raw_title,
                         scene_url=direct_url,
-                        query=ctx.title,
+                        query=search_data.title,
                         display_date=iso_date(date) if date else None,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         score=100,
-                        cur_id=pack_cur_id([x for x in (direct_url, (iso_date(date) if date else ctx.search_date)) if x]),
+                        cur_id=pack_cur_id([x for x in (direct_url, (iso_date(date) if date else search_data.search_date)) if x]),
                     )
                 )
 
-        search_url = base + ctx.site_info.search_path + quote(keyword or ctx.title).replace('%20', '+')
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
-        if loaded:
-            for card in loaded['sel'].xpath('//div[contains(@class,"movie_list")]'):
-                href = first_attr(card, '(.//div[contains(@class,"movielisttext03")]//a/@href)[1]')
+        search_url = base + search_data.site_info.search_path + quote(keyword or search_data.title).replace('%20', '+')
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
+        if search_results:
+            for search_result in search_results['sel'].xpath('//div[contains(@class,"movie_list")]'):
+                href = first_attr(search_result, '(.//div[contains(@class,"movielisttext03")]//a/@href)[1]')
                 if not href:
                     continue
+
                 scene_url = href if href.startswith('http') else base + href
                 if scene_url in seen:
                     continue
+
                 seen.add(scene_url)
-                raw_title = first_text(card, './/div[contains(@class,"movielisttext02")]')
+                raw_title = first_text(search_result, './/div[contains(@class,"movielisttext02")]')
                 if not raw_title:
                     continue
+
                 results.append(
                     build_search_result(
                         title=raw_title,
                         scene_url=scene_url,
-                        query=keyword or ctx.title,
-                        search_date=ctx.search_date,
-                        cur_id=pack_cur_id([x for x in (scene_url, ctx.search_date) if x]),
+                        query=keyword or search_data.title,
+                        search_date=search_data.search_date,
+                        cur_id=pack_cur_id([x for x in (scene_url, search_data.search_date) if x]),
                     )
                 )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = _title_of(sel) or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = _title_of(details_page_elements) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -81,22 +88,30 @@ class Kin8tengokuClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = _table_value(sel, 'Date')
-        metadata.release_date = (iso_date(raw, '%Y-%m-%d') if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = _table_value(details_page_elements, 'Date')
+
+        metadata.release_date = (iso_date(date, '%Y-%m-%d') if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//tr[contains(.,"Category")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//tr[contains(.,"Category")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath('//tr[contains(.,"Model")]//a'):
-            name = first_attr(a, 'normalize-space(.)')
-            if name and name not in seen:
-                seen.add(name)
-                actors.append(ActorResult(name=name))
+        for actor_link in details_page_elements.xpath('//tr[contains(.,"Model")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if actor_name and actor_name not in seen:
+                seen.add(actor_name)
+                actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors

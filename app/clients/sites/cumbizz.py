@@ -8,16 +8,20 @@ from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class CumbizzClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = '-'.join(ctx.title.strip().split())
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = '-'.join(search_data.title.strip().split())
         scene_url = f'{base}/film/{slug}'
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
-        if not loaded:
+        direct_page_elements = await self.fetch_and_load(
+            scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
+        )
+        if not direct_page_elements:
             return None
-        if not first_text(loaded['sel'], '//h1[contains(@class,"har_h1_title")]'):
+
+        if not first_text(direct_page_elements['sel'], '//h1[contains(@class,"har_h1_title")]'):
             return None
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=[loaded['sel']], capture=ctx.capture, extra=scene_url)
+
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=[direct_page_elements['sel']], capture=search_data.capture, extra=scene_url)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, '//h1[contains(@class,"har_h1_title")]')
@@ -31,12 +35,14 @@ class CumbizzClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h1[contains(@class,"har_h1_title")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h1[contains(@class,"har_h1_title")]') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"container") and contains(@class,"text-center")]//h2') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"container") and contains(@class,"text-center")]//h2') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Cumbizz'
@@ -48,23 +54,32 @@ class CumbizzClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for a in sel.xpath('//span[contains(@class,"label-primary")]/a'):
-            g = first_attr(a, 'normalize-space(.)').lower()
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//span[contains(@class,"label-primary")]/a'):
+            genre_name = first_attr(genre_link, 'normalize-space(.)').lower()
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=a.xpath('normalize-space(.)').get() or '') for a in sel.xpath('//div[contains(@class,"breadcrumbs")]/a')]
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
+            for actor_link in details_page_elements.xpath('//div[contains(@class,"breadcrumbs")]/a')
+        ]
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
-        coll['push'](sel.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
-        for el in sel.xpath('//img[contains(@class,"vidgal")]'):
-            coll['push'](el.xpath('@src').get() or '')
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
+        images['push'](details_page_elements.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
+        for el in details_page_elements.xpath('//img[contains(@class,"vidgal")]'):
+            images['push'](el.xpath('@src').get() or '')
+
+        metadata.art = images['list']

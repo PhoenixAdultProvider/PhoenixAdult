@@ -26,38 +26,41 @@ def _slug(s: str) -> str:
 
 
 class MyDirtyHobbyClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        search_url = base + ctx.site_info.search_path
-        lang = _primary_lang(ctx.language) or 'en'
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        search_url = base + search_data.site_info.search_path
+        lang = _primary_lang(search_data.language) or 'en'
         try:
             r = await self.http.post(
                 search_url,
-                json={'country': 'us', 'keyword': ctx.title, 'user_language': lang},
+                json={'country': 'us', 'keyword': search_data.title, 'user_language': lang},
                 headers={'Content-Type': 'application/json', 'Accept-Language': lang},
             )
             items = (r.json() or {}).get('items', [])
         except (httpx2.HTTPError, ValueError) as err:
-            logger.warn(ctx.site_info.name, f'search POST threw: {err}')
+            logger.warn(search_data.site_info.name, f'search POST threw: {err}')
             return
 
         for item in items:
             if item.get('contentType') != 'video':
                 continue
+
             title = str(item.get('title') or '')
             if not title:
                 continue
+
             scene_url = f'{base}/profil/{item.get("u_id")}-{item.get("nick")}/videos/{item.get("uv_id")}-{_slug(title)}'
             date = None
             if item.get('onlineAt'):
                 date = iso_date(str(item['onlineAt']), '%d/%m/%y') or iso_date(str(item.get('latestPictureChange') or '').split('T')[0])
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -76,24 +79,29 @@ class MyDirtyHobbyClient(Client):
             fetch_url = url.replace('://www.', f'://{lang}.')
             headers['Accept-Language'] = lang
 
-        loaded = await self.fetch_and_load(fetch_url, FetchCtx(capture=ctx.capture if ctx else None, headers=headers), f'[{site.name}] detail {fetch_url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(
+            fetch_url, FetchCtx(capture=ctx.capture if ctx else None, headers=headers), f'[{site.name}] detail {fetch_url}'
+        )
+        if not details_page_elements:
             return None
-        script_text = loaded['sel'].xpath('string((//div[./div[@id="profile_page"]]/script)[1])').get() or ''
+
+        script_text = details_page_elements['sel'].xpath('string((//div[./div[@id="profile_page"]]/script)[1])').get() or ''
         m = _JSON_RE.search(script_text)
         if not m:
             return None
+
         try:
             extra = json.loads(m.group(0))
         except (ValueError, TypeError):
             return None
+
         return LoadedScene(
             url=fetch_url,
             site=site,
             scene_date=fallback_date or None,
             capture=ctx.capture if ctx else None,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
             extra=extra,
         )
 
@@ -103,6 +111,7 @@ class MyDirtyHobbyClient(Client):
     def _avatar(self, scene: LoadedScene) -> dict[str, Any]:
         if not isinstance(scene.extra, dict):
             return {}
+
         return (scene.extra.get('profileHeader') or {}).get('profileAvatar') or {}
 
     # ── Detail field hooks ────────────────────────────────────────────────────
@@ -121,26 +130,32 @@ class MyDirtyHobbyClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = (self._avatar(scene).get('title') or '').strip()
+
         metadata.collections = [name] if name else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        raw = ((self._content(scene).get('subtitle') or {}).get('text') or '').strip()
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        date = ((self._content(scene).get('subtitle') or {}).get('text') or '').strip()
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         items = (self._content(scene).get('categories') or {}).get('items') or []
         values: list[str | None] = [(it.get('text') or '').strip().lower() for it in items]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         avatar = self._avatar(scene)
-        name = (avatar.get('title') or '').strip()
-        if not name:
+        actor_name = (avatar.get('title') or '').strip()
+        if not actor_name:
             return
+
         photo = ((avatar.get('thumbImg') or {}).get('src') or '').strip()
-        metadata.actors = [ActorResult(name=name, photo_url=photo)]
+
+        metadata.actors = [ActorResult(name=actor_name, photo_url=photo)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         src = ((self._content(scene).get('videoNotPurchased') or {}).get('thumbnail') or {}).get('src')
         src = (src or '').strip()
+
         metadata.art = [src] if src else []

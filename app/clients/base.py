@@ -240,11 +240,11 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
     # ── Search orchestrator ─────────────────────────────────────────────────────
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         """Append SearchResults for `ctx` to `results`. The default drives the search-context
         loader + per-row builder and de-duplicates by scene_url; wholesale clients override
         this and append directly. The caller owns the list and reads it back."""
-        loaded = await self.load_search_context(ctx)
+        loaded = await self.load_search_context(search_data)
         if not loaded:
             return
         seen = {r.scene_url for r in results if r.scene_url}
@@ -298,7 +298,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                 break
         return out
 
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         return None
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
@@ -408,8 +408,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         page that fails to load — yields an ActorResult with an empty photo, never an error."""
         seen: set[str] = set()
         unique: list[tuple[str, str]] = []
-        for name, href in refs:
-            clean = (name or '').strip()
+        for actor_name, href in refs:
+            clean = (actor_name or '').strip()
             if clean and clean not in seen:
                 seen.add(clean)
                 unique.append((clean, href))
@@ -420,12 +420,12 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             photo = ''
             if href:
                 async with sem:
-                    loaded = await self.fetch_and_load(href, FetchCtx(capture=capture), f'[{label}] {name}')
-                if loaded:
-                    photo = extract_photo(loaded['sel'])
+                    model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture), f'[{label}] {name}')
+                if model_page_elements:
+                    photo = extract_photo(model_page_elements['sel'])
             return ActorResult(name=name, photo_url=photo)
 
-        return list(await asyncio.gather(*(_resolve(name, href) for name, href in unique)))
+        return list(await asyncio.gather(*(_resolve(actor_name, href) for actor_name, href in unique)))
 
     async def enrich_from_data18(
         self,
@@ -518,8 +518,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else None
         capture = ctx.capture if ctx else None
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {url}')
+        if not details_page_elements:
             logger.warn(site.name, f'load_scene_context: {url} failed')
             return None
         return LoadedScene(
@@ -527,8 +527,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             site=site,
             scene_date=fallback_date or None,
             capture=capture,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
             subsite=ctx.subsite if ctx else None,
             language=ctx.language if ctx else None,
         )

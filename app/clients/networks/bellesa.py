@@ -18,46 +18,58 @@ class BellesaClient(Client):
         loaded = await self.fetch_and_load(f'{base}{_API}/{path}', ctx, f'[Bellesa] {path}')
         if not loaded:
             return None
+
         body = loaded['sel'].xpath('(//body)[1]').xpath('string(.)').get() or ''
         try:
             return json.loads(body)
         except (ValueError, TypeError):
             return None
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = ctx.scene_id if ctx.scene_id and ctx.scene_id.isdigit() else ''
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_id = search_data.scene_id if search_data.scene_id and search_data.scene_id.isdigit() else ''
 
         if scene_id:
-            data = await self._get_json(base, f'videos?filter[id]={scene_id}', ctx.capture)
-            video = data[0] if isinstance(data, list) and data else None
+            search_results = await self._get_json(base, f'videos?filter[id]={scene_id}', search_data.capture)
+            video = search_results[0] if isinstance(search_results, list) and search_results else None
             if not isinstance(video, dict) or not video.get('title'):
                 return
+
             date = epoch_date(video.get('posted_on'))
+
             results.append(
                 build_search_result(
                     title=str(video['title']).strip(),
                     scene_url=str(video.get('id')),
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=100,
                     cur_id=pack_cur_id([str(video.get('id')), date or '']),
                 )
             )
             return
 
-        data = await self._get_json(base, f'search?limit=40&order[relevance]=DESC&q={quote(ctx.title)}&providers=bellesa', ctx.capture)
-        videos = data.get('videos') or [] if isinstance(data, dict) else []
+        search_results = await self._get_json(
+            base, f'search?limit=40&order[relevance]=DESC&q={quote(search_data.title)}&providers=bellesa', search_data.capture
+        )
+        videos = search_results.get('videos') or [] if isinstance(search_results, dict) else []
         for v in videos:
             title = str(v.get('title') or '').strip()
             vid = v.get('id')
             if not title or vid is None:
                 continue
+
             date = epoch_date(v.get('posted_on'))
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=str(vid), query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([str(vid), date or ''])
+                    title=title,
+                    scene_url=str(vid),
+                    query=search_data.title,
+                    display_date=date,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([str(vid), date or '']),
                 )
             )
 
@@ -66,10 +78,11 @@ class BellesaClient(Client):
         pipe = payload.find('|')
         scene_id = payload[:pipe] if pipe >= 0 else payload
         scene_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        data = await self._get_json(base, f'videos?filter[id]={scene_id}', ctx.capture if ctx else None)
-        video = data[0] if isinstance(data, list) and data else None
+        details_page_elements = await self._get_json(base, f'videos?filter[id]={scene_id}', ctx.capture if ctx else None)
+        video = details_page_elements[0] if isinstance(details_page_elements, list) and details_page_elements else None
         if not isinstance(video, dict):
             return None
+
         return LoadedScene(
             url=f'{base}{_API}/videos?filter[id]={scene_id}',
             site=site,
@@ -103,6 +116,7 @@ class BellesaClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         t = self._tagline(scene)
+
         metadata.collections = [t] if t else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -112,6 +126,7 @@ class BellesaClient(Client):
         raw = self._v(scene).get('tags')
         tags = raw.split(',') if isinstance(raw, str) else (raw or [])
         genres = [str(t).strip() for t in tags if str(t).strip()]
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -120,10 +135,11 @@ class BellesaClient(Client):
             for p in (self._v(scene).get('performers') or [])
             if str(p.get('name') or '').strip()
         ]
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        coll = self.image_collector()
-        coll['push'](self._v(scene).get('image'))
-        images: list[str] = coll['list']
-        metadata.art = images or []
+        images = self.image_collector()
+        images['push'](self._v(scene).get('image'))
+
+        metadata.art = images['list'] or []

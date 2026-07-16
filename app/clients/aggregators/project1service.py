@@ -29,12 +29,14 @@ def _parse_jwt_exp(token: str) -> int | None:
     parts = token.split('.')
     if len(parts) < 2:
         return None
+
     payload = parts[1]
     payload += '=' * (-len(payload) % 4)
     try:
         data = json.loads(base64.urlsafe_b64decode(payload))
     except (ValueError, binascii.Error):
         return None
+
     exp = data.get('exp')
     return exp if isinstance(exp, int) else None
 
@@ -46,10 +48,12 @@ def _normalize(s: str) -> str:
 def _service_url(upstream: str | None, base: str) -> str | None:
     if not upstream:
         return None
+
     after_eq = upstream.split('=')[-1]
     after_slash = after_eq[after_eq.index('/') + 1 :] if '/' in after_eq else after_eq
     if not after_slash:
         return None
+
     return f'{base.rstrip("/")}/{after_slash}'
 
 
@@ -59,12 +63,15 @@ def _best_image_url(release: dict[str, Any], base: str) -> str | None:
         bucket = images.get(kind)
         if not isinstance(bucket, dict):
             continue
+
         for k in sorted(bucket):
             if not k.isdigit():
                 continue
+
             u = _service_url(((bucket[k] or {}).get('xx') or {}).get('url'), base)
             if u:
                 return u
+
     return None
 
 
@@ -93,40 +100,44 @@ class Project1ServiceClient(Client):
                         if m:
                             token = m.group(1)
                             break
+
             if not token:
                 return None
+
             return token, float(_parse_jwt_exp(token) or int(time.time()) + 3600)
 
         return await _TOKENS.get(host, _fetch)
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        token = await self._get_token(ctx.site_info)
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        token = await self._get_token(search_data.site_info)
         if not token:
-            logger.warn(ctx.site_info.name, 'no Instance token; aborting search')
+            logger.warn(search_data.site_info.name, 'no Instance token; aborting search')
             return
+
         headers = {'Instance': token}
 
         scene_id: str | None = None
-        q = ctx.title.strip()
+        q = search_data.title.strip()
         first_word = q.split()[0] if q.split() else ''
         if first_word.isdigit() and int(first_word) >= 1000000:
             scene_id = first_word
             q = q.replace(first_word, '', 1).strip()
 
-        match_target_key = _normalize(ctx.search_site or ctx.site_info.name)
+        match_target_key = _normalize(search_data.search_site or search_data.site_info.name)
         forced_sub = _FORCED_SUBSITES.get(match_target_key)
         seen: set[str] = set()
 
         if scene_id:
-            await self._search_phase(ctx, headers, f'id={quote(scene_id)}', scene_id, q, match_target_key, forced_sub, results, seen)
+            await self._search_phase(search_data, headers, f'id={quote(scene_id)}', scene_id, q, match_target_key, forced_sub, results, seen)
             if any(r.score == 100 for r in results):
                 return
+
         if q or not scene_id:
-            await self._search_phase(ctx, headers, f'search={quote(q)}', scene_id, q, match_target_key, forced_sub, results, seen)
+            await self._search_phase(search_data, headers, f'search={quote(q)}', scene_id, q, match_target_key, forced_sub, results, seen)
 
     async def _search_phase(
         self,
-        ctx: SearchContext,
+        search_data: SearchContext,
         headers: dict[str, str],
         query_param: str,
         scene_id: str | None,
@@ -139,12 +150,13 @@ class Project1ServiceClient(Client):
         for type_ in _SEARCH_TYPES:
             params = f'type={type_}&{query_param}'
             url = f'{_DEFAULT_API_BASE}/v2/releases?{params}'
-            body = await self.fetch_json(url, FetchCtx(capture=ctx.capture), headers=headers, label=f'GET {url}')
-            releases = body.get('result') or [] if isinstance(body, dict) else []
+            search_results = await self.fetch_json(url, FetchCtx(capture=search_data.capture), headers=headers, label=f'GET {url}')
+            releases = search_results.get('result') or [] if isinstance(search_results, dict) else []
 
             for r in releases:
                 if not isinstance(r, dict):
                     continue
+
                 title = (r.get('title') or '').replace('�', "'")
                 cur = str(r.get('id'))
                 colls = r.get('collections') or []
@@ -155,28 +167,30 @@ class Project1ServiceClient(Client):
                     score: float = 100
                 elif scene_id:
                     score = sceneid_distance_score(scene_id, cur)
-                elif ctx.search_date and release_date:
-                    score = date_distance_score(ctx.search_date, release_date)
+                elif search_data.search_date and release_date:
+                    score = date_distance_score(search_data.search_date, release_date)
                 else:
                     score = title_distance_score(q, title)
 
                 if type_ == 'trailer':
                     score -= 10
+
                 if sub_site and _normalize(sub_site) != match_target_key:
                     score -= 10
 
                 composite = f'{cur}|{type_}|{release_date}' if release_date else f'{cur}|{type_}'
                 if composite in seen:
                     continue
+
                 seen.add(composite)
-                result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None)
+                result_sub = forced_sub or (sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None)
 
                 results.append(
                     build_search_result(
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
                         scene_url=url,
                         query=q,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         display_date=release_date,
                         score=score,
                         cur_id=pack_cur_id([composite]),
@@ -191,17 +205,20 @@ class Project1ServiceClient(Client):
         scene_type = parts[1] if len(parts) > 1 else 'scene'
         if not scene_id:
             return None
+
         token = await self._get_token(site)
         if not token:
             return None
+
         headers = {'Instance': token}
         capture = ctx.capture if ctx else None
 
         url = f'{_DEFAULT_API_BASE}/v2/releases?type={quote(scene_type)}&id={quote(scene_id)}'
-        body = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
-        releases = body.get('result') or [] if isinstance(body, dict) else []
+        details_page_elements = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
+        releases = details_page_elements.get('result') or [] if isinstance(details_page_elements, dict) else []
         if not releases or not isinstance(releases[0], dict):
             return None
+
         extra: _SceneExtra = {'detail': releases[0], 'headers': headers}
         return LoadedScene(url=url, site=site, capture=capture, extra=extra, subsite=ctx.subsite if ctx else None)
 
@@ -238,6 +255,7 @@ class Project1ServiceClient(Client):
         for a in detail.get('actors') or []:
             if not isinstance(a, dict) or a.get('id') is None:
                 continue
+
             fetched = await self._fetch_actor(int(a['id']), headers, capture)
             if fetched:
                 metadata.actors.append(fetched)
@@ -247,9 +265,11 @@ class Project1ServiceClient(Client):
             bucket = (detail.get('images') or {}).get(kind)
             if not isinstance(bucket, dict):
                 continue
+
             for k in sorted(bucket):
                 if not k.isdigit():
                     continue
+
                 u = _service_url(((bucket[k] or {}).get('xx') or {}).get('url'), _DEFAULT_IMAGE_BASE)
                 if u:
                     metadata.art.append(u)
@@ -261,11 +281,12 @@ class Project1ServiceClient(Client):
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'
-        body = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
+        model_page_elements = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
 
-        results = body.get('result') or [] if isinstance(body, dict) else []
+        results = model_page_elements.get('result') or [] if isinstance(model_page_elements, dict) else []
         if not results or not isinstance(results[0], dict):
             return None
+
         a = results[0]
         photo = _service_url(((((a.get('images') or {}).get('profile') or {}).get('0') or {}).get('xs') or {}).get('url'), _DEFAULT_IMAGE_BASE) or ''
 

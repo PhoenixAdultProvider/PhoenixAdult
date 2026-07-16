@@ -25,40 +25,52 @@ def _tagline_from_title(raw: str) -> str:
     t = raw.strip()
     if '|' in t:
         return t.split('|')[1].strip()
+
     if '-' in t:
         return t.split('-')[0].strip()
+
     return t
 
 
 class HighTechVRClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_url = base + ctx.site_info.search_path.replace('{query}', slugify(ctx.title))
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_url = base + search_data.site_info.search_path.replace('{query}', slugify(search_data.title))
+        direct_page_elements = await self.fetch_and_load(
+            scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
+        )
+        if not direct_page_elements:
             return
-        title = (loaded['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
+        title = (direct_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not title:
             return
+
         results.append(
-            build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
+            build_search_result(
+                title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, score=100, cur_id=pack_cur_id([scene_url])
+            )
         )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        raw = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw) if raw else None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         p = _profile(scene.site.name)
-        metadata.summary = (sel.xpath(f'({p["summary"]})[1]').xpath('string(.)').get() or '').strip() or ''
+
+        metadata.summary = (details_page_elements.xpath(f'({p["summary"]})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -68,24 +80,30 @@ class HighTechVRClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._tagline(scene)
+
         metadata.collections = [tagline] if tagline else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         p = _profile(scene.site.name)
-        el = sel.xpath(f'({p["release_date"]})[1]')
-        raw = (el.xpath(f'@{p["date_attr"]}').get() if p['date_attr'] else el.xpath('string(.)').get()) or ''
-        raw = raw.strip()
-        metadata.release_date = iso_date(raw) if raw else None
+        el = details_page_elements.xpath(f'({p["release_date"]})[1]')
+        date = (el.xpath(f'@{p["date_attr"]}').get() if p['date_attr'] else el.xpath('string(.)').get()) or ''
+        date = date.strip()
+
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         p = _profile(scene.site.name)
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath(p['genres'])]
+        values: list[str | None] = [genre_link.xpath('string(.)').get() or '' for genre_link in details_page_elements.xpath(p['genres'])]
+
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         p = _profile(scene.site.name)
         base = scene.site.base_url.rstrip('/')
 
@@ -93,15 +111,17 @@ class HighTechVRClient(Client):
             return (sel.xpath(f'({p["actor_photo"]})[1]/@src').get() or '').strip()
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath(p['actors']):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if name:
-                refs.append((name, join_url(href, base) if href else ''))
+        for actor_link in details_page_elements.xpath(p['actors']):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name:
+                refs.append((actor_name, join_url(href, base) if href else ''))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         p = _profile(scene.site.name)
         is_sexbabes = scene.site.name == 'SexBabesVR'
         images: list[str] = []
@@ -109,14 +129,15 @@ class HighTechVRClient(Client):
         def push(raw: str) -> None:
             if not raw:
                 return
+
             url = _rewrite_sexbabes(raw) if is_sexbabes else raw
             if url.startswith('http') and url not in images:
                 images.append(url)
 
-        for el in sel.xpath(p['gallery']):
+        for el in details_page_elements.xpath(p['gallery']):
             push((el.xpath(f'@{p["gallery_attr"]}').get() or '').strip())
 
-        poster_el = sel.xpath(f'({p["poster"]})[1]')
+        poster_el = details_page_elements.xpath(f'({p["poster"]})[1]')
         if poster_el:
             poster_attr = first_attr(poster_el, '@poster')
             if poster_attr:
@@ -126,4 +147,5 @@ class HighTechVRClient(Client):
                 m = _STYLE_URL_RE.search(style)
                 if m:
                     push(m.group(1))
+
         metadata.art = images or []

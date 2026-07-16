@@ -17,35 +17,39 @@ def _cast_names(sel: Selector) -> list[str]:
 
 
 class LustomicClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_url = f'{base}{ctx.site_info.search_path.replace("{query}", ctx.encoded)}'
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_url = f'{base}{search_data.site_info.search_path.replace("{query}", search_data.encoded)}'
 
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] sceneID {scene_url}')
-        if not loaded:
+        search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] sceneID {scene_url}')
+        if not search_results:
             return
-        title = _sibling_text(loaded['sel'], 'Video Preview', 'p')
+
+        title = _sibling_text(search_results['sel'], 'Video Preview', 'p')
         if not title:
             return
+
         results.append(
             build_search_result(
                 title=title,
                 scene_url=scene_url,
-                query=ctx.title,
-                search_date=ctx.search_date,
-                cur_id=pack_cur_id([x for x in (scene_url, ctx.search_date) if x]),
+                query=search_data.title,
+                search_date=search_data.search_date,
+                cur_id=pack_cur_id([x for x in (scene_url, search_data.search_date) if x]),
             )
         )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = _sibling_text(sel, 'Video Preview', 'p') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = _sibling_text(details_page_elements, 'Video Preview', 'p') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = _sibling_text(sel, 'Video Description', 'div') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = _sibling_text(details_page_elements, 'Video Description', 'div') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Lustomic'
@@ -60,15 +64,18 @@ class LustomicClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        cast = len(_cast_names(sel))
+        details_page_elements = scene.require_sel()
+
+        cast = len(_cast_names(details_page_elements))
         if group := self.group_genre_for(cast):
             metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.actors = [ActorResult(name=name, photo_url='', gender='') for name in _cast_names(sel)]
+        details_page_elements = scene.require_sel()
+
+        metadata.actors = [ActorResult(name=actor_name, photo_url='', gender='') for actor_name in _cast_names(details_page_elements)]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.art = self.dedup_strings([first_attr(a, '@href') for a in sel.xpath('//a[contains(@href,"video_preview_images")]')])
+        details_page_elements = scene.require_sel()
+
+        metadata.art = self.dedup_strings([first_attr(a, '@href') for a in details_page_elements.xpath('//a[contains(@href,"video_preview_images")]')])

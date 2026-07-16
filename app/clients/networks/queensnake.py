@@ -16,31 +16,33 @@ class QueenSnakeClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'cLegalAge=true'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = ctx.title.strip().replace(' ', '-').lower()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = search_data.title.strip().replace(' ', '-').lower()
         search_url = f'{base}/previewmovie/{slug}/'
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
-        if not loaded:
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
+        if not search_results:
             return
 
-        pager = loaded['sel'].xpath('(//div[@class="pagerWrapper"]//a)[1]/@href').get() or ''
+        pager = search_results['sel'].xpath('(//div[@class="pagerWrapper"]//a)[1]/@href').get() or ''
         if '/previewmovies/0' in pager:
             return
 
-        for card in loaded['sel'].xpath('//div[@class="contentBlock"]'):
-            title = (card.xpath('(.//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip()
+        for search_result in search_results['sel'].xpath('//div[@class="contentBlock"]'):
+            title = (search_result.xpath('(.//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            raw_date = (card.xpath('(.//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
+
+            raw_date = (search_result.xpath('(.//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
             date = iso_date(raw_date, _DATE_FMT) if raw_date else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=search_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (search_url, date) if x]),
                 )
             )
@@ -48,12 +50,14 @@ class QueenSnakeClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[@class="contentPreviewDescription"])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[@class="contentPreviewDescription"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -62,35 +66,43 @@ class QueenSnakeClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
-        metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//span[@class="contentFileDate"])[1]').xpath('string(.)').get() or '').strip().split(' • ')[0]
+
+        metadata.release_date = (iso_date(date, _DATE_FMT) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = ['BDSM', 'S&M']
-        for a in sel.xpath('//div[@class="contentPreviewTags"]//a'):
-            g = first_attr(a, 'normalize-space(.)')
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//div[@class="contentPreviewTags"]//a'):
+            genre_name = first_attr(genre_link, 'normalize-space(.)')
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath('//div[@class="contentPreviewTags"]//a'):
-            name = first_attr(a, 'normalize-space(.)')
-            if not name or name in seen or not _is_qs_actor(name):
+        for actor_link in details_page_elements.xpath('//div[@class="contentPreviewTags"]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name or actor_name in seen or not _is_qs_actor(actor_name):
                 continue
-            seen.add(name)
-            actors.append(ActorResult(name=name))
+
+            seen.add(actor_name)
+            actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for src in sel.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
-            coll['push'](src)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for src in details_page_elements.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
+            images['push'](src)
+
+        metadata.art = images['list'] or []

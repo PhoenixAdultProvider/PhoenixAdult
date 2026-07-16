@@ -25,32 +25,39 @@ def _last_tour_page(sel: Selector) -> int:
     values = sel.xpath('//span[contains(@class,"bppindex")]//option[@value]')
     if not values:
         return 1
+
     text = values[-1].xpath('normalize-space(.)').get() or ''
     m = _NUM_RE.search(text)
     return max(int(m.group(1)), 1) if m else 1
 
 
 class JesseLoadsMonsterFacialsClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
 
         def tour_url(idx: int) -> str:
             return f'{base}/visitors/tour_{idx:02d}.html'
 
-        first = await self.fetch_and_load(tour_url(1), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {tour_url(1)}')
-        if not first:
+        first_page_elements = await self.fetch_and_load(tour_url(1), FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {tour_url(1)}')
+        if not first_page_elements:
             return
-        last_page = _last_tour_page(first['sel'])
+
+        last_page = _last_tour_page(first_page_elements['sel'])
 
         for idx in range(1, last_page + 1):
-            loaded = first if idx == 1 else await self.fetch_and_load(tour_url(idx), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {tour_url(idx)}')
+            loaded = (
+                first_page_elements
+                if idx == 1
+                else await self.fetch_and_load(tour_url(idx), FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {tour_url(idx)}')
+            )
             if not loaded:
                 break
-            saw_scene, exact_hit = self._collect_scenes(loaded['sel'], results, ctx)
+
+            saw_scene, exact_hit = self._collect_scenes(loaded['sel'], results, search_data)
             if not saw_scene or exact_hit:
                 break
 
-    def _collect_scenes(self, sel: Selector, results: list[SearchResult], ctx: SearchContext) -> tuple[bool, bool]:
+    def _collect_scenes(self, sel: Selector, results: list[SearchResult], search_data: SearchContext) -> tuple[bool, bool]:
         current_date = ''
         saw_scene = False
         exact_hit = False
@@ -60,12 +67,15 @@ class JesseLoadsMonsterFacialsClient(Client):
                 txt = node.xpath('normalize-space(.)').get() or ''
                 if 'Update' in txt:
                     current_date = iso_date(txt.split(':')[-1].strip(), '%m/%d/%Y') or ''
+
                 continue
+
             saw_scene = True
 
             summary = _WS_RE.sub(' ', node.xpath('normalize-space((.//td[@height="105" or @height="90"])[1])').get() or '').strip()
             if not summary:
                 continue
+
             poster = first_attr(node, '(.//img[contains(@src,"tour")][@width="400"]/@src)[1]')
             if not poster:
                 continue
@@ -80,18 +90,20 @@ class JesseLoadsMonsterFacialsClient(Client):
             actors = resolved or [raw_name]
             detail = {'poster': poster, 'releaseDate': current_date, 'actors': actors, 'summary': summary}
 
-            if ctx.search_date and current_date == ctx.search_date:
+            if search_data.search_date and current_date == search_data.search_date:
                 exact_hit = True
+
             results.append(
                 build_search_result(
                     title=' and '.join(actors),
                     scene_url=poster,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=current_date or None,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([json.dumps(detail)]),
                 )
             )
+
         return saw_scene, exact_hit
 
     # ── Detail (decoded from the curID JSON — no HTTP) ────────────────────────
@@ -101,6 +113,7 @@ class JesseLoadsMonsterFacialsClient(Client):
             extra = json.loads(payload)
         except (ValueError, TypeError):
             return None
+
         return LoadedScene(url=extra.get('poster', ''), site=site, extra=extra)
 
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
@@ -130,4 +143,5 @@ class JesseLoadsMonsterFacialsClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._data(scene).get('poster')
+
         metadata.art = [absolute_url(poster, scene.site.base_url)] if poster else []

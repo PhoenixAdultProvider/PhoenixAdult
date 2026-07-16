@@ -29,22 +29,24 @@ class BlurredMediaClient(Client):
         name = _SESSION_COOKIES.get(site.name)
         if not name:
             return None
+
         jar = await get_site_cookies(site.base_url)
         return f'{name}={jar[name]}' if jar.get(name) else None
 
     # ── Search (orchestrator) ───────────────────────────────────────────────────
 
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = re.sub(r'\s+', '+', ctx.title.strip())
-        url = base + ctx.site_info.search_path.replace('{query}', slug)
-        cookie = await self._session_cookie(ctx.site_info)
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = re.sub(r'\s+', '+', search_data.title.strip())
+        url = base + search_data.site_info.search_path.replace('{query}', slug)
+        cookie = await self._session_cookie(search_data.site_info)
         headers = {'Cookie': cookie} if cookie else None
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture, headers=headers), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture, headers=headers), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//article[contains(@class,"video grid-element")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture, sel=loaded['sel'])
+
+        sources = list(search_results['sel'].xpath('//article[contains(@class,"video grid-element")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture, sel=search_results['sel'])
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h3[contains(@class,"video__title")])[1]').xpath('string(.)').get() or '').strip()
@@ -63,29 +65,35 @@ class BlurredMediaClient(Client):
         cookie = await self._session_cookie(site)
         if not cookie:
             return await super().load_scene_context(payload, site, ctx)
+
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None, headers={'Cookie': cookie}), f'[{site.name}] detail {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, headers={'Cookie': cookie}), f'[{site.name}] detail {url}'
+        )
+        if not details_page_elements:
             return None
+
         return LoadedScene(
             url=url,
             site=site,
             scene_date=fallback or None,
             capture=ctx.capture if ctx else None,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
             art_cookie=cookie,
         )
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//section[@name="descriptionIntro"]/p)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//section[@name="descriptionIntro"]/p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -94,34 +102,44 @@ class BlurredMediaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//time[contains(@class,"video__date")])[1]/@datetime')
-        metadata.release_date = iso_date(raw) if raw else None
+        details_page_elements = scene.require_sel()
+
+        date = first_attr(details_page_elements, '(//time[contains(@class,"video__date")])[1]/@datetime')
+
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('string(.)').get() or '' for a in sel.xpath('//a[contains(@class,"video__tag")]')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('string(.)').get() or '' for genre_link in details_page_elements.xpath('//a[contains(@class,"video__tag")]')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         entries: list[ActorResult] = []
-        for fig in sel.xpath('//section[@name="modelsBio"]/article/figure'):
-            name = (fig.xpath('(.//p//a)[1]').xpath('string(.)').get() or '').strip()
+        for fig in details_page_elements.xpath('//section[@name="modelsBio"]/article/figure'):
+            actor_name = (fig.xpath('(.//p//a)[1]').xpath('string(.)').get() or '').strip()
             raw = first_attr(fig, '(.//img)[1]/@src')
-            entries.append(ActorResult(name=name, photo_url=absolute_url(raw, base) if raw else ''))
+            entries.append(ActorResult(name=actor_name, photo_url=absolute_url(raw, base) if raw else ''))
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
+        images = self.image_collector(lambda image: absolute_url(image, base))
         xpaths = (
             '//div[contains(@class,"loading-video")]//img/@src',
             '//ul[contains(@class,"thumbnails__gallery")]//li//a/@href',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        metadata.art = coll['list']
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list']

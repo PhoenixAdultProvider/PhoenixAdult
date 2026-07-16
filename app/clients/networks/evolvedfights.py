@@ -16,42 +16,49 @@ _DATE_FMT = '%m/%d/%Y'
 
 
 class EvolvedFightsClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = []
-        slug = slugify(ctx.title)
+        slug = slugify(search_data.title)
         if slug:
             candidates.append(f'{base}/{slug}.html')
 
         if web_search_available():
-            host = urlsplit(ctx.site_info.base_url).netloc
+            host = urlsplit(search_data.site_info.base_url).netloc
             try:
-                for url in await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS):
+                for url in await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains=_URL_CONTAINS):
                     if url not in candidates:
                         candidates.append(url)
             except Exception as err:  # noqa: BLE001 - search is best-effort
-                logger.debug(ctx.site_info.name, f'webSearch: {err}')
+                logger.debug(search_data.site_info.name, f'webSearch: {err}')
 
         for url in candidates:
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')
+            if not details_page_elements:
                 continue
-            title = (loaded['sel'].xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            raw = (loaded['sel'].xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+
+            raw = (details_page_elements['sel'].xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
             date_iso = iso_date(raw, _DATE_FMT) if raw else None
-            results.append(build_search_result(title=title, scene_url=url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
+
+            results.append(build_search_result(title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date))
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (
+            details_page_elements.xpath('(//span[contains(@class,"latest_update_description")])[1]').xpath('string(.)').get() or ''
+        ).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -63,17 +70,28 @@ class EvolvedFightsClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
-        metadata.release_date = (iso_date(raw, _DATE_FMT) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.release_date = (iso_date(date, _DATE_FMT) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//span[contains(@class,"tour_update_tags")]//a')) if g]
+        details_page_elements = scene.require_sel()
+
+        genres = [
+            genre_name
+            for genre_name in (
+                first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//span[contains(@class,"tour_update_tags")]//a')
+            )
+            if genre_name
+        ]
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -81,23 +99,27 @@ class EvolvedFightsClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for a in sel.xpath(
+        for actor_link in details_page_elements.xpath(
             '//div[contains(@class,"update_block_info") and contains(@class,"model_update_block_info")]//span[contains(@class,"tour_update_models")]//a'
         ):
-            name = first_attr(a, 'normalize-space(.)')
-            href = first_attr(a, '@href')
-            if name:
-                refs.append((name, absolute_url(href, base) if href else ''))
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//span[contains(@class,"model_update_thumb")]//img)[1]/@src0_4x')
+        details_page_elements = scene.require_sel()
+
+        raw = first_attr(details_page_elements, '(//span[contains(@class,"model_update_thumb")]//img)[1]/@src0_4x')
         if not raw:
             return
+
         poster = absolute_url(raw, scene.site.base_url)
         out = [poster]
         poster2 = poster.replace('0-4x', '1-4x')
         if poster2 != poster:
             out.append(poster2)
+
         metadata.art = out

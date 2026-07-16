@@ -38,25 +38,26 @@ class Strike3Client(GraphQLClient):
             delta = time.monotonic() - self._last_fetch
             if delta < _PACE_SECONDS:
                 await asyncio.sleep(_PACE_SECONDS - delta)
+
             self._last_fetch = time.monotonic()
             return await self.graphql(endpoint, query, variables, headers={'Referer': base_url}, capture_label=label, capture_sink=sink, use_bypass=True)
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        endpoint = f'{ctx.site_info.base_url.rstrip("/")}/graphql'
-        site_var = ctx.site_info.name.replace(' ', '').upper()
-        text = ctx.title.strip()
-        scene_id = ctx.scene_id if ctx.scene_id and len(ctx.scene_id) > 4 else ''
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        endpoint = f'{search_data.site_info.base_url.rstrip("/")}/graphql'
+        site_var = search_data.site_info.name.replace(' ', '').upper()
+        text = search_data.title.strip()
+        scene_id = search_data.scene_id if search_data.scene_id and len(search_data.scene_id) > 4 else ''
 
         if scene_id:
-            data = await self._gql(
+            direct_page_elements = await self._gql(
                 endpoint,
                 _SEARCH_ID_QUERY,
                 {'videoId': scene_id, 'site': site_var},
-                ctx.site_info.base_url,
-                f'[{ctx.site_info.name}] search id={scene_id}',
-                ctx.capture,
+                search_data.site_info.base_url,
+                f'[{search_data.site_info.name}] search id={scene_id}',
+                search_data.capture,
             )
-            v = data.get('findOneVideo') if isinstance(data, dict) else None
+            v = direct_page_elements.get('findOneVideo') if isinstance(direct_page_elements, dict) else None
             if isinstance(v, dict) and v.get('slug') and v.get('title'):
                 results.append(
                     build_search_result(
@@ -64,33 +65,35 @@ class Strike3Client(GraphQLClient):
                         scene_url=v['slug'],
                         query=text,
                         display_date=iso_date(v.get('releaseDate') or ''),
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         score=100 if str(v.get('videoId')) == scene_id else None,
                         cur_id=pack_cur_id([v['slug']]),
                     )
                 )
+
             return
 
-        data = await self._gql(
+        search_results = await self._gql(
             endpoint,
             _SEARCH_QUERY,
             {'query': text, 'site': site_var, 'first': 10, 'skip': 0},
-            ctx.site_info.base_url,
-            f'[{ctx.site_info.name}] search "{text}"',
-            ctx.capture,
+            search_data.site_info.base_url,
+            f'[{search_data.site_info.name}] search "{text}"',
+            search_data.capture,
         )
-        edges = ((data.get('searchVideos') or {}).get('edges') or []) if isinstance(data, dict) else []
+        edges = ((search_results.get('searchVideos') or {}).get('edges') or []) if isinstance(search_results, dict) else []
         for edge in edges:
             v = edge.get('node') if isinstance(edge, dict) else None
             if not isinstance(v, dict) or not v.get('slug') or not v.get('title'):
                 continue
+
             results.append(
                 build_search_result(
                     title=v['title'],
                     scene_url=v['slug'],
                     query=text,
                     display_date=iso_date(v.get('releaseDate') or ''),
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([v['slug']]),
                 )
             )
@@ -104,6 +107,7 @@ class Strike3Client(GraphQLClient):
         v = data.get('findOneVideo') if isinstance(data, dict) else None
         if not isinstance(v, dict) or not v.get('title'):
             return None
+
         return LoadedScene(url=payload, site=site, capture=sink, extra=v)
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
@@ -129,10 +133,12 @@ class Strike3Client(GraphQLClient):
         genres: list[str] = []
         if site.name in ('Tushy', 'TushyRaw'):
             genres.append('Anal')
+
         for c in v.get('categories') or []:
             name = (c.get('name') or '').strip()
             if name and name not in genres:
                 genres.append(name)
+
         metadata.genres = genres
 
         # Actor(s)
@@ -140,6 +146,7 @@ class Strike3Client(GraphQLClient):
             name = (mdl.get('name') or '').strip()
             if not name:
                 continue
+
             listing = (mdl.get('images') or {}).get('listing') or []
             photo = (listing[0].get('highdpi') or {}).get('double', '') if listing else ''
             metadata.actors.append(ActorResult(name=name, photo_url=photo))
@@ -149,12 +156,13 @@ class Strike3Client(GraphQLClient):
         metadata.directors = directors or None
 
         # Posters
-        coll = self.image_collector()
+        images = self.image_collector()
         for img in v.get('carousel') or []:
             listing = img.get('listing') or []
             uri = (listing[0].get('highdpi') or {}).get('triple') if listing else None
-            coll['push'](uri)
-        metadata.art = coll['list']
+            images['push'](uri)
+
+        metadata.art = images['list']
 
         # Posters from Data18
         await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, site.name), providers=[site.name])

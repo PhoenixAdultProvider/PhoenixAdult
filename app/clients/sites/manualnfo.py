@@ -81,6 +81,7 @@ def _build_index(root: str) -> _CachedIndex:
         nfo_files = list(root_path.rglob('*.nfo'))
     except OSError:
         nfo_files = []
+
     for nfo in nfo_files:
         rel = nfo.relative_to(root_path)
         segments = rel.parts
@@ -91,11 +92,14 @@ def _build_index(root: str) -> _CachedIndex:
         else:
             if segments[-2] != file_base:
                 continue
+
             entry = LocatedNfo('folder', file_base, nfo, nfo.parent)
             depth = len(segments) - 1
+
         existing = winners.get(file_base)
         if not existing or existing[1] > depth:
             winners[file_base] = (entry, depth)
+
     return _CachedIndex({k: v[0] for k, v in winners.items()}, root, time.monotonic())
 
 
@@ -107,8 +111,10 @@ def _get_index(root: str, force_refresh: bool = False) -> _CachedIndex:
         if fresh and not force_refresh:
             assert _cached_index is not None
             return _cached_index
+
         if force_refresh and _cached_index is not None and _cached_index.root == root and now - _last_build_started < _MISS_THROTTLE_S:
             return _cached_index
+
         _last_build_started = now
         _cached_index = _build_index(root)
         return _cached_index
@@ -120,6 +126,7 @@ def _locate_nfo(basename: str) -> LocatedNfo | None:
     hit = index.by_basename.get(basename)
     if hit:
         return hit
+
     index = _get_index(root, force_refresh=True)
     return index.by_basename.get(basename)
 
@@ -133,6 +140,7 @@ def _reset_index_cache() -> None:
 def _txt(v: str | None) -> str | None:
     if v is None:
         return None
+
     return v.strip() or None
 
 
@@ -141,8 +149,10 @@ def _repair_xml(text: str) -> str:
         ref = m.group(1)
         if not ref:
             return '&amp;'
+
         if _XML_ENTITY_RE.match(m.group(0)):
             return m.group(0)
+
         return html5.get(ref, f'&amp;{ref}')
 
     text = _AMP_RE.sub(_amp, _BAD_CHAR_RE.sub('', _XML_DECL_RE.sub('', text)))
@@ -154,6 +164,7 @@ def _error_context(text: str, err: ET.ParseError) -> str:
     lines = text.splitlines()
     if not 1 <= line <= len(lines):
         return str(err)
+
     return f'{err} | {lines[line - 1].strip()[:120]!r} (column {col})'
 
 
@@ -162,6 +173,7 @@ def _parse_xml(raw: bytes, label: str) -> Any:
         return ET.fromstring(raw)
     except ET.ParseError as err:
         strict_err = err
+
     text = raw.decode('utf-8', 'replace')
     repaired = _repair_xml(text)
     try:
@@ -171,11 +183,14 @@ def _parse_xml(raw: bytes, label: str) -> Any:
             root = lxml_etree.fromstring(repaired.encode('utf-8'), lxml_etree.XMLParser(recover=True))
         except lxml_etree.LxmlError:
             root = None
+
         if root is None:
             logger.warn('Manual NFO', f'XML parse failed{label}: {_error_context(text, strict_err)}')
             return None
+
         logger.warn('Manual NFO', f'salvaged malformed XML{label}: {_error_context(text, strict_err)}')
         return root
+
     logger.warn('Manual NFO', f'repaired malformed XML{label}: {_error_context(text, strict_err)}')
     return root
 
@@ -185,8 +200,10 @@ def _parse_data18(movie: Any) -> str | None:
     el = movie.find('data18')
     if el is None:
         return None
+
     if ref_id := _txt(el.findtext('id')):
         return f'{_txt(el.findtext("type")) or "scene"}s/{ref_id}'
+
     return _txt(el.text)
 
 
@@ -195,6 +212,7 @@ def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
     root = _parse_xml(raw, f' in {label}' if label else '')
     if root is None:
         return None
+
     movie = root if root.tag == 'movie' else root.find('movie')
     if movie is None:
         return None
@@ -204,6 +222,7 @@ def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
         name = _txt(a.findtext('name'))
         if not name:
             continue
+
         actors.append(
             {'name': name, 'role': _txt(a.findtext('role')) or '', 'thumb': _txt(a.findtext('thumb')) or '', 'gender': _txt(a.findtext('gender')) or ''}
         )
@@ -240,6 +259,7 @@ def _load_and_parse(located: LocatedNfo) -> NfoData | None:
     except OSError as err:
         logger.warn('Manual NFO', f'read failed {located.nfo_path}: {err}')
         return None
+
     return _parse_nfo(data, located.nfo_path.name)
 
 
@@ -248,8 +268,10 @@ def _nfo_release_date(nfo: NfoData) -> str | None:
         iso = iso_date(nfo.release_date)
         if iso:
             return iso
+
     if nfo.year and len(nfo.year) == 4 and nfo.year.isdigit():
         return f'{nfo.year}-01-01'
+
     return None
 
 
@@ -265,6 +287,7 @@ def _find_sibling_image(located: LocatedNfo, suffix: str) -> str | None:
     for ext in _IMAGE_EXTS:
         if (located.sibling_dir / f'{located.basename}{suffix}{ext}').exists():
             return _image_url_for(located, f'{located.basename}{suffix}{ext}')
+
     return None
 
 
@@ -273,20 +296,24 @@ def _is_http(url: str | None) -> bool:
 
 
 class ManualNfoClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        tag = ctx.site_info.name
-        basename = ctx.title.strip()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        tag = search_data.site_info.name
+        basename = search_data.title.strip()
         if not basename:
             return
+
         located = await asyncio.to_thread(_locate_nfo, basename)
         if not located:
             logger.debug(tag, f'search: no NFO for basename="{basename}" under {_manual_nfo_root()}')
             return
+
         nfo = await asyncio.to_thread(_load_and_parse, located)
         if not nfo:
             return
+
         title = nfo.title or basename
         thumb = _find_sibling_image(located, '-poster')
+
         results.append(
             build_search_result(
                 title=title,
@@ -294,7 +321,7 @@ class ManualNfoClient(Client):
                 search_url=str(located.nfo_path),
                 query=basename,
                 display_date=_nfo_release_date(nfo),
-                search_date=ctx.search_date,
+                search_date=search_data.search_date,
                 score=100,
                 cur_id=pack_cur_id([basename]),
                 thumb_url=thumb,
@@ -309,10 +336,12 @@ class ManualNfoClient(Client):
         if not located:
             logger.warn(site.name, f'loadSceneContext: NFO missing for basename="{basename}"')
             return None
+
         nfo = await asyncio.to_thread(_load_and_parse, located)
         if not nfo:
             logger.warn(site.name, f'loadSceneContext: NFO parse failed at {located.nfo_path}')
             return None
+
         return LoadedScene(
             url=str(located.nfo_path),
             site=site,
@@ -331,43 +360,52 @@ class ManualNfoClient(Client):
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.title = (nfo.title if nfo else '') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         if not nfo:
             return
+
         metadata.summary = nfo.plot or nfo.outline or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.studio = (nfo.studio if nfo else '') or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.tagline = (nfo.tagline if nfo else None) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.collections = [nfo.set] if nfo and nfo.set else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.release_date = _nfo_release_date(nfo) if nfo else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
+
         metadata.genres = (nfo.genres if nfo else None) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
         if not nfo:
             return
+
         out: list[ActorResult] = []
         for a in nfo.actors:
             g = a.get('gender', '').lower().strip()
             thumb = a.get('thumb', '')
             out.append(ActorResult(name=a['name'], photo_url=thumb if _is_http(thumb) else '', gender=g if g in _ALLOWED_GENDERS else ''))
+
         metadata.actors = out
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:

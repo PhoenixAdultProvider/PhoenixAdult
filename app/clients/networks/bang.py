@@ -27,6 +27,7 @@ def _bangify(s: str) -> str:
 def _strip_html(s: str | None) -> str:
     if not s:
         return ''
+
     return _WS_RE.sub(' ', _TAG_RE.sub('', s)).strip()
 
 
@@ -37,8 +38,10 @@ def _find_video_ld(sel: Any) -> dict[str, Any] | None:
             data = json.loads(txt)
         except (ValueError, TypeError):
             continue
+
         if isinstance(data, dict) and data.get('@type') == 'VideoObject':
             return data
+
     return None
 
 
@@ -48,100 +51,136 @@ __testing__ = {'bangify': _bangify, 'strip_html': _strip_html, 'find_video_ld': 
 class BangClient(Client):
     # ── Search (web-search augmentation + on-page grid) ─────────────────────────
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
         if web_search_available():
-            host = urlparse(ctx.site_info.base_url).netloc
+            host = urlparse(search_data.site_info.base_url).netloc
             try:
-                found = await web_search(SearchOptions(query=ctx.title, site=host))
+                found = await web_search(SearchOptions(query=search_data.title, site=host))
             except Exception as err:  # noqa: BLE001 - search engines are best-effort
                 found = []
-                logger.warn(ctx.site_info.name, f'web search failed: {err}')
+                logger.warn(search_data.site_info.name, f'web search failed: {err}')
+
             for raw in found:
                 url = strip_query(raw)
                 if 'com/video/' not in url or 'index.php/' in url or url in seen:
                     continue
+
                 seen.add(url)
-                loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'GET {url}')
-                if not loaded:
+                search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'GET {url}')
+                if not search_results:
                     continue
-                ld = _find_video_ld(loaded['sel'])
+
+                ld = _find_video_ld(search_results['sel'])
                 if not ld:
                     continue
+
                 title = _strip_html(ld.get('name'))
                 if not title:
                     continue
-                release = iso_date(ld['datePublished']) if ld.get('datePublished') else None
-                results.append(build_search_result(title=_bangify(title), scene_url=url, query=ctx.title, display_date=release, search_date=ctx.search_date))
 
-        enc = quote(ctx.title, safe='').replace('%20', '+')
-        search_url = base + ctx.site_info.search_path.replace('{query}', enc)
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'GET {search_url}')
-        if loaded:
-            for el in loaded['sel'].xpath('//div[contains(@class,"movie-preview") or contains(@class,"video_container")]'):
-                href = first_attr(el, '(.//a[contains(@class,"group")])[1]/@href')
-                if not href:
-                    continue
-                if 'dvd' in href:
-                    title = (el.xpath('(.//a//div)[1]').xpath('string(.)').get() or '').strip()
-                else:
-                    title = (el.xpath('(.//a//span)[1]').xpath('string(.)').get() or '').strip()
-                if not title:
-                    continue
-                scene_url = absolute_url(href, ctx.site_info.base_url)
-                if scene_url in seen:
-                    continue
-                seen.add(scene_url)
-                date_part = (el.xpath('(.//span[@class="hidden xs:inline-block truncate"])[1]').xpath('string(.)').get() or '').split('•')[-1].strip()
-                release = iso_date(date_part)
-                # Score uses the pre-bangify title (the bangified value would skew it).
-                score = date_distance_score(ctx.search_date, release) if ctx.search_date and release else title_distance_score(ctx.title, title)
+                release = iso_date(ld['datePublished']) if ld.get('datePublished') else None
+
                 results.append(
                     build_search_result(
-                        title=_bangify(title), scene_url=scene_url, query=ctx.title, display_date=release, search_date=ctx.search_date, score=score
+                        title=_bangify(title), scene_url=url, query=search_data.title, display_date=release, search_date=search_data.search_date
+                    )
+                )
+
+        enc = quote(search_data.title, safe='').replace('%20', '+')
+        search_url = base + search_data.site_info.search_path.replace('{query}', enc)
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'GET {search_url}')
+        if search_results:
+            for search_result in search_results['sel'].xpath('//div[contains(@class,"movie-preview") or contains(@class,"video_container")]'):
+                href = first_attr(search_result, '(.//a[contains(@class,"group")])[1]/@href')
+                if not href:
+                    continue
+
+                if 'dvd' in href:
+                    title = (search_result.xpath('(.//a//div)[1]').xpath('string(.)').get() or '').strip()
+                else:
+                    title = (search_result.xpath('(.//a//span)[1]').xpath('string(.)').get() or '').strip()
+
+                if not title:
+                    continue
+
+                scene_url = absolute_url(href, search_data.site_info.base_url)
+                if scene_url in seen:
+                    continue
+
+                seen.add(scene_url)
+                date_part = (
+                    (search_result.xpath('(.//span[@class="hidden xs:inline-block truncate"])[1]').xpath('string(.)').get() or '').split('•')[-1].strip()
+                )
+                release = iso_date(date_part)
+                # Score uses the pre-bangify title (the bangified value would skew it).
+                score = (
+                    date_distance_score(search_data.search_date, release)
+                    if search_data.search_date and release
+                    else title_distance_score(search_data.title, title)
+                )
+
+                results.append(
+                    build_search_result(
+                        title=_bangify(title),
+                        scene_url=scene_url,
+                        query=search_data.title,
+                        display_date=release,
+                        search_date=search_data.search_date,
+                        score=score,
                     )
                 )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _studio_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        ld = _find_video_ld(sel)
+        details_page_elements = scene.require_sel()
+
+        ld = _find_video_ld(details_page_elements)
         raw = ''
         if ld:
             company = ld.get('productionCompany')
             if isinstance(company, dict):
                 raw = (company.get('name') or '').strip()
+
         return _bangify(raw or STUDIO)
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        for el in sel.xpath('//p[contains(.,"eries:")]//a'):
+        details_page_elements = scene.require_sel()
+
+        for el in details_page_elements.xpath('//p[contains(.,"eries:")]//a'):
             href = el.xpath('@href').get() or ''
             if 'originals' in href or 'videos' in href:
                 return _bangify(first_attr(el, 'normalize-space(.)'))
+
         return ''
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        ld = _find_video_ld(sel)
-        raw = _strip_html(ld.get('name')) if ld and ld.get('name') else (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        ld = _find_video_ld(details_page_elements)
+        raw = _strip_html(ld.get('name')) if ld and ld.get('name') else (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
         metadata.title = _bangify(raw) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        ld = _find_video_ld(sel)
+        details_page_elements = scene.require_sel()
+
+        ld = _find_video_ld(details_page_elements)
         if ld and ld.get('description'):
             metadata.summary = _strip_html(ld['description']) or ''
             return
-        desc = (sel.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
+
+        desc = (details_page_elements.xpath('(//div[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip()
         if desc:
             metadata.summary = desc
             return
-        meta = first_attr(sel, '(//meta[@name="description"])[1]/@content')
-        og = first_attr(sel, '(//meta[@property="og:description"])[1]/@content')
+
+        meta = first_attr(details_page_elements, '(//meta[@name="description"])[1]/@content')
+        og = first_attr(details_page_elements, '(//meta[@property="og:description"])[1]/@content')
+
         metadata.summary = meta or og or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -151,38 +190,51 @@ class BangClient(Client):
         metadata.tagline = self._tagline_of(scene) or None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         tagline = self._tagline_of(scene)
         collections = [tagline] if tagline else [self._studio_of(scene)]
-        dvd_title = (sel.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
+        dvd_title = (details_page_elements.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
         if dvd_title:
             collections.append(_bangify(dvd_title))
+
         metadata.collections = collections
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        ld = _find_video_ld(sel)
+        details_page_elements = scene.require_sel()
+
+        ld = _find_video_ld(details_page_elements)
         iso = iso_date(ld['datePublished']) if ld and ld.get('datePublished') else None
+
         metadata.release_date = iso or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = [
-            g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]')) if g
+            genre_name
+            for genre_name in (
+                first_attr(genre_link, 'normalize-space(.)')
+                for genre_link in details_page_elements.xpath('//div[contains(@class,"actions")]//a | //a[contains(@class,"genres")]')
+            )
+            if genre_name
         ]
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        scene_els = sel.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
+        details_page_elements = scene.require_sel()
+
+        scene_els = details_page_elements.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
         if scene_els:
             actors: list[ActorResult] = []
             for el in scene_els:
-                name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or first_attr(el, 'normalize-space(.)')
+                actor_name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or first_attr(el, 'normalize-space(.)')
                 img = first_attr(el, '(ancestor::div[1]/parent::*//img)[1]/@src')
                 photo = img if img and 'placeholder' not in img else ''
-                if name:
-                    actors.append(ActorResult(name=name, photo_url=photo))
+                if actor_name:
+                    actors.append(ActorResult(name=actor_name, photo_url=photo))
+
             metadata.actors = actors or []
             return
 
@@ -192,23 +244,27 @@ class BangClient(Client):
                     blob = json.loads(s.xpath('string(.)').get() or '')
                 except (ValueError, TypeError):
                     continue
+
                 if isinstance(blob, dict) and blob.get('@type') == 'Person':
                     img = blob.get('image')
                     if isinstance(img, str):
                         return img.strip()
+
             return ''
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
-            name = first_attr(el, 'normalize-space(.)')
+        for el in details_page_elements.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
+            actor_name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, scene.site.base_url)))
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, scene.site.base_url)))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        ld = _find_video_ld(sel)
+        details_page_elements = scene.require_sel()
+
+        ld = _find_video_ld(details_page_elements)
         out: list[str] = []
 
         if ld and isinstance(ld.get('thumbnailUrl'), str):
@@ -219,7 +275,9 @@ class BangClient(Client):
                 m = re.search(r'/shots/(\d+)', thumb)
                 if m:
                     out.append(f'https://i.bang.com/covers/{m.group(1)}/front.jpg')
+
                 out.append(thumb)
+
         if ld and isinstance(ld.get('trailer'), list):
             for t in ld['trailer']:
                 if isinstance(t, dict) and t.get('thumbnailUrl'):
@@ -227,23 +285,27 @@ class BangClient(Client):
 
         # XPath fallback (full URLs kept, per the image-URL policy).
         if not out:
-            og = first_attr(sel, '(//meta[@property="og:image"])[1]/@content')
+            og = first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content')
             if og:
                 out.append(og)
-            for poster in sel.xpath('//video/@poster').getall():
+
+            for poster in details_page_elements.xpath('//video/@poster').getall():
                 if poster:
                     out.append(poster)
-            for el in sel.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
+
+            for el in details_page_elements.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
                 src = first_attr(el, '@src')
                 if src:
                     out.append(src)
+
                 srcset = el.xpath('@srcset').get() or ''
                 for part in srcset.split(','):
                     token = part.strip().split(' ')[0].strip()
                     if token:
                         out.append(token)
 
-        coll = self.image_collector()
+        images = self.image_collector()
         for u in out:
-            coll['push'](u)
-        metadata.art = coll['list'] or []
+            images['push'](u)
+
+        metadata.art = images['list'] or []

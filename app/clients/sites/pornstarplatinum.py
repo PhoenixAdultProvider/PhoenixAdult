@@ -10,14 +10,15 @@ from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PornstarPlatinumClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[contains(@class,"no-nth")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"no-nth")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         anchor = source.xpath('(.//div[contains(@class,"item-content")]//h3//a)[1]')
@@ -25,11 +26,13 @@ class PornstarPlatinumClient(Client):
         href = first_attr(anchor, '@href')
         if not title or not href:
             return
+
         scene_url = absolute_url(href, loaded.site.base_url)
         poster = first_attr(source, '(.//div[contains(@class,"item-header")]//a//img/@rel)[1]')
         date = iso_date(first_text(source, './/span[contains(@class,"content-date")]'))
         actor = first_text(source, './/span[contains(@class,"marker") and contains(@class,"left")]')
         packed = json.dumps({'url': scene_url, 'title': title, 'releaseDate': date or '', 'poster': poster, 'actor': actor})
+
         results.append(
             build_search_result(
                 title=title,
@@ -48,12 +51,21 @@ class PornstarPlatinumClient(Client):
             packed = json.loads(payload)
         except (ValueError, TypeError):
             return None
-        loaded = await self.fetch_and_load(
+
+        details_page_elements = await self.fetch_and_load(
             packed.get('url', ''), FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed.get("url", "")}'
         )
-        if not loaded:
+        if not details_page_elements:
             return None
-        return LoadedScene(url=packed.get('url', ''), site=site, capture=ctx.capture if ctx else None, sel=loaded['sel'], html=loaded['html'], extra=packed)
+
+        return LoadedScene(
+            url=packed.get('url', ''),
+            site=site,
+            capture=ctx.capture if ctx else None,
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
+            extra=packed,
+        )
 
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
@@ -64,8 +76,9 @@ class PornstarPlatinumClient(Client):
         metadata.title = (self._data(scene).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"panel-content")]//p')
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"panel-content")]//p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Pornstar Platinum'
@@ -80,14 +93,20 @@ class PornstarPlatinumClient(Client):
         metadata.release_date = (self._data(scene).get('releaseDate') or '') or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"tagcloud")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tagcloud")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        name = (self._data(scene).get('actor') or '').strip()
-        metadata.actors = [ActorResult(name=name)] if name else []
+        actor_name = (self._data(scene).get('actor') or '').strip()
+
+        metadata.actors = [ActorResult(name=actor_name)] if actor_name else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = (self._data(scene).get('poster') or '').strip()
+
         metadata.art = [poster] if poster else []

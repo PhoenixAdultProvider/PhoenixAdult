@@ -24,16 +24,19 @@ class PrivateClient(Client):
             r = await self.http.get(url, headers=_lang_headers(language))
         except Exception:  # noqa: BLE001 - network failure yields no page
             return None
+
         if r.status_code >= 400:
             return None
+
         if capture is not None:
             capture.append(RawCaptureEntry(label, 'html', r.text))
+
         return {'sel': Selector(text=r.text), 'html': r.text}
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        search_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self._fetch_localized(search_url, ctx.language, ctx.capture, f'[{ctx.site_info.name}] search {search_url}')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        loaded = await self._fetch_localized(search_url, search_data.language, search_data.capture, f'[{search_data.site_info.name}] search {search_url}')
         if not loaded:
             return
 
@@ -43,15 +46,17 @@ class PrivateClient(Client):
             href = first_attr(anchor, '@href')
             if not title or not href:
                 continue
-            scene_url = absolute_url(href, ctx.site_info.base_url)
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
             date = iso_date((card.xpath('(.//span[@class="scene-date"])[1]').xpath('string(.)').get() or '').strip())
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -66,6 +71,7 @@ class PrivateClient(Client):
         loaded = await self._fetch_localized(url, language, ctx.capture if ctx else None, f'GET {url}')
         if not loaded:
             return None
+
         return LoadedScene(
             url=url,
             site=site,
@@ -79,16 +85,19 @@ class PrivateClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        return (sel.xpath('(//li[@class="tag-sites"]//a)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//li[@class="tag-sites"]//a)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_attr(sel, '(//meta[@itemprop="description"])[1]/@content') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_attr(details_page_elements, '(//meta[@itemprop="description"])[1]/@content') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -100,42 +109,51 @@ class PrivateClient(Client):
         metadata.collections = [self._tagline_for(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//meta[@itemprop="uploadDate"])[1]/@content')
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = first_attr(details_page_elements, '(//meta[@itemprop="uploadDate"])[1]/@content')
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for a in sel.xpath('//li[@class="tag-tags"]//a'):
-            g = first_attr(a, 'normalize-space(.)').lower()
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//li[@class="tag-tags"]//a'):
+            genre_name = first_attr(genre_link, 'normalize-space(.)').lower()
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in sel.xpath('//li[@class="tag-models"]//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
+        for actor_link in details_page_elements.xpath('//li[@class="tag-models"]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
                 continue
+
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                srcset = (page['sel'].xpath('(//img[@srcset])[1]/@srcset').get() or '') if page else ''
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
+                srcset = (model_page_elements['sel'].xpath('(//img[@srcset])[1]/@srcset').get() or '') if model_page_elements else ''
                 last = srcset.split(',')[-1].strip() if srcset else ''
                 if last:
                     photo = last.split()[0]
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector()
-        coll['push'](sel.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector()
+        images['push'](details_page_elements.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
 
         scene_id = next((s for s in reversed(scene.url.split('/')) if s), '')
         if scene_id:
@@ -145,9 +163,9 @@ class PrivateClient(Client):
             gallery = await self._fetch_localized(gallery_url, language, scene.capture, f'GET {gallery_url} (gallery)')
             if gallery:
                 for href in gallery['sel'].xpath('//a/@href').getall():
-                    coll['push'](href)
+                    images['push'](href)
 
-        content_url = first_attr(sel, '(//meta[@itemprop="contentURL"])[1]/@content')
+        content_url = first_attr(details_page_elements, '(//meta[@itemprop="contentURL"])[1]/@content')
         j = content_url.rfind('upload/')
         k = content_url.rfind('trailers/')
         if j >= 0 and k >= 0:
@@ -155,7 +173,6 @@ class PrivateClient(Client):
             prefix = content_url[:k] + 'Fullwatermarked/'
             for i in range(1, 10):
                 n = f'{i * 5:03d}'
-                coll['push'](f'{prefix}{watermark_id}_{n}.jpg'.replace('pcoms', 'pcom'))
+                images['push'](f'{prefix}{watermark_id}_{n}.jpg'.replace('pcoms', 'pcom'))
 
-        images: list[str] = coll['list']
-        metadata.art = images
+        metadata.art = images['list']

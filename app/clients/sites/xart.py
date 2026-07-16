@@ -27,56 +27,69 @@ register_fanart_overrides(no_match=_overrides.get('noMatch'), bad_match=_overrid
 
 
 class XartClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        search_url = f'{base}{ctx.site_info.search_path}?input_search_sm={ctx.encoded}'
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        search_url = f'{base}{search_data.site_info.search_path}?input_search_sm={search_data.encoded}'
+        search_results = await self.fetch_and_load(
+            search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"'
+        )
 
         seen: set[str] = set()
 
-        if loaded:
-            for a in loaded['sel'].xpath('//a[contains(@href,"videos")]'):
-                title = first_attr(a, '(.//img[contains(@src,"videos")]/@alt)[1]')
-                href = first_attr(a, '@href')
+        if search_results:
+            for search_result in search_results['sel'].xpath('//a[contains(@href,"videos")]'):
+                title = first_attr(search_result, '(.//img[contains(@src,"videos")]/@alt)[1]')
+                href = first_attr(search_result, '@href')
                 if not title or not href:
                     continue
-                scene_url = absolute_url(href, ctx.site_info.base_url)
+
+                scene_url = absolute_url(href, search_data.site_info.base_url)
                 if scene_url in seen:
                     continue
+
                 seen.add(scene_url)
-                raw_date = first_text(a, '(.//h2)[2]')
+                raw_date = first_text(search_result, '(.//h2)[2]')
                 release_date = iso_date(raw_date) if raw_date else None
+
                 results.append(
                     build_search_result(
                         title=title,
                         scene_url=scene_url,
-                        query=ctx.title,
+                        query=search_data.title,
                         display_date=release_date,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         cur_id=pack_cur_id([p for p in (scene_url, release_date) if p]),
                     )
                 )
 
-        manual = _MANUAL_MATCHES.get(ctx.title)
+        manual = _MANUAL_MATCHES.get(search_data.title)
         if manual:
             cur = manual['curID']
             scene_url = cur if cur.startswith('http') else base + cur
             if scene_url not in seen:
                 results.append(
                     build_search_result(
-                        title=manual['title'], scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url])
+                        title=manual['title'],
+                        scene_url=scene_url,
+                        query=search_data.title,
+                        search_date=search_data.search_date,
+                        score=100,
+                        cur_id=pack_cur_id([scene_url]),
                     )
                 )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, _TITLE_XP) or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, _TITLE_XP) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in sel.xpath(_SUMMARY_XP)) if t]
+        details_page_elements = scene.require_sel()
+
+        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in details_page_elements.xpath(_SUMMARY_XP)) if t]
+
         metadata.summary = '\n\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -86,75 +99,86 @@ class XartClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = re.sub(r'.$', '', first_text(sel, '(//h2)[3]'))
-        if not raw:
+        details_page_elements = scene.require_sel()
+
+        date = re.sub(r'.$', '', first_text(details_page_elements, '(//h2)[3]'))
+        if not date:
             return
-        metadata.release_date = iso_date(raw, '%b %d, %Y') or iso_date(raw)
+
+        metadata.release_date = iso_date(date, '%b %d, %Y') or iso_date(date)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = ['Artistic', 'Glamorous']
-        count = len(sel.xpath('//h2//a'))
+        count = len(details_page_elements.xpath('//h2//a'))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath('//h2//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = re.sub(r'^http:', 'https:', first_attr(el, '@href'))
-            if not name or not href or name in seen:
+        for actor_link in details_page_elements.xpath('//h2//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = re.sub(r'^http:', 'https:', first_attr(actor_link, '@href'))
+            if not actor_name or not href or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             actor_url = absolute_url(href, base)
-            page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-            photo = first_attr(page['sel'], '(//img[contains(@class,"info-img")]/@src)[1]') if page else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+            model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+            photo = first_attr(model_page_elements['sel'], '(//img[contains(@class,"info-img")]/@src)[1]') if model_page_elements else ''
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: (raw or '').strip())
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: (image or '').strip())
 
         def harvest(sel: Any) -> None:
             if sel is None:
                 return
+
             for xp in _HARVEST_XPATHS:
-                for raw in sel.xpath(xp).getall():
-                    url = (raw or '').strip()
+                for image_url in sel.xpath(xp).getall():
+                    url = (image_url or '').strip()
                     if 'videos' not in url:
                         continue
-                    coll['push'](url)
+
+                    images['push'](url)
                     if url.endswith('_1.jpg'):
-                        coll['push'](url.replace('_1.jpg', '_2.jpg'))
+                        images['push'](url.replace('_1.jpg', '_2.jpg'))
                     elif url.endswith('_1-lrg.jpg'):
-                        coll['push'](url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
+                        images['push'](url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
 
         gallery_url = scene.url.replace('/videos/', '/galleries/')
         if gallery_url != scene.url:
-            gallery = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
-            harvest(gallery['sel'] if gallery else None)
-        harvest(sel)
+            gallery_page_elements = await self.fetch_and_load(gallery_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] gallery')
+            harvest(gallery_page_elements['sel'] if gallery_page_elements else None)
 
-        title = first_text(sel, _TITLE_XP) or ''
-        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in sel.xpath('//h2//a')])
+        harvest(details_page_elements)
+
+        title = first_text(details_page_elements, _TITLE_XP) or ''
+        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in details_page_elements.xpath('//h2//a')])
 
         if title and actor_names:
 
             async def fetch_page(url: str) -> Any:
-                page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] fanart {url}')
-                return page['sel'] if page else None
+                fan_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] fanart {url}')
+                return fan_page_elements['sel'] if fan_page_elements else None
 
             async def do_search(query: str, domain: str, limit: int) -> list[str]:
                 return await web_search(SearchOptions(query=query, site=domain, num=limit))
 
             fan = await find_fan_art(FindFanArtOptions(sites=_FANART_SITES, title=title, actor_names=actor_names, fetch_page=fetch_page, web_search=do_search))
             for u in fan.images:
-                coll['push'](u)
+                images['push'](u)
 
-        metadata.art = coll['list']
+        metadata.art = images['list']

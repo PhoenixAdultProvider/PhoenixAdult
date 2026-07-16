@@ -13,31 +13,38 @@ _GENRES: dict[str, list[str]] = load_site_json(__file__, 'thickcash_genres')
 
 
 class ThickCashClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        words = ctx.title.strip().split()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        words = search_data.title.strip().split()
         model_id = '-'.join(words[:2])
         scene_title = ' '.join(words[2:])
         if not model_id:
             return
 
-        search_url = base + ctx.site_info.search_path.replace('{query}', model_id)
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
-        if not loaded:
+        search_url = base + search_data.site_info.search_path.replace('{query}', model_id)
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
+        if not search_results:
             return
 
-        for block in loaded['sel'].xpath('//div[contains(@class,"updateBlock") and contains(@class,"clear")]'):
-            title = (block.xpath('(.//h3)[1]').xpath('string(.)').get() or '').strip()
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"updateBlock") and contains(@class,"clear")]'):
+            title = (search_result.xpath('(.//h3)[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            summary = (block.xpath('(.//p)[1]').xpath('string(.)').get() or '').strip()
-            raw_date = (block.xpath('(.//h4)[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
+
+            summary = (search_result.xpath('(.//p)[1]').xpath('string(.)').get() or '').strip()
+            raw_date = (search_result.xpath('(.//h4)[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
             date = (iso_date(raw_date) or '') if raw_date else ''
-            poster = first_attr(block, '(.//*[@src])[1]/@src')
-            packed = pack_cur_id([json.dumps({'title': title, 'summary': summary, 'release_date': date or ctx.search_date, 'poster': poster})])
+            poster = first_attr(search_result, '(.//*[@src])[1]/@src')
+            packed = pack_cur_id([json.dumps({'title': title, 'summary': summary, 'release_date': date or search_data.search_date, 'poster': poster})])
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=search_url, query=scene_title or ctx.title, display_date=date or None, search_date=ctx.search_date, cur_id=packed
+                    title=title,
+                    scene_url=search_url,
+                    query=scene_title or search_data.title,
+                    display_date=date or None,
+                    search_date=search_data.search_date,
+                    cur_id=packed,
                 )
             )
 
@@ -48,8 +55,10 @@ class ThickCashClient(Client):
             scene = json.loads(payload)
         except (ValueError, TypeError):
             return None
+
         if not isinstance(scene, dict):
             return None
+
         return LoadedScene(url='', site=site, capture=ctx.capture if ctx else None, sel=None, html='', extra=scene)
 
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
@@ -74,6 +83,7 @@ class ThickCashClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._packed(scene).get('release_date')
+
         metadata.release_date = (iso_date(d) or d) if d else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -84,4 +94,5 @@ class ThickCashClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')
+
         metadata.art = [poster] if poster else []

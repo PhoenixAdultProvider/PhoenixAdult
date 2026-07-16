@@ -17,56 +17,65 @@ class PervCityClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'warning_cookie=1'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
-        if (ctx.site_info.search_path or '').strip():
-            slug = slugify(ctx.title).replace('-', '+')
-            url = base + ctx.site_info.search_path.replace('{query}', slug)
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-            if loaded:
-                for card in loaded['sel'].xpath('//div[@class="videoBlock"]'):
-                    title = (card.xpath('(.//h2 | .//h3)[1]').xpath('string(.)').get() or '').strip()
-                    href = first_attr(card, '(.//h2//a | .//h3//a)[1]/@href')
+        if (search_data.site_info.search_path or '').strip():
+            slug = slugify(search_data.title).replace('-', '+')
+            url = base + search_data.site_info.search_path.replace('{query}', slug)
+            search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+            if search_results:
+                for search_result in search_results['sel'].xpath('//div[@class="videoBlock"]'):
+                    title = (search_result.xpath('(.//h2 | .//h3)[1]').xpath('string(.)').get() or '').strip()
+                    href = first_attr(search_result, '(.//h2//a | .//h3//a)[1]/@href')
                     if not title or not href:
                         continue
-                    scene_url = absolute_url(href, ctx.site_info.base_url)
+
+                    scene_url = absolute_url(href, search_data.site_info.base_url)
                     if scene_url in seen:
                         continue
+
                     seen.add(scene_url)
-                    raw_date = (card.xpath('(.//div[@class="date"])[1]').xpath('string(.)').get() or '').strip()
-                    date = iso_date(raw_date) if raw_date else ctx.search_date
+                    raw_date = (search_result.xpath('(.//div[@class="date"])[1]').xpath('string(.)').get() or '').strip()
+                    date = iso_date(raw_date) if raw_date else search_data.search_date
+
                     results.append(
                         build_search_result(
                             title=title,
                             scene_url=scene_url,
-                            query=ctx.title,
+                            query=search_data.title,
                             display_date=date,
-                            search_date=ctx.search_date,
+                            search_date=search_data.search_date,
                             cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                         )
                     )
 
-        for raw in await web_search_urls(ctx.title, ctx.site_info, include=['trailers'], exclude=['as3']):
+        for raw in await web_search_urls(search_data.title, search_data.site_info, include=['trailers'], exclude=['as3']):
             scene_url = raw.replace('www.', '')
             if scene_url in seen or raw in seen:
                 continue
+
             seen.add(scene_url)
-            page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] fallback {scene_url}')
-            if not page:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] fallback {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title = (page['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            date = ctx.search_date
+
+            date = search_data.search_date
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -79,10 +88,11 @@ class PervCityClient(Client):
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
         capture = ctx.capture if ctx else None
 
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=capture), f'[{site.name}] scene {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'[{site.name}] scene {url}')
+        if not details_page_elements:
             return None
-        sel = loaded['sel']
+
+        sel = details_page_elements['sel']
         clean_scene = _NON_WORD_RE.sub('', (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()).lower()
 
         actors: list[ActorResult] = []
@@ -93,6 +103,7 @@ class PervCityClient(Client):
             href = first_attr(el, '@href')
             if not name or name in seen:
                 continue
+
             seen.add(name)
             photo = ''
             if href:
@@ -101,6 +112,7 @@ class PervCityClient(Client):
                     photo = first_attr(page, '(//div[@class="starPic"]//img | //div[@class="bioBPic"]//img)[1]/@src')
                     if not fallback:
                         crawled_date = self._crawl_date(page, clean_scene) or crawled_date
+
             actors.append(ActorResult(name=name, photo_url=photo))
 
         return LoadedScene(
@@ -109,7 +121,7 @@ class PervCityClient(Client):
             scene_date=fallback or None,
             capture=capture,
             sel=sel,
-            html=loaded['html'],
+            html=details_page_elements['html'],
             extra={'actors': actors, 'crawled_date': crawled_date},
         )
 
@@ -118,14 +130,17 @@ class PervCityClient(Client):
         primary = href.replace(cur, _SHARED_BASE)
         if not primary.startswith('http'):
             primary = absolute_url(primary, site_base)
-        page = await self.fetch_and_load(primary, FetchCtx(capture=capture), f'GET {primary} (actor)')
-        if page:
-            return page['sel']
+
+        model_page_elements = await self.fetch_and_load(primary, FetchCtx(capture=capture), f'GET {primary} (actor)')
+        if model_page_elements:
+            return model_page_elements['sel']
+
         fallback = href.replace('www.', '')
         if not fallback.startswith('http'):
             fallback = absolute_url(fallback, site_base)
-        page = await self.fetch_and_load(fallback, FetchCtx(capture=capture), f'GET {fallback} (actor)')
-        return page['sel'] if page else None
+
+        model_page_elements = await self.fetch_and_load(fallback, FetchCtx(capture=capture), f'GET {fallback} (actor)')
+        return model_page_elements['sel'] if model_page_elements else None
 
     def _crawl_date(self, page: Any, clean_scene: str) -> str | None:
         for block in page.xpath('//div[@class="videoBlock" or @class="videoContent"]'):
@@ -135,30 +150,37 @@ class PervCityClient(Client):
                 raw = (page.xpath('(//div[@class="date"])[1]').xpath('string(.)').get() or '').strip()
                 if raw:
                     return iso_date(raw)
+
         return None
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        about = (sel.xpath('(//div[@class="about"]//h3)[1]').xpath('string(.)').get() or '').replace('About', '').strip()
+        details_page_elements = scene.require_sel()
+
+        about = (details_page_elements.xpath('(//div[@class="about"]//h3)[1]').xpath('string(.)').get() or '').replace('About', '').strip()
         if about:
             return about
+
         if scene.site.name.replace(' ', '') != STUDIO:
             return scene.site.name
+
         return STUDIO
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        info = (sel.xpath('(//div[contains(@class,"infoBox")]//p)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        info = (details_page_elements.xpath('(//div[contains(@class,"infoBox")]//p)[1]').xpath('string(.)').get() or '').strip()
         if info:
             metadata.summary = info
             return
-        metadata.summary = (sel.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.summary = (details_page_elements.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -173,20 +195,25 @@ class PervCityClient(Client):
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
             return
+
         metadata.release_date = (scene.extra or {}).get('crawled_date')
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[@class="tagcats"]/a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[@class="tagcats"]/a')]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = (scene.extra or {}).get('actors') or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
-        for raw in sel.xpath('//div[@class="snap"]//img/@src0_3x').getall():
-            coll['push'](raw)
-        metadata.art = coll['list']
+        images = self.image_collector(lambda image: absolute_url(image, base))
+        for image_url in details_page_elements.xpath('//div[@class="snap"]//img/@src0_3x').getall():
+            images['push'](image_url)
+
+        metadata.art = images['list']

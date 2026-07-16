@@ -15,18 +15,23 @@ _VIDEO_ID_RE = re.compile(r'VideoID=([^&]+)')
 
 
 class BelAmiClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        scene_id = ctx.title.strip().split()[0] if ctx.title.strip() else ''
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        scene_id = search_data.title.strip().split()[0] if search_data.title.strip() else ''
         if not scene_id:
             return None
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_url = base + ctx.site_info.search_path.replace('{query}', quote(scene_id, safe=''))
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
-        if not loaded:
+
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_url = base + search_data.site_info.search_path.replace('{query}', quote(scene_id, safe=''))
+        direct_page_elements = await self.fetch_and_load(
+            scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
+        )
+        if not direct_page_elements:
             return None
-        if not first_text(loaded['sel'], _TITLE_XP):
+
+        if not first_text(direct_page_elements['sel'], _TITLE_XP):
             return None
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=[loaded['sel']], capture=ctx.capture, extra=scene_url)
+
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=[direct_page_elements['sel']], capture=search_data.capture, extra=scene_url)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, _TITLE_XP)
@@ -40,12 +45,14 @@ class BelAmiClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, _TITLE_XP)
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, _TITLE_XP)
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]')
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '(//div[contains(@class,"video_detail")]//div[contains(@class,"bottom")]//p)[2]')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Bel Ami Online'
@@ -57,38 +64,47 @@ class BelAmiClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, _RELEASED_XP)
-        metadata.release_date = iso_date(raw, '%m/%d/%Y') if raw else None
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, _RELEASED_XP)
+
+        metadata.release_date = iso_date(date, '%m/%d/%Y') if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
         tags_xp = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTags")]//a'
-        for a in sel.xpath(tags_xp):
-            g = first_attr(a, 'normalize-space(.)')
-            if g and g not in genres:
-                genres.append(g)
-        actor_count = len(sel.xpath(_ACTORS_XP))
+        for genre_link in details_page_elements.xpath(tags_xp):
+            genre_name = first_attr(genre_link, 'normalize-space(.)')
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
+        actor_count = len(details_page_elements.xpath(_ACTORS_XP))
         if (group := self.group_genre_for(actor_count)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath(_ACTORS_XP):
-            name = first_attr(a, 'normalize-space(.)')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath(_ACTORS_XP):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
-            photo = first_attr(a, '(.//img/@src)[1]')
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            seen.add(actor_name)
+            photo = first_attr(actor_link, '(.//img/@src)[1]')
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         m = _VIDEO_ID_RE.search(scene.url)
         if not m:
             return
+
         metadata.art = [f'https://freecdn.belamionline.com/Data/Contents/Content_{m.group(1)}/Thumbnail8.jpg']

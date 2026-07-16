@@ -18,6 +18,7 @@ def _token_origin(base_url: str) -> str:
     for marker in _TOKEN_ORIGIN_MARKERS:
         if marker in base_url:
             return base_url.replace(marker, '//', 1)
+
     return base_url
 
 
@@ -28,6 +29,7 @@ def _slugify_title(s: str) -> str:
 def _full_name(person: dict[str, Any] | None) -> str:
     if not person:
         return ''
+
     return ' '.join(p for p in (person.get('name'), person.get('last_name')) if p).strip()
 
 
@@ -49,6 +51,7 @@ class XConfessionsClient(Client):
             )
             if r.status_code >= 400:
                 return []
+
             data = r.json().get('data')
             return data if isinstance(data, list) else []
         except (httpx2.HTTPError, ValueError) as err:
@@ -60,50 +63,55 @@ class XConfessionsClient(Client):
             r = await self.http.get(f'{base_url}/api/movies/slug/{slug}', headers={'Authorization': f'Bearer {token}'})
             if r.status_code >= 400:
                 return None
+
             data = r.json().get('data')
             return data if isinstance(data, dict) else None
         except (httpx2.HTTPError, ValueError):
             return None
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base_url = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base_url = search_data.site_info.base_url.rstrip('/')
         token = await self._fetch_token(base_url)
         if not token:
             return
 
         seen: set[str] = set()
 
-        for hit in await self._api_search(base_url, ctx.site_info.search_path, ctx.title, token):
+        for hit in await self._api_search(base_url, search_data.site_info.search_path, search_data.title, token):
             if hit.get('resourceType') != 'movies':
                 continue
+
             slug = (hit.get('slug') or '').strip()
             title = (hit.get('title') or '').strip()
             if not slug or not title or slug in seen:
                 continue
+
             seen.add(slug)
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=f'{base_url}/api/movies/slug/{slug}',
-                    query=ctx.title,
-                    search_date=ctx.search_date,
-                    cur_id=pack_cur_id([slug, ctx.search_date or '']),
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([slug, search_data.search_date or '']),
                 )
             )
 
-        direct_slug = _slugify_title(ctx.title)
+        direct_slug = _slugify_title(search_data.title)
         if direct_slug and direct_slug not in seen:
             direct = await self._api_movie_by_slug(base_url, direct_slug, token)
             if direct and (direct.get('title') or '').strip():
                 seen.add(direct_slug)
+
                 results.append(
                     build_search_result(
                         title=direct['title'].strip(),
                         scene_url=f'{base_url}/api/movies/slug/{direct_slug}',
-                        query=ctx.title,
-                        search_date=ctx.search_date,
+                        query=search_data.title,
+                        search_date=search_data.search_date,
                         score=100,
-                        cur_id=pack_cur_id([direct_slug, ctx.search_date or '']),
+                        cur_id=pack_cur_id([direct_slug, search_data.search_date or '']),
                     )
                 )
 
@@ -114,14 +122,17 @@ class XConfessionsClient(Client):
         cur_id_date = tail.strip()
         if not slug:
             return None
+
         token = await self._fetch_token(base_url)
         if not token:
             logger.warn(site.name, 'XConfessions detail: no token')
             return None
+
         scene = await self._api_movie_by_slug(base_url, slug, token)
         if not scene:
             logger.warn(site.name, f'XConfessions detail: no scene for slug "{slug}"')
             return None
+
         return LoadedScene(
             url=f'{base_url}/api/movies/slug/{slug}', site=site, scene_date=cur_id_date or None, capture=ctx.capture if ctx else None, extra=scene
         )
@@ -147,12 +158,13 @@ class XConfessionsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        raw = self._data(scene).get('release_date')
-        if raw:
-            parsed = iso_date(raw)
+        date = self._data(scene).get('release_date')
+        if date:
+            parsed = iso_date(date)
             if parsed:
                 metadata.release_date = parsed
                 return
+
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
@@ -162,41 +174,48 @@ class XConfessionsClient(Client):
         hay = f'{(d.get("title") or "").lower()} {(d.get("synopsis_clean") or "").lower()}'
         if (d.get('is_compilation') or 'compilation' in hay) and 'Compilation' not in genres:
             genres.append('Compilation')
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for p in self._data(scene).get('performers') or []:
-            name = _full_name(p)
-            if not name or name in seen:
+            actor_name = _full_name(p)
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
-            actors.append(ActorResult(name=name, photo_url=strip_query(p.get('poster_image'))))
+
+            seen.add(actor_name)
+            actors.append(ActorResult(name=actor_name, photo_url=strip_query(p.get('poster_image'))))
+
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        name = _full_name(self._data(scene).get('director'))
-        metadata.directors = [ActorResult(name=name)] if name else None
+        director_name = _full_name(self._data(scene).get('director'))
+
+        metadata.directors = [ActorResult(name=director_name)] if director_name else None
 
     async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         producer = self._data(scene).get('producer')
-        name = _full_name(producer)
-        if not name or not isinstance(producer, dict):
+        producer_name = _full_name(producer)
+        if not producer_name or not isinstance(producer, dict):
             return
-        metadata.producers = [ActorResult(name=name, photo_url=strip_query(producer.get('poster_image')))]
+
+        metadata.producers = [ActorResult(name=producer_name, photo_url=strip_query(producer.get('poster_image')))]
 
     # Legacy set `rating = data.rating * 2`; SceneDetail has no rating slot, so
     # the rating is dropped (parity with the TS port).
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._data(scene)
-        coll = self.image_collector(lambda raw: (raw or '').strip())
+        images = self.image_collector(lambda image: (image or '').strip())
         if d.get('poster_picture'):
-            coll['push'](strip_query(d['poster_picture']))
+            images['push'](strip_query(d['poster_picture']))
         elif d.get('banner_image_mobile'):
-            coll['push'](strip_query(d['banner_image_mobile']))
+            images['push'](strip_query(d['banner_image_mobile']))
+
         for a in d.get('album') or []:
             if a.get('path'):
-                coll['push'](strip_query(a['path']))
-        metadata.art = coll['list']
+                images['push'](strip_query(a['path']))
+
+        metadata.art = images['list']

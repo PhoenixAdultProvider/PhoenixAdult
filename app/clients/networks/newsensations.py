@@ -12,19 +12,20 @@ STUDIO = 'New Sensations'
 
 
 class NewSensationsClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        stem = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        stem = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path
 
-        title_no_actors = ' '.join(ctx.title.split(' ')[2:])
+        title_no_actors = ' '.join(search_data.title.split(' ')[2:])
         if title_no_actors.startswith('and '):
             title_no_actors = ' '.join(title_no_actors.split(' ')[3:])
+
         slug = title_no_actors.replace(' ', '-')
 
         candidates: list[str] = [f'{stem}updates/{slug}.html', f'{stem}updates/{slug}-.html', f'{stem}updates/{slug}-4k.html', f'{stem}dvds/{slug}.html']
         seen = set(candidates)
         if web_search_available():
-            with best_effort(ctx.site_info.name, 'webSearch'):
-                found = await web_search(SearchOptions(query=ctx.title, site=urlparse(ctx.site_info.base_url).netloc, num=10))
+            with best_effort(search_data.site_info.name, 'webSearch'):
+                found = await web_search(SearchOptions(query=search_data.title, site=urlparse(search_data.site_info.base_url).netloc, num=10))
                 for url in found:
                     is_scene = '/updates/' in url or '/dvds/' in url or '/scenes/' in url
                     is_tour = '/tour_ns/' in url or '/tour_famxxx/' in url
@@ -33,11 +34,12 @@ class NewSensationsClient(Client):
                         candidates.append(url)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
-            if not loaded:
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {scene_url}')
+            if not search_results:
                 continue
+
             title = (
-                loaded['sel']
+                search_results['sel']
                 .xpath('(//div[@class="indScene"]/h1 | //div[@class="indSceneDVD"]/h1 | //div[@class="indScene"]/h2 | //div[@class="indSceneDVD"]/h2)[1]')
                 .xpath('string(.)')
                 .get()
@@ -45,7 +47,12 @@ class NewSensationsClient(Client):
             ).strip()
             if not title:
                 continue
-            results.append(build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])))
+
+            results.append(
+                build_search_result(
+                    title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, cur_id=pack_cur_id([scene_url])
+                )
+            )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -55,17 +62,24 @@ class NewSensationsClient(Client):
     def _dvd_tagline(self, scene: LoadedScene) -> str | None:
         if not self._is_dvd(scene):
             return None
-        sel = scene.require_sel()
-        return (sel.xpath('(//div[@class="indSceneDVD"]/h1)[1]').xpath('string(.)').get() or '').strip() or None
+
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//div[@class="indSceneDVD"]/h1)[1]').xpath('string(.)').get() or '').strip() or None
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         xp = '(//div[@class="indSceneDVD"]/h1)[1]' if self._is_dvd(scene) else '(//div[@class="indScene"]/h1 | //div[@class="indScene"]/h2)[1]'
-        metadata.title = (sel.xpath(xp).xpath('string(.)').get() or '').strip()
+
+        metadata.title = (details_page_elements.xpath(xp).xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[@class="description"]/h2)[1]').xpath('string(.)').get() or '').replace('Description:', '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (
+            (details_page_elements.xpath('(//div[@class="description"]/h2)[1]').xpath('string(.)').get() or '').replace('Description:', '').strip()
+        )
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -78,57 +92,67 @@ class NewSensationsClient(Client):
             dvd = self._dvd_tagline(scene)
             metadata.collections = [dvd] if dvd else None
             return
+
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         if self._is_dvd(scene):
-            raw = (sel.xpath('(//div[@class="datePhotos"])[1]').xpath('string(.)').get() or '').replace('RELEASED:', '').strip()
+            date = (details_page_elements.xpath('(//div[@class="datePhotos"])[1]').xpath('string(.)').get() or '').replace('RELEASED:', '').strip()
         else:
-            raw = (sel.xpath('(//div[@class="sceneDateP"]/span)[1]').xpath('string(.)').get() or '').strip()
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+            date = (details_page_elements.xpath('(//div[@class="sceneDateP"]/span)[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
         if self._is_dvd(scene):
-            for a in sel.xpath('//div[@class="textLink"]//a'):
-                g = first_attr(a, 'normalize-space(.)')
-                if g and g not in genres:
-                    genres.append(g)
+            for genre_link in details_page_elements.xpath('//div[@class="textLink"]//a'):
+                genre_name = first_attr(genre_link, 'normalize-space(.)')
+                if genre_name and genre_name not in genres:
+                    genres.append(genre_name)
         else:
-            cast = len(sel.xpath('//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'))
+            cast = len(details_page_elements.xpath('//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'))
             if (group := self.group_genre_for(cast)) and group not in genres:
                 genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         xp = '//span[@class="tour_update_models"]/a' if self._is_dvd(scene) else '//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath(xp):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath(xp):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = first_attr(page['sel'], '(//div[@class="modelBioPic"]/img)[1]/@src0_3x') if page else ''
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
+                raw = first_attr(model_page_elements['sel'], '(//div[@class="modelBioPic"]/img)[1]/@src0_3x') if model_page_elements else ''
                 if raw:
                     photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        coll['push'](sel.xpath('(//span[@id="trailer_thumb"]//img)[1]/@src').get())
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        images['push'](details_page_elements.xpath('(//span[@id="trailer_thumb"]//img)[1]/@src').get())
         if self._is_dvd(scene):
-            for src in sel.xpath('//div[@class="videoBlock"]//img/@src0_3x').getall():
-                coll['push'](src)
-        images: list[str] = coll['list']
-        metadata.art = images
+            for src in details_page_elements.xpath('//div[@class="videoBlock"]//img/@src0_3x').getall():
+                images['push'](src)
+
+        metadata.art = images['list']

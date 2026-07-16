@@ -16,6 +16,7 @@ def _parse_ld(sel: Selector) -> dict[str, Any] | None:
     text = first_attr(sel, '(//script[@type="application/ld+json"])[1]/text()')
     if not text:
         return None
+
     try:
         data = json.loads(text)
         return data if isinstance(data, dict) else None
@@ -24,31 +25,32 @@ def _parse_ld(sel: Selector) -> dict[str, Any] | None:
 
 
 class POVRClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {scene_url}')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {scene_url}')
+        if not search_results:
             return
 
-        for card in loaded['sel'].xpath('//div[contains(@class,"thumbnail-wrap")]/div'):
-            title = first_attr(card, 'normalize-space((.//h6[contains(@class,"thumbnail__title")])[1])')
-            href = first_attr(card, '(.//a[contains(@class,"thumbnail__link")]/@href)[1]')
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"thumbnail-wrap")]/div'):
+            title = first_attr(search_result, 'normalize-space((.//h6[contains(@class,"thumbnail__title")])[1])')
+            href = first_attr(search_result, '(.//a[contains(@class,"thumbnail__link")]/@href)[1]')
             if not title or not href:
                 continue
-            url = absolute_url(href, ctx.site_info.base_url)
-            sub_site = first_attr(card, 'normalize-space((.//a[contains(@class,"thumbnail__footer-link")])[1])')
 
-            site_dist = compare_string(sub_site.lower().replace('originals', ''), ctx.site_info.name.lower()).levenshtein
-            title_dist = compare_string(ctx.title.lower(), title.lower()).levenshtein
+            url = absolute_url(href, search_data.site_info.base_url)
+            sub_site = first_attr(search_result, 'normalize-space((.//a[contains(@class,"thumbnail__footer-link")])[1])')
+
+            site_dist = compare_string(sub_site.lower().replace('originals', ''), search_data.site_info.name.lower()).levenshtein
+            title_dist = compare_string(search_data.title.lower(), title.lower()).levenshtein
             score = 60 - (site_dist * 6) // 10 + (40 - (title_dist * 4) // 10)
 
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=url,
-                    query=ctx.title,
-                    search_date=ctx.search_date,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
                     score=score,
                     cur_id=pack_cur_id([x for x in (url, sub_site) if x]),
                     subsite=sub_site or None,
@@ -61,14 +63,21 @@ class POVRClient(Client):
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         sub_site = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
+        if not details_page_elements:
             return None
-        ld = _parse_ld(loaded['sel'])
+
+        ld = _parse_ld(details_page_elements['sel'])
         if ld is None:
             return None
+
         return LoadedScene(
-            url=url, site=site, capture=ctx.capture if ctx else None, sel=loaded['sel'], html=loaded['html'], extra={'ld': ld, 'subSite': sub_site}
+            url=url,
+            site=site,
+            capture=ctx.capture if ctx else None,
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
+            extra={'ld': ld, 'subSite': sub_site},
         )
 
     def _ld(self, scene: LoadedScene) -> dict[str, Any]:
@@ -92,12 +101,17 @@ class POVRClient(Client):
         metadata.collections = [self._sub_site(scene) or scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        raw = (self._ld(scene).get('uploadDate') or '').strip()
-        metadata.release_date = (iso_date(raw) if raw else None) or scene.scene_date or None
+        date = (self._ld(scene).get('uploadDate') or '').strip()
+
+        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [first_attr(a, 'normalize-space(.)').lower() for a in sel.xpath('//ul[contains(@class,"category-link")]//li//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            first_attr(genre_link, 'normalize-space(.)').lower() for genre_link in details_page_elements.xpath('//ul[contains(@class,"category-link")]//li//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -106,12 +120,15 @@ class POVRClient(Client):
 
         refs: list[tuple[str, str]] = []
         for a in self._ld(scene).get('actor') or []:
-            name = (a.get('name') or '').strip()
-            if not name:
+            actor_name = (a.get('name') or '').strip()
+            if not actor_name:
                 continue
-            refs.append((name, (a.get('@id') or '').strip()))
+
+            refs.append((actor_name, (a.get('@id') or '').strip()))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         thumb = (self._ld(scene).get('thumbnailUrl') or '').strip()
+
         metadata.art = [thumb.replace('tiny', 'large')] if thumb else []

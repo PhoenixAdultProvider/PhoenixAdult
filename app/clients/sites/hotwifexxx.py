@@ -20,14 +20,15 @@ def _date_of(raw: str) -> str | None:
 
 
 class HotwifeXXXClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        host = urlsplit(ctx.site_info.base_url).hostname or ''
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        host = urlsplit(search_data.site_info.base_url).hostname or ''
         if not host:
             return
+
         try:
-            found = await web_search(SearchOptions(query=ctx.title, site=host, num=10))
+            found = await web_search(SearchOptions(query=search_data.title, site=host, num=10))
         except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(ctx.site_info.name, f'webSearch threw: {err}')
+            logger.warn(search_data.site_info.name, f'webSearch threw: {err}')
             return
 
         seen: set[str] = set()
@@ -38,32 +39,38 @@ class HotwifeXXXClient(Client):
                 candidates.append(u)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] {scene_url}')
-            if not loaded:
+            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {scene_url}')
+            if not search_results:
                 continue
-            title = first_text(loaded['sel'], '//div[contains(@class,"trailerInfo")]//h2')
+
+            title = first_text(search_results['sel'], '//div[contains(@class,"trailerInfo")]//h2')
             if not title:
                 continue
-            date = _date_of(first_text(loaded['sel'], _RELEASED_XP))
+
+            date = _date_of(first_text(search_results['sel'], _RELEASED_XP))
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                 )
             )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//div[contains(@class,"trailerInfo")]//h2') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//div[contains(@class,"trailerInfo")]//h2') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//div[contains(@class,"dvdDescription")]//p')
+        details_page_elements = scene.require_sel()
+
+        raw = first_text(details_page_elements, '//div[contains(@class,"dvdDescription")]//p')
+
         metadata.summary = _DESCRIPTION_RE.sub('', raw, count=1).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -76,35 +83,43 @@ class HotwifeXXXClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.release_date = _date_of(first_text(sel, _RELEASED_XP)) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        metadata.release_date = _date_of(first_text(details_page_elements, _RELEASED_XP)) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        count = len(sel.xpath(_CAST_XP))
+        details_page_elements = scene.require_sel()
+
+        count = len(details_page_elements.xpath(_CAST_XP))
         if group := self.group_genre_for(count):
             metadata.genres = [group]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
-        for el in sel.xpath(_CAST_XP):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
+        for actor_link in details_page_elements.xpath(_CAST_XP):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
                 continue
+
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
                 actor_url = absolute_url(href, scene.site.base_url)
-                loaded = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'GET {actor_url} (actor)')
-                raw = first_attr(loaded['sel'], '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]') if loaded else ''
+                model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'GET {actor_url} (actor)')
+                raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]') if model_page_elements else ''
                 photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in sel.xpath('//span[@id="trailer_thumb"]//img/@src').getall():
-            coll['push']((raw or '').strip())
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for image_url in details_page_elements.xpath('//span[@id="trailer_thumb"]//img/@src').getall():
+            images['push']((image_url or '').strip())
+
+        metadata.art = images['list']

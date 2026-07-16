@@ -24,8 +24,10 @@ def _tagline_from_title(title: str, site_name: str) -> str:
     lc = title.lower()
     if 'teenfidelity' in lc:
         return 'TeenFidelity'
+
     if 'kelly madison' in lc:
         return 'Kelly Madison'
+
     return site_name
 
 
@@ -33,20 +35,22 @@ class KellyMadisonClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': _NATS_COOKIE})
 
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        scene_id = ctx.scene_id or ''
-        if not scene_id and ctx.full_title:
-            first_tok = ctx.full_title.strip().split()[0] if ctx.full_title.strip() else ''
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        scene_id = search_data.scene_id or ''
+        if not scene_id and search_data.full_title:
+            first_tok = search_data.full_title.strip().split()[0] if search_data.full_title.strip() else ''
             stripped = re.sub(r'^e', '', first_tok, flags=re.IGNORECASE)
             if stripped and stripped.isdigit():
                 scene_id = stripped
-        url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title.strip()))
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+
+        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title.strip()))
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//a[contains(@class,"video-card")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture, extra={'scene_id': scene_id})
+
+        sources = list(search_results['sel'].xpath('//a[contains(@class,"video-card")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture, extra={'scene_id': scene_id})
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h3)[1]').xpath('string(.)').get() or '').strip()
@@ -63,6 +67,7 @@ class KellyMadisonClient(Client):
         scene_id = (loaded.extra or {}).get('scene_id') or ''
         if not scene_id:
             return None
+
         episode_id = (source.xpath('(.//span[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').split('#')[-1].strip()
         href = first_attr(source, '@href')
         scene_url = absolute_url(href, loaded.site.base_url) if href else ''
@@ -72,17 +77,20 @@ class KellyMadisonClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        raw = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw, scene.site.name)
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -94,23 +102,28 @@ class KellyMadisonClient(Client):
         metadata.collections = [self._tagline_of(scene) or scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//p[contains(.,"Published")]//strong)[1]').xpath('string(.)').get() or '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw, '%Y-%m-%d') or iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//p[contains(.,"Published")]//strong)[1]').xpath('string(.)').get() or '').strip()
+        if date:
+            metadata.release_date = iso_date(date, '%Y-%m-%d') or iso_date(date)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres = ['Hardcore', 'Heterosexual']
-        cast = len(sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
+        cast = len(details_page_elements.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
@@ -118,15 +131,17 @@ class KellyMadisonClient(Client):
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
-            if name and href:
-                refs.append((name, absolute_url(href, base)))
+        for actor_link in details_page_elements.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, base)))
+
         metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         slug = scene.url.rstrip('/').split('/')[-1]
         if not slug:
             return
+
         metadata.art = [t.replace('{slug}', slug) for t in _POSTER_TEMPLATES]

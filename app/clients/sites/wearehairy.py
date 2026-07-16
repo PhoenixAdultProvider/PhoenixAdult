@@ -11,14 +11,15 @@ _FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 
 
 class WeAreHairyClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[contains(@class,"results")]//ul//li'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"results")]//ul//li'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/p[contains(@class,"title")]//a')
@@ -27,6 +28,7 @@ class WeAreHairyClient(Client):
         href = first_attr(source, '(.//div[contains(@class,"top")]//p//a/@href)[1]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -36,12 +38,14 @@ class WeAreHairyClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//title') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"desc")]/div[1]//p') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"desc")]/div[1]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -53,45 +57,60 @@ class WeAreHairyClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//span[contains(@class,"added")]//time')
-        if raw:
-            parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//span[contains(@class,"added")]//time')
+        if date:
+            parsed = iso_date(date, '%b %d, %Y') or iso_date(date)
             if parsed:
                 metadata.release_date = parsed
                 return
+
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in sel.xpath('//div[contains(@class,"tagline")]//p//a')])
-        for g in _FIXED_GENRES:
-            if g not in genres:
-                genres.append(g)
+        details_page_elements = scene.require_sel()
+
+        genres = self.dedup_strings(
+            [first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//div[contains(@class,"tagline")]//p//a')]
+        )
+        for genre_name in _FIXED_GENRES:
+            if genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for alt in sel.xpath('//div[contains(@class,"meet")]//a//img/@alt').getall():
-            name = (alt or '').replace('WeAreHairy.com', '').strip()
-            if not name or name in seen:
+        for alt in details_page_elements.xpath('//div[contains(@class,"meet")]//a//img/@alt').getall():
+            actor_name = (alt or '').replace('WeAreHairy.com', '').strip()
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
-            actors.append(ActorResult(name=name))
+
+            seen.add(actor_name)
+            actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=(p.xpath('normalize-space(.)').get() or '')) for p in sel.xpath('//div[contains(@class,"desc")]/div[2]//p')]
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=(p.xpath('normalize-space(.)').get() or '')) for p in details_page_elements.xpath('//div[contains(@class,"desc")]/div[2]//p')
+        ]
         directors = self.dedup_people(entries)
+
         metadata.directors = directors or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda src: to_https((src or '').strip()))
-        for src in sel.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
-            coll['push'](src)
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: to_https((image or '').strip()))
+        for src in details_page_elements.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
+            images['push'](src)
+
+        metadata.art = images['list']

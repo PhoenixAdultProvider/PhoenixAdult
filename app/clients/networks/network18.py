@@ -30,24 +30,29 @@ class Network18Client(GraphQLClient):
         headers = {'argonath-api-key': cfg['api_key'], 'Referer': base_url}
         return await self.graphql(cfg['endpoint'], query, {variable: value}, headers=headers, capture_label=label, capture_sink=sink)
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        if ctx.site_info.name not in _SITE_CONFIG:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        if search_data.site_info.name not in _SITE_CONFIG:
             return
-        site = ctx.site_info
-        data = await self._gql(site.name, site.base_url, _SEARCH_QUERY, 'query', ctx.title, f'[{site.name}] search "{ctx.title}"', ctx.capture)
-        items = (((data or {}).get('search') or {}).get('search') or {}).get('result') or []
+
+        site = search_data.site_info
+        search_results = await self._gql(
+            site.name, site.base_url, _SEARCH_QUERY, 'query', search_data.title, f'[{site.name}] search "{search_data.title}"', search_data.capture
+        )
+        items = (((search_results or {}).get('search') or {}).get('search') or {}).get('result') or []
 
         for item in items:
             if not isinstance(item, dict) or item.get('type') != 'VIDEO' or not item.get('itemId'):
                 continue
+
             images = item.get('images')
             thumb = str(images[0]) if isinstance(images, list) and images else None
+
             results.append(
                 build_search_result(
                     title=item.get('name') or '',
                     scene_url=item['itemId'],
-                    query=ctx.title,
-                    search_date=ctx.search_date,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
                     cur_id=self.encode(item['itemId']),
                     thumb_url=thumb,
                 )
@@ -56,6 +61,7 @@ class Network18Client(GraphQLClient):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         if site.name not in _SITE_CONFIG:
             return None
+
         video_id = payload
         sink = ctx.capture if ctx else None
         splitted = video_id.split(':')
@@ -66,8 +72,8 @@ class Network18Client(GraphQLClient):
         except ValueError:
             scene_num = 0
 
-        data = await self._gql(site.name, site.base_url, _FIND_VIDEO_QUERY, 'videoId', video_id, f'[{site.name}] findVideo {video_id}', sink)
-        detail = (((data or {}).get('video') or {}).get('find') or {}).get('result')
+        details_page_elements = await self._gql(site.name, site.base_url, _FIND_VIDEO_QUERY, 'videoId', video_id, f'[{site.name}] findVideo {video_id}', sink)
+        detail = (((details_page_elements or {}).get('video') or {}).get('find') or {}).get('result')
         if not isinstance(detail, dict):
             return None
 
@@ -95,6 +101,7 @@ class Network18Client(GraphQLClient):
         summary = ((detail.get('description') or {}).get('long') or '').strip()
         if summary and summary[-1] not in '!.?':
             summary += '.'
+
         metadata.summary = summary
 
         # Studio
@@ -116,6 +123,7 @@ class Network18Client(GraphQLClient):
         talent = [t for t in talent if isinstance(t, dict) and isinstance(t.get('talent'), dict) and t['talent'].get('talentId')]
         if not talent:
             return []
+
         paths = [f'/members/models/{t["talent"]["talentId"]}/profile-sm.jpg' for t in talent]
         asset_results: list[Any] = []
         data = await self._gql(site.name, site.base_url, _BATCH_ASSET_QUERY, 'paths', paths, f'[{site.name}] batchAsset (actors)', sink)
@@ -124,6 +132,7 @@ class Network18Client(GraphQLClient):
         for idx, t in enumerate(talent):
             uri = ((asset_results[idx].get('serve') or {}).get('uri') or '') if idx < len(asset_results) and isinstance(asset_results[idx], dict) else ''
             actors.append(ActorResult(name=t['talent'].get('name') or '', photo_url=uri, gender='female'))
+
         return actors
 
     async def _fetch_image_urls(

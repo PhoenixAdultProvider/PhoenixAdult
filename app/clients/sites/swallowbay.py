@@ -21,38 +21,45 @@ def _parse_date(raw: str) -> str | None:
 
 
 class SwallowBayClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = _SLUG_RE.sub('-', ctx.title.strip().lower())
-        scene_url = base + ctx.site_info.search_path.replace('{query}', slug)
-        loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] direct-URL {slug}')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = _SLUG_RE.sub('-', search_data.title.strip().lower())
+        scene_url = base + search_data.site_info.search_path.replace('{query}', slug)
+        search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] direct-URL {slug}')
+        if not search_results:
             return
-        title = meta_content(loaded['sel'], 'twitter:image:alt')
+
+        title = meta_content(search_results['sel'], 'twitter:image:alt')
         if not title:
             return
+
         results.append(
-            build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
+            build_search_result(
+                title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, score=100, cur_id=pack_cur_id([scene_url])
+            )
         )
 
     # ── Context loader (default fetches the scene URL) ─────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url = payload.split('|', 1)[0]
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
+        if not details_page_elements:
             return None
-        return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=loaded['sel'], html=loaded['html'])
+
+        return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'])
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = meta_content(sel, 'twitter:image:alt') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = meta_content(details_page_elements, 'twitter:image:alt') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"content-desc") and contains(@class,"more-desc")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc") and contains(@class,"more-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -61,27 +68,40 @@ class SwallowBayClient(Client):
         metadata.collections = [STUDIO]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = _DATE_PREFIX_RE.sub('', first_text(sel, '//div[contains(@class,"content-date")]'))
-        metadata.release_date = _parse_date(raw) if raw else None
+        details_page_elements = scene.require_sel()
+
+        date = _DATE_PREFIX_RE.sub('', first_text(details_page_elements, '//div[contains(@class,"content-date")]'))
+
+        metadata.release_date = _parse_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//div[contains(@class,"box")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"box")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         entries: list[ActorResult] = []
-        for el in sel.xpath(_MODELS_XP):
-            name = first_attr(el, '@title')
+        for actor_link in details_page_elements.xpath(_MODELS_XP):
+            actor_name = first_attr(actor_link, '@title')
             photo = ''
-            if name:
-                photo = (sel.xpath(f'(//div[contains(@class,"content-models-photos")]//a[@title="{name}"]//span//img/@src)[1]').get() or '').strip()
-            entries.append(ActorResult(name=name, photo_url=photo))
+            if actor_name:
+                photo = (
+                    details_page_elements.xpath(f'(//div[contains(@class,"content-models-photos")]//a[@title="{actor_name}"]//span//img/@src)[1]').get() or ''
+                ).strip()
+
+            entries.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        poster = meta_content(sel, 'og:image')
+        details_page_elements = scene.require_sel()
+
+        poster = meta_content(details_page_elements, 'og:image')
+
         metadata.art = [poster] if poster else []

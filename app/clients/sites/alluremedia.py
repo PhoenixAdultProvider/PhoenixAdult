@@ -28,41 +28,53 @@ def _ptx_srcs(script: str, key: str) -> list[str]:
 
 
 class AllureMediaClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        search_url = _search_url_for(ctx.site_info, ctx.title)
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        search_url = _search_url_for(search_data.site_info, search_data.title)
+        search_results = await self.fetch_and_load(
+            search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"'
+        )
+        if not search_results:
             return
 
-        swallow_salon = ctx.site_info.name == 'Swallow Salon'
-        for card in loaded['sel'].xpath('//div[contains(@class,"update_details")]'):
+        swallow_salon = search_data.site_info.name == 'Swallow Salon'
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"update_details")]'):
             if swallow_salon:
-                anchor = card.xpath('(.//a)[2]')
+                anchor = search_result.xpath('(.//a)[2]')
                 title = first_attr(anchor)
                 href = first_attr(anchor, '@href')
             else:
-                title = (card.xpath('(.//div[contains(@class,"update_title")]//a)[1]').xpath('string(.)').get() or '').strip()
-                href = first_attr(card, '(.//a)[1]/@href')
+                title = (search_result.xpath('(.//div[contains(@class,"update_title")]//a)[1]').xpath('string(.)').get() or '').strip()
+                href = first_attr(search_result, '(.//a)[1]/@href')
+
             if not title or not href:
                 continue
-            raw_date = (card.xpath('(.//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
+
+            raw_date = (search_result.xpath('(.//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
             date = iso_date(raw_date, '%m/%d/%Y') if raw_date else None
-            scene_url = absolute_url(href, ctx.site_info.base_url)
+            scene_url = absolute_url(href, search_data.site_info.base_url)
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    display_date=date,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([scene_url]),
                 )
             )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -74,79 +86,96 @@ class AllureMediaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
-        metadata.release_date = iso_date(raw) or None
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+
+        metadata.release_date = iso_date(date) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for el in sel.xpath('//span[contains(@class,"update_tags")]//a'):
-            g = decensor(first_attr(el), _CENSORED).lower()
-            if g and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a'):
+            genre_name = decensor(first_attr(genre_link), _CENSORED).lower()
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         if 'Amateur' not in genres:
             genres.append('Amateur')
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
-        summary = (sel.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
+        title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        summary = (details_page_elements.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
-            name = first_attr(el)
-            href = first_attr(el, '@href')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
+            actor_name = first_attr(actor_link)
+            href = first_attr(actor_link, '@href')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             photo = ''
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-                img = first_attr(page['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src') if page else ''
+                model_page_elements = await self.fetch_and_load(
+                    absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}'
+                )
+                img = (
+                    first_attr(model_page_elements['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src')
+                    if model_page_elements
+                    else ''
+                )
                 photo = (absolute_url(img, base)) if img else ''
-            actors.append(ActorResult(name=name, photo_url=photo.replace('1x', '3x')))
 
-        for name in _SCENE_ACTORS:
-            if (name in title or name in summary) and name not in seen:
-                seen.add(name)
-                actors.append(ActorResult(name=name))
+            actors.append(ActorResult(name=actor_name, photo_url=photo.replace('1x', '3x')))
+
+        for actor_name in _SCENE_ACTORS:
+            if (actor_name in title or actor_name in summary) and actor_name not in seen:
+                seen.add(actor_name)
+                actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda u: join_url(u, base))
-        title = (sel.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
 
-        df_script = sel.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
+        base = scene.site.base_url.rstrip('/')
+        images = self.image_collector(lambda image: join_url(image, base))
+        title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
+
+        df_script = details_page_elements.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
         use_image = _USEIMAGE_RE.search(df_script)
         if use_image:
-            coll['push'](use_image.group(1))
+            images['push'](use_image.group(1))
 
         set_id = _SETID_RE.search(df_script)
         if set_id:
-            search_page = await self.fetch_and_load(
+            search_results = await self.fetch_and_load(
                 _search_url_for(scene.site, title), FetchCtx(capture=scene.capture), f'[{scene.site.name}] set-target lookup'
             )
-            if search_page:
-                node = search_page['sel'].xpath(f'(//*[@id="set-target-{set_id.group(1)}"])[1]')
-                coll['push'](node.xpath('@src').get() or '')
+            if search_results:
+                node = search_results['sel'].xpath(f'(//*[@id="set-target-{set_id.group(1)}"])[1]')
+                images['push'](node.xpath('@src').get() or '')
                 for i in range(7):
-                    coll['push'](node.xpath(f'@src{i}_1x').get() or '')
+                    images['push'](node.xpath(f'@src{i}_1x').get() or '')
 
         thumbs: list[str] = []
         for selector, attrs in (
             ('//div[contains(@class,"photo_gallery_block")]//img', ('src',)),
             ('//div[contains(@class,"columns") and contains(@class,"mb")]//img', ('src0_2x', 'src')),
         ):
-            for el in sel.xpath(selector):
+            for el in details_page_elements.xpath(selector):
                 src = next((v for a in attrs if (v := el.xpath(f'@{a}').get())), '')
                 if src:
                     thumbs.append(src)
+
         last_thumb = thumbs[-1] if thumbs else ''
         gallery = _GALLERY_RE.match(last_thumb)
         if gallery:
@@ -155,24 +184,25 @@ class AllureMediaClient(Client):
             count = int(yy)
             for n in range(max(1, count - 20), count + 1):
                 nn = str(n).zfill(2)
-                coll['push'](f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
+                images['push'](f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
 
         photos_href = ''
-        for a in sel.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
+        for a in details_page_elements.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
             if first_attr(a) == 'Photos':
                 photos_href = first_attr(a, '@href')
                 break
+
         photos_url = (absolute_url(photos_href, scene.site.base_url)) if photos_href else ''
         metadata.art_referer = photos_url or scene.url
 
         if photos_url:
-            photos_page = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
-            if photos_page:
-                ptx = photos_page['sel'].xpath('//script[contains(.,"var ptx")]').xpath('string(.)').get() or ''
+            photos_page_elements = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
+            if photos_page_elements:
+                ptx = photos_page_elements['sel'].xpath('//script[contains(.,"var ptx")]').xpath('string(.)').get() or ''
                 for u in _ptx_srcs(ptx, '1600'):
-                    coll['push'](u)
-                for u in _ptx_srcs(ptx, 'jpg'):
-                    coll['push'](u)
+                    images['push'](u)
 
-        images: list[str] = coll['list']
-        metadata.art = images or []
+                for u in _ptx_srcs(ptx, 'jpg'):
+                    images['push'](u)
+
+        metadata.art = images['list'] or []

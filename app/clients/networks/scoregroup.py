@@ -22,39 +22,42 @@ def _clean_title(raw: str) -> str:
 
 
 class ScoreGroupClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        sources: list[Any] = list(loaded['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if loaded else []
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
 
-        video_list_path = ctx.site_info.sub_group or '/'
+        video_list_path = search_data.site_info.sub_group or '/'
         candidate_urls: list[str] = []
 
-        if not ctx.scene_id and ctx.full_title:
-            all_digits = re.sub(r'\D', '', ctx.full_title)
-            actor_slug = re.sub(r'\s\d.*', '', ctx.full_title).replace(' ', '-')
+        if not search_data.scene_id and search_data.full_title:
+            all_digits = re.sub(r'\D', '', search_data.full_title)
+            actor_slug = re.sub(r'\s\d.*', '', search_data.full_title).replace(' ', '-')
             if all_digits and actor_slug:
                 candidate_urls.append(f'{base}{video_list_path}{actor_slug}/{all_digits}/')
 
         if web_search_available():
-            for u in await web_search_urls(ctx.title, ctx.site_info, include=[video_list_path], exclude=['?']):
+            for u in await web_search_urls(search_data.title, search_data.site_info, include=[video_list_path], exclude=['?']):
                 if u not in candidate_urls:
                     candidate_urls.append(u)
 
         sources.extend({'_url': u} for u in candidate_urls)
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         ctx = loaded.ctx
         if isinstance(source, dict) and '_url' in source:
-            page = await self.fetch_and_load(source['_url'], FetchCtx(capture=ctx.capture), f'[{loaded.site.name}] candidate {source["_url"]}')
-            if not page:
+            details_page_elements = await self.fetch_and_load(source['_url'], FetchCtx(capture=ctx.capture), f'[{loaded.site.name}] candidate {source["_url"]}')
+            if not details_page_elements:
                 return
-            title = (page['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
             if not title or '404' in title or _LATEST_RE.search(title):
                 return
+
             packed = json.dumps({'url': source['_url'], 'date': ctx.search_date, 'title': title})
+
             results.append(
                 build_search_result(
                     title=_clean_title(title), scene_url=source['_url'], query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([packed])
@@ -67,6 +70,7 @@ class ScoreGroupClient(Client):
         href = first_attr(anchor, '@href').split('?')[0]
         if not raw_title or not href:
             return
+
         scene_url = absolute_url(href, loaded.site.base_url)
         m = _ID_RE.search(scene_url)
         score = 100 if ctx.scene_id and m and m.group(1) == ctx.scene_id else None
@@ -79,6 +83,7 @@ class ScoreGroupClient(Client):
                 'img': first_attr(source, '(.//img)[1]/@src'),
             }
         )
+
         results.append(
             build_search_result(
                 title=_clean_title(raw_title), scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=score, cur_id=pack_cur_id([packed])
@@ -97,20 +102,22 @@ class ScoreGroupClient(Client):
             packed = {'url': payload[:pipe] if pipe >= 0 else payload}
             if pipe >= 0:
                 packed['date'] = payload[pipe + 1 :].strip()
+
         if not packed.get('url'):
             return None
 
-        loaded = await self.fetch_and_load(packed['url'], FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed["url"]}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(packed['url'], FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed["url"]}')
+        if not details_page_elements:
             return None
-        is_latest = bool(_LATEST_RE.search((loaded['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()))
+
+        is_latest = bool(_LATEST_RE.search((details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()))
         return LoadedScene(
             url=packed['url'],
             site=site,
             scene_date=packed.get('date') or None,
             capture=ctx.capture if ctx else None,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
             extra={'packed': packed, 'is_latest': is_latest},
         )
 
@@ -121,20 +128,26 @@ class ScoreGroupClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         packed, is_latest = self._data(scene)
         if is_latest and packed.get('title'):
             metadata.title = _clean_title(packed['title'])
             return
-        raw = (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
+
+        raw = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//div//span[@class="value"]/a')) if n]
+            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in details_page_elements.xpath('//div//span[@class="value"]/a')) if n]
             raw = ' and '.join(names)
+
         metadata.title = _clean_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (
+            details_page_elements.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or ''
+        ).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -146,71 +159,87 @@ class ScoreGroupClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
+        if date:
+            metadata.release_date = iso_date(date)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         values: list[str | None] = [
-            a.xpath('normalize-space(.)').get()
-            for a in sel.xpath('//div[@class="mb-3"]//a | //div[contains(@class,"desc")]//a[contains(@href,"tag") or contains(@href,"category")]')
+            genre_link.xpath('normalize-space(.)').get()
+            for genre_link in details_page_elements.xpath(
+                '//div[@class="mb-3"]//a | //div[contains(@class,"desc")]//a[contains(@href,"tag") or contains(@href,"category")]'
+            )
         ]
+
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         packed, is_latest = self._data(scene)
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
         if is_latest:
             for raw in (packed.get('actors') or '').split(','):
-                name = raw.strip()
-                if name and name not in seen:
-                    seen.add(name)
-                    actors.append(ActorResult(name=name))
+                actor_name = raw.strip()
+                if actor_name and actor_name not in seen:
+                    seen.add(actor_name)
+                    actors.append(ActorResult(name=actor_name))
+
             metadata.actors = actors or []
             return
 
         base = scene.site.base_url
-        for el in sel.xpath('//div//span[@class="value"]/a'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href').split('?')[0]
-            if not name or name.lower() == 'extra' or name in seen:
+        for actor_link in details_page_elements.xpath('//div//span[@class="value"]/a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href').split('?')[0]
+            if not actor_name or actor_name.lower() == 'extra' or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             gender = 'male' if '/male-' in href else ''
             photo = ''
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {name}')
-                photo = first_attr(page['sel'], '(//div[contains(@class,"item-img")]//img)[1]/@src') if page else ''
-            actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {actor_name}')
+                photo = first_attr(model_page_elements['sel'], '(//div[contains(@class,"item-img")]//img)[1]/@src') if model_page_elements else ''
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo, gender=gender))
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):
             actors.append(ActorResult(name='Christy Marks'))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         images: list[str] = []
 
         def push(raw: str) -> None:
             if not raw:
                 return
+
             url = raw if raw.startswith('http') else (f'https:{raw}' if raw.startswith('//') else raw)
             if 'shared-bits' in url or '/join' in url:
                 return
+
             m = _POSTERTHUMBS_RE.search(url)
             if m:
                 for i in range(1, 7):
                     variant = url.replace(m.group(0), f'/{i:02d}')
                     if variant not in images:
                         images.append(variant)
+
                 return
+
             if url not in images:
                 images.append(url)
 
@@ -229,6 +258,7 @@ class ScoreGroupClient(Client):
             '//div[contains(@class,"gallery")]//a/@href',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                push(raw)
+            for image_url in details_page_elements.xpath(xpath).getall():
+                push(image_url)
+
         metadata.art = images or []

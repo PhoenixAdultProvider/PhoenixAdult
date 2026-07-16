@@ -22,6 +22,7 @@ def _strip_tags(html: str) -> str:
     s = strip_tags(html)
     if s and s[-1] not in '.!?':
         s += '.'
+
     return s
 
 
@@ -41,15 +42,19 @@ class ReptyleClient(Client):
         except Exception as err:  # noqa: BLE001 - network failure yields no state
             logger.warn('Reptyle', f'fetchInitialState failed for {url}: {err}')
             return None
+
         m = _STATE_RE.search(r.text)
         if not m:
             return None
+
         try:
             parsed = json.loads(m.group(1))
         except ValueError:
             return None
+
         if capture is not None:
             capture.append(RawCaptureEntry(f'__INITIAL_STATE__ from {url}', 'json', parsed))
+
         content = parsed.get('content') if isinstance(parsed, dict) else None
         return content if isinstance(content, dict) else None
 
@@ -59,31 +64,36 @@ class ReptyleClient(Client):
             if isinstance(bucket, dict) and bucket:
                 cur = next(iter(bucket))
                 return cur, t, bucket[cur]
+
         return None
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        slug = slugify(ctx.title.replace("'", ''))
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        slug = slugify(search_data.title.replace("'", ''))
         if not slug:
             return
-        url = ctx.site_info.base_url.rstrip('/') + ctx.site_info.search_path.replace('{query}', slug)
-        state = await self._fetch_initial_state(url, ctx.capture)
+
+        url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', slug)
+        state = await self._fetch_initial_state(url, search_data.capture)
         if not state:
             return
+
         picked = self._pick_scene(state)
         if not picked:
             return
+
         cur, scene_type, scene_json = picked
         composite = f'{cur}|{scene_type}|{url}'
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
-        result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(ctx.site_info.name) else None
+        result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None
+
         results.append(
             SearchResult(
                 title=scene_json.get('title') or '',
                 scene_url=url,
                 cur_id=self.encode(composite),
                 thumb_url=scene_json.get('img'),
-                release_date=release_date or ctx.search_date or None,
+                release_date=release_date or search_data.search_date or None,
                 display_date=release_date,
                 subsite=result_sub,
             )
@@ -96,15 +106,18 @@ class ReptyleClient(Client):
         url = parts[2] if len(parts) > 2 else ''
         if not url:
             return None
+
         capture = ctx.capture if ctx else None
 
         state = await self._fetch_initial_state(url, capture)
         if not state:
             return None
+
         bucket = state.get(scene_type) or state.get('moviesContent') or state.get('videosContent') or {}
         scene_json = bucket.get(scene_id)
         if not isinstance(scene_json, dict):
             return None
+
         return LoadedScene(url=url, site=site, capture=capture, extra=scene_json, subsite=ctx.subsite if ctx else None)
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
@@ -136,6 +149,7 @@ class ReptyleClient(Client):
             name = m.get('modelName') or m.get('name') or ''
             if not name:
                 continue
+
             photo, gender = '', ''
             if mid:
                 mstate = await self._fetch_initial_state(f'{site.base_url.rstrip("/")}/models/{mid}', capture)
@@ -143,12 +157,14 @@ class ReptyleClient(Client):
                 if isinstance(entry, dict):
                     photo = entry.get('img') or ''
                     gender = entry.get('gender') or ''
+
             metadata.actors.append(ActorResult(name=name, photo_url=photo, gender=gender))
 
         # Genres
         genres = [t.strip() for t in (scene_json.get('tags') or []) if t.strip()]
         if len(metadata.actors) > 1 and sub_site != 'Mylfed':
             genres.append('Threesome')
+
         metadata.genres = genres
 
         # Posters

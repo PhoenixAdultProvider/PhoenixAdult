@@ -41,22 +41,23 @@ def _actor_overrides(scene_id: str) -> list[ActorResult]:
 class GammaEntOtherClient(Client):
     # ── Search (Algolia) ────────────────────────────────────────────────────────
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        title = ctx.title.strip()
-        scene_id = ctx.scene_id
-        api_key = await self._get_api_key(ctx.site_info)
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        title = search_data.title.strip()
+        scene_id = search_data.scene_id
+        api_key = await self._get_api_key(search_data.site_info)
         if not api_key:
-            logger.warn(ctx.site_info.name, 'could not resolve Algolia apiKey')
+            logger.warn(search_data.site_info.name, 'could not resolve Algolia apiKey')
             return
 
-        site_norm = ctx.site_info.name.replace(' ', '').lower()
+        site_norm = search_data.site_info.name.replace(' ', '').lower()
         for scene_type in ('scenes', 'movies'):
             id_field = 'clip_id' if scene_type == 'scenes' else 'movie_id'
             params = f'filters={id_field}={scene_id}' if scene_id and not title else f'query={quote(title)}'
-            for hit in await self._algolia(ctx.site_info, api_key, f'all_{scene_type}', params):
+            for hit in await self._algolia(search_data.site_info, api_key, f'all_{scene_type}', params):
                 cur = hit.get(id_field)
                 if cur is None:
                     continue
+
                 date_raw = hit.get('release_date', '') if scene_type == 'scenes' else (hit.get('last_modified') or hit.get('date_created') or '')
                 release = iso_date(date_raw) or ''
                 title_nf = hit.get('title') or ''
@@ -66,23 +67,25 @@ class GammaEntOtherClient(Client):
                 score: float = 100 if sub_site.replace(' ', '').lower() == site_norm else 99
                 if 'BTS' in title_nf:
                     score -= 1
+
                 for ch in hit.get('channels') or []:
                     if 'behindthescenes' in (ch.get('id') or '') and 'BTS' not in title_nf:
                         title_nf = f'{title_nf} BTS'
                         score -= 1
+
                 if scene_id:
                     score -= compare_string(scene_id, str(cur)).levenshtein
-                elif ctx.search_date and release:
-                    score -= compare_string(ctx.search_date, release).levenshtein
+                elif search_data.search_date and release:
+                    score -= compare_string(search_data.search_date, release).levenshtein
                 else:
                     score -= compare_string(title.lower(), title_nf.lower()).levenshtein
 
                 results.append(
                     SearchResult(
                         title=title_nf,
-                        scene_url=ctx.site_info.base_url,
+                        scene_url=search_data.site_info.base_url,
                         cur_id=pack_cur_id([f'{cur}|{scene_type}|{release}']),
-                        release_date=release or ctx.search_date or None,
+                        release_date=release or search_data.search_date or None,
                         display_date=release or None,
                         score=score,
                         subsite=sub_site or None,
@@ -102,6 +105,7 @@ class GammaEntOtherClient(Client):
         hits = await self._algolia(site, api_key, f'all_{scene_type}', f'filters={id_field}={scene_id}')
         if not hits:
             return None
+
         d = hits[0]
 
         url_title = d.get('url_title') or ''
@@ -111,6 +115,7 @@ class GammaEntOtherClient(Client):
                 await self._algolia(site, api_key, 'all_scenes', f'query={quote(url_title)}'),
                 key=lambda h: h.get('clip_id') or 0,
             )
+
         extra: _SceneExtra = {'d': d, 'scene_list': scene_list, 'scene_id': scene_id, 'scene_type': scene_type, 'api_key': api_key}
         return LoadedScene(
             url=site.base_url,
@@ -139,8 +144,10 @@ class GammaEntOtherClient(Client):
             for i, s in enumerate(scene_list):
                 if s.get('clip_id') == int(scene_id):
                     title = f'{d.get("title") or ""}, Scene {i + 1}'
+
         if not title:
             title = d.get('title') or ''
+
         metadata.title = title
 
         # Summary
@@ -181,9 +188,11 @@ class GammaEntOtherClient(Client):
                 v = d.get(field)
                 if v:
                     add_collection(title_case(v.replace('Devils Film', "Devil's Film"), site_name=site.name))
+
             t = d.get('title') or ''
             if (':' in t or '#' in t) and len(scene_list) > 1 and d.get('movie_title'):
                 add_collection(d['movie_title'])
+
         metadata.studio = studio
         metadata.tagline = tagline
         metadata.collections = collections or None
@@ -191,16 +200,18 @@ class GammaEntOtherClient(Client):
         # Genres
         genres: list[str] = []
 
-        def add_genre(g: str | None) -> None:
-            if g and g not in genres:
-                genres.append(g)
+        def add_genre(genre_name: str | None) -> None:
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
 
         for c in d.get('categories') or []:
             add_genre(c.get('name'))
+
         if scene_type == 'movies':
             for s in scene_list:
                 for c in s.get('categories') or []:
                     add_genre(c.get('name'))
+
         metadata.genres = genres
 
         # Actor(s)
@@ -210,6 +221,7 @@ class GammaEntOtherClient(Client):
             name = a.get('name')
             if not name:
                 continue
+
             photo = ''
             if a.get('actor_id'):
                 actor_hits = await self._algolia(site, api_key, 'all_actors', f'filters=actor_id={a["actor_id"]}')
@@ -217,8 +229,10 @@ class GammaEntOtherClient(Client):
                 if isinstance(pics, dict) and pics:
                     max_quality = sorted(pics.keys())[-1]
                     photo = f'{_IMG_BASE}/actors{pics[max_quality]}'
+
             entry = ActorResult(name=name, photo_url=photo, gender='female' if a.get('gender') == 'female' else 'male')
             (female if a.get('gender') == 'female' else male).append(entry)
+
         metadata.actors = [*female, *male, *_actor_overrides(scene_id)]
 
         # Posters
@@ -233,6 +247,7 @@ class GammaEntOtherClient(Client):
             slug = url_title.lower().replace('-', '_')
             if slug:
                 push_img(f'{_IMG_BASE}/movies/{d["movie_id"]}/{d["movie_id"]}_{slug}_front_400x625.jpg')
+
             if d.get('url_movie_title'):
                 movie_slug = d['url_movie_title'].lower().replace('-', '_')
                 push_img(f'{_IMG_BASE}/movies/{d["movie_id"]}/{d["movie_id"]}_{movie_slug}_front_400x625.jpg')
@@ -243,6 +258,7 @@ class GammaEntOtherClient(Client):
                 push_img(picture_url)
             else:
                 raw_images.insert(0, picture_url)
+
         metadata.art = raw_images
 
     # ── Internals ─────────────────────────────────────────────────────────────
@@ -261,6 +277,7 @@ class GammaEntOtherClient(Client):
                         break
                 except httpx2.HTTPError:
                     continue
+
             m = re.search(r'"apiKey":"(.*?)"', text)
             key = m.group(1) if m else ''
             return (key, float('inf')) if key else None
@@ -277,20 +294,24 @@ class GammaEntOtherClient(Client):
             )
             if r.status_code >= 400:
                 return []
+
             data = r.json()
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn(site.name, f'Algolia {index_name} query failed: {err}')
             return []
+
         hits = (data.get('results') or [{}])[0].get('hits')
         return hits or []
 
     def _pick_picture(self, pictures: Any) -> str:
         if not isinstance(pictures, dict):
             return ''
+
         nsfw = pictures.get('nsfw')
         top = nsfw.get('top') if isinstance(nsfw, dict) else None
         if not isinstance(top, dict) or not top:
             return ''
+
         key = next(iter(top.keys()), None)
         path = pictures.get(key) if key else None
         return f'{_IMG_BASE}/movies/{path}' if isinstance(path, str) else ''

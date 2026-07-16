@@ -12,15 +12,16 @@ _ACTORS: set[str] = set(load_site_json(__file__, 'momcomesfirst_actors'))
 
 
 class MomComesFirstClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        title_no_actors = ' '.join(ctx.title.replace('sons', '').replace('mothers', '').replace('moms', '').split(' ')[2:]).lower()
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        title_no_actors = ' '.join(search_data.title.replace('sons', '').replace('mothers', '').replace('moms', '').split(' ')[2:]).lower()
         encoded = title_no_actors.replace(' ', '+').replace("'", '')
-        loaded = await self.fetch_and_load(f'{base}/?s={encoded}', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search')
-        if not loaded:
+        search_results = await self.fetch_and_load(f'{base}/?s={encoded}', FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//article'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//article'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h2')
@@ -29,6 +30,7 @@ class MomComesFirstClient(Client):
         href = first_attr(source, '(.//h2//a/@href)[1]')
         if not href:
             return ''
+
         return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
@@ -37,16 +39,19 @@ class MomComesFirstClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h1') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         parts: list[str] = []
-        for p in sel.xpath('//div[contains(@class,"entry-content")]//p'):
+        for p in details_page_elements.xpath('//div[contains(@class,"entry-content")]//p'):
             t = first_attr(p, 'normalize-space(.)')
             if t and 'starring' not in t.lower():
                 parts.append(t)
+
         metadata.summary = '\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -56,28 +61,33 @@ class MomComesFirstClient(Client):
         metadata.collections = ['Mom Comes First']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//span[contains(@class,"published")]')
-        metadata.release_date = (iso_date(raw, '%b %d, %Y') if raw else None) or scene.scene_date or None
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//span[contains(@class,"published")]')
+
+        metadata.release_date = (iso_date(date, '%b %d, %Y') if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for a in sel.xpath('//a[contains(@rel,"tag")]'):
-            g = title_case(first_attr(a, 'normalize-space(.)'))
-            if g and g.lower() not in _ACTORS and g not in genres:
-                genres.append(g)
+        for genre_link in details_page_elements.xpath('//a[contains(@rel,"tag")]'):
+            genre_name = title_case(first_attr(genre_link, 'normalize-space(.)'))
+            if genre_name and genre_name.lower() not in _ACTORS and genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         names: list[str] = []
-        for a in sel.xpath('//a[contains(@rel,"tag")]'):
-            g = title_case(first_attr(a, 'normalize-space(.)'))
+        for actor_link in details_page_elements.xpath('//a[contains(@rel,"tag")]'):
+            g = title_case(first_attr(actor_link, 'normalize-space(.)'))
             if g and g.lower() in _ACTORS:
                 names.append(g)
 
-        paras = sel.xpath('//div[contains(@class,"entry-content")]//p')
+        paras = details_page_elements.xpath('//div[contains(@class,"entry-content")]//p')
         if paras:
             last_p = paras[-1].xpath('normalize-space(.)').get() or ''
             if 'starring' in last_p.lower():
@@ -86,9 +96,10 @@ class MomComesFirstClient(Client):
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for name in names:
-            name = name.strip()
-            if name and name.lower() not in seen:
-                seen.add(name.lower())
-                actors.append(ActorResult(name=name))
+        for actor_name in names:
+            actor_name = actor_name.strip()
+            if actor_name and actor_name.lower() not in seen:
+                seen.add(actor_name.lower())
+                actors.append(ActorResult(name=actor_name))
+
         metadata.actors = actors

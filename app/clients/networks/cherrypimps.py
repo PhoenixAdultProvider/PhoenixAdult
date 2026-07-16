@@ -19,17 +19,19 @@ _DETAIL_ACTORS_XP = '//div[contains(@class,"info-block_data")]//a | //div[contai
 
 
 class CherryPimpsClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = '+'.join(ctx.title.split())
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = '+'.join(search_data.title.split())
         sources: list[Any] = []
         for p in range(1, _SEARCH_PAGES + 1):
-            url = base + ctx.site_info.search_path.replace('{query}', slug) + f'&page={p}'
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-            if not loaded:
+            url = base + search_data.site_info.search_path.replace('{query}', slug) + f'&page={p}'
+            search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+            if not search_results:
                 continue
-            sources.extend(loaded['sel'].xpath('//div[contains(@class,"item-updates")]//div[contains(@class,"item-update")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+            sources.extend(search_results['sel'].xpath('//div[contains(@class,"item-updates")]//div[contains(@class,"item-update")]'))
+
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath(f'({_SEARCH_TITLE_XP})[1]').xpath('string(.)').get() or '').strip()
@@ -45,12 +47,14 @@ class CherryPimpsClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath(f'({_DETAIL_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath(f'({_DETAIL_TITLE_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath(f'({_DETAIL_SUMMARY_XP})[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath(f'({_DETAIL_SUMMARY_XP})[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -62,55 +66,67 @@ class CherryPimpsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = sel.xpath(f'({_DETAIL_DATE_XP})[1]').xpath('string(.)').get() or ''
-        if not raw:
+        details_page_elements = scene.require_sel()
+
+        date = details_page_elements.xpath(f'({_DETAIL_DATE_XP})[1]').xpath('string(.)').get() or ''
+        if not date:
             return
-        tok = raw.split('|')[0].replace('Added', '').replace(':', '').strip()
+
+        tok = date.split('|')[0].replace('Added', '').replace(':', '').strip()
+
         metadata.release_date = iso_date(tok) if tok else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in sel.xpath(_DETAIL_GENRES_XP)])
-        count = len(sel.xpath(_DETAIL_ACTORS_XP))
+        details_page_elements = scene.require_sel()
+
+        genres = self.dedup_strings([first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath(_DETAIL_GENRES_XP)])
+        count = len(details_page_elements.xpath(_DETAIL_ACTORS_XP))
         if (group := self.group_genre_for(count)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in sel.xpath(_DETAIL_ACTORS_XP):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
-                name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip()
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath(_DETAIL_ACTORS_XP):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
+                actor_name = (actor_link.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip()
+
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
-            photo = first_attr(el, '(.//img)[1]/@src0_1x')
+
+            seen.add(actor_name)
+            photo = first_attr(actor_link, '(.//img)[1]/@src0_1x')
             if not photo:
-                href = first_attr(el, '@href')
+                href = first_attr(actor_link, '@href')
                 if href:
                     actor_url = absolute_url(href, scene.site.base_url)
-                    page = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {name}')
-                    if page:
+                    model_page_elements = await self.fetch_and_load(actor_url, None, f'[{scene.site.name}] actor {actor_name}')
+                    if model_page_elements:
                         raw = (
-                            page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src').get()
-                            or page['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get()
+                            model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src').get()
+                            or model_page_elements['sel'].xpath('(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x').get()
                             or ''
                         ).strip()
                         if raw:
                             photo = f'https:{raw}' if raw.startswith('//') else raw
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector()
-        for el in sel.xpath('//img[contains(@class,"update_thumb")]'):
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector()
+        for el in details_page_elements.xpath('//img[contains(@class,"update_thumb")]'):
             for attr in ('@src', '@src0_1x'):
                 raw = (el.xpath(attr).get() or '').strip()
                 if raw.startswith('http'):
-                    coll['push'](raw)
-        metadata.art = coll['list']
+                    images['push'](raw)
+
+        metadata.art = images['list']

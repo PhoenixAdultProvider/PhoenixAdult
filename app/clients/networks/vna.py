@@ -12,31 +12,41 @@ _SCENE_ACTORS: dict[str, list[str]] = {'36260': ['Sarah Arabic']}
 
 
 class VNAClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        text = ctx.title.strip()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        text = search_data.title.strip()
 
         candidates: list[str] = []
-        if ctx.scene_id:
-            candidates.append(base + ctx.site_info.search_path + ctx.scene_id)
+        if search_data.scene_id:
+            candidates.append(base + search_data.site_info.search_path + search_data.scene_id)
 
         if web_search_available():
-            host = urlparse(ctx.site_info.base_url).netloc
-            for u in await web_search(SearchOptions(query=text or ctx.title, site=host, num=10)):
+            host = urlparse(search_data.site_info.base_url).netloc
+            for u in await web_search(SearchOptions(query=text or search_data.title, site=host, num=10)):
                 if ('videos/' in u or 'galleries/' in u) and '/page/' not in u and u not in candidates:
                     candidates.append(u)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title = (loaded['sel'].xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            date = iso_date((loaded['sel'].xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
+
+            date = iso_date((details_page_elements['sel'].xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=text or ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
+                    title=title,
+                    scene_url=scene_url,
+                    query=text or search_data.title,
+                    display_date=date,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([scene_url]),
                 )
             )
 
@@ -44,25 +54,31 @@ class VNAClient(Client):
 
     @staticmethod
     def _actors_text(scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        return (sel.xpath('(//h3[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//h3[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
 
     @staticmethod
     def _genres_text(scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        return (sel.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        summary = (sel.xpath('(//*[contains(@class,"customhcolor2")])[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        summary = (details_page_elements.xpath('(//*[contains(@class,"customhcolor2")])[1]').xpath('string(.)').get() or '').strip()
         if scene.site.name == 'Kimber Lee Live':
             summary = summary.split("Don't forget to join me")[0].strip()
+
         if scene.site.name == 'Vicky at Home':
             summary = summary.replace(self._actors_text(scene), '').strip()
+
         metadata.summary = summary or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -75,11 +91,13 @@ class VNAClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.release_date = iso_date((sel.xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
+        details_page_elements = scene.require_sel()
+
+        metadata.release_date = iso_date((details_page_elements.xpath('(//*[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip())
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        genres = [g.strip() for g in self._genres_text(scene).split(',') if g.strip()]
+        genres = [genre_name.strip() for genre_name in self._genres_text(scene).split(',') if genre_name.strip()]
+
         metadata.genres = genres or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -89,30 +107,37 @@ class VNAClient(Client):
 
         actors: list[ActorResult] = []
         for raw in actors_text.replace('\xa0', ' ').split(','):
-            name = raw.strip()
-            if not name:
+            actor_name = raw.strip()
+            if not actor_name:
                 continue
-            if name.endswith(' XXX'):
-                name = name[:-4]
-            actors.append(ActorResult(name=name))
+
+            if actor_name.endswith(' XXX'):
+                actor_name = actor_name[:-4]
+
+            actors.append(ActorResult(name=actor_name))
+
         if scene.site.name == 'Siri':
             actors.append(ActorResult(name='Siri'))
 
         parts = scene.url.split('/')
         scene_id = parts[-2] if len(parts) >= 2 else ''
-        for name in _SCENE_ACTORS.get(scene_id, []):
-            actors.append(ActorResult(name=name, gender='female'))
+        for actor_name in _SCENE_ACTORS.get(scene_id, []):
+            actors.append(ActorResult(name=actor_name, gender='female'))
+
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url.rstrip('/')
-        poster = first_attr(sel, '(//center//img)[1]/@src')
+        poster = first_attr(details_page_elements, '(//center//img)[1]/@src')
         if not poster:
             return
+
         abs_url = poster if poster.startswith('http') else f'{base}/{poster}'
         out = [abs_url]
         if 'thumb_1' in abs_url:
             out.append(abs_url.replace('thumb_1', 'thumb_2'))
             out.append(abs_url.replace('thumb_1', 'thumb_3'))
+
         metadata.art = out

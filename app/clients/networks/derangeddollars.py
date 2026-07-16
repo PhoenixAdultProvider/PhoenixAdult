@@ -17,47 +17,55 @@ _NURSE_RE = re.compile(r'\bNurses?\b')
 
 
 class DerangedDollarsClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         if not web_search_available():
             return
-        host = urlsplit(ctx.site_info.base_url).netloc
+
+        host = urlsplit(search_data.site_info.base_url).netloc
         try:
-            candidates = await web_search_filtered(SearchOptions(query=ctx.title, site=host, num=10), url_contains=_URL_CONTAINS)
+            candidates = await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains=_URL_CONTAINS)
         except Exception as err:  # noqa: BLE001 - search is best-effort
-            logger.debug(ctx.site_info.name, f'webSearch: {err}')
+            logger.debug(search_data.site_info.name, f'webSearch: {err}')
             return
 
         for url in candidates:
-            loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')
+            if not details_page_elements:
                 continue
-            title = (loaded['sel'].xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip()
+
+            title = (details_page_elements['sel'].xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 continue
-            lch = (loaded['sel'].xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
+
+            lch = (details_page_elements['sel'].xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
             date_raw = ','.join(lch.split(',')[-2:]).strip()
             date_iso = iso_date(date_raw) if date_raw else None
-            results.append(build_search_result(title=title, scene_url=url, query=ctx.title, display_date=date_iso, search_date=ctx.search_date))
+
+            results.append(build_search_result(title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date))
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
     def _tagline(self, scene: LoadedScene) -> str | None:
-        sel = scene.require_sel()
-        raw = sel.xpath('(//title)[1]').xpath('string(.)').get() or ''
+        details_page_elements = scene.require_sel()
+
+        raw = details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or ''
         segments = [s.strip() for s in raw.split('|')]
         if len(segments) < 2:
             return None
+
         return re.sub(r'\.com$', '', segments[1], flags=re.IGNORECASE).strip() or None
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -65,23 +73,32 @@ class DerangedDollarsClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tag = self._tagline(scene)
+
         metadata.collections = [tag] if tag else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.genres = [g for g in (first_attr(a, 'normalize-space(.)') for a in sel.xpath('//p[contains(@class,"tags")]//a')) if g]
+        details_page_elements = scene.require_sel()
+
+        metadata.genres = [
+            genre_name
+            for genre_name in (first_attr(genre_link, 'normalize-space(.)') for genre_link in details_page_elements.xpath('//p[contains(@class,"tags")]//a'))
+            if genre_name
+        ]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        lch = (sel.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
+        details_page_elements = scene.require_sel()
+
+        lch = (details_page_elements.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
         blob = ','.join(lch.split(',')[:-2]).strip()
         if not blob:
             return
+
         if ':' in blob:
             blob = blob.split(':', 1)[1].strip()
+
         raw_names = [n for n in (_NURSE_RE.sub('', re.sub(r'\W+', ' ', s)).strip() for s in _NAME_SPLIT_RE.split(blob)) if n]
         if not raw_names:
             return
@@ -89,26 +106,30 @@ class DerangedDollarsClient(Client):
         model_dir = await self._load_model_directory(scene)
         out: list[ActorResult] = []
         for raw_name in raw_names:
-            name, photo = raw_name, ''
+            actor_name, photo = raw_name, ''
             for match_text, display_name, photo_url in model_dir:
                 if raw_name.lower() in match_text.lower():
-                    name, photo = display_name, photo_url
+                    actor_name, photo = display_name, photo_url
                     break
-            out.append(ActorResult(name=name, photo_url=photo))
+
+            out.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = out
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
-        coll = self.image_collector(lambda raw: absolute_url(raw, base))
-        for src in sel.xpath('//div[contains(@class,"stills") and contains(@class,"clearfix")]//img/@src').getall():
-            coll['push'](src)
-        for script in sel.xpath('//div[contains(@class,"mainpic")]//script'):
+        images = self.image_collector(lambda image: absolute_url(image, base))
+        for src in details_page_elements.xpath('//div[contains(@class,"stills") and contains(@class,"clearfix")]//img/@src').getall():
+            images['push'](src)
+
+        for script in details_page_elements.xpath('//div[contains(@class,"mainpic")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _QUOTED_URL_RE.findall(text):
-                coll['push'](m)
-        images: list[str] = coll['list']
-        metadata.art = images
+                images['push'](m)
+
+        metadata.art = images['list']
 
     # ── Internals ─────────────────────────────────────────────────────────────
 
@@ -116,15 +137,18 @@ class DerangedDollarsClient(Client):
         base = scene.site.base_url.rstrip('/')
         entries: list[tuple[str, str, str]] = []
         for url in (f'{base}/?models', f'{base}/?models/2'):
-            loaded = await self.fetch_and_load(url, None, f'models page {url}')
-            if not loaded:
+            model_page_elements = await self.fetch_and_load(url, None, f'models page {url}')
+            if not model_page_elements:
                 continue
-            for el in loaded['sel'].xpath('//div[contains(@class,"item")]'):
-                raw = first_attr(el)
+
+            for director_link in model_page_elements['sel'].xpath('//div[contains(@class,"item")]'):
+                raw = first_attr(director_link)
                 if not raw:
                     continue
-                name = raw.split(':', 1)[1].strip() if ':' in raw else raw
-                photo_rel = first_attr(el, '(.//img)[1]/@src')
+
+                director_name = raw.split(':', 1)[1].strip() if ':' in raw else raw
+                photo_rel = first_attr(director_link, '(.//img)[1]/@src')
                 photo = absolute_url(photo_rel, scene.site.base_url) if photo_rel else ''
-                entries.append((name, name, photo))
+                entries.append((director_name, director_name, photo))
+
         return entries

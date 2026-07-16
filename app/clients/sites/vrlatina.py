@@ -12,42 +12,53 @@ def _title_or_text(node: Any) -> str:
 
 
 class VRLatinaClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = ctx.title.replace(' ', '-').lower()
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = search_data.title.replace(' ', '-').lower()
         if not slug:
             return
-        direct_url = f'{base}{ctx.site_info.search_path}{slug}.html'
+
+        direct_url = f'{base}{search_data.site_info.search_path}{slug}.html'
 
         seen = {direct_url}
         candidates = [direct_url]
-        for raw in await web_search_urls(ctx.title, ctx.site_info):
+        for raw in await web_search_urls(search_data.title, search_data.site_info):
             if '/video/' in raw and raw not in seen:
                 seen.add(raw)
                 candidates.append(raw)
 
         for scene_url in candidates:
-            loaded = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] candidate {scene_url}')
-            if not loaded:
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            title = meta_content(loaded['sel'], 'og:title')
+
+            title = meta_content(details_page_elements['sel'], 'og:title')
             if not title:
                 continue
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url, ctx.search_date or ''])
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([scene_url, search_data.search_date or '']),
                 )
             )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h2') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h2') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"content-desc")]') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -56,45 +67,60 @@ class VRLatinaClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_text(sel, '//div[contains(@class,"content-base-info")]//div[contains(@class,"info-elem") and contains(@class,"-length")]//span')
-        if raw:
-            parsed = iso_date(raw, '%b %d, %Y') or iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = first_text(
+            details_page_elements, '//div[contains(@class,"content-base-info")]//div[contains(@class,"info-elem") and contains(@class,"-length")]//span'
+        )
+        if date:
+            parsed = iso_date(date, '%b %d, %Y') or iso_date(date)
             if parsed:
                 metadata.release_date = parsed
                 return
+
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [_title_or_text(a) for a in sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-tags")]//a')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            _title_or_text(genre_link) for genre_link in details_page_elements.xpath('//div[contains(@class,"content-links") and contains(@class,"-tags")]//a')
+        ]
+
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath('//div[contains(@class,"content-links") and contains(@class,"-models")]//a'):
-            name = _title_or_text(a)
-            href = first_attr(a, '@href')
-            if not name or name in seen:
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"content-links") and contains(@class,"-models")]//a'):
+            actor_name = _title_or_text(actor_link)
+            href = first_attr(actor_link, '@href')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             photo = ''
             if href:
                 url = absolute_url(href, base)
-                page = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-                if page:
-                    photo = first_attr(page['sel'], '(//div[contains(@class,"model-avatar")]//img/@src)[1]')
-            actors.append(ActorResult(name=name, photo_url=photo))
+                model_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+                if model_page_elements:
+                    photo = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model-avatar")]//img/@src)[1]')
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: to_https((raw or '').strip()))
-        for href in sel.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
-            coll['push'](href)
-        coll['push'](sel.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: to_https((image or '').strip()))
+        for href in details_page_elements.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
+            images['push'](href)
+
+        images['push'](details_page_elements.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+
+        metadata.art = images['list']

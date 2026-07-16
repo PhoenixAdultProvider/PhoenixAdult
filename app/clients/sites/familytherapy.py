@@ -35,40 +35,45 @@ class FamilyTherapyClient(Client):
             scraper_config=ScraperConfig(type='clips4sale'),
         )
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', quote(ctx.title))
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title))
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
 
-        if loaded:
-            for card in loaded['sel'].xpath('//article'):
-                a = card.xpath('(.//h2//a)[1]')
+        if search_results:
+            for search_result in search_results['sel'].xpath('//article'):
+                a = search_result.xpath('(.//h2//a)[1]')
                 title = first_attr(a)
                 href = first_attr(a, '@href')
                 if not title or not href:
                     continue
-                scene_url = absolute_url(href, ctx.site_info.base_url)
-                date = iso_date((card.xpath('(.//p//span)[1]').xpath('string(.)').get() or '').strip())
+
+                scene_url = absolute_url(href, search_data.site_info.base_url)
+                date = iso_date((search_result.xpath('(.//p//span)[1]').xpath('string(.)').get() or '').strip())
+
                 results.append(
                     build_search_result(
                         title=title,
                         scene_url=scene_url,
-                        query=ctx.title,
+                        query=search_data.title,
                         display_date=date,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         cur_id=pack_cur_id([scene_url, f'{date or ""}|0']),
                     )
                 )
 
         if not results:
-            actress = ' '.join(ctx.title.strip().split()[:2])
+            actress = ' '.join(search_data.title.strip().split()[:2])
             if actress:
                 c4s_query = f'{_C4S_STUDIO_ID} {actress}'
-                c4s_ctx = dataclasses.replace(ctx, title=c4s_query, encoded=quote(c4s_query), site_info=self._c4s_site(ctx.site_info, 'Family Therapy (C4S)'))
+                c4s_ctx = dataclasses.replace(
+                    search_data, title=c4s_query, encoded=quote(c4s_query), site_info=self._c4s_site(search_data.site_info, 'Family Therapy (C4S)')
+                )
                 c4s_results: list[SearchResult] = []
                 await self._clips4sale.search(c4s_results, c4s_ctx)
                 for r in c4s_results:
                     head = unpack_cur_id(r.cur_id)['head'] or ''
+
                     results.append(dataclasses.replace(r, cur_id=pack_cur_id([head, '|1'])))
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
@@ -83,6 +88,7 @@ class FamilyTherapyClient(Client):
             c4s_detail = await self._clips4sale.fetch_scene_detail(url, self._c4s_site(site), ctx)
             if not c4s_detail:
                 return None
+
             return LoadedScene(
                 url=url,
                 site=site,
@@ -91,19 +97,21 @@ class FamilyTherapyClient(Client):
                 subsite=ctx.subsite if ctx else None,
             )
 
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
+        if not details_page_elements:
             return None
-        sel = loaded['sel']
+
+        sel = details_page_elements['sel']
         if not (sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip():
             return None
+
         return LoadedScene(
             url=url,
             site=site,
             scene_date=fallback_date or None,
             capture=ctx.capture if ctx else None,
             sel=sel,
-            html=loaded['html'],
+            html=details_page_elements['html'],
             extra={'mode': '0'},
             subsite=ctx.subsite if ctx else None,
         )
@@ -114,18 +122,21 @@ class FamilyTherapyClient(Client):
             c4s = extra['c4s']
             for f in dataclasses.fields(c4s):
                 setattr(metadata, f.name, getattr(c4s, f.name))
+
             metadata.studio = STUDIO
             metadata.collections = [STUDIO]
             return
 
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
 
         # Title
-        metadata.title = _to_title_case((sel.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip())
+        metadata.title = _to_title_case((details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip())
 
         # Summary
-        nodes = sel.xpath('//div[contains(@class,"entry-content")]/p')
-        summary = (nodes[0].xpath('string(.)').get() if nodes else sel.xpath('(//div[contains(@class,"entry-content")])[1]').xpath('string(.)').get()) or ''
+        nodes = details_page_elements.xpath('//div[contains(@class,"entry-content")]/p')
+        summary = (
+            nodes[0].xpath('string(.)').get() if nodes else details_page_elements.xpath('(//div[contains(@class,"entry-content")])[1]').xpath('string(.)').get()
+        ) or ''
         metadata.summary = summary.strip()
 
         # Studio
@@ -135,18 +146,19 @@ class FamilyTherapyClient(Client):
         metadata.collections = [STUDIO]
 
         # Release Date
-        date_raw = (sel.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
+        date_raw = (details_page_elements.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()
         metadata.release_date = iso_date(date_raw, '%b %d, %Y') or scene.scene_date or None
 
         # Genres
-        metadata.genres = self.dedup_strings([first_attr(el) for el in sel.xpath('//a[@rel="category tag"]')])
+        metadata.genres = self.dedup_strings([first_attr(el) for el in details_page_elements.xpath('//a[@rel="category tag"]')])
 
         # Actor(s)
         seen: set[str] = set()
-        for el in sel.xpath('//div[contains(@class,"entry-content")]//p'):
+        for el in details_page_elements.xpath('//div[contains(@class,"entry-content")]//p'):
             m = _STARRING_RE.search(el.xpath('string(.)').get() or '')
             if not m:
                 continue
+
             for name in (s.strip() for s in m.group(1).split('&')):
                 if name and name not in seen:
                     seen.add(name)

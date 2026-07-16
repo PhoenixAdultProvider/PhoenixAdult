@@ -23,51 +23,64 @@ class KarupsClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'warningHidden=hide'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        slug = re.sub(r'\s+', '-', ctx.title.strip())
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        slug = re.sub(r'\s+', '-', search_data.title.strip())
 
-        search_loaded = await self.fetch_and_load(
-            f'{base}{ctx.site_info.search_path}{slug}/', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model search {slug}'
+        search_results = await self.fetch_and_load(
+            f'{base}{search_data.site_info.search_path}{slug}/', FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] model search {slug}'
         )
-        if not search_loaded:
+        if not search_results:
             return
-        model_href = first_attr(search_loaded['sel'], '(//div[contains(@class,"item-inside")]//a)[1]/@href')
+
+        model_href = first_attr(search_results['sel'], '(//div[contains(@class,"item-inside")]//a)[1]/@href')
         if not model_href:
             return
 
-        model_loaded = await self.fetch_and_load(
-            absolute_url(model_href, ctx.site_info.base_url), FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] model page'
+        model_page_elements = await self.fetch_and_load(
+            absolute_url(model_href, search_data.site_info.base_url), FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] model page'
         )
-        if not model_loaded:
+        if not model_page_elements:
             return
 
-        for card in model_loaded['sel'].xpath('//div[contains(@class,"listing-videos")]//div[contains(@class,"item")]'):
+        for card in model_page_elements['sel'].xpath('//div[contains(@class,"listing-videos")]//div[contains(@class,"item")]'):
             title = (card.xpath(f'(.//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip()
             href = first_attr(card, '(.//a)[1]/@href')
             if not title or not href:
                 continue
-            scene_url = absolute_url(href, ctx.site_info.base_url)
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
             date = iso_date(_de_ordinal((card.xpath(f'(.//span[{_cls("date")}])[1]').xpath('string(.)').get() or '').strip()))
+
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=ctx.title, display_date=date, search_date=ctx.search_date, cur_id=pack_cur_id([scene_url])
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    display_date=date,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([scene_url]),
                 )
             )
 
     # ── Field hooks ───────────────────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        return (sel.xpath('(//h1//span[contains(@class,"sup-title")]//span)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//h1//span[contains(@class,"sup-title")]//span)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath(f'(//h1//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath(f'(//h1//span[{_cls("title")}])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = (sel.xpath('(//div[contains(@class,"content-information-description")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (
+            details_page_elements.xpath('(//div[contains(@class,"content-information-description")]//p)[1]').xpath('string(.)').get() or ''
+        ).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -79,15 +92,17 @@ class KarupsClient(Client):
         metadata.collections = [self._tagline_of(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         tagline = self._tagline_of(scene)
-        raw = (
-            (sel.xpath(f'(//span[{_cls("date")}]//span[{_cls("content")}])[1]').xpath('string(.)').get() or '')
+        date = (
+            (details_page_elements.xpath(f'(//span[{_cls("date")}]//span[{_cls("content")}])[1]').xpath('string(.)').get() or '')
             .replace(tagline, '')
             .replace('Video added on', '')
             .strip()
         )
-        metadata.release_date = (iso_date(_de_ordinal(raw)) if raw else None) or scene.scene_date or None
+
+        metadata.release_date = (iso_date(_de_ordinal(date)) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._tagline_of(scene)
@@ -97,33 +112,38 @@ class KarupsClient(Client):
             metadata.genres = ['MILF']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
         actors: list[ActorResult] = []
-        for el in sel.xpath('//span[contains(@class,"models")]//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
+        for actor_link in details_page_elements.xpath('//span[contains(@class,"models")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
                 continue
+
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                page = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = first_attr(page['sel'], '(//div[contains(@class,"model-thumb")]//img)[1]/@src') if page else ''
+                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
+                raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model-thumb")]//img)[1]/@src') if model_page_elements else ''
                 if raw:
                     photo = absolute_url(raw, base)
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         xpaths = (
             '(//div[contains(@class,"video-player")]//video)[1]/@poster',
             '//img[contains(@class,"poster")]/@src',
             '//div[contains(@class,"video-thumbs")]//img/@src',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list']

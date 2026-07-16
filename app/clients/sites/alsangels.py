@@ -24,20 +24,23 @@ class AlsAngelsClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': 'age_verified=true'})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        loaded = await self.fetch_and_load(f'{base}/dailyvideos.html', FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] dailyvideos')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        search_results = await self.fetch_and_load(
+            f'{base}/dailyvideos.html', FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] dailyvideos'
+        )
+        if not search_results:
             return
 
-        if ctx.search_date:
+        if search_data.search_date:
 
             def match_row(row: Any) -> bool:
-                return iso_date(_row_date(row)) == ctx.search_date
+                return iso_date(_row_date(row)) == search_data.search_date
         else:
-            m = re.match(rf'^(.+?)\s+({"|".join(_VIDEO_TYPES)})\b', ctx.title.lower(), re.IGNORECASE)
+            m = re.match(rf'^(.+?)\s+({"|".join(_VIDEO_TYPES)})\b', search_data.title.lower(), re.IGNORECASE)
             if not m:
                 return
+
             model, vtype = m.group(1).strip(), m.group(2).strip()
 
             def match_row(row: Any) -> bool:
@@ -45,27 +48,30 @@ class AlsAngelsClient(Client):
                 t = (row.xpath('(.//span[contains(@class,"videotype")])[1]').xpath('string(.)').get() or '').lower()
                 return model in name and vtype in t
 
-        for row in loaded['sel'].xpath('//tr'):
-            if not match_row(row):
+        for search_result in search_results['sel'].xpath('//tr'):
+            if not match_row(search_result):
                 continue
-            thumb = first_attr(row, '(.//td[contains(@class,"videothumbnail")]//a//img)[1]/@src')
+
+            thumb = first_attr(search_result, '(.//td[contains(@class,"videothumbnail")]//a//img)[1]/@src')
             mid = _THUMB_RE.search(thumb)
             if not mid:
                 continue
+
             scene_id = mid.group(1)
-            release_date = iso_date(_row_date(row)) or ''
+            release_date = iso_date(_row_date(search_result)) or ''
             model = re.sub(
-                r'Models?:\s*', '', (row.xpath('(.//h2[contains(@class,"videomodel")])[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
+                r'Models?:\s*', '', (search_result.xpath('(.//h2[contains(@class,"videomodel")])[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
             ).strip()
             vtype = re.sub(
-                r'Video Type:\s*', '', (row.xpath('(.//span[contains(@class,"videotype")])[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
+                r'Video Type:\s*', '', (search_result.xpath('(.//span[contains(@class,"videotype")])[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
             ).strip()
+
             results.append(
                 SearchResult(
                     title=f'{model} {vtype} {release_date}'.strip(),
                     scene_url=f'{base}/profiles/{scene_id}',
                     cur_id=pack_cur_id([scene_id, release_date]),
-                    release_date=release_date or ctx.search_date or None,
+                    release_date=release_date or search_data.search_date or None,
                     display_date=release_date or None,
                     score=100,
                 )
@@ -82,30 +88,34 @@ class AlsAngelsClient(Client):
         id_match = _SCENEID_RE.search(scene_id)
         if not id_match:
             return None
+
         model_id, scene_num = id_match.group(1), id_match.group(2)
 
-        loaded = await self.fetch_and_load(
+        model_page_elements = await self.fetch_and_load(
             f'{base}/profiles/{model_id}.html', FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] profile {model_id}'
         )
-        if not loaded:
+        if not model_page_elements:
             return None
 
         row = None
-        for el in loaded['sel'].xpath('//tr'):
+        for el in model_page_elements['sel'].xpath('//tr'):
             if scene_date and iso_date(_row_date(el)) == scene_date:
                 row = el
                 break
+
         if row is None:
             return None
 
-        model_name = re.sub(r'ALSAngels\.com\s*-\s*', '', (loaded['sel'].xpath('(//title)[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE).strip()
+        model_name = re.sub(
+            r'ALSAngels\.com\s*-\s*', '', (model_page_elements['sel'].xpath('(//title)[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
+        ).strip()
         return LoadedScene(
             url=f'{base}/profiles/{model_id}.html',
             site=site,
             scene_date=scene_date or None,
             capture=ctx.capture if ctx else None,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=model_page_elements['sel'],
+            html=model_page_elements['html'],
             extra={'model_id': model_id, 'scene_num': scene_num, 'scene_date': scene_date, 'row': row, 'model_name': model_name},
         )
 
@@ -124,10 +134,12 @@ class AlsAngelsClient(Client):
         ex = self._ex(scene)
         num = re.match(r'\d+', ex['scene_num'])
         n = int(num.group()) if num else 0
+
         metadata.title = f'{ex["model_name"]} #{n}: {self._subject(scene)}'
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         row = self._ex(scene)['row']
+
         metadata.summary = (row.xpath('(.//span[contains(@class,"videodescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -141,24 +153,28 @@ class AlsAngelsClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         subject = self._subject(scene)
+
         metadata.genres = [subject] if subject else []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         ex = self._ex(scene)
         base = scene.site.base_url.rstrip('/')
-        photo = first_attr(sel, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
+        photo = first_attr(details_page_elements, '(//*[@id="modelbioheadshot"]//img)[1]/@src')
         if photo.startswith('..'):
             photo = photo.replace('..', base)
+
         metadata.actors = [ActorResult(name=ex['model_name'], photo_url=photo, gender='female')] if ex.get('model_name') else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         row = self._ex(scene)['row']
         base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda u: u.replace('..', base) if u.startswith('..') else u)
+        images = self.image_collector(lambda image: image.replace('..', base) if image.startswith('..') else image)
         for src in row.xpath('.//td[contains(@class,"videothumbnail")]//img/@src').getall():
-            coll['push'](src)
+            images['push'](src)
+
         for href in row.xpath('.//td[contains(@class,"videothumbnail")]//a/@href').getall():
-            coll['push'](href)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+            images['push'](href)
+
+        metadata.art = images['list'] or []

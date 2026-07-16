@@ -24,6 +24,7 @@ def _kink_tagline(channel_text: str, fallback: str) -> str:
     for key in _CHANNEL_KEYS:
         if key in hay:
             return _TAGLINE_BY_CHANNEL[key]
+
     return fallback
 
 
@@ -31,42 +32,50 @@ class KinkClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': _VIEWING_COOKIE})
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
 
-        if ctx.scene_id:
-            scene_url = f'{base}/shoot/{ctx.scene_id}'
-            page = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] directScene {scene_url}')
-            if not page:
+        if search_data.scene_id:
+            scene_url = f'{base}/shoot/{search_data.scene_id}'
+            direct_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
+            )
+            if not direct_page_elements:
                 return
-            title = (page['sel'].xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip()
+
+            title = (direct_page_elements['sel'].xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip()
             if not title:
                 return
+
             results.append(
-                build_search_result(title=title, scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=100, cur_id=pack_cur_id([scene_url]))
+                build_search_result(
+                    title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, score=100, cur_id=pack_cur_id([scene_url])
+                )
             )
             return
 
-        search_url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(search_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {search_url}')
-        if not loaded:
+        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
+        if not search_results:
             return
 
-        for card in loaded['sel'].xpath('//div[contains(@class,"shoot-card") and contains(@class,"scene")]'):
-            title = first_attr(card, '(.//img)[1]/@alt')
-            href = first_attr(card, '(.//a[contains(@class,"shoot-link")])[1]/@href')
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"shoot-card") and contains(@class,"scene")]'):
+            title = first_attr(search_result, '(.//img)[1]/@alt')
+            href = first_attr(search_result, '(.//a[contains(@class,"shoot-link")])[1]/@href')
             if not title or not href:
                 continue
-            scene_url = absolute_url(href, ctx.site_info.base_url)
-            raw_date = (card.xpath('(.//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
-            date = iso_date(raw_date) if raw_date else ctx.search_date
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
+            raw_date = (search_result.xpath('(.//div[contains(@class,"date")])[1]').xpath('string(.)').get() or '').strip()
+            date = iso_date(raw_date) if raw_date else search_data.search_date
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -74,21 +83,26 @@ class KinkClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
-        sel = scene.require_sel()
-        link = sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//a[contains(@href,"/channel/")])[1]')
+        details_page_elements = scene.require_sel()
+
+        link = details_page_elements.xpath('(//div[contains(@class,"shoot-detail-legend")]//a[contains(@href,"/channel/")])[1]')
         channel_text = f'{link.xpath("string(.)").get() or ""} {link.xpath("@href").get() or ""}'
         return _kink_tagline(channel_text, scene.site.name)
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip() or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        span_html = sel.xpath('(//div[contains(@class,"description")]//span[contains(@class,"fw-200")])[1]').get() or ''
+        details_page_elements = scene.require_sel()
+
+        span_html = details_page_elements.xpath('(//div[contains(@class,"description")]//span[contains(@class,"fw-200")])[1]').get() or ''
         if not span_html:
             return
+
         text = _TAG_RE.sub('', _BR_RE.sub(' ', span_html))
+
         metadata.summary = _WS_RE.sub(' ', text).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -101,19 +115,31 @@ class KinkClient(Client):
         metadata.collections = [self._tagline_for(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//div[contains(@class,"shoot-detail-legend")]//span[contains(@class,"text-muted")])[1]').xpath('string(.)').get() or '').strip()
-        if raw:
-            metadata.release_date = iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (
+            details_page_elements.xpath('(//div[contains(@class,"shoot-detail-legend")]//span[contains(@class,"text-muted")])[1]').xpath('string(.)').get()
+            or ''
+        ).strip()
+        if date:
+            metadata.release_date = iso_date(date)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        genres = self.dedup_strings([(a.xpath('normalize-space(.)').get() or '').replace(',', '').strip() for a in sel.xpath('//a[contains(@href,"/tag/")]')])
-        cast = len(sel.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
+        details_page_elements = scene.require_sel()
+
+        genres = self.dedup_strings(
+            [
+                (genre_link.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
+                for genre_link in details_page_elements.xpath('//a[contains(@href,"/tag/")]')
+            ]
+        )
+        cast = len(details_page_elements.xpath('//span[contains(@class,"text-primary")]//a[contains(@href,"/model/")]'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -123,30 +149,33 @@ class KinkClient(Client):
         metadata.directors = await self._collect_people(scene, '//span[contains(@class,"director-name")]//a') or None
 
     async def _collect_people(self, scene: LoadedScene, xp: str) -> list[ActorResult]:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
             return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
 
         refs: list[tuple[str, str]] = []
-        for el in sel.xpath(xp):
+        for el in details_page_elements.xpath(xp):
             name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
             href = first_attr(el, '@href')
             if name:
                 refs.append((name, absolute_url(href, base) if href else ''))
+
         return await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector()
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector()
         xpaths = (
             '//video/@poster',
             '//div[contains(@class,"player")]/div/@poster',
             '//div[@id="galleryWrapper"]//img/@data-image-file',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list']

@@ -31,15 +31,18 @@ def _release_date(sel: Any) -> str | None:
     nodes = sel.xpath('(//li[contains(.,"Released:")])[1]')
     if not nodes:
         return None
-    raw = re.sub(r'.*Released:\s*', '', nodes[0].xpath('string(.)').get() or '', flags=re.S).strip()
-    if not raw or raw.lower() == 'unknown':
+
+    date = re.sub(r'.*Released:\s*', '', nodes[0].xpath('string(.)').get() or '', flags=re.S).strip()
+    if not date or date.lower() == 'unknown':
         return None
-    return iso_date(raw, '%b %d %Y') or iso_date(raw)
+
+    return iso_date(date, '%b %d %Y') or iso_date(date)
 
 
 def _result_type_for(href: str) -> str:
     if '-' not in href:
         return ''
+
     tail = href.split('-')[-1].replace('.html', '')
     return title_case(tail.replace('ray', 'Blu-Ray'))
 
@@ -56,15 +59,18 @@ def _scene_rows(sel: Any) -> list[dict[str, Any]]:
         scene_title = first_attr(row, '(.//a)[1]/text()')
         if not scene_title or scene_title in seen:
             continue
+
         seen.add(scene_title)
         cast = [t for t in (a.xpath('normalize-space(.)').get() or '' for a in row.xpath('.//div/a')) if t]
         actor_names = ', '.join(cast) if cast else scene_title
         kept.append({'scene_title': scene_title, 'actor_names': actor_names})
+
     out: list[dict[str, Any]] = []
     for i, k in enumerate(kept):
         scene_num = i + 1
         scene_index = scene_num * 2 - 1 if len(rows) > len(kept) else scene_num - 1
         out.append({'scene_num': scene_num, 'scene_index': scene_index, **k})
+
     return out
 
 
@@ -81,9 +87,11 @@ def _score_for(
 ) -> float:
     if is_direct_hit:
         return 100
+
     base_score = 100 - compare_string(search_vol_num, result_vol_num).levenshtein if is_vol_search and result_vol_num else 100
     if search_date and on_page_date:
         return base_score - compare_string(search_date, on_page_date).levenshtein
+
     return base_score - compare_string(query.lower(), title.lower()).levenshtein
 
 
@@ -95,7 +103,9 @@ def _fmt_movie_display(title: str, studio: str, result_type: str, result_vol_num
         cleaned = ' '.join(tokens[:-1])
         if re.search(r'(Vol|Vol\.)$', cleaned):
             cleaned = ' '.join(cleaned.split()[:-1])
+
         return re.sub(r'\s+$', '', f'[Vol. {result_vol_num}] {cleaned}{st}{rt}')
+
     return f'{title}{st}{rt}'
 
 
@@ -115,47 +125,53 @@ class AdultEmpireClient(Client):
     async def _ensure_age_confirmed(self, base: str) -> None:
         if self._age_confirmed:
             return
+
         async with self._age_lock:
             if self._age_confirmed:
                 return
+
             token = env.adult_empire_login_token
             if token:
                 self.http.cookies.set('etoken', token, domain='www.adultempire.com', path='/')
+
             with best_effort('AdultEmpire', 'age-confirm handshake', level='debug'):
                 await self.http.get(f'{base}/')
                 await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
                 logger.debug('AdultEmpire', f'age-confirm handshake done; jar={list(self.http.cookies.keys())}')
+
             self._age_confirmed = True
 
     async def _load(self, url: str, capture: list[Any] | None, label: str) -> Any | None:
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=capture), label)
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), label)
+        if not details_page_elements:
             logger.debug('AdultEmpire', f'_load: fetch returned None for {url}')
             return None
-        logger.debug('AdultEmpire', f'_load: HTTP {loaded.get("status")} {len(loaded.get("html") or "")} bytes for {url}')
-        return loaded['sel']
 
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        name = ctx.site_info.name
-        base = ctx.site_info.base_url.rstrip('/')
+        logger.debug('AdultEmpire', f'_load: HTTP {details_page_elements.get("status")} {len(details_page_elements.get("html") or "")} bytes for {url}')
+        return details_page_elements['sel']
+
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        name = search_data.site_info.name
+        base = search_data.site_info.base_url.rstrip('/')
         await self._ensure_age_confirmed(base)
-        direct_id = ctx.scene_id is not None and ctx.scene_id.isdigit() and int(ctx.scene_id) > 100
-        scene_id = ctx.scene_id if direct_id and ctx.scene_id else ''
-        title_parts = ctx.title.strip().split()
+        direct_id = search_data.scene_id is not None and search_data.scene_id.isdigit() and int(search_data.scene_id) > 100
+        scene_id = search_data.scene_id if direct_id and search_data.scene_id else ''
+        title_parts = search_data.title.strip().split()
         search_vol_num = re.sub(r'[^0-9a-zA-Z]+', '', title_parts[-1]) if title_parts else ''
         is_vol_search = not direct_id and bool(re.fullmatch(r'\d+', search_vol_num))
         logger.debug(
-            name, f'search "{ctx.title}" (direct_id={direct_id}, vol_search={is_vol_search}, token={"set" if env.adult_empire_login_token else "absent"})'
+            name,
+            f'search "{search_data.title}" (direct_id={direct_id}, vol_search={is_vol_search}, token={"set" if env.adult_empire_login_token else "absent"})',
         )
 
         movie_urls: dict[str, str] = {}
         if direct_id:
             movie_urls[f'{base}/{scene_id}'] = ''
         else:
-            encoded = re.sub(r'\s+', '+', re.sub(r"[&'#,]", '', ctx.title).split('scene')[0].strip())
-            search_url = f'{base}{ctx.site_info.search_path}{encoded}'
+            encoded = re.sub(r'\s+', '+', re.sub(r"[&'#,]", '', search_data.title).split('scene')[0].strip())
+            search_url = f'{base}{search_data.site_info.search_path}{encoded}'
             logger.debug(name, f'on-site search URL: {search_url}')
-            sel = await self._load(search_url, ctx.capture, f'[{name}] search "{ctx.title}"')
+            sel = await self._load(search_url, search_data.capture, f'[{name}] search "{search_data.title}"')
             if sel is not None:
                 hrefs = sel.xpath('//div[contains(@class,"product-details__item-title")]//a/@href').getall()
                 logger.debug(name, f'on-site product-details hrefs: {len(hrefs)}')
@@ -164,12 +180,14 @@ class AdultEmpireClient(Client):
                     url_id = parts[1] if len(parts) > 1 else ''
                     if not url_id:
                         continue
+
                     url = f'{base}/{url_id}'
                     if url not in movie_urls:
                         movie_urls[url] = _result_type_for(href)
+
             with best_effort(name, 'webSearch', level='debug'):
-                host = urlsplit(ctx.site_info.base_url).hostname or ''
-                web_urls = await web_search(SearchOptions(query=ctx.title, site=host, num=10))
+                host = urlsplit(search_data.site_info.base_url).hostname or ''
+                web_urls = await web_search(SearchOptions(query=search_data.title, site=host, num=10))
                 added = 0
                 for u in web_urls:
                     if 'movies' in u and '.html' not in u:
@@ -177,17 +195,20 @@ class AdultEmpireClient(Client):
                         if url not in movie_urls:
                             movie_urls[url] = ''
                             added += 1
+
                 logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {added} new movie URL(s)')
 
         logger.debug(name, f'movie URLs to process: {len(movie_urls)}')
         for movie_url, result_type in movie_urls.items():
-            sel = await self._load(movie_url, ctx.capture, f'[{name}] movie {movie_url}')
+            sel = await self._load(movie_url, search_data.capture, f'[{name}] movie {movie_url}')
             if sel is None:
                 continue
+
             title = _h1_title(sel)
             if not title:
                 logger.debug(name, f'movie page had no <h1> title: {movie_url}')
                 continue
+
             url_id = re.sub(r'.*/', '', movie_url)
             date = _release_date(sel)
             studio = _studio(sel)
@@ -205,9 +226,9 @@ class AdultEmpireClient(Client):
                 is_vol_search=is_vol_search,
                 search_vol_num=search_vol_num,
                 result_vol_num=result_vol_num,
-                search_date=ctx.search_date,
+                search_date=search_data.search_date,
                 on_page_date=date,
-                query=ctx.title,
+                query=search_data.title,
                 title=title,
             )
 
@@ -215,11 +236,11 @@ class AdultEmpireClient(Client):
                 build_search_result(
                     title=_fmt_movie_display(title, studio, result_type, result_vol_num),
                     scene_url=movie_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     score=movie_score,
-                    cur_id=pack_cur_id([json.dumps({'movieURL': movie_url, 'searchDate': ctx.search_date})]),
+                    cur_id=pack_cur_id([json.dumps({'movieURL': movie_url, 'searchDate': search_data.search_date})]),
                 )
             )
 
@@ -228,16 +249,26 @@ class AdultEmpireClient(Client):
                     build_search_result(
                         title=_fmt_split_display(title, row['scene_num'], row['scene_title'], row['actor_names'], studio, result_type),
                         scene_url=movie_url,
-                        query=ctx.title,
+                        query=search_data.title,
                         display_date=date,
-                        search_date=ctx.search_date,
+                        search_date=search_data.search_date,
                         score=100 if direct_hit else movie_score,
                         cur_id=pack_cur_id(
-                            [json.dumps({'movieURL': movie_url, 'sceneNum': row['scene_num'], 'sceneIndex': row['scene_index'], 'searchDate': ctx.search_date})]
+                            [
+                                json.dumps(
+                                    {
+                                        'movieURL': movie_url,
+                                        'sceneNum': row['scene_num'],
+                                        'sceneIndex': row['scene_index'],
+                                        'searchDate': search_data.search_date,
+                                    }
+                                )
+                            ]
                         ),
                     )
                 )
-        logger.debug(name, f'search "{ctx.title}" -> {len(results)} result(s)')
+
+        logger.debug(name, f'search "{search_data.title}" -> {len(results)} result(s)')
 
     # ── Context loader ────────────────────────────────────────────────────────
 
@@ -248,11 +279,13 @@ class AdultEmpireClient(Client):
                 packed = {'movieURL': payload}
         except (ValueError, TypeError):
             packed = {'movieURL': payload}
+
         movie_url = packed.get('movieURL', '')
         await self._ensure_age_confirmed(site.base_url.rstrip('/'))
         sel = await self._load(movie_url, ctx.capture if ctx else None, f'[{site.name}] detail {movie_url}')
         if sel is None:
             return None
+
         return LoadedScene(url=movie_url, site=site, scene_date=packed.get('searchDate') or None, capture=ctx.capture if ctx else None, sel=sel, extra=packed)
 
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
@@ -261,30 +294,41 @@ class AdultEmpireClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        title = _h1_title(sel)
+        details_page_elements = scene.require_sel()
+
+        title = _h1_title(details_page_elements)
         if not title:
             return
+
         scene_num = self._packed(scene).get('sceneNum')
+
         metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        parts = [t for t in (p.xpath('normalize-space(.)').get() or '' for p in sel.xpath('//div[@class="container"][.//h2]//parent::p')) if t]
+        details_page_elements = scene.require_sel()
+
+        parts = [
+            t for t in (p.xpath('normalize-space(.)').get() or '' for p in details_page_elements.xpath('//div[@class="container"][.//h2]//parent::p')) if t
+        ]
+
         metadata.summary = '\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.studio = _studio(sel) or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.studio = _studio(details_page_elements) or ''
 
     def _tagline_value(self, scene: LoadedScene) -> str | None:
-        sel = scene.require_sel()
-        series = first_attr(sel, '(//h2//a[@label="Series"])[1]/text()')
+        details_page_elements = scene.require_sel()
+
+        series = first_attr(details_page_elements, '(//h2//a[@label="Series"])[1]/text()')
         if not series:
             return None
+
         parts = series.split('"')
         if len(parts) < 2:
             return None
+
         cleaned = re.sub(r'\(.*\)', '', parts[1]).strip()
         return cleaned or None
 
@@ -292,32 +336,39 @@ class AdultEmpireClient(Client):
         metadata.tagline = self._tagline_value(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         collections: list[str] = []
-        studio = _studio(sel)
+        studio = _studio(details_page_elements)
         if studio:
             collections.append(studio)
+
         tagline = self._tagline_value(scene)
         if tagline:
             if tagline not in collections:
                 collections.append(tagline)
         elif self._packed(scene).get('sceneNum') is not None:
-            h1 = _h1_title(sel)
+            h1 = _h1_title(details_page_elements)
             if h1 and h1 not in collections:
                 collections.append(h1)
+
         metadata.collections = collections or None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.release_date = _release_date(sel)
+        details_page_elements = scene.require_sel()
+
+        metadata.release_date = _release_date(details_page_elements)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        values: list[str | None] = [a.xpath('normalize-space(.)').get() for a in sel.xpath('//li//a[@label="Category"]')]
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//li//a[@label="Category"]')]
+
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         packed = self._packed(scene)
         split_scene = packed.get('sceneNum') is not None
         actors: list[ActorResult] = []
@@ -329,9 +380,9 @@ class AdultEmpireClient(Client):
                 seen.add(n)
                 actors.append(ActorResult(name=n, photo_url=photo))
 
-        anchors = sel.xpath(_STARRING_ANCHORS)
+        anchors = details_page_elements.xpath(_STARRING_ANCHORS)
         if split_scene:
-            rows = sel.xpath('//div[contains(@class,"row")][.//h3]')
+            rows = details_page_elements.xpath('//div[contains(@class,"row")][.//h3]')
             idx = packed.get('sceneIndex') or 0
             if idx < len(rows):
                 row_anchors = rows[idx].xpath('.//div/a')
@@ -339,55 +390,68 @@ class AdultEmpireClient(Client):
                     anchors = row_anchors
 
         for a in anchors:
-            name = a.xpath('normalize-space(.)').get() or ''
-            photo = (sel.xpath(f'(//div[contains(.,"Starring")]//img[contains(@title,"{name.strip()}")]/@src)[1]').get() or '') if name.strip() else ''
-            add(name, photo)
+            actor_name = a.xpath('normalize-space(.)').get() or ''
+            photo = (
+                (details_page_elements.xpath(f'(//div[contains(.,"Starring")]//img[contains(@title,"{actor_name.strip()}")]/@src)[1]').get() or '')
+                if actor_name.strip()
+                else ''
+            )
+            add(actor_name, photo)
 
         for extra_name in _SCENE_ACTORS.get(re.sub(r'.*/', '', packed.get('movieURL', '')), []):
             add(extra_name)
+
         metadata.actors = actors or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         directors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in sel.xpath(f'{_CAST_LI}[*[contains(.,"Director")]]//a'):
-            name = first_attr(a, 'normalize-space(.)')
-            if name and name not in seen:
-                seen.add(name)
-                directors.append(ActorResult(name=name))
+        for director_link in details_page_elements.xpath(f'{_CAST_LI}[*[contains(.,"Director")]]//a'):
+            director_name = first_attr(director_link, 'normalize-space(.)')
+            if director_name and director_name not in seen:
+                seen.add(director_name)
+                directors.append(ActorResult(name=director_name))
+
         metadata.directors = directors or None
 
     async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         producers: list[ActorResult] = []
         seen: set[str] = set()
-        for node in sel.xpath(f'{_CAST_LI}[*[contains(.,"Producer")]]/text()'):
-            name = (node.get() or '').strip()
-            if name and name not in seen:
-                seen.add(name)
-                producers.append(ActorResult(name=name))
+        for node in details_page_elements.xpath(f'{_CAST_LI}[*[contains(.,"Producer")]]/text()'):
+            producer_name = (node.get() or '').strip()
+            if producer_name and producer_name not in seen:
+                seen.add(producer_name)
+                producers.append(ActorResult(name=producer_name))
+
         metadata.producers = producers or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         images: list[str] = []
-        cover = first_attr(sel, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
-        cover_href = first_attr(sel, '(//div[contains(@class,"boxcover-container")]//a/@href)[1]')
+        cover = first_attr(details_page_elements, '(//div[contains(@class,"boxcover-container")]//a//img/@src)[1]')
+        cover_href = first_attr(details_page_elements, '(//div[contains(@class,"boxcover-container")]//a/@href)[1]')
         if cover:
             images.append(cover)
+
         if cover_href:
             images.append(cover_href)
 
         packed = self._packed(scene)
-        rows = sel.xpath('//div[contains(@class,"row")][.//div[contains(@class,"row")] and .//a[@rel="scenescreenshots"]]')
+        rows = details_page_elements.xpath('//div[contains(@class,"row")][.//div[contains(@class,"row")] and .//a[@rel="scenescreenshots"]]')
         if packed.get('sceneNum') is not None:
             idx = packed.get('sceneIndex') or 0
             hrefs = rows[idx].xpath('.//a/@href').getall() if idx < len(rows) else []
         else:
             hrefs = rows.xpath('.//div[contains(@class,"row")]//a/@href').getall()
+
         for href in hrefs:
             h = (href or '').strip()
             if h and h not in images:
                 images.append(h)
+
         metadata.art = images or []

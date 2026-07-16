@@ -20,28 +20,30 @@ class _SmtExtra:
 
 
 class ScrewMeTooClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        encoded = ctx.title.strip().lower().replace(' ', '+').replace('--', '+')
-        url = base + ctx.site_info.search_path.replace('{query}', encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if not loaded:
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        encoded = search_data.title.strip().lower().replace(' ', '+').replace('--', '+')
+        url = base + search_data.site_info.search_path.replace('{query}', encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
             return
 
-        for card in loaded['sel'].xpath('//div[contains(@class,"fsp")]//article'):
-            title = first_text(card, './/h4')
-            href = first_attr(card, '(.//*[@href]/@href)[1]')
+        for search_result in search_results['sel'].xpath('//div[contains(@class,"fsp")]//article'):
+            title = first_text(search_result, './/h4')
+            href = first_attr(search_result, '(.//*[@href]/@href)[1]')
             if not title or not href:
                 continue
-            scene_url = absolute_url(href, ctx.site_info.base_url)
-            date = iso_date(first_text(card, './/div[contains(@class,"fsdate")]//span'))
+
+            scene_url = absolute_url(href, search_data.site_info.base_url)
+            date = iso_date(first_text(search_result, './/div[contains(@class,"fsdate")]//span'))
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=scene_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
                 )
             )
@@ -53,24 +55,26 @@ class ScrewMeTooClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
 
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
-        if not loaded:
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
+        if not details_page_elements:
             return None
 
         actors: list[ActorResult] = []
         last_model_sel: Selector | None = None
-        for el in loaded['sel'].xpath('//a[contains(@title,"Model Bio")]'):
+        for el in details_page_elements['sel'].xpath('//a[contains(@title,"Model Bio")]'):
             name = first_attr(el, 'normalize-space(.)')
             href = first_attr(el, '@href')
             if not name or not href:
                 continue
+
             model_url = absolute_url(href, site.base_url)
-            model = await self.fetch_and_load(model_url, FetchCtx(capture=ctx.capture if ctx else None), f'GET {model_url} (actor)')
+            model_page_elements = await self.fetch_and_load(model_url, FetchCtx(capture=ctx.capture if ctx else None), f'GET {model_url} (actor)')
             photo = ''
-            if model:
-                last_model_sel = model['sel']
-                raw = first_attr(model['sel'], '(//div[contains(@class,"model-contr-colone")]//*[@src]/@src)[1]')
+            if model_page_elements:
+                last_model_sel = model_page_elements['sel']
+                raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model-contr-colone")]//*[@src]/@src)[1]')
                 photo = (absolute_url(raw, site.base_url)) if raw else ''
+
             actors.append(ActorResult(name=name, photo_url=photo))
 
         release_date = fallback_date or None
@@ -85,8 +89,8 @@ class ScrewMeTooClient(Client):
             site=site,
             scene_date=fallback_date or None,
             capture=ctx.capture if ctx else None,
-            sel=loaded['sel'],
-            html=loaded['html'],
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
             extra=_SmtExtra(actors=actors, release_date=release_date),
         )
 
@@ -96,12 +100,14 @@ class ScrewMeTooClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h1')
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h1')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[h2]').replace('Read More ...Read Less', '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[h2]').replace('Read More ...Read Less', '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -113,24 +119,29 @@ class ScrewMeTooClient(Client):
         metadata.release_date = self._extra(scene).release_date or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        category_text = sel.xpath('string((//div[contains(@class,"amp-category")])[1])').get() or ''
+        category_text = details_page_elements.xpath('string((//div[contains(@class,"amp-category")])[1])').get() or ''
         for line in category_text.split('\n'):
-            g = line.strip()
-            if g and g not in genres:
-                genres.append(g)
+            genre_name = line.strip()
+            if genre_name and genre_name not in genres:
+                genres.append(genre_name)
+
         cast = len(self._extra(scene).actors)
         if group := self.group_genre_for(cast + 1):  # offset scale: the POV performer is excluded from the count
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = self._extra(scene).actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url(raw, scene.site.base_url))
-        for raw in sel.xpath('//div[contains(@class,"amp-vis-mobile")]//*[@src]/@src').getall():
-            coll['push']((raw or '').strip())
-        metadata.art = coll['list']
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
+        for image_url in details_page_elements.xpath('//div[contains(@class,"amp-vis-mobile")]//*[@src]/@src').getall():
+            images['push']((image_url or '').strip())
+
+        metadata.art = images['list']

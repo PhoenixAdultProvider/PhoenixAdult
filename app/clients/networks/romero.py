@@ -17,6 +17,7 @@ def _clean_poster(url: str) -> str:
     q = parse_qs(urlparse(url).query)
     if q.get('src'):
         out = q['src'][0]
+
     return out.replace('-scaled', '')
 
 
@@ -25,14 +26,15 @@ def _clean_detail_title(raw: str) -> str:
 
 
 class RomeroClient(Client):
-    async def load_search_context(self, ctx: SearchContext) -> LoadedSearch | None:
-        base = ctx.site_info.base_url.rstrip('/')
-        url = base + ctx.site_info.search_path.replace('{query}', ctx.encoded)
-        loaded = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search {url}')
-        if not loaded:
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
             return None
-        sources = list(loaded['sel'].xpath('//div[contains(@class,"half")] | //article[contains(@class,"post")]'))
-        return LoadedSearch(ctx=ctx, site=ctx.site_info, sources=sources, capture=ctx.capture)
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"half")] | //article[contains(@class,"post")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h2)[1]').xpath('string(.)').get() or '').strip()
@@ -46,28 +48,34 @@ class RomeroClient(Client):
         raw = first_attr(h2s[1]).split('&nbsp')[-1].strip() if len(h2s) > 1 else ''
         if not raw:
             raw = (source.xpath('(.//div[@class="entry-date"])[1]').xpath('string(.)').get() or '').strip()
+
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//meta[@itemprop="name"]/@content | //h1/text())[1]')
+        details_page_elements = scene.require_sel()
+
+        raw = first_attr(details_page_elements, '(//meta[@itemprop="name"]/@content | //h1/text())[1]')
+
         metadata.title = _clean_detail_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         if scene.site.name in _FULLSTORY_ONLY:
-            paras = sel.xpath('//div[@id="fullstory"]/p')
+            paras = details_page_elements.xpath('//div[@id="fullstory"]/p')
         else:
-            paras = sel.xpath(
+            paras = details_page_elements.xpath(
                 '//div[@class="cont"]/p | //div[@class="cont"]//div[@id="fullstory"]/p | //div[@class="zapdesc"]//div[not(contains(.,"Including"))][.//br]'
             )
+
         parts: list[str] = []
         for el in paras:
             text = first_attr(el)
             if text and text != '\xa0':
                 parts.append(text)
+
         metadata.summary = '\n'.join(parts).strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -80,50 +88,68 @@ class RomeroClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        raw = (sel.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').split('T')[0].strip()
-        if raw:
-            metadata.release_date = iso_date(raw, '%Y-%m-%d') or iso_date(raw)
+        details_page_elements = scene.require_sel()
+
+        date = (details_page_elements.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').split('T')[0].strip()
+        if date:
+            metadata.release_date = iso_date(date, '%Y-%m-%d') or iso_date(date)
             return
+
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         values: list[str | None] = [
-            t for t in sel.xpath('//div[@class="Cats"]//a/text() | //div[@class="zapdesc"]/div/div/div[contains(.,"Including:")]/text()').getall()
+            t
+            for t in details_page_elements.xpath(
+                '//div[@class="Cats"]//a/text() | //div[@class="zapdesc"]/div/div/div[contains(.,"Including:")]/text()'
+            ).getall()
         ]
+
         metadata.genres = self.dedup_strings(values) or []
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         if scene.site.name in _LOOSE_ACTOR:
-            links = sel.xpath('//div[contains(@class,"tagsmodels")]//a')
+            links = details_page_elements.xpath('//div[contains(@class,"tagsmodels")]//a')
         else:
-            links = sel.xpath('//div[contains(@class,"tagsmodels")][./img[@alt="model icon"]]//a')
+            links = details_page_elements.xpath('//div[contains(@class,"tagsmodels")][./img[@alt="model icon"]]//a')
+
         entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in links]
+
         metadata.actors = self.dedup_people(entries) or []
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in sel.xpath('//div[contains(@class,"director")]//a')]
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=first_attr(director_link, 'normalize-space(.)'))
+            for director_link in details_page_elements.xpath('//div[contains(@class,"director")]//a')
+        ]
+
         metadata.directors = self.dedup_people(entries) or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(_clean_poster)
-        for el in sel.xpath('//img'):
+        details_page_elements = scene.require_sel()
+
+        images = self.image_collector(_clean_poster)
+        for el in details_page_elements.xpath('//img'):
             cls = el.xpath('@class').get() or ''
             if 'wp-image-4512' in cls or 'wp-image-492' in cls:
                 continue
+
             if ('alignnone' in cls and 'size-full' in cls) or 'size-medium' in cls:
-                coll['push'](el.xpath('@src').get() or '')
+                images['push'](el.xpath('@src').get() or '')
+
         xpaths = (
             '//div[@class="iehand"]/a/@href',
             '//a[contains(@class,"colorbox-cats")]/@href',
             '//div[@class="gallery"]//a/@href',
         )
         for xpath in xpaths:
-            for raw in sel.xpath(xpath).getall():
-                coll['push'](raw)
-        images: list[str] = coll['list']
-        metadata.art = images or []
+            for image_url in details_page_elements.xpath(xpath).getall():
+                images['push'](image_url)
+
+        metadata.art = images['list'] or []

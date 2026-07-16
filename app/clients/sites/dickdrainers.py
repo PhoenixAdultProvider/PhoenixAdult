@@ -15,62 +15,79 @@ _SLUG_RE = re.compile(r'/s/([^/]+)\.html$')
 
 
 class DickDrainersClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
-        onsite_query = re.sub(r'\s+', '+', ctx.title.strip().lower())
-        onsite_url = base + ctx.site_info.search_path.replace('{query}', onsite_query)
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
+        onsite_query = re.sub(r'\s+', '+', search_data.title.strip().lower())
+        onsite_url = base + search_data.site_info.search_path.replace('{query}', onsite_query)
 
         onsite_hrefs: set[str] = set()
 
-        loaded = await self.fetch_and_load(onsite_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] search "{ctx.title}"')
-        if loaded:
-            for card in loaded['sel'].xpath(_CARD_XP):
-                raw_title = first_text(card, './/h4')
-                href = first_attr(card, '(.//h4//a/@href)[1]')
+        search_results = await self.fetch_and_load(
+            onsite_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"'
+        )
+        if search_results:
+            for search_result in search_results['sel'].xpath(_CARD_XP):
+                raw_title = first_text(search_result, './/h4')
+                href = first_attr(search_result, '(.//h4//a/@href)[1]')
                 if not raw_title or not href:
                     continue
+
                 scene_url = absolute_url(href, base)
                 onsite_hrefs.add(scene_url)
-                raw_date = first_text(card, './/div[contains(@class,"date")]')
+                raw_date = first_text(search_result, './/div[contains(@class,"date")]')
                 date = iso_date(raw_date) if raw_date else None
-                results.append(self._result(raw_title, scene_url, ctx, date))
 
-        for scene_url in await web_search_urls(ctx.title, ctx.site_info, include=['/trailers/']):
+                results.append(self._result(raw_title, scene_url, search_data, date))
+
+        for scene_url in await web_search_urls(search_data.title, search_data.site_info, include=['/trailers/']):
             if scene_url in onsite_hrefs:
                 continue
-            detail = await self.fetch_and_load(scene_url, FetchCtx(capture=ctx.capture), f'[{ctx.site_info.name}] fallback {scene_url}')
-            if not detail:
+
+            details_page_elements = await self.fetch_and_load(
+                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] fallback {scene_url}'
+            )
+            if not details_page_elements:
                 continue
-            raw_title = first_text(detail['sel'], '//h3')
+
+            raw_title = first_text(details_page_elements['sel'], '//h3')
             if not raw_title:
                 continue
-            raw_date = first_attr(detail['sel'], '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
-            date = iso_date(raw_date) if raw_date else None
-            results.append(self._result(raw_title, scene_url, ctx, date))
 
-    def _result(self, title: str, scene_url: str, ctx: SearchContext, date: str | None) -> SearchResult:
+            raw_date = first_attr(details_page_elements['sel'], '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
+            date = iso_date(raw_date) if raw_date else None
+
+            results.append(self._result(raw_title, scene_url, search_data, date))
+
+    def _result(self, title: str, scene_url: str, search_data: SearchContext, date: str | None) -> SearchResult:
         return build_search_result(
             title=title,
             scene_url=scene_url,
-            query=ctx.title,
+            query=search_data.title,
             display_date=date,
-            search_date=ctx.search_date,
+            search_date=search_data.search_date,
             cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
         )
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = first_text(sel, '//h3') or ''
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        parts = [s.xpath('normalize-space(.)').get() or '' for s in sel.xpath('//div[contains(@class,"videoDetails") and contains(@class,"clear")]//p/span')]
+        details_page_elements = scene.require_sel()
+
+        parts = [
+            s.xpath('normalize-space(.)').get() or ''
+            for s in details_page_elements.xpath('//div[contains(@class,"videoDetails") and contains(@class,"clear")]//p/span')
+        ]
         parts = [p for p in parts if p]
         if not parts:
             return
+
         joined = ' '.join(parts).replace('FULL VIDEO', '').strip()
+
         metadata.summary = joined or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -83,61 +100,73 @@ class DickDrainersClient(Client):
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
             return
-        sel = scene.require_sel()
-        raw = first_attr(sel, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
-        metadata.release_date = iso_date(raw) if raw else None
+
+        details_page_elements = scene.require_sel()
+
+        date = first_attr(details_page_elements, '(//div[contains(@class,"videoInfo") and contains(@class,"clear")]/p/text())[1]')
+
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        for a in sel.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
-            raw = first_attr(a, 'normalize-space(.)')
+        for genre_link in details_page_elements.xpath('//li[contains(.,"Tags")]/following-sibling::ul[1]//a'):
+            raw = first_attr(genre_link, 'normalize-space(.)')
             if not raw:
                 continue
-            g = title_case(raw, site_name=scene.site.name)
-            if g not in genres:
-                genres.append(g)
+
+            genre_name = title_case(raw, site_name=scene.site.name)
+            if genre_name not in genres:
+                genres.append(genre_name)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        items = sel.xpath('//li[contains(@class,"update_models")]')
+        details_page_elements = scene.require_sel()
+
+        items = details_page_elements.xpath('//li[contains(@class,"update_models")]')
         if not items:
             m = _SLUG_RE.search(scene.url)
             if m:
-                metadata.actors = [ActorResult(name=name) for name in _SLUG_ACTORS.get(m.group(1).lower(), [])]
+                metadata.actors = [ActorResult(name=actor_name) for actor_name in _SLUG_ACTORS.get(m.group(1).lower(), [])]
+
             return
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for li in items:
-            name = first_attr(li, 'normalize-space(.)')
-            if not name or name in seen:
+            actor_name = first_attr(li, 'normalize-space(.)')
+            if not actor_name or actor_name in seen:
                 continue
-            seen.add(name)
+
+            seen.add(actor_name)
             href = first_attr(li, '(.//a/@href)[1]')
             photo = ''
             if href:
                 actor_url = absolute_url(href, scene.site.base_url)
-                actor_page = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {name}')
-                if actor_page:
-                    raw = first_attr(actor_page['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
+                model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+                if model_page_elements:
+                    raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
                     photo = (absolute_url(raw, scene.site.base_url)) if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        coll = self.image_collector(lambda raw: absolute_url((raw or '').strip(), scene.site.base_url))
+        details_page_elements = scene.require_sel()
 
-        for el in sel.xpath('//div[contains(@class,"player_thumbs")]'):
-            coll['push'](el.xpath('@src0_3x').get() or '')
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
+
+        for el in details_page_elements.xpath('//div[contains(@class,"player_thumbs")]'):
+            images['push'](el.xpath('@src0_3x').get() or '')
             for child in el.xpath('.//*[@src0_3x]'):
-                coll['push'](child.xpath('@src0_3x').get() or '')
+                images['push'](child.xpath('@src0_3x').get() or '')
 
-        for script in sel.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
+        for script in details_page_elements.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _SRC0_3X_RE.finditer(text):
-                coll['push'](m.group(1))
+                images['push'](m.group(1))
 
-        metadata.art = coll['list']
+        metadata.art = images['list']

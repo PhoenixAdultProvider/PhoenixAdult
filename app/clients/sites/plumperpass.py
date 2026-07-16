@@ -29,6 +29,7 @@ def _release_text(sel: Selector) -> str:
         t = t.strip()
         if t:
             return t
+
     return ''
 
 
@@ -36,22 +37,24 @@ def _tagline_for(url: str) -> str:
     for token, tagline in _TOUR_TAGLINES:
         if token in url:
             return tagline
+
     return 'PlumperPass'
 
 
 class PlumperPassClient(Client):
-    async def search(self, results: list[SearchResult], ctx: SearchContext) -> None:
-        base = ctx.site_info.base_url.rstrip('/')
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        base = search_data.site_info.base_url.rstrip('/')
 
         def refstat(scene_id: str) -> str:
             return f'{base}/t1/refstat.php?lid={scene_id}&sid=584'
 
         ref_urls: list[str] = []
-        if ctx.scene_id:
-            ref_urls.append(refstat(ctx.scene_id))
-        host = urlsplit(ctx.site_info.base_url).hostname or ''
-        with best_effort(ctx.site_info.name, 'webSearch'):
-            for url in await web_search(SearchOptions(query=ctx.title, site=host, num=10)):
+        if search_data.scene_id:
+            ref_urls.append(refstat(search_data.scene_id))
+
+        host = urlsplit(search_data.site_info.base_url).hostname or ''
+        with best_effort(search_data.site_info.name, 'webSearch'):
+            for url in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
                 m = _SCENE_ID_RE.search(url)
                 if m and 'content' in url:
                     ref = refstat(m.group(0))
@@ -63,24 +66,29 @@ class PlumperPassClient(Client):
                 r = await self.http.get(ref_url)
             except httpx2.HTTPError:
                 continue
+
             content_url = str(r.url)
             if 'content' not in content_url:
                 continue
-            if ctx.capture is not None:
-                ctx.capture.append(RawCaptureEntry(f'GET {ref_url} -> {content_url}', 'html', r.text))
+
+            if search_data.capture is not None:
+                search_data.capture.append(RawCaptureEntry(f'GET {ref_url} -> {content_url}', 'html', r.text))
+
             sel = Selector(text=r.text)
             title = (sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
             if not title:
                 continue
+
             raw_date = _release_text(sel)
             date = iso_date(raw_date, '%B %d, %Y') if raw_date else None
+
             results.append(
                 build_search_result(
                     title=title,
                     scene_url=content_url,
-                    query=ctx.title,
+                    query=search_data.title,
                     display_date=date,
-                    search_date=ctx.search_date,
+                    search_date=search_data.search_date,
                     cur_id=pack_cur_id([x for x in (content_url, date) if x]),
                 )
             )
@@ -88,12 +96,14 @@ class PlumperPassClient(Client):
     # ── Detail field hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.title = (sel.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('normalize-space((//h2[contains(@class,"vidtitle")])[1])').get() or '').replace('"', '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
-        metadata.summary = first_text(sel, '//div[contains(@class,"vidinfo")]//p')
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"vidinfo")]//p')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'PlumperPass'
@@ -108,49 +118,63 @@ class PlumperPassClient(Client):
         metadata.release_date = scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         genres: list[str] = []
-        tag_links = sel.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
+        tag_links = details_page_elements.xpath('//p[contains(@class,"tags") and contains(@class,"clearfix")]//a')
         if tag_links:
             for a in tag_links:
-                g = first_attr(a, 'normalize-space(.)')
-                if g and g not in genres:
-                    genres.append(g)
+                genre_name = first_attr(a, 'normalize-space(.)')
+                if genre_name and genre_name not in genres:
+                    genres.append(genre_name)
         else:
-            for g in (sel.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').split(','):
-                t = g.strip()
+            for genre_name in (details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').split(','):
+                t = genre_name.strip()
                 if t and t not in genres:
                     genres.append(t)
-        cast = len(sel.xpath('//h3[contains(@class,"releases")]//a'))
+
+        cast = len(details_page_elements.xpath('//h3[contains(@class,"releases")]//a'))
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
+
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url.rstrip('/')
         actors: list[ActorResult] = []
-        for el in sel.xpath('//h3[contains(@class,"releases")]//a'):
-            name = first_attr(el, 'normalize-space(.)')
-            if not name:
+        for actor_link in details_page_elements.xpath('//h3[contains(@class,"releases")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            if not actor_name:
                 continue
+
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(actor_link, '@href')
             if href:
-                loaded = await self.fetch_and_load(f'{base}/t1/{href}', FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = first_attr(loaded['sel'], '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]') if loaded else ''
+                model_page_elements = await self.fetch_and_load(f'{base}/t1/{href}', FetchCtx(capture=scene.capture), f'GET {href} (actor)')
+                raw = (
+                    first_attr(model_page_elements['sel'], '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]')
+                    if model_page_elements
+                    else ''
+                )
                 photo = (raw if raw.startswith('http') else f'{base}/t1/{raw}') if raw else ''
-            actors.append(ActorResult(name=name, photo_url=photo))
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        sel = scene.require_sel()
+        details_page_elements = scene.require_sel()
+
         base = scene.site.base_url.rstrip('/')
-        coll = self.image_collector(lambda raw: raw if 'http' in raw else f'{base}/t1/{raw}')
-        script = sel.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
+        images = self.image_collector(lambda image: image if 'http' in image else f'{base}/t1/{image}')
+        script = details_page_elements.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
         m = _IMAGE_RE.search(script)
         if m:
-            coll['push']((m.group(1) or '').strip())
-        for raw in sel.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
-            coll['push']((raw or '').strip())
-        metadata.art = coll['list']
+            images['push']((m.group(1) or '').strip())
+
+        for image_url in details_page_elements.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
+            images['push']((image_url or '').strip())
+
+        metadata.art = images['list']
