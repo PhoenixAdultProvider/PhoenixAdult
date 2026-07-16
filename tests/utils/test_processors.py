@@ -141,6 +141,21 @@ def test_title_case_a_to_an() -> None:
     assert title_case('a big surprise') == 'A Big Surprise'
 
 
+def test_title_case_a_stays_before_consonant_sound_vowels() -> None:
+    assert title_case('a union nutbuster') == 'A Union Nutbuster'
+    assert title_case('a european vacation') == 'A European Vacation'
+    assert title_case('a one night stand') == 'A One Night Stand'
+    assert title_case('a used toy') == 'A Used Toy'
+    assert title_case('a uniform inspection') == 'A Uniform Inspection'
+
+
+def test_title_case_an_heals_back_before_consonant_sound_vowels() -> None:
+    assert title_case('An Union Nutbuster') == 'A Union Nutbuster'
+    assert title_case('gets an used toy') == 'Gets a Used Toy'
+    assert title_case('an anal massage') == 'An Anal Massage'
+    assert title_case('an angel') == 'An Angel'
+
+
 def test_title_case_sequence_marker_colon() -> None:
     assert title_case('Becoming Johnny Sins: Part One') == 'Becoming Johnny Sins: Part One'
     assert title_case('Becoming Johnny Sins - Part Two') == 'Becoming Johnny Sins: Part Two'

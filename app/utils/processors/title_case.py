@@ -101,6 +101,10 @@ _ALNUM_RE = re.compile(r'[^\W_]')
 _WORD_RE = re.compile(r'[A-Za-z]+')
 _PURE_NUMBER_RE = re.compile(r'\d+')
 _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
+_A_BEFORE_VOWEL_RE = re.compile(r'\b([Aa])(?=\s+([AEIOUaeiou][\w.]*))')
+_AN_BEFORE_WORD_RE = re.compile(r'\b([Aa])n\b(?=\s+([\w.]+))')
+# Vowel spellings with consonant sounds ("yu"/"w") take "a": a Union, a European, a One-Night Stand.
+_A_STAYS_RE = re.compile(r'^(?:uni|use|usu|ubi|ur[ie]|u\.|uk$|ufo|eu|one$|once$|ewe)', re.IGNORECASE)
 _HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
 _OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
 _SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
@@ -327,7 +331,8 @@ class _TitleCaseEngine:
 
     def _fix_grammar(self, output: str) -> str:
         output = _POSSESSIVE_S_RE.sub("'", output)
-        output = re.sub(r'\b([Aa])\b(?=\s+[aeiouAEIOU])', lambda m: 'An' if m.group(1) == 'A' else 'an', output)
+        output = _A_BEFORE_VOWEL_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else ('An' if m.group(1) == 'A' else 'an'), output)
+        output = _AN_BEFORE_WORD_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else f'{m.group(1)}n', output)
         if self.type != 'name':
             output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
         return output

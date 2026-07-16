@@ -109,6 +109,7 @@ async def test_detail(no_web_search: object) -> None:
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Teen', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Jane Doe']
+    assert detail.data18_url == url
 
 
 @respx.mock
