@@ -3,8 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date
+from app.utils.helpers.helpers import absolute_url, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
+
+_CARD_XP = '//a[contains(@class,"video-card__title")]'
+_MODEL_MATCH_SCORE = 90.0
 
 
 class VirtualTabooClient(Client):
@@ -12,14 +15,20 @@ class VirtualTabooClient(Client):
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
+        sources = list(search_results['sel'].xpath(_CARD_XP)) if search_results else []
+
+        model_url = f'{base}/pornstars/{slugify(search_data.title)}'
+        model_page_elements = await self.fetch_and_load(model_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] model {model_url}')
+        model_sources = list(model_page_elements['sel'].xpath(_CARD_XP)) if model_page_elements else []
+
+        if not sources and not model_sources:
             return None
 
-        sources = list(search_results['sel'].xpath('//a[contains(@class,"video-card__item")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
+        model_hrefs = {first_attr(s, '@href') for s in model_sources}
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources + model_sources, capture=search_data.capture, extra=model_hrefs)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
-        return first_text(source, './/div[contains(@class,"video-card__title")]')
+        return first_text(source, '.')
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
         href = first_attr(source, '@href')
@@ -27,6 +36,10 @@ class VirtualTabooClient(Client):
             return ''
 
         return absolute_url(href, loaded.site.base_url)
+
+    async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
+        model_hrefs = loaded.extra if isinstance(loaded.extra, set) else set()
+        return _MODEL_MATCH_SCORE if first_attr(source, '@href') in model_hrefs else None
 
     # ── Detail field hooks ────────────────────────────────────────────────────
 
@@ -73,7 +86,7 @@ class VirtualTabooClient(Client):
         details_page_elements = scene.require_sel()
 
         values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tag-list")]')
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tag-list")]/a')
         ]
 
         metadata.genres = self.dedup_strings(values)
