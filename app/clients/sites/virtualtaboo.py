@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, slugify
 from app.utils.helpers.html_helpers import first_attr, first_text
@@ -61,9 +62,6 @@ class VirtualTabooClient(Client):
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name or ''
 
-    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
@@ -111,3 +109,10 @@ class VirtualTabooClient(Client):
             images['push'](href)
 
         metadata.art = images['list']
+
+        await self.enrich_from_data18(
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, scene.site.name),
+            providers=[scene.site.name],
+        )

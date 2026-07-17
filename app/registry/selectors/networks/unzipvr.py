@@ -9,7 +9,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
 
-def _site(name: str, domain: str) -> SiteInfo:
+def _site(name: str, domain: str, data18: bool = False) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
@@ -19,12 +19,13 @@ def _site(name: str, domain: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='unzipvr',
+        data18_enrichment=data18,
     )
 
 
 UNZIPVR_SITES: list[SiteInfo] = [
-    _site('VR Bangers', 'vrbangers.com'),
-    _site('VR Conk', 'vrconk.com'),
+    _site('VR Bangers', 'vrbangers.com', data18=True),
+    _site('VR Conk', 'vrconk.com', data18=True),
     _site('Blow VR', 'blowvr.com'),
     _site('VRB Trans', 'vrbtrans.com'),
     _site('VRB Gay', 'vrbgay.com'),

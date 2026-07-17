@@ -9,8 +9,12 @@ from app.clients.base import SearchContext, SearchResult
 from app.clients.sites.virtualtaboo import VirtualTabooClient
 from app.registry import find_site
 
-SITE = find_site('VirtualTaboo')
+SITE = find_site('Virtual Taboo')
 assert SITE is not None
+
+
+def test_data18_enrichment_enabled() -> None:
+    assert SITE.scraper_config.data18_enrichment is True
 
 
 def _card(href: str, title: str, actors: str) -> str:
@@ -78,9 +82,9 @@ async def test_detail_full_summary() -> None:
     assert detail is not None
     assert detail.title == 'wild scene'
     assert detail.summary == 'Full description text.'
-    assert detail.studio == 'VirtualTaboo'
-    assert detail.tagline == 'VirtualTaboo'
-    assert detail.collections == ['VirtualTaboo']
+    assert detail.studio == 'Virtual Taboo'
+    assert detail.tagline is None
+    assert detail.collections == ['Virtual Taboo']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe']

@@ -3,10 +3,13 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
 from app.utils.helpers.html_helpers import strip_tags
+
+_DATA18_PROVIDERS = ['VR Bangers', 'VR Conk']
 
 
 class UnzipVRClient(Client):
@@ -96,3 +99,10 @@ class UnzipVRClient(Client):
             images['push'](img.get('permalink'))
 
         metadata.art = images['list'] or []
+
+        await self.enrich_from_data18(
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, scene.site.name),
+            providers=_DATA18_PROVIDERS,
+        )

@@ -52,3 +52,11 @@ async def test_detail() -> None:
     assert detail.actors[0].photo_url == f'{_BASE}/media/jane.jpg'
     assert detail.actors[0].gender == 'female'
     assert detail.art == [f'{_BASE}/media/slider.jpg', f'{_BASE}/media/poster.jpg', f'{_BASE}/media/g1.jpg']
+
+
+def test_data18_enrichment_only_on_supported_sites() -> None:
+    supported = {'VR Bangers', 'VR Conk'}
+    for name in ['VR Bangers', 'VR Conk', 'Blow VR', 'VRB Trans', 'VRB Gay']:
+        site = find_site(name)
+        assert site is not None
+        assert site.scraper_config.data18_enrichment == (name in supported)

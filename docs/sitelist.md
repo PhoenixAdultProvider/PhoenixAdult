@@ -1775,8 +1775,8 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Stuck 4k
   - Tutor 4k
 + #### VIPissy | ✓
++ #### Virtual Taboo | ✓ - **Title only**
 + #### VirtualRealPorn | ❌ - **Direct URL**
-+ #### VirtualTaboo | ✓ - **Title only**
 + #### Vivid Network | ✅ - **Title only for DVDs**
   - Vivid
 + #### VNA Network | ✅
