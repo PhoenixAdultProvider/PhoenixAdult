@@ -95,8 +95,36 @@ async def test_search_by_scene_id_falls_back_to_keyword() -> None:
     assert [r.title for r in results] == ['Found']
 
 
+@pytest.mark.parametrize(
+    ('order', 'grab'),
+    [
+        ('Local Storage,Scene,IAFD', True),
+        ('Local Storage,IAFD,Scene', False),
+        ('Scene,IAFD', True),
+        ('IAFD,Scene', False),
+    ],
+)
+async def test_actor_photo_fetch_follows_source_order(monkeypatch: pytest.MonkeyPatch, order: str, grab: bool) -> None:
+    monkeypatch.setenv('PEOPLE_SOURCE_ORDER', order)
+    with respx.mock(assert_all_called=False) as router:
+        router.get('https://www.naughtyamerica.com/scene/cool-scene-555').mock(
+            return_value=httpx.Response(
+                200,
+                text='<html><body><div class="scene-info"><h1>Cool Scene</h1></div><div class="performer-list"><a>Jane Doe</a></div></body></html>',
+            )
+        )
+        pornstar = router.get('https://www.naughtyamerica.com/pornstar/jane-doe').mock(
+            return_value=httpx.Response(200, text='<img class="performer-pic" data-src="//cdn/jane.jpg" />')
+        )
+        detail = await NaughtyAmericaClient().fetch_scene_detail('scene/cool-scene-555', SITE)
+    assert detail is not None
+    assert pornstar.called == grab
+    assert detail.actors[0].photo_url == ('https://cdn/jane.jpg' if grab else '')
+
+
 @respx.mock
-async def test_detail() -> None:
+async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('PEOPLE_SOURCE_ORDER', raising=False)
     url = 'https://www.naughtyamerica.com/scene/cool-scene-555'
     respx.get(url).mock(
         return_value=httpx.Response(

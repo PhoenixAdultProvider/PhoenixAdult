@@ -10,6 +10,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneCo
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.people.sources import scene_image_pref
 
 _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
@@ -203,12 +204,18 @@ class NaughtyAmericaClient(Client):
             for n in (first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath('//div[contains(@class,"performer-list")]//a'))
             if n
         ]
+        _, scene_first = scene_image_pref()
+
         actors: list[ActorResult] = []
         for actor_name in names:
-            slug = actor_name.lower().replace(' ', '-').replace("'", '')
-            page = await self._paced(f'{_SCENE_BASE}/pornstar/{slug}', None, f'GET pornstar {slug}')
-            raw = first_attr(page['sel'], '(//img[contains(@class,"performer-pic")])[1]/@data-src') if page else ''
-            actors.append(ActorResult(name=actor_name, photo_url=to_https(raw) if raw else ''))
+            photo_url = ''
+            if scene_first:
+                slug = actor_name.lower().replace(' ', '-').replace("'", '')
+                page = await self._paced(f'{_SCENE_BASE}/pornstar/{slug}', None, f'GET pornstar {slug}')
+                raw = first_attr(page['sel'], '(//img[contains(@class,"performer-pic")])[1]/@data-src') if page else ''
+                photo_url = to_https(raw) if raw else ''
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo_url))
 
         metadata.actors = actors
 
