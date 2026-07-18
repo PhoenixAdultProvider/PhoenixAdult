@@ -14,9 +14,11 @@ _MAX_TITLE_LENGTH = 1000
 # ── Exceptions ────────────────────────────────────────────────────────────────
 # fmt: off
 _LOWER_EXCEPTIONS = frozenset({
-    'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs', 'com', 'co', 'org',
+    'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs',
     'in', 'on', 'by', 'as',  # NOT 'up': it's a verb particle in these titles (Tied Up) and particles capitalize
 })
+
+_TLD_FRAGMENTS = frozenset({'co', 'com', 'org'})
 
 _UPPER_EXCEPTIONS = frozenset({
     'bbc', 'xxx', 'bbw', 'bf', 'bff', 'bts', 'pov', 'dp', 'gf', 'bj', 'wtf', 'cfnm', 'bwc', 'fm', 'tv',
@@ -205,12 +207,15 @@ class _TitleCaseEngine:
 
     # ── Word rules ───────────────────────────────────────────────────────────
     def _apply_word_rules(self, tokens: list[_Token]) -> None:
+        prev: _Token | None = None
         for token in tokens:
             if token.kind == 'word':
-                token.normalized = self._normalize_word(token.text)
+                after_dot = prev is not None and prev.kind == 'punct' and prev.text == '.'
+                token.normalized = self._normalize_word(token.text, after_dot=after_dot)
+            prev = token
         self._capitalize_first_word(tokens)
 
-    def _normalize_word(self, word: str) -> str:
+    def _normalize_word(self, word: str, *, after_dot: bool = False) -> str:
         clean_word = _strip_non_word(word)
         clean_lower = clean_word.lower()
 
@@ -220,6 +225,9 @@ class _TitleCaseEngine:
         # The tokenizer only lets apostrophes into word tokens, so that is the lone symbol to handle.
         if "'" in word:
             return self._manual_word_fix(self._handle_contraction_word(word))
+
+        if clean_lower in _TLD_FRAGMENTS:
+            return self._manual_word_fix(word.lower() if after_dot else _capitalize(word))
 
         is_special, special_val = self._is_acronym_or_size(clean_lower, clean_word)
         if is_special:

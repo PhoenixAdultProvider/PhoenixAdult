@@ -83,6 +83,16 @@ def test_title_case_manual_correction() -> None:
     assert title_case('bday party') == 'B-Day Party'
 
 
+def test_title_case_tld_fragment_only_lowercases_as_domain_suffix() -> None:
+    assert title_case('lust for co-star') == 'Lust for Co-Star'
+    assert title_case('a co-star scene') == 'A Co-Star Scene'
+    assert title_case('the co op') == 'The Co Op'
+    assert title_case('org chart') == 'Org Chart'
+    assert title_case('visit brazzers.com today') == 'Visit Brazzers.com Today'
+    assert title_case('watch on xvideos.co') == 'Watch on Xvideos.co'
+    assert title_case('filed under news.org') == 'Filed Under News.org'
+
+
 def test_title_case_vs_normalizes_to_one_period() -> None:
     assert title_case('alice vs bob') == 'Alice vs. Bob'
     assert title_case("England vs. Danny's Schlong") == "England vs. Danny's Schlong"
