@@ -12,6 +12,7 @@ from app.utils.helpers.html_helpers import first_attr
 
 _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
+_IMAGES_CDN_RE = re.compile(r'images\d+', re.IGNORECASE)
 STUDIO = 'Naughty America'
 # AWS WAF here is rate-based; serialize fetches and space them apart (matches the
 # reference scraper's CONCURRENT_REQUESTS=1 + DOWNLOAD_DELAY=2) to stay under it.
@@ -213,8 +214,9 @@ class NaughtyAmericaClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        images = self.image_collector(to_https)
+        images = self.image_collector(lambda u: _IMAGES_CDN_RE.sub('images1', to_https(u), 1))
         xpaths = (
+            '//div[contains(@class,"contain-scene-images") and contains(@class,"desktop-only")]/a/@href',
             '//a[@class="play-trailer"]/picture[1]//source[contains(@data-srcset,"jpg")]/@data-srcset',
             '//dl8-video/@poster[contains(.,"jpg")]',
         )

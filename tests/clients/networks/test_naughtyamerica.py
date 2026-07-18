@@ -108,6 +108,10 @@ async def test_detail() -> None:
               <div class="synopsis grey-text"><h2>Synopsis</h2>A summary.</div>
               <div class="categories grey-text"><a>Office</a><a>Office</a></div>
               <div class="performer-list"><a>Jane Doe</a></div>
+              <div class="contain-scene-images desktop-only">
+                <a href="//images3.naughtycdn.com/scenes/p1.jpg"></a>
+                <a href="//images4.naughtycdn.com/scenes/p2.jpg"></a>
+              </div>
               <a class="play-trailer"><picture><source data-srcset="//images5.naughtycdn.com/cms/big.jpg" type="image/jpg"></picture></a>
             </body></html>""",
         )
@@ -125,4 +129,8 @@ async def test_detail() -> None:
     assert detail.genres == ['Office']
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
-    assert detail.art == ['https://images5.naughtycdn.com/cms/big.jpg']
+    assert detail.art == [
+        'https://images1.naughtycdn.com/scenes/p1.jpg',
+        'https://images1.naughtycdn.com/scenes/p2.jpg',
+        'https://images1.naughtycdn.com/cms/big.jpg',
+    ]
