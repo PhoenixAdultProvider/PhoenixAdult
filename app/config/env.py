@@ -94,6 +94,11 @@ class _Env:
         return os.environ.get('BYPASS_ORDER')
 
     @property
+    def playwright_browser(self) -> str:
+        val = (os.environ.get('PLAYWRIGHT_BROWSER') or 'chromium').strip().lower()
+        return val if val in ('chromium', 'firefox', 'webkit') else 'chromium'
+
+    @property
     def flaresolverr_url(self) -> str:
         return os.environ.get('FLARESOLVERR_URL') or ''
 

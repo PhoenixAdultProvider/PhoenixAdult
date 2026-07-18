@@ -285,6 +285,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='Impersonate,FlareSolverr,Playwright,ReqBin',
     ),
     EnvVarSpec(
+        'PLAYWRIGHT_BROWSER',
+        'Playwright browser engine',
+        'Browser the Playwright bypass launches. On FreeBSD/linuxulator, Firefox is far more reliable than Chromium.',
+        'HTTP bypass',
+        'enum',
+        options=['chromium', 'firefox', 'webkit'],
+        default_value='chromium',
+    ),
+    EnvVarSpec(
         'BYPASS_AUTO_RETRY',
         'Auto-retry every 4xx/5xx via bypass',
         'When on, the base Client re-routes every failed scraper request (4xx/5xx) through the bypass chain.',

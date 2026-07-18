@@ -4,6 +4,7 @@ import importlib.util
 from typing import Any
 from urllib.parse import urlsplit
 
+from app.config.env import env
 from app.utils.http.bypass_types import BypassRequest, BypassResponse
 from app.utils.logging.logger import logger
 
@@ -24,7 +25,7 @@ class _PlaywrightBackend:
         timeout = req.timeout_ms or 60_000
         try:
             async with async_playwright() as pw:
-                browser = await pw.chromium.launch(headless=True)
+                browser = await getattr(pw, env.playwright_browser).launch(headless=True)
                 # Apply caller headers (Referer, UA, …) context-wide so both goto (GET)
                 # and page.request (POST) carry them.
                 ctx = await browser.new_context(ignore_https_errors=True, extra_http_headers=req.headers or {})
