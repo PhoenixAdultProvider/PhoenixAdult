@@ -67,6 +67,35 @@ async def test_search_keyword_paginates() -> None:
 
 
 @respx.mock
+async def test_search_by_scene_id_direct() -> None:
+    scene_html = (
+        '<html><head>'
+        '<meta property="og:url" content="https://www.naughtyamerica.com/scene/ava-addams-815">'
+        '</head><body>'
+        '<div class="scene-info"><h1>Ava Addams Scene</h1></div>'
+        '<div class="date-tags"><span class="entry-date">March 4, 2021</span></div>'
+        '</body></html>'
+    )
+    respx.get('https://www.naughtyamerica.com/scene/0815').mock(return_value=httpx.Response(200, text=scene_html))
+    results: list[SearchResult] = []
+    await NaughtyAmericaClient().search(results, _ctx(title='815', scene_id='815'))
+    assert len(results) == 1
+    assert results[0].title == 'Ava Addams Scene'
+    assert results[0].scene_url == 'https://www.naughtyamerica.com/scene/ava-addams-815'
+    assert results[0].score == 100
+
+
+@respx.mock
+async def test_search_by_scene_id_falls_back_to_keyword() -> None:
+    respx.get('https://www.naughtyamerica.com/scene/0999').mock(return_value=httpx.Response(200, text='<html><body>no scene</body></html>'))
+    card = '<div class="scene-grid-item"><a href="/scene/found-1" title="Found" data-scene-id="1"></a><p class="entry-date">March 4, 2021</p></div>'
+    respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1').mock(return_value=httpx.Response(200, text=f'<html><body>{card}</body></html>'))
+    results: list[SearchResult] = []
+    await NaughtyAmericaClient().search(results, _ctx(title='cool scene', scene_id='999'))
+    assert [r.title for r in results] == ['Found']
+
+
+@respx.mock
 async def test_detail() -> None:
     url = 'https://www.naughtyamerica.com/scene/cool-scene-555'
     respx.get(url).mock(

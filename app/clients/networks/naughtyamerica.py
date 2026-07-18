@@ -50,6 +50,10 @@ class NaughtyAmericaClient(Client):
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
+
+        if search_data.scene_id and await self._search_by_scene_id(results, search_data):
+            return
+
         search_url = f'{base}/search?term={slugify(search_data.title).replace("-", "+")}&_gl=1'
         loaded = await self._paced(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if not loaded:
@@ -95,6 +99,39 @@ class NaughtyAmericaClient(Client):
                     break
 
                 page_sel = nxt['sel']
+
+    async def _search_by_scene_id(self, results: list[SearchResult], search_data: SearchContext) -> bool:
+        """Direct lookup of ``/scene/0<id>`` (redirects to the slug page); appends one
+        exact-scored result and returns True on a hit, else False to fall back to search."""
+        loaded = await self._paced(
+            f'{_SCENE_BASE}/scene/0{search_data.scene_id}',
+            FetchCtx(capture=search_data.capture),
+            f'[{search_data.site_info.name}] sceneID {search_data.scene_id}',
+        )
+        if not loaded:
+            return False
+
+        sel = loaded['sel']
+        title = (sel.xpath('(//div[contains(@class,"scene-info")]//h1)[1]').xpath('string(.)').get() or '').strip()
+        if not title:
+            return False
+
+        canonical = sel.xpath('(//link[@rel="canonical"]/@href | //meta[@property="og:url"]/@content)[1]').get() or ''
+        path = _scene_path(canonical) if '/scene/' in canonical else f'scene/0{search_data.scene_id}'
+        date = iso_date((sel.xpath('(//div[contains(@class,"date-tags")]//span[contains(@class,"entry-date")])[1]').xpath('string(.)').get() or '').strip())
+
+        results.append(
+            build_search_result(
+                title=title,
+                scene_url=f'{_SCENE_BASE}/{path}',
+                query=search_data.title,
+                display_date=date,
+                search_date=search_data.search_date,
+                score=100,
+                cur_id=pack_cur_id([path]),
+            )
+        )
+        return True
 
     # ── Context loader (curID is the scene URL slug path) ────────────────────────
 
