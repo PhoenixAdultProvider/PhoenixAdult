@@ -21,8 +21,16 @@ jobs:
         run: |
           git init -q .
           git remote add origin "https://codeberg.org/${GITHUB_REPOSITORY}.git"
-          git fetch -q --depth 1 origin "${GITHUB_SHA}"
+          git fetch -q --depth 2 origin "${GITHUB_SHA}"
           git checkout -q FETCH_HEAD
+
+      - name: Comments
+        run: |
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            python scripts/check_comments.py HEAD~1..HEAD
+          else
+            echo "no parent commit; skipping comment gate"
+          fi
 
       - name: Install
         run: |
