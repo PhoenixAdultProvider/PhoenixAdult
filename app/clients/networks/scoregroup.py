@@ -11,6 +11,7 @@ from app.utils.helpers.html_helpers import first_attr, web_search_urls
 from app.utils.searchengines import web_search_available
 
 STUDIO = 'Score Group'
+_SEARCH_PATH = '/search-es?keywords={query}&s_filters[type]=videos&s_filters[site]=current'
 _LATEST_RE = re.compile(r'Latest.*Videos')
 _ID_RE = re.compile(r'/(\d+)/')
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
@@ -24,11 +25,11 @@ def _clean_title(raw: str) -> str:
 class ScoreGroupClient(Client):
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
-        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        url = base + _SEARCH_PATH.replace('{query}', search_data.encoded)
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
 
-        video_list_path = search_data.site_info.sub_group or '/'
+        video_list_path = search_data.site_info.search_path or '/'
         candidate_urls: list[str] = []
 
         if not search_data.scene_id and search_data.full_title:

@@ -9,7 +9,7 @@ from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
-from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score, to_https
+from app.utils.helpers.helpers import iso_date, load_site_json, pack_cur_id, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 
@@ -27,6 +27,13 @@ _SHARED_HEADERS = {
 }
 _POSTER_SAMPLE_RE = re.compile(r'/videos/([^/]+)/.*sample')
 _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
+
+
+def _abs(u: str) -> str:
+    if u.startswith('//'):
+        return f'http:{u}'
+    return u
+
 
 _SUMMARY_ACTORS: list[str] = load_site_json(__file__, 'nubiles_summary_actors')
 
@@ -78,7 +85,7 @@ class NubilesClient(Client):
                     )
 
         if search_data.search_date:
-            prefix = (search_data.site_info.sub_group or _DEFAULT_PREFIX).rstrip('/') + '/'
+            prefix = (search_data.site_info.search_path or _DEFAULT_PREFIX).rstrip('/') + '/'
             date_url = f'{base}{prefix}date/{search_data.search_date}/{search_data.search_date}'
             search_results = await self._get(date_url, search_data.site_info.base_url, search_data.capture, f'GET {date_url}')
             if search_results is not None:
@@ -156,7 +163,7 @@ class NubilesClient(Client):
         metadata.summary = self._summary_of(scene)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.sub_group if scene.site.sub_group else STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
@@ -210,7 +217,7 @@ class NubilesClient(Client):
         if model_page_elements is None:
             return ActorResult(name=actor_name)
 
-        photo = to_https(first_attr(model_page_elements, '(//div[contains(@class,"model-profile")]//img)[1]/@src'))
+        photo = _abs(first_attr(model_page_elements, '(//div[contains(@class,"model-profile")]//img)[1]/@src'))
         gender = 'female' if model_page_elements.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
         return ActorResult(name=actor_name, photo_url=photo, gender=gender)
 
@@ -220,7 +227,7 @@ class NubilesClient(Client):
         out: list[str] = []
         poster = first_attr(details_page_elements, '(//video)[1]/@poster')
         if poster:
-            out.append(to_https(poster))
+            out.append(_abs(poster))
 
         m = _WATCH_ID_RE.search(scene.url)
         scene_id = m.group(1) if m else ''
@@ -231,7 +238,7 @@ class NubilesClient(Client):
                 for srcset in gallery_page_elements.xpath('//div[@class="img-wrapper"]//picture/source/@srcset').getall():
                     first = srcset.split(',')[0].strip().split(' ')[0]
                     if first:
-                        out.append(to_https(first))
+                        out.append(_abs(first))
 
         metadata.art = out
 

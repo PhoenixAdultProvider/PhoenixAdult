@@ -74,9 +74,9 @@ async def test_detail() -> None:
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen']
     assert detail.actors[0].name == 'Jane Doe'
-    assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
+    assert detail.actors[0].photo_url == 'http://cdn/jane.jpg'
     assert detail.actors[0].gender == 'female'
-    assert detail.art == ['https://cdn/p.jpg', 'https://cdn/g1.jpg']
+    assert detail.art == ['http://cdn/p.jpg', 'http://cdn/g1.jpg']
 
 
 @respx.mock

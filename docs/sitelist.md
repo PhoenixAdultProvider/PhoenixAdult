@@ -795,42 +795,43 @@ To update the site list run `python -m scripts.generate_sitelist`
   - The Romance Series
   - The Tabu Tales
 + #### Nubiles | ✅
-  - /video/
-    - Anilos
-    - Deep Lush
-    - Hot Crazy Mess
-    - NF Busty
-    - That Sitcom Show
-  - /video/gallery/
-    - Bad Teens Punished
-    - Bountyhunter Porn
-    - Bratty MILF
-    - Bratty Sis
-    - Caught My Coach
+  - Anilos
+  - Bratty Sis
+  - Deep Lush
+  - The POV God
+  - Mom Lover
     - Cheating Mommy
-    - Cheating Sis
-    - Cum Swapping Sis
-    - Daddy's Lil Angel
     - Dating My Stepson
-    - Detention Girls
-    - Driver XXX
-    - Family Swap
     - I'm Not Your Mommy
     - MILF Coach
-    - Mom Lover
     - Mom Swapped
     - Mom Wants Creampie
     - Mom Wants to Breed
     - Mom's Boy Toy
     - Mom's Family Secrets
     - Mom's Tight
+  - Nubiles Films
+    - Girls Only Porn
+    - Hot Crazy Mess
+    - NF Busty
+    - Nubile Films
+    - That Sitcom Show
+  - Nubiles Porn
+    - Bad Teens Punished
+    - Bounty Hunter Porn
+    - Bratty MILF
+    - Caught My Coach
+    - Cheating Sis
+    - Cum Swapping Sis
+    - Daddy's Lil Angel
+    - Detention Girls
+    - Driver XXX
+    - Family Swap
     - Moms Teach Sex
     - My Family Pies
-    - Nubile Films
     - Nubiles
     - Nubiles Casting
     - Nubiles ET
-    - Nubiles Porn
     - Nubiles Unscripted
     - Petite Ballerinas Fucked
     - Petite HD Porn
@@ -840,13 +841,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Smashed
     - Step Siblings Caught
     - Teacher Fucks Teens
-    - The POV God
     - Younger Mommy
-  - /video/watch/
-    - FamilySwapXXX
-    - GirlsOnlyPorn
-  - /video/website/73/
-    - Reality Sis (Legacy)
 + #### NVG Network | ❌ - **SceneID Only, Date Add, Actor Add (Name1 AND Name2)**
   - Net Video Girls
 + #### Penthouse Gold | ✅
@@ -1710,33 +1705,20 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Young Throats
 + #### Teeny Taboo | ✅
 + #### The Score Group | ✅
-  - /amateur-videos/
-    - Naughty Mag
-  - /bbw-videos/
-    - XL Girls
-  - /big-boob-scenes/
-    - ScorelandTwo
-  - /big-boob-videos/
-    - Scoreland
-  - /big-booty-videos/
-    - Bootylicious Mag
-  - /classic-boob-videos/
-    - Score Classics
-  - /foot-fetish-videos/
-    - Leg Sex
-  - /hd-porn-scenes/
-    - Porn Mega Load
-  - /porn-videos/
-    - ScoreVideos
-  - /videos/
-    - Big Boob Bundle
-    - Christy Marks
-  - /xxx-granny-videos/
-    - 60 Plus MILFS
-  - /xxx-milf-videos/
-    - 50 Plus MILFS
-  - /xxx-teen-videos/
-    - 18 Eighteen
+  - 18 Eighteen
+  - 50 Plus MILFS
+  - 60 Plus MILFS
+  - Big Boob Bundle
+  - Bootylicious Mag
+  - Christy Marks
+  - Leg Sex
+  - Naughty Mag
+  - Porn Mega Load
+  - Score Classics
+  - Scoreland
+  - ScorelandTwo
+  - ScoreVideos
+  - XL Girls
 + #### Thick Cash | ✓ - **Actor only, Date Add**
   - Breed Me
   - Ebony Tugs

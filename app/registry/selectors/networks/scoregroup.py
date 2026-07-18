@@ -7,7 +7,6 @@ PROVIDER_NAME = 'The Score Group'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
-_SEARCH_PATH = '/search-es?keywords={query}&s_filters[type]=videos&s_filters[site]=current'
 
 
 def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
@@ -15,9 +14,8 @@ def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=f'https://{host}',
-        search_path=_SEARCH_PATH,
+        search_path=video_list_path,
         content_type=PROVIDER_CONTENT_TYPE,
-        sub_group=video_list_path,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='scoregroup',
