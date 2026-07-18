@@ -124,7 +124,7 @@ def _data18_fingerprint(response: PlexMetadataResponse) -> str:
         md = response.MediaContainer.Metadata[0]
     except (AttributeError, IndexError):
         return ''
-    return manual_mapping_url(mapping_slug(md.title or '', md.tagline)) or ''
+    return manual_mapping_url(mapping_slug(md.title or '', md.tagline or md.studio)) or ''
 
 
 def _stored_data18(response: PlexMetadataResponse) -> dict[str, str] | None:
@@ -193,7 +193,7 @@ async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> boo
             date_obj = None
         providers = [p for p in (md.studio, md.tagline) if p]
         try:
-            url = await client.find_scene_url(mapping_slug(md.title, md.tagline), md.title, providers, date_obj)
+            url = await client.find_scene_url(mapping_slug(md.title, md.tagline or md.studio), md.title, providers, date_obj)
         except Exception as err:  # noqa: BLE001 — backfill must never break the serve
             logger.warn('meta-cache', f'data18 backfill resolve failed for "{md.title}": {err}')
             continue
@@ -397,7 +397,7 @@ def entries() -> list[dict[str, Any]]:
                 'mtime': mtime,
                 'data18_id': d18.get('id', ''),
                 'data18_type': d18.get('type', ''),
-                'mapping_slug': mapping_slug(md.get('title', ''), md.get('tagline')) or '',
+                'mapping_slug': mapping_slug(md.get('title', ''), md.get('tagline') or md.get('studio')) or '',
             }
         )
     out.sort(key=lambda e: e['mtime'], reverse=True)

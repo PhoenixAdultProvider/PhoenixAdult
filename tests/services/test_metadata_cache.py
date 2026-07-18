@@ -260,7 +260,7 @@ async def test_entries_expose_data18_and_mapping_slug(tmp_path: pytest.TempPathF
     assert by_studio['Brazzers']['data18_type'] == 'scene'
     assert by_studio['Brazzers']['mapping_slug'] == 'cool-scene-babygotboobs'
     assert by_studio['Vixen']['data18_id'] == '' and by_studio['Vixen']['data18_type'] == ''
-    assert by_studio['Vixen']['mapping_slug'] == 'cool-scene'
+    assert by_studio['Vixen']['mapping_slug'] == 'cool-scene-vixen'
 
 
 async def test_change_token_moves_on_write_and_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
