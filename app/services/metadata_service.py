@@ -110,6 +110,42 @@ class MetadataService:
 
         return await self._coalesce.run(key, _run)
 
+    async def _scrape(
+        self,
+        rating_key: str,
+        provider: ProviderInfo,
+        site: ResolvedSiteInfo,
+        scene_url: str,
+        subsite: str | None,
+        release_date: str | None,
+        language: str | None,
+    ) -> PlexMetadataResponse | None:
+        """Fetch + map a scene into a response (no cache write). None if the sceneURL is blocked or yields no detail."""
+        try:
+            await ensure_fetchable_url(scene_url)
+        except ValueError as err:
+            logger.warn(provider.id, f'Refusing blocked sceneURL from ratingKey: {err}')
+            return None
+
+        logger.info(provider.id, f'Fetching detail for site="{site.name}" id="{scene_url}"')
+        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
+        if not detail:
+            logger.warn(provider.id, f'No scene detail returned for site="{site.name}" id="{scene_url}"')
+            return None
+
+        metadata = await self._mapper.to_metadata(detail, rating_key, provider.plex_identifier, release_date, site, filename_site=subsite)
+        return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
+
+    def _finalize(self, response: PlexMetadataResponse, provider: ProviderInfo, rating_key: str, *, cached: bool) -> PlexMetadataResponse:
+        """Male-actor filter (always after any cache write, so the snapshot keeps every actor), serve-time key stamping, and logging."""
+        if removed := filter_male_actors(response):
+            noun = 'cached actor(s)' if cached else 'actor(s)'
+            logger.info(provider.id, f'Male-actor filter: hid {removed} {noun} from ratingKey={rating_key}')
+        _stamp_keys(response, provider)
+        log_served_images(response)
+        _log_served(response, provider)
+        return response
+
     async def _fetch_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False) -> PlexMetadataResponse | None:
         logger.info(provider.id, f'Update ratingKey={rating_key}')
 
@@ -137,6 +173,15 @@ class MetadataService:
             logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
             response = None
 
+        if response is not None and scene_url and metadata_cache.data18_backfill_needed(response, site.name):
+            logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
+            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, parsed['release_date'], language)
+            if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
+                await metadata_cache.write(site.name, cur_id, fresh)
+                logger.info(provider.id, f'data18 enrichment pulled for ratingKey={rating_key}')
+                return self._finalize(fresh, provider, rating_key, cached=False)
+            logger.info(provider.id, f'No data18 match on pull for ratingKey={rating_key} — serving cached snapshot')
+
         if response is not None:
 
             async def _fetch_detail() -> SceneDetail | None:
@@ -153,43 +198,15 @@ class MetadataService:
 
             if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail):
                 logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
-            # Filter AFTER any cache write so the snapshot keeps every actor on disk.
-            if removed := filter_male_actors(response):
-                logger.info(provider.id, f'Male-actor filter: hid {removed} cached actor(s) from ratingKey={rating_key}')
-            _stamp_keys(response, provider)
-            log_served_images(response)
             logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
-            _log_served(response, provider)
-            return response
+            return self._finalize(response, provider, rating_key, cached=True)
 
         if not scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
             return None
 
-        try:
-            await ensure_fetchable_url(scene_url)
-        except ValueError as err:
-            logger.warn(provider.id, f'Refusing blocked sceneURL from ratingKey: {err}')
+        fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, parsed['release_date'], language)
+        if fresh is None:
             return None
-
-        logger.info(provider.id, f'Fetching detail for site="{site.name}" id="{scene_url}"')
-
-        detail = await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
-        if not detail:
-            logger.warn(provider.id, f'No scene detail returned for site="{site.name}" id="{scene_url}"')
-            return None
-
-        metadata = await self._mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
-
-        response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
-
-        await metadata_cache.write(site.name, cur_id, response)
-
-        # Filter AFTER the cache write so the snapshot keeps male actors (cached for faster
-        # future gender resolution); only the served response hides them.
-        if removed := filter_male_actors(response):
-            logger.info(provider.id, f'Male-actor filter: hid {removed} actor(s) from ratingKey={rating_key}')
-        _stamp_keys(response, provider)
-        log_served_images(response)
-        _log_served(response, provider)
-        return response
+        await metadata_cache.write(site.name, cur_id, fresh)
+        return self._finalize(fresh, provider, rating_key, cached=False)

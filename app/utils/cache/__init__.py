@@ -150,6 +150,19 @@ def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
     return manual is not None and manual != _stored_data18(response)
 
 
+def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bool:
+    """True if this snapshot is on a data18-enrichment-eligible site but has no data18 ref recorded
+    — so a refresh should attempt a fresh scrape to pull enrichment the snapshot predates. The caller
+    keeps serving the snapshot if the scrape is blocked/down, and a scene with no data18 match just
+    retries on the next refresh (checking each refresh is cheap enough for a manual trigger)."""
+    if not env.data18_enabled:
+        return False
+    site = find_site(site_name)
+    if not site or not site.scraper_config.data18_enrichment:
+        return False
+    return any(md.data18 is None and md.title for md in response.MediaContainer.Metadata)
+
+
 async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
     """Record a cached scene's data18 ref if its snapshot predates data18 recording. Resolves
     the data18 page from the snapshot's own fields — a manual mapping (no network) or a search —

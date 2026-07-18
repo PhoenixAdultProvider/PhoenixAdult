@@ -422,6 +422,28 @@ def test_data18_remap_needed_off_when_disabled(monkeypatch: pytest.MonkeyPatch) 
     assert mc.data18_remap_needed(resp, 'Brazzers') is False
 
 
+def test_data18_backfill_needed_flags_empty_ref_on_eligible_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    resp = _md_resp('Some Scene', 'Brazzers Exxtra')
+
+    assert mc.data18_backfill_needed(resp, 'Brazzers') is True
+
+    resp.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='999')
+    assert mc.data18_backfill_needed(resp, 'Brazzers') is False
+
+    untitled = _md_resp('', 'Brazzers Exxtra')
+    assert mc.data18_backfill_needed(untitled, 'Brazzers') is False
+
+
+def test_data18_backfill_needed_off_when_disabled_or_ineligible(monkeypatch: pytest.MonkeyPatch) -> None:
+    resp = _md_resp('Some Scene', 'Brazzers Exxtra')
+    monkeypatch.setenv('DATA18_ENABLE', 'false')
+    assert mc.data18_backfill_needed(resp, 'Brazzers') is False
+
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    assert mc.data18_backfill_needed(resp, 'Nonexistent Site') is False
+
+
 async def test_backfill_data18_records_manual_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
     resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # manual-mapped -> resolves with no network

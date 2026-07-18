@@ -310,6 +310,8 @@ async def dev_metadata(request: Request) -> JSONResponse:
     response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
     if response is not None and metadata_cache.data18_remap_needed(response, site.name):
         response = None  # data18 mapping changed since snapshot — re-scrape, mirroring MetadataService
+    if response is not None and metadata_cache.data18_backfill_needed(response, site.name):
+        response = None
     if response is not None:
 
         async def _fetch_detail() -> SceneDetail | None:
