@@ -5,6 +5,7 @@ import re
 import time
 from typing import Any
 
+from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
@@ -225,3 +226,10 @@ class NaughtyAmericaClient(Client):
                 images['push'](image_url)
 
         metadata.art = images['list']
+
+        await self.enrich_from_data18(
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, scene.site.name),
+            providers=[scene.site.name],
+        )
