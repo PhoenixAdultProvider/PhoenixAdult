@@ -5,7 +5,8 @@ import hashlib
 import json
 import re
 import time
-from urllib.parse import urlsplit
+from collections.abc import Awaitable, Callable
+from urllib.parse import urljoin, urlsplit
 
 import httpx2
 
@@ -41,26 +42,41 @@ def solve_pow(challenge: str, difficulty: int) -> int:
         nonce += 1
 
 
-async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
+async def get_verified_cookies(
+    base_url: str, challenge_path: str = '/video/gallery', pace: Callable[[], Awaitable[None]] | None = None
+) -> dict[str, str] | None:
+    """Challenge cookies for `base_url`, solving the PoW turnstile on `challenge_path` when
+    present (cached per host). `pace` is awaited before each request so a caller's site
+    rate limit also covers the warm-up fetches."""
     host = urlsplit(base_url).hostname or ''
     if not host:
         return None
 
     async def _fetch() -> tuple[dict[str, str], float] | None:
         base = base_url.rstrip('/')
-        gallery_url = f'{base}/video/gallery'
+        gallery_url = f'{base}/{challenge_path.strip("/")}'
 
+        initial: dict[str, str] = {}
         try:
             async with make_http() as client:
-                get_resp = await client.get(gallery_url, headers=_BASE_HEADERS)
+                for _ in range(6):
+                    if pace is not None:
+                        await pace()
+                    get_resp = await client.get(gallery_url, headers=_BASE_HEADERS, follow_redirects=False)
+                    initial.update(parse_set_cookie(get_resp.headers.get_list('set-cookie')))
+                    loc = get_resp.headers.get('location', '')
+                    if get_resp.status_code not in (301, 302, 303, 307, 308) or not loc:
+                        break
+                    nxt = urljoin(gallery_url, loc)
+                    if (urlsplit(nxt).hostname or '').lower() != host.lower():
+                        break
+                    gallery_url = nxt
         except httpx2.HTTPError as err:
             logger.warn('pow', f'GET {gallery_url} failed: {err}')
             return None
         if get_resp.status_code == 429:
             logger.warn('pow', f'rate-limited on {gallery_url}')
             return None
-
-        initial = parse_set_cookie(get_resp.headers.get_list('set-cookie'))
 
         m = re.search(r'var\s+turnstileConfig\s*=\s*(\{.*?\});', get_resp.text, re.DOTALL)
         if not m:
@@ -100,6 +116,8 @@ async def get_verified_cookies(base_url: str) -> dict[str, str] | None:
             post_headers['Cookie'] = cookie_header
 
         try:
+            if pace is not None:
+                await pace()
             async with make_http() as client:
                 post_resp = await client.post(verify_url, content=json.dumps(payload), headers=post_headers)
         except httpx2.HTTPError as err:

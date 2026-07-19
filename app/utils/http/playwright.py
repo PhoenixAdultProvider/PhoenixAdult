@@ -24,7 +24,7 @@ class _PlaywrightBackend:
             logger.debug('bypass:Playwright', 'not installed; skipping')
             return None
 
-        timeout = req.timeout_ms or 60_000
+        timeout = req.timeout_ms or env.bypass_timeout_ms
         try:
             async with async_playwright() as pw:
                 launch_env = {**os.environ, 'HOME': os.environ.get('HOME') or tempfile.gettempdir()}

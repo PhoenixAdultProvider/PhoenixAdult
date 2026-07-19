@@ -88,3 +88,20 @@ async def test_pull_falls_back_to_cache_when_no_match(_svc: MetadataService, mon
     assert result is not None
     assert result.MediaContainer.Metadata[0].title == 'Cached Scene'
     assert writes == []
+
+
+async def test_fallback_skips_second_data18_search(_svc: MetadataService, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_skip: list[bool] = []
+
+    async def _spy_refresh(*args: object, **kwargs: object) -> bool:
+        seen_skip.append(bool(kwargs.get('skip_data18')))
+        return False
+
+    async def _blocked_scrape(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr(ms, 'refresh_cached_snapshot', _spy_refresh)
+    monkeypatch.setattr(_svc, '_scrape', _blocked_scrape)
+
+    assert await _svc._fetch_metadata(RATING_KEY, PROVIDER) is not None
+    assert seen_skip == [True]

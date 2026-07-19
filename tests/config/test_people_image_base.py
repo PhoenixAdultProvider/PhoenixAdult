@@ -35,6 +35,28 @@ def test_localipv6_is_bracketed(monkeypatch):
     assert cfg.people_image_base() == f'http://[{_DOC_IPV6}]:{cfg.config.port}'
 
 
-def test_unknown_value_falls_back_to_baseurl(monkeypatch):
-    monkeypatch.setenv('PEOPLE_IMAGE_URL', 'garbage')
+def test_baseurl_token_and_empty_use_baseurl(monkeypatch):
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', 'baseurl')
     assert cfg.people_image_base() == cfg.config.base_url
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', '')
+    assert cfg.people_image_base() == cfg.config.base_url
+
+
+def test_explicit_url_with_port_is_used_verbatim(monkeypatch):
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', f'http://{_DOC_IPV4}:8080/')
+    assert cfg.people_image_base() == f'http://{_DOC_IPV4}:8080'
+
+
+def test_explicit_url_without_port_gets_the_configured_port(monkeypatch):
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', f'http://{_DOC_IPV4}')
+    assert cfg.people_image_base() == f'http://{_DOC_IPV4}:{cfg.config.port}'
+
+
+def test_bare_host_gets_scheme_and_configured_port(monkeypatch):
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', _DOC_IPV4)
+    assert cfg.people_image_base() == f'http://{_DOC_IPV4}:{cfg.config.port}'
+
+
+def test_bare_host_with_port_gets_scheme_only(monkeypatch):
+    monkeypatch.setenv('PEOPLE_IMAGE_URL', f'{_DOC_IPV4}:8080')
+    assert cfg.people_image_base() == f'http://{_DOC_IPV4}:8080'

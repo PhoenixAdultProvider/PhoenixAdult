@@ -18,11 +18,12 @@ class _FlareSolverrBackend:
         if not endpoint:
             return None
 
+        timeout_ms = req.timeout_ms or env.bypass_timeout_ms
         cmd = 'request.post' if req.method == 'POST' else 'request.get'
         payload: dict[str, object] = {
             'cmd': cmd,
             'url': req.url,
-            'maxTimeout': req.timeout_ms or 60_000,
+            'maxTimeout': timeout_ms,
             'headers': req.headers or {},
         }
         if req.cookies:
@@ -31,7 +32,7 @@ class _FlareSolverrBackend:
             payload['postData'] = req.body
 
         try:
-            async with httpx2.AsyncClient(timeout=70.0, verify=False) as client:
+            async with httpx2.AsyncClient(timeout=timeout_ms / 1000 + 10, verify=False) as client:
                 resp = await client.post(f'{endpoint}/v1', json=payload, headers={'Content-Type': 'application/json'})
             envelope = resp.json()
         except (httpx2.HTTPError, ValueError) as err:

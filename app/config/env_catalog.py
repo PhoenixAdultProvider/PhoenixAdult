@@ -189,11 +189,13 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'and does not keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images '
         'break — a stable local address is more durable. baseurl = the configured PHOENIX_BASE_URL '
         '(tunnel/FQDN); localhost = loopback (Plex on this same machine); localipv4/localipv6 = this '
-        "machine's LAN address (Plex elsewhere on the network). Metadata (poster/art) images always use "
-        'baseurl. A metadata refresh in Plex is needed to pick up changed image URLs.',
+        "machine's LAN address (Plex elsewhere on the network); or an explicit address like "
+        '192.0.2.10 or http://192.0.2.10:8080 to pin the interface when auto-detection picks the '
+        'wrong one (e.g. a VPN owning the default route) — the scheme defaults to http and the '
+        'configured PORT is appended when omitted. Metadata (poster/art) images always use baseurl. '
+        'A metadata refresh in Plex is needed to pick up changed image URLs.',
         'People cache & sources',
-        'enum',
-        options=['baseurl', 'localhost', 'localipv4', 'localipv6'],
+        'string',
         default_value='baseurl',
     ),
     EnvVarSpec(
@@ -300,6 +302,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'HTTP bypass',
         'boolean',
         default_value='false',
+    ),
+    EnvVarSpec(
+        'BYPASS_TIMEOUT_MS',
+        'Bypass solve timeout (ms)',
+        'Per-attempt ceiling for FlareSolverr/Playwright challenge solves; an unsolvable site falls through to the next backend after this long.',
+        'HTTP bypass',
+        'number',
+        min=1000,
+        default_value='10000',
     ),
     EnvVarSpec(
         'DATA18_ENABLE',

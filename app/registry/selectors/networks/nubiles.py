@@ -11,7 +11,8 @@ NUBILES_PORN = 'Nubiles Porn'
 NUBILES_FILMS = 'Nubiles Films'
 MOM_LOVER = 'Mom Lover'
 
-def _site(name: str, base_url: str, search_path_prefix: str, data18: bool = False, sub_group: str = None) -> SiteInfo:
+
+def _site(name: str, base_url: str, search_path_prefix: str, data18: bool = False, sub_group: str | None = None) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
@@ -27,7 +28,7 @@ def _site(name: str, base_url: str, search_path_prefix: str, data18: bool = Fals
 
 
 NUBILES_SITES: list[SiteInfo] = [
-    _site('Anilos', 'https://anilos.com', '/video/', data18=True),
+    _site('Anilos', 'https://anilos.com', '/video/'),
     _site('Bad Teens Punished', 'https://badteenspunished.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site('Bounty Hunter Porn', 'https://bountyhunterporn.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site('Bratty MILF', 'https://brattymilf.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
@@ -65,7 +66,7 @@ NUBILES_SITES: list[SiteInfo] = [
     _site('Step Siblings Caught', 'https://stepsiblingscaught.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site('Teacher Fucks Teens', 'https://teacherfucksteens.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site('That Sitcom Show', 'https://thatsitcomshow.com', '/video/', data18=True, sub_group=NUBILES_FILMS),
-    _site('The POV God', 'https://thepovgod.com', '/video/gallery/', data18=True),
+    _site('The POV God', 'https://thepovgod.com', '/video/gallery/'),
     _site('Younger Mommy', 'https://youngermommy.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site("Daddy's Lil Angel", 'https://daddyslilangel.com', '/video/gallery/', data18=True, sub_group=NUBILES_PORN),
     _site("I'm Not Your Mommy", 'https://imnotyourmommy.com', '/video/gallery/', data18=True, sub_group=MOM_LOVER),

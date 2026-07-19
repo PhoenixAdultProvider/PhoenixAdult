@@ -23,6 +23,20 @@ _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 _CACHE_TTL = 60 * 60  # seconds
 _CACHE_MAX_TOTAL_BYTES = 256 * 1024 * 1024
 
+_shared_image_clients: dict[int, httpx2.AsyncClient] = {}
+
+
+def _image_client() -> httpx2.AsyncClient:
+    """One keep-alive client per event loop, reused across image fetches so repeated pulls
+    from a CDN reuse pooled TCP connections instead of opening a fresh socket per image.
+    Keyed by loop id so a per-test loop never reuses a client bound to a closed loop."""
+    loop_id = id(asyncio.get_running_loop())
+    client = _shared_image_clients.get(loop_id)
+    if client is None:
+        client = make_http(timeout=10.0, max_redirects=3)
+        _shared_image_clients[loop_id] = client
+    return client
+
 
 @dataclass
 class ImageEntry:
@@ -73,16 +87,21 @@ def _max_bytes() -> int:
     return raw if raw > 0 else _DEFAULT_MAX_BYTES
 
 
-def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
-    if configured:
-        return [*configured, None]
-    host = ''
+def _is_data18_host(url: str) -> bool:
     try:
         host = (urlsplit(url).hostname or '').lower()
     except ValueError:
-        pass
-    if 'data18.com' in host or 'dt18.com' in host:
+        return False
+    return 'data18.com' in host or 'dt18.com' in host
+
+
+def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
+    """Referer candidates for `url`. data18/dt18 CDN hosts require their own
+    Referer, so they ignore the scene-configured referers entirely."""
+    if _is_data18_host(url):
         return ['http://i.dt18.com', 'https://www.data18.com']
+    if configured:
+        return [*configured, None]
     return [None]
 
 
@@ -142,27 +161,31 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
 
 async def _fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
     referers = _referers_for(url, configured_referers)
-    cookie_header = '; '.join(configured_cookies) if configured_cookies else None
+    cookie_header = '; '.join(configured_cookies) if configured_cookies and not _is_data18_host(url) else None
     last_err: Exception | None = None
     payload: tuple[bytes, str] | None = None
+    failed_attempts = 0
+    won_referer: str | None = None
 
     if pinned:
         for referer in referers:
             try:
                 payload = await _get_once_pinned(url, referer, cookie_header)
+                won_referer = referer
                 break
             except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
                 last_err = err
-                logger.debug(f'fetchImage retry (pinned): Referer="{referer or "(none)"}" failed for {url}: {err}')
+                failed_attempts += 1
     else:
-        async with make_http(timeout=10.0, max_redirects=3) as client:
-            for referer in referers:
-                try:
-                    payload = await _get_once(client, url, referer, cookie_header)
-                    break
-                except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
-                    last_err = err
-                    logger.debug(f'fetchImage retry: Referer="{referer or "(none)"}" failed for {url}: {err}')
+        client = _image_client()
+        for referer in referers:
+            try:
+                payload = await _get_once(client, url, referer, cookie_header)
+                won_referer = referer
+                break
+            except Exception as err:  # noqa: BLE001 - retry on any per-referer failure
+                last_err = err
+                failed_attempts += 1
 
     if payload is None and not pinned:
         # Cloudflare-gated hosts (e.g. IAFD headshots) 403 the plain client — retry the
@@ -178,11 +201,13 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
             hdrs['Cookie'] = sanitize_header(cookie_header)
         got = await impersonate_get_bytes(url, hdrs or None)
         if got is not None:
-            logger.debug(f'fetchImage: impersonate fetched {url}')
+            won_referer = 'impersonate'
             payload = got
 
     if payload is None:
         raise last_err or ValueError(f'All Referer attempts failed for {url}')
+    if failed_attempts:
+        logger.debug(f'fetchImage: {url} succeeded via {won_referer or "(no referer)"} after {failed_attempts} failed attempt(s)')
 
     data, content_type = payload
     try:
@@ -199,7 +224,7 @@ async def fetch_dimensions(url: str, referers: list[str] | None = None, cookies:
     try:
         entry = await fetch_image(url, referers, cookies)
     except Exception as err:  # noqa: BLE001
-        logger.debug(f'fetchDimensions failed for {url}: {err}')
+        logger.debug(f'fetchDimensions failed for {url}: {err!r}')
         return None
     if entry.width <= 0 or entry.height <= 0:
         return None

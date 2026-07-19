@@ -16,9 +16,7 @@ _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
 _IMAGES_CDN_RE = re.compile(r'images\d+', re.IGNORECASE)
 STUDIO = 'Naughty America'
-# AWS WAF here is rate-based; serialize fetches and space them apart (matches the
-# reference scraper's CONCURRENT_REQUESTS=1 + DOWNLOAD_DELAY=2) to stay under it.
-_PACE_SECONDS = 2.0
+_PACE_SECONDS = 5.0
 
 _CARD_XP = '//div[contains(@class,"scene-item")] | //div[@class="scene-grid-item"]'
 
@@ -200,9 +198,11 @@ class NaughtyAmericaClient(Client):
         details_page_elements = scene.require_sel()
 
         names = [
-            n
-            for n in (first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath('//div[contains(@class,"performer-list")]//a'))
-            if n
+            actor_name
+            for actor_name in (
+                first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath('//div[contains(@class,"performer-list")]//a')
+            )
+            if actor_name
         ]
         _, scene_first = scene_image_pref()
 

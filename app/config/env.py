@@ -94,6 +94,14 @@ class _Env:
         return os.environ.get('BYPASS_ORDER')
 
     @property
+    def bypass_timeout_ms(self) -> int:
+        try:
+            raw = int(os.environ.get('BYPASS_TIMEOUT_MS') or '10000')
+        except ValueError:
+            return 10_000
+        return raw if raw > 0 else 10_000
+
+    @property
     def playwright_browser(self) -> str:
         val = (os.environ.get('PLAYWRIGHT_BROWSER') or 'chromium').strip().lower()
         return val if val in ('chromium', 'firefox', 'webkit') else 'chromium'
@@ -140,7 +148,6 @@ class _Env:
 
     @property
     def people_image_url_raw(self) -> str:
-        # How actor/director/producer image links are addressed: baseurl | localhost | localipv4 | localipv6.
         return _flag('PEOPLE_IMAGE_URL', 'baseurl')
 
     @property

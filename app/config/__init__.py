@@ -5,6 +5,7 @@ import re
 import socket
 import time
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -83,7 +84,10 @@ def people_image_base() -> str:
     periodically (it doesn't keep them), so a stable local address outlives an
     ephemeral tunnel FQDN. PEOPLE_IMAGE_URL selects it; metadata (poster/art) images
     keep using base_url. 'localhost' = loopback (same machine); 'localipv4'/'localipv6'
-    = this machine's LAN address (reachable by a Plex box elsewhere on the network)."""
+    = this machine's LAN address (reachable by a Plex box elsewhere on the network);
+    anything else is an explicit address pinning the interface when auto-detection
+    picks the wrong one (e.g. a VPN owning the default route) — the scheme defaults
+    to http and the configured PORT is appended when the value has no port."""
     from app.config.env import env
 
     opt = env.people_image_url_raw
@@ -93,4 +97,10 @@ def people_image_base() -> str:
         return f'http://{_local_ip(socket.AF_INET, "8.8.8.8")}:{config.port}'
     if opt == 'localipv6':
         return f'http://[{_local_ip(socket.AF_INET6, "2001:4860:4860::8888")}]:{config.port}'
-    return config.base_url
+    if not opt or opt == 'baseurl':
+        return config.base_url
+    base = (opt if opt.startswith(('http://', 'https://')) else f'http://{opt}').rstrip('/')
+    parts = urlsplit(base)
+    if parts.port is None and not parts.path:
+        return f'{base}:{config.port}'
+    return base

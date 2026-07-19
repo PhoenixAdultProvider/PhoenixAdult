@@ -43,12 +43,14 @@ async def refresh_cached_snapshot(
     cur_id: str,
     *,
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
+    skip_data18: bool = False,
 ) -> bool:
     """Apply the serve-time backfills/reapplies to a cached snapshot in place and rewrite it if
     anything changed. Shared by the live serve and the dev preview so the two can't drift.
-    Returns whether the snapshot changed."""
+    `skip_data18` avoids a second data18 search when the caller's enrichment pull already
+    searched this serve. Returns whether the snapshot changed."""
     changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)
-    if await metadata_cache.backfill_data18(response, site.name):
+    if not skip_data18 and await metadata_cache.backfill_data18(response, site.name):
         changed = True
     if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
         changed = True
@@ -173,8 +175,10 @@ class MetadataService:
             logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')
             response = None
 
+        pull_attempted = False
         if response is not None and scene_url and metadata_cache.data18_backfill_needed(response, site.name):
             logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
+            pull_attempted = True
             fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, parsed['release_date'], language)
             if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
                 await metadata_cache.write(site.name, cur_id, fresh)
@@ -196,7 +200,7 @@ class MetadataService:
                     return None
                 return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
 
-            if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail):
+            if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail, skip_data18=pull_attempted):
                 logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
             logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
             return self._finalize(response, provider, rating_key, cached=True)

@@ -150,6 +150,7 @@ refresh in Plex to re-emit the image URLs.
 | --- | --- | --- |
 | `BYPASS_ORDER` | Impersonate, FlareSolverr, Playwright, ReqBin | Order of HTTP-bypass strategies to try for anti-scrape sites. |
 | `BYPASS_AUTO_RETRY` | `false` | Re-route every failed scraper request (4xx/5xx) through the bypass chain. |
+| `BYPASS_TIMEOUT_MS` | `10000` | Per-attempt challenge-solve ceiling (ms) for FlareSolverr/Playwright before the chain moves on. |
 | `FLARESOLVERR_URL` | _(unset)_ | Self-hosted FlareSolverr endpoint used to clear Cloudflare challenges. |
 | `REQBIN_ENABLE` | `false` | Use the third-party ReqBin service as a bypass fallback. |
 | `REQBIN_API_KEY` | _(unset)_ | API key for the ReqBin fallback. |
