@@ -95,6 +95,7 @@ class NubilesClient(Client):
         self._pace_lock = asyncio.Lock()
         self._last_fetch = 0.0
         self._scene_lock = asyncio.Lock()
+        self._gap_until = 0.0
 
     async def _pace(self, label: str = 'pow warm-up') -> None:
         """Site rate limit: every base_url request (scene details, galleries, model pages,
@@ -108,11 +109,13 @@ class NubilesClient(Client):
         logger.info(_PACE_TAG, f'{label} (waited {max(0.0, wait):.1f}s)')
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """One scene at a time across all Nubiles sites. The scene's image burst is warmed
-        here, inside the scene lock, so concurrent matches cannot stack bursts; a short
-        jittered cooldown follows the update, and a ~_SCENE_GAP gap follows the burst before
-        the next scene's search runs."""
+        """One scene at a time across all Nubiles sites, image burst warmed inside the lock.
+        The ~_SCENE_GAP gap is slept off by the next scene, not before this one returns."""
         async with self._scene_lock:
+            wait = self._gap_until - time.monotonic()
+            if wait > 0:
+                logger.info(_PACE_TAG, f'between-scenes cooldown {wait:.1f}s')
+                await asyncio.sleep(wait)
             try:
                 detail = await super().fetch_scene_detail(payload, site, ctx)
                 await self._cooldown('post-update', _SCENE_COOLDOWN)
@@ -120,7 +123,7 @@ class NubilesClient(Client):
                     await self._warm_images(detail)
                 return detail
             finally:
-                await self._cooldown('between-scenes', _SCENE_GAP)
+                self._gap_until = time.monotonic() + _jittered(_SCENE_GAP)
 
     async def _cooldown(self, phase: str, base: float) -> None:
         delay = _jittered(base)

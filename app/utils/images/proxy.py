@@ -36,3 +36,13 @@ def proxy_target(url: str) -> str:
         if qs.get('url'):
             return unquote(qs['url'][0])
     return url
+
+
+def proxy_params(url: str) -> tuple[str, list[str], list[str]]:
+    """The upstream URL plus the Referer/Cookie hints carried by an /images/proxy
+    wrapper, so a re-fetch can send the same headers the proxy endpoint would."""
+    if '/images/proxy' in url:
+        qs = parse_qs(urlsplit(url).query)
+        if qs.get('url'):
+            return unquote(qs['url'][0]), qs.get('referer', []), qs.get('cookie', [])
+    return url, [], []

@@ -11,6 +11,7 @@ import respx
 from app.models.metadata import PlexData18, PlexMetadataResponse
 from app.utils import cache as mc
 from app.utils.helpers.helpers import b64url_encode, embed_subsite
+from app.utils.images import image_fetcher
 from app.utils.plex.rating_key import to_rating_key
 
 
@@ -149,9 +150,10 @@ def _resp(
 
 @respx.mock
 async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
-    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER'))
+    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER', headers={'content-type': 'image/jpeg'}))
 
     resp = _resp(
         studio='Brazzers',
@@ -181,9 +183,10 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     from pathlib import Path
     from types import SimpleNamespace
 
+    image_fetcher._cache.clear()
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
-    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER'))
+    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER', headers={'content-type': 'image/jpeg'}))
 
     monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-a:1'))
     monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://10.0.0.5:3000')

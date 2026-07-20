@@ -19,9 +19,9 @@ from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
 from app.utils.helpers.helpers import slugify
-from app.utils.http.client import make_http
 from app.utils.images.ext import IMAGE_EXTS
-from app.utils.images.proxy import proxy_target
+from app.utils.images.image_fetcher import fetch_image
+from app.utils.images.proxy import proxy_params
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
 from app.utils.processors.studio_name import normalize_studio
@@ -233,11 +233,6 @@ def _ext_of(url: str) -> str:
     return suffix if suffix in IMAGE_EXTS else '.jpg'
 
 
-def _origin(url: str) -> str:
-    parts = urlsplit(url)
-    return f'{parts.scheme}://{parts.netloc}/' if parts.scheme and parts.netloc else ''
-
-
 def _rebase(obj: Any, base: str, people_base: str) -> Any:
     """Resolve host-relative cached image URLs against the live bases, recursively.
     People images (/images/local/) follow PEOPLE_IMAGE_URL (people_base) and are
@@ -300,48 +295,46 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
     shutil.rmtree(tmp_dir, ignore_errors=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
     try:
-        async with make_http(timeout=20.0) as client:
-            sem = asyncio.Semaphore(6)
+        sem = asyncio.Semaphore(6)
 
-            def _relativize(u: str) -> str:
-                # Strip our own base_url so stored links survive a base_url/tunnel change.
-                return u[len(base) :] if u.startswith(f'{base}/') else u
+        def _relativize(u: str) -> str:
+            """Strip our own base_url so stored links survive a base_url/tunnel change."""
+            return u[len(base) :] if u.startswith(f'{base}/') else u
 
-            async def localize(url: str | None, hint: str) -> str | None:
-                if not url:
-                    return url
-                if '/images/local/' in url:
-                    # Always store host-relative so the People-image base (PEOPLE_IMAGE_URL)
-                    # is re-applied on every serve, whatever base built it.
-                    return url[url.index('/images/local/') :]
-                target = proxy_target(url)
-                name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
-                counter[0] += 1
-                try:
-                    async with sem:
-                        resp = await client.get(target, headers={'User-Agent': 'Mozilla/5.0', 'Referer': _origin(target)})
-                    resp.raise_for_status()
-                    img_dir = tmp_dir / 'images'
-                    img_dir.mkdir(exist_ok=True)
-                    (img_dir / name).write_bytes(resp.content)
-                    return f'/cache/{rel_path}/images/{name}'
-                except (httpx2.HTTPError, OSError) as err:
-                    logger.debug('meta-cache', f'image download failed {target}: {err}')
-                    return _relativize(url)
+        async def localize(url: str | None, hint: str) -> str | None:
+            """Download an image into the snapshot; people images stay host-relative so
+            PEOPLE_IMAGE_URL is re-applied on every serve, whatever base built them."""
+            if not url:
+                return url
+            if '/images/local/' in url:
+                return url[url.index('/images/local/') :]
+            target, referers, cookies = proxy_params(url)
+            name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
+            counter[0] += 1
+            try:
+                async with sem:
+                    entry = await fetch_image(target, referers or None, cookies or None)
+                img_dir = tmp_dir / 'images'
+                img_dir.mkdir(exist_ok=True)
+                (img_dir / name).write_bytes(entry.data)
+                return f'/cache/{rel_path}/images/{name}'
+            except (httpx2.HTTPError, ValueError, OSError) as err:
+                logger.debug('meta-cache', f'image download failed {target}: {err!r}')
+                return _relativize(url)
 
-            async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
-                obj[key] = await localize(obj.get(key), hint)
+        async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
+            obj[key] = await localize(obj.get(key), hint)
 
-            jobs = []
-            if meta.get('thumb'):
-                jobs.append(_assign(meta, 'thumb', 'poster'))
-            if meta.get('art'):
-                jobs.append(_assign(meta, 'art', 'art'))
-            jobs.extend(_assign(img, 'url', 'img') for img in meta.get('Image', []))
-            for role_key in ('Role', 'Director', 'Producer', 'Writer'):
-                jobs.extend(_assign(role, 'thumb', 'role') for role in meta.get(role_key, []) if role.get('thumb'))
-            jobs.extend(_assign(rating, 'image', 'rating') for rating in meta.get('Rating', []) if rating.get('image'))
-            await asyncio.gather(*jobs)
+        jobs = []
+        if meta.get('thumb'):
+            jobs.append(_assign(meta, 'thumb', 'poster'))
+        if meta.get('art'):
+            jobs.append(_assign(meta, 'art', 'art'))
+        jobs.extend(_assign(img, 'url', 'img') for img in meta.get('Image', []))
+        for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+            jobs.extend(_assign(role, 'thumb', 'role') for role in meta.get(role_key, []) if role.get('thumb'))
+        jobs.extend(_assign(rating, 'image', 'rating') for rating in meta.get('Rating', []) if rating.get('image'))
+        await asyncio.gather(*jobs)
 
         (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
         if final_dir.exists():
