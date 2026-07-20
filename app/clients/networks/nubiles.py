@@ -35,6 +35,7 @@ _SHARED_HEADERS = {
 }
 _POSTER_SAMPLE_RE = re.compile(r'/videos/(.+)/sample')
 _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
+_EPISODE_TAG_RE = re.compile(r'\s*-\s*S\d+\s*:?\s*E\d+\s*$', re.IGNORECASE)
 _PACE_SECONDS = 7.0
 _SCENE_COOLDOWN = 7.0
 _SCENE_GAP = 60.0
@@ -43,6 +44,11 @@ _MAX_RETRIES = 3
 _MAX_BACKOFF = 120.0
 _IMAGE_CONCURRENCY = 4
 _PACE_TAG = 'Nubiles:pace'
+
+
+def _strip_episode_tag(title: str) -> str:
+    """Drop a trailing " - S2:E1"-style episode tag; interior hyphens are untouched."""
+    return _EPISODE_TAG_RE.sub('', title).strip()
 
 
 def _jittered(base: float) -> float:
@@ -194,7 +200,9 @@ class NubilesClient(Client):
             url = f'{base}/video/watch/{scene_id}'
             search_results = await self._get(url, search_data.site_info, search_data.capture, f'GET {url}')
             if search_results is not None:
-                title = (search_results.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
+                title = _strip_episode_tag(
+                    (search_results.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
+                )
                 date = iso_date(
                     (search_results.xpath('(//div[contains(@class,"content-pane-title")]//span[@class="date"])[1]').xpath('string(.)').get() or '').strip()
                 )
@@ -222,7 +230,7 @@ class NubilesClient(Client):
                     link_raw = first_attr(title_a, '@href')
                     raw_title = title_a.xpath('string(.)').get() or ''
                     parts = [p.strip() for p in raw_title.split('-')]
-                    display_title = f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]
+                    display_title = _strip_episode_tag(f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0])
                     segs = link_raw.split('/')
                     sid = segs[3] if len(segs) > 3 else ''
                     if not sid:
@@ -275,7 +283,7 @@ class NubilesClient(Client):
         await super().update(metadata, scene)
         subsite = scene.site.name
         subgroup = scene.site.sub_group
-        title = metadata.title.split('- S')[0].strip()
+        title = _strip_episode_tag(metadata.title)
         await self.enrich_from_data18(
             metadata,
             scene.site,
@@ -304,7 +312,7 @@ class NubilesClient(Client):
         raw = (details_page_elements.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('-')]
 
-        metadata.title = (f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or ''
+        metadata.title = _strip_episode_tag((f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or '')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = self._summary_of(scene)

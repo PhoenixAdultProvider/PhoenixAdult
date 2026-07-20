@@ -44,13 +44,21 @@ async def test_paced_serializes_and_spaces_requests(monkeypatch: pytest.MonkeyPa
     assert _t.monotonic() - start >= 0.2
 
 
+def test_strip_episode_tag() -> None:
+    assert nub_mod._strip_episode_tag('Stepmom Wants to Move In - S2:E1') == 'Stepmom Wants to Move In'
+    assert nub_mod._strip_episode_tag('Title - S10:E12') == 'Title'
+    assert nub_mod._strip_episode_tag('Title - S1E2') == 'Title'
+    assert nub_mod._strip_episode_tag('Home - Sweet Home') == 'Home - Sweet Home'
+    assert nub_mod._strip_episode_tag('No Tag Here') == 'No Tag Here'
+
+
 @respx.mock
 async def test_search_scene_id() -> None:
     url = 'https://nubilefilms.com/video/watch/555'
     respx.get(url).mock(
         return_value=httpx.Response(
             200,
-            text='<div class="content-pane-title"><h2>Cool Scene</h2><span class="date">March 4, 2021</span></div><video poster="//cdn/p.jpg"></video>',
+            text='<div class="content-pane-title"><h2>Cool Scene - S1:E6</h2><span class="date">March 4, 2021</span></div><video poster="//cdn/p.jpg"></video>',
         )
     )
     results: list[SearchResult] = []

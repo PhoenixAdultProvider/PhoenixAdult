@@ -173,6 +173,12 @@ def test_title_case_subtitle_boundary_after_punctuated_segment() -> None:
     assert title_case('really? - the truth comes out') == 'Really? - The Truth Comes Out'
 
 
+def test_title_case_segment_final_small_word_capitalized() -> None:
+    assert title_case('stepmom wants to move in - S2:E1') == 'Stepmom Wants to Move In - S2:E1'
+    assert title_case('turn me on - the finale') == 'Turn Me On - The Finale'
+    assert title_case('girl next door in law') == 'Girl Next Door in Law'
+
+
 def test_title_case_sequence_marker_colon() -> None:
     assert title_case('Becoming Johnny Sins: Part One') == 'Becoming Johnny Sins: Part One'
     assert title_case('Becoming Johnny Sins - Part Two') == 'Becoming Johnny Sins: Part Two'
