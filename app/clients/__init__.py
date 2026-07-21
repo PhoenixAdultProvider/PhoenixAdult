@@ -367,7 +367,7 @@ def get_client(scraper_type: str) -> Client | None:
 
 
 def _assert_registry_consistent() -> None:
-    # A typo'd selector scraper_type otherwise fails only at runtime for that site.
+    """Fail at import time on a typo'd selector scraper_type, which otherwise fails only at runtime for that site."""
     from app.registry import SITE_DEFINITIONS
 
     missing = sorted({s.scraper_config.type for s in SITE_DEFINITIONS} - CLIENT_REGISTRY.keys())

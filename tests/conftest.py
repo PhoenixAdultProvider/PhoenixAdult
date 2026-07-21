@@ -24,12 +24,8 @@ def _is_local(host: object) -> bool:
 
 @pytest.fixture(autouse=True)
 def _no_live_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Fail fast on any real network access, so an env leak (e.g. a local .env enabling
-    an enrichment) surfaces as an explicit error instead of a slow live call. Mocked
-    HTTP (respx) never reaches the socket layer. Guards getaddrinfo — the choke point
-    for every asyncio connect path, including the Windows Proactor loop which bypasses
-    socket.connect — plus socket.connect itself. Opt out per-test with
-    @pytest.mark.allow_network."""
+    """Fail fast on real network access: guards getaddrinfo (the choke point for every asyncio connect
+    path, incl. the Windows Proactor loop) plus socket.connect; opt out with @pytest.mark.allow_network."""
     if request.node.get_closest_marker('allow_network'):
         return
     real_gai = socket.getaddrinfo
@@ -53,14 +49,8 @@ def _no_live_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyP
 
 @pytest.fixture(autouse=True)
 def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the anti-bot bypass chain offline by default.
-
-    bypass_get() escapes respx (Impersonate/curl_cffi, Playwright aren't httpx), so
-    a source/scraper that falls through to it would make a real network call. Pin the
-    order to the HTTP backends and leave them unconfigured → every backend is
-    unavailable → http_bypass() returns None. Tests that exercise bypass set their own
-    BYPASS_ORDER + backend config, which overrides this.
-    """
+    """Keep the anti-bot bypass chain offline (bypass_get escapes respx): pin BYPASS_ORDER to the HTTP
+    backends and leave them unconfigured so http_bypass() returns None; bypass tests override this."""
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)

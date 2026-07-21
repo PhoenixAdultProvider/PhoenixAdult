@@ -12,8 +12,6 @@ ENV_GROUP_ORDER = [
     'Web search', 'HTTP bypass', 'Data18 enrichment', 'MetadataAPI', 'Plex server', 'Misc',
 ]
 
-# Default whole-word junk tokens (regex fragments) stripped from a parsed search
-# title. Ported verbatim from src/utils/processors/searchTitleTrash.ts.
 DEFAULT_SEARCH_TITLE_TRASH = [
     'RARBG', 'COM', r'\d{3,4}x\d{3,4}', 'HEVC', r'H\d{3}', 'AVC', r'\dK',
     r'\d{3,4}p', 'TOWN.AG_', 'MP4', 'KLEENEX', 'SD', 'HD',

@@ -203,9 +203,6 @@ class XConfessionsClient(Client):
 
         metadata.producers = [ActorResult(name=producer_name, photo_url=strip_query(producer.get('poster_image')))]
 
-    # Legacy set `rating = data.rating * 2`; SceneDetail has no rating slot, so
-    # the rating is dropped (parity with the TS port).
-
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         d = self._data(scene)
         images = self.image_collector(lambda image: (image or '').strip())

@@ -15,7 +15,7 @@ _MAX_TITLE_LENGTH = 1000
 # fmt: off
 _LOWER_EXCEPTIONS = frozenset({
     'a', 'y', 'n', 'an', 'of', 'the', 'and', 'for', 'to', 'onto', 'but', 'or', 'nor', 'at', 'with', 'vs',
-    'in', 'on', 'by', 'as',  # NOT 'up': it's a verb particle in these titles (Tied Up) and particles capitalize
+    'in', 'on', 'by', 'as',
 })
 
 _TLD_FRAGMENTS = frozenset({'co', 'com', 'org'})
@@ -62,8 +62,6 @@ _HONORIFICS = frozenset({
     'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
 })
 
-# Roman numerals capped at XX: longer runs collide with real words (MIX, XXX).
-# Lone V omitted: ambiguous (5 vs. "versus") — let the site's own form pass through.
 _ROMAN_NUMERALS = frozenset({
     'I', 'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX', 'X',
     'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
@@ -92,7 +90,6 @@ def expand_initial_pairs(text: str) -> str:
 
 # ── Patterns ──────────────────────────────────────────────────────────────────
 _SEQ_MARKERS = r'(?:part|pt\.?|volume|vol\.?|scene|episode|ep\.?|chapter)'
-# "scene" only normalizes an explicit separator (- , parens); a bare "Sex Scene 4" is descriptive.
 _SEQ_COLON_MARKERS = r'(?:part|pt\.?|volume|vol\.?|episode|ep\.?|chapter)'
 _CONTRACTION_ALT = '|'.join(sorted(_CONTRACTIONS, key=len, reverse=True))
 _SEQ_PHRASE = rf'(?P<phrase>{_SEQ_MARKERS}\s+(?P<num>\w+))'
@@ -105,7 +102,6 @@ _PURE_NUMBER_RE = re.compile(r'\d+')
 _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
 _A_BEFORE_VOWEL_RE = re.compile(r'\b([Aa])(?=\s+([AEIOUaeiou][\w.]*))')
 _AN_BEFORE_WORD_RE = re.compile(r'\b([Aa])n\b(?=\s+([\w.]+))')
-# Vowel spellings with consonant sounds ("yu"/"w") take "a": a Union, a European, a One-Night Stand.
 _A_STAYS_RE = re.compile(r'^(?:uni|use|usu|ubi|ur[ie]|u\.|uk$|ufo|eu|one$|once$|ewe)', re.IGNORECASE)
 _HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
 _OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
@@ -222,7 +218,6 @@ class _TitleCaseEngine:
         if self.clean_site and clean_lower == self.clean_site:
             return self._manual_word_fix(self.site_name)
 
-        # The tokenizer only lets apostrophes into word tokens, so that is the lone symbol to handle.
         if "'" in word:
             return self._manual_word_fix(self._handle_contraction_word(word))
 
@@ -271,7 +266,6 @@ class _TitleCaseEngine:
             if not part:
                 out.append(part)
                 continue
-            # A contraction suffix ('d, 's, ...) lowercases only right of an apostrophe, never the leading word ("D'd").
             is_suffix = idx > 0 and _strip_non_word(part).lower() in _CONTRACTIONS
             norm = part.lower() if is_suffix else self._normalize_word(part)
             out.append(self._manual_word_fix(norm))
@@ -311,7 +305,7 @@ class _TitleCaseEngine:
         return self._finish_by_type(output)
 
     def _normalize_quotes_and_articles(self, output: str) -> str:
-        output = output.replace('“', '"').replace('”', '"').replace('’', "'")  # Normalize curly quotes
+        output = output.replace('“', '"').replace('”', '"').replace('’', "'")
         return re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
 
     def _fix_spacing(self, output: str) -> str:

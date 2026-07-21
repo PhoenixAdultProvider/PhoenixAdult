@@ -50,8 +50,6 @@ class Network5KPClient(Client):
 
         sel = Selector(text=html)
         seen: set[str] = set()
-        # Whole-token `ep` match (mirrors the TS `div.ep`); a substring contains()
-        # also hits nested `ep-*` wrappers and duplicates every card.
         for el in sel.xpath(f'//div[{_cls("ep")}]'):
             title = (el.xpath('(.//h3[contains(@class,"ep-title")])[1]').xpath('string(.)').get() or '').strip()
             scene_url = first_attr(el, '(.//a)[1]/@href')

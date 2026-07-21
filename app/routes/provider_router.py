@@ -76,7 +76,6 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
             logger.error(provider.id, 'Images error', exc_info=True)
             return JSONResponse({'error': 'Internal server error'}, status_code=500)
 
-    # Sub-resources Plex always queries — return empty containers.
     @router.get('/library/metadata/{rating_key}/{sub}')
     async def empty_sub(rating_key: str, sub: str) -> JSONResponse:
         logger.info(provider.id, f'empty sub-resource: /library/metadata/{rating_key}/{sub}')

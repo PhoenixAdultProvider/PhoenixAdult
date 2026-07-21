@@ -21,7 +21,6 @@ class PornProsClient(Client):
         if isinstance(data, dict) and data.get('title'):
             return data
 
-        # Legacy fallback: a single '-' often needs doubling to hit the release.
         if '-' in slug and '--' not in slug:
             head, _sep, tail = slug.rpartition('-')
             data = await self.fetch_json(f'{base}/api/releases/{head}--{tail}', FetchCtx(capture=capture), headers=headers)
@@ -123,7 +122,6 @@ class PornProsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        # Full URLs kept incl. query strings (image-URL policy); legacy '?'-strip dropped.
         release = self._r(scene)
         images = self.image_collector()
         images['push'](release.get('posterUrl'))

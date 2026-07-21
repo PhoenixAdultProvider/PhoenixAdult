@@ -20,16 +20,15 @@ from app.utils.http.ssrf_guard import is_blocked_hostname
 from app.utils.logging.logger import logger
 
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
-_CACHE_TTL = 60 * 60  # seconds
+_CACHE_TTL = 60 * 60
 _CACHE_MAX_TOTAL_BYTES = 256 * 1024 * 1024
 
 _shared_image_clients: dict[int, httpx2.AsyncClient] = {}
 
 
 def _image_client() -> httpx2.AsyncClient:
-    """One keep-alive client per event loop, reused across image fetches so repeated pulls
-    from a CDN reuse pooled TCP connections instead of opening a fresh socket per image.
-    Keyed by loop id so a per-test loop never reuses a client bound to a closed loop."""
+    """One keep-alive client per event loop so CDN pulls reuse pooled TCP connections;
+    keyed by loop id so a per-test loop never reuses a client bound to a closed loop."""
     loop_id = id(asyncio.get_running_loop())
     client = _shared_image_clients.get(loop_id)
     if client is None:
@@ -155,7 +154,6 @@ async def fetch_image(url: str, configured_referers: list[str] | None = None, co
     cached = _cache_get(url)
     if cached:
         return cached
-    # Coalesce concurrent fetches of the same URL (metadata + /images probe the same set).
     return await _coalesce.run(url, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
 
 
@@ -188,11 +186,6 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
                 failed_attempts += 1
 
     if payload is None and not pinned:
-        # Cloudflare-gated hosts (e.g. IAFD headshots) 403 the plain client — retry the
-        # binary fetch via curl_cffi impersonation. Send Referer/Cookie only; a UA
-        # override would break the impersonated TLS fingerprint and get 403'd again.
-        # Pinned (proxy) fetches never take this path: curl resolves independently,
-        # which would reopen the DNS-rebind hole.
         hdrs: dict[str, str] = {}
         ref = next((r for r in referers if r), None)
         if ref:

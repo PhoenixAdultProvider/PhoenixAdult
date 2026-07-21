@@ -28,7 +28,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.85',
+        version='1.0.0-alpha.87',
         media_type='movie',
     ),
 ]
@@ -50,7 +50,6 @@ def _build_tables(
 
     resolved: list[ResolvedSiteInfo] = []
     for site in sites:
-        # Field-wise copy (not asdict — that would deep-convert scraper_config).
         data = {f.name: getattr(site, f.name) for f in dataclasses.fields(site)}
         data['provider_id'] = site.provider_id or DEFAULT_PROVIDER_ID
         resolved.append(ResolvedSiteInfo(**data))

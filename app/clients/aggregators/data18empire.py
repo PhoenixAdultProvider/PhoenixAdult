@@ -31,7 +31,7 @@ def _is_movie_url(url: str) -> bool:
 
 def _rotate_article(raw: str) -> str:
     """Rotate a ", The"/", A" anywhere in the string to the front (Empire's catalog
-    format), matching the legacy bundle's re.split behaviour exactly."""
+    format), splitting on the first marker only."""
     lower = raw.lower()
     if ', the' in lower:
         idx = lower.index(', the')

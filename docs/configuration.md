@@ -181,8 +181,8 @@ Only needed for reconciliation (below). Both must be set or the feature stays of
 #### Reconciling stale tags
 
 Plex keeps agent-supplied tags that a provider stops returning: change a scene's collection and
-the old one stays on the item. The HTTP provider API has no way to clear it — the legacy Plex
-agent could call `metadata.collections.clear()` because it mutated a live Plex object, but a
+the old one stays on the item. The HTTP provider API has no way to clear it — an agent-framework plugin
+could call `metadata.collections.clear()` because it mutated a live Plex object, but a
 provider only answers questions. Reconciliation closes that gap from the outside.
 
 ```
@@ -193,7 +193,7 @@ GET  /plex/status                 # {"enabled": true|false}
 ```
 
 Admin-guarded like the cache UIs (`?token=` or `x-admin-token`). It reconciles the five tag
-fields the legacy agent cleared — Collection, Genre, Role, Director, Producer — removing only
+fields — Collection, Genre, Role, Director, Producer — removing only
 values Plex holds that the provider's current snapshot does not.
 
 Notes:

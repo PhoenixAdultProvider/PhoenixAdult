@@ -7,7 +7,6 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedS
 from app.utils.helpers.helpers import absolute_url
 from app.utils.helpers.html_helpers import first_attr, first_text
 
-# `div.update` cards must match the class token exactly (updateTitle, updateDescription, etc. all contain "update").
 _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " update ")]'
 
 

@@ -10,7 +10,6 @@ from app.config.env import env
 
 MASK = '***REDACTED***'
 
-# Sensitive query-string values (e.g. ?token=…&apikey=…) — value masked, name kept.
 _QUERY_SECRET = re.compile(r'(?i)\b(token|api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret|password|passwd|pwd)=([^&\s"\'#]+)')
 
 _IPV4 = re.compile(r'\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b')
@@ -45,9 +44,8 @@ def _own_host() -> str | None:
 
 
 def _redact_ip(match: re.Match[str]) -> str:
-    # Public/routable IPs are ALWAYS masked (never leak a real address). Private,
-    # loopback and link-local IPs are masked too unless LOG_REDACT_HOSTS is off — so
-    # you can see your own LAN address (e.g. PEOPLE_IMAGE_URL=localipv4) while debugging.
+    """Public IPs are ALWAYS masked; private/loopback/link-local ones too
+    unless LOG_REDACT_HOSTS is off (so you can see your own LAN address while debugging)."""
     raw = match.group(0)
     try:
         addr = ipaddress.ip_address(raw)
@@ -71,8 +69,8 @@ def redact(text: str) -> str:
 
 
 def redact_client_addr(addr: str) -> str:
-    # uvicorn's client_addr is "host:port"; a glued :port defeats the IP boundary
-    # checks, so split it off, redact the host, and rejoin.
+    """uvicorn's client_addr is "host:port"; the glued :port defeats the IP boundary
+    checks, so split it off, redact the host, and rejoin."""
     host, sep, port = addr.rpartition(':')
     return redact(host) + sep + port if sep else redact(addr)
 
@@ -83,11 +81,10 @@ class RedactionFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         try:
-            # uvicorn.access formats from a fixed args tuple: (client_addr, method, path, http_ver, status).
             if record.name.startswith('uvicorn.access') and isinstance(record.args, tuple) and len(record.args) >= 3:
                 args = list(record.args)
-                args[0] = redact_client_addr(str(args[0]))  # client host:port
-                args[2] = redact(str(args[2]))  # request path (?token=…)
+                args[0] = redact_client_addr(str(args[0]))
+                args[2] = redact(str(args[2]))
                 record.args = tuple(args)
             else:
                 msg = record.getMessage()

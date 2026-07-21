@@ -15,7 +15,6 @@ class ClassifyResult:
 
 
 def classify_image(width: int, height: int) -> ClassifyResult:
-    # determine orientation
     orientation: Literal['portrait', 'landscape', 'square']
     if height > width:
         orientation = 'portrait'
@@ -24,10 +23,8 @@ def classify_image(width: int, height: int) -> ClassifyResult:
     else:
         orientation = 'square'
 
-    # aspect is height/width (portrait >1, landscape <1, square ==1)
     aspect = (height / width) if width > 0 else 0.0
 
-    # classify based on orientation and aspect ratio
     classifier: dict[Literal['portrait', 'landscape', 'square'], Callable[[float], ImageClass]] = {
         'portrait': lambda a: 'coverPoster' if 1.4 <= a <= 1.6 else 'unknown',
         'landscape': lambda _: 'background',

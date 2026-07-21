@@ -65,7 +65,7 @@ async def test_search_date_falls_back_to_filename_date() -> None:
     await Project1ServiceClient().search(results, _ctx(search_date='2021-03-04'))
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert cool.release_date == '2021-03-04'
-    assert cool.display_date is None  # display_date is the scene's own date only, never the filename date
+    assert cool.display_date is None
 
 
 @respx.mock
@@ -93,7 +93,7 @@ async def test_detail() -> None:
 async def test_detail_data18_slug_uses_ctx_subsite_when_collections_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
     _token_head()
-    release = {**_RELEASE, 'collections': []}  # upstream didn't populate the sub-site
+    release = {**_RELEASE, 'collections': []}
     respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [release]}))
     respx.get(url__startswith=f'{_API}/v1/actors').mock(return_value=httpx.Response(200, json={'result': []}))
     captured: dict[str, object] = {}

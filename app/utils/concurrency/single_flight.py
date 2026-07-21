@@ -6,10 +6,8 @@ from collections.abc import Awaitable, Callable
 
 
 class SingleFlight[K, V]:
-    """Coalesce concurrent async misses on a key and cache each value until its own
-    expiry. `factory` returns (value, expires_at_epoch) to cache, or None on failure.
-    With serve_stale (default), a None result reuses the last value even when expired;
-    with serve_stale=False, a None result is returned as-is (no stale-serving)."""
+    """Coalesce concurrent async misses per key; `factory` returns (value, expires_at_epoch) or None
+    on failure — None reuses the last value even when expired unless serve_stale=False."""
 
     def __init__(self, *, serve_stale: bool = True) -> None:
         self._serve_stale = serve_stale
@@ -21,7 +19,7 @@ class SingleFlight[K, V]:
         if hit and hit[1] > time.time():
             return hit[0]
         async with self._locks.setdefault(key, asyncio.Lock()):
-            hit = self._cache.get(key)  # a queued waiter refills while we blocked on the lock
+            hit = self._cache.get(key)
             if hit and hit[1] > time.time():
                 return hit[0]
             produced = await factory()

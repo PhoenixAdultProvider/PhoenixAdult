@@ -11,7 +11,6 @@ _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)\b', re.IGNORECASE)
 
 
 def _cls(name: str) -> str:
-    # Whole-class-token match (avoids "title" matching "sup-title", etc.).
     return f'contains(concat(" ",normalize-space(@class)," ")," {name} ")'
 
 

@@ -157,7 +157,6 @@ class Watch4BeautyClient(Client):
         # Genres
         metadata.genres = self.dedup_strings(list((scene_json.get('issue_tags') or '').split(','))) if scene_json.get('issue_tags') else []
 
-        # Posters (issue-level; per-model art is added with the cast below)
         date_compact = re.sub(r'[^0-9]', '', issue_datetime)[:8] if issue_datetime else (metadata.release_date or '').replace('-', '')
         art_prefix = f'{ART_BASE}{date_compact}' if date_compact else ART_BASE
         metadata.art.extend(

@@ -8,7 +8,6 @@ PROVIDER_BASE_URL = 'https://www.finishesthejob.com'
 PROVIDER_SEARCH_PATH = '/search?search={query}'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
-# Stamps the supplied search date onto results (no on-page date to match).
 PROVIDER_SEARCH_NOTES = 'Date Add'
 
 

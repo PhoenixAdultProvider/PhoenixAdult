@@ -107,7 +107,6 @@ def test_title_case_possessive_s_ending() -> None:
 
 
 def test_title_case_contraction_suffix_never_lowers_the_leading_word() -> None:
-    # A word whose left side reads as a contraction ('d, 's, ...) still capitalizes.
     assert title_case("gets d'd while milf cleans") == "Gets D'd While MILF Cleans"
     assert title_case("d'angelo returns") == "D'Angelo Returns"
     assert title_case("they'd never do that") == "They'd Never Do That"
@@ -127,7 +126,7 @@ def test_title_case_honorifics_get_a_period() -> None:
 def test_title_case_name_skips_honorific_period() -> None:
     assert title_case('summer col', type='name') == 'Summer Col'
     assert title_case('dr love', type='name') == 'Dr Love'
-    assert title_case('summer col') == 'Summer Col.'  # titles still get the period
+    assert title_case('summer col') == 'Summer Col.'
 
 
 def test_title_case_trailing_article_rotation() -> None:

@@ -10,7 +10,6 @@ from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'CzechVR'
 _DATE_FMT = '%b %d, %Y'
-# Order matters — strip the most specific suffixes first.
 _BRAND_SUFFIXES = ['Czech VR Network', ' - Czech VR Fetish Porn Videos', 'Czech VR Fetish', 'Czech VR Casting', 'Czech VR']
 _CDN_RE = re.compile(r'/cdn-cgi/image/[^/]*/')
 

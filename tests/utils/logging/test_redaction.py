@@ -43,13 +43,11 @@ def test_private_ipv4_masked_when_flag_on(monkeypatch):
 
 
 def test_private_ipv4_shown_when_flag_off(monkeypatch):
-    # A LAN IP (e.g. PEOPLE_IMAGE_URL=localipv4) is visible while debugging.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     assert redact('serving http://10.0.0.5:3000/x') == 'serving http://10.0.0.5:3000/x'
 
 
 def test_public_ipv4_masked_even_when_flag_off(monkeypatch):
-    # 8.8.8.8 = Google public DNS — a well-known, non-PII public IP. Public IPs never leak.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     assert redact('upstream 8.8.8.8 reached') == 'upstream ***REDACTED*** reached'
 
@@ -65,7 +63,6 @@ def test_link_local_ipv6_shown_when_flag_off(monkeypatch):
 
 
 def test_public_ipv6_masked_even_when_flag_off(monkeypatch):
-    # 2606:4700:4700::1111 = Cloudflare public DNS — non-PII public IPv6.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     assert redact('peer 2606:4700:4700::1111 ok') == 'peer ***REDACTED*** ok'
 
@@ -113,7 +110,6 @@ def _record(name: str, msg: str, args=None) -> logging.LogRecord:
 
 
 def test_filter_shows_private_ip_when_flag_off(monkeypatch):
-    # Private/LAN IPs are visible with LOG_REDACT_HOSTS off (debugging your own host).
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     rec = _record('phoenixadult', 'host http://10.0.0.1/x')
     RedactionFilter().filter(rec)
@@ -140,7 +136,6 @@ def test_filter_redacts_uvicorn_access_client_addr(monkeypatch):
 
 
 def test_filter_redacts_ipv6_uvicorn_access_client_addr(monkeypatch):
-    # IPv6 client_addr is "<addr>:<port>"; the glued port must not defeat redaction.
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
     args = ('2001:db8:7a3c:f19e:4b62:8d05:1ce7:9f4a:0', 'GET', '/x', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)

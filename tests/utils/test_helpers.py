@@ -23,14 +23,12 @@ def test_format_duration() -> None:
 
 
 def test_title_distance_score_matches_spelled_out_ordinals() -> None:
-    # Plex-safe "Part Three" filename must match upstream "Part 3".
     assert title_distance_score('Big Tits in History: Part Three', 'Big Tits in History: Part 3') == 100
     assert title_distance_score('Big Tits in History: Episode Three', 'Big Tits in History: Episode 3') == 100
     assert title_distance_score('Big Tits in History: Episode 3', 'Big Tits in History: Episode 3') == 100
 
 
 def test_title_distance_score_keeps_distinct_ordinals_apart() -> None:
-    # Normalizing ordinals must not collapse different episode numbers to a perfect match.
     assert title_distance_score('Big Tits in History: Part Three', 'Big Tits in History: Part 4') < 100
     assert title_distance_score('Big Tits in History: Part 3', 'Big Tits in History: Part 4') < 100
 

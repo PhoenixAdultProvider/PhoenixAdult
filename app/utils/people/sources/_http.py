@@ -14,7 +14,7 @@ def make_source_http() -> httpx2.AsyncClient:
 
 
 def encode_name(name: str) -> str:
-    cleaned = re.sub(r'(?<=\w)\.\s(?=\w\.)', '', name)  # collapse "A. B." patterns
+    cleaned = re.sub(r'(?<=\w)\.\s(?=\w\.)', '', name)
     cleaned = cleaned.replace('.', '')
     return quote(cleaned)
 

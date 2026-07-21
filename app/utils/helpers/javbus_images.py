@@ -23,7 +23,6 @@ async def _get(http: httpx2.AsyncClient, url: str) -> str | None:
 
 async def fetch_javbus_images(http: httpx2.AsyncClient, jav_id: str, date_iso: str | None = None) -> list[str]:
     html = await _get(http, f'{_JAVBUS_BASE}/en/{jav_id}')
-    # A 404 page may be a date-suffixed JAVID — retry once.
     if (html is None or '404 Page' in html) and date_iso:
         retry = await _get(http, f'{_JAVBUS_BASE}/en/{jav_id}_{date_iso}')
         if retry is not None:

@@ -9,7 +9,7 @@ from app.utils.concurrency.single_flight import SingleFlight
 from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.logging.logger import logger
 
-_HOST_CACHE_TTL = 30 * 60  # seconds
+_HOST_CACHE_TTL = 30 * 60
 
 _COOKIES: SingleFlight[str, dict[str, str]] = SingleFlight()
 

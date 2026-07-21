@@ -21,7 +21,7 @@ def _auth_headers() -> dict[str, str]:
 class MetadataAPIClient(Client):
     @property
     def http(self) -> httpx2.AsyncClient:
-        # Credentialed first-party API — verify TLS (the base client leaves it off for scrapers).
+        """Credentialed first-party API — TLS verified (the base client leaves it off for scrapers)."""
         if self._http is None:
             self._http = make_http(self._extra_headers, verify=True)
 
@@ -73,7 +73,6 @@ class MetadataAPIClient(Client):
         # Summary
         metadata.summary = d.get('description') or ''
 
-        # Studio and Collection(s)
         site_obj = d.get('site') or {}
         studio = site_obj.get('name') or site.name
         collections: list[str] = [site_obj['name']] if site_obj.get('name') else []

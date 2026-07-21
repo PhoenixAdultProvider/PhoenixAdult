@@ -20,8 +20,7 @@ _SYNC_WAIT_BUDGET = 10.0
 
 
 class PacingDeferredError(Exception):
-    """A client refused to hold a Plex-facing request through a long pacing wait (Plex
-    kills provider requests at ~90s); the service queues a background scrape instead."""
+    """Raised instead of holding a Plex-facing request through a long pacing wait."""
 
     def __init__(self, wait_seconds: float) -> None:
         super().__init__(f'pacing requires waiting ~{wait_seconds:.0f}s')
@@ -29,9 +28,8 @@ class PacingDeferredError(Exception):
 
 
 class ScenePacer:
-    """Ban-avoidance pacing shared by rate-limited clients: jittered per-request
-    spacing, a SCENE_GAP + 1-4 minute jittered between-scenes gap, a hard
-    scenes-per-window cap, and Plex-budget deferral for synchronous requests."""
+    """Ban-avoidance pacing: jittered request spacing, one shared gap track for
+    searches+scenes, a scenes-per-window cap, and Plex-budget deferral."""
 
     def __init__(self, tag: str, *, pace_seconds: float = 7.0, pace_jitter: float = 3.0, cooldown_seconds: float = 7.0) -> None:
         self.tag = tag
@@ -45,12 +43,11 @@ class ScenePacer:
         self._scene_starts: deque[float] = deque()
 
     def jitter(self, base: float) -> float:
-        """`base` seconds plus up to pace_jitter of randomness, never machine-perfect."""
+        """`base` seconds plus up to pace_jitter of randomness."""
         return base + random.uniform(0.0, self.pace_jitter)
 
     async def pace(self, label: str = 'request') -> None:
-        """Per-request spacing: every call waits its turn ~pace_seconds apart with
-        jitter, and logs under the pacer tag so paced traffic is greppable."""
+        """Per-request spacing: ~pace_seconds apart with jitter, logged under the tag."""
         async with self._pace_lock:
             wait = self.jitter(self.pace_seconds) - (time.monotonic() - self._last_fetch)
             if wait > 0:
@@ -64,9 +61,8 @@ class ScenePacer:
         await asyncio.sleep(delay)
 
     def pending_wait(self, *, include_window: bool = True) -> float:
-        """Seconds the next unit of work (search or scene) must wait: the shared gap
-        remainder, or for scenes also the window rest, whichever dominates (the gap
-        sleep ages the window)."""
+        """Wait before the next unit of work: the gap remainder, and for scenes also
+        the window rest (the gap sleep ages the window, so max is exact)."""
         now = time.monotonic()
         gap = max(0.0, self._gap_until - now)
         if not include_window:
@@ -83,12 +79,8 @@ class ScenePacer:
 
     @asynccontextmanager
     async def _turn(self, allow_slow: bool, *, is_scene: bool) -> AsyncIterator[None]:
-        """One unit of work at a time on a SINGLE shared track: searches and scene
-        updates both consume a turn and both arm the SCENE_GAP + 1-4min jittered gap
-        on exit, so neither can burst while the other rests. Scenes additionally count
-        toward the per-window cap. Plex-facing requests never sleep past
-        _SYNC_WAIT_BUDGET — they raise PacingDeferredError instead; background work
-        (allow_slow) sleeps the long wait OUTSIDE the lock."""
+        """One shared track: a search or scene consumes a turn and re-arms the gap;
+        sync requests defer past _SYNC_WAIT_BUDGET, background work sleeps off-lock."""
         kind = 'scene' if is_scene else 'search'
         wait = self.pending_wait(include_window=is_scene)
         if not allow_slow and wait > _SYNC_WAIT_BUDGET:

@@ -68,8 +68,7 @@ async def test_search_keyword_paginates() -> None:
     results: list[SearchResult] = []
     await NaughtyAmericaClient().search(results, _ctx())
     titles = {r.title for r in results}
-    assert titles == {'Scene One', 'Scene Two'}  # page 2 accumulated (legacy pagination)
-    # curID/sceneURL are the full slug path, not the dead numeric /scene/0<id> form
+    assert titles == {'Scene One', 'Scene Two'}
     assert results[0].scene_url == 'https://www.naughtyamerica.com/scene/scene-one-111'
 
 

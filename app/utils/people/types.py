@@ -7,7 +7,6 @@ from typing import Literal, Protocol
 Gender = Literal['male', 'female', 'trans', '']
 PersonType = Literal['actor', 'director', 'producer']
 
-# Gendered suffix values a cache filename may carry (Gender minus the empty string).
 GENDER_SUFFIXES = ('male', 'female', 'trans')
 
 

@@ -3,15 +3,15 @@ from __future__ import annotations
 import re
 
 _PUNCTUATION = {
-    '‘': "'",  # left single curly quote
-    '’': "'",  # right single curly quote / apostrophe
-    '′': "'",  # prime
-    '`': "'",  # backtick
-    '“': '"',  # left double curly quote
-    '”': '"',  # right double curly quote
-    '„': '"',  # low double curly quote
-    '″': '"',  # double prime
-    '…': '...',  # ellipsis
+    '‘': "'",
+    '’': "'",
+    '′': "'",
+    '`': "'",
+    '“': '"',
+    '”': '"',
+    '„': '"',
+    '″': '"',
+    '…': '...',
 }
 
 _PUNCTUATION_RE = re.compile('|'.join(re.escape(c) for c in _PUNCTUATION))

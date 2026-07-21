@@ -52,7 +52,6 @@ class GraphQLClient(Client):
             if r.status_code < 400 and 'json' in content_type.lower():
                 logger.debug('graphql', f'{tag} -> HTTP {r.status_code} ({len(r.text)}B)')
                 return self._envelope(r.text, tag, capture_label, capture_sink)
-            # An anti-bot/Cloudflare block answers a GraphQL POST with an HTML 4xx page.
             snippet = ' '.join(r.text.split())[:160]
             logger.warn('graphql', f'{tag} -> HTTP {r.status_code} ({content_type or "?"}, {len(r.text)}B) non-JSON: {snippet}')
             if not bypass_ok:
@@ -62,9 +61,6 @@ class GraphQLClient(Client):
         elif not bypass_ok:
             return None
 
-        # Retry the POST through the bypass chain. Impersonate (curl_cffi) is tried
-        # first: it beats Cloudflare's TLS fingerprint AND forwards our Referer (which
-        # FlareSolverr drops), so it carries the header Cloudflare needs.
         logger.info('graphql', f'{tag} -> retrying POST via bypass')
         resp = await bypass_post(endpoint, body, {'Content-Type': 'application/json', **(headers or {})})
         if not resp or resp.status >= 400:

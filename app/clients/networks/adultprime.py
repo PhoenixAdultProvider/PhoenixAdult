@@ -14,8 +14,6 @@ _SKIP_PREFIXES: list[str] = load_data(__file__, 'adultprime_skip_prefixes')
 
 _EURO_DATE_RE = re.compile(r'(\d{2})\.(\d{2})\.(\d{4})')
 
-# Date <b> guarded by a preceding calendar icon (legacy-faithful; avoids the
-# Studio/Niches/Performer <b> the TS "first b" selector could grab).
 _DATE_XP = '(//p[contains(@class,"update-info-line")]/b[preceding-sibling::i[contains(@class,"calendar")]])[1]'
 _TITLE_XP = '(//h1)[1]'
 

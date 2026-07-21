@@ -15,7 +15,7 @@ _API = 'https://bellesaplus.co/api/rest/v1'
 
 
 def _body(payload: object) -> str:
-    # The API is fronted by Cloudflare; the JSON arrives inside an HTML <body>.
+    """The API is fronted by Cloudflare; the JSON arrives inside an HTML <body>."""
     return f'<html><body>{json.dumps(payload)}</body></html>'
 
 

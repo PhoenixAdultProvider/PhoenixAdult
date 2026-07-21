@@ -61,7 +61,6 @@ class CouplesCinemaClient(Client):
             if studio.lower() != requested:
                 score -= 10
 
-            # Always pack date + cover segments (legacy parity).
             results.append(
                 build_search_result(
                     title=title,

@@ -138,9 +138,6 @@ class PeopleManager:
         async with self._sem:
             resolved = await self._resolve_photo(display, entry, type, ctx)
 
-        # Male actors are always resolved + cached (caching their image/gender speeds up
-        # future scenes); the male-actor filter is applied at serve time, not here, so it
-        # also covers already-cached snapshots. See filter_male_actors.
         return [resolved]
 
     async def _detect_gender(self, name: str, type: PersonType, gender: Gender) -> Gender:
@@ -193,8 +190,6 @@ class PeopleManager:
         if not photo and use_scene and not scene_first:
             photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
 
-        # 6d — generic fallback. Cache the silhouette under this person too, so the
-        # next lookup is a local-cache hit instead of re-running the whole source chain.
         if not photo and generic_image_enabled() and gender in ('male', 'female'):
             generic_url = generic_image_url(gender)
             if cache_enabled():
@@ -232,15 +227,13 @@ def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[st
 def _is_male_role(role: PlexRole) -> bool:
     gender = (role.gender or '').lower()
     if not gender and role.thumb and '/images/local/' in role.thumb:
-        gender = parse_person_filename(role.thumb.rsplit('/', 1)[-1])[2]  # gender lives in the cache filename
+        gender = parse_person_filename(role.thumb.rsplit('/', 1)[-1])[2]
     return gender == 'male'
 
 
 def filter_male_actors(response: PlexMetadataResponse) -> int:
-    """Drop male actors from the served Role list when the male-actor filter (GENDER_SKIP_MALE_ENABLE)
-    is on. The only place male actors are hidden: they're always resolved and cached (faster
-    future gender resolution) and filtered out only when serving. Non-destructive — mutates
-    the in-memory response only, so snapshots keep every actor on disk. Returns count removed."""
+    """Drop male actors from the served Role list when GENDER_SKIP_MALE_ENABLE is on — the only place they're
+    hidden; mutates the in-memory response only, so snapshots keep every actor on disk. Returns count removed."""
     if not gender_skip_male_enabled():
         return 0
     removed = 0

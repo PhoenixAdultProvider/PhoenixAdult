@@ -137,9 +137,8 @@ _ID_ONLY_RE = re.compile(r'/(?:scenes|movies)/\d+/?$')
 
 
 def scene_url_from_ref(ref: str | None) -> str | None:
-    """Scene/movie URL from a hand-written reference: a numeric id, a slug, 'scenes/<x>',
-    'movies/<x>', or a full data18 URL. Bare refs are scenes. None when empty, off-host,
-    or not a plain ref."""
+    """Scene/movie URL from a hand-written reference (numeric id, slug, 'scenes/<x>', 'movies/<x>',
+    or full data18 URL). Bare refs are scenes; None when empty, off-host, or not a plain ref."""
     if not ref:
         return None
 
@@ -258,9 +257,8 @@ class Data18Client(Client):
         extract_detail: Callable[[Selector, str], tuple[str, str, str] | None],
         max_pages: int = 10,
     ) -> None:
-        """Shared scenes/movies search: candidate lookup + web-search url harvest, then per-url detail.
-        `clean_ws_url` normalises a raw web-search hit (None to drop it); `extract_detail(sel, url)`
-        returns (title, release_date, subsite) for a direct-url page, or None to skip it."""
+        """Shared scenes/movies search: candidate lookup + web-search url harvest, then per-url detail
+        via `extract_detail(sel, url) -> (title, release_date, subsite) | None`; `clean_ws_url` drops hits."""
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = data18_scene_id(search_data.scene_id)
         text = search_data.title.strip()
@@ -431,13 +429,8 @@ class Data18Client(Client):
         kind: Data18Kind = 'scene',
         allow_square: bool = True,
     ) -> str | None:
-        """Resolve a scene's data18 page — a forced URL, a manual mapping, or a search —
-        append its images to `images` in place (de-duplicated), and return the resolved
-        URL (or None). The resolved URL's own type picks the image fetcher, so a scene
-        mapped to a movie page still collects movie images. `allow_square=False` drops
-        square images (their dimension probe is cached for the mapper's own pass).
-        Wrapped in best_effort so a data18 failure never breaks the host scrape; shared
-        by every network that enriches from data18."""
+        """Resolve a scene's data18 page (forced URL, manual mapping, or search), append its images to
+        `images` in place, return the resolved URL; best_effort so a failure never breaks the host scrape."""
         with best_effort(scope, 'data18 enrichment'):
             url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
             if url:

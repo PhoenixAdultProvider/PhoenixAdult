@@ -26,6 +26,7 @@ class _ReqBinBackend:
         return env.reqbin_enabled
 
     async def request(self, req: BypassRequest) -> BypassResponse | None:
+        """Credentialed third-party API — TLS stays verified."""
         cookie_header = '; '.join(f'{k}={v}' for k, v in req.cookies.items()) if req.cookies else ''
         headers = dict(req.headers)
         if cookie_header and 'Cookie' not in headers:
@@ -48,7 +49,6 @@ class _ReqBinBackend:
             if req.method == 'POST' and req.body is not None:
                 payload['content'] = req.body
             try:
-                # Credentialed third-party API — verify TLS.
                 async with httpx2.AsyncClient(timeout=70.0, verify=True) as client:
                     resp = await client.post('https://api.reqbin.com/api/v1/requests', json=payload, headers=cfg_headers)
                 if 200 <= resp.status_code < 300:

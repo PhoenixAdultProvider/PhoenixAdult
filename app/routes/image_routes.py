@@ -14,8 +14,6 @@ from app.utils.images.image_fetcher import fetch_image
 from app.utils.logging.logger import logger
 
 router = APIRouter()
-# Mounted at the site root (NOT under /images) so frozen snapshot image URLs are
-# short and `images` doesn't appear in the path: GET /cache/<studio>/<sub>/<hash>/<file>.
 cache_router = APIRouter()
 
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
@@ -27,7 +25,7 @@ def _read_multi(request: Request, key: str) -> list[str]:
 
 @router.get('/local/{filepath:path}')
 async def local_image(filepath: str) -> Response:
-    # :path so people images can live in role/gender subfolders (actors/female/…).
+    """:path so people images can live in role/gender subfolders (actors/female/…)."""
     if Path(filepath).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
 

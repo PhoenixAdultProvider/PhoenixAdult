@@ -19,13 +19,8 @@ def _header(headers: dict[bytes, bytes], key: bytes) -> str | None:
 
 
 class RequestContextMiddleware:
-    """Pure-ASGI middleware: one request id per HTTP request.
-
-    A pure-ASGI (not BaseHTTPMiddleware) middleware runs the app in the SAME task,
-    so the contextvar id set here is visible to the endpoint and every nested
-    agent/scraper log. The access line is emitted here, in-scope, so it carries the
-    same id (uvicorn's own access log is disabled in configure_uvicorn_logging).
-    """
+    """One request id per HTTP request; pure-ASGI (not BaseHTTPMiddleware) so it runs the app in the
+    SAME task and the contextvar id reaches every nested log — the access line is emitted here, in-scope."""
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app

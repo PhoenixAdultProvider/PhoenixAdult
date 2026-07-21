@@ -10,7 +10,6 @@ from app.registry import ResolvedSiteInfo
 from app.utils.helpers.graphql_client import GraphQLClient
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 
-# Strike3 (Vixen Media Group) is behind Cloudflare; space GraphQL calls a little.
 _PACE_SECONDS = 1.0
 
 _SEARCH_QUERY = (
@@ -34,6 +33,7 @@ class Strike3Client(GraphQLClient):
         self._last_fetch = 0.0
 
     async def _gql(self, endpoint: str, query: str, variables: dict[str, Any], base_url: str, label: str, sink: list[RawCaptureEntry] | None) -> Any:
+        """Paced GraphQL call — Strike3 (Vixen Media Group) sits behind Cloudflare."""
         async with self._pace_lock:
             delta = time.monotonic() - self._last_fetch
             if delta < _PACE_SECONDS:

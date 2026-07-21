@@ -55,10 +55,8 @@ async def refresh_cached_snapshot(
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
     skip_data18: bool = False,
 ) -> bool:
-    """Apply the serve-time backfills/reapplies to a cached snapshot in place and rewrite it if
-    anything changed. Shared by the live serve and the dev preview so the two can't drift.
-    `skip_data18` avoids a second data18 search when the caller's enrichment pull already
-    searched this serve. Returns whether the snapshot changed."""
+    """Apply the serve-time backfills to a cached snapshot in place, rewriting it if anything changed (returned).
+    `skip_data18` avoids a second data18 search when the caller's enrichment pull already searched this serve."""
     changed = await metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)
     if not skip_data18 and await metadata_cache.backfill_data18(response, site.name):
         changed = True
@@ -75,8 +73,6 @@ async def refresh_cached_snapshot(
 
 _MEMO_TTL_SECONDS = 60.0
 _MEMO_MAX_ENTRIES = 512
-# Refreshing the same scene this many times inside the window forces a full re-scrape
-# (bypassing the memo and the on-disk snapshot) — an in-Plex "reload from upstream".
 _REFRESH_WINDOW_SECONDS = 60.0
 _REFRESH_FORCE_COUNT = 3
 
@@ -102,8 +98,8 @@ class MetadataService:
         return False
 
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, is_refresh: bool = False) -> PlexMetadataResponse | None:
-        # Plex requests /library/metadata/{key} and .../images back to back; the memo
-        # serves both from one scrape and coalesces concurrent requests in flight.
+        """Plex requests /library/metadata/{key} and .../images back to back; the memo
+        serves both from one scrape and coalesces concurrent requests in flight."""
         key = (rating_key, provider.id, language or '')
         force = is_refresh and self._force_refresh_due(key)
         if force:
@@ -126,8 +122,6 @@ class MetadataService:
         try:
             return await asyncio.wait_for(asyncio.shield(task), PLEX_REQUEST_BUDGET)
         except TimeoutError:
-            # The scrape keeps running: on completion it lands in the memo and (for a
-            # fresh scene) the snapshot, so the next refresh serves instantly.
             logger.warn(
                 provider.id,
                 f'Update exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget for ratingKey={rating_key} — returning empty; scrape continues in background',
@@ -173,9 +167,7 @@ class MetadataService:
         return response
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
-        """Fail the Plex request fast but scrape on schedule: the queued job re-runs the
-        full pipeline with pacing allowed and writes the snapshot, so a later refresh
-        serves instantly from cache."""
+        """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""
 
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
@@ -205,7 +197,7 @@ class MetadataService:
             logger.warn(provider.id, f'No site found for siteName "{site_name}" from ratingKey')
             return None
 
-        scene_url, subsite = split_subsite(self._scraper.decode(cur_id))  # sub-site folded into the cur_id at search
+        scene_url, subsite = split_subsite(self._scraper.decode(cur_id))
 
         cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
@@ -231,8 +223,8 @@ class MetadataService:
         if response is not None:
 
             async def _fetch_detail() -> SceneDetail | None:
-                # Re-scrape the scene so backfill can try each person's scene image before
-                # the external people sources. Only invoked when someone is imageless.
+                """Re-scrape so backfill can try each person's scene image before the
+                external people sources; only invoked when someone is imageless."""
                 if not scene_url:
                     return None
                 try:

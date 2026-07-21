@@ -10,7 +10,6 @@ from app.registry import find_site
 SITE = find_site('SinsLife')
 assert SITE is not None
 
-# Deep positional layout mirrors the legacy //div[4]/... XPaths.
 DETAIL_HTML = """<html><body>
   <div class="section"><h1>Wild Night</h1></div>
   <div></div>

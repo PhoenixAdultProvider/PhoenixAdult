@@ -99,7 +99,6 @@ def _apply_rules(user_id: str, tagline: str, title: str, summary: str, genre_lis
             if g not in genres:
                 genres.append(g)
 
-        # genreActors: each matched genre token is also removed from the list.
         for actor, needles in (rule.get('genreActors') or {}).items():
             for token in needles:
                 if token.lower() in genres:

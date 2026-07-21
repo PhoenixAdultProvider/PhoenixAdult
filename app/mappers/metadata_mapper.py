@@ -148,19 +148,16 @@ class MetadataMapper:
         has_poster = any(img.type == 'coverPoster' for img in images)
         has_background = any(img.type == 'background' for img in images)
 
-        # Group valid images by detected class for easy promotion
         img_by_class: dict[str, list[dict[str, Any]]] = {}
         for p in valid:
             img_by_class.setdefault(p['image_class'], []).append(p)
 
-        # If no portrait poster, promote candidates to coverPoster.
         if not has_poster and valid:
             logger.info(f'No portrait posters; promoting {len(valid)} image(s) to coverPoster')
             candidates = img_by_class.get('background', valid) if has_background else valid
             for p in candidates:
                 images.append(PlexImage(url=p['url'], type='coverPoster'))
 
-        # If no background but we have backgroundSquare, promote those to background
         if not has_background and (sq := img_by_class.get('backgroundSquare')):
             logger.info(f'No background; promoting {len(sq)} backgroundSquare image(s) to background')
             for p in sq:

@@ -11,8 +11,6 @@ from dotenv import find_dotenv, load_dotenv
 
 from app.config.env_overrides import load_overrides
 
-# Search from the cwd (the working/data dir), not this module's install location —
-# otherwise a site-packages install never finds the .env in the data dir.
 load_dotenv(find_dotenv(usecwd=True))
 load_overrides()
 
@@ -27,8 +25,8 @@ class _Config:
 
 
 def _normalize_base_url(raw: str | None, port: int) -> str:
-    # base_url goes verbatim into image/link URLs, so it must be absolute. An explicit value is
-    # never port-injected — a tunnel/proxy FQDN carries its own public address.
+    """base_url goes verbatim into image/link URLs, so it must be absolute; an explicit
+    value is never port-injected — a tunnel/proxy FQDN carries its own public address."""
     if not raw or not raw.strip():
         return f'http://localhost:{port}'
     value = raw.strip()
@@ -63,8 +61,8 @@ _local_ip_cache: dict[tuple[socket.AddressFamily, str], tuple[float, str]] = {}
 
 
 def _local_ip(family: socket.AddressFamily, probe: str) -> str:
-    # No packets are sent — connect() on a UDP socket just picks the local address the OS would
-    # route to reach `probe`. TTL'd so a DHCP/VPN change doesn't serve a stale IP for the process life.
+    """No packets are sent — connect() on a UDP socket just picks the local address the OS
+    would route to reach `probe`; TTL'd so a DHCP/VPN change doesn't serve a stale IP."""
     hit = _local_ip_cache.get((family, probe))
     if hit and time.monotonic() - hit[0] < _LOCAL_IP_TTL:
         return hit[1]
@@ -80,14 +78,8 @@ def _local_ip(family: socket.AddressFamily, probe: str) -> str:
 
 
 def people_image_base() -> str:
-    """Base URL for actor/director/producer image links. Plex re-requests these
-    periodically (it doesn't keep them), so a stable local address outlives an
-    ephemeral tunnel FQDN. PEOPLE_IMAGE_URL selects it; metadata (poster/art) images
-    keep using base_url. 'localhost' = loopback (same machine); 'localipv4'/'localipv6'
-    = this machine's LAN address (reachable by a Plex box elsewhere on the network);
-    anything else is an explicit address pinning the interface when auto-detection
-    picks the wrong one (e.g. a VPN owning the default route) — the scheme defaults
-    to http and the configured PORT is appended when the value has no port."""
+    """Base URL for people-image links, selected by PEOPLE_IMAGE_URL — Plex re-requests these,
+    so a stable local address outlives an ephemeral tunnel FQDN; poster/art keep base_url."""
     from app.config.env import env
 
     opt = env.people_image_url_raw

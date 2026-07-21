@@ -11,7 +11,6 @@ def test_default_derives_from_port():
 
 def test_schemeless_gets_http():
     assert cfg._normalize_base_url('10.0.0.50', 3000) == 'http://10.0.0.50'
-    # A port in the value is preserved; the listen PORT is never injected.
     assert cfg._normalize_base_url('10.0.0.50:3000', 3000) == 'http://10.0.0.50:3000'
     assert cfg._normalize_base_url('example.internal', 3000) == 'http://example.internal'
 

@@ -97,7 +97,6 @@ class DirtyFlixClient(Client):
                 score=score,
             )
 
-        # No dedup: scene_url is the shared page URL; identity lives in cur_id.
         results.extend(
             await self.paginate_search(
                 fetch_rows=fetch_rows,

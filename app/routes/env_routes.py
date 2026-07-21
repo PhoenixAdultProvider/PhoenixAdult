@@ -43,9 +43,8 @@ def _display_value(spec: EnvVarSpec) -> str:
 
 
 def _options_for(spec: EnvVarSpec) -> list[str]:
-    """Static catalog options, except site-list vars whose options come from the registry
-    — site names plus sub-group (studio) and provider (network) names, so one network
-    entry can cover all its sites."""
+    """Static catalog options, except site-list vars whose options come from the registry:
+    site, sub-group (studio) and provider (network) names, so one network entry covers all its sites."""
     if spec.key == 'SEARCH_STRIP_ACTORS':
         names = {s.name for s in SITE_DEFINITIONS}
         names |= {s.sub_group for s in SITE_DEFINITIONS if s.sub_group}
@@ -119,8 +118,8 @@ async def api_save(request: Request) -> JSONResponse:
 
 @router.post('/api/reset')
 async def api_reset(request: Request) -> JSONResponse:
-    # Not read_json_body: a malformed body must 400, never fall through to
-    # the clear-all branch that an explicit empty body means.
+    """Parses JSON itself (not read_json_body): a malformed body must 400,
+    never fall through to the clear-all branch an explicit empty body means."""
     try:
         body = await request.json()
     except ValueError:
@@ -142,18 +141,15 @@ _MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'
 
 @router.post('/api/restart')
 async def api_restart() -> JSONResponse:
+    """Dev: bump main.py's mtime so the uvicorn reloader restarts the worker (killing it would
+    take the reloader down too); production: SIGTERM and rely on the supervisor to restart."""
     if not env.is_production:
-        # Dev runs under `uvicorn --reload`. Bumping a watched source file's mtime makes the
-        # reloader restart the worker — exactly like editing a file — which re-reads
-        # env.overrides.json and applies LOG_LEVEL. The reloader stays up, so it actually
-        # comes back (killing the worker would take the reloader down with it).
         try:
             _MAIN_PY.touch()
             logger.warn('config', 'restart requested — bumped app/main.py to trigger the reloader')
             return JSONResponse({'ok': True, 'method': 'reload'})
         except OSError as err:
             logger.warn('config', f'reload trigger failed ({err}); falling back to shutdown')
-    # Production / no reloader: exit and rely on the process supervisor to bring us back.
     logger.warn('config', 'restart requested via config UI — signalling shutdown (supervisor must restart)')
     try:
         os.kill(os.getpid(), signal.SIGTERM)
@@ -166,8 +162,7 @@ _CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
 
 
 def _render_ui(state: dict[str, Any]) -> str:
-    # Embed the state as a JS object literal; escape `<` so a description can't
-    # break out of the <script> block.
+    """Embeds the state as a JS object literal; `<` escaped so a description can't break out of the <script> block."""
     state_json = json.dumps(state, ensure_ascii=False).replace('<', '\\u003c')
     return _CONFIG_HTML.replace('__STATE_JSON__', state_json)
 

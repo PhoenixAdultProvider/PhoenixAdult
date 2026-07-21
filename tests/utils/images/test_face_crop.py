@@ -16,7 +16,6 @@ def _solid_jpeg(color: tuple[int, int, int] = (128, 128, 128), size: int = 400) 
 
 
 def test_crop_bad_bytes_keeps_original() -> None:
-    # Undecodable input -> None ("keep original"); never raises.
     assert crop_to_headshot(b'not an image at all') is None
 
 

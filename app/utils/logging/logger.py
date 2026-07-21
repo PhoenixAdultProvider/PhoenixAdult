@@ -21,7 +21,6 @@ def _record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
 
 logging.setLogRecordFactory(_record_factory)
 
-# Map the legacy winston levels onto stdlib logging.
 _LEVEL_MAP = {
     'error': logging.ERROR,
     'warn': logging.WARNING,
@@ -60,7 +59,8 @@ if not _base.handlers:
 
 
 class _Logger:
-    """Thin shim exposing winston-style level methods with tagged-form support."""
+    """Thin shim exposing winston-style level methods with tagged-form support; logs with
+    stacklevel=3 (skips _emit + the level method) so module/lineno resolve to the real caller."""
 
     def _emit(self, level: int, a: Any, b: Any = None, **meta: Any) -> None:
         if isinstance(a, str) and isinstance(b, str):
@@ -74,7 +74,6 @@ class _Logger:
         exc_info = meta.pop('exc_info', None)
         if meta:
             message = f'{message} {json.dumps(meta, default=str)}'
-        # stacklevel=3 skips _emit + the level method so module/lineno resolve to the real caller.
         _base.log(level, message, stacklevel=3, exc_info=exc_info)
 
     def error(self, a: Any, b: Any = None, **meta: Any) -> None:

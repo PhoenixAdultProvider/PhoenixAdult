@@ -26,7 +26,7 @@ async def test_group_genre_thresholds() -> None:
 
     assert 'Threesome' in await genres_for(2)
     assert 'Foursome' in await genres_for(3)
-    assert 'Orgy' in await genres_for(4)  # regression: a cast of 4 previously fell through and got no group genre
+    assert 'Orgy' in await genres_for(4)
     assert 'Orgy' in await genres_for(5)
 
 

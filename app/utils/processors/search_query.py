@@ -17,7 +17,6 @@ def build_search_pieces(content_type: str, parsed: ParsedFilename) -> SearchPiec
     scene_id = parsed.content if (parsed.content and is_digit(parsed.content)) else None
 
     if content_type == 'sceneId':
-        # Legacy takes the first token ungated; non-digit IDs flow through to the client.
         query = full_title.split(' ')[0] or None
     elif content_type in ('sceneName', 'actors'):
         query = parsed.content2 or parsed.content or None

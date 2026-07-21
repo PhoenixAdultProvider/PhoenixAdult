@@ -149,7 +149,7 @@ async def dev_test(request: Request) -> JSONResponse:
         scraper_type=site.scraper_config.type,
     )
 
-    lap()  # reset baseline so the duration reflects the upstream search only
+    lap()
     try:
         captures: list[RawCaptureEntry] = []
         raw_results = await scraper.search(
@@ -188,8 +188,6 @@ async def dev_test(request: Request) -> JSONResponse:
 
         log_search_count(provider.id, site.name, pieces.query, len(raw_results))
 
-        # Mirror MetadataMapper.to_match_result: fold the search-selection sub-site into the
-        # cur_id so a dev "Update" reproduces the real detail-path fallback.
         filename_site = canonical_site_display(parsed.site_token)
 
         def _rating_key(cur_id: str, sub: str | None) -> str:
@@ -298,17 +296,15 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if not scene_url:
         return send({'ratingKey': rating_key, 'steps': steps})
     try:
-        await ensure_fetchable_url(scene_url)  # mirror MetadataService's SSRF guard
+        await ensure_fetchable_url(scene_url)
     except ValueError as err:
         steps.append({'step': '4. Decode identifier', 'ok': False, 'error': f'sceneURL blocked: {err}', 'durationMs': lap()})
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    # Snapshot cache-first: mirror MetadataService — a frozen snapshot is served
-    # without touching the source (only when METADATA_CACHE_ENABLE is on).
     cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
     response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
     if response is not None and metadata_cache.data18_remap_needed(response, site.name):
-        response = None  # data18 mapping changed since snapshot — re-scrape, mirroring MetadataService
+        response = None
     if response is not None and metadata_cache.data18_backfill_needed(response, site.name):
         response = None
     if response is not None:
@@ -317,7 +313,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
             return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
 
         refreshed = await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail)
-        filter_male_actors(response)  # serve-time filter (after any cache write); mirrors MetadataService
+        filter_male_actors(response)
         md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
         steps.append(
             {
@@ -348,7 +344,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
         )
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    lap()  # reset baseline so the duration reflects the upstream fetch only
+    lap()
     try:
         captures: list[RawCaptureEntry] = []
         detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=subsite))
@@ -369,7 +365,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
 
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
         snapshot_saved = await metadata_cache.write(site.name, cur_id, response)
-        filter_male_actors(response)  # hide male actors from the preview (after the write — snapshot keeps them)
+        filter_male_actors(response)
 
         roles = response.MediaContainer.Metadata[0].Role or []
         directors = metadata.Director or []

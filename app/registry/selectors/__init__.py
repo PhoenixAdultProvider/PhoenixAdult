@@ -181,8 +181,6 @@ from app.registry.selectors.sites.xsinsvr import XSINSVR_SITES
 from app.registry.selectors.sites.xvirtual import XVIRTUAL_SITES
 from app.registry.site_info import SiteInfo
 
-# SITE_DEFINITIONS is derived from every site list imported above (collected by type, so naming
-# is irrelevant), leaving no second hand-kept list that can drift out of sync with the imports.
 SITE_DEFINITIONS: list[SiteInfo] = [
     site for _, group in sorted(globals().items()) if isinstance(group, list) and group and isinstance(group[0], SiteInfo) for site in group
 ]

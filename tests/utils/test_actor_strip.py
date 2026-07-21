@@ -12,7 +12,7 @@ NEW_SENSATIONS = find_site('New Sensations')
 assert NUBILE_FILMS and MY_FAMILY_PIES and BRATTY_SIS and NEW_SENSATIONS
 
 
-def test_strip_actor_prefix_legacy_shapes() -> None:
+def test_strip_actor_prefix_shapes() -> None:
     assert strip_actor_prefix('jane doe a cool scene') == 'a cool scene'
     assert strip_actor_prefix('jane doe and jane smith a cool scene') == 'a cool scene'
 

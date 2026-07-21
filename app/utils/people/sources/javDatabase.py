@@ -30,7 +30,6 @@ class _JavDatabaseSource:
                 if not best:
                     logger.debug('javDatabaseSource', f'no thumb match for "{actor_name}"')
                     return None
-                # Reject "unknown" placeholders by following the redirect target.
                 try:
                     head = await client.head(best)
                     if 'unknown.' in str(head.url):

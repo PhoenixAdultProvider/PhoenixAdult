@@ -1,27 +1,61 @@
 #!/usr/bin/env python3
-"""Fail if a diff adds a disallowed ``#`` comment under app/ or tests/.
+"""Fail if a diff adds a disallowed ``#`` comment or an over-long docstring under
+app/ or tests/.
 
-The zero-comment policy allows only docstrings, tooling pragmas (type:/noqa/…),
-and section banners; all other rationale goes in the commit message. This gate
-flags newly added comment lines so they are removed before the commit lands.
+The zero-comment policy allows only terse docstrings (max _DOCSTRING_MAX_LINES
+lines), tooling pragmas (type:/noqa/…), and section banners; all other rationale
+goes in the commit message. This gate flags newly added violations so they are
+removed before the commit lands.
 
 Usage:
     check_comments.py                 # check staged changes (pre-commit)
     check_comments.py <base>..<head>  # check a commit range (CI)
+    check_comments.py --all           # check every file in the repo
 """
 
 from __future__ import annotations
 
+import ast
 import re
 import subprocess
 import sys
 import tokenize
 from io import StringIO
+from pathlib import Path
+
+_DOCSTRING_MAX_LINES = 2
 
 _ALLOWED_PREFIXES = ('type:', 'noqa', 'fmt:', 'ruff:', 'mypy:', 'pylint', 'pragma', 'isort:', 'nosec')
 _BOX_DRAWING = set('─═')
 _ASCII_DIVIDER = set('-=~*·•#. ')
 _HUNK = re.compile(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+# Structural field markers labeling sections of a wholesale update() body are part of
+# the client-structure convention and always allowed.
+_FIELD_MARKERS = frozenset(
+    {
+        'title',
+        'summary',
+        'studio',
+        'tagline',
+        'release date',
+        'genres',
+        'actor(s)',
+        'actors',
+        'director(s)',
+        'directors',
+        'producer(s)',
+        'producers',
+        'collection(s)',
+        'collections',
+        'tagline and collection(s)',
+        'posters',
+        'posters from data18',
+        'images',
+        'trailer',
+        'duration',
+        'rating',
+    }
+)
 
 
 def _git(*args: str) -> str:
@@ -31,6 +65,8 @@ def _git(*args: str) -> str:
 def _is_allowed(comment: str) -> bool:
     body = comment.lstrip('#').strip()
     if not body:
+        return True
+    if body.lower() in _FIELD_MARKERS:
         return True
     if any(body.lower().startswith(p) for p in _ALLOWED_PREFIXES):
         return True
@@ -60,26 +96,70 @@ def _comment_lines(src: str) -> dict[int, str]:
     return out
 
 
-def main() -> int:
-    rng = sys.argv[1] if len(sys.argv) > 1 else None
-    diff_args = [rng] if rng else ['--cached']
-    files = [
+def _long_docstrings(src: str) -> list[tuple[int, int, int]]:
+    """(start, end, line_count) for each docstring longer than _DOCSTRING_MAX_LINES."""
+    out: list[tuple[int, int, int]] = []
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return out
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not (
+            node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str)
+        ):
+            continue
+        expr = node.body[0]
+        if isinstance(node, ast.Module):
+            continue
+        lines = (expr.end_lineno or expr.lineno) - expr.lineno + 1
+        if lines > _DOCSTRING_MAX_LINES:
+            out.append((expr.lineno, expr.end_lineno or expr.lineno, lines))
+    return out
+
+
+def _changed_files(diff_args: list[str]) -> list[str]:
+    return [
         f
         for f in _git('diff', *diff_args, '--name-only', '--diff-filter=ACM').splitlines()
         if f.endswith('.py') and (f.startswith('app/') or f.startswith('tests/'))
     ]
 
+
+def main() -> int:
+    rng = sys.argv[1] if len(sys.argv) > 1 else None
+    scan_all = rng == '--all'
+    if scan_all:
+        rng = None
+        diff_args = []
+        files = sorted(str(p).replace('\\', '/') for base in ('app', 'tests') for p in Path(base).rglob('*.py'))
+    else:
+        diff_args = [rng] if rng else ['--cached']
+        files = _changed_files(diff_args)
+        if not rng and not files:
+            # Nothing staged: check the working tree instead of vacuously passing.
+            diff_args = []
+            files = _changed_files(diff_args)
+
     violations: list[str] = []
     for path in files:
-        spec = f'{rng.split("..")[-1]}:{path}' if rng else f':{path}'
         try:
-            src = _git('show', spec)
-        except subprocess.CalledProcessError:
+            if scan_all or not diff_args:
+                src = Path(path).read_text(encoding='utf-8')
+            elif rng:
+                src = _git('show', f'{rng.split("..")[-1]}:{path}')
+            else:
+                src = _git('show', f':{path}')
+        except (subprocess.CalledProcessError, OSError):
             continue
-        added = _added_lines(diff_args, path)
+        added = None if scan_all else _added_lines(diff_args, path)
         for lineno, text in _comment_lines(src).items():
-            if lineno in added and not _is_allowed(text):
+            if (added is None or lineno in added) and not _is_allowed(text):
                 violations.append(f'{path}:{lineno}: {text.strip()}')
+        for start, end, lines in _long_docstrings(src):
+            if added is None or added & set(range(start, end + 1)):
+                violations.append(f'{path}:{start}: docstring is {lines} lines (max {_DOCSTRING_MAX_LINES})')
 
     if violations:
         sys.stderr.write('Disallowed comments added (remove them; put rationale in the commit message):\n')

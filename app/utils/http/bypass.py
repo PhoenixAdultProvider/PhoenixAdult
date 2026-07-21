@@ -8,20 +8,16 @@ from app.utils.http.playwright import playwright_backend
 from app.utils.http.reqbin import req_bin_backend
 from app.utils.logging.logger import logger
 
-# Impersonate (curl_cffi) is cheapest and forwards headers/Referer — try it first.
 ALL_BACKENDS: list[BypassBackend] = [impersonate_backend, flare_solverr_backend, playwright_backend, req_bin_backend]
 
 _BY_NAME = {b.name.lower(): b for b in ALL_BACKENDS}
 
-# Markers of an unsolved anti-bot interstitial returned WITH a 2xx — a backend that
-# can't solve the challenge (e.g. FlareSolverr vs AWS WAF) hands back the challenge
-# page as 200; treat it as failure so the chain falls through to the next backend.
 _CHALLENGE_MARKERS = (
-    'awswafcookiedomainlist',  # AWS WAF
-    'challenge-container',  # AWS WAF
-    'just a moment',  # Cloudflare interstitial
-    'cf-chl-',  # Cloudflare challenge
-    'turnstile',  # Cloudflare Turnstile
+    'awswafcookiedomainlist',
+    'challenge-container',
+    'just a moment',
+    'cf-chl-',
+    'turnstile',
 )
 
 

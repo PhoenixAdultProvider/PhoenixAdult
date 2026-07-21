@@ -4,7 +4,6 @@ import socket
 
 import app.config as cfg
 
-# Documentation/reserved ranges only — never the host's real address (RFC 5737 / RFC 3849).
 _DOC_IPV4 = '192.0.2.10'
 _DOC_IPV6 = '2001:db8::10'
 

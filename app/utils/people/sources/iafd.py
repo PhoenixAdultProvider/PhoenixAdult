@@ -13,14 +13,8 @@ _BASE = 'https://www.iafd.com'
 
 
 async def iafd_best_match(actor_name: str, studio: str = '') -> tuple[str, Gender] | None:
-    """Run the IAFD comprehensive search; return (href, gender) for the closest
-    performer match, or None.
-
-    Uses the anti-bot bypass chain — IAFD sits behind Cloudflare, so a plain client
-    gets a 403 "Just a moment" challenge and never sees the results table. Shared by
-    gender detection (gender.py) and headshot lookup (_IafdSource). When `studio` is
-    given, a row whose aliases mention that studio is forced to the best score.
-    """
+    """IAFD comprehensive search via the anti-bot bypass chain (Cloudflare 403s a plain client); returns
+    (href, gender) for the closest match or None. A `studio` alias mention forces a row to best score."""
     try:
         enc = fix_iafd_encoding(encode_name(actor_name))
         search_url = f'{_BASE}/results.asp?searchtype=comprehensive&searchstring={enc}'
@@ -81,8 +75,6 @@ class _IafdSource:
 
         img = Selector(text=resp.body).xpath('(//div[@id="headshot"]//img/@src)[1]').get() or ''
         if not img or 'nophoto' in img or 'th_iafd_ad' in img:
-            # No usable headshot, but the person was found — keep the gender so the
-            # resolver can still fall back to the gendered silhouette.
             logger.debug('iafd', f'rejected placeholder image for "{actor_name}" (keeping gender={gender})')
             return PhotoHit(url='', gender=gender)
         logger.debug('iafd', f'matched "{actor_name}" → {img} (gender={gender})')

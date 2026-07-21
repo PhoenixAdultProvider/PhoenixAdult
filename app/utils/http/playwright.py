@@ -29,8 +29,6 @@ class _PlaywrightBackend:
             async with async_playwright() as pw:
                 launch_env = {**os.environ, 'HOME': os.environ.get('HOME') or tempfile.gettempdir()}
                 browser = await getattr(pw, env.playwright_browser).launch(headless=True, env=launch_env)
-                # Apply caller headers (Referer, UA, …) context-wide so both goto (GET)
-                # and page.request (POST) carry them.
                 ctx = await browser.new_context(ignore_https_errors=True, extra_http_headers=req.headers or {})
                 if req.cookies:
                     host = urlsplit(req.url).hostname or ''

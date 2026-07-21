@@ -11,7 +11,6 @@ STUDIO = 'Swallow Bay'
 _SLUG_RE = re.compile(r"[\s']")
 _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)')
 _DATE_PREFIX_RE = re.compile(r'^Date:\s*', re.IGNORECASE)
-# Exact class-token match so "content-models" never catches "content-models-photos".
 _MODELS_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " content-models ")]/a'
 
 

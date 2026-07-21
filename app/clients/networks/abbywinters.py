@@ -117,8 +117,6 @@ class AbbyWintersClient(Client):
         cards = model_sel.xpath('//article[contains(@class,"card") and contains(@class,"card-shoot")]')
         logger.debug(name, f'AbbyWinters._lookup_date: matching "{title}"/"{sub_site}" against {len(cards)} card(s) on {model_abs}')
         for card in cards:
-            # Full descendant text (string(.)) — the title sits inside an <a>, so a
-            # bare /text() node-test misses it (the date-resolution bug this fixes).
             h2 = (card.xpath('(.//h2)[1]').xpath('string(.)').get() or '').strip()
             h3 = ''.join(card.xpath('(.//h3)[1]//text()[not(ancestor::span)]').getall()).strip()
             if h2.lower() == title.lower() and h3.lower() == sub_site.lower():

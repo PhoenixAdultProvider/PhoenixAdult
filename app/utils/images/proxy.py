@@ -11,9 +11,8 @@ def proxy_url(
     *,
     passthrough_local: bool = False,
 ) -> str | None:
-    """Wrap an upstream image URL in our /images/proxy endpoint, carrying optional
-    Referer/Cookie hints. Already-proxied URLs (and, when ``passthrough_local``,
-    already-cached /images/local/ URLs) are returned unchanged."""
+    """Wrap an upstream image URL in our /images/proxy endpoint with optional Referer/Cookie hints;
+    already-proxied (and, when ``passthrough_local``, /images/local/) URLs return unchanged."""
     if not url:
         return url
     base = base_url.rstrip('/')

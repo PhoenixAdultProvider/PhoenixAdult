@@ -136,7 +136,7 @@ def _manual_nfo_match(raw: str, registry_lookup: Callable[[str], bool]) -> Parse
 
 
 def get_site_name_from_registry(filename: str, registry_lookup: Callable[[str], bool]) -> ParsedFilename | None:
-    raw = _strip_extension(filename.split('\\')[-1]).strip()  # TODO Fallback to folder names when filename fails registry lookup
+    raw = _strip_extension(filename.split('\\')[-1]).strip()
     if not raw:
         return None
 

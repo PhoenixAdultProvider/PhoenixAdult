@@ -9,9 +9,6 @@ from app.utils.helpers.helpers import iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
 _VIDEO_TYPES = ['masturbation', 'photoshoot', 'interview', 'girl-girl action', 'pov lapdance']
-# Unanchored (matches the legacy re.search): scene IDs may have a trailing
-# non-numeric suffix, e.g. "stormrose006-nn" -> model "stormrose", num "006-".
-# The TS port anchored this with ^...$, which dropped those scenes.
 _SCENEID_RE = re.compile(r'([^0-9]+)([0-9-]+)')
 _THUMB_RE = re.compile(r'graphics/videos/(.+)\.jpg')
 

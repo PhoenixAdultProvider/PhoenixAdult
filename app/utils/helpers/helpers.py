@@ -26,9 +26,8 @@ def load_data(caller_file: str, name: str, kind: Literal['html']) -> str: ...
 @overload
 def load_data(caller_file: str, name: str, kind: Literal['path']) -> Path: ...
 def load_data(caller_file: str, name: str, kind: Literal['json', 'html', 'path'] = 'json') -> Any:
-    """Load a convention-placed asset relative to the caller's module (pass `__file__`):
-    'json' parses _data/json/<name>.json (bare name, no extension), 'html' reads
-    html/<name>.html as text, 'path' returns the Path to the raw asset _data/<name>."""
+    """Load a convention-placed asset relative to the caller's module (pass `__file__`): 'json'
+    parses _data/json/<name>.json (bare name), 'html' reads html/<name>.html, 'path' -> _data/<name>."""
     folder = Path(caller_file).parent
     if kind == 'html':
         return (folder / 'html' / f'{name}.html').read_text(encoding='utf-8')
@@ -53,7 +52,7 @@ def pack_cur_id(head: list[str]) -> str:
     return b64url_encode('|'.join(head))
 
 
-_SUBSITE_SEP = '\x1f'  # unit separator — safe: never appears in a scraper cur_id payload
+_SUBSITE_SEP = '\x1f'
 
 
 def embed_subsite(cur_id: str, subsite: str | None) -> str:
@@ -126,7 +125,7 @@ def epoch_date(value: Any) -> str | None:
         ts = int(value)
     except (ValueError, TypeError):
         return None
-    if ts > 1e11:  # milliseconds
+    if ts > 1e11:
         ts //= 1000
     return datetime.fromtimestamp(ts, tz=UTC).strftime('%Y-%m-%d')
 
@@ -186,9 +185,8 @@ def strip_query(url: str | None) -> str:
 
 
 def join_url(path: str, base_url: str) -> str:
-    """Prefix base_url when only a path is present; pass already-absolute (http) URLs
-    through. Unlike absolute_url, a protocol-relative //host URL is kept relative to
-    base (not upgraded to https)."""
+    """Prefix base_url when only a path is present; pass already-absolute (http) URLs through.
+    Unlike absolute_url, a protocol-relative //host URL is kept relative to base."""
     if path.startswith('http'):
         return path
     return f'{base_url}{path if path.startswith("/") else f"/{path}"}'
@@ -247,7 +245,7 @@ def sceneid_distance_score(query: str, title: str) -> int:
 
 
 def title_distance_score(query: str, title: str) -> int:
-    from app.utils.processors.title_case import convert_sequence_numbers, title_case  # local: avoid an import cycle
+    from app.utils.processors.title_case import convert_sequence_numbers, title_case
 
     CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
 
@@ -282,7 +280,7 @@ def build_search_result(
     search_url: str | None = None,
     subsite: str | None = None,
 ) -> SearchResult:
-    from app.clients.base import SearchResult  # local import to avoid a cycle
+    from app.clients.base import SearchResult
 
     if score is not None:
         computed = score

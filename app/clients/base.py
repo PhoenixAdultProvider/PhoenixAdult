@@ -52,15 +52,17 @@ class SearchContext:
     language: str | None = None
     scene_id: str | None = None
     full_title: str | None = None
-    allow_slow: bool = False  # background search: pacing may sleep past the Plex request budget
+    allow_slow: bool = False
 
 
 @dataclass
 class SceneContext:
+    """subsite = the sub-site the search selection resolved to (data18 slugging)."""
+
     capture: list[RawCaptureEntry] | None = None
     language: str | None = None
-    subsite: str | None = None  # sub-site the search selection resolved to; used for data18 slugging
-    allow_slow: bool = False  # background scrape: pacing may sleep past the Plex request budget
+    subsite: str | None = None
+    allow_slow: bool = False
 
 
 # ── Results ───────────────────────────────────────────────────────────────────
@@ -89,6 +91,8 @@ class ActorResult:
 
 @dataclass
 class SceneDetail:
+    """duration is milliseconds; allow_slow contexts may sleep past the Plex budget."""
+
     title: str = ''
     summary: str = ''
     studio: str = ''
@@ -106,7 +110,7 @@ class SceneDetail:
     scene_url: str | None = None
     original_title: str | None = None
     data18_url: str | None = None
-    duration: int | None = None  # milliseconds
+    duration: int | None = None
     countries: list[str] | None = None
     rating: float | None = None
     audience_rating: float | None = None
@@ -238,8 +242,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def _direct_get(self, url: str, headers: dict[str, str] | None = None) -> dict[str, Any] | None:
         try:
             r = await self.http.get(url, headers=headers)
-            # A 202 or empty-body response is an anti-bot soft-block, not a usable
-            # page — mark it not-ok so the bypass fallback can fire.
             ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError:
@@ -248,9 +250,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     # ── Search orchestrator ─────────────────────────────────────────────────────
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Append SearchResults for `ctx` to `results`. The default drives the search-context
-        loader + per-row builder and de-duplicates by scene_url; wholesale clients override
-        this and append directly. The caller owns the list and reads it back."""
+        """Append SearchResults for `ctx` to `results`. The default drives the search-context loader
+        + per-row builder and de-duplicates by scene_url; wholesale clients override and append directly."""
         loaded = await self.load_search_context(search_data)
         if not loaded:
             return
@@ -409,10 +410,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         label: str = 'actor',
         limit: int = 3,
     ) -> list[ActorResult]:
-        """Turn (name, profile_url) refs into ActorResults, fetching the profile pages concurrently
-        (at most `limit` in flight) and running `extract_photo` on each loaded page's selector for the
-        headshot. De-duplicated by name (first wins), input order preserved. A ref with no URL — or a
-        page that fails to load — yields an ActorResult with an empty photo, never an error."""
+        """Turn (name, profile_url) refs into ActorResults, fetching profiles concurrently (≤ `limit`)
+        and de-duplicating by name; a missing URL or failed page yields an empty photo, never an error."""
         seen: set[str] = set()
         unique: list[tuple[str, str]] = []
         for actor_name, href in refs:
@@ -448,10 +447,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         kind: Literal['scene', 'movie'] = 'scene',
         allow_square: bool = True,
     ) -> None:
-        """Resolve the scene's data18 page and merge its images into `images` (default
-        metadata.art), recording metadata.data18_url. No-op unless the site opts into
-        data18 enrichment and it's enabled; one shared Data18Client per client. `title`
-        and `scene_date` default to metadata's own; `scene_date` is an ISO date string."""
+        """Resolve the scene's data18 page and merge its images into `images` (default metadata.art),
+        recording metadata.data18_url. No-op unless the site opts in; `scene_date` is an ISO date string."""
         if not (site.scraper_config.data18_enrichment and env.data18_enabled):
             return
         from app.clients.aggregators.data18 import Data18Client
@@ -473,9 +470,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     # ── Detail orchestrator ──────────────────────────────────────────────────────
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """Public detail entry. With a ScenePacer set, the whole scrape runs inside its
-        scene gate (gap/window/defer, one scene at a time) with a post-update cooldown
-        and the after_scene_scrape hook before the gate releases."""
+        """Public detail entry; with a ScenePacer set the scrape runs inside its gate."""
         if self.pacer is None:
             return await self._scene_detail_flow(payload, site, ctx)
         async with self.pacer.scene(bool(ctx and ctx.allow_slow)):
@@ -486,8 +481,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return detail
 
     async def after_scene_scrape(self, detail: SceneDetail) -> None:
-        """Paced clients' hook, still inside the scene gate (e.g. Nubiles warms the
-        scene's image burst here so concurrent matches cannot stack bursts)."""
+        """Paced clients' post-scrape hook, still inside the scene gate."""
         return None
 
     async def _scene_detail_flow(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
@@ -520,9 +514,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
-        """Populate `metadata` from the loaded scene. Default runs the field hooks — each
-        mutates `metadata` in place — concurrently with per-hook error isolation; wholesale
-        clients override this and set metadata.* directly."""
+        """Populate `metadata` from the loaded scene. Default runs the field hooks concurrently with
+        per-hook error isolation; wholesale clients override this and set metadata.* directly."""
         hooks: tuple[tuple[str, Any], ...] = (
             ('title', self.fetch_title),
             ('summary', self.fetch_summary),
@@ -597,7 +590,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def fetch_logo(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        """Sets metadata.logo (a clearLogo image URL). Unlike the other hooks this runs
-        AFTER update() and the studio fallback, so metadata.tagline / metadata.studio are
-        final — logo resolution keys off them (tagline first, then studio)."""
+        """Sets metadata.logo (a clearLogo image URL). Runs AFTER update() and the studio fallback,
+        so logo resolution keys off the final metadata.tagline / metadata.studio (tagline first)."""
         return None

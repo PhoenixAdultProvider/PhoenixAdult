@@ -36,8 +36,7 @@ class NaughtyAmericaClient(Client):
         self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
     async def _paced(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
-        """Rate-limited fetch — requests start >=_PACE_SECONDS apart with jitter and
-        opt into the bypass fallback (NA's AWS WAF 202-blocks plain fetches)."""
+        """Paced fetch, always via the bypass fallback (NA's AWS WAF blocks plain fetches)."""
         if ctx is None:
             ctx = FetchCtx()
 
@@ -46,9 +45,7 @@ class NaughtyAmericaClient(Client):
         return await self.fetch_and_load(url, ctx, label)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Searches ride the SAME gap track as scene updates (the track Nubiles runs
-        on): each search consumes a turn and arms the SCENE_GAP+jitter gap, deferring
-        to the background when a Plex-facing request would have to wait it out."""
+        """Searches ride the same gap track as scene updates."""
         async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 

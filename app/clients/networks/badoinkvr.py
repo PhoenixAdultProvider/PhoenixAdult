@@ -131,6 +131,8 @@ class BadoinkVrClient(Client):
         metadata.actors = actors or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        """The DOM gallery is a truncated teaser (~5 items); the zip photo count is the real
+        total, so candidates expand past the teaser and only the ones that exist are kept."""
         details_page_elements = scene.require_sel()
         images: list[str] = []
 
@@ -138,8 +140,6 @@ class BadoinkVrClient(Client):
         if video_img:
             images.append(video_img)
 
-        # The DOM gallery is a trusted-but-truncated teaser (~5 items); the zip photo count is
-        # the real total. Expand candidates past the teaser and keep only the ones that exist.
         gallery_imgs = [u for u in details_page_elements.xpath('//div[contains(@class,"gallery-item")]/@data-big-image').getall() if u]
         images.extend(gallery_imgs)
 
@@ -151,7 +151,6 @@ class BadoinkVrClient(Client):
         gallery_big = gallery_imgs[0] if gallery_imgs else ''
         if gallery_big and count:
             base_img = re.sub(r'\.jpg.*$', '', re.sub(r'_\d+\.jpg.*$', '', gallery_big))
-            # e.g. .../1_1_27@1500-1x — the middle number is the gallery index
             parts = re.match(r'^(.*/\d+)_\d+_(\d+@.*)$', base_img)
             if parts:
                 candidates.extend(f'{parts.group(1)}_{i}_{parts.group(2)}.jpg' for i in range(1, count + 1))

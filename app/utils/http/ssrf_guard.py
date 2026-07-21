@@ -49,7 +49,7 @@ def is_private_address(ip: str) -> bool:
     try:
         kind = ipaddress.ip_address(ip).version
     except ValueError:
-        return True  # not an IP literal → caller resolves first
+        return True
     return _ipv4_is_private(ip) if kind == 4 else _ipv6_is_private(ip)
 
 

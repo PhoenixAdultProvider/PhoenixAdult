@@ -11,8 +11,6 @@ from app.utils.logging.logger import logger
 
 _FILE = '.face_crop_log.json'
 
-# One mutex for all crop logs: entries are tiny and writers are rare, and the
-# read-modify-write below must not interleave across loop + threadpool callers.
 _lock = threading.Lock()
 
 

@@ -11,9 +11,8 @@ if TYPE_CHECKING:
 
 
 def enabled_for(site: ResolvedSiteInfo) -> bool:
-    """Whether SEARCH_STRIP_ACTORS covers this site: entries match the site name, its
-    sub_group (studio), or its provider_name (network) — so one 'Nubiles' entry enables
-    every Nubiles site. Names are compared registry-normalized."""
+    """Whether SEARCH_STRIP_ACTORS covers this site: entries match the site name, sub_group
+    (studio), or provider_name (network), compared registry-normalized."""
     raw = env.search_strip_actors_raw or ''
     if not raw.strip():
         return False
@@ -36,10 +35,8 @@ def strip_actor_prefix(title: str) -> str:
 
 
 def actor_strip_candidates(title: str) -> list[str]:
-    """Scoring candidates: the original title first, then variants dropping 1-4 leading
-    words (1-word stage names through 3-word names), each also extended past a following
-    "and <1-3 word name>". The best candidate wins on distance, so a wrong strip can
-    never lower a score."""
+    """Scoring candidates: the original title, then variants dropping 1-4 leading words, each also
+    extended past a following "and <1-3 word name>" — the best wins, so a wrong strip never lowers a score."""
     words = title.split()
     out = [title]
     for n in (1, 2, 3, 4):

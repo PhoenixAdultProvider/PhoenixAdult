@@ -13,8 +13,7 @@ _TAG_RE = re.compile(r'<[^>]*>')
 
 
 def _clean_summary(summary: str) -> str:
-    """Pornbox summaries arrive shouting; lower-case then rebuild sentence casing
-    (the legacy bundle's PAutils.cleanSummary)."""
+    """Pornbox summaries arrive shouting; lower-case then rebuild sentence casing."""
     s = summary.lower().capitalize()
     s = s.replace('\u201c', '"').replace('\u201d', '"').replace('\u2019', "'").replace('\xa0', ' ')
     s = re.sub(r'(?i)(?<![A-Za-z])W/', 'w/', s)

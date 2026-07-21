@@ -129,7 +129,7 @@ When iterating on a scraper it's often fastest to watch it live:
 2. **Detail** — click the top result. Confirm `title`, `releaseDate`, and `summary` populate.
 3. **Images** — confirm at least one image URL appears; open it in a new tab to verify it loads.
 4. **Actors + genres** — confirm both populate. Some networks legitimately skip actors (filename-only, direct-URL); note "N/A" in that case.
-5. **Collections** — populated only when the legacy did. Don't fail on missing.
+5. **Collections** — populated only when the site scraper sets them. Don't fail on missing.
 
 ## Legend
 

@@ -77,7 +77,6 @@ class CaramelCashClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        # Legacy uses the SECOND content-desc block.
         metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"content-desc")])[2]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:

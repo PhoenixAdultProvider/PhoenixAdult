@@ -24,7 +24,6 @@ async def page(request: Request) -> HTMLResponse:
     dup_keys = await asyncio.to_thread(metadata_cache.duplicate_entries)
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
-    # Escape `<` so scraped titles / a crafted ?token= can't break out of the <script> block.
     token_json = json.dumps(token).replace('<', '\\u003c')
     entries_json = json.dumps(entries).replace('<', '\\u003c')
     body = (
@@ -76,5 +75,4 @@ async def purge_bulk(request: Request) -> JSONResponse:
 
 @router.post('/purge-duplicates')
 async def purge_duplicates() -> JSONResponse:
-    # Recomputed server-side; the client never supplies paths.
     return JSONResponse({'ok': True, 'purged': await asyncio.to_thread(metadata_cache.purge_duplicates)})

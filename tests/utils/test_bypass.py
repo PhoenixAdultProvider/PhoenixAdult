@@ -55,8 +55,6 @@ async def test_flaresolverr_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @respx.mock
 async def test_unsolved_challenge_body_not_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A backend that returns a 200 whose body is still an anti-bot challenge (e.g.
-    # FlareSolverr vs AWS WAF) must NOT be treated as success.
     monkeypatch.setenv('FLARESOLVERR_URL', 'http://localhost:8191')
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr')
     envelope = {

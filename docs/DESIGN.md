@@ -6,7 +6,7 @@ description: Model-based architecture reference for the PhoenixAdult metadata pr
 # PhoenixAdult — Design Document
 
 **Status:** living document · **Audience:** maintainers & contributors
-**Scope:** the Python/FastAPI Plex metadata provider in this repository (a port of the legacy Python `PhoenixAdult.bundle` Plex agent onto Plex's Metadata Provider API).
+**Scope:** the Python/FastAPI Plex metadata provider in this repository, built on Plex's Metadata Provider API.
 
 This document is *model-based*: each section leads with a diagram (UML-style, rendered with Mermaid) and the prose only explains what the model cannot. Diagrams are grounded in the current source — file references are given so a model can be checked against code.
 
@@ -659,7 +659,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 | Guard / Boundary validation | `ssrf_guard`, `_safe_path`, `env_auth_guard` | trust boundaries |
 | Lazy config accessor | `app/config/env.py` property getters | testability + runtime overrides |
 
-**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/utils/searchengines/`) restores the legacy "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
+**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/utils/searchengines/`) provides a "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
 
 ---
 

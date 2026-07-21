@@ -40,22 +40,12 @@ def _configured_order() -> list[PersonSource]:
     return ordered or ALL_SOURCES
 
 
-# Pseudo-source token in PEOPLE_SOURCE_ORDER: the actor image from the scene page itself.
-# It isn't a real PersonSource (it's the per-person URL the scraper already has, needing the
-# scene's Referer/Cookie), so the resolver handles it inline — this only decides whether and
-# where it runs relative to the external sources.
 SCENE_TOKEN = 'Scene'
 
 
 def scene_image_pref() -> tuple[bool, bool]:
-    """How the scene's own actor image participates, from PEOPLE_SOURCE_ORDER.
-
-    Returns (use_scene, scene_first):
-    - order unset -> (True, True): scene image first, then the external sources (the default).
-    - 'Scene' absent from a set order -> (False, False): skip the scene image entirely.
-    - 'Scene' present -> (True, scene_first), where scene_first is False only when a real
-      source token precedes 'Scene' (then the scene image is a fallback after those sources).
-    """
+    """(use_scene, scene_first) for the scene page's own actor image, from PEOPLE_SOURCE_ORDER: unset ->
+    (True, True); 'Scene' absent -> (False, False); else scene_first unless a provider precedes 'Scene'."""
     raw = env.people_source_order_raw
     if not raw:
         return True, True
@@ -63,8 +53,6 @@ def scene_image_pref() -> tuple[bool, bool]:
     if SCENE_TOKEN.lower() not in tokens:
         return False, False
     scene_idx = tokens.index(SCENE_TOKEN.lower())
-    # Local Storage is the local cache (tried first regardless), not an external provider —
-    # so the scene image is a fallback only when a real *provider* precedes it.
     providers = _BY_NAME.keys() - {local_storage_source.name.lower()}
     first_provider_idx = next((i for i, t in enumerate(tokens) if t in providers), len(tokens))
     return True, scene_idx <= first_provider_idx
@@ -77,7 +65,7 @@ async def find_photo(actor_name: str, ctx: PersonLookupContext) -> PhotoHit:
             hit = await source.find(actor_name, ctx)
             if not hit:
                 continue
-            found_gender = found_gender or hit.gender  # a urlless hit (e.g. IAFD placeholder) still pins gender
+            found_gender = found_gender or hit.gender
             if hit.url:
                 logger.info('people', f'{actor_name} -> {source.name}')
                 return PhotoHit(url=hit.url, gender=hit.gender or found_gender, source=source.name)

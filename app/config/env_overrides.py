@@ -20,7 +20,6 @@ def _snapshot_baseline(key: str) -> None:
 
 
 def _persist() -> None:
-    # tmp + replace: a crash mid-write must never truncate the overrides file.
     tmp = OVERRIDES_PATH.parent / f'{OVERRIDES_PATH.name}.tmp'
     with _lock:
         data = json.dumps(_overrides, indent=2) + '\n'

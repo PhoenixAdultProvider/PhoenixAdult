@@ -10,7 +10,6 @@ from app.utils.searchengines.types import SearchOptions
 
 _ENDPOINT = 'https://html.duckduckgo.com/html/'
 
-# DDG's HTML interface returns 403 to a default UA; mimic a browser.
 _HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -39,8 +38,8 @@ class DuckDuckGoClient:
         return True
 
     async def search(self, opts: SearchOptions) -> list[str]:
+        """DDG's HTML interface 403s a default UA (browser headers) and has no site-search param (site: in query)."""
         num = max(1, opts.num or 10)
-        # DDG has no site-search param — fold the restriction into the query.
         query = f'site:{opts.site} {opts.query}'
         url = f'{_ENDPOINT}?q={quote(query)}'
         logger.debug('search:ddg', f'GET {url}')

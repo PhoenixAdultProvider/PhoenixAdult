@@ -18,11 +18,8 @@ def _ip_netloc(ip: str, port: int | None) -> str:
 
 
 async def fetch_pinned(url: str, headers: dict[str, str] | None = None, timeout: float = 10.0) -> httpx2.Response:
-    """GET with SSRF pinning: each hop's host is resolved once, validated public, and the
-    connection made to that IP — the hostname rides in the Host header and TLS SNI, so a
-    DNS-rebind between check and fetch cannot retarget the request. Redirects are walked
-    manually and every hop re-validated. With HTTPS_PROXY set the proxy does the resolving,
-    so hops are validated but the connection is not IP-pinned."""
+    """GET with SSRF pinning: each hop's host is resolved once, validated public, and connected by IP
+    (defeating DNS rebinds); redirects re-validated per hop. Under HTTPS_PROXY hops are validated but not IP-pinned."""
     proxied = bool(env.https_proxy and env.https_proxy.strip())
     current = url
     overrides = {} if proxied else {'proxy': None}

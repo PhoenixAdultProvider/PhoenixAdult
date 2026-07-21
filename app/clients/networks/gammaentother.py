@@ -21,7 +21,7 @@ _IMG_BASE = 'https://images-fame.gammacdn.com'
 
 _ACTOR_DB: dict[str, list[str]] = {'218114': ['Lara Lee']}
 
-_API_KEYS: SingleFlight[str, str] = SingleFlight()  # per-host Algolia key; stable, so cached without expiry
+_API_KEYS: SingleFlight[str, str] = SingleFlight()
 
 SceneType = Literal['scenes', 'movies']
 
@@ -153,7 +153,6 @@ class GammaEntOtherClient(Client):
         # Summary
         metadata.summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
 
-        # Studio, Tagline and Collection(s)
         if not d.get('network_name'):
             if 'filthykings' in base_lower:
                 studio = normalize_studio(d.get('sitename_pretty') or '', site.name)

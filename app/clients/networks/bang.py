@@ -115,7 +115,6 @@ class BangClient(Client):
                     (search_result.xpath('(.//span[@class="hidden xs:inline-block truncate"])[1]').xpath('string(.)').get() or '').split('•')[-1].strip()
                 )
                 release = iso_date(date_part)
-                # Score uses the pre-bangify title (the bangified value would skew it).
                 score = (
                     date_distance_score(search_data.search_date, release)
                     if search_data.search_date and release
@@ -283,7 +282,6 @@ class BangClient(Client):
                 if isinstance(t, dict) and t.get('thumbnailUrl'):
                     out.append(t['thumbnailUrl'])
 
-        # XPath fallback (full URLs kept, per the image-URL policy).
         if not out:
             og = first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content')
             if og:

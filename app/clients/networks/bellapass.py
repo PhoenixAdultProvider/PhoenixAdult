@@ -113,7 +113,6 @@ class BellaPassClient(Client):
         metadata.studio = _studio_for(scene.site.name)
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        # Only the umbrella keeps a tagline; sub-brands stand alone (legacy).
         metadata.tagline = scene.site.name if _studio_for(scene.site.name) == STUDIO else None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:

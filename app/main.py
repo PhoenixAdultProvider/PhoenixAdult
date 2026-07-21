@@ -9,12 +9,10 @@ from app.utils.logging.uvicorn_logging import UVICORN_LOG_CONFIG
 
 
 def main() -> None:
+    """Reload (outside production) needs the import string, not the app object; forwarded_allow_ips is
+    explicit because the admin-auth loopback exemption relies on X-Forwarded-For from the same-host proxy."""
     log_level = config.log_level if config.log_level in {'critical', 'error', 'warning', 'info', 'debug', 'trace'} else 'info'
-    # Outside production, run with --reload. Reload needs an import string (not the
-    # app object) so uvicorn can re-import on change.
     reload = not env.is_production
-    # Explicit (not default-reliant): the admin-auth loopback exemption depends on
-    # X-Forwarded-For from the same-host tunnel/proxy rewriting request.client.
     uvicorn.run(
         'app.main:app' if reload else app,
         host='0.0.0.0',

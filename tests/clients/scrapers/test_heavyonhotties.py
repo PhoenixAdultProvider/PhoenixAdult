@@ -32,7 +32,6 @@ async def test_search_direct_variant(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(hoh_module, 'web_search_urls', _no_web)
     url = 'https://www.heavyonhotties.com/movies/alice-bob-wild-night'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
-    # Other variants 404
     respx.get('https://www.heavyonhotties.com/movies/bob-wild-night').mock(return_value=httpx.Response(404))
     respx.get('https://www.heavyonhotties.com/movies/wild-night').mock(return_value=httpx.Response(404))
     results: list[SearchResult] = []

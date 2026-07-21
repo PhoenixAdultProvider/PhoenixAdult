@@ -46,7 +46,6 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan)
 
-    # Per-request id + access logging (don't log /config bodies — they carry secrets).
     app.add_middleware(RequestContextMiddleware)
 
     # ── Dynamic provider routes ──────────────────────────────────────────────

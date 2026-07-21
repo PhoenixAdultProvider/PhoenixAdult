@@ -62,9 +62,8 @@ def _scraper_site_count(scraper_type: str) -> int:
 
 
 def _hash(site_name: str, cur_id: str) -> str:
-    """Stable leaf-dir name for a scene, derivable from the ratingKey alone (so a
-    cache-first read can find it before any scrape). Scoped by the resolved site so
-    two sites sharing a cur_id don't collide."""
+    """Stable leaf-dir name for a scene, derivable from the ratingKey alone (cache-first reads),
+    scoped by the resolved site so two sites sharing a cur_id don't collide."""
     site = find_site(site_name)
     base = site.name if site else site_name
     raw = f'{slugify(base)}\n{cur_id}'
@@ -72,10 +71,8 @@ def _hash(site_name: str, cur_id: str) -> str:
 
 
 def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
-    """On-disk folder for a scene, per the site's registry `cache_layout`:
-    'network' → <scraper>/<studio>, 'aggregator' → <scraper>/<studio>/<sub-site>,
-    'studio' → flat <studio>, 'auto' → <studio>/<sub-site> for multi-site scrapers
-    else flat <studio>."""
+    """On-disk folder per the site's `cache_layout`: 'network' → <scraper>/<studio>, 'aggregator' →
+    <scraper>/<studio>/<sub-site>, 'studio' → flat, 'auto' → <studio>/<sub-site> for multi-site scrapers."""
     site = find_site(site_name)
     studio_slug = slugify(studio) or slugify(site.name if site else site_name) or 'studio'
     layout = site.cache_layout if site else 'auto'
@@ -101,11 +98,10 @@ def _ensure_index() -> dict[str, str]:
     idx: dict[str, str] = {}
     root = Path(directory)
     if root.exists():
-        # The leaf dir name is the scene hash; map it to the (variable-depth) path.
         for meta_file in root.rglob('meta.json'):
             parent = meta_file.parent
             if parent.name.endswith('.tmp'):
-                continue  # half-written snapshot mid-rename
+                continue
             idx[parent.name] = parent.relative_to(root).as_posix()
     _index, _index_dir = idx, directory
     logger.info('meta-cache', f'Indexed {len(idx)} snapshot(s) ({directory})')
@@ -136,9 +132,8 @@ def _stored_data18(response: PlexMetadataResponse) -> dict[str, str] | None:
 
 
 def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
-    """True if a data18 manual mapping now exists for this cached scene and disagrees with
-    the data18 ref stored in its snapshot — so the caller re-scrapes to pick up the override.
-    A scene with no manual mapping (whether unmatched or matched by search) is left alone."""
+    """True if a data18 manual mapping now exists for this cached scene and disagrees with the stored
+    ref — so the caller re-scrapes to pick up the override; scenes with no manual mapping are left alone."""
     from app.clients.aggregators.data18 import data18_ref
 
     if not env.data18_enabled:
@@ -152,9 +147,7 @@ def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
 
 def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bool:
     """True if this snapshot is on a data18-enrichment-eligible site but has no data18 ref recorded
-    — so a refresh should attempt a fresh scrape to pull enrichment the snapshot predates. The caller
-    keeps serving the snapshot if the scrape is blocked/down, and a scene with no data18 match just
-    retries on the next refresh (checking each refresh is cheap enough for a manual trigger)."""
+    — so a refresh should attempt a fresh scrape to pull enrichment the snapshot predates."""
     if not env.data18_enabled:
         return False
     site = find_site(site_name)
@@ -164,12 +157,8 @@ def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bo
 
 
 async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
-    """Record a cached scene's data18 ref if its snapshot predates data18 recording. Resolves
-    the data18 page from the snapshot's own fields — a manual mapping (no network) or a search —
-    and stores the {type, id}; images already cached at scrape time are left untouched. Best-effort
-    (never breaks a serve) and self-healing: runs only for enrichment-eligible sites on snapshots
-    with no ref yet, and once a ref is stored it never re-runs (a scene with no data18 match is
-    retried on a later refresh). Returns True if anything changed, so the caller can rewrite."""
+    """Record a cached scene's data18 ref if its snapshot predates data18 recording; best-effort
+    (never breaks a serve), runs only when no ref is stored yet. Returns True if anything changed."""
     from datetime import datetime
 
     from app.clients.aggregators.data18 import Data18Client, data18_ref, mapping_slug
@@ -234,9 +223,8 @@ def _ext_of(url: str) -> str:
 
 
 def _rebase(obj: Any, base: str, people_base: str) -> Any:
-    """Resolve host-relative cached image URLs against the live bases, recursively.
-    People images (/images/local/) follow PEOPLE_IMAGE_URL (people_base) and are
-    normalized even when a snapshot stored them absolute; other links use base_url."""
+    """Resolve host-relative cached image URLs against the live bases, recursively; people images
+    (/images/local/) follow people_base even when a snapshot stored them absolute."""
     if isinstance(obj, dict):
         return {k: _rebase(v, base, people_base) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -270,8 +258,6 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     if final_dir is None:
         return False
 
-    # Concurrent writes for the same scene share {hash}.tmp — serialize them, ref-counting so
-    # the lock is dropped once its last writer leaves and the map can't grow without bound.
     lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
     _write_lock_users[scene_hash] = _write_lock_users.get(scene_hash, 0) + 1
     try:
@@ -416,9 +402,8 @@ def change_token() -> str:
 
 
 def purge(key: str) -> bool:
-    """Remove one snapshot by its relative path ('<studio>/<hash>' or
-    '<studio>/<sub-site>/<hash>'). Leaf dirs only — an intermediate studio dir
-    (no meta.json) is refused so one purge can't wipe a whole studio."""
+    """Remove one snapshot by its relative path. Leaf dirs only — an intermediate
+    studio dir (no meta.json) is refused so one purge can't wipe a whole studio."""
     target = safe_join(cache_dir(), key)
     if target is None or not target.exists() or not (target / 'meta.json').exists():
         return False
@@ -432,9 +417,8 @@ def purge(key: str) -> bool:
 
 
 def duplicate_entries() -> list[str]:
-    """Rel paths of sub-site-less snapshots superseded by a sub-site-bearing twin of the
-    same scene. A lone sub-site-less snapshot is never reported: the sub-site can only be
-    stripped from a cur_id, never derived, so its twin is unprovable."""
+    """Rel paths of sub-site-less snapshots superseded by a sub-site-bearing twin of the same
+    scene; a lone sub-site-less snapshot is never reported (its twin is unprovable)."""
     from app.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
     from app.utils.plex.rating_key import parse_rating_key
 
@@ -471,8 +455,7 @@ def purge_duplicates() -> int:
 
 def _is_stale_local_thumb(thumb: str) -> bool:
     """True if a cached /images/local/ thumb points at a people-cache file that no longer
-    exists (e.g. purged at /people) — so backfill re-resolves it instead of serving
-    a dead link."""
+    exists — so backfill re-resolves it instead of serving a dead link."""
     marker = '/images/local/'
     if marker not in thumb:
         return False
@@ -517,14 +500,8 @@ async def backfill_people_images(
     *,
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
 ) -> bool:
-    """Retry resolving headshots for cached cast / director / producer entries with no thumb.
-
-    When `fetch_detail` is given, the scene is re-scraped first so each person's *scene*
-    image is tried before external people sources (mirroring a fresh scrape); people the
-    scene doesn't list still fall back to the sources. Best-effort (never breaks a serve)
-    and self-healing — once an image is found the snapshot is re-written, so only still-
-    imageless people retry. Shared by the live agent (MetadataService) and the /dev flow.
-    """
+    """Retry resolving headshots for cached cast/crew entries with no thumb; with `fetch_detail`
+    the scene is re-scraped so each person's scene image is tried before external people sources."""
     try:
         md = response.MediaContainer.Metadata[0]
     except (AttributeError, IndexError):
@@ -543,7 +520,7 @@ async def backfill_people_images(
             if not r.tag:
                 continue
             if r.thumb and _is_stale_local_thumb(r.thumb):
-                r.thumb = None  # cached file was purged — drop the dead link and re-resolve below
+                r.thumb = None
                 stale_cleared = True
             if not r.thumb:
                 missing.append(f'{key}:{r.tag}')
@@ -553,7 +530,7 @@ async def backfill_people_images(
     logger.debug('meta-cache', f'backfill "{md.title}" ({site_name}): {len(missing)} imageless -> {", ".join(missing)}')
 
     fill_groups = [(entries, key) for entries, _role, key in groups]
-    changed = stale_cleared  # clearing a purged thumb is itself a change worth persisting
+    changed = stale_cleared
 
     if fetch_detail is not None:
         try:
@@ -598,10 +575,8 @@ async def backfill_people_images(
 
 
 def backfill_logo(response: PlexMetadataResponse) -> bool:
-    """Add a clearLogo Image to snapshots written before a logo existed: only when the
-    logo cache is enabled, a file matches the scene's tagline/studio, and the snapshot
-    has no clearLogo yet — the rest of the metadata is untouched. Mutates in place and
-    returns True if anything changed, so the caller can rewrite the snapshot."""
+    """Add a clearLogo Image to snapshots written before a logo existed. Mutates in place
+    and returns True if anything changed, so the caller can rewrite the snapshot."""
     from app.utils.images import logo_cache
 
     if not logo_cache.enabled():
@@ -620,10 +595,8 @@ def backfill_logo(response: PlexMetadataResponse) -> bool:
 
 
 def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
-    """Add metadata attributes introduced after a snapshot was written (contentRating,
-    isAdult, titleSort, Role order), and recompute the guid from the ratingKey so a
-    provider-identifier change heals cached snapshots on serve. Mutates in place and
-    returns True if anything changed, so the caller can rewrite the snapshot."""
+    """Add metadata attributes introduced after a snapshot was written and recompute the guid from
+    the ratingKey. Mutates in place and returns True if anything changed, so the caller can rewrite."""
     from app.registry import PROVIDER_DEFINITIONS
     from app.utils.plex.rating_key import to_guid
 
@@ -653,11 +626,8 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
 
 
 def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None) -> bool:
-    """Re-run the current text rules (title casing, summary punctuation, studio/tagline/collection
-    casing, genre normalization, actor alias tables) on a cached response. Mutates in place and
-    returns True if anything changed, so the caller can rewrite the snapshot. It applies
-    new rules to what's stored; it can't restore values dropped at the original scrape
-    (those aren't in the snapshot — purge to re-scrape)."""
+    """Re-run the current text rules on a cached response; mutates in place and returns True if
+    anything changed. Applies new rules to what's stored — it can't restore values dropped at scrape."""
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
@@ -708,7 +678,7 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
                 if aliased != r.tag:
                     r.tag = aliased
                     changed = True
-                if aliased.lower() in seen:  # an alias collapsed two cast members
+                if aliased.lower() in seen:
                     changed = True
                     continue
                 seen.add(aliased.lower())

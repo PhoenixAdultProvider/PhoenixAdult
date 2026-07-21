@@ -222,10 +222,8 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
 
 @respx.mock
 async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Image URLs are stored host-relative and rebased on every read: metadata images
-    (/cache/) onto base_url, people images (/images/local/) onto PEOPLE_IMAGE_URL's base —
-    so both survive a tunnel change and people images stay reconfigurable (and self-heal
-    if a snapshot stored them absolute)."""
+    """Image URLs are stored host-relative and rebased on every read — metadata images (/cache/)
+    onto base_url, people images (/images/local/) onto PEOPLE_IMAGE_URL's base — so both survive a tunnel change."""
     import json
     from pathlib import Path
     from types import SimpleNamespace
@@ -276,7 +274,6 @@ async def test_layout_per_registry_type(tmp_path: pytest.TempPathFactory, monkey
     assert await mc.write('5Kteens', 't1', _resp(studio='5Kporn', tagline='5Kteens')) is True
     assert list(tmp_path.glob('5kporn/5kteens/*/meta.json'))  # type: ignore[attr-defined]
 
-    # 'auto' lone-site scraper -> flat, never dickdrainers/dickdrainers.
     assert await mc.write('DickDrainers', 'd1', _resp(studio='DickDrainers')) is True
     assert (tmp_path / 'dickdrainers').is_dir()  # type: ignore[operator]
     assert not (tmp_path / 'dickdrainers' / 'dickdrainers').exists()  # type: ignore[operator]
@@ -451,16 +448,13 @@ def _md_resp(title: str, tagline: str) -> PlexMetadataResponse:
 
 def test_data18_remap_needed_flags_added_or_changed_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
-    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # has a manual mapping
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
 
-    # Nothing stored yet: the manual mapping is new -> re-scrape.
     assert mc.data18_remap_needed(resp, 'Brazzers') is True
 
-    # Stored data18 ref already equals the manual mapping -> nothing to do.
     resp.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='1301931')
     assert mc.data18_remap_needed(resp, 'Brazzers') is False
 
-    # No manual mapping never forces a re-scrape, even with a stored (search-matched) ref.
     unmapped = _md_resp('Some Unmapped Scene', 'Brazzers Exxtra')
     unmapped.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='999')
     assert mc.data18_remap_needed(unmapped, 'Brazzers') is False
@@ -496,13 +490,12 @@ def test_data18_backfill_needed_off_when_disabled_or_ineligible(monkeypatch: pyt
 
 async def test_backfill_data18_records_manual_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('DATA18_ENABLE', 'true')
-    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')  # manual-mapped -> resolves with no network
+    resp = _md_resp('Live and on Location', 'Brazzers Exxtra')
 
     assert await mc.backfill_data18(resp, 'Brazzers') is True
     d = resp.MediaContainer.Metadata[0].data18
     assert d is not None and d.type == 'scene' and d.id == '1301931'
 
-    # Already recorded -> no re-resolve, no change.
     assert await mc.backfill_data18(resp, 'Brazzers') is False
 
 

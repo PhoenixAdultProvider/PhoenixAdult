@@ -17,8 +17,6 @@ Variant = Literal['standard', 'imgFullFluid', 'sceneTitleP']
 _VARIANTS: dict[str, str] = load_data(__file__, 'adultempirecash_variants')
 _STUDIO_OVERRIDES: dict[str, str] = {'Horny Household': 'Horny Household'}
 
-# Per-subsite genre-source override (XPath). Default reads div.tags; Elegant Angel
-# carries categories under an "Attributes" block instead.
 _GENRE_XPATH_OVERRIDES: dict[str, str] = {
     'Elegant Angel': '//div[strong[contains(.,"Attributes")]]/a',
 }
@@ -64,13 +62,12 @@ __testing__ = {
 class AdultEmpireCashClient(Client):
     def __init__(self) -> None:
         super().__init__()
-        # AEC pages are age-gated per host; the gate binds ageConfirmed to a
-        # server-issued etoken session, so a static cookie isn't enough — we run
-        # the confirm handshake once per host and let the jar carry the session.
         self._confirmed: set[str] = set()
         self._age_lock = asyncio.Lock()
 
     async def _ensure_age_confirmed(self, base: str) -> None:
+        """The age gate binds ageConfirmed to a server-issued etoken session (a static cookie
+        isn't enough) — run the confirm handshake once per host and let the jar carry it."""
         if base in self._confirmed:
             return
 
@@ -199,7 +196,6 @@ class AdultEmpireCashClient(Client):
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        # TS reads the whole "Director: Name" text and slices after the colon.
         raw = details_page_elements.xpath('string((//div[@class="director"])[1])').get() or ''
         director_name = raw.split(':')[-1].strip()
 

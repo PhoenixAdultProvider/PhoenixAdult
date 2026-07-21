@@ -56,9 +56,8 @@ class MatchService:
         )
 
     async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
-        """Run the scraper search behind a memo + coalescer: Plex re-matching the same
-        item within the TTL costs zero upstream requests — which is also how a
-        background search deferred by pacing hands its results to a later re-match."""
+        """Scraper search behind a memo+coalescer; background searches hand results
+        to a later re-match through the same memo."""
         key = self._memo_key(search_data)
         hit = self._search_memo.get(key)
         if hit and time.monotonic() - hit[0] < _SEARCH_MEMO_TTL:
@@ -79,9 +78,7 @@ class MatchService:
         return await self._search_coalesce.run(key, _run)
 
     def _queue_background_search(self, search_data: SearchContext, provider: ProviderInfo, wait_seconds: float) -> None:
-        """Fail the Plex match fast but search on schedule: the queued job runs on the
-        paced track and memoizes its results, so re-matching the item later serves
-        from memory without an upstream request."""
+        """Fail the match fast; the queued job searches on the paced track and memoizes."""
 
         async def _job() -> None:
             await self._search_results(search_data, provider, allow_slow=True)
@@ -96,8 +93,7 @@ class MatchService:
         )
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
-        """Search entry, capped at Plex's request budget: an over-budget search is
-        cancelled and answered empty rather than letting Plex kill the connection."""
+        """Search entry, answered empty at the Plex request budget."""
         try:
             return await asyncio.wait_for(self._match(req, provider, language), PLEX_REQUEST_BUDGET)
         except TimeoutError:

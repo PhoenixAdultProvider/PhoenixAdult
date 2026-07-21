@@ -36,12 +36,11 @@ def cache_replace_enabled() -> bool:
 
 
 def _slug(name: str) -> str:
-    # A scraped name becomes part of the on-disk filename — strip path separators
-    # and collapse `..` so a crafted name can't escape the cache dir.
+    """Filename-safe slug: strips path separators and collapses `..` so a crafted name can't escape the cache dir."""
     return re.sub(r'\s+', '-', re.sub(r'\.{2,}', '.', re.sub(r'[/\\]', '-', name))).lower()
 
 
-_ORIGINALS_DIR = 'originals'  # backing store of pre-crop originals (not a browsable type folder)
+_ORIGINALS_DIR = 'originals'
 
 
 def _base_name(name: str, type: PersonType) -> str:
@@ -85,9 +84,8 @@ def _bust_token(relpath: str, data: bytes | None) -> str:
 
 
 def _local_url(relpath: str, data: bytes | None = None) -> str:
-    """Served URL for a cached people image (relpath = '<subdir>/<filename>'), with a short
-    content-hash cache-buster: Plex caches images by URL, so without a token a re-cropped or
-    replaced image keeps serving the stale copy. The token changes only when the bytes do."""
+    """Served URL for a cached people image (relpath = '<subdir>/<filename>') with a content-hash
+    cache-buster: Plex caches images by URL, so the token changes only when the bytes do."""
     from urllib.parse import quote
 
     token = _bust_token(relpath, data)
@@ -102,7 +100,7 @@ _cached_dir: str | None = None
 _cached_sig: tuple[int, float] | None = None
 _cached_index: dict[str, str] = {}
 _sig_checked_at = 0.0
-_SIG_CHECK_INTERVAL = 30.0  # seconds between full-tree signature walks
+_SIG_CHECK_INTERVAL = 30.0
 
 
 def _served_files(root: Path) -> Iterator[Path]:
@@ -139,16 +137,14 @@ def _rebuild_index(directory: str) -> dict[str, str]:
     if not root.exists():
         return idx
     for entry in _served_files(root):
-        key = entry.stem.split('_', 1)[0]  # "actor.jane-doe"
-        idx.setdefault(key, entry.relative_to(root).as_posix())  # "actors/female/actor.jane-doe_female.jpg"
+        key = entry.stem.split('_', 1)[0]
+        idx.setdefault(key, entry.relative_to(root).as_posix())
     return idx
 
 
 def _get_index() -> dict[str, str]:
     global _cached_dir, _cached_sig, _cached_index, _sig_checked_at
     directory = people_cache_dir()
-    # The signature walk stats every headshot — rate-limit it; mutating paths
-    # call _invalidate_index for an immediate rebuild.
     now = time.monotonic()
     if _cached_dir == directory and now - _sig_checked_at < _SIG_CHECK_INTERVAL:
         return _cached_index
@@ -206,8 +202,6 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
             logger.debug('people-cache', f'plain fetch returned non-image ({content_type}) for {url}; trying impersonate')
     except (httpx2.HTTPError, OSError) as err:
         logger.debug('people-cache', f'plain fetch failed {url}: {err}; trying impersonate')
-    # NB: don't pass a User-Agent — curl_cffi must keep its impersonated UA, or the
-    # UA/TLS-fingerprint mismatch gets Cloudflare-403'd (e.g. IAFD headshots).
     got = await impersonate_get_bytes(url, headers)
     if got:
         logger.debug('people-cache', f'impersonate fetched {url}')
@@ -243,11 +237,8 @@ async def cache_photo(
         logger.warn('people-cache', f'invalid extension for {upstream_url} (content-type={content_type})')
         return None
 
-    # Optional face-crop (tight head crop for Plex's circular card). Never crops the
-    # generic/default placeholder; runs off-thread; the cropper emits JPEG and
-    # returns None to mean "keep the original".
     orig_ext = ext
-    original = data  # pre-crop bytes, preserved so the user can always go back
+    original = data
     face_on = env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES
     cropped = False
     if face_on:
@@ -260,13 +251,10 @@ async def cache_photo(
     filename = f'{name_base}{ext}'
     subdir = _subdir(type, gender)
     relpath = f'{subdir}/{filename}'
-    # Defense in depth: never write outside the cache dir even if _slug misses.
     filepath = safe_join(directory, subdir, filename)
     if filepath is None:
         logger.warn('people-cache', f'refusing to write outside cache dir: {relpath}')
         return None
-    # Preserve the pre-crop original so "Use original" can restore it offline. Only when we
-    # actually cropped — an uncropped served file already IS the original.
     orig_path = safe_join(directory, _ORIGINALS_DIR, f'{name_base}{orig_ext}') if cropped else None
 
     def _write() -> None:
@@ -275,7 +263,6 @@ async def cache_photo(
         if orig_path is not None:
             orig_path.parent.mkdir(parents=True, exist_ok=True)
             orig_path.write_bytes(original)
-        # Always record (not just for crops) so every cached image keeps its upstream URL.
         face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
 
     await asyncio.to_thread(_write)
@@ -284,13 +271,11 @@ async def cache_photo(
     return {'served_url': _local_url(relpath, data), 'gender': gender}
 
 
-# Sources whose images are already tight headshots — cropping again only degrades them.
 _NO_CROP_SOURCES = {'IAFD'}
 
 
 def _is_generic(url: str) -> bool:
-    # The silhouette placeholder IS cached (speeds future lookups) but must never be
-    # face-cropped — a generic head would crop to garbage.
+    """True for the silhouette placeholder, which is cached but must never be face-cropped."""
     return bool(url) and url in {generic_image_url('female'), generic_image_url('male')}
 
 
@@ -299,9 +284,8 @@ def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
 
 
 async def restore_original(filename: str) -> bool:
-    """Replace a cropped cache file with its un-cropped original. Prefers the preserved
-    local original (offline-safe); falls back to re-downloading the upstream. Backs the
-    /people 'Use original' action."""
+    """Replace a cropped cache file with its un-cropped original: preserved local copy first
+    (offline-safe), else re-download upstream. Backs the /people 'Use original' action."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)
@@ -315,7 +299,6 @@ async def restore_original(filename: str) -> bool:
     local = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
     data: bytes | None = local.read_bytes() if local is not None and local.exists() else None
     if data is None and entry.get('upstream_url'):
-        # IAFD headshots are Cloudflare-403'd — _download_image falls back to impersonation.
         fetched = await _download_image(entry['upstream_url'], None)
         data = fetched[0] if fetched else None
     if data is None:
@@ -343,7 +326,7 @@ def purge(filename: str) -> bool:
     Backs the /people 'Purge' button."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
-    target = safe_join(directory, subdir, filename)  # path-traversal guard
+    target = safe_join(directory, subdir, filename)
     if target is None or not target.exists():
         return False
     try:
@@ -366,14 +349,13 @@ _GENDERS = ('', 'male', 'female', 'trans')
 
 
 def set_gender(filename: str, new_gender: str) -> str | None:
-    """Correct a cached actor's gender: rename the `_<gender>` suffix, MOVE the file to the
-    matching actors/<gender> folder (directors/producers stay put), move the preserved
-    original and crop-log entry, and refresh the index. Returns the new filename."""
+    """Correct a cached actor's gender: rename the `_<gender>` suffix and MOVE the file (plus
+    original and crop-log entry) to actors/<gender>; directors/producers stay put. Returns the new filename."""
     if new_gender not in _GENDERS:
         return None
     directory = people_cache_dir()
-    type, slug, old_gender = parse_person_filename(filename)  # type.slug[_gender]
-    root = f'{type}.{slug}' if type else slug  # gender-less type.slug
+    type, slug, old_gender = parse_person_filename(filename)
+    root = f'{type}.{slug}' if type else slug
     if not root:
         return None
     ext = Path(filename).suffix
@@ -384,7 +366,7 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     src = safe_join(directory, old_subdir, filename)
     dst = safe_join(directory, new_subdir, new_filename)
     if src is None or dst is None:
-        return None  # path-traversal guard
+        return None
     if dst != src:
         if not src.exists():
             return None

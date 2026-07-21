@@ -48,7 +48,7 @@ async def test_generic_not_cropped(tmp_path: pytest.TempPathFactory, monkeypatch
 
     assert called['v'] is False
     assert (tmp_path / 'actors' / 'female' / 'actor.jane-doe_female.jpg').read_bytes() == b'ORIGINALBYTES'  # type: ignore[operator]
-    assert not (tmp_path / 'originals').exists()  # no separate original when not cropped  # type: ignore[operator]
+    assert not (tmp_path / 'originals').exists()  # type: ignore[operator]
 
 
 @respx.mock
@@ -148,7 +148,7 @@ def test_purge_deletes_file_original_and_log(tmp_path: pytest.TempPathFactory, m
 
     assert cache.purge('actor.jane-doe_female.jpg') is True
     assert not (fsub / 'actor.jane-doe_female.jpg').exists()
-    assert not (tmp_path / 'originals' / 'actor.jane-doe_female.jpg').exists()  # preserved original purged too  # type: ignore[operator]
+    assert not (tmp_path / 'originals' / 'actor.jane-doe_female.jpg').exists()  # type: ignore[operator]
     assert face_crop_log.recent(str(fsub)) == []
     assert cache.purge('actor.jane-doe_female.jpg') is False
 

@@ -26,12 +26,12 @@ def _is_movie_url(url: str) -> bool:
 
 
 def _clean_srcset_image(raw: str) -> str:
+    """Split on '_' keeping the first three fields and take the third."""
     if not raw:
         return ''
 
     value = raw.split(',')[-1].strip() if ',' in raw else raw
     value = _DENSITY_RE.sub('', value).strip()
-    # Mirror the TS port's JS split('_', 3).pop() semantics (first 3 fields, take the 3rd).
     first3 = value.split('_')[:3]
     key = first3[-1].split('.')[0] if first3 else ''
     return value.replace(f'_{key}', '', 1)

@@ -31,9 +31,8 @@ def cache_dir() -> Path:
 
 
 def logo_slug(name: str) -> str:
-    """The filename slug for a site/studio name: lowercase, spaces to hyphens, every
-    other special char removed ('Nubiles.net' -> 'nubilesnet', 'Baby Got Boobs' ->
-    'baby-got-boobs')."""
+    """Filename slug for a site/studio name: lowercase, spaces to hyphens, other special chars
+    removed ('Nubiles.net' -> 'nubilesnet', 'Baby Got Boobs' -> 'baby-got-boobs')."""
     cleaned = re.sub(r'[^a-z0-9 ]', '', name.lower())
     return re.sub(r'\s+', '-', cleaned.strip())
 
@@ -124,9 +123,8 @@ def local_url(path: Path) -> str | None:
 
 
 async def resolve_logo(tagline: str | None, studio: str | None, upstream: str | None) -> str | None:
-    """Local-first resolution: a cached file always wins; with the cache enabled an
-    upstream URL is downloaded ONCE (SVG rasterized) and served locally from then on;
-    with it disabled the upstream URL passes through untouched (or None)."""
+    """Local-first: a cached file always wins; with the cache enabled an upstream URL is downloaded
+    ONCE (SVG rasterized) then served locally; with it disabled the upstream passes through untouched."""
     hit = find_logo(tagline, studio)
     if hit:
         return local_url(hit) or upstream

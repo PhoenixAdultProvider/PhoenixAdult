@@ -130,7 +130,6 @@ class NVGClient(Client):
                 summary = (sel.xpath('(//div[contains(@class,"the-content")]/p)[1]').xpath('string(.)').get() or '').strip()
                 poster = first_attr(sel, '(//video)[1]/@poster')
 
-            # Legacy merge: prefer the page-data fluid src when the mysqlId resolves.
             if video_id.isdigit():
                 scene = await self._get_page_data(int(video_id), capture, base)
                 src = ((((scene or {}).get('localFile') or {}).get('childImageSharp') or {}).get('fluid') or {}).get('src') if scene else None

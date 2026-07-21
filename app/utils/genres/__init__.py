@@ -64,7 +64,6 @@ def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRu
         if cased_lower in opts.title.split('-')[0].lower():
             return None
 
-    # > 4 words is almost always a sentence fragment, not a tag.
     if len(cased.split()) > 4:
         return None
 

@@ -21,7 +21,7 @@ _DEFAULT_API_BASE = 'https://site-api.project1service.com'
 _DEFAULT_IMAGE_BASE = 'https://image-service-ht.project1content.com/'
 _SEARCH_TYPES = ('scene', 'movie', 'serie', 'trailer')
 _FORCED_SUBSITES = {'brazzerslive': 'Brazzers Live'}
-_TOKENS: SingleFlight[str, str] = SingleFlight()  # per-host Instance token, cached to its JWT expiry
+_TOKENS: SingleFlight[str, str] = SingleFlight()
 _INSTANCE_RE = re.compile(r'instance_token=([^;]+)')
 
 

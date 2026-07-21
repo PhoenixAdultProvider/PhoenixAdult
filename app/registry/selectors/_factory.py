@@ -24,9 +24,8 @@ def make_site(
     use_bypass: bool = False,
     cache_layout: CacheLayout = 'auto',
 ) -> SiteInfo:
-    """Shared SiteInfo factory for the per-network/site selector files. Wraps the
-    scraper type (and optional data18 enrichment) into a ScraperConfig and applies
-    SiteInfo's field defaults, so each selector only spells out what varies."""
+    """Shared SiteInfo factory for the selector files: wraps the scraper type (and optional data18
+    enrichment) into a ScraperConfig and applies SiteInfo's defaults, so each selector only spells out what varies."""
     return SiteInfo(
         name=name,
         base_url=base_url,

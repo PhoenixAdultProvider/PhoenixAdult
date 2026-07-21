@@ -44,7 +44,6 @@ class GoogleCseClient:
 
         logger.debug('search:google', f'GET customsearch siteSearch={opts.site} q="{opts.query}"')
         try:
-            # Credentialed first-party API — verify TLS (scraper traffic stays unverified).
             async with httpx2.AsyncClient(timeout=10.0, verify=True) as client:
                 resp = await client.get(_ENDPOINT, params=params)
             data = resp.json()

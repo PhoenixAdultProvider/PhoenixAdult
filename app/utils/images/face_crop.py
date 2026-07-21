@@ -9,15 +9,14 @@ from app.utils.logging.logger import logger
 
 _MODEL_PATH: Path = load_data(__file__, 'face_detection_yunet_2023mar.onnx', kind='path')
 
-# Detector keeps candidates >= _DETECT_SCORE; we only crop on a face >= _CROP_SCORE.
 _DETECT_SCORE = 0.5
 _CROP_SCORE = 0.6
 _JPEG_QUALITY = 92
 
-_CROP_SIDE_FACES = 3.0  # square side as a multiple of the detected face height
-_CROP_SIDE_WIDTHS = 2.2  # ...or of the face width, whichever is larger
-_CROP_HEADROOM = 0.5  # headroom above the face box, in face-heights
-_CROP_MIN_FACES = 1.8  # below this achievable side the source is already ~a close-up
+_CROP_SIDE_FACES = 3.0
+_CROP_SIDE_WIDTHS = 2.2
+_CROP_HEADROOM = 0.5
+_CROP_MIN_FACES = 1.8
 
 _cv2: Any = None
 _np: Any = None
@@ -84,10 +83,8 @@ def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], floa
 
 
 def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | None:
-    """Square head-and-shoulders crop: a little headroom above the hair, the face in
-    the upper half, and the shoulders/upper chest filling the lower half — so a person
-    card frames the head and some shoulders, not a tight face. Returns None when the
-    result would be degenerate or the source is already ~a close-up."""
+    """Square head-and-shoulders crop: headroom above the hair, face in the upper half,
+    shoulders filling the lower. Returns None when degenerate or already ~a close-up."""
     height, width = img.shape[:2]
     x, y, w, h = box
     cx = x + w / 2.0
@@ -97,8 +94,6 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
     if side < _CROP_MIN_FACES * h:
         return None
 
-    # Centre horizontally on the face; bias downward (headroom above the box, then
-    # extend down into the shoulders) rather than centring on the face.
     left = max(0.0, min(cx - side / 2.0, width - side))
     top = max(0.0, min(y - _CROP_HEADROOM * h, height - side))
 
@@ -111,9 +106,8 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
 
 
 def crop_to_headshot(data: bytes) -> bytes | None:
-    """Crop image bytes to an upright head+shoulders headshot (JPEG). Returns None
-    to signal 'keep the original' (no confident face, already a headshot, decode
-    failure, or cv2 unavailable) — the caller must fall back to the original."""
+    """Crop image bytes to an upright head+shoulders headshot (JPEG). Returns None to
+    signal 'keep the original' (no confident face, decode failure, or cv2 unavailable)."""
     libs = _libs()
     if libs is None:
         return None

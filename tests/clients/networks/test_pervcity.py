@@ -58,7 +58,6 @@ async def test_detail_actor_host_swap() -> None:
             </body></html>""",
         )
     )
-    # legacy host swap: model link analoverdose.com -> pervcity.com
     respx.get('https://pervcity.com/model/jane').mock(return_value=httpx.Response(200, text='<div class="starPic"><img src="https://cdn/jane.jpg" /></div>'))
     detail = await PervCityClient().fetch_scene_detail('https://analoverdose.com/scene/7|2021-03-04', SITE)
     assert detail is not None

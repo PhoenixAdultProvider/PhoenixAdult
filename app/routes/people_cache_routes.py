@@ -43,9 +43,8 @@ def _parse_filename(filename: str) -> tuple[str, str, str] | None:
 
 
 def _list_people(directory: str) -> list[dict[str, Any]]:
-    """Every cached headshot across the role/gender subfolders, newest first, enriched with
-    each subfolder's crop-log metadata. The originals/ backing store is skipped. Each entry
-    carries its relpath (for the served URL) and a `type` (the tab it belongs to)."""
+    """Every cached headshot across the role/gender subfolders (originals/ skipped), newest first,
+    enriched with crop-log metadata; entries carry relpath (served URL) and `type` (tab)."""
     root = Path(directory)
     if not root.exists():
         return []

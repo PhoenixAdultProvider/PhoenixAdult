@@ -23,7 +23,7 @@ def normalize_studio(name: str, site_name: str = '') -> str:
     if not name:
         return ''
 
-    from app.registry import canonical_site_display  # local import to avoid a cycle
+    from app.registry import canonical_site_display
 
     display = canonical_site_display(name)
     if display:

@@ -25,7 +25,6 @@ def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
 @respx.mock
 async def test_search_url_guess(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ns_mod, 'web_search_available', lambda: False)
-    # candidate 1 hits; others 404
     hit = 'http://www.newsensations.com/tour_ns/updates/Cool-Scene.html'
     respx.get(hit).mock(return_value=httpx.Response(200, text='<div class="indScene"><h1>Cool Scene</h1></div>'))
     respx.get(url__startswith='http://www.newsensations.com/tour_ns/').mock(return_value=httpx.Response(404, text=''))

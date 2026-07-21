@@ -10,9 +10,8 @@ from app.utils.logging.redaction import RedactionFilter
 
 
 def uvicorn_level() -> str:
-    """The stdlib level name uvicorn's own loggers run at for the configured
-    LOG_LEVEL. Levels below DEBUG (http, verbose, silly) map to DEBUG — uvicorn
-    has nothing quieter."""
+    """The stdlib level name uvicorn's own loggers run at for the configured LOG_LEVEL;
+    levels below DEBUG (http, verbose, silly) map to DEBUG — uvicorn has nothing quieter."""
     return {'error': 'ERROR', 'warn': 'WARNING', 'info': 'INFO'}.get(config.log_level, 'DEBUG')
 
 
@@ -23,9 +22,6 @@ class StartupAddressFilter(logging.Filter):
         return not (env.is_production and isinstance(record.msg, str) and record.msg.startswith('Uvicorn running on'))
 
 
-# A uvicorn log_config applied at process startup (passed to uvicorn.run in main.py).
-# Unlike configure_uvicorn_logging() — which runs in the lifespan, too late for the
-# reloader process and the pre-startup lines — this is in effect from the first line.
 UVICORN_LOG_CONFIG: dict[str, Any] = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -47,20 +43,14 @@ UVICORN_LOG_CONFIG: dict[str, Any] = {
     'loggers': {
         'uvicorn': {'handlers': ['default'], 'level': uvicorn_level(), 'propagate': False},
         'uvicorn.error': {'level': uvicorn_level(), 'propagate': True},
-        # Silenced — RequestContextMiddleware emits the access line in-scope instead.
         'uvicorn.access': {'handlers': [], 'level': 'CRITICAL', 'propagate': False},
     },
 }
 
 
 def configure_uvicorn_logging() -> None:
-    """Make uvicorn's logs match the provider format, and silence its duplicate access log.
-
-    Called from the app lifespan so it applies under any entrypoint, after uvicorn
-    has configured its own logging. The per-request access line is emitted in-scope
-    by RequestContextMiddleware instead (so it carries the request id); uvicorn's own
-    access logger fires out-of-scope and would duplicate it, so it's disabled here.
-    """
+    """Lifespan-time counterpart of UVICORN_LOG_CONFIG (which covers the reloader and pre-startup lines):
+    provider format on uvicorn's loggers; its access log is silenced — RequestContextMiddleware emits it in-scope."""
     for name in ('uvicorn', 'uvicorn.error'):
         lg = logging.getLogger(name)
         lg.setLevel(uvicorn_level())
@@ -71,13 +61,10 @@ def configure_uvicorn_logging() -> None:
     if not any(isinstance(f, StartupAddressFilter) for f in err.filters):
         err.addFilter(StartupAddressFilter())
 
-    # uvicorn.error has no handlers and propagates to the 'uvicorn' logger.
     fmt = AlignedFormatter()
     for handler in logging.getLogger('uvicorn').handlers:
         handler.setFormatter(fmt)
 
-    # Silence uvicorn's own access log — RequestContextMiddleware emits the access
-    # line in-scope (with the request id, redaction, and provider format) instead.
     access = logging.getLogger('uvicorn.access')
     access.handlers = []
     access.propagate = False

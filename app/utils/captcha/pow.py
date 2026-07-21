@@ -15,10 +15,8 @@ from app.utils.cookies.site_cookies import parse_set_cookie
 from app.utils.http.client import DEFAULT_UA, make_http
 from app.utils.logging.logger import logger
 
-_HOST_CACHE_TTL = 30 * 60  # seconds
+_HOST_CACHE_TTL = 30 * 60
 
-# serve_stale=False: expired challenge cookies are useless, so a failed refresh
-# returns None (forcing a fresh solve) rather than handing back a stale set.
 _COOKIES: SingleFlight[str, dict[str, str]] = SingleFlight(serve_stale=False)
 
 _BASE_HEADERS = {
@@ -45,9 +43,8 @@ def solve_pow(challenge: str, difficulty: int) -> int:
 async def get_verified_cookies(
     base_url: str, challenge_path: str = '/video/gallery', pace: Callable[[], Awaitable[None]] | None = None
 ) -> dict[str, str] | None:
-    """Challenge cookies for `base_url`, solving the PoW turnstile on `challenge_path` when
-    present (cached per host). `pace` is awaited before each request so a caller's site
-    rate limit also covers the warm-up fetches."""
+    """Challenge cookies for `base_url`, solving the PoW turnstile on `challenge_path` (cached per
+    host); `pace` is awaited before each request so a caller's site rate limit covers the warm-ups."""
     host = urlsplit(base_url).hostname or ''
     if not host:
         return None

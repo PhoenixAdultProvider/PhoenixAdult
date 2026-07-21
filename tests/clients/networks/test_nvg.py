@@ -62,7 +62,6 @@ async def test_detail_from_id() -> None:
 
 @respx.mock
 async def test_detail_url_prefers_page_data_poster() -> None:
-    # legacy merge: URL-resolved scene still prefers the page-data fluid src when mysqlId matches
     scene_url = 'https://netvideogirls.net/scene-x/'
     respx.get(scene_url).mock(
         return_value=httpx.Response(
@@ -76,5 +75,4 @@ async def test_detail_url_prefers_page_data_poster() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.scene_url == scene_url
-    # page-data fluid src wins over the on-page <video poster> (legacy merge)
     assert detail.art == ['https://netvideogirls.net/img/c.jpg']

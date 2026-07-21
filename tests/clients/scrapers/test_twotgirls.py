@@ -26,7 +26,6 @@ async def test_search_direct_hit() -> None:
 
 @respx.mock
 async def test_search_fallback_to_onsite() -> None:
-    # Direct-URL guess 404s → fall back to /videos search.
     respx.get('https://twotgirls.com/video/wild-scene').mock(return_value=httpx.Response(404, text=''))
     respx.get('https://twotgirls.com/videos?query=' + quote('wild scene')).mock(
         return_value=httpx.Response(
