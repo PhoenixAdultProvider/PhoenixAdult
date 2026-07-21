@@ -88,9 +88,9 @@ class _Env:
     @property
     def scene_gap(self) -> float:
         try:
-            return max(0.0, float(os.environ.get('SCENE_GAP') or 60))
+            return max(0.0, float(os.environ.get('SCENE_GAP') or 10))
         except ValueError:
-            return 60.0
+            return 10.0
 
     @property
     def search_queue_dir(self) -> str:

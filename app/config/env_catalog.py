@@ -402,12 +402,12 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'SCENE_GAP',
         'Paced scrapers: between-scenes delay',
         'Base seconds between units of work (searches AND scene scrapes share one track) on rate-limited scrapers '
-        '(Nubiles, Naughty America); a 1-4 minute random jitter is always added on top, and at most 4 scenes run '
+        '(Nubiles, Naughty America); a 10-75s random jitter is always added on top, and at most 4 scenes run '
         'per 10 minutes regardless. Deferred work runs in the background (watch it at /queue); finished background '
         'searches persist to the search store so a later scan consumes them.',
         'Misc',
         'number',
-        default_value='60',
+        default_value='10',
         min=0,
         max=3600,
     ),
