@@ -4,13 +4,13 @@ import re
 from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_data
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Adult Prime'
 
 _STUDIO_OVERRIDES: dict[str, str] = {'Club Sweethearts': 'Club Sweethearts'}
-_SKIP_PREFIXES: list[str] = load_site_json(__file__, 'adultprime_skip_prefixes')
+_SKIP_PREFIXES: list[str] = load_data(__file__, 'adultprime_skip_prefixes')
 
 _EURO_DATE_RE = re.compile(r'(\d{2})\.(\d{2})\.(\d{4})')
 

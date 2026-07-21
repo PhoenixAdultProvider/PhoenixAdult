@@ -28,6 +28,7 @@ from app.config.env_overrides import (
 )
 from app.routes import read_json_body
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
+from app.utils.helpers.helpers import load_data
 from app.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
@@ -148,7 +149,7 @@ async def api_restart() -> JSONResponse:
     return JSONResponse({'ok': True, 'method': 'shutdown'})
 
 
-_CONFIG_HTML = (Path(__file__).parent / 'html' / 'config_ui.html').read_text(encoding='utf-8')
+_CONFIG_HTML = load_data(__file__, 'config_ui', kind='html')
 
 
 def _render_ui(state: dict[str, Any]) -> str:

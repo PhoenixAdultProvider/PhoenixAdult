@@ -4,9 +4,10 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from app.utils.helpers.helpers import load_data
 from app.utils.logging.logger import logger
 
-_MODEL_PATH = Path(__file__).parent / '_data' / 'face_detection_yunet_2023mar.onnx'
+_MODEL_PATH: Path = load_data(__file__, 'face_detection_yunet_2023mar.onnx', kind='path')
 
 # Detector keeps candidates >= _DETECT_SCORE; we only crop on a face >= _CROP_SCORE.
 _DETECT_SCORE = 0.5

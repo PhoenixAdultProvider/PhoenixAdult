@@ -251,7 +251,8 @@ def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -
 
     from app.clients.aggregators.data18 import _load_manual_mappings
 
-    folder = Path(str(tmp_path))
+    folder = Path(str(tmp_path)) / '_data' / 'json'
+    folder.mkdir(parents=True)
     (folder / 'data18_manual_mappings.json').write_text(
         json.dumps({'1': {'slug': 'base-scene', 'type': 'scene'}, '2': {'slug': 'overridden', 'type': 'scene'}}), encoding='utf-8'
     )
@@ -259,7 +260,7 @@ def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -
     (folder / 'data18_manual_mappings_vrcosplayx.json').write_text(json.dumps({'3': {'slug': 'cosplay-scene', 'type': 'scene'}}), encoding='utf-8')
     (folder / 'unrelated.json').write_text(json.dumps({'9': {'slug': 'ignored', 'type': 'scene'}}), encoding='utf-8')
 
-    merged = _load_manual_mappings(folder)
+    merged = _load_manual_mappings(str(Path(str(tmp_path)) / 'fake_module.py'))
     assert merged == {
         '1': {'slug': 'base-scene', 'type': 'scene'},
         '2': {'slug': 'brazzers-wins', 'type': 'movie'},

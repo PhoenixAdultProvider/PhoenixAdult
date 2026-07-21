@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
-from app.utils.helpers.helpers import load_site_json
+from app.utils.helpers.helpers import load_data
 
 PROVIDER_NAME = 'Gamma'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
@@ -10,7 +10,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 PROVIDER_SEARCH_PATH = 'https://tsmkfa364q-dsn.algolia.net/1/indexes/*/queries'
 
-_ALIASES: dict[str, list[str]] = load_site_json(__file__, 'gammaentother_aliases')
+_ALIASES: dict[str, list[str]] = load_data(__file__, 'gammaentother_aliases')
 
 
 def _site(sub_group: str, base_url: str, name: str, aliases: list[str] | None = None) -> SiteInfo:

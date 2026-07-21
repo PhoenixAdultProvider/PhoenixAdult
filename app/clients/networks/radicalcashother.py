@@ -6,11 +6,11 @@ from typing import Any
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, strip_query
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_data, pack_cur_id, strip_query
 from app.utils.helpers.html_helpers import first_attr, web_search_urls
 
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
-_PROFILES: dict[str, dict[str, Any]] = load_site_json(__file__, 'radicalcashother_profiles')
+_PROFILES: dict[str, dict[str, Any]] = load_data(__file__, 'radicalcashother_profiles')
 
 
 def _strip_ordinals(s: str) -> str:

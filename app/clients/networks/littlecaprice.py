@@ -4,12 +4,12 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, iso_date, join_url, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date, join_url, load_data
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'LittleCaprice'
 
-_CATEGORY_TAGLINES: dict[str, str] = load_site_json(__file__, 'littlecaprice_category_taglines')
+_CATEGORY_TAGLINES: dict[str, str] = load_data(__file__, 'littlecaprice_category_taglines')
 
 
 class LittleCapriceClient(Client):

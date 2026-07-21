@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
 from app.utils.logging.logger import logger
@@ -17,7 +17,7 @@ from app.utils.processors.similarity import compare_string
 from app.utils.processors.title_case import title_case
 from app.utils.searchengines import SearchOptions, web_search
 
-_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'adultempire_scene_actors')
+_SCENE_ACTORS: dict[str, list[str]] = load_data(__file__, 'adultempire_scene_actors')
 _REFERER = 'http://www.data18.empirestores.co'
 _STARRING_ANCHORS = '(//div[contains(.,"Starring")])[1]//a[contains(@label,"Performer") and contains(@href,"/porn-videos/")]'
 _CAST_LI = '//div[.//a[@name="cast"]]//li'

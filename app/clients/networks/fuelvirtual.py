@@ -3,14 +3,14 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
 _SCENE_ID_RE = re.compile(r'id=(\d+)')
 
-_ACTOR_DB: dict[str, dict[str, list[str]]] = load_site_json(__file__, 'fuelvirtual_actors')
+_ACTOR_DB: dict[str, dict[str, list[str]]] = load_data(__file__, 'fuelvirtual_actors')
 
 
 def _server_path(site_name: str) -> str:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 
-from app.utils.helpers.helpers import load_site_json
+from app.utils.helpers.helpers import load_data
 
-_SUBNETWORKS: dict[str, list[str]] = load_site_json(__file__, 'reptyle_subnetworks')
+_SUBNETWORKS: dict[str, list[str]] = load_data(__file__, 'reptyle_subnetworks')
 
 
 def _norm(s: str) -> str:

@@ -6,11 +6,11 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Allure Media'
-_TABLES: dict[str, Any] = load_site_json(__file__, 'alluremedia_tables')
+_TABLES: dict[str, Any] = load_data(__file__, 'alluremedia_tables')
 _CENSORED: dict[str, str] = _TABLES['censoredWords']
 _SCENE_ACTORS: list[str] = _TABLES['sceneActors']
 

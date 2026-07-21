@@ -830,10 +830,10 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Family Swap
     - Moms Teach Sex
     - My Family Pies
-    - Nubiles
     - Nubiles Casting
     - Nubiles ET
     - Nubiles Unscripted
+    - Nubiles.net
     - Petite Ballerinas Fucked
     - Petite HD Porn
     - Princess Cum

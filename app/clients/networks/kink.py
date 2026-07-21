@@ -5,7 +5,7 @@ import re
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
 _VIEWING_COOKIE = 'viewing-preferences=straight%2Cgay'
@@ -13,7 +13,7 @@ _BR_RE = re.compile(r'<br\s*/?>', re.IGNORECASE)
 _TAG_RE = re.compile(r'<[^>]+>')
 _WS_RE = re.compile(r'\s+')
 
-_CHANNELS = load_site_json(__file__, 'kink_channels')
+_CHANNELS = load_data(__file__, 'kink_channels')
 _TAGLINE_BY_CHANNEL: dict[str, str] = _CHANNELS['taglineByChannel']
 _STUDIO_BY_TAGLINE: dict[str, str] = _CHANNELS['studioByTagline']
 _CHANNEL_KEYS = sorted(_TAGLINE_BY_CHANNEL.keys(), key=len, reverse=True)

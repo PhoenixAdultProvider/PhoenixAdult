@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import api_date, build_search_result, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import api_date, build_search_result, load_data, pack_cur_id
 
 _LIST_QUERY = (
     'content.load?_method=content.load&tz=1&limit=512&transitParameters[v1]=OhUOlmasXD&transitParameters[v2]=OhUOlmasXD&transitParameters[preset]=videos'
@@ -17,7 +17,7 @@ _MODEL_QUERY = 'model.getModelContent?_method=model.getModelContent&tz=1&limit=2
 _AH_RE = re.compile(r'"ah".?:.?"([0-9a-zA-Z()@:,/!+\-.$_=\\\']*)"')
 _AET_RE = re.compile(r'"aet".?:([0-9]+)')
 
-_LEAD_ACTORS: dict[str, str] = load_site_json(__file__, 'modelcentro_actors')
+_LEAD_ACTORS: dict[str, str] = load_data(__file__, 'modelcentro_actors')
 
 
 def _detail_query(scene_id: int) -> str:

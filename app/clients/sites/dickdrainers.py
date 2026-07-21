@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from app.utils.processors.title_case import title_case
 
-_SLUG_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'dickdrainers_slug_actors')
+_SLUG_ACTORS: dict[str, list[str]] = load_data(__file__, 'dickdrainers_slug_actors')
 
 _CARD_XP = '//div[contains(@class,"item-video") and contains(@class,"hover")]'
 _SRC0_3X_RE = re.compile(r'src0_3x="([^"]+)"')

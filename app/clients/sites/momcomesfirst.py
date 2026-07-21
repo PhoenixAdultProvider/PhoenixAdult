@@ -4,11 +4,11 @@ import re
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import absolute_url, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, iso_date, load_data
 from app.utils.helpers.html_helpers import first_attr, first_text
 from app.utils.processors.title_case import title_case
 
-_ACTORS: set[str] = set(load_site_json(__file__, 'momcomesfirst_actors'))
+_ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
 
 
 class MomComesFirstClient(Client):

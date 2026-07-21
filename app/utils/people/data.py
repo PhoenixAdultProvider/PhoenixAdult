@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any, NamedTuple
 
 from app.utils.fs.reloadable import MtimeCachedJson
+from app.utils.helpers.helpers import load_data
 
-_JSON = Path(__file__).parent / '_data' / 'json'
-_ACTORS = _JSON / 'actors.json'
+_ACTORS_PATH = load_data(__file__, 'json/actors.json', kind='path')
 
 
 class ActorRules(NamedTuple):
@@ -20,7 +18,7 @@ def _build(raw: dict[str, Any]) -> ActorRules:
     return ActorRules(raw['replace'], raw['replace_studios'], raw['studio_indexes'])
 
 
-_RULES: MtimeCachedJson[ActorRules] = MtimeCachedJson(_ACTORS, _build)
+_RULES: MtimeCachedJson[ActorRules] = MtimeCachedJson(_ACTORS_PATH, _build)
 
 
 def actor_rules() -> ActorRules:
@@ -29,7 +27,7 @@ def actor_rules() -> ActorRules:
     return _RULES.get()
 
 
-ACTORS_JAVBUS_SEARCH: dict[str, list[str]] = json.loads((_JSON / 'actorsJavBusSearch.json').read_text(encoding='utf-8'))
+ACTORS_JAVBUS_SEARCH: dict[str, list[str]] = load_data(__file__, 'actorsJavBusSearch')
 
 
 def lookup_javbus_id(actor_name: str) -> str | None:

@@ -8,11 +8,11 @@ from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.processors.title_case import title_case
 
-_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'jesseloads_actors')
+_ACTORS: dict[str, list[str]] = load_data(__file__, 'jesseloads_actors')
 _WS_RE = re.compile(r'\s+')
 _NUM_RE = re.compile(r'(\d+)')
 

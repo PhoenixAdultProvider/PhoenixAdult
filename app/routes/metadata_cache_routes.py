@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -11,10 +10,11 @@ from app.config.env import env
 from app.routes import read_json_body
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
+from app.utils.helpers.helpers import load_data
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
-_TEMPLATE = (Path(__file__).parent / 'html' / 'metadata_cache.html').read_text(encoding='utf-8')
+_TEMPLATE = load_data(__file__, 'metadata_cache', kind='html')
 
 
 @router.get('', response_class=HTMLResponse)

@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
 
+from app.utils.helpers.helpers import load_data
 from app.utils.processors.title_case import title_case
 
-_DATA = Path(__file__).parent / '_data' / 'json' / 'studios.json'
-_raw = json.loads(_DATA.read_text(encoding='utf-8'))
+_raw = load_data(__file__, 'studios')
 
 CANONICAL_STUDIOS: list[str] = _raw['canonical']
 STUDIO_ALIASES: dict[str, str] = _raw['aliases']

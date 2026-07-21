@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 
-_DATA = Path(__file__).parent / '_data' / 'json' / 'abbreviations.json'
-_raw: list[list[str]] = json.loads(_DATA.read_text(encoding='utf-8'))
+from app.utils.helpers.helpers import load_data
+
+_raw: list[list[str]] = load_data(__file__, 'abbreviations')
 
 
 @dataclass(frozen=True)

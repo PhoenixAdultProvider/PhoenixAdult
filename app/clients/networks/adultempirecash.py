@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, slugify
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.logger import logger
 
@@ -14,7 +14,7 @@ _DATE_FMT = '%b %d, %Y'
 
 Variant = Literal['standard', 'imgFullFluid', 'sceneTitleP']
 
-_VARIANTS: dict[str, str] = load_site_json(__file__, 'adultempirecash_variants')
+_VARIANTS: dict[str, str] = load_data(__file__, 'adultempirecash_variants')
 _STUDIO_OVERRIDES: dict[str, str] = {'Horny Household': 'Horny Household'}
 
 # Per-subsite genre-source override (XPath). Default reads div.tags; Elegant Angel

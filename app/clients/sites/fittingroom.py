@@ -5,10 +5,10 @@ import re
 from parsel import Selector
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
-_COLLECTIONS: dict[str, str] = load_site_json(__file__, 'fittingroom_collections')
+_COLLECTIONS: dict[str, str] = load_data(__file__, 'fittingroom_collections')
 
 STUDIO = 'Fitting-Room'
 _SCENE_ID_RE = re.compile(r'/(\d+)/1$')

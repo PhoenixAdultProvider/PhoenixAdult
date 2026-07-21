@@ -14,7 +14,7 @@ from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, to_https
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.images.image_fetcher import fetch_image
 from app.utils.logging.logger import logger
@@ -74,7 +74,7 @@ def _retry_after_seconds(resp: Any) -> float | None:
     return max(0.0, min((when - datetime.now(UTC)).total_seconds(), _MAX_BACKOFF))
 
 
-_SUMMARY_ACTORS: list[str] = load_site_json(__file__, 'nubiles_summary_actors')
+_SUMMARY_ACTORS: list[str] = load_data(__file__, 'nubiles_summary_actors')
 
 
 def _best_variant(candidates: list[str]) -> str | None:
@@ -321,7 +321,7 @@ class NubilesClient(Client):
         metadata.studio = scene.site.sub_group if scene.site.sub_group else STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
+        metadata.tagline = scene.site.name if scene.site.name != metadata.studio else None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

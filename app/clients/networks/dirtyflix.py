@@ -15,15 +15,15 @@ from app.clients.base import (
     SearchResult,
 )
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import absolute_url, date_distance_score, iso_date, load_site_json, title_distance_score
+from app.utils.helpers.helpers import absolute_url, date_distance_score, iso_date, load_data, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Dirty Flix'
 _TOUR_HOST = 'https://dirtyflix.com'
 _SCENE_ID_RE = re.compile(r'tour_thumbs/([^/]+)/')
 
-_SITES: dict[str, dict[str, Any]] = load_site_json(__file__, 'dirtyflix_sites')
-_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'dirtyflix_scene_actors')
+_SITES: dict[str, dict[str, Any]] = load_data(__file__, 'dirtyflix_sites')
+_SCENE_ACTORS: dict[str, list[str]] = load_data(__file__, 'dirtyflix_scene_actors')
 
 
 def _actors_for_scene_id(scene_id: str) -> list[str]:

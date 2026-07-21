@@ -5,11 +5,11 @@ from typing import Any
 
 from app.clients.base import Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Thick Cash'
-_GENRES: dict[str, list[str]] = load_site_json(__file__, 'thickcash_genres')
+_GENRES: dict[str, list[str]] = load_data(__file__, 'thickcash_genres')
 
 
 class ThickCashClient(Client):

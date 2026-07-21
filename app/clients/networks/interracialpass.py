@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data
 from app.utils.helpers.html_helpers import first_attr
 
-_STUDIO_OVERRIDES: dict[str, str] = load_site_json(__file__, 'interracialpass_studios')
+_STUDIO_OVERRIDES: dict[str, str] = load_data(__file__, 'interracialpass_studios')
 _TITLE_SELECTORS: dict[str, str] = {'BBC Surprise': 'h3', 'Hot Milfs Fuck': 'h1'}
 
 

@@ -5,7 +5,6 @@ import dataclasses
 import html
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
@@ -20,7 +19,7 @@ from app.services.metadata_service import refresh_cached_snapshot
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
-from app.utils.helpers.helpers import embed_subsite, split_subsite, title_distance_score
+from app.utils.helpers.helpers import embed_subsite, load_data, split_subsite, title_distance_score
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.log_capture import begin_capture
 from app.utils.logging.logger import logger
@@ -507,4 +506,4 @@ def _render_ui(sites: list[dict[str, Any]]) -> str:
     return _DEV_HTML.replace('__SITE_ROWS__', ''.join(rows))
 
 
-_DEV_HTML = (Path(__file__).parent / 'html' / 'dev_ui.html').read_text(encoding='utf-8')
+_DEV_HTML = load_data(__file__, 'dev_ui', kind='html')

@@ -4,13 +4,13 @@ import re
 from typing import Any, TypedDict
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from app.utils.helpers.helpers import decensor, iso_date, load_site_json, sceneid_distance_score
+from app.utils.helpers.helpers import decensor, iso_date, load_data, sceneid_distance_score
 from app.utils.helpers.html_helpers import first_attr, meta_content
 from app.utils.helpers.javbus_images import push_javbus_images
 from app.utils.processors.title_case import title_case
 
-_TABLES = load_site_json(__file__, 'javdatabase_tables')
-_SCENE_ACTORS: dict[str, list[str]] = load_site_json(__file__, 'javdatabase_scene_actors')
+_TABLES = load_data(__file__, 'javdatabase_tables')
+_SCENE_ACTORS: dict[str, list[str]] = load_data(__file__, 'javdatabase_scene_actors')
 _CENSORED: dict[str, str] = _TABLES['censoredWords']
 _ACTOR_CORRECTIONS: dict[str, list[str]] = _TABLES['actorCorrections']
 _CROSS_SITE: dict[str, list[str]] = _TABLES['crossSite']

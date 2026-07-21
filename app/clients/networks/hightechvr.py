@@ -5,10 +5,10 @@ import re
 from parsel import Selector
 
 from app.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_site_json, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, join_url, load_data, pack_cur_id, slugify
 from app.utils.helpers.html_helpers import first_attr
 
-_PROFILES: dict[str, dict[str, str]] = load_site_json(__file__, 'hightechvr_profiles')
+_PROFILES: dict[str, dict[str, str]] = load_data(__file__, 'hightechvr_profiles')
 _SEXBABES_RE = re.compile(r'videos_screenshots/(.+?)/\d+x\d+/')
 _STYLE_URL_RE = re.compile(r'url\(\s*[\'"]?([^\'")]+)[\'"]?\s*\)')
 

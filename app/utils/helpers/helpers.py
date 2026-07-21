@@ -5,7 +5,7 @@ import json
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urljoin
 
 from dateutil import parser as date_parser
@@ -19,10 +19,16 @@ if TYPE_CHECKING:
     from app.clients.base import SearchResult
 
 
-def load_site_json(caller_file: str, name: str) -> Any:
-    """Load a per-site JSON fixture from the caller's sibling _data/json/<name>.json.
-    Pass `__file__` as caller_file and the fixture's bare filename (no .json)."""
-    return json.loads((Path(caller_file).parent / '_data' / 'json' / f'{name}.json').read_text(encoding='utf-8'))
+def load_data(caller_file: str, name: str, kind: Literal['json', 'html', 'path'] = 'json') -> Any:
+    """Load a convention-placed asset relative to the caller's module (pass `__file__`):
+    'json' parses _data/json/<name>.json (bare name, no extension), 'html' reads
+    html/<name>.html as text, 'path' returns the Path to the raw asset _data/<name>."""
+    folder = Path(caller_file).parent
+    if kind == 'html':
+        return (folder / 'html' / f'{name}.html').read_text(encoding='utf-8')
+    if kind == 'path':
+        return folder / '_data' / name
+    return json.loads((folder / '_data' / 'json' / f'{name}.json').read_text(encoding='utf-8'))
 
 
 # ── curID base64url codec (no padding, matching Node Buffer base64url) ────────

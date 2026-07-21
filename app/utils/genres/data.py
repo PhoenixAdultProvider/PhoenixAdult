@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, NamedTuple
 
 from app.utils.fs.reloadable import MtimeCachedJson
+from app.utils.helpers.helpers import load_data
 
-_DATA = Path(__file__).parent / '_data' / 'json' / 'genres.json'
+_DATA = load_data(__file__, 'json/genres.json', kind='path')
 
 
 class GenreRules(NamedTuple):

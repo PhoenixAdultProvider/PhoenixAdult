@@ -3,13 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_site_json, title_distance_score
+from app.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_data, title_distance_score
 from app.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Femdom Empire'
 _DATE_FMT = '%B %d, %Y'
 
-_MANUAL_MATCHES: dict[str, dict[str, str]] = load_site_json(__file__, 'femdomempire_manual_matches')
+_MANUAL_MATCHES: dict[str, dict[str, str]] = load_data(__file__, 'femdomempire_manual_matches')
 
 
 class FemdomEmpireClient(Client):

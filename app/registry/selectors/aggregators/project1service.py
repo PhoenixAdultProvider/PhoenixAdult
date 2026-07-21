@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from app.registry.selectors._factory import make_site
 from app.registry.site_info import ContentType, SearchMethod, SiteInfo
-from app.utils.helpers.helpers import load_site_json
+from app.utils.helpers.helpers import load_data
 
 PROVIDER_NAME = 'Project1Service'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneIdName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 
-_ALIASES: dict[str, list[str]] = load_site_json(__file__, 'project1service_aliases')
+_ALIASES: dict[str, list[str]] = load_data(__file__, 'project1service_aliases')
 
 
 def _site(name: str, base_url: str) -> SiteInfo:

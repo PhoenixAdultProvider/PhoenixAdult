@@ -44,7 +44,7 @@ NUBILES_PORN_SITES = [
     _site('Family Swap', 'https://familyswap.xxx'),
     _site('Moms Teach Sex', 'https://momsteachsex.com'),
     _site('My Family Pies', 'https://myfamilypies.com'),
-    _site('Nubiles', 'https://nubiles.net'),
+    _site('Nubiles.net', 'https://nubiles.net'),
     _site('Nubiles Casting', 'https://nubiles-casting.com'),
     _site('Nubiles ET', 'https://nubileset.com'),
     _site('Nubiles Porn', 'https://nubiles-porn.com'),

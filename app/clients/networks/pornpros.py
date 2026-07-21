@@ -4,9 +4,9 @@ from typing import Any
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id, slugify
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
 
-_GENRES: dict[str, list[str]] = load_site_json(__file__, 'pornpros_genres')
+_GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
 
 
 def _query_slug(title: str) -> str:

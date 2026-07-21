@@ -7,10 +7,10 @@ from urllib.parse import quote
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
-from app.utils.helpers.helpers import build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
 
 STUDIO = 'Clips4Sale'
-_STUDIOS: list[dict[str, Any]] = load_site_json(__file__, 'clips4sale_studios')
+_STUDIOS: list[dict[str, Any]] = load_data(__file__, 'clips4sale_studios')
 _REMIX_RE = re.compile(r'window\.__remixContext\s*=\s*(\{.*?\});', re.DOTALL)
 
 _FILE_TYPES = ['mp4', 'wmv', 'avi']

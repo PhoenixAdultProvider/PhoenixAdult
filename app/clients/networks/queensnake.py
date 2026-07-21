@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_site_json, pack_cur_id
+from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 
 _DATE_FMT = '%Y %B %d'
-_ROSTER: set[str] = set(load_site_json(__file__, 'queensnake_actors'))
+_ROSTER: set[str] = set(load_data(__file__, 'queensnake_actors'))
 
 
 def _is_qs_actor(tag: str) -> bool:
