@@ -257,6 +257,13 @@ def test_studio_empty() -> None:
 def test_abbreviation_expansion() -> None:
     assert expand_abbreviations('18og some title').startswith('18OnlyGirls')
     assert expand_abbreviations('PlainTitle here') == 'PlainTitle here'
+    assert expand_abbreviations('Nubiles here') == 'Nubilesnet here'
+
+
+def test_abbreviation_expansion_case_insensitive() -> None:
+    assert expand_abbreviations('18OG some title').startswith('18OnlyGirls')
+    assert expand_abbreviations('BGB some title').startswith('BabyGotBoobs')
+    assert expand_abbreviations('nubiles here') == 'Nubilesnet here'
 
 
 @pytest.mark.parametrize(

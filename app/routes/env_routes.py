@@ -149,7 +149,7 @@ async def api_restart() -> JSONResponse:
     return JSONResponse({'ok': True, 'method': 'shutdown'})
 
 
-_CONFIG_HTML = load_data(__file__, 'config_ui', kind='html')
+_CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
 
 
 def _render_ui(state: dict[str, Any]) -> str:

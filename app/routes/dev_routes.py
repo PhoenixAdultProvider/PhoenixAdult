@@ -506,4 +506,4 @@ def _render_ui(sites: list[dict[str, Any]]) -> str:
     return _DEV_HTML.replace('__SITE_ROWS__', ''.join(rows))
 
 
-_DEV_HTML = load_data(__file__, 'dev_ui', kind='html')
+_DEV_HTML: str = load_data(__file__, 'dev_ui', kind='html')

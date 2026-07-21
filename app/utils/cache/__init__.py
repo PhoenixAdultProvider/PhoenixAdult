@@ -639,7 +639,12 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
-        cased_title = title_case(md.title, site_name=studio, scraper_type=scraper_type)
+        title = md.title
+        if scraper_type == 'nubiles':
+            from app.clients.networks.nubiles import strip_episode_tag
+
+            title = strip_episode_tag(title)
+        cased_title = title_case(title, site_name=studio, scraper_type=scraper_type)
         if cased_title and cased_title != md.title:
             md.title = cased_title
             md.titleSort = title_sort(cased_title)

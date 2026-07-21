@@ -5,7 +5,7 @@ import json
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, overload
 from urllib.parse import urljoin
 
 from dateutil import parser as date_parser
@@ -19,6 +19,12 @@ if TYPE_CHECKING:
     from app.clients.base import SearchResult
 
 
+@overload
+def load_data(caller_file: str, name: str, kind: Literal['json'] = 'json') -> Any: ...
+@overload
+def load_data(caller_file: str, name: str, kind: Literal['html']) -> str: ...
+@overload
+def load_data(caller_file: str, name: str, kind: Literal['path']) -> Path: ...
 def load_data(caller_file: str, name: str, kind: Literal['json', 'html', 'path'] = 'json') -> Any:
     """Load a convention-placed asset relative to the caller's module (pass `__file__`):
     'json' parses _data/json/<name>.json (bare name, no extension), 'html' reads

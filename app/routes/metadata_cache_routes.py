@@ -14,7 +14,7 @@ from app.utils.helpers.helpers import load_data
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
-_TEMPLATE = load_data(__file__, 'metadata_cache', kind='html')
+_TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
 
 
 @router.get('', response_class=HTMLResponse)

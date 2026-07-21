@@ -20,12 +20,12 @@ class _CompiledRule:
 def _compile(pat: str, rep: str) -> _CompiledRule:
     if pat.endswith(' ') and rep.endswith(' '):
         return _CompiledRule(
-            primary=re.compile(pat[:-1] + r'[\s.]'),
+            primary=re.compile(pat[:-1] + r'[\s.]', re.IGNORECASE),
             primary_replacement=rep,
-            bare=re.compile(pat[:-1] + r'$'),
+            bare=re.compile(pat[:-1] + r'$', re.IGNORECASE),
             bare_replacement=rep[:-1],
         )
-    return _CompiledRule(primary=re.compile(pat), primary_replacement=rep)
+    return _CompiledRule(primary=re.compile(pat, re.IGNORECASE), primary_replacement=rep)
 
 
 COMPILED: list[_CompiledRule] = [_compile(pat, rep) for pat, rep in _raw]

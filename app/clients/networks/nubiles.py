@@ -46,7 +46,7 @@ _IMAGE_CONCURRENCY = 4
 _PACE_TAG = 'Nubiles:pace'
 
 
-def _strip_episode_tag(title: str) -> str:
+def strip_episode_tag(title: str) -> str:
     """Drop a trailing " - S2:E1"-style episode tag; interior hyphens are untouched."""
     return _EPISODE_TAG_RE.sub('', title).strip()
 
@@ -200,7 +200,7 @@ class NubilesClient(Client):
             url = f'{base}/video/watch/{scene_id}'
             search_results = await self._get(url, search_data.site_info, search_data.capture, f'GET {url}')
             if search_results is not None:
-                title = _strip_episode_tag(
+                title = strip_episode_tag(
                     (search_results.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
                 )
                 date = iso_date(
@@ -230,7 +230,7 @@ class NubilesClient(Client):
                     link_raw = first_attr(title_a, '@href')
                     raw_title = title_a.xpath('string(.)').get() or ''
                     parts = [p.strip() for p in raw_title.split('-')]
-                    display_title = _strip_episode_tag(f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0])
+                    display_title = strip_episode_tag(f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0])
                     segs = link_raw.split('/')
                     sid = segs[3] if len(segs) > 3 else ''
                     if not sid:
@@ -283,12 +283,12 @@ class NubilesClient(Client):
         await super().update(metadata, scene)
         subsite = scene.site.name
         subgroup = scene.site.sub_group
-        title = _strip_episode_tag(metadata.title)
+        title = strip_episode_tag(metadata.title)
         await self.enrich_from_data18(
             metadata,
             scene.site,
             scene_id=mapping_slug(title, subsite),
-            providers=[p for p in (subsite, subgroup, STUDIO) if p],
+            providers=[p for p in (subsite, subgroup, STUDIO, 'Nubiles NET') if p],
             title=title,
         )
 
@@ -312,7 +312,7 @@ class NubilesClient(Client):
         raw = (details_page_elements.xpath('(//div[contains(@class,"content-pane-title")]//h2)[1]').xpath('string(.)').get() or '').strip()
         parts = [p.strip() for p in raw.split('-')]
 
-        metadata.title = _strip_episode_tag((f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or '')
+        metadata.title = strip_episode_tag((f'{parts[0]} - {" - ".join(parts[1:])}' if len(parts) > 1 else parts[0]) or '')
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = self._summary_of(scene)

@@ -48,11 +48,11 @@ async def test_paced_serializes_and_spaces_requests(monkeypatch: pytest.MonkeyPa
 
 
 def test_strip_episode_tag() -> None:
-    assert nub_mod._strip_episode_tag('Stepmom Wants to Move In - S2:E1') == 'Stepmom Wants to Move In'
-    assert nub_mod._strip_episode_tag('Title - S10:E12') == 'Title'
-    assert nub_mod._strip_episode_tag('Title - S1E2') == 'Title'
-    assert nub_mod._strip_episode_tag('Home - Sweet Home') == 'Home - Sweet Home'
-    assert nub_mod._strip_episode_tag('No Tag Here') == 'No Tag Here'
+    assert nub_mod.strip_episode_tag('Stepmom Wants to Move In - S2:E1') == 'Stepmom Wants to Move In'
+    assert nub_mod.strip_episode_tag('Title - S10:E12') == 'Title'
+    assert nub_mod.strip_episode_tag('Title - S1E2') == 'Title'
+    assert nub_mod.strip_episode_tag('Home - Sweet Home') == 'Home - Sweet Home'
+    assert nub_mod.strip_episode_tag('No Tag Here') == 'No Tag Here'
 
 
 @respx.mock
