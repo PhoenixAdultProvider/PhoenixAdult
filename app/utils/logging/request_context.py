@@ -12,6 +12,8 @@ Receive = Callable[[], Awaitable[Message]]
 Send = Callable[[Message], Awaitable[None]]
 ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
+_QUIET_PATHS = frozenset({'/queue/api/state'})
+
 
 def _header(headers: dict[bytes, bytes], key: bytes) -> str | None:
     value = headers.get(key)
@@ -41,9 +43,10 @@ class RequestContextMiddleware:
             try:
                 await self.app(scope, receive, send_wrapper)
             finally:
-                headers = dict(scope.get('headers') or [])
-                logger.http(
-                    f'{scope["method"]} {scope["path"]} -> {status["code"]}',
-                    language=_header(headers, b'x-plex-language'),
-                    country=_header(headers, b'x-plex-country'),
-                )
+                if scope['path'] not in _QUIET_PATHS or status['code'] >= 400:
+                    headers = dict(scope.get('headers') or [])
+                    logger.http(
+                        f'{scope["method"]} {scope["path"]} -> {status["code"]}',
+                        language=_header(headers, b'x-plex-language'),
+                        country=_header(headers, b'x-plex-country'),
+                    )
