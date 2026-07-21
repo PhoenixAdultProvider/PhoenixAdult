@@ -33,6 +33,7 @@ class ItemReport:
     rating_key: str
     title: str
     guid: str
+    site: str = ''
     removals: dict[str, list[str]] = field(default_factory=dict)
     reasons: dict[str, dict[str, str]] = field(default_factory=dict)
     locked: list[str] = field(default_factory=list)
@@ -62,6 +63,7 @@ class ReconcileReport:
                     'ratingKey': i.rating_key,
                     'title': i.title,
                     'guid': i.guid,
+                    'site': i.site,
                     'removals': i.removals,
                     'reasons': i.reasons,
                     'locked': i.locked,
@@ -154,10 +156,12 @@ class PlexClient:
         await self.http.aclose()
 
 
-async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileReport:
+async def reconcile(apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None) -> ReconcileReport:
     """Strip tags Plex still holds that the provider no longer returns. Dry-run by default.
-    Locked fields are reported and left alone; a scene with no snapshot is skipped."""
+    fields/sites narrow the pass to specific tag types and scraper clients."""
     report = ReconcileReport(applied=apply)
+    field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
+    site_filter = {s.casefold() for s in sites} if sites else None
     client = PlexClient()
     try:
         for section in await client.movie_sections():
@@ -167,11 +171,15 @@ async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileR
                 if not rating_key:
                     continue
                 report.matched += 1
+                parsed = parse_rating_key(rating_key)
+                site_name = (parsed or {}).get('site_name') or ''
+                if site_filter is not None and site_name.casefold() not in site_filter:
+                    continue
                 if limit is not None and report.changed >= limit:
                     continue
 
                 plex_key = str(stub.get('ratingKey') or '')
-                entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '')
+                entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '', site=site_name)
 
                 desired = await _snapshot_tags(rating_key)
                 if desired is None:
@@ -183,6 +191,8 @@ async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileR
                 item = await client.item(plex_key)
                 locked = _locked_fields(item)
                 for provider_field, plex_tag in _FIELDS.items():
+                    if provider_field not in field_filter:
+                        continue
                     stale = [t for t in _plex_tags(item, provider_field) if t not in desired[provider_field]]
                     if not stale:
                         continue

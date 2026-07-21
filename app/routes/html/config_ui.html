@@ -192,6 +192,8 @@
         <span class="plex-status" id="plex-reconcile-status"></span>
       </div>
       <div class="hint">Limit stops after N changed items — handy to sample a large library before a full pass.</div>
+      <div class="plex-row" id="plex-reconcile-fields"></div>
+      <div class="plex-row" id="plex-reconcile-sites"><span class="hint">Run a dry run to list scraper clients for partial removal.</span></div>
       <div id="plex-reconcile-view" style="display:none">
         <div class="recon-counts" id="plex-reconcile-counts"></div>
         <div class="recon-summary" id="plex-reconcile-summary"></div>
@@ -782,6 +784,32 @@
 
     const RECON_FIELDS = ['Collection', 'Genre', 'Role', 'Director', 'Producer'];
 
+    function initReconFields() {
+      document.getElementById('plex-reconcile-fields').innerHTML =
+        '<span class="hint">Types:</span>' + RECON_FIELDS.map((f) =>
+          '<label style="font-size:0.8rem"><input type="checkbox" class="recon-field-cb" value="' + f + '" checked> ' + f + '</label>').join('');
+    }
+
+    function renderReconSites(items) {
+      const seen = {};
+      for (const i of items) if (i.site) seen[i.site] = true;
+      const sites = Object.keys(seen).sort();
+      const box = document.getElementById('plex-reconcile-sites');
+      if (!sites.length) { box.innerHTML = '<span class="hint">no per-client breakdown available</span>'; return; }
+      box.innerHTML = '<span class="hint">Clients:</span>' + sites.map((s) =>
+        '<label style="font-size:0.8rem"><input type="checkbox" class="recon-site-cb" value="' + esc(s) + '" checked> ' + esc(s) + '</label>').join('');
+    }
+
+    function reconFilters() {
+      const params = [];
+      const fields = [...document.querySelectorAll('.recon-field-cb:checked')].map((c) => c.value);
+      if (fields.length && fields.length < RECON_FIELDS.length) params.push('fields=' + encodeURIComponent(fields.join(',')));
+      const siteBoxes = [...document.querySelectorAll('.recon-site-cb')];
+      const sites = siteBoxes.filter((c) => c.checked).map((c) => c.value);
+      if (siteBoxes.length && sites.length && sites.length < siteBoxes.length) params.push('sites=' + encodeURIComponent(sites.join(',')));
+      return params;
+    }
+
     function reasonHtml(reason) {
       const m = /^recased to "(.*)"$/.exec(reason || '');
       if (m) return 'recased — now emitted as <span class="now">' + esc(m[1]) + '</span>';
@@ -796,6 +824,7 @@
         + '<span><b>' + data.changed + '</b>' + (data.applied ? 'changed' : 'would change') + '</span>'
         + '<span><b>' + data.skippedLocked + '</b>locked</span>'
         + '<span><b>' + data.skippedNoSnapshot + '</b>no snapshot</span>';
+      renderReconSites(data.items || []);
 
       // Summary: dedup removal values per field across every item, with reason + count.
       const agg = {};
@@ -833,7 +862,7 @@
           const locked = (i.locked || []).length
             ? '<div class="locked-note">locked in Plex (skipped): ' + i.locked.map(esc).join(', ') + '</div>' : '';
           return '<div class="recon-card"><span class="t">' + esc(i.title) + '</span>'
-            + '<span class="rk">' + esc(i.ratingKey) + ' · ' + esc(i.guid.split('/').pop() || '') + '</span>'
+            + '<span class="rk">' + esc(i.site) + ' · ' + esc(i.ratingKey) + ' · ' + esc(i.guid.split('/').pop() || '') + '</span>'
             + fields + locked + '</div>';
         }).join('');
       document.getElementById('plex-reconcile-items').innerHTML =
@@ -857,7 +886,7 @@
     async function runReconcile(apply) {
       if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
-      const params = [];
+      const params = reconFilters();
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
       plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
@@ -871,6 +900,7 @@
     }
 
     render();
+    initReconFields();
     showTab(location.hash === '#plex' ? 'plex' : 'settings');
   </script>
 </body>

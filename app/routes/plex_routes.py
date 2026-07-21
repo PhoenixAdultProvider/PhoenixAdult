@@ -88,8 +88,12 @@ async def reconcile(request: Request) -> JSONResponse:
     except ValueError:
         return JSONResponse({'error': 'limit must be an integer'}, status_code=400)
 
+    def _csv(name: str) -> set[str] | None:
+        raw = (request.query_params.get(name) or '').strip()
+        return {v.strip() for v in raw.split(',') if v.strip()} or None if raw else None
+
     try:
-        report = await plex_reconcile.reconcile(apply=apply, limit=limit)
+        report = await plex_reconcile.reconcile(apply=apply, limit=limit, fields=_csv('fields'), sites=_csv('sites'))
     except httpx2.HTTPError as err:
         logger.warn('plex-reconcile', f'Plex request failed: {err}')
         return JSONResponse({'error': 'Plex request failed'}, status_code=502)

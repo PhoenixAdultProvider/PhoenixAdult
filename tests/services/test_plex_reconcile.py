@@ -138,3 +138,22 @@ async def test_token_is_sent_as_a_header_not_a_query_param(monkeypatch: pytest.M
     req = respx.calls[0].request
     assert req.headers['X-Plex-Token'] == 'test-token'
     assert 'X-Plex-Token' not in str(req.url)
+
+
+@respx.mock
+async def test_field_filter_restricts_removal_types(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Keep'], Genre=['Keep']))
+    _mock_plex({'ratingKey': '77', 'guid': GUID, 'title': 'A Scene', 'Collection': [{'tag': 'Stale C'}], 'Genre': [{'tag': 'Stale G'}]})
+    report = await pr.reconcile(fields={'Genre'})
+    assert report.items[0].removals == {'Genre': ['Stale G']}
+    assert report.items[0].site == 'brazzers'
+
+
+@respx.mock
+async def test_site_filter_skips_other_clients(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Genre=['Keep']))
+    _mock_plex({'ratingKey': '77', 'guid': GUID, 'title': 'A Scene', 'Genre': [{'tag': 'Stale G'}]})
+    report = await pr.reconcile(sites={'nubilefilms'})
+    assert report.changed == 0
+    report = await pr.reconcile(sites={'Brazzers'})
+    assert report.changed == 1

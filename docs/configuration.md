@@ -200,6 +200,8 @@ provider only answers questions. Reconciliation closes that gap from the outside
 POST /plex/reconcile              # dry run: reports what it would remove
 POST /plex/reconcile?apply=1      # performs the removals
 POST /plex/reconcile?apply=1&limit=10
+POST /plex/reconcile?fields=Genre,Collection   # only these tag types
+POST /plex/reconcile?sites=myfamilypies        # only these scraper clients
 GET  /plex/status                 # {"enabled": true|false}
 ```
 
