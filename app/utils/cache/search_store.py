@@ -30,10 +30,15 @@ def _path(key: SearchKey) -> Path:
 
 
 def save(key: SearchKey, results: list[SearchResult]) -> None:
+    """Empty results are never persisted — a ban/soft-failure window returns [] and must
+    retry on the next scan, not poison a week of lookups."""
     global _swept
     if not _swept:
         _swept = True
         _sweep()
+    if not results:
+        _path(key).unlink(missing_ok=True)
+        return
     try:
         store_dir().mkdir(parents=True, exist_ok=True)
         payload = {'key': list(key), 'saved_at': time.time(), 'results': [asdict(r) for r in results]}
@@ -52,10 +57,14 @@ def load(key: SearchKey) -> list[SearchResult] | None:
         path.unlink(missing_ok=True)
         return None
     try:
-        return [SearchResult(**r) for r in payload.get('results') or []]
+        results = [SearchResult(**r) for r in payload.get('results') or []]
     except TypeError:
         path.unlink(missing_ok=True)
         return None
+    if not results:
+        path.unlink(missing_ok=True)
+        return None
+    return results
 
 
 def _sweep() -> None:

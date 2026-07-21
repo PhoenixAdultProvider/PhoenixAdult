@@ -30,14 +30,26 @@ def test_round_trip_preserves_results() -> None:
     assert loaded[0] == results[0]
 
 
-def test_empty_results_round_trip() -> None:
+def test_empty_results_are_not_persisted(_store_dir: Path) -> None:
+    search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
     search_store.save(KEY, [])
-    assert search_store.load(KEY) == []
+    assert search_store.load(KEY) is None
+    assert not list(_store_dir.glob('*.json'))
+
+
+def test_stored_empty_results_are_treated_as_a_miss(_store_dir: Path) -> None:
+    search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
+    path = next(_store_dir.glob('*.json'))
+    payload = json.loads(path.read_text(encoding='utf-8'))
+    payload['results'] = []
+    path.write_text(json.dumps(payload), encoding='utf-8')
+    assert search_store.load(KEY) is None
+    assert not path.exists()
 
 
 def test_miss_and_corrupt_file_return_none(_store_dir: Path) -> None:
     assert search_store.load(KEY) is None
-    search_store.save(KEY, [])
+    search_store.save(KEY, [SearchResult(title='X', scene_url='https://x/1', cur_id='abc')])
     next(_store_dir.glob('*.json')).write_text('not json', encoding='utf-8')
     assert search_store.load(KEY) is None
 
