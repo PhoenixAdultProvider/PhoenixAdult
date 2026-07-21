@@ -69,7 +69,7 @@ _Read from the environment at startup; not editable in the Config UI._
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ADMIN_TOKEN` | _(unset)_ | Guards the admin surfaces (`/config`, `/dev`, `/people-cache`, `/metadata-cache`). When unset, those are reachable from loopback only. Set a token to reach them from another host (sent as the `x-admin-token` header or a `token` query param). |
+| `ADMIN_TOKEN` | _(unset)_ | Guards the admin surfaces (`/config`, `/dev`, `/people`, `/metadata`, `/logos`). When unset, those are reachable from loopback only. Set a token to reach them from another host (sent as the `x-admin-token` header or a `token` query param). |
 
 ### Logging
 
@@ -78,7 +78,7 @@ _Read from the environment at startup; not editable in the Config UI._
 | `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose`. Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
 | `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `PEOPLE_IMAGE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
-| `LOG_REDACT_TOKEN` | `false` | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off by default so you can see the admin token in URLs while testing. |
+| `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see the admin token in URLs while testing. |
 
 ### Images
 
@@ -86,6 +86,9 @@ _Read from the environment at startup; not editable in the Config UI._
 | --- | --- | --- |
 | `IMAGE_DIR` | `./local/images` | Directory of local image files served back to Plex. |
 | `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch; larger images are rejected. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
+| `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
+| `LOGO_CACHE_ENABLE` | `false` | Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo once, converting SVG to PNG. Off: only scraped upstream logo URLs are emitted. Review the cache at `/logos`. |
+| `LOGO_CACHE_DIR` | `./local/images/logos` | Folder holding `logo.<site-slug>.<ext>` files, organized in per-studio subfolders. |
 
 ### Manual NFO
 
@@ -100,7 +103,7 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `METADATA_CACHE_ENABLE` | `false` | Snapshot each scraped scene's metadata + images under the cache dir and serve cache-first afterward — offline-safe protection against a source going down or changing its anti-scrape. Manage/purge at `/metadata-cache`. |
+| `METADATA_CACHE_ENABLE` | `false` | Snapshot each scraped scene's metadata + images under the cache dir and serve cache-first afterward — offline-safe protection against a source going down or changing its anti-scrape. Manage/purge at `/metadata`. |
 | `METADATA_CACHE_DIR` | `./local/cache` | On-disk location for those snapshots (text + images). |
 
 ### People Cache & Sources
@@ -110,7 +113,7 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `PEOPLE_CACHE_ENABLE` | `true` | Cache downloaded cast/crew headshots. When off, photo URLs are re-resolved on every scene refresh. |
 | `PEOPLE_CACHE_DIR` | `./local/images/people` | On-disk cache for actor / director / producer headshots. |
 | `PEOPLE_CACHE_REPLACE_ENABLE` | `false` | Ignore existing cached photos and re-fetch every time. |
-| `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people-cache`. |
+| `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people`. |
 | `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. `Scene` is the actor image from the scene page itself — **remove it to skip the scene image** and use only the external providers, or move it lower to prefer a provider over it. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, Scene, AdultDVDEmpire, Freeones, IAFD, Indexxx, Boobpedia, Babes and Stars, Babepedia. |
 | `PEOPLE_IMAGE_URL` | `baseurl` | Which base URL actor/director/producer image links use. Plex re-requests these periodically and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable. See the option table below. Poster/art images always use `PHOENIX_BASE_URL`. |
 | `ADULT_EMPIRE_LOGIN_TOKEN` | _(unset)_ | Session token for the AdultDVDEmpire headshot source. |
@@ -123,6 +126,7 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `localhost` | `http://localhost:<PORT>` | Plex runs on the same machine |
 | `localipv4` | `http://<LAN-IPv4>:<PORT>` | Plex is elsewhere on the LAN |
 | `localipv6` | `http://[<LAN-IPv6>]:<PORT>` | LAN, over IPv6 |
+| an explicit address | `http://192.0.2.10:<PORT>` (scheme defaults to http, `PORT` appended when missing) | auto-detection picks the wrong interface |
 
 The LAN address is detected automatically. Changing this value requires a metadata
 refresh in Plex to re-emit the image URLs.
@@ -154,6 +158,7 @@ refresh in Plex to re-emit the image URLs.
 | `FLARESOLVERR_URL` | _(unset)_ | Self-hosted FlareSolverr endpoint used to clear Cloudflare challenges. |
 | `REQBIN_ENABLE` | `false` | Use the third-party ReqBin service as a bypass fallback. |
 | `REQBIN_API_KEY` | _(unset)_ | API key for the ReqBin fallback. |
+| `PLAYWRIGHT_BROWSER` | `chromium` | Browser the Playwright bypass launches (`chromium`, `firefox`, `webkit`). On FreeBSD/linuxulator, Firefox is far more reliable than Chromium. |
 
 ### Data18 Enrichment
 
@@ -217,6 +222,8 @@ Notes:
 | `SEARCH_TITLE_TRASH` | built-in list | Whole-word release/scene-group tokens stripped from the parsed title before searching (e.g. `RARBG`, `1080p`, `WEB`). |
 | `PHOENIX_EXTRA_COLLECTIONS` | `false` | Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther. |
 | `DISABLE_AUTO_MATCH` | `false` | Suppress every match request Plex did not flag as user-initiated (`manual=1`). |
+| `SCENE_GAP` | `60` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 1–4 minute random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead; identical searches are served from memory. |
+| `SEARCH_STRIP_ACTORS` | _(unset)_ | Sites whose filenames lead with actor names: the names are dropped when building the site search, and title scoring uses the best of the stripped and unstripped title. Entries match a site, a studio, or a whole network (e.g. `Nubiles`). |
 
 ### Network
 

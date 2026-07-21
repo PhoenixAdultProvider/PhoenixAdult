@@ -8,7 +8,7 @@ XPath selector hit. It's also where you build fixture entries for
 
 The `/dev` surface is **admin-guarded and non-production**: it's mounted only
 outside production and its pipeline endpoints (`POST /dev/test`, `POST /dev/metadata`)
-require the admin token, the same guard as `/config` (see `app/routes/env_auth.py`).
+require the admin token, the same guard as `/config` (see `app/utils/auth/env_auth.py`).
 In a real deployment the route disappears.
 
 ## Getting started

@@ -19,9 +19,9 @@ PhoenixAdult is an HTTP service that implements the **Plex Metadata Provider** c
 | Dimension | Value (current) |
 |---|---|
 | Providers | 1 (`phoenixadult`) |
-| Scraper config variants (`type`) | ≈173 |
-| `Client` subclasses | 173 (registered in `CLIENT_REGISTRY`) |
-| Site/network definition groups | 173 (spanning hundreds of individual sites) |
+| Scraper config variants (`type`) | ≈178 |
+| `Client` subclasses | 178 (registered in `CLIENT_REGISTRY`) |
+| Site/network definition groups | 178 (spanning ~1,200 individual sites) |
 | Actor-photo sources | 10 (IAFD, Freeones, AdultDVDEmpire, Babepedia, …) |
 | HTTP-bypass backends | 4 (Impersonate, FlareSolverr, Playwright, ReqBin) |
 | Runtime | Python 3.13, FastAPI, uvicorn, httpx2 (async), parsel (XPath / lxml), Pillow |
@@ -104,9 +104,10 @@ flowchart LR
 | Fetch/proxy image | `GET\|HEAD /images/proxy`, `/images/proxy-classified` | none (SSRF-guarded) |
 | Local/manual images | `GET /images/local/{filename}`, `/images/manual-nfo/*` | none (path-guarded) |
 | Runtime config | `GET\|POST /config/...` | **loopback or `ADMIN_TOKEN`** |
+| Cache / logo review UIs | `GET /people`, `/metadata`, `/logos` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
 
-> Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`app/routes/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
+> Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`app/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
 
 ---
 
@@ -133,6 +134,7 @@ flowchart TB
     ms["MatchService"]:::s
     md["MetadataService"]:::s
     mm["MetadataMapper"]:::s
+    sq["scrape_queue<br/>(deferred background work)"]:::s
   end
 
   subgraph scr["Scraper engine"]
@@ -161,6 +163,8 @@ flowchart TB
 
   pr --> ms & md
   dr --> ms & md
+  ms --> sq
+  md --> sq
   ms --> srt
   md --> srt
   ms --> mm
@@ -188,6 +192,7 @@ flowchart TB
 - **`ScraperRouter`** (`app/services/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`app/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
 - **`MetadataMapper`** (`app/mappers/metadata_mapper.py`) translates the scraper's `SceneDetail` into Plex's schema and rewrites every image URL through the `/images/proxy` endpoint.
 - **Registry** is static data: providers, sites, and per-site `ScraperConfig` that selects and parameterizes a client.
+- **`scrape_queue`** (`app/services/scrape_queue.py`) is a single sequential background worker (dedup by key, 500-job cap). When pacing or the serve budget defers a search/update (§7.6), the services enqueue it here to finish off the request path.
 
 ---
 
@@ -227,6 +232,13 @@ classDiagram
     +search_date: str | None
     +scene_id: str | None
     +full_title: str | None
+    +allow_slow: bool
+  }
+  class SceneContext {
+    +capture: list | None
+    +language: str | None
+    +subsite: str | None
+    +allow_slow: bool
   }
   class SearchResult {
     +title: str
@@ -241,9 +253,10 @@ classDiagram
     +studio: str
     +genres: list[str]
     +actors: list[ActorResult]
-    +raw_image_urls: list[str]
-    +raw_image_referer: str | None
-    +raw_image_cookie: str | None
+    +art: list[str]
+    +art_referer: str | None
+    +art_cookie: str | None
+    +logo: str | None
   }
   class ActorResult {
     +name: str
@@ -320,6 +333,7 @@ classDiagram
     #fetch_title / summary / studio / tagline / collections
     #fetch_release_date / genres / actors / directors / producers
     #fetch_image_urls(scene) list[str]
+    #fetch_logo(scene)
     #fetch_and_load(url, ctx) parsel.Selector  bypass-aware
     #fetch_json(url, ctx) Any  bypass-aware
   }
@@ -339,7 +353,7 @@ classDiagram
   note for Client "178 dedicated subclasses registered in CLIENT_REGISTRY; ScraperConfig.type selects one instance."
 ```
 
-The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`.
+The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls` / `logo`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`. A `SceneDetail.logo` (from `fetch_logo`) is emitted as a `clearLogo` image; with `LOGO_CACHE_ENABLE` on, `app/utils/images/logo_cache.py` serves it local-first from `logos/<studio-slug>/logo.<site-slug>.<ext>` (tagline first, then studio), downloading a scraped logo once and rasterizing SVG to PNG (ImageMagick, falling back to cairosvg); the cache is reviewable at `/logos`.
 
 ---
 
@@ -496,6 +510,34 @@ sequenceDiagram
   note over OV,FS: On boot, load_overrides() re-applies<br/>FS over .env — overrides WIN.
 ```
 
+### 7.6 Serve budget & deferred work
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Plex
+  participant SVC as Match/MetadataService
+  participant P as ScenePacer
+  participant Q as scrape_queue
+  participant CL as Client
+
+  Plex->>SVC: request (Plex kills it at ~90s)
+  SVC->>P: acquire turn (allow_slow=False)
+  alt pending wait ≤ 10s and within 85s budget
+    P-->>SVC: proceed
+    SVC->>CL: search / fetch_scene_detail
+    CL-->>Plex: results / metadata
+  else would wait too long
+    P-->>SVC: PacingDeferredError (or budget timeout)
+    SVC->>Q: enqueue job (allow_slow=True)
+    SVC-->>Plex: empty response now
+    Q->>CL: run later, sleeping through gaps
+    note over Q,CL: update → metadata snapshot cache<br/>search → in-memory memo (TTL 15 min)
+  end
+```
+
+Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. A repeated Plex match is absorbed by `MatchService`'s search memo, so the retry succeeds from memory once the background search lands.
+
 ---
 
 ## 8. HTTP / anti-bot bypass model
@@ -526,6 +568,7 @@ flowchart LR
   - **Playwright** drives headless Chromium (optional — `pip install -e ".[playwright]"`); forwards headers via the browser context.
   - **ReqBin** is a third-party fetch relay.
   - Challenge detection: a 2xx whose body still contains a challenge marker (AWS WAF, `just a moment`, `cf-chl-`, Turnstile) is treated as unsolved, so the chain continues to the next backend.
+- **Ban-avoidance pacing** (`ScenePacer`, `app/utils/http/rate_limit_helper.py`): ban-prone scrapers (`nubiles.py`, `naughtyamerica.py`) set `Client.pacer`, and the base orchestrators route every search and scene scrape through it. Searches and scenes share **one** gap track — after any turn the next waits `SCENE_GAP` (default 60s) plus a random 1–4 min jitter — with a hard cap of 4 scenes per 10 minutes and jittered per-request spacing inside a scrape. A foreground (Plex-facing) request that would wait >10s raises `PacingDeferredError` and is finished via `scrape_queue` instead (§7.6).
 
 ---
 
@@ -584,7 +627,7 @@ flowchart TB
 
 **Controls in place**
 
-- **Admin auth** (`env_auth_guard`, `app/routes/env_auth.py`): wired as a router dependency (`APIRouter(dependencies=[Depends(env_auth_guard)])`) on both `env_routes` and `dev_routes`. When `ADMIN_TOKEN` is set, allows loopback **or** a matching token (timing-safe `hmac.compare_digest`, accepted via `Authorization: Bearer`, `X-Admin-Token`, or `?token=`). When `ADMIN_TOKEN` is blank, auth is **disabled** (open surfaces) — a deliberate convenience default for trusted/local networks.
+- **Admin auth** (`env_auth_guard`, `app/utils/auth/env_auth.py`): wired as a router dependency (`APIRouter(dependencies=[Depends(env_auth_guard)])`) on both `env_routes` and `dev_routes`. When `ADMIN_TOKEN` is set, allows loopback **or** a matching token (timing-safe `hmac.compare_digest`, accepted via `Authorization: Bearer`, `X-Admin-Token`, or `?token=`). When `ADMIN_TOKEN` is blank, auth is **disabled** (open surfaces) — a deliberate convenience default for trusted/local networks.
 - **SSRF guard** (`app/utils/http/ssrf_guard.py`): scheme allow-list + private/loopback/link-local/CGNAT/metadata (`169.254.169.254`) blocklist with hostname resolution; applied to the image proxy (`assert_fetchable_url`) and to the rating-key-decoded scene URL (`ensure_fetchable_url`).
 - **Path safety**: `_safe_path` (`app/routes/image_routes.py`) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
 - **Secret hygiene**: `/config/api/state` redacts secret values (exposes only whether set); the request-logging middleware deliberately does not log `/config` bodies (they can carry secrets being saved).
@@ -594,7 +637,7 @@ flowchart TB
 - DNS-rebinding TOCTOU in the SSRF guard (resolve-then-fetch); robust fix = pin the validated IP for the outbound connection.
 - Hostname-based internal SSRF on the *general* scrape path (only the metadata boundary + image proxy are guarded).
 - Admin loopback-trust is bypassable behind a same-host reverse proxy (documented caveat); and the blank-token "auth off" mode opens the surfaces entirely.
-- No rate limiting; TLS verification intentionally relaxed (`verify=False`) for upstream CDNs.
+- No inbound rate limiting (the outbound `ScenePacer` in §8 is ban-avoidance, not a security control); TLS verification intentionally relaxed (`verify=False`) for upstream CDNs.
 
 > The `title_case` ReDoS (O(n²) post-process passes on long scraped titles) is **mitigated** by a `MAX_TITLE_LENGTH` input cap — see Appendix A.
 
@@ -651,13 +694,14 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 
 | Pattern | Where | Why |
 |---|---|---|
-| Template Method / field hooks | `Client.search` / `fetch_scene_detail` + hooks | one orchestration, 173 site variations |
+| Template Method / field hooks | `Client.search` / `fetch_scene_detail` + hooks | one orchestration, 178 site variations |
 | Strategy / Registry dispatch | `get_client` → `CLIENT_REGISTRY`; `ScraperConfig` union | data selects behavior |
 | Adapter | `MetadataMapper` (SceneDetail → Plex schema) | isolate Plex contract |
 | Chain of Responsibility | bypass chain; people-source order | ordered fallback |
 | Facade | Services over scraper/mapper/people | thin routes |
 | Guard / Boundary validation | `ssrf_guard`, `_safe_path`, `env_auth_guard` | trust boundaries |
 | Lazy config accessor | `app/config/env.py` property getters | testability + runtime overrides |
+| Fail-fast + deferred work | `ScenePacer` + `scrape_queue` + serve budgets | Plex's 90s timeout vs. slow, ban-prone sites |
 
 **Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/utils/searchengines/`) provides a "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
 
@@ -669,8 +713,9 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 app/
   main.py, app_factory.py    # uvicorn entrypoint + FastAPI wiring/bootstrap
   routes/                    # provider_router, image_routes, env_routes, dev_routes,
-                             #   metadata_cache_routes, people_cache_routes (+ html/)
-  services/                  # match_service, metadata_service, scraper_router
+                             #   metadata_cache_routes, people_cache_routes, logo_routes,
+                             #   plex_routes (+ html/)
+  services/                  # match_service, metadata_service, scraper_router, scrape_queue
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + 178 dedicated clients:
                              #   sites/ (93), networks/ (77), aggregators/ (9)
@@ -678,10 +723,13 @@ app/
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider
   utils/
-    http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin, ssrf_guard
-    images/                  # image_fetcher, image_classifier, image_referers, fanart, fansite_adapters
+    http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin,
+                             #   ssrf_guard, rate_limit_helper (ScenePacer)
+    images/                  # image_fetcher, image_classifier, image_referers, logo_cache,
+                             #   fanart, fansite_adapters
     people/                  # PeopleManager (__init__), sources/, cache, gender, generic, data
-    processors/              # filename_parser, search_query, similarity, title_case, studio_name, abbreviations
+    processors/              # filename_parser, search_query, similarity, title_case, studio_name,
+                             #   abbreviations, actor_strip
     logging/, genres/, captcha/, cookies/, helpers/
   config/                    # env, env_catalog, env_overrides, __init__
 scripts/                     # generate_sitelist, site_health, start-with-tunnel.ps1
