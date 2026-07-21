@@ -67,6 +67,7 @@ quote-style = "single"
 select = ["E", "F", "I", "UP", "B", "W"]
 
 [tool.pytest.ini_options]
+markers = ["allow_network: permit real network access in this test"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]

@@ -125,6 +125,7 @@ async def test_search_nested_thumb_url_encoded(tmp_path: Path, monkeypatch: pyte
 
 async def test_detail_full_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
     _write_folder(tmp_path, BASENAME, poster=True, fanart=True)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
@@ -147,6 +148,7 @@ async def test_detail_full_map(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 async def test_detail_url_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
     _write_folder(tmp_path, BASENAME)
     detail = await ManualNfoClient().fetch_scene_detail(BASENAME, SITE)
     assert detail is not None
@@ -218,6 +220,7 @@ async def test_detail_data18_enrichment_off_by_default(tmp_path: Path, monkeypat
 
 async def test_detail_year_only_release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
     _write_folder(tmp_path, 'year.only.case', nfo='<?xml version="1.0"?><movie><title>YO</title><year>2019</year></movie>')
     detail = await ManualNfoClient().fetch_scene_detail('year.only.case', SITE)
     assert detail is not None
@@ -361,6 +364,7 @@ def test_parse_nfo_returns_none_when_unsalvageable() -> None:
 
 async def test_detail_reads_nfo_with_bare_ampersand(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    monkeypatch.delenv('DATA18_ENABLE', raising=False)
     _write_folder(tmp_path, 'amp.case', nfo='<movie><title>A & B</title><genre>Pantyhose & Stockings</genre></movie>')
     detail = await ManualNfoClient().fetch_scene_detail('amp.case', SITE)
     assert detail is not None
