@@ -90,6 +90,37 @@ async def test_warm_images_bounds_concurrency(monkeypatch: pytest.MonkeyPatch) -
     assert peak <= nubiles._IMAGE_CONCURRENCY
 
 
+async def test_scene_window_cap_rests_after_four(monkeypatch: pytest.MonkeyPatch) -> None:
+    import time as _t
+
+    sleeps: list[float] = []
+
+    async def fake_sleep(s: float) -> None:
+        sleeps.append(s)
+
+    monkeypatch.setattr(nubiles.asyncio, 'sleep', fake_sleep)
+    client = NubilesClient()
+    now = _t.monotonic()
+    client._scene_starts.extend([now - 30, now - 20, now - 10, now - 5])
+    await client._respect_scene_window()
+    assert len(sleeps) == 1
+    assert 560 < sleeps[0] <= nubiles._SCENE_WINDOW
+
+
+async def test_scene_window_under_cap_and_stale_pruning(monkeypatch: pytest.MonkeyPatch) -> None:
+    import time as _t
+
+    async def fail_sleep(s: float) -> None:
+        raise AssertionError('must not rest under the cap')
+
+    monkeypatch.setattr(nubiles.asyncio, 'sleep', fail_sleep)
+    client = NubilesClient()
+    now = _t.monotonic()
+    client._scene_starts.extend([now - 700, now - 650, now - 30, now - 20, now - 10])
+    await client._respect_scene_window()
+    assert len(client._scene_starts) == 4
+
+
 async def test_warm_images_noop_without_art(monkeypatch: pytest.MonkeyPatch) -> None:
     called = False
 

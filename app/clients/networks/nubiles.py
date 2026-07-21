@@ -4,6 +4,7 @@ import asyncio
 import random
 import re
 import time
+from collections import deque
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -12,6 +13,7 @@ from parsel import Selector
 
 from app.clients.aggregators.data18 import mapping_slug
 from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
 from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
@@ -39,12 +41,20 @@ _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
 _EPISODE_TAG_RE = re.compile(r'\s*-\s*S\d+\s*:?\s*E\d+\s*$', re.IGNORECASE)
 _PACE_SECONDS = 7.0
 _SCENE_COOLDOWN = 7.0
-_SCENE_GAP = 60.0
+_GAP_JITTER_MIN = 60.0
+_GAP_JITTER_MAX = 240.0
+_SCENE_WINDOW = 600.0
+_SCENE_WINDOW_MAX = 4
 _PACE_JITTER = 3.0
 _MAX_RETRIES = 3
 _MAX_BACKOFF = 120.0
 _IMAGE_CONCURRENCY = 4
 _PACE_TAG = 'Nubiles:pace'
+
+
+def _scene_gap() -> float:
+    """Between-scenes delay: NUBILES_SCENE_GAP seconds plus a 1-4 minute jitter."""
+    return env.nubiles_scene_gap + random.uniform(_GAP_JITTER_MIN, _GAP_JITTER_MAX)
 
 
 def strip_episode_tag(title: str) -> str:
@@ -103,6 +113,7 @@ class NubilesClient(Client):
         self._last_fetch = 0.0
         self._scene_lock = asyncio.Lock()
         self._gap_until = 0.0
+        self._scene_starts: deque[float] = deque()
 
     async def _pace(self, label: str = 'pow warm-up') -> None:
         """Site rate limit: every base_url request (scene details, galleries, model pages,
@@ -117,12 +128,14 @@ class NubilesClient(Client):
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         """One scene at a time across all Nubiles sites, image burst warmed inside the lock.
-        The ~_SCENE_GAP gap is slept off by the next scene, not before this one returns."""
+        The between-scenes gap is slept off by the next scene, not before this one returns,
+        and a hard window cap rests when _SCENE_WINDOW_MAX scenes ran inside _SCENE_WINDOW."""
         async with self._scene_lock:
             wait = self._gap_until - time.monotonic()
             if wait > 0:
                 logger.info(_PACE_TAG, f'between-scenes cooldown {wait:.1f}s')
                 await asyncio.sleep(wait)
+            await self._respect_scene_window()
             try:
                 detail = await super().fetch_scene_detail(payload, site, ctx)
                 await self._cooldown('post-update', _SCENE_COOLDOWN)
@@ -130,7 +143,22 @@ class NubilesClient(Client):
                     await self._warm_images(detail)
                 return detail
             finally:
-                self._gap_until = time.monotonic() + _jittered(_SCENE_GAP)
+                self._gap_until = time.monotonic() + _scene_gap()
+
+    async def _respect_scene_window(self) -> None:
+        """Backstop over the gap pacing: at most _SCENE_WINDOW_MAX scene scrapes per
+        _SCENE_WINDOW seconds, resting until the oldest start leaves the window."""
+        now = time.monotonic()
+        while self._scene_starts and now - self._scene_starts[0] > _SCENE_WINDOW:
+            self._scene_starts.popleft()
+        if len(self._scene_starts) >= _SCENE_WINDOW_MAX:
+            wait = _SCENE_WINDOW - (now - self._scene_starts[0])
+            logger.info(_PACE_TAG, f'{len(self._scene_starts)} scenes in the last {int(_SCENE_WINDOW / 60)}min — resting {wait:.0f}s')
+            await asyncio.sleep(wait)
+            now = time.monotonic()
+            while self._scene_starts and now - self._scene_starts[0] > _SCENE_WINDOW:
+                self._scene_starts.popleft()
+        self._scene_starts.append(time.monotonic())
 
     async def _cooldown(self, phase: str, base: float) -> None:
         delay = _jittered(base)

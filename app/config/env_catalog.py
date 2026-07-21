@@ -401,6 +401,16 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='',
     ),
     EnvVarSpec(
+        'NUBILES_SCENE_GAP',
+        'Nubiles between-scenes delay',
+        'Base seconds between Nubiles scene scrapes; a 1-4 minute random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless.',
+        'Misc',
+        'number',
+        default_value='60',
+        min=0,
+        max=3600,
+    ),
+    EnvVarSpec(
         'SEARCH_STRIP_ACTORS',
         'Strip actor names — sites',
         'Sites whose filenames lead with actor names: the names are dropped when building the site search, '

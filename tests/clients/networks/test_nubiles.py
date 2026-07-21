@@ -31,7 +31,9 @@ def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(nub_mod, '_PACE_SECONDS', 0.0)
     monkeypatch.setattr(nub_mod, '_PACE_JITTER', 0.0)
     monkeypatch.setattr(nub_mod, '_SCENE_COOLDOWN', 0.0)
-    monkeypatch.setattr(nub_mod, '_SCENE_GAP', 0.0)
+    monkeypatch.setattr(nub_mod, '_GAP_JITTER_MIN', 0.0)
+    monkeypatch.setattr(nub_mod, '_GAP_JITTER_MAX', 0.0)
+    monkeypatch.setenv('NUBILES_SCENE_GAP', '0')
 
 
 @respx.mock

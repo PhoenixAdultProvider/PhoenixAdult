@@ -86,6 +86,13 @@ class _Env:
         return os.environ.get('LOGO_CACHE_DIR') or str(Path(self.image_dir) / 'logos')
 
     @property
+    def nubiles_scene_gap(self) -> float:
+        try:
+            return max(0.0, float(os.environ.get('NUBILES_SCENE_GAP') or 60))
+        except ValueError:
+            return 60.0
+
+    @property
     def manual_nfo_path(self) -> str:
         return os.environ.get('MANUAL_NFO_PATH') or str(_cwd() / 'local' / 'manual')
 
