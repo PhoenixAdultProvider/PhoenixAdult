@@ -8,7 +8,7 @@
   <title>PhoenixAdult Config</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 2rem; max-width: 900px; margin: 0 auto; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 2rem; max-width: 1092px; margin: 0 auto; }
     h1 { font-size: 1.5rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.25rem; }
     h2 { font-size: 0.8rem; font-weight: 600; color: #64748b; margin: 1.75rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
     .sub { color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; }
@@ -56,13 +56,14 @@
     /* Sortable list controls (PEOPLE_SOURCE_ORDER, BYPASS_ORDER) */
     .listwrap { flex: 1 1 100%; }
     .listwrap.changed .srclist { border-color: #fcd34d; }
-    .srclist { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem; background: #0f1117;
-               border: 1px solid #2d3748; border-radius: 6px; }
+    .srclist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3rem; padding: 0.4rem;
+               background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; }
+    .srclist .hint { grid-column: 1 / -1; }
     .srcitem { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; background: #1e2433;
-               border: 1px solid #2d3748; border-radius: 5px; cursor: grab; font-size: 0.85rem; }
+               border: 1px solid #2d3748; border-radius: 5px; cursor: grab; font-size: 0.85rem; min-width: 0; }
     .srcitem.dragging { opacity: 0.4; }
     .drag-grip { color: #475569; cursor: grab; font-size: 0.85rem; }
-    .srcitem-name { flex: 1; color: #e2e8f0; }
+    .srcitem-name { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srcitem-x { padding: 0 0.45rem; font-size: 0.9rem; line-height: 1; background: #1f2937;
                  border: 1px solid #2d3748; color: #fca5a5; border-radius: 4px; }
     .srcitem-x:hover { background: #7f1d1d; color: #fecaca; }
@@ -257,22 +258,21 @@
         e.preventDefault();
         const dragging = list.querySelector('.dragging');
         if (!dragging) return;
-        const after = dragAfterElement(list, e.clientY);
+        const after = dragAfterElement(list, e.clientX, e.clientY);
         if (after == null) list.appendChild(dragging);
         else list.insertBefore(dragging, after);
       };
     }
 
-    function dragAfterElement(list, y) {
+    function dragAfterElement(list, x, y) {
+      // Grid-aware: items are in reading order — insert before the first item on a
+      // later row, or on the cursor's row past the cursor's X.
       const items = [...list.querySelectorAll('.srcitem:not(.dragging)')];
-      let closest = null;
-      let closestOffset = -Infinity;
       for (const el of items) {
         const box = el.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closestOffset) { closestOffset = offset; closest = el; }
+        if (y < box.top || (y <= box.bottom && x < box.left + box.width / 2)) return el;
       }
-      return closest;
+      return null;
     }
 
     function listRemove(key, idx) {
