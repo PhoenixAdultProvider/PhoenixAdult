@@ -29,6 +29,9 @@ def _no_pow(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(nub_mod, '_PACE_SECONDS', 0.0)
+    monkeypatch.setattr(nub_mod, '_PACE_JITTER', 0.0)
+    monkeypatch.setattr(nub_mod, '_SCENE_COOLDOWN', 0.0)
+    monkeypatch.setattr(nub_mod, '_SCENE_GAP', 0.0)
 
 
 @respx.mock
