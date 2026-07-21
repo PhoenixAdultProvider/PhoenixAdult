@@ -238,6 +238,10 @@ class _Env:
         return (os.environ.get('PLEX_TOKEN') or '').strip() or None
 
     @property
+    def plex_client_id(self) -> str | None:
+        return (os.environ.get('PLEX_CLIENT_ID') or '').strip() or None
+
+    @property
     def admin_token(self) -> str | None:
         token = (os.environ.get('ADMIN_TOKEN') or '').strip()
         return token or None

@@ -715,7 +715,8 @@ app/
   routes/                    # provider_router, image_routes, env_routes, dev_routes,
                              #   metadata_cache_routes, people_cache_routes, logo_routes,
                              #   queue_routes, plex_routes (+ html/)
-  services/                  # match_service, metadata_service, scraper_router, scrape_queue
+  services/                  # match_service, metadata_service, scraper_router, scrape_queue,
+                             #   plex_reconcile, plex_account
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + 178 dedicated clients:
                              #   sites/ (93), networks/ (77), aggregators/ (9)

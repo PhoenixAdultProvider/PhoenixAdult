@@ -181,7 +181,13 @@ Only needed for reconciliation (below). Both must be set or the feature stays of
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PLEX_URL` | _(unset)_ | Base URL of the Plex server, e.g. `http://plex.lan:32400`. A LAN address is fine — the provider dials out to Plex, Plex never dials in. |
-| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server ([how to find yours](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)). Needs library write access, so treat it like a password. Sent as a header, never in a query string. |
+| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server ([how to find yours](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)). Needs library write access, so treat it like a password. Sent as a header, never in a query string. Easiest setup: the **Plex tab** of `/config` — "Fetch New Token" signs in via plex.tv and saves it. |
+| `PLEX_CLIENT_ID` | _(unset)_ | Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device. |
+
+The **Plex tab** of the `/config` UI drives all of this: fetch a token via plex.tv sign-in,
+pick your server from the discovered list (fills `PLEX_URL`), verify the connection
+(server identity + authenticated check), see the server version with a local-only
+update check (no notifications), and run reconciliation dry-run/apply without curl.
 
 #### Reconciling stale tags
 

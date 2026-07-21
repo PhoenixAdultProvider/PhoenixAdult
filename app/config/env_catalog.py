@@ -288,9 +288,17 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'PLEX_TOKEN',
         'Plex token',
-        'X-Plex-Token for the server above. Needs library write access, so treat it like a password.',
+        'X-Plex-Token for the server above. Needs library write access, so treat it like a password. '
+        'Fetch one with the Plex tab\'s "Fetch New Token" button (plex.tv sign-in).',
         'Plex server',
         'secret',
+    ),
+    EnvVarSpec(
+        'PLEX_CLIENT_ID',
+        'Plex client identifier',
+        'Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device.',
+        'Plex server',
+        'string',
     ),
     EnvVarSpec(
         'BYPASS_ORDER',

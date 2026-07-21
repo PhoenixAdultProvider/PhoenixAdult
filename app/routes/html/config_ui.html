@@ -82,6 +82,29 @@
     /* Restart button */
     button.danger { background: #7f1d1d; }
     button.danger:hover { background: #991b1b; }
+
+    /* Tabs */
+    .tabbar { display: flex; gap: 0.25rem; margin-top: 1rem; border-bottom: 1px solid #2d3748; }
+    .tabbar button { background: transparent; color: #94a3b8; border: 0; border-bottom: 2px solid transparent;
+                     border-radius: 0; padding: 0.5rem 1rem; font-size: 0.9rem; }
+    .tabbar button:hover { background: transparent; color: #e2e8f0; }
+    .tabbar button.active { color: #f8fafc; border-bottom-color: #6366f1; }
+    .tabpane { display: none; }
+    .tabpane.active { display: block; }
+
+    /* Plex tab */
+    .plex-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
+    .plex-status { font-size: 0.82rem; color: #94a3b8; }
+    .plex-status.ok { color: #6ee7b7; }
+    .plex-status.err { color: #fca5a5; }
+    .plex-kv { font-size: 0.82rem; color: #94a3b8; display: grid; grid-template-columns: max-content 1fr;
+               gap: 0.25rem 0.9rem; margin-top: 0.6rem; }
+    .plex-kv b { color: #cbd5e1; font-weight: 600; }
+    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #1e3a8a; border-top-color: #60a5fa;
+            border-radius: 50%; animation: spin 0.9s linear infinite; vertical-align: -2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    pre.report { background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 0.7rem;
+                 font-size: 0.75rem; margin-top: 0.6rem; max-height: 320px; overflow: auto; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -97,7 +120,52 @@
     <span class="toolbar-status" id="status"></span>
   </div>
 
-  <div id="groups"></div>
+  <div class="tabbar">
+    <button id="tabbtn-settings" onclick="showTab('settings')">Settings</button>
+    <button id="tabbtn-plex" onclick="showTab('plex')">Plex</button>
+  </div>
+
+  <div id="tab-settings" class="tabpane"><div id="groups"></div></div>
+
+  <div id="tab-plex" class="tabpane">
+    <h2>Connection</h2>
+    <div class="card">
+      <div id="plex-vars"></div>
+      <div class="plex-row">
+        <button type="button" onclick="fetchPlexToken()">Fetch New Token</button>
+        <button type="button" class="secondary" onclick="loadPlexServers()">Discover servers</button>
+        <button type="button" class="secondary" onclick="verifyPlexServer()">Verify server</button>
+        <span class="plex-status" id="plex-auth-status"></span>
+      </div>
+      <div class="plex-row" id="plex-server-pick" style="display:none">
+        <select id="plex-server-select"></select>
+        <button type="button" class="icon-btn" onclick="usePlexServer()">Use this address</button>
+      </div>
+      <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
+    </div>
+
+    <h2>Server</h2>
+    <div class="card">
+      <div class="plex-row">
+        <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for update</button>
+        <span class="plex-status" id="plex-update-status"></span>
+      </div>
+      <div class="plex-kv" id="plex-update-out" style="display:none"></div>
+    </div>
+
+    <h2>Reconcile stale tags</h2>
+    <div class="card">
+      <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit
+        (Collection, Genre, Role, Director, Producer). Dry run reports without writing.</div>
+      <div class="plex-row">
+        <button type="button" class="secondary" onclick="runReconcile(false)">Dry run</button>
+        <button type="button" class="danger" onclick="runReconcile(true)">Apply removals</button>
+        <input type="text" id="plex-reconcile-limit" placeholder="limit (optional)" style="flex:0 0 130px; min-width:130px">
+        <span class="plex-status" id="plex-reconcile-status"></span>
+      </div>
+      <pre class="report" id="plex-reconcile-out" style="display:none"></pre>
+    </div>
+  </div>
 
   <script>
     const STATE = __STATE_JSON__;
@@ -124,9 +192,14 @@
 
     // ── Render ────────────────────────────────────────────────────────────────
 
+    const PLEX_GROUP = 'Plex server';
+
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
-      document.getElementById('groups').innerHTML = STATE.groups.map(renderGroup).join('');
+      document.getElementById('groups').innerHTML =
+        STATE.groups.filter((g) => g.name !== PLEX_GROUP).map(renderGroup).join('');
+      const plexGroup = STATE.groups.find((g) => g.name === PLEX_GROUP);
+      document.getElementById('plex-vars').innerHTML = plexGroup ? plexGroup.vars.map(renderVar).join('') : '';
       for (const v of allVars()) {
         if (v.kind === 'list') initList(v);
         if (v.preview === 'image') {
@@ -135,6 +208,15 @@
         }
       }
       refreshDirty();
+    }
+
+    function showTab(name) {
+      for (const t of ['settings', 'plex']) {
+        document.getElementById('tab-' + t).classList.toggle('active', t === name);
+        document.getElementById('tabbtn-' + t).classList.toggle('active', t === name);
+      }
+      if (history.replaceState) history.replaceState(null, '', '#' + name);
+      if (name === 'plex') plexUpdateStatus(false);
     }
 
     function renderGroup(group) {
@@ -532,7 +614,139 @@
       if (inp) { e.preventDefault(); listAdd(inp.closest('.srcadd').id.replace('srcadd-', '')); }
     });
 
+    // ── Plex tab ────────────────────────────────────────────────────────────────
+
+    function plexStatus(id, html, kind) {
+      const el = document.getElementById(id);
+      el.innerHTML = html;
+      el.className = 'plex-status' + (kind ? ' ' + kind : '');
+    }
+
+    function fmtTimer(s) {
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    async function fetchPlexToken() {
+      plexStatus('plex-auth-status', '<span class="spin"></span> Contacting plex.tv…');
+      let pin;
+      try {
+        pin = await postJSON(api('/plex/pin'), {});
+      } catch (err) {
+        plexStatus('plex-auth-status', 'Could not reach plex.tv: ' + esc(err.message), 'err');
+        return;
+      }
+      const popup = window.open(pin.authUrl, 'plex-auth', 'width=600,height=700');
+      if (!popup) { plexStatus('plex-auth-status', 'Popup blocked — allow popups and retry.', 'err'); return; }
+
+      let waited = 0;
+      const poll = setInterval(async () => {
+        waited += 2;
+        plexStatus('plex-auth-status', '<span class="spin"></span> Waiting for authentication… ' + fmtTimer(waited));
+        if (waited >= 300) {
+          clearInterval(poll);
+          plexStatus('plex-auth-status', 'Authentication timed out. Please try again.', 'err');
+          return;
+        }
+        try {
+          const res = await fetch(api('/plex/pin/' + pin.id + '?client_id=' + encodeURIComponent(pin.clientId)));
+          const data = await res.json();
+          if (data.token) {
+            clearInterval(poll);
+            try { popup.close(); } catch (e) {}
+            await postJSON(api('/config/api/save'), { updates: { PLEX_TOKEN: data.token, PLEX_CLIENT_ID: pin.clientId } });
+            plexStatus('plex-auth-status', 'Authentication successful — token saved.', 'ok');
+            await reload();
+            loadPlexServers();
+          }
+        } catch (e) { /* keep polling */ }
+      }, 2000);
+    }
+
+    async function loadPlexServers() {
+      plexStatus('plex-auth-status', '<span class="spin"></span> Listing servers…');
+      try {
+        const data = await postJSON(api('/plex/servers'), {});
+        const sel = document.getElementById('plex-server-select');
+        const opts = [];
+        for (const s of data.servers) {
+          for (const c of s.connections) {
+            opts.push('<option value="' + esc(c.uri) + '">' + esc(s.name) + ' — ' + esc(c.uri)
+              + (c.local ? ' (local)' : ' (remote)') + '</option>');
+          }
+        }
+        if (!opts.length) { plexStatus('plex-auth-status', 'No servers found on this account.', 'err'); return; }
+        sel.innerHTML = opts.join('');
+        document.getElementById('plex-server-pick').style.display = 'flex';
+        plexStatus('plex-auth-status', 'Found ' + opts.length + ' address(es) — pick one to fill PLEX_URL.', 'ok');
+      } catch (err) {
+        plexStatus('plex-auth-status', esc(err.message), 'err');
+      }
+    }
+
+    function usePlexServer() {
+      const sel = document.getElementById('plex-server-select');
+      const inp = inputFor('PLEX_URL');
+      if (sel.value && inp) { inp.value = sel.value; refreshDirty(); }
+    }
+
+    async function verifyPlexServer() {
+      const urlInp = inputFor('PLEX_URL');
+      const tokInp = inputFor('PLEX_TOKEN');
+      plexStatus('plex-auth-status', '<span class="spin"></span> Verifying…');
+      const out = document.getElementById('plex-verify-out');
+      out.style.display = 'none';
+      try {
+        const data = await postJSON(api('/plex/verify'),
+          { url: urlInp ? urlInp.value.trim() : '', token: tokInp ? tokInp.value.trim() : '' });
+        const idn = data.identity, auth = data.auth;
+        out.innerHTML =
+          '<b>Server reachable</b><span>' + (idn.ok ? 'yes — v' + esc(idn.version) : 'NO — ' + esc(idn.error || '')) + '</span>'
+          + (idn.ok ? '<b>Machine ID</b><span>' + esc(idn.machineIdentifier) + '</span>' : '')
+          + '<b>Token accepted</b><span>' + (auth.ok ? 'yes — ' + auth.sections + ' libraries visible'
+              : 'NO — ' + esc(auth.error || '')) + '</span>';
+        out.style.display = 'grid';
+        plexStatus('plex-auth-status',
+          idn.ok && auth.ok ? 'Server verified.' : 'Verification failed.', idn.ok && auth.ok ? 'ok' : 'err');
+      } catch (err) {
+        plexStatus('plex-auth-status', esc(err.message), 'err');
+      }
+    }
+
+    async function plexUpdateStatus(force) {
+      const out = document.getElementById('plex-update-out');
+      if (force) plexStatus('plex-update-status', '<span class="spin"></span> Checking…');
+      try {
+        const res = await fetch(api('/plex/update' + (force ? '?force=1' : '')));
+        const data = await res.json();
+        if (data.error) { plexStatus('plex-update-status', esc(data.error), force ? 'err' : ''); return; }
+        out.innerHTML = '<b>Installed</b><span>' + esc(data.current) + ' (' + esc(data.platform) + ')</span>'
+          + '<b>Latest</b><span>' + esc(data.latest) + '</span>';
+        out.style.display = 'grid';
+        plexStatus('plex-update-status',
+          data.updateAvailable ? 'Update available.' : 'Up to date.', data.updateAvailable ? 'err' : 'ok');
+      } catch (err) {
+        if (force) plexStatus('plex-update-status', 'Check failed: ' + esc(err.message), 'err');
+      }
+    }
+
+    async function runReconcile(apply) {
+      if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
+      const limit = document.getElementById('plex-reconcile-limit').value.trim();
+      const qs = (apply ? '?apply=1' : '?') + (limit ? (apply ? '&' : '') + 'limit=' + encodeURIComponent(limit) : '');
+      plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
+      const out = document.getElementById('plex-reconcile-out');
+      try {
+        const data = await postJSON(api('/plex/reconcile' + qs.replace(/\?$/, '')), {});
+        out.textContent = JSON.stringify(data, null, 2);
+        out.style.display = 'block';
+        plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
+      } catch (err) {
+        plexStatus('plex-reconcile-status', esc(err.message), 'err');
+      }
+    }
+
     render();
+    showTab(location.hash === '#plex' ? 'plex' : 'settings');
   </script>
 </body>
 </html>
