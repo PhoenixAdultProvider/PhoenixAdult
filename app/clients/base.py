@@ -15,6 +15,7 @@ from app.config.env import env
 from app.utils.helpers.helpers import b64url_decode, b64url_encode, build_search_result, pack_cur_id
 from app.utils.http.bypass import bypass_get
 from app.utils.http.client import make_http
+from app.utils.images.logo_cache import resolve_logo
 from app.utils.logging.logger import logger
 
 if TYPE_CHECKING:
@@ -490,6 +491,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.art = metadata.art or []
         try:
             await self.fetch_logo(scene, metadata)
+            metadata.logo = await resolve_logo(metadata.tagline, metadata.studio, metadata.logo)
         except Exception as err:  # noqa: BLE001 - a missing logo never fails the scene
             logger.warn(site.name, f'fetch_logo failed for {scene.url}: {err!r}')
         return metadata

@@ -41,6 +41,11 @@ async def local_image(filepath: str) -> Response:
     if cached and cached.exists():
         return FileResponse(cached)
 
+    if filepath.startswith('logos/'):
+        logo = safe_join(env.logo_cache_dir, filepath[len('logos/') :])
+        if logo and logo.exists():
+            return FileResponse(logo)
+
     return JSONResponse({'error': 'Image not found'}, status_code=404)
 
 

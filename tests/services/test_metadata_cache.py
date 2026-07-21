@@ -126,6 +126,30 @@ def test_reapply_text_rules_strips_nubiles_episode_tag() -> None:
     assert untouched.MediaContainer.Metadata[0].title == 'Stepmom Wants to Move In - S2:E1'
 
 
+def test_backfill_logo_fills_only_missing(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    from pathlib import Path
+
+    from app.utils.images import logo_cache
+
+    root = Path(str(tmp_path))
+    (root / 'brazzers').mkdir(parents=True)
+    (root / 'brazzers' / 'logo.brazzers.png').write_bytes(b'png')
+    monkeypatch.setenv('LOGO_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('LOGO_CACHE_DIR', str(root))
+    logo_cache.invalidate()
+
+    resp = _resp(studio='Brazzers')
+    assert mc.backfill_logo(resp) is True
+    md = resp.MediaContainer.Metadata[0]
+    logos = [i for i in md.Image or [] if i.type == 'clearLogo']
+    assert len(logos) == 1 and logos[0].url.endswith('/images/local/logos/brazzers/logo.brazzers.png')
+    assert mc.backfill_logo(resp) is False
+
+    monkeypatch.setenv('LOGO_CACHE_ENABLE', 'false')
+    logo_cache.invalidate()
+    assert mc.backfill_logo(_resp(studio='Brazzers')) is False
+
+
 def test_backfill_metadata_attrs_adds_new_fields() -> None:
     resp = PlexMetadataResponse.model_validate(
         {

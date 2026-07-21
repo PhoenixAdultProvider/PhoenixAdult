@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <title>Logo Cache</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: #cbd5e1; }
+    .off-banner { background: #7c2d12; color: #fed7aa; border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
+    .bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .bar input[type=text] { background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
+    .bar input[type=text]::placeholder { color: #475569; }
+    .count-badge { font-size: 12px; color: #64748b; }
+    .purge-all-btn { margin-left: auto; padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .purge-all-btn:hover { background: #dc2626; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .card { background: #151b29; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .logo-box { background: repeating-conic-gradient(#141824 0% 25%, #0b0d12 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+    .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
+    .site { font-size: 14px; font-weight: 600; }
+    .site .unknown { color: #64748b; font-weight: 400; font-style: italic; }
+    .meta { font-size: 11px; color: #64748b; word-break: break-all; }
+    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1f2937; color: #fca5a5; cursor: pointer; font-size: 12px; }
+    .purge-btn:hover { background: #7f1d1d; color: #fecaca; }
+    .empty { color: #475569; font-size: 14px; padding: 40px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Logo Cache</h1>
+  <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code></div>
+  <div class="off-banner" id="off-banner" style="display:none">LOGO_CACHE_ENABLE is off — these files are not being served; only scraped upstream logo URLs are emitted.</div>
+  <div class="bar">
+    <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
+    <span class="count-badge" id="count"></span>
+    <button type="button" class="purge-all-btn" onclick="purgeAll()">Purge all</button>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">no logos cached — drop logo.&lt;site-slug&gt;.png files into the cache directory</div>
+
+  <script>
+    let STATE = __STATE_JSON__;
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+    function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+    function render() {
+      document.getElementById('dir').textContent = STATE.dir;
+      document.getElementById('off-banner').style.display = STATE.enabled ? 'none' : 'block';
+      const q = document.getElementById('filter').value.trim().toLowerCase();
+      const rows = STATE.logos.filter((l) => !q || (l.site + ' ' + l.slug + ' ' + l.rel).toLowerCase().includes(q));
+      document.getElementById('count').textContent = rows.length + ' / ' + STATE.logos.length + ' logos';
+      document.getElementById('empty').style.display = STATE.logos.length ? 'none' : 'block';
+      document.getElementById('grid').innerHTML = rows.map((l) => `
+        <div class="card">
+          <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
+          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:#475569;font-weight:400">· ${esc(l.slug)}</span></div>
+          <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
+          <button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>
+        </div>`).join('');
+    }
+
+    async function refresh() {
+      STATE = await (await fetch('api/list')).json();
+      render();
+    }
+
+    async function purgeOne(rel) {
+      if (!confirm('Delete ' + rel + '? A configured scraper may re-download it on the next scrape.')) return;
+      await fetch('api/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rel }) });
+      refresh();
+    }
+
+    async function purgeAll() {
+      if (!confirm('Delete ALL cached logos?')) return;
+      await fetch('api/purge-all', { method: 'POST' });
+      refresh();
+    }
+
+    render();
+  </script>
+</body>
+</html>

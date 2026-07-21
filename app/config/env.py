@@ -78,6 +78,14 @@ class _Env:
         return os.environ.get('IMAGE_DIR') or str(_cwd() / 'local' / 'images')
 
     @property
+    def logo_cache_enabled(self) -> bool:
+        return _flag('LOGO_CACHE_ENABLE', 'false') == 'true'
+
+    @property
+    def logo_cache_dir(self) -> str:
+        return os.environ.get('LOGO_CACHE_DIR') or str(Path(self.image_dir) / 'logos')
+
+    @property
     def manual_nfo_path(self) -> str:
         return os.environ.get('MANUAL_NFO_PATH') or str(_cwd() / 'local' / 'manual')
 

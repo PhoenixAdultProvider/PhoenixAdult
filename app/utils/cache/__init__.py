@@ -14,7 +14,7 @@ import httpx2
 
 from app.config import config, people_image_base
 from app.config.env import env
-from app.models.metadata import PlexCollection, PlexGenre, PlexMetadataResponse, PlexRole
+from app.models.metadata import PlexCollection, PlexGenre, PlexImage, PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
 from app.utils.fs.paths import safe_join
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -594,6 +594,28 @@ async def backfill_people_images(
         changed = True
 
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
+    return changed
+
+
+def backfill_logo(response: PlexMetadataResponse) -> bool:
+    """Add a clearLogo Image to snapshots written before a logo existed: only when the
+    logo cache is enabled, a file matches the scene's tagline/studio, and the snapshot
+    has no clearLogo yet — the rest of the metadata is untouched. Mutates in place and
+    returns True if anything changed, so the caller can rewrite the snapshot."""
+    from app.utils.images import logo_cache
+
+    if not logo_cache.enabled():
+        return False
+    changed = False
+    for md in response.MediaContainer.Metadata:
+        if any(img.type == 'clearLogo' for img in md.Image or []):
+            continue
+        hit = logo_cache.find_logo(md.tagline, md.studio)
+        url = logo_cache.local_url(hit) if hit else None
+        if not url:
+            continue
+        md.Image = [*(md.Image or []), PlexImage(url=url, type='clearLogo')]
+        changed = True
     return changed
 
 

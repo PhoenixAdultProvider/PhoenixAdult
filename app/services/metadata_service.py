@@ -54,6 +54,8 @@ async def refresh_cached_snapshot(
         changed = True
     if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
         changed = True
+    if metadata_cache.backfill_logo(response):
+        changed = True
     if metadata_cache.backfill_metadata_attrs(response):
         changed = True
     if changed:

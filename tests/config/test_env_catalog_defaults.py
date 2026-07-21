@@ -25,6 +25,7 @@ _BOOL_GETTERS: dict[str, Callable[[], bool]] = {
     'STRIP_ENABLE': lambda: env.strip_symbols_enabled,
     'DISABLE_AUTO_MATCH': lambda: env.disable_auto_match,
     'IMAGE_PROXY_PIN': lambda: env.image_proxy_pin,
+    'LOGO_CACHE_ENABLE': lambda: env.logo_cache_enabled,
 }
 
 

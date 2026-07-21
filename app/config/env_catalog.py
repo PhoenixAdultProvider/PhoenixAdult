@@ -78,6 +78,23 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'IMAGE_DIR', 'Local image directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
     ),
     EnvVarSpec(
+        'LOGO_CACHE_ENABLE',
+        'ClearLogo cache',
+        'Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo '
+        'once, converting SVG to PNG. Off: only scraped upstream logo URLs are emitted.',
+        'Images',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
+        'LOGO_CACHE_DIR',
+        'Logo cache directory',
+        'Folder holding logo.<site-slug>.<ext> files, organized in per-studio subfolders.',
+        'Images',
+        'string',
+        default_value='./local/images/logos',
+    ),
+    EnvVarSpec(
         'IMAGE_MAX_BYTES',
         'Max image size',
         'Hard ceiling on a single upstream image fetch — larger images are rejected. '

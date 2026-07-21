@@ -561,6 +561,8 @@
       if (meta.title)         fields.push(field('Title', esc(meta.title)));
       if (meta.studio)        fields.push(field('Studio (network)', esc(meta.studio)));
       if (meta.tagline && meta.tagline !== meta.studio) fields.push(field('Tagline (sub-site)', esc(meta.tagline)));
+      const clearLogo = (meta.images || []).find((i) => i.type === 'clearLogo');
+      if (clearLogo) fields.push(field('Logo', `<img src="${esc(clearLogo.url)}" style="max-height:56px;max-width:100%;background:repeating-conic-gradient(#141824 0% 25%, #0b0d12 0% 50%) 0 0 / 16px 16px;border:1px solid #2d3748;border-radius:6px;padding:6px" onerror="this.style.opacity='0.2'">`));
       if (meta.contentRating) fields.push(field('Content Rating', '<span class="meta-tag" style="background:#7f1d1d;color:#fecaca;border-color:#991b1b;letter-spacing:0.04em;font-weight:700">' + esc(meta.contentRating).toUpperCase() + '</span>'));
       if (meta.releaseDate)   fields.push(field('Released', esc(meta.releaseDate) + (meta.year ? ' &middot; ' + meta.year : '')));
       if (meta.summary)       fields.push(field('Summary', '<span style="font-size:0.82rem;line-height:1.5;color:#94a3b8">' + esc(meta.summary) + '</span>'));

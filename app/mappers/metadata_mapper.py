@@ -37,8 +37,8 @@ def _year_of(date: str | None) -> int | None:
 
 
 class MetadataMapper:
-    def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None) -> str | None:
-        return proxy_url(url, config.base_url, referers, cookies)
+    def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None, *, passthrough_local: bool = False) -> str | None:
+        return proxy_url(url, config.base_url, referers, cookies, passthrough_local=passthrough_local)
 
     def to_match_result(
         self,
@@ -90,7 +90,7 @@ class MetadataMapper:
 
         thumb, art, images_proxied = await self._resolve_artwork(detail, referers, cookies)
         if detail.logo:
-            images_proxied.append(PlexImage(url=self._proxy(detail.logo, referers, cookies) or detail.logo, type='clearLogo'))
+            images_proxied.append(PlexImage(url=self._proxy(detail.logo, referers, cookies, passthrough_local=True) or detail.logo, type='clearLogo'))
         plex_actors, plex_directors, plex_producers = await self._resolve_people(detail, referers, cookies)
 
         effective_date = detail.release_date or fallback_date
