@@ -105,6 +105,7 @@ class SceneDetail:
     countries: list[str] | None = None
     rating: float | None = None
     audience_rating: float | None = None
+    logo: str | None = None
 
 
 # ── Loaded contexts handed to the per-field hooks ─────────────────────────────
@@ -487,6 +488,10 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.genres = metadata.genres or []
         metadata.actors = metadata.actors or []
         metadata.art = metadata.art or []
+        try:
+            await self.fetch_logo(scene, metadata)
+        except Exception as err:  # noqa: BLE001 - a missing logo never fails the scene
+            logger.warn(site.name, f'fetch_logo failed for {scene.url}: {err!r}')
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
@@ -564,4 +569,10 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        return None
+
+    async def fetch_logo(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        """Sets metadata.logo (a clearLogo image URL). Unlike the other hooks this runs
+        AFTER update() and the studio fallback, so metadata.tagline / metadata.studio are
+        final — logo resolution keys off them (tagline first, then studio)."""
         return None

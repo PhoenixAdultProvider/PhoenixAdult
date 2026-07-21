@@ -89,6 +89,8 @@ class MetadataMapper:
         cookies = [detail.art_cookie, *site_cookies] if detail.art_cookie else site_cookies
 
         thumb, art, images_proxied = await self._resolve_artwork(detail, referers, cookies)
+        if detail.logo:
+            images_proxied.append(PlexImage(url=self._proxy(detail.logo, referers, cookies) or detail.logo, type='clearLogo'))
         plex_actors, plex_directors, plex_producers = await self._resolve_people(detail, referers, cookies)
 
         effective_date = detail.release_date or fallback_date
