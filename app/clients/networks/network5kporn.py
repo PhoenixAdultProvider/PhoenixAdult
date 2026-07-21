@@ -9,6 +9,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCapt
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.processors.actor_strip import enabled_for, split_actor_prefix
 
 STUDIO = '5Kporn'
 _COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
@@ -24,11 +25,9 @@ class Network5KPClient(Client):
         super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        title_no_actors = ' '.join(search_data.title.split(' ')[2:])
-        if title_no_actors.startswith('and '):
-            title_no_actors = ' '.join(title_no_actors.split(' ')[3:])
-
-        actor_query = search_data.title.replace(title_no_actors, '').strip()
+        """The site search is actor-based: with SEARCH_STRIP_ACTORS on, the filename's
+        leading actor names become the query; otherwise the full title is sent."""
+        actor_query = split_actor_prefix(search_data.title)[0] if enabled_for(search_data.site_info.name) else search_data.title
 
         url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', quote(actor_query))
         try:

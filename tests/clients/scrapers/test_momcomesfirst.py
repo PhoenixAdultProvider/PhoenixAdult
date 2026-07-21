@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from app.clients.base import SearchContext, SearchResult
@@ -27,6 +28,19 @@ async def test_search_strips_relationship_words() -> None:
     assert results[0].title == 'Secret Lesson'
     assert results[0].scene_url == 'https://momcomesfirst.com/scene/secret-lesson'
     assert results[0].release_date == '2021-03-03'
+
+
+@respx.mock
+async def test_search_strips_actor_prefix_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', SITE.name)
+    url = 'https://momcomesfirst.com/?s=secret+lesson'
+    respx.get(url).mock(
+        return_value=httpx.Response(200, text='<html><body><article><h2><a href="/scene/secret-lesson">Secret Lesson</a></h2></article></body></html>')
+    )
+    results: list[SearchResult] = []
+    await MomComesFirstClient().search(results, SearchContext(title='cory chase moms secret lesson', encoded='', search_site=SITE.name, site_info=SITE))
+    assert len(results) == 1
+    assert results[0].title == 'Secret Lesson'
 
 
 @respx.mock

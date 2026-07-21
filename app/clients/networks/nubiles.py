@@ -19,6 +19,7 @@ from app.utils.helpers.html_helpers import first_attr
 from app.utils.images.image_fetcher import fetch_image
 from app.utils.logging.logger import logger
 from app.utils.people.sources import scene_image_pref
+from app.utils.processors.actor_strip import best_title_score
 from app.utils.processors.studio_name import normalize_studio
 
 STUDIO = 'Nubiles'
@@ -254,6 +255,7 @@ class NubilesClient(Client):
                             search_date=search_data.search_date or None,
                             cur_id=enc,
                             subsite=subsite or None,
+                            score=best_title_score(search_data.title, display_title, search_data.site_info.name),
                         )
                     )
 

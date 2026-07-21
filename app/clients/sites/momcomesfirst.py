@@ -6,6 +6,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from app.utils.helpers.helpers import absolute_url, iso_date, load_data
 from app.utils.helpers.html_helpers import first_attr, first_text
+from app.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 from app.utils.processors.title_case import title_case
 
 _ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
@@ -14,7 +15,8 @@ _ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
 class MomComesFirstClient(Client):
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
-        title_no_actors = ' '.join(search_data.title.replace('sons', '').replace('mothers', '').replace('moms', '').split(' ')[2:]).lower()
+        cleaned = ' '.join(search_data.title.replace('sons', '').replace('mothers', '').replace('moms', '').split())
+        title_no_actors = (strip_actor_prefix(cleaned) if enabled_for(search_data.site_info.name) else cleaned).lower()
         encoded = title_no_actors.replace(' ', '+').replace("'", '')
         search_results = await self.fetch_and_load(f'{base}/?s={encoded}', FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search')
         if not search_results:

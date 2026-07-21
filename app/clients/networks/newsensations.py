@@ -6,6 +6,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDe
 from app.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.logging.best_effort import best_effort
+from app.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 from app.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'New Sensations'
@@ -15,9 +16,7 @@ class NewSensationsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         stem = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path
 
-        title_no_actors = ' '.join(search_data.title.split(' ')[2:])
-        if title_no_actors.startswith('and '):
-            title_no_actors = ' '.join(title_no_actors.split(' ')[3:])
+        title_no_actors = strip_actor_prefix(search_data.title) if enabled_for(search_data.site_info.name) else search_data.title
 
         slug = title_no_actors.replace(' ', '-')
 

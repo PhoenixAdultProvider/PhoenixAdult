@@ -13,6 +13,11 @@ SITE = find_site('New Sensations')
 assert SITE is not None
 
 
+@pytest.fixture(autouse=True)
+def _strip_actors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', SITE.name)
+
+
 def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
     return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 

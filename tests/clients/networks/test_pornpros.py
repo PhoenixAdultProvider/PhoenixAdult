@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from app.clients.base import SearchContext, SearchResult
@@ -9,6 +10,12 @@ from app.registry import find_site
 
 SITE = find_site('Cum4K')
 assert SITE is not None
+
+
+@pytest.fixture(autouse=True)
+def _strip_actors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', SITE.name)
+
 
 _RELEASE = {
     'title': 'Cool Scene',

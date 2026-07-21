@@ -54,6 +54,10 @@ class _Env:
         return os.environ.get('SEARCH_TITLE_TRASH')
 
     @property
+    def search_strip_actors_raw(self) -> str | None:
+        return os.environ.get('SEARCH_STRIP_ACTORS')
+
+    @property
     def strip_symbols_enabled(self) -> bool:
         return _flag('STRIP_ENABLE', 'false') == 'true'
 

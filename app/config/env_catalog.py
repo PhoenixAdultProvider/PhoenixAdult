@@ -384,6 +384,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='',
     ),
     EnvVarSpec(
+        'SEARCH_STRIP_ACTORS',
+        'Strip actor names — sites',
+        'Sites whose filenames lead with actor names: the names are dropped when building the site search, '
+        'and title scoring uses the best of the stripped and unstripped title. Type to search sites.',
+        'Misc',
+        'list',
+        default_value='',
+    ),
+    EnvVarSpec(
         'DISABLE_AUTO_MATCH',
         'Disable automatic matching',
         'When on, suppress every match request Plex did NOT flag as user-initiated (manual=1).',

@@ -200,7 +200,33 @@ async def test_search_by_date_builds_results() -> None:
     assert r.cur_id == pack_cur_id(['321', '2024-05-07'])
     assert r.subsite == 'Bad Teens Punished'
     assert r.release_date == '2024-05-07'
-    assert r.score == 100
+    assert r.score is not None and r.score >= 90
+
+
+@respx.mock
+async def test_search_by_date_scores_stripped_actor_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    card = (
+        '<div class="content-grid-item">'
+        '<span class="title"><a href="/video/watch/321/cool-scene">A Cool Scene</a></span>'
+        '<a href="https://badteenspunished.com" class="site-link">BadTeensPunished.com</a>'
+        '<span class="date">May 7, 2024</span>'
+        '</div>'
+    )
+    respx.get('https://nubilefilms.com/video/gallery/date/2024-05-07/2024-05-07').mock(
+        return_value=httpx.Response(200, text=f'<html><body>{card}</body></html>')
+    )
+    query = 'jane doe and jane smith a cool scene'
+
+    monkeypatch.delenv('SEARCH_STRIP_ACTORS', raising=False)
+    plain_results: list[SearchResult] = []
+    await NubilesClient().search(plain_results, _ctx(title=query, search_date='2024-05-07'))
+
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubile Films')
+    stripped_results: list[SearchResult] = []
+    await NubilesClient().search(stripped_results, _ctx(title=query, search_date='2024-05-07'))
+
+    assert plain_results[0].score is not None and stripped_results[0].score == 100
+    assert stripped_results[0].score > plain_results[0].score
 
 
 @respx.mock

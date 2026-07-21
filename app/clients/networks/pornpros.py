@@ -5,6 +5,7 @@ from typing import Any
 from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
+from app.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 
 _GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
 
@@ -32,10 +33,8 @@ class PornProsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         title = search_data.title
-        if search_data.site_info.name != 'Casting Couch-X':
-            title = ' '.join(title.split(' ')[2:])
-            if title.startswith('and '):
-                title = ' '.join(title.split(' ')[3:])
+        if enabled_for(search_data.site_info.name):
+            title = strip_actor_prefix(title)
 
         slug = _query_slug(title)
         release = await self._release(base, slug, search_data.capture)

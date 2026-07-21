@@ -26,6 +26,7 @@ from app.config.env_overrides import (
     is_overridden,
     set_override,
 )
+from app.registry import SITE_DEFINITIONS
 from app.routes import read_json_body
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.helpers.helpers import load_data
@@ -41,6 +42,13 @@ def _display_value(spec: EnvVarSpec) -> str:
     return humanize_bytes(raw) if spec.kind == 'bytes' else raw
 
 
+def _options_for(spec: EnvVarSpec) -> list[str]:
+    """Static catalog options, except site-list vars whose options come from the registry."""
+    if spec.key == 'SEARCH_STRIP_ACTORS':
+        return sorted(s.name for s in SITE_DEFINITIONS)
+    return spec.options
+
+
 def _build_state() -> dict[str, Any]:
     by_group: dict[str, list[dict[str, Any]]] = {}
     for spec in ENV_CATALOG:
@@ -52,7 +60,7 @@ def _build_state() -> dict[str, Any]:
             'kind': spec.kind,
             'defaultValue': spec.default_value,
             'requiresRestart': spec.requires_restart,
-            'options': spec.options,
+            'options': _options_for(spec),
             'min': spec.min,
             'max': spec.max,
             'preview': spec.preview,

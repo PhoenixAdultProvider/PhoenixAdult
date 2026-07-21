@@ -217,14 +217,25 @@
         + ' title="Remove">×</button>'
         + '</div>').join('') || '<span class="hint">empty — add a source below</span>';
 
-      const remaining = (v.options || []).filter((o) => arr.indexOf(o) < 0);
+      const opts = v.options || [];
+      const remaining = opts.filter((o) => arr.indexOf(o) < 0);
       const add = document.getElementById('srcadd-' + key);
-      if (remaining.length) {
-        add.innerHTML = '<select class="src-add-select">'
-          + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
-          + '</select><button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add source</button>';
+      if (opts.length && opts.length <= 25) {
+        add.innerHTML = remaining.length
+          ? '<select class="src-add-select">'
+            + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
+            + '</select><button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add source</button>'
+          : '<span class="hint">all known sources added</span>';
       } else {
-        add.innerHTML = '<span class="hint">all known sources added</span>';
+        const dl = opts.length
+          ? '<datalist id="dl-' + esc(key) + '">'
+            + remaining.map((o) => '<option value="' + esc(o) + '"></option>').join('') + '</datalist>'
+          : '';
+        add.innerHTML = '<input type="text" class="src-add-select src-add-input"'
+          + (opts.length ? ' list="dl-' + esc(key) + '"' : '')
+          + ' placeholder="' + (opts.length ? 'type to search…' : 'add value…') + '"'
+          + ' autocomplete="off" spellcheck="false">' + dl
+          + '<button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add</button>';
       }
 
       inputFor(key).value = arr.join(',');
@@ -271,9 +282,19 @@
     }
 
     function listAdd(key) {
-      const sel = document.querySelector('#srcadd-' + key + ' .src-add-select');
-      if (!sel || !sel.value) return;
-      LISTS[key].push(sel.value);
+      const box = document.querySelector('#srcadd-' + key + ' .src-add-select');
+      if (!box) return;
+      let val = (box.value || '').trim();
+      if (!val) return;
+      const opts = specOf(key).options || [];
+      if (opts.length) {
+        const canon = opts.find((o) => o.toLowerCase() === val.toLowerCase());
+        if (!canon || LISTS[key].indexOf(canon) >= 0) return;
+        val = canon;
+      } else if (LISTS[key].indexOf(val) >= 0) {
+        return;
+      }
+      LISTS[key].push(val);
       rebuildList(key);
       refreshDirty();
     }
@@ -503,6 +524,12 @@
       if (removeEl) { listRemove(removeEl.dataset.listRemove, Number(removeEl.dataset.idx)); return; }
       const addEl = e.target.closest('[data-list-add]');
       if (addEl) { listAdd(addEl.dataset.listAdd); return; }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const inp = e.target.closest('.src-add-input');
+      if (inp) { e.preventDefault(); listAdd(inp.closest('.srcadd').id.replace('srcadd-', '')); }
     });
 
     render();
