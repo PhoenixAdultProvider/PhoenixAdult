@@ -152,7 +152,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Snapshot metadata cache',
         'When on, each scraped scene’s metadata + images are snapshotted under the metadata '
         'cache dir and served cache-first on later requests — offline-safe protection against '
-        'the source site going down or changing anti-scrape. Manage/purge at /metadata-cache.',
+        'the source site going down or changing anti-scrape. Manage/purge at /metadata.',
         'People cache & sources',
         'boolean',
         default_value='false',
@@ -171,7 +171,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'When on (and people caching is enabled), cached headshots are face-detected '
         'and cropped to head + shoulders for Plex’s circular card. Requires '
         'opencv-python-headless (pip install "opencv-python-headless"); no-ops if absent. '
-        'Generic/default placeholder images are never cropped. Review/undo crops at /people-cache.',
+        'Generic/default placeholder images are never cropped. Review/undo crops at /people.',
         'People cache & sources',
         'boolean',
         default_value='false',

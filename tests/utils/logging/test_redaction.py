@@ -123,11 +123,11 @@ def test_filter_shows_private_ip_when_flag_off(monkeypatch):
 def test_filter_redacts_public_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
-    args = ('8.8.8.8:0', 'GET', '/people-cache?token=deadbeefcafe', '1.1', 200)
+    args = ('8.8.8.8:0', 'GET', '/people?token=deadbeefcafe', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
     assert rec.args[0] == '***REDACTED***:0'
-    assert rec.args[2] == '/people-cache?token=***REDACTED***'
+    assert rec.args[2] == '/people?token=***REDACTED***'
 
 
 def test_filter_redacts_uvicorn_access_client_addr(monkeypatch):

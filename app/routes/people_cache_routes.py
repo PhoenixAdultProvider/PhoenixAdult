@@ -198,16 +198,16 @@ async def page(request: Request) -> HTMLResponse:
         return r.json().catch(()=>({{ok:false}}));
       }}
       async function restore(filename){{
-        const j = await post('/people-cache/restore', {{filename}});
+        const j = await post('/people/restore', {{filename}});
         if(j.ok) location.reload(); else alert('Restore failed');
       }}
       async function setGender(filename, gender){{
-        const j = await post('/people-cache/gender', {{filename, gender}});
+        const j = await post('/people/gender', {{filename, gender}});
         if(j.ok) location.reload(); else alert('Set gender failed');
       }}
       async function purge(filename){{
         if(!confirm('Delete '+filename+' from the local cache?')) return;
-        const j = await post('/people-cache/purge', {{filename}});
+        const j = await post('/people/purge', {{filename}});
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
       let croppedOnly = false;

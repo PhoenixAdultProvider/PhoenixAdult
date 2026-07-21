@@ -301,7 +301,7 @@ def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
 async def restore_original(filename: str) -> bool:
     """Replace a cropped cache file with its un-cropped original. Prefers the preserved
     local original (offline-safe); falls back to re-downloading the upstream. Backs the
-    /people-cache 'Use original' action."""
+    /people 'Use original' action."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)
@@ -340,7 +340,7 @@ async def restore_original(filename: str) -> bool:
 
 def purge(filename: str) -> bool:
     """Delete a cached image (and its preserved original) and drop its crop-log entry.
-    Backs the /people-cache 'Purge' button."""
+    Backs the /people 'Purge' button."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     target = safe_join(directory, subdir, filename)  # path-traversal guard

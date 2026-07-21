@@ -25,8 +25,8 @@ def _log_startup_banner() -> None:
 
     qs = f'?token={env.admin_token}' if env.admin_token else ''
     logger.info(f'  Config UI:      {config.base_url}/config{qs}')
-    logger.info(f'  People cache:   {config.base_url}/people-cache{qs}')
-    logger.info(f'  Metadata cache: {config.base_url}/metadata-cache{qs}')
+    logger.info(f'  People cache:   {config.base_url}/people{qs}')
+    logger.info(f'  Metadata cache: {config.base_url}/metadata{qs}')
     if not env.is_production:
         logger.info(f'  Dev UI:         {config.base_url}/dev{qs}')
     if not env.admin_token:
@@ -62,10 +62,10 @@ def create_app() -> FastAPI:
     app.include_router(env_routes.router, prefix='/config')
 
     # ── People Image Cache review UI (admin-guarded) ─────────────────────────
-    app.include_router(people_cache_routes.router, prefix='/people-cache')
+    app.include_router(people_cache_routes.router, prefix='/people')
 
     # ── Snapshot metadata cache review UI (admin-guarded) ────────────────────
-    app.include_router(metadata_cache_routes.router, prefix='/metadata-cache')
+    app.include_router(metadata_cache_routes.router, prefix='/metadata')
 
     # ── ClearLogo cache review UI (admin-guarded) ────────────────────────────
     app.include_router(logo_routes.router, prefix='/logos')

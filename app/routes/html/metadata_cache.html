@@ -360,7 +360,7 @@
 
     async function purge(key) {
       if (!confirm('Purge this snapshot?')) return;
-      const r = await fetch('/metadata-cache/purge', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({key})});
+      const r = await fetch('/metadata/purge', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({key})});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
     }
@@ -390,7 +390,7 @@
         ? `Purge ALL ${shownKeys.length} cached snapshot(s)? This cannot be undone.`
         : `Purge the ${shownKeys.length} snapshot(s) matching the current filters? This cannot be undone.`;
       if (!confirm(msg)) return;
-      const r = await fetch('/metadata-cache/purge-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: shownKeys})});
+      const r = await fetch('/metadata/purge-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: shownKeys})});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
     }
@@ -399,7 +399,7 @@
       const n = DUP_SET.size;
       if (!n) return;
       if (!confirm(`Purge ${n} superseded duplicate snapshot(s)? The newer sub-site entry is kept.`)) return;
-      const r = await fetch('/metadata-cache/purge-duplicates', {method: 'POST', headers: authHeaders()});
+      const r = await fetch('/metadata/purge-duplicates', {method: 'POST', headers: authHeaders()});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
     }
@@ -431,7 +431,7 @@
 
     async function refreshEntries() {
       try {
-        const r = await fetch('/metadata-cache/entries', {headers: authHeaders()});
+        const r = await fetch('/metadata/entries', {headers: authHeaders()});
         if (!r.ok) return;
         const j = await r.json();
         ALL = j.entries;
@@ -446,7 +446,7 @@
 
     async function refreshNow() {
       try {
-        const r = await fetch('/metadata-cache/state', {headers: authHeaders()});
+        const r = await fetch('/metadata/state', {headers: authHeaders()});
         if (r.ok) stateToken = (await r.json()).token;
       } catch {}
       await refreshEntries();
@@ -455,7 +455,7 @@
     async function pollState() {
       if (document.hidden) return;
       try {
-        const r = await fetch('/metadata-cache/state', {headers: authHeaders()});
+        const r = await fetch('/metadata/state', {headers: authHeaders()});
         if (!r.ok) return;
         const token = (await r.json()).token;
         if (stateToken !== null && token !== stateToken) await refreshEntries();

@@ -354,7 +354,7 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
 
 
 def entries() -> list[dict[str, Any]]:
-    """All snapshots, newest first, for the /metadata-cache UI."""
+    """All snapshots, newest first, for the /metadata UI."""
     from app.clients.aggregators.data18 import mapping_slug
 
     out: list[dict[str, Any]] = []
@@ -471,7 +471,7 @@ def purge_duplicates() -> int:
 
 def _is_stale_local_thumb(thumb: str) -> bool:
     """True if a cached /images/local/ thumb points at a people-cache file that no longer
-    exists (e.g. purged at /people-cache) — so backfill re-resolves it instead of serving
+    exists (e.g. purged at /people) — so backfill re-resolves it instead of serving
     a dead link."""
     marker = '/images/local/'
     if marker not in thumb:
