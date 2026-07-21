@@ -90,35 +90,39 @@ async def test_warm_images_bounds_concurrency(monkeypatch: pytest.MonkeyPatch) -
     assert peak <= nubiles._IMAGE_CONCURRENCY
 
 
-async def test_scene_window_cap_rests_after_four(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pending_wait_window_cap_after_four() -> None:
     import time as _t
 
-    sleeps: list[float] = []
-
-    async def fake_sleep(s: float) -> None:
-        sleeps.append(s)
-
-    monkeypatch.setattr(nubiles.asyncio, 'sleep', fake_sleep)
     client = NubilesClient()
     now = _t.monotonic()
     client._scene_starts.extend([now - 30, now - 20, now - 10, now - 5])
-    await client._respect_scene_window()
-    assert len(sleeps) == 1
-    assert 560 < sleeps[0] <= nubiles._SCENE_WINDOW
+    assert 560 < client._pending_wait() <= nubiles._SCENE_WINDOW
 
 
-async def test_scene_window_under_cap_and_stale_pruning(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pending_wait_ignores_stale_starts_and_uses_gap() -> None:
     import time as _t
 
-    async def fail_sleep(s: float) -> None:
-        raise AssertionError('must not rest under the cap')
-
-    monkeypatch.setattr(nubiles.asyncio, 'sleep', fail_sleep)
     client = NubilesClient()
     now = _t.monotonic()
-    client._scene_starts.extend([now - 700, now - 650, now - 30, now - 20, now - 10])
-    await client._respect_scene_window()
-    assert len(client._scene_starts) == 4
+    client._scene_starts.extend([now - 700, now - 650, now - 30])
+    assert client._pending_wait() == 0.0
+    client._gap_until = now + 120
+    assert 115 < client._pending_wait() <= 120
+
+
+async def test_sync_scene_defers_instead_of_sleeping() -> None:
+    import time as _t
+
+    from app.clients.base import PacingDeferredError
+    from app.registry import find_site
+
+    site = find_site('Nubile Films')
+    assert site is not None
+    client = NubilesClient()
+    client._gap_until = _t.monotonic() + 300
+    with pytest.raises(PacingDeferredError) as err:
+        await client.fetch_scene_detail('1|2020-01-01', site)
+    assert err.value.wait_seconds > 290
 
 
 async def test_warm_images_noop_without_art(monkeypatch: pytest.MonkeyPatch) -> None:

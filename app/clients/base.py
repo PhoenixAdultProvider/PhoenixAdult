@@ -57,6 +57,7 @@ class SceneContext:
     capture: list[RawCaptureEntry] | None = None
     language: str | None = None
     subsite: str | None = None  # sub-site the search selection resolved to; used for data18 slugging
+    allow_slow: bool = False  # background scrape: pacing may sleep past the Plex request budget
 
 
 # ── Results ───────────────────────────────────────────────────────────────────
@@ -81,6 +82,15 @@ class ActorResult:
     photo_url: str = ''
     gender: str = ''
     role: str = ''
+
+
+class PacingDeferredError(Exception):
+    """A client refused to hold a Plex-facing request through a long pacing wait (Plex
+    kills provider requests at ~90s); the service queues a background scrape instead."""
+
+    def __init__(self, wait_seconds: float) -> None:
+        super().__init__(f'pacing requires waiting ~{wait_seconds:.0f}s')
+        self.wait_seconds = wait_seconds
 
 
 @dataclass

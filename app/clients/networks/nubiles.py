@@ -12,7 +12,7 @@ from typing import Any
 from parsel import Selector
 
 from app.clients.aggregators.data18 import mapping_slug
-from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from app.clients.base import ActorResult, Client, LoadedScene, PacingDeferredError, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.config.env import env
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
@@ -45,6 +45,7 @@ _GAP_JITTER_MIN = 60.0
 _GAP_JITTER_MAX = 240.0
 _SCENE_WINDOW = 600.0
 _SCENE_WINDOW_MAX = 4
+_SYNC_WAIT_BUDGET = 10.0
 _PACE_JITTER = 3.0
 _MAX_RETRIES = 3
 _MAX_BACKOFF = 120.0
@@ -126,16 +127,38 @@ class NubilesClient(Client):
             self._last_fetch = time.monotonic()
         logger.info(_PACE_TAG, f'{label} (waited {max(0.0, wait):.1f}s)')
 
+    def _pending_wait(self) -> float:
+        """Seconds a new scene must wait before scraping: the gap remainder or the
+        window rest, whichever dominates (the gap sleep counts toward the window rest)."""
+        now = time.monotonic()
+        gap = max(0.0, self._gap_until - now)
+        starts = [t for t in self._scene_starts if now - t <= _SCENE_WINDOW]
+        rest = _SCENE_WINDOW - (now - starts[0]) if len(starts) >= _SCENE_WINDOW_MAX else 0.0
+        return max(gap, rest)
+
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         """One scene at a time across all Nubiles sites, image burst warmed inside the lock.
         The between-scenes gap is slept off by the next scene, not before this one returns,
-        and a hard window cap rests when _SCENE_WINDOW_MAX scenes ran inside _SCENE_WINDOW."""
+        and a hard window cap rests when _SCENE_WINDOW_MAX scenes ran inside _SCENE_WINDOW.
+        Plex-facing requests never sleep past _SYNC_WAIT_BUDGET — they raise
+        PacingDeferredError for the service to queue a background scrape; background
+        scrapes (ctx.allow_slow) wait it out OUTSIDE the scene lock so searches aren't
+        starved for minutes."""
+        allow_slow = bool(ctx and ctx.allow_slow)
+        wait = self._pending_wait()
+        if not allow_slow and wait > _SYNC_WAIT_BUDGET:
+            raise PacingDeferredError(wait)
+        if allow_slow and wait > 0:
+            logger.info(_PACE_TAG, f'background scrape waiting {wait:.0f}s (gap/window)')
+            await asyncio.sleep(wait)
         async with self._scene_lock:
-            wait = self._gap_until - time.monotonic()
+            wait = self._pending_wait()
+            if not allow_slow and wait > _SYNC_WAIT_BUDGET:
+                raise PacingDeferredError(wait)
             if wait > 0:
                 logger.info(_PACE_TAG, f'between-scenes cooldown {wait:.1f}s')
                 await asyncio.sleep(wait)
-            await self._respect_scene_window()
+            self._note_scene_start()
             try:
                 detail = await super().fetch_scene_detail(payload, site, ctx)
                 await self._cooldown('post-update', _SCENE_COOLDOWN)
@@ -145,20 +168,11 @@ class NubilesClient(Client):
             finally:
                 self._gap_until = time.monotonic() + _scene_gap()
 
-    async def _respect_scene_window(self) -> None:
-        """Backstop over the gap pacing: at most _SCENE_WINDOW_MAX scene scrapes per
-        _SCENE_WINDOW seconds, resting until the oldest start leaves the window."""
+    def _note_scene_start(self) -> None:
         now = time.monotonic()
         while self._scene_starts and now - self._scene_starts[0] > _SCENE_WINDOW:
             self._scene_starts.popleft()
-        if len(self._scene_starts) >= _SCENE_WINDOW_MAX:
-            wait = _SCENE_WINDOW - (now - self._scene_starts[0])
-            logger.info(_PACE_TAG, f'{len(self._scene_starts)} scenes in the last {int(_SCENE_WINDOW / 60)}min — resting {wait:.0f}s')
-            await asyncio.sleep(wait)
-            now = time.monotonic()
-            while self._scene_starts and now - self._scene_starts[0] > _SCENE_WINDOW:
-                self._scene_starts.popleft()
-        self._scene_starts.append(time.monotonic())
+        self._scene_starts.append(now)
 
     async def _cooldown(self, phase: str, base: float) -> None:
         delay = _jittered(base)
