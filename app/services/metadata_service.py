@@ -14,11 +14,20 @@ from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
 from app.utils.concurrency.coalescer import Coalescer
 from app.utils.helpers.helpers import split_subsite
+from app.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from app.utils.http.ssrf_guard import ensure_fetchable_url
 from app.utils.logging.logger import logger
 from app.utils.people import filter_male_actors
 from app.utils.plex.media_type import provider_mount_path
 from app.utils.plex.rating_key import parse_rating_key
+
+
+def _log_abandoned(task: asyncio.Task[PlexMetadataResponse | None]) -> None:
+    """Consume the result/exception of a scrape that outlived its Plex request."""
+    if task.cancelled():
+        return
+    if err := task.exception():
+        logger.warn('metadata', f'abandoned scrape failed: {err!r}')
 
 
 def _stamp_keys(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
@@ -113,7 +122,18 @@ class MetadataService:
                     self._memo = {k: v for k, v in self._memo.items() if v[0] >= cutoff}
             return result
 
-        return await self._coalesce.run(key, _run)
+        task = asyncio.ensure_future(self._coalesce.run(key, _run))
+        try:
+            return await asyncio.wait_for(asyncio.shield(task), PLEX_REQUEST_BUDGET)
+        except TimeoutError:
+            # The scrape keeps running: on completion it lands in the memo and (for a
+            # fresh scene) the snapshot, so the next refresh serves instantly.
+            logger.warn(
+                provider.id,
+                f'Update exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget for ratingKey={rating_key} — returning empty; scrape continues in background',
+            )
+            task.add_done_callback(_log_abandoned)
+            return None
 
     async def _scrape(
         self,

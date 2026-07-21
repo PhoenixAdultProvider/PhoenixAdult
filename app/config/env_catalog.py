@@ -401,9 +401,10 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='',
     ),
     EnvVarSpec(
-        'NUBILES_SCENE_GAP',
-        'Nubiles between-scenes delay',
-        'Base seconds between Nubiles scene scrapes; a 1-4 minute random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless.',
+        'SCENE_GAP',
+        'Paced scrapers: between-scenes delay',
+        'Base seconds between scene scrapes on rate-limited scrapers (Nubiles, Naughty America); a 1-4 minute '
+        'random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless.',
         'Misc',
         'number',
         default_value='60',

@@ -93,10 +93,12 @@ async def test_warm_images_bounds_concurrency(monkeypatch: pytest.MonkeyPatch) -
 def test_pending_wait_window_cap_after_four() -> None:
     import time as _t
 
+    from app.utils.http import rate_limit_helper as rlh
+
     client = NubilesClient()
     now = _t.monotonic()
-    client._scene_starts.extend([now - 30, now - 20, now - 10, now - 5])
-    assert 560 < client._pending_wait() <= nubiles._SCENE_WINDOW
+    client.pacer._scene_starts.extend([now - 30, now - 20, now - 10, now - 5])
+    assert 560 < client.pacer.pending_wait() <= rlh._SCENE_WINDOW
 
 
 def test_pending_wait_ignores_stale_starts_and_uses_gap() -> None:
@@ -104,10 +106,10 @@ def test_pending_wait_ignores_stale_starts_and_uses_gap() -> None:
 
     client = NubilesClient()
     now = _t.monotonic()
-    client._scene_starts.extend([now - 700, now - 650, now - 30])
-    assert client._pending_wait() == 0.0
-    client._gap_until = now + 120
-    assert 115 < client._pending_wait() <= 120
+    client.pacer._scene_starts.extend([now - 700, now - 650, now - 30])
+    assert client.pacer.pending_wait() == 0.0
+    client.pacer._gap_until = now + 120
+    assert 115 < client.pacer.pending_wait() <= 120
 
 
 async def test_sync_scene_defers_instead_of_sleeping() -> None:
@@ -119,7 +121,7 @@ async def test_sync_scene_defers_instead_of_sleeping() -> None:
     site = find_site('Nubile Films')
     assert site is not None
     client = NubilesClient()
-    client._gap_until = _t.monotonic() + 300
+    client.pacer._gap_until = _t.monotonic() + 300
     with pytest.raises(PacingDeferredError) as err:
         await client.fetch_scene_detail('1|2020-01-01', site)
     assert err.value.wait_seconds > 290

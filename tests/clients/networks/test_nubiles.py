@@ -28,12 +28,14 @@ def _no_pow(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.utils.http.rate_limit_helper as rlh
+
     monkeypatch.setattr(nub_mod, '_PACE_SECONDS', 0.0)
     monkeypatch.setattr(nub_mod, '_PACE_JITTER', 0.0)
     monkeypatch.setattr(nub_mod, '_SCENE_COOLDOWN', 0.0)
-    monkeypatch.setattr(nub_mod, '_GAP_JITTER_MIN', 0.0)
-    monkeypatch.setattr(nub_mod, '_GAP_JITTER_MAX', 0.0)
-    monkeypatch.setenv('NUBILES_SCENE_GAP', '0')
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MIN', 0.0)
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MAX', 0.0)
+    monkeypatch.setenv('SCENE_GAP', '0')
 
 
 @respx.mock

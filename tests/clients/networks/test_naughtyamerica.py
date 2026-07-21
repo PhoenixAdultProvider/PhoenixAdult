@@ -15,7 +15,14 @@ assert SITE is not None
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.utils.http.rate_limit_helper as rlh
+
     monkeypatch.setattr(na, '_PACE_SECONDS', 0.0)
+    monkeypatch.setattr(na, '_PACE_JITTER', 0.0)
+    monkeypatch.setattr(na, '_SCENE_COOLDOWN', 0.0)
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MIN', 0.0)
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MAX', 0.0)
+    monkeypatch.setenv('SCENE_GAP', '0')
 
 
 def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:

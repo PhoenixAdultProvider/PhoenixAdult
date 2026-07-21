@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 import random
 import re
-import time
-from collections import deque
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -12,12 +10,12 @@ from typing import Any
 from parsel import Selector
 
 from app.clients.aggregators.data18 import mapping_slug
-from app.clients.base import ActorResult, Client, LoadedScene, PacingDeferredError, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
-from app.config.env import env
+from app.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from app.registry import ResolvedSiteInfo
 from app.utils.captcha.pow import get_verified_cookies
 from app.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.http.rate_limit_helper import ScenePacer
 from app.utils.images.image_fetcher import fetch_image
 from app.utils.logging.logger import logger
 from app.utils.people.sources import scene_image_pref
@@ -41,21 +39,11 @@ _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
 _EPISODE_TAG_RE = re.compile(r'\s*-\s*S\d+\s*:?\s*E\d+\s*$', re.IGNORECASE)
 _PACE_SECONDS = 7.0
 _SCENE_COOLDOWN = 7.0
-_GAP_JITTER_MIN = 60.0
-_GAP_JITTER_MAX = 240.0
-_SCENE_WINDOW = 600.0
-_SCENE_WINDOW_MAX = 4
-_SYNC_WAIT_BUDGET = 10.0
 _PACE_JITTER = 3.0
 _MAX_RETRIES = 3
 _MAX_BACKOFF = 120.0
 _IMAGE_CONCURRENCY = 4
 _PACE_TAG = 'Nubiles:pace'
-
-
-def _scene_gap() -> float:
-    """Between-scenes delay: NUBILES_SCENE_GAP seconds plus a 1-4 minute jitter."""
-    return env.nubiles_scene_gap + random.uniform(_GAP_JITTER_MIN, _GAP_JITTER_MAX)
 
 
 def strip_episode_tag(title: str) -> str:
@@ -110,77 +98,13 @@ def _best_variant(candidates: list[str]) -> str | None:
 class NubilesClient(Client):
     def __init__(self) -> None:
         super().__init__(_SHARED_HEADERS)
-        self._pace_lock = asyncio.Lock()
-        self._last_fetch = 0.0
-        self._scene_lock = asyncio.Lock()
-        self._gap_until = 0.0
-        self._scene_starts: deque[float] = deque()
+        self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
-    async def _pace(self, label: str = 'pow warm-up') -> None:
-        """Site rate limit: every base_url request (scene details, galleries, model pages,
-        PoW warm-up) waits its turn, ~_PACE_SECONDS apart with jitter, and logs under
-        _PACE_TAG so the paced traffic is greppable."""
-        async with self._pace_lock:
-            wait = _jittered(_PACE_SECONDS) - (time.monotonic() - self._last_fetch)
-            if wait > 0:
-                await asyncio.sleep(wait)
-            self._last_fetch = time.monotonic()
-        logger.info(_PACE_TAG, f'{label} (waited {max(0.0, wait):.1f}s)')
-
-    def _pending_wait(self) -> float:
-        """Seconds a new scene must wait before scraping: the gap remainder or the
-        window rest, whichever dominates (the gap sleep counts toward the window rest)."""
-        now = time.monotonic()
-        gap = max(0.0, self._gap_until - now)
-        starts = [t for t in self._scene_starts if now - t <= _SCENE_WINDOW]
-        rest = _SCENE_WINDOW - (now - starts[0]) if len(starts) >= _SCENE_WINDOW_MAX else 0.0
-        return max(gap, rest)
-
-    async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """One scene at a time across all Nubiles sites, image burst warmed inside the lock.
-        The between-scenes gap is slept off by the next scene, not before this one returns,
-        and a hard window cap rests when _SCENE_WINDOW_MAX scenes ran inside _SCENE_WINDOW.
-        Plex-facing requests never sleep past _SYNC_WAIT_BUDGET — they raise
-        PacingDeferredError for the service to queue a background scrape; background
-        scrapes (ctx.allow_slow) wait it out OUTSIDE the scene lock so searches aren't
-        starved for minutes."""
-        allow_slow = bool(ctx and ctx.allow_slow)
-        wait = self._pending_wait()
-        if not allow_slow and wait > _SYNC_WAIT_BUDGET:
-            raise PacingDeferredError(wait)
-        if allow_slow and wait > 0:
-            logger.info(_PACE_TAG, f'background scrape waiting {wait:.0f}s (gap/window)')
-            await asyncio.sleep(wait)
-        async with self._scene_lock:
-            wait = self._pending_wait()
-            if not allow_slow and wait > _SYNC_WAIT_BUDGET:
-                raise PacingDeferredError(wait)
-            if wait > 0:
-                logger.info(_PACE_TAG, f'between-scenes cooldown {wait:.1f}s')
-                await asyncio.sleep(wait)
-            self._note_scene_start()
-            try:
-                detail = await super().fetch_scene_detail(payload, site, ctx)
-                await self._cooldown('post-update', _SCENE_COOLDOWN)
-                if detail:
-                    await self._warm_images(detail)
-                return detail
-            finally:
-                self._gap_until = time.monotonic() + _scene_gap()
-
-    def _note_scene_start(self) -> None:
-        now = time.monotonic()
-        while self._scene_starts and now - self._scene_starts[0] > _SCENE_WINDOW:
-            self._scene_starts.popleft()
-        self._scene_starts.append(now)
-
-    async def _cooldown(self, phase: str, base: float) -> None:
-        delay = _jittered(base)
-        logger.info(_PACE_TAG, f'{phase} cooldown {delay:.1f}s')
-        await asyncio.sleep(delay)
+    async def after_scene_scrape(self, detail: SceneDetail) -> None:
+        await self._warm_images(detail)
 
     async def _warm_images(self, detail: SceneDetail) -> None:
-        """Fetch the scene's images now, inside the scene lock and at most _IMAGE_CONCURRENCY
+        """Fetch the scene's images now, inside the scene gate and at most _IMAGE_CONCURRENCY
         at a time (a browser opens ~4-6 connections per host), so galleries of 100-250 photos
         never burst the shared CDN; the mapper then reads them from the image cache."""
         urls = [u for u in detail.art if u]
@@ -202,14 +126,14 @@ class NubilesClient(Client):
         logger.info(_PACE_TAG, f'warmed {ok}/{len(urls)} scene images (<={_IMAGE_CONCURRENCY} concurrent)')
 
     async def _cookie_header_for(self, site: ResolvedSiteInfo) -> str:
-        verified = await get_verified_cookies(site.base_url, challenge_path=site.search_path or _DEFAULT_PREFIX, pace=self._pace) or {}
+        verified = await get_verified_cookies(site.base_url, challenge_path=site.search_path or _DEFAULT_PREFIX, pace=self.pacer.pace) or {}
         cookies = {'18-plus-modal': 'hidden', **verified}
         return '; '.join(f'{k}={v}' for k, v in cookies.items())
 
     async def _get(self, url: str, site: ResolvedSiteInfo, capture: list[RawCaptureEntry] | None, label: str) -> Selector | None:
         cookie = await self._cookie_header_for(site)
         for attempt in range(1, _MAX_RETRIES + 1):
-            await self._pace(label)
+            await self.pacer.pace(label)
             try:
                 r = await self.http.get(url, headers={'Cookie': cookie})
             except Exception as err:  # noqa: BLE001 - network errors yield no page
@@ -232,7 +156,7 @@ class NubilesClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         """Serialize search behind the same gate as scene detail, so a library scan's
         concurrent searches also go out one at a time."""
-        async with self._scene_lock:
+        async with self.pacer.scene_lock:
             await self._search(results, search_data)
 
     async def _search(self, results: list[SearchResult], search_data: SearchContext) -> None:

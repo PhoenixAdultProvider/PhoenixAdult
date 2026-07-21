@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from urllib.parse import quote
 
@@ -11,6 +12,7 @@ from app.models.provider_info import ProviderInfo
 from app.registry import canonical_site_display, find_site
 from app.services.scraper_router import ScraperRouter
 from app.utils.helpers.helpers import format_duration, title_distance_score
+from app.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from app.utils.logging.logger import logger
 from app.utils.plex.responses import empty_media_container, media_container
 from app.utils.processors.filename_parser import get_site_name_from_registry
@@ -36,6 +38,17 @@ class MatchService:
         self._mapper = MetadataMapper()
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
+        """Search entry, capped at Plex's request budget: an over-budget search is
+        cancelled and answered empty rather than letting Plex kill the connection."""
+        try:
+            return await asyncio.wait_for(self._match(req, provider, language), PLEX_REQUEST_BUDGET)
+        except TimeoutError:
+            logger.warn(
+                provider.id, f'Search exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget (title={req.title!r} filename={req.filename!r}) — returning empty'
+            )
+            return self._empty(provider)
+
+    async def _match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
         is_manual = req.manual == 1
         include_adult = req.includeAdult == 1
 

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
 import re
-import time
 from typing import Any
 
 from app.clients.aggregators.data18 import mapping_slug
@@ -10,6 +8,7 @@ from app.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneCo
 from app.registry import ResolvedSiteInfo
 from app.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
 from app.utils.helpers.html_helpers import first_attr
+from app.utils.http.rate_limit_helper import ScenePacer
 from app.utils.people.sources import scene_image_pref
 
 _SCENE_BASE = 'https://www.naughtyamerica.com'
@@ -17,6 +16,9 @@ _LASTPAGE_RE = re.compile(r'\d+(?=#)')
 _IMAGES_CDN_RE = re.compile(r'images\d+', re.IGNORECASE)
 STUDIO = 'Naughty America'
 _PACE_SECONDS = 5.0
+_PACE_JITTER = 3.0
+_SCENE_COOLDOWN = 7.0
+_PACE_TAG = 'NaughtyAmerica:pace'
 
 _CARD_XP = '//div[contains(@class,"scene-item")] | //div[@class="scene-grid-item"]'
 
@@ -31,23 +33,17 @@ def _scene_path(href: str) -> str:
 class NaughtyAmericaClient(Client):
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         super().__init__(extra_headers)
-        self._pace_lock = asyncio.Lock()
-        self._last_fetch = 0.0
+        self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
     async def _paced(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
-        """Serialized, rate-limited fetch — keeps requests >=_PACE_SECONDS apart and
-        opts into the bypass fallback (NA's AWS WAF 202-blocks plain fetches)."""
+        """Rate-limited fetch — requests start >=_PACE_SECONDS apart with jitter and
+        opt into the bypass fallback (NA's AWS WAF 202-blocks plain fetches)."""
         if ctx is None:
             ctx = FetchCtx()
 
         ctx.use_bypass = True
-        async with self._pace_lock:
-            delta = time.monotonic() - self._last_fetch
-            if delta < _PACE_SECONDS:
-                await asyncio.sleep(_PACE_SECONDS - delta)
-
-            self._last_fetch = time.monotonic()
-            return await self.fetch_and_load(url, ctx, label)
+        await self.pacer.pace(label or url)
+        return await self.fetch_and_load(url, ctx, label)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')

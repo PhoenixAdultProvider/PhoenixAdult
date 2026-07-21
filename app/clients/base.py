@@ -15,6 +15,8 @@ from app.config.env import env
 from app.utils.helpers.helpers import b64url_decode, b64url_encode, build_search_result, pack_cur_id
 from app.utils.http.bypass import bypass_get
 from app.utils.http.client import make_http
+from app.utils.http.rate_limit_helper import PacingDeferredError as PacingDeferredError  # noqa: PLC0414 - explicit re-export for client/service imports
+from app.utils.http.rate_limit_helper import ScenePacer
 from app.utils.images.logo_cache import resolve_logo
 from app.utils.logging.logger import logger
 
@@ -82,15 +84,6 @@ class ActorResult:
     photo_url: str = ''
     gender: str = ''
     role: str = ''
-
-
-class PacingDeferredError(Exception):
-    """A client refused to hold a Plex-facing request through a long pacing wait (Plex
-    kills provider requests at ~90s); the service queues a background scrape instead."""
-
-    def __init__(self, wait_seconds: float) -> None:
-        super().__init__(f'pacing requires waiting ~{wait_seconds:.0f}s')
-        self.wait_seconds = wait_seconds
 
 
 @dataclass
@@ -175,6 +168,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         self._extra_headers = extra_headers or {}
         self._http: httpx2.AsyncClient | None = None
         self._data18_enricher: Data18Client | None = None
+        self.pacer: ScenePacer | None = None
 
     @property
     def http(self) -> httpx2.AsyncClient:
@@ -478,8 +472,26 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     # ── Detail orchestrator ──────────────────────────────────────────────────────
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """Public detail entry: load the scene, hand a fresh `metadata` to `update`, then
-        apply the studio/date fallbacks and normalize the required fields."""
+        """Public detail entry. With a ScenePacer set, the whole scrape runs inside its
+        scene gate (gap/window/defer, one scene at a time) with a post-update cooldown
+        and the after_scene_scrape hook before the gate releases."""
+        if self.pacer is None:
+            return await self._scene_detail_flow(payload, site, ctx)
+        async with self.pacer.scene(bool(ctx and ctx.allow_slow)):
+            detail = await self._scene_detail_flow(payload, site, ctx)
+            await self.pacer.cooldown('post-update')
+            if detail:
+                await self.after_scene_scrape(detail)
+            return detail
+
+    async def after_scene_scrape(self, detail: SceneDetail) -> None:
+        """Paced clients' hook, still inside the scene gate (e.g. Nubiles warms the
+        scene's image burst here so concurrent matches cannot stack bursts)."""
+        return None
+
+    async def _scene_detail_flow(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
+        """Load the scene, hand a fresh `metadata` to `update`, then apply the
+        studio/date fallbacks and normalize the required fields."""
         scene = await self.load_scene_context(payload, site, ctx)
         if not scene:
             return None
