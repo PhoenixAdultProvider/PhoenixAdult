@@ -5,7 +5,7 @@ import random
 import time
 from collections import deque
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from app.config.env import env
 from app.utils.logging.logger import logger
@@ -63,11 +63,14 @@ class ScenePacer:
         logger.info(self.tag, f'{phase} cooldown {delay:.1f}s')
         await asyncio.sleep(delay)
 
-    def pending_wait(self) -> float:
-        """Seconds a new scene must wait before scraping: the gap remainder or the
-        window rest, whichever dominates (the gap sleep ages the window)."""
+    def pending_wait(self, *, include_window: bool = True) -> float:
+        """Seconds the next unit of work (search or scene) must wait: the shared gap
+        remainder, or for scenes also the window rest, whichever dominates (the gap
+        sleep ages the window)."""
         now = time.monotonic()
         gap = max(0.0, self._gap_until - now)
+        if not include_window:
+            return gap
         starts = [t for t in self._scene_starts if now - t <= _SCENE_WINDOW]
         rest = _SCENE_WINDOW - (now - starts[0]) if len(starts) >= _SCENE_WINDOW_MAX else 0.0
         return max(gap, rest)
@@ -79,27 +82,36 @@ class ScenePacer:
         self._scene_starts.append(now)
 
     @asynccontextmanager
-    async def scene(self, allow_slow: bool) -> AsyncIterator[None]:
-        """One scene at a time: waits out (or defers) the gap/window, serializes on
-        scene_lock, and schedules the next gap on exit. Plex-facing requests never
-        sleep past _SYNC_WAIT_BUDGET — they raise PacingDeferredError instead;
-        background scrapes (allow_slow) sleep the long wait OUTSIDE the lock so
-        searches sharing it aren't starved."""
-        wait = self.pending_wait()
+    async def _turn(self, allow_slow: bool, *, is_scene: bool) -> AsyncIterator[None]:
+        """One unit of work at a time on a SINGLE shared track: searches and scene
+        updates both consume a turn and both arm the SCENE_GAP + 1-4min jittered gap
+        on exit, so neither can burst while the other rests. Scenes additionally count
+        toward the per-window cap. Plex-facing requests never sleep past
+        _SYNC_WAIT_BUDGET — they raise PacingDeferredError instead; background work
+        (allow_slow) sleeps the long wait OUTSIDE the lock."""
+        kind = 'scene' if is_scene else 'search'
+        wait = self.pending_wait(include_window=is_scene)
         if not allow_slow and wait > _SYNC_WAIT_BUDGET:
             raise PacingDeferredError(wait)
         if allow_slow and wait > 0:
-            logger.info(self.tag, f'background scrape waiting {wait:.0f}s (gap/window)')
+            logger.info(self.tag, f'background {kind} waiting {wait:.0f}s (gap/window)')
             await asyncio.sleep(wait)
         async with self.scene_lock:
-            wait = self.pending_wait()
+            wait = self.pending_wait(include_window=is_scene)
             if not allow_slow and wait > _SYNC_WAIT_BUDGET:
                 raise PacingDeferredError(wait)
             if wait > 0:
-                logger.info(self.tag, f'between-scenes cooldown {wait:.1f}s')
+                logger.info(self.tag, f'{kind} gap wait {wait:.1f}s')
                 await asyncio.sleep(wait)
-            self._note_scene_start()
+            if is_scene:
+                self._note_scene_start()
             try:
                 yield
             finally:
                 self._gap_until = time.monotonic() + env.scene_gap + random.uniform(_GAP_JITTER_MIN, _GAP_JITTER_MAX)
+
+    def scene(self, allow_slow: bool) -> AbstractAsyncContextManager[None]:
+        return self._turn(allow_slow, is_scene=True)
+
+    def search_gate(self, allow_slow: bool) -> AbstractAsyncContextManager[None]:
+        return self._turn(allow_slow, is_scene=False)

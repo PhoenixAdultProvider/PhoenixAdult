@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from urllib.parse import quote
 
-from app.clients.base import SearchContext
+from app.clients.base import PacingDeferredError, SearchContext, SearchResult
 from app.config.env import env
 from app.mappers.metadata_mapper import MetadataMapper
 from app.models.metadata import PlexMatchResponse
 from app.models.provider_info import ProviderInfo
 from app.registry import canonical_site_display, find_site
+from app.services import scrape_queue
 from app.services.scraper_router import ScraperRouter
+from app.utils.concurrency.coalescer import Coalescer
 from app.utils.helpers.helpers import format_duration, title_distance_score
 from app.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from app.utils.logging.logger import logger
@@ -32,10 +35,65 @@ class MatchRequest:
     ohash: str | None = None
 
 
+_SEARCH_MEMO_TTL = 900.0
+_SEARCH_MEMO_MAX = 512
+
+
 class MatchService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
+        self._search_memo: dict[tuple[str, str, str, str, str], tuple[float, list[SearchResult]]] = {}
+        self._search_coalesce: Coalescer[tuple[str, str, str, str, str], list[SearchResult] | None] = Coalescer()
+
+    def _memo_key(self, search_data: SearchContext) -> tuple[str, str, str, str, str]:
+        return (
+            search_data.site_info.name,
+            search_data.title,
+            search_data.search_date or '',
+            search_data.scene_id or '',
+            search_data.language or '',
+        )
+
+    async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
+        """Run the scraper search behind a memo + coalescer: Plex re-matching the same
+        item within the TTL costs zero upstream requests — which is also how a
+        background search deferred by pacing hands its results to a later re-match."""
+        key = self._memo_key(search_data)
+        hit = self._search_memo.get(key)
+        if hit and time.monotonic() - hit[0] < _SEARCH_MEMO_TTL:
+            logger.info(provider.id, f'search memo hit for "{search_data.title}" on {search_data.site_info.name}')
+            return hit[1]
+
+        search_data.allow_slow = allow_slow
+
+        async def _run() -> list[SearchResult] | None:
+            raw = await self._scraper.search(search_data)
+            if raw is not None:
+                self._search_memo[key] = (time.monotonic(), raw)
+                if len(self._search_memo) > _SEARCH_MEMO_MAX:
+                    cutoff = time.monotonic() - _SEARCH_MEMO_TTL
+                    self._search_memo = {k: v for k, v in self._search_memo.items() if v[0] >= cutoff}
+            return raw
+
+        return await self._search_coalesce.run(key, _run)
+
+    def _queue_background_search(self, search_data: SearchContext, provider: ProviderInfo, wait_seconds: float) -> None:
+        """Fail the Plex match fast but search on schedule: the queued job runs on the
+        paced track and memoizes its results, so re-matching the item later serves
+        from memory without an upstream request."""
+
+        async def _job() -> None:
+            await self._search_results(search_data, provider, allow_slow=True)
+
+        key = ':'.join(('search', provider.id, *self._memo_key(search_data)))
+        queued = scrape_queue.enqueue(key, _job)
+        state = 'queued background search' if queued else 'background search already queued'
+        logger.info(
+            provider.id,
+            f'Pacing defers search "{search_data.title}" on {search_data.site_info.name} (~{wait_seconds:.0f}s wait) — {state}; '
+            f're-match within {int(_SEARCH_MEMO_TTL / 60)}min serves from memory',
+        )
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
         """Search entry, capped at Plex's request budget: an over-budget search is
@@ -93,7 +151,11 @@ class MatchService:
             full_title=pieces.full_title,
         )
 
-        raw_results = await self._scraper.search(search_data)
+        try:
+            raw_results = await self._search_results(search_data, provider)
+        except PacingDeferredError as err:
+            self._queue_background_search(search_data, provider, err.wait_seconds)
+            return self._empty(provider)
         if raw_results is None:
             logger.warn(provider.id, f'No scraper registered for type "{site.scraper_config.type}"')
             return self._empty(provider)

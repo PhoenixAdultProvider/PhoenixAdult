@@ -127,6 +127,33 @@ async def test_sync_scene_defers_instead_of_sleeping() -> None:
     assert err.value.wait_seconds > 290
 
 
+async def test_search_shares_the_gap_track(monkeypatch: pytest.MonkeyPatch) -> None:
+
+    from app.clients.base import PacingDeferredError, SearchContext
+    from app.registry import find_site
+    from app.utils.http import rate_limit_helper as rlh
+
+    site = find_site('Nubile Films')
+    assert site is not None
+    monkeypatch.setenv('SCENE_GAP', '120')
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MIN', 0.0)
+    monkeypatch.setattr(rlh, '_GAP_JITTER_MAX', 0.0)
+    client = NubilesClient()
+
+    async def _noop_search(results: object, search_data: object) -> None:
+        return None
+
+    monkeypatch.setattr(client, '_search', _noop_search)
+    ctx = SearchContext(title='x', encoded='x', search_site=site.name, site_info=site)
+    await client.search([], ctx)
+    assert 110 < client.pacer.pending_wait(include_window=False) <= 120
+
+    with pytest.raises(PacingDeferredError):
+        await client.fetch_scene_detail('1|2020-01-01', site)
+    with pytest.raises(PacingDeferredError):
+        await client.search([], ctx)
+
+
 async def test_warm_images_noop_without_art(monkeypatch: pytest.MonkeyPatch) -> None:
     called = False
 

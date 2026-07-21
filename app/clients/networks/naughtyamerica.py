@@ -46,6 +46,13 @@ class NaughtyAmericaClient(Client):
         return await self.fetch_and_load(url, ctx, label)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        """Searches ride the SAME gap track as scene updates (the track Nubiles runs
+        on): each search consumes a turn and arms the SCENE_GAP+jitter gap, deferring
+        to the background when a Plex-facing request would have to wait it out."""
+        async with self.pacer.search_gate(bool(search_data.allow_slow)):
+            await self._search(results, search_data)
+
+    async def _search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
         if search_data.scene_id and await self._search_by_scene_id(results, search_data):

@@ -52,6 +52,7 @@ class SearchContext:
     language: str | None = None
     scene_id: str | None = None
     full_title: str | None = None
+    allow_slow: bool = False  # background search: pacing may sleep past the Plex request budget
 
 
 @dataclass

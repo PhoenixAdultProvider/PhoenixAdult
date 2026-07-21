@@ -125,8 +125,11 @@ class NubilesClient(Client):
         ok = sum(await asyncio.gather(*(_warm_one(u) for u in urls)))
         logger.info(_PACE_TAG, f'warmed {ok}/{len(urls)} scene images (<={_IMAGE_CONCURRENCY} concurrent)')
 
+    async def _pow_pace(self) -> None:
+        await self.pacer.pace('pow warm-up')
+
     async def _cookie_header_for(self, site: ResolvedSiteInfo) -> str:
-        verified = await get_verified_cookies(site.base_url, challenge_path=site.search_path or _DEFAULT_PREFIX, pace=self.pacer.pace) or {}
+        verified = await get_verified_cookies(site.base_url, challenge_path=site.search_path or _DEFAULT_PREFIX, pace=self._pow_pace) or {}
         cookies = {'18-plus-modal': 'hidden', **verified}
         return '; '.join(f'{k}={v}' for k, v in cookies.items())
 
@@ -154,9 +157,10 @@ class NubilesClient(Client):
         return Selector(text=r.text)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Serialize search behind the same gate as scene detail, so a library scan's
-        concurrent searches also go out one at a time."""
-        async with self.pacer.scene_lock:
+        """Searches ride the SAME gap track as scene updates: each search consumes a
+        turn and arms the SCENE_GAP+jitter gap, deferring to the background when a
+        Plex-facing request would have to wait it out."""
+        async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 
     async def _search(self, results: list[SearchResult], search_data: SearchContext) -> None:
