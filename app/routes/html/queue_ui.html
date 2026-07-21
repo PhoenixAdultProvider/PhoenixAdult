@@ -73,9 +73,13 @@
       }
     }
 
+    const TOKEN = new URLSearchParams(location.search).get('token');
+
     async function refresh() {
       try {
-        const res = await fetch('api/state', { headers: { accept: 'application/json' } });
+        const headers = { accept: 'application/json' };
+        if (TOKEN) headers['x-admin-token'] = TOKEN;
+        const res = await fetch('/queue/api/state', { headers });
         if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); }
       } catch {}
       render();

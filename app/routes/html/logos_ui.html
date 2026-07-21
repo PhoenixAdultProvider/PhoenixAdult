@@ -44,6 +44,12 @@
 
   <script>
     let STATE = __STATE_JSON__;
+    const TOKEN = new URLSearchParams(location.search).get('token');
+
+    function api(path, opts = {}) {
+      opts.headers = Object.assign({}, opts.headers, TOKEN ? { 'x-admin-token': TOKEN } : {});
+      return fetch(path, opts);
+    }
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
@@ -66,19 +72,19 @@
     }
 
     async function refresh() {
-      STATE = await (await fetch('api/list')).json();
+      STATE = await (await api('/logos/api/list')).json();
       render();
     }
 
     async function purgeOne(rel) {
       if (!confirm('Delete ' + rel + '? A configured scraper may re-download it on the next scrape.')) return;
-      await fetch('api/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rel }) });
+      await api('/logos/api/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rel }) });
       refresh();
     }
 
     async function purgeAll() {
       if (!confirm('Delete ALL cached logos?')) return;
-      await fetch('api/purge-all', { method: 'POST' });
+      await api('/logos/api/purge-all', { method: 'POST' });
       refresh();
     }
 
