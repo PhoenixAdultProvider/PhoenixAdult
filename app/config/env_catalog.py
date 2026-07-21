@@ -403,12 +403,22 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Paced scrapers: between-scenes delay',
         'Base seconds between units of work (searches AND scene scrapes share one track) on rate-limited scrapers '
         '(Nubiles, Naughty America); a 1-4 minute random jitter is always added on top, and at most 4 scenes run '
-        'per 10 minutes regardless. Deferred work runs in the background; identical searches are served from memory.',
+        'per 10 minutes regardless. Deferred work runs in the background (watch it at /queue); finished background '
+        'searches persist to the search store so a later scan consumes them.',
         'Misc',
         'number',
         default_value='60',
         min=0,
         max=3600,
+    ),
+    EnvVarSpec(
+        'SEARCH_QUEUE_DIR',
+        'Search store directory',
+        'On-disk store for finished background search results (paced scrapers), so a later Plex scan '
+        'matches without re-searching. Entries expire after 7 days.',
+        'Misc',
+        'string',
+        default_value='./local/queue',
     ),
     EnvVarSpec(
         'SEARCH_STRIP_ACTORS',

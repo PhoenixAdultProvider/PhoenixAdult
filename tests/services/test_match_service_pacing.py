@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +13,12 @@ from app.services.match_service import MatchService
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = find_site('Nubile Films')
 assert SITE is not None
+
+
+@pytest.fixture(autouse=True)
+def _store_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    monkeypatch.setenv('SEARCH_QUEUE_DIR', str(tmp_path))
+    return tmp_path
 
 
 def _ctx(title: str = 'cool scene') -> SearchContext:
@@ -59,3 +66,36 @@ async def test_search_memo_absorbs_duplicate_searches(monkeypatch: pytest.Monkey
     await svc._search_results(_ctx('scene a'), PROVIDER)
     await svc._search_results(_ctx('scene b'), PROVIDER)
     assert calls == ['scene a', 'scene b']
+
+
+async def test_memo_key_normalizes_case_and_whitespace(monkeypatch: pytest.MonkeyPatch) -> None:
+    svc = MatchService()
+    calls: list[str] = []
+
+    async def fake_search(search_data: SearchContext) -> list[SearchResult]:
+        calls.append(search_data.title)
+        return []
+
+    monkeypatch.setattr(svc._scraper, 'search', fake_search)
+    await svc._search_results(_ctx('scene a'), PROVIDER)
+    await svc._search_results(_ctx('Scene  A'), PROVIDER)
+    assert calls == ['scene a']
+
+
+async def test_search_store_survives_a_fresh_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    svc = MatchService()
+
+    async def fake_search(search_data: SearchContext) -> list[SearchResult]:
+        return [SearchResult(title='Stored Scene', scene_url='https://nubilefilms.com/video/watch/2', cur_id='xyz')]
+
+    monkeypatch.setattr(svc._scraper, 'search', fake_search)
+    await svc._search_results(_ctx('stored scene'), PROVIDER, allow_slow=True)
+
+    fresh = MatchService()
+
+    async def fail_search(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('should serve from the search store')
+
+    monkeypatch.setattr(fresh._scraper, 'search', fail_search)
+    served = await fresh._search_results(_ctx('Stored  Scene'), PROVIDER)
+    assert served is not None and served[0].title == 'Stored Scene'

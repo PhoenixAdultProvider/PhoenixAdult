@@ -69,7 +69,7 @@ _Read from the environment at startup; not editable in the Config UI._
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `ADMIN_TOKEN` | _(unset)_ | Guards the admin surfaces (`/config`, `/dev`, `/people`, `/metadata`, `/logos`). When unset, those are reachable from loopback only. Set a token to reach them from another host (sent as the `x-admin-token` header or a `token` query param). |
+| `ADMIN_TOKEN` | _(unset)_ | Guards the admin surfaces (`/config`, `/dev`, `/people`, `/metadata`, `/logos`, `/queue`). When unset, those are reachable from loopback only. Set a token to reach them from another host (sent as the `x-admin-token` header or a `token` query param). |
 
 ### Logging
 
@@ -222,7 +222,8 @@ Notes:
 | `SEARCH_TITLE_TRASH` | built-in list | Whole-word release/scene-group tokens stripped from the parsed title before searching (e.g. `RARBG`, `1080p`, `WEB`). |
 | `PHOENIX_EXTRA_COLLECTIONS` | `false` | Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther. |
 | `DISABLE_AUTO_MATCH` | `false` | Suppress every match request Plex did not flag as user-initiated (`manual=1`). |
-| `SCENE_GAP` | `60` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 1–4 minute random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead; identical searches are served from memory. |
+| `SCENE_GAP` | `60` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 1–4 minute random jitter is always added on top, and at most 4 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead (watch it at `/queue`); finished background searches persist to the search store so a later scan consumes them. |
+| `SEARCH_QUEUE_DIR` | `./local/queue` | On-disk store for finished background search results from paced scrapers, so a later Plex scan matches without re-searching. Entries expire after 7 days. |
 | `SEARCH_STRIP_ACTORS` | _(unset)_ | Sites whose filenames lead with actor names: the names are dropped when building the site search, and title scoring uses the best of the stripped and unstripped title. Entries match a site, a studio, or a whole network (e.g. `Nubiles`). |
 
 ### Network

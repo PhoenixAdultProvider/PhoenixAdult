@@ -104,7 +104,7 @@ flowchart LR
 | Fetch/proxy image | `GET\|HEAD /images/proxy`, `/images/proxy-classified` | none (SSRF-guarded) |
 | Local/manual images | `GET /images/local/{filename}`, `/images/manual-nfo/*` | none (path-guarded) |
 | Runtime config | `GET\|POST /config/...` | **loopback or `ADMIN_TOKEN`** |
-| Cache / logo review UIs | `GET /people`, `/metadata`, `/logos` | **loopback or `ADMIN_TOKEN`** |
+| Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
 
 > Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`app/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
@@ -536,7 +536,7 @@ sequenceDiagram
   end
 ```
 
-Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. A repeated Plex match is absorbed by `MatchService`'s search memo, so the retry succeeds from memory once the background search lands.
+Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the on-disk search store (`app/utils/cache/search_store.py`, `SEARCH_QUEUE_DIR`, case/whitespace-normalized keys, 7-day TTL), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
 
 ---
 
@@ -714,7 +714,7 @@ app/
   main.py, app_factory.py    # uvicorn entrypoint + FastAPI wiring/bootstrap
   routes/                    # provider_router, image_routes, env_routes, dev_routes,
                              #   metadata_cache_routes, people_cache_routes, logo_routes,
-                             #   plex_routes (+ html/)
+                             #   queue_routes, plex_routes (+ html/)
   services/                  # match_service, metadata_service, scraper_router, scrape_queue
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + 178 dedicated clients:

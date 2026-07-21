@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import time
+import weakref
 from collections import deque
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -17,6 +18,27 @@ _GAP_JITTER_MAX = 240.0
 _SCENE_WINDOW = 600.0
 _SCENE_WINDOW_MAX = 4
 _SYNC_WAIT_BUDGET = 10.0
+
+_PACERS: weakref.WeakSet[ScenePacer] = weakref.WeakSet()
+
+
+def pacer_states() -> list[dict[str, object]]:
+    """Live pacer state for the /queue UI, one row per registered pacer."""
+    out = []
+    for p in sorted(_PACERS, key=lambda p: p.tag):
+        now = time.monotonic()
+        in_window = len([t for t in p._scene_starts if now - t <= _SCENE_WINDOW])
+        out.append(
+            {
+                'tag': p.tag,
+                'wait': round(p.pending_wait(), 1),
+                'gap': round(max(0.0, p._gap_until - now), 1),
+                'window_used': in_window,
+                'window_max': _SCENE_WINDOW_MAX,
+                'busy': p.scene_lock.locked(),
+            }
+        )
+    return out
 
 
 class PacingDeferredError(Exception):
@@ -41,6 +63,7 @@ class ScenePacer:
         self._last_fetch = 0.0
         self._gap_until = 0.0
         self._scene_starts: deque[float] = deque()
+        _PACERS.add(self)
 
     def jitter(self, base: float) -> float:
         """`base` seconds plus up to pace_jitter of randomness."""

@@ -39,7 +39,7 @@ async def test_deferred_scrape_fails_fast_and_queues(monkeypatch: pytest.MonkeyP
 
     queued: list[str] = []
     real_enqueue = scrape_queue.enqueue
-    monkeypatch.setattr(scrape_queue, 'enqueue', lambda key, job: queued.append(key) or real_enqueue(key, job))
+    monkeypatch.setattr(scrape_queue, 'enqueue', lambda key, job, **kw: queued.append(key) or real_enqueue(key, job, **kw))
 
     assert await svc._fetch_metadata(RATING_KEY, PROVIDER) is None
     assert queued == [f'p:{RATING_KEY}']

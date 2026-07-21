@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from urllib.parse import quote
 
+from app.clients import get_client
 from app.clients.base import PacingDeferredError, SearchContext, SearchResult
 from app.config.env import env
 from app.mappers.metadata_mapper import MetadataMapper
@@ -13,6 +14,7 @@ from app.models.provider_info import ProviderInfo
 from app.registry import canonical_site_display, find_site
 from app.services import scrape_queue
 from app.services.scraper_router import ScraperRouter
+from app.utils.cache import search_store
 from app.utils.concurrency.coalescer import Coalescer
 from app.utils.helpers.helpers import format_duration, title_distance_score
 from app.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
@@ -49,20 +51,32 @@ class MatchService:
     def _memo_key(self, search_data: SearchContext) -> tuple[str, str, str, str, str]:
         return (
             search_data.site_info.name,
-            search_data.title,
+            search_store.normalize_text(search_data.title),
             search_data.search_date or '',
             search_data.scene_id or '',
             search_data.language or '',
         )
 
+    def _is_paced(self, search_data: SearchContext) -> bool:
+        client = get_client(search_data.site_info.scraper_config.type)
+        return client is not None and client.pacer is not None
+
     async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
-        """Scraper search behind a memo+coalescer; background searches hand results
-        to a later re-match through the same memo."""
+        """Scraper search behind a memo+coalescer; background searches on paced sites
+        also persist to the on-disk search store for a later scan."""
         key = self._memo_key(search_data)
         hit = self._search_memo.get(key)
         if hit and time.monotonic() - hit[0] < _SEARCH_MEMO_TTL:
             logger.info(provider.id, f'search memo hit for "{search_data.title}" on {search_data.site_info.name}')
             return hit[1]
+
+        paced = self._is_paced(search_data)
+        if paced:
+            stored = await asyncio.to_thread(search_store.load, key)
+            if stored is not None:
+                self._search_memo[key] = (time.monotonic(), stored)
+                logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
+                return stored
 
         search_data.allow_slow = allow_slow
 
@@ -73,6 +87,8 @@ class MatchService:
                 if len(self._search_memo) > _SEARCH_MEMO_MAX:
                     cutoff = time.monotonic() - _SEARCH_MEMO_TTL
                     self._search_memo = {k: v for k, v in self._search_memo.items() if v[0] >= cutoff}
+                if paced:
+                    await asyncio.to_thread(search_store.save, key, raw)
             return raw
 
         return await self._search_coalesce.run(key, _run)
@@ -84,12 +100,12 @@ class MatchService:
             await self._search_results(search_data, provider, allow_slow=True)
 
         key = ':'.join(('search', provider.id, *self._memo_key(search_data)))
-        queued = scrape_queue.enqueue(key, _job)
+        queued = scrape_queue.enqueue(key, _job, kind='search', label=f'{search_data.site_info.name} — {search_data.title}')
         state = 'queued background search' if queued else 'background search already queued'
         logger.info(
             provider.id,
             f'Pacing defers search "{search_data.title}" on {search_data.site_info.name} (~{wait_seconds:.0f}s wait) — {state}; '
-            f're-match within {int(_SEARCH_MEMO_TTL / 60)}min serves from memory',
+            f'a later scan serves it from the search store',
         )
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:

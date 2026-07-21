@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import time
+from dataclasses import asdict
+from pathlib import Path
+
+from app.clients.base import SearchResult
+from app.config.env import env
+from app.utils.logging.logger import logger
+
+SearchKey = tuple[str, str, str, str, str]
+
+_STORE_TTL = 7 * 86400.0
+_swept = False
+
+
+def store_dir() -> Path:
+    return Path(env.search_queue_dir)
+
+
+def normalize_text(value: str) -> str:
+    return ' '.join(value.lower().split())
+
+
+def _path(key: SearchKey) -> Path:
+    digest = hashlib.sha1('|'.join(key).encode('utf-8')).hexdigest()
+    return store_dir() / f'{digest}.json'
+
+
+def save(key: SearchKey, results: list[SearchResult]) -> None:
+    global _swept
+    if not _swept:
+        _swept = True
+        _sweep()
+    try:
+        store_dir().mkdir(parents=True, exist_ok=True)
+        payload = {'key': list(key), 'saved_at': time.time(), 'results': [asdict(r) for r in results]}
+        _path(key).write_text(json.dumps(payload), encoding='utf-8')
+    except OSError as err:
+        logger.warn('search-store', f'could not persist search results: {err}')
+
+
+def load(key: SearchKey) -> list[SearchResult] | None:
+    path = _path(key)
+    try:
+        payload = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    if time.time() - float(payload.get('saved_at') or 0) > _STORE_TTL:
+        path.unlink(missing_ok=True)
+        return None
+    try:
+        return [SearchResult(**r) for r in payload.get('results') or []]
+    except TypeError:
+        path.unlink(missing_ok=True)
+        return None
+
+
+def _sweep() -> None:
+    cutoff = time.time() - _STORE_TTL
+    try:
+        stale = [p for p in store_dir().glob('*.json') if p.stat().st_mtime < cutoff]
+    except OSError:
+        return
+    for p in stale:
+        p.unlink(missing_ok=True)
+    if stale:
+        logger.info('search-store', f'swept {len(stale)} expired search result file(s)')

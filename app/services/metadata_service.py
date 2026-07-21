@@ -172,7 +172,7 @@ class MetadataService:
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
 
-        queued = scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job)
+        queued = scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=rating_key)
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
 

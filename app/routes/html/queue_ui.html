@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <title>Scrape Queue</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 22px 0 10px; color: #cbd5e1; }
+    h2 .count-badge { margin-left: 8px; }
+    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+    .pacers { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pacer { background: #151b29; border: 1px solid #1f2937; border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; gap: 14px; align-items: baseline; }
+    .pacer .tag { font-weight: 600; }
+    .pacer .cd { font-variant-numeric: tabular-nums; color: #fbbf24; }
+    .pacer .cd.ready { color: #4ade80; }
+    .pacer .win { color: #64748b; font-size: 12px; }
+    .count-badge { font-size: 12px; color: #64748b; font-weight: 400; }
+    .list { display: flex; flex-direction: column; gap: 6px; }
+    .item { background: #151b29; border: 1px solid #1f2937; border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .item.running { border-color: #3b82f6; background: #16213a; }
+    .item .label { flex: 1; word-break: break-all; }
+    .item .age { color: #64748b; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .spinner { width: 14px; height: 14px; border: 2px solid #1e3a8a; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pos { color: #475569; font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
+    .empty { color: #475569; font-size: 13px; padding: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Scrape Queue</h1>
+  <div class="sub">background searches and metadata updates deferred by pacing; one sequential worker, oldest first</div>
+  <div class="pacers" id="pacers"></div>
+  <h2>Searches <span class="count-badge" id="search-count"></span></h2>
+  <div class="list" id="searches"></div>
+  <h2>Updates <span class="count-badge" id="update-count"></span></h2>
+  <div class="list" id="updates"></div>
+
+  <script>
+    let STATE = __STATE_JSON__;
+    let fetchedAt = Date.now();
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+    function fmtSecs(s) {
+      if (s == null || s < 0) s = 0;
+      const m = Math.floor(s / 60);
+      return m ? m + 'm ' + String(Math.floor(s % 60)).padStart(2, '0') + 's' : Math.floor(s) + 's';
+    }
+
+    function render() {
+      const drift = (Date.now() - fetchedAt) / 1000;
+      document.getElementById('pacers').innerHTML = (STATE.pacers || []).map((p) => {
+        const wait = Math.max(0, p.wait - drift);
+        const ready = wait <= 0 && !p.busy;
+        return `<div class="pacer"><span class="tag">${esc(p.tag)}</span>` +
+          `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>` +
+          `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
+      }).join('') || '<div class="empty">no paced scrapers registered</div>';
+
+      for (const [kind, listId, countId] of [['search', 'searches', 'search-count'], ['update', 'updates', 'update-count']]) {
+        const rows = (STATE.entries || []).filter((e) => e.kind === kind);
+        document.getElementById(countId).textContent = rows.length + ' queued';
+        document.getElementById(listId).innerHTML = rows.map((e, i) => `
+          <div class="item ${e.running ? 'running' : ''}">
+            ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
+            <span class="label">${esc(e.label)}</span>
+            <span class="age">${e.running ? 'running ' + fmtSecs(e.running_for + drift) : 'waiting ' + fmtSecs(e.waited + drift)}</span>
+          </div>`).join('') || '<div class="empty">nothing queued</div>';
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch('api/state', { headers: { accept: 'application/json' } });
+        if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); }
+      } catch {}
+      render();
+    }
+
+    render();
+    setInterval(render, 1000);
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
