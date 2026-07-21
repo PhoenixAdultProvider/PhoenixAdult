@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from app.config.env import env
 from app.registry import normalize_site_key
 from app.utils.helpers.helpers import title_distance_score
 
+if TYPE_CHECKING:
+    from app.registry import ResolvedSiteInfo
 
-def enabled_for(site_name: str) -> bool:
-    """Whether SEARCH_STRIP_ACTORS lists this site (names compared registry-normalized)."""
+
+def enabled_for(site: ResolvedSiteInfo) -> bool:
+    """Whether SEARCH_STRIP_ACTORS covers this site: entries match the site name, its
+    sub_group (studio), or its provider_name (network) — so one 'Nubiles' entry enables
+    every Nubiles site. Names are compared registry-normalized."""
     raw = env.search_strip_actors_raw or ''
     if not raw.strip():
         return False
-    want = normalize_site_key(site_name)
-    return any(normalize_site_key(part) == want for part in raw.split(',') if part.strip())
+    tokens = {normalize_site_key(part) for part in raw.split(',') if part.strip()}
+    return any(normalize_site_key(name) in tokens for name in (site.name, site.sub_group, site.provider_name) if name)
 
 
 def split_actor_prefix(title: str) -> tuple[str, str]:
@@ -45,9 +52,9 @@ def actor_strip_candidates(title: str) -> list[str]:
     return list(dict.fromkeys(c for c in out if c))
 
 
-def best_title_score(query: str, title: str, site_name: str) -> int:
+def best_title_score(query: str, title: str, site: ResolvedSiteInfo) -> int:
     """title_distance_score, taking the best over actor-stripped query candidates when
     SEARCH_STRIP_ACTORS enables the site; plain scoring otherwise."""
-    if not enabled_for(site_name):
+    if not enabled_for(site):
         return title_distance_score(query, title)
     return max(title_distance_score(q, title) for q in actor_strip_candidates(query))

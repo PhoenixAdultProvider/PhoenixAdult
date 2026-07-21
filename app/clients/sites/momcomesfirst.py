@@ -16,7 +16,7 @@ class MomComesFirstClient(Client):
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         cleaned = ' '.join(search_data.title.replace('sons', '').replace('mothers', '').replace('moms', '').split())
-        title_no_actors = (strip_actor_prefix(cleaned) if enabled_for(search_data.site_info.name) else cleaned).lower()
+        title_no_actors = (strip_actor_prefix(cleaned) if enabled_for(search_data.site_info) else cleaned).lower()
         encoded = title_no_actors.replace(' ', '+').replace("'", '')
         search_results = await self.fetch_and_load(f'{base}/?s={encoded}', FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search')
         if not search_results:

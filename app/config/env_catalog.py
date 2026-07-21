@@ -404,7 +404,8 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'SEARCH_STRIP_ACTORS',
         'Strip actor names — sites',
         'Sites whose filenames lead with actor names: the names are dropped when building the site search, '
-        'and title scoring uses the best of the stripped and unstripped title. Type to search sites.',
+        'and title scoring uses the best of the stripped and unstripped title. Entries match a site, '
+        'a studio, or a whole network (e.g. Nubiles). Type to search.',
         'Misc',
         'list',
         default_value='',

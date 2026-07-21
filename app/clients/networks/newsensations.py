@@ -16,7 +16,7 @@ class NewSensationsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         stem = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path
 
-        title_no_actors = strip_actor_prefix(search_data.title) if enabled_for(search_data.site_info.name) else search_data.title
+        title_no_actors = strip_actor_prefix(search_data.title) if enabled_for(search_data.site_info) else search_data.title
 
         slug = title_no_actors.replace(' ', '-')
 

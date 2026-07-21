@@ -255,7 +255,7 @@ class NubilesClient(Client):
                             search_date=search_data.search_date or None,
                             cur_id=enc,
                             subsite=subsite or None,
-                            score=best_title_score(search_data.title, display_title, search_data.site_info.name),
+                            score=best_title_score(search_data.title, display_title, search_data.site_info),
                         )
                     )
 

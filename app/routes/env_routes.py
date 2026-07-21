@@ -43,9 +43,14 @@ def _display_value(spec: EnvVarSpec) -> str:
 
 
 def _options_for(spec: EnvVarSpec) -> list[str]:
-    """Static catalog options, except site-list vars whose options come from the registry."""
+    """Static catalog options, except site-list vars whose options come from the registry
+    — site names plus sub-group (studio) and provider (network) names, so one network
+    entry can cover all its sites."""
     if spec.key == 'SEARCH_STRIP_ACTORS':
-        return sorted(s.name for s in SITE_DEFINITIONS)
+        names = {s.name for s in SITE_DEFINITIONS}
+        names |= {s.sub_group for s in SITE_DEFINITIONS if s.sub_group}
+        names |= {s.provider_name for s in SITE_DEFINITIONS if s.provider_name}
+        return sorted(names)
     return spec.options
 
 

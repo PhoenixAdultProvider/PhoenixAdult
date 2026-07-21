@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import pytest
 
+from app.registry import find_site
 from app.utils.processors.actor_strip import actor_strip_candidates, best_title_score, enabled_for, split_actor_prefix, strip_actor_prefix
+
+NUBILE_FILMS = find_site('Nubile Films')
+MY_FAMILY_PIES = find_site('My Family Pies')
+BRATTY_SIS = find_site('Bratty Sis')
+NEW_SENSATIONS = find_site('New Sensations')
+assert NUBILE_FILMS and MY_FAMILY_PIES and BRATTY_SIS and NEW_SENSATIONS
 
 
 def test_strip_actor_prefix_legacy_shapes() -> None:
@@ -33,20 +40,31 @@ def test_candidates_cover_one_word_stage_names() -> None:
 
 def test_enabled_for_normalizes_names(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('SEARCH_STRIP_ACTORS', raising=False)
-    assert enabled_for('Nubile Films') is False
+    assert enabled_for(NUBILE_FILMS) is False
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'nubile-films, New Sensations')
-    assert enabled_for('Nubile Films') is True
-    assert enabled_for('New Sensations') is True
-    assert enabled_for('Bratty MILF') is False
+    assert enabled_for(NUBILE_FILMS) is True
+    assert enabled_for(NEW_SENSATIONS) is True
+    assert enabled_for(MY_FAMILY_PIES) is False
+
+
+def test_enabled_for_matches_studio_and_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubiles Porn')
+    assert enabled_for(MY_FAMILY_PIES) is True
+    assert enabled_for(BRATTY_SIS) is False
+
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubiles')
+    assert enabled_for(MY_FAMILY_PIES) is True
+    assert enabled_for(BRATTY_SIS) is True
+    assert enabled_for(NEW_SENSATIONS) is False
 
 
 def test_best_title_score_strips_only_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     query = 'jane doe a very cool scene'
     title = 'A Very Cool Scene'
     monkeypatch.delenv('SEARCH_STRIP_ACTORS', raising=False)
-    plain = best_title_score(query, title, 'Nubile Films')
+    plain = best_title_score(query, title, NUBILE_FILMS)
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubile Films')
-    stripped = best_title_score(query, title, 'Nubile Films')
+    stripped = best_title_score(query, title, NUBILE_FILMS)
     assert stripped == 100
     assert stripped > plain
 
@@ -55,4 +73,9 @@ def test_best_title_score_never_below_plain(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubile Films')
     query = 'a very cool scene'
     title = 'A Very Cool Scene'
-    assert best_title_score(query, title, 'Nubile Films') == 100
+    assert best_title_score(query, title, NUBILE_FILMS) == 100
+
+
+def test_best_title_score_network_entry_covers_member_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubiles')
+    assert best_title_score('nata ocean stepsis is a flirt', 'Stepsis Is a Flirt', MY_FAMILY_PIES) == 100

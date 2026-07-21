@@ -33,7 +33,7 @@ class PornProsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         title = search_data.title
-        if enabled_for(search_data.site_info.name):
+        if enabled_for(search_data.site_info):
             title = strip_actor_prefix(title)
 
         slug = _query_slug(title)
