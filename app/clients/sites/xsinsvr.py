@@ -10,6 +10,8 @@ _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling:
 
 
 class XSinsVRClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = f'{base}{search_data.site_info.search_path}{search_data.title}'
@@ -30,7 +32,7 @@ class XSinsVRClient(Client):
 
         return absolute_url(href, loaded.site.base_url)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

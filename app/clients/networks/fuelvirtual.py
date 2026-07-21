@@ -46,7 +46,7 @@ class FuelVirtualClient(Client):
                 build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date)
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

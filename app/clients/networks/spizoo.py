@@ -70,7 +70,18 @@ class SpizooClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _tagline(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        inline = first_attr(details_page_elements, '(//i[@id="site"])[1]/@value')
+        if inline:
+            return inline
+
+        return scene.site.name if 'Spizoo' not in scene.site.name else STUDIO
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -100,15 +111,6 @@ class SpizooClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        inline = first_attr(details_page_elements, '(//i[@id="site"])[1]/@value')
-        if inline:
-            return inline
-
-        return scene.site.name if 'Spizoo' not in scene.site.name else STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

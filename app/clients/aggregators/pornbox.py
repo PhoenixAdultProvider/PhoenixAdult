@@ -84,7 +84,7 @@ class PornboxClient(Client):
             if cid:
                 push({**search_result, 'scene_name': title}, cid, score, prefix)
 
-    # ── Context loader (JSON detail) ──────────────────────────────────────────
+    # ── Context Loader (JSON detail) ──────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
@@ -94,14 +94,16 @@ class PornboxClient(Client):
 
         return LoadedScene(url=url, site=site, scene_date=tail.strip() or None, capture=ctx.capture if ctx else None, extra=details_page_elements)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
-
-    # ── Detail field hooks ────────────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str | None:
         raw = (self._data(scene).get('studio') or '').strip()
         return title_case(raw) if raw else None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._data(scene).get('scene_name') or '').strip() or ''

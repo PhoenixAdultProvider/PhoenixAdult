@@ -1,5 +1,5 @@
 # Hosting
-## Cloudflare Tunnel (required when Plex routes through images.plex.tv)
+## Cloudflare Tunnel (Required when Plex Routes Through images.plex.tv)
 
 ### Option A - Native Windows
 
@@ -86,7 +86,7 @@ Then put the URL in `.env` as `PHOENIX_BASE_URL` and `docker compose restart
 metadata-provider`. For a stable URL, switch to the named-tunnel block
 in `docker-compose.yml` (see comments there).
 
-### Sanity check
+### Sanity Check
 
 Once the tunnel is up and `PHOENIX_BASE_URL` is set, the app's `logs/agent.log`
 should start showing `[proxy] HEAD` and `[proxy] GET` lines every time

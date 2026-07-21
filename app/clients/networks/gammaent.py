@@ -35,8 +35,6 @@ _BR_RE = re.compile(r'<\s*/?\s*br\s*/?\s*>', re.IGNORECASE)
 
 
 class GammaEntClient(Client):
-    # ── Search ────────────────────────────────────────────────────────────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         if search_data.site_info.name in _SEARCH_DISABLED:
             return
@@ -96,7 +94,7 @@ class GammaEntClient(Client):
                 )
             )
 
-    # ── Detail ──────────────────────────────────────────────────────────────────
+    # ── Context Loader ──────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         scene = await super().load_scene_context(payload, site, ctx)
@@ -105,10 +103,58 @@ class GammaEntClient(Client):
 
         return scene
 
+    # ── Update Field Hook Helpers ───────────────────────────────────────────────
+
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//div[contains(@class,"studioLink")])[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+
+    def _resolve_actors_cached(self, scene: LoadedScene) -> asyncio.Future[list[ActorResult]]:
+        cache: dict[str, Any] = scene.extra if isinstance(scene.extra, dict) else {}
+        scene.extra = cache
+        return coalesce_future(cache, 'actor_task', lambda: self._resolve_actors(scene))
+
+    async def _resolve_actors(self, scene: LoadedScene) -> list[ActorResult]:
+        details_page_elements = scene.require_sel()
+
+        base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = (
+                sel.xpath('(//img[contains(@class,"actorPicture")])[1]/@src').get()
+                or sel.xpath('(//span[contains(@class,"removeAvatarParent")]//img)[1]/@src').get()
+                or ''
+            ).strip()
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
+        for actor_link in details_page_elements.xpath(_ACTOR_SEL):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if actor_name and href:
+                refs.append((actor_name, href))
+
+        if not refs:
+            mobile_page_elements = await self.fetch_and_load(scene.url.replace('www', 'm'), None, 'mobile page')
+            if mobile_page_elements:
+                for actor_link in mobile_page_elements['sel'].xpath('//a[contains(@class,"pornstarName")] | //a[contains(@class,"pornstarImageLink")]'):
+                    actor_name = first_attr(actor_link, 'normalize-space(.)')
+                    href = first_attr(actor_link, '@href')
+                    if actor_name and href:
+                        refs.append((actor_name, href))
+
+        if not refs:
+            arr = _SCENE_ACTORS_RE.search(scene.html or '')
+            if arr:
+                for m in _ACTOR_PAIR_RE.finditer(arr.group(1)):
+                    actor_id, actor_name = m.group(1).strip(), m.group(2).strip()
+                    refs.append((actor_name, f'/en/pornstar/{actor_name.replace(" ", "-")}/{actor_id}'))
+
+        refs = [(actor_name, absolute_url(href, base)) for actor_name, href in refs]
+        return await self.resolve_actor_photos(refs, extract_photo)
+
+    # ── Update Field Hooks ──────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -247,49 +293,3 @@ class GammaEntClient(Client):
                     images['push'](image_url)
 
         metadata.art = images['list'] or []
-
-    # ── Internals ─────────────────────────────────────────────────────────────
-
-    def _resolve_actors_cached(self, scene: LoadedScene) -> asyncio.Future[list[ActorResult]]:
-        cache: dict[str, Any] = scene.extra if isinstance(scene.extra, dict) else {}
-        scene.extra = cache
-        return coalesce_future(cache, 'actor_task', lambda: self._resolve_actors(scene))
-
-    async def _resolve_actors(self, scene: LoadedScene) -> list[ActorResult]:
-        details_page_elements = scene.require_sel()
-
-        base = scene.site.base_url
-
-        def extract_photo(sel: Selector) -> str:
-            raw = (
-                sel.xpath('(//img[contains(@class,"actorPicture")])[1]/@src').get()
-                or sel.xpath('(//span[contains(@class,"removeAvatarParent")]//img)[1]/@src').get()
-                or ''
-            ).strip()
-            return absolute_url(raw, base) if raw else ''
-
-        refs: list[tuple[str, str]] = []
-        for actor_link in details_page_elements.xpath(_ACTOR_SEL):
-            actor_name = first_attr(actor_link, 'normalize-space(.)')
-            href = first_attr(actor_link, '@href')
-            if actor_name and href:
-                refs.append((actor_name, href))
-
-        if not refs:
-            mobile_page_elements = await self.fetch_and_load(scene.url.replace('www', 'm'), None, 'mobile page')
-            if mobile_page_elements:
-                for actor_link in mobile_page_elements['sel'].xpath('//a[contains(@class,"pornstarName")] | //a[contains(@class,"pornstarImageLink")]'):
-                    actor_name = first_attr(actor_link, 'normalize-space(.)')
-                    href = first_attr(actor_link, '@href')
-                    if actor_name and href:
-                        refs.append((actor_name, href))
-
-        if not refs:
-            arr = _SCENE_ACTORS_RE.search(scene.html or '')
-            if arr:
-                for m in _ACTOR_PAIR_RE.finditer(arr.group(1)):
-                    actor_id, actor_name = m.group(1).strip(), m.group(2).strip()
-                    refs.append((actor_name, f'/en/pornstar/{actor_name.replace(" ", "-")}/{actor_id}'))
-
-        refs = [(actor_name, absolute_url(href, base)) for actor_name, href in refs]
-        return await self.resolve_actor_photos(refs, extract_photo)

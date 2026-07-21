@@ -62,12 +62,14 @@ class KarupsClient(Client):
                 )
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//h1//span[contains(@class,"sup-title")]//span)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -54,7 +54,7 @@ class KillergramClient(Client):
             )
         )
 
-    # ── Context loader (curID is an episode id, not a URL) ──────────────────────
+    # ── Context Loader (curID is an episode id, not a URL) ──────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         scene_id = payload.split('|')[0]
@@ -65,7 +65,7 @@ class KillergramClient(Client):
 
         return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'])
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -89,7 +89,7 @@ class FTVClient(Client):
                 )
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _cast_base_names(self, scene: LoadedScene) -> list[str]:
         details_page_elements = scene.require_sel()
@@ -101,6 +101,8 @@ class FTVClient(Client):
                 names.append(n)
 
         return names
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

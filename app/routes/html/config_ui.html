@@ -180,7 +180,7 @@
       <div class="plex-kv" id="plex-update-out" style="display:none"></div>
     </div>
 
-    <h2>Reconcile stale tags</h2>
+    <h2>Reconcile Stale Tags</h2>
     <div class="card">
       <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit
         (Collection, Genre, Role, Director, Producer). Dry run reports without writing.</div>
@@ -231,7 +231,7 @@
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    const PLEX_GROUP = 'Plex server';
+    const PLEX_GROUP = 'Plex Server';
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
@@ -295,7 +295,7 @@
           + '</div>';
       } else {
         const type = v.kind === 'secret' ? 'password' : 'text';
-        const ph = v.defaultValue ? 'default: ' + v.defaultValue : (v.kind === 'secret' ? (v.isSet ? 'set — leave blank to keep' : 'not set') : '');
+        const ph = v.defaultValue ? 'default: ' + v.defaultValue : (v.kind === 'secret' ? (v.isSet ? '●●●●●●●●  set — click Show to reveal' : 'not set') : '');
         const oninput = v.preview === 'image' ? 'onImgInput(this)' : 'refreshDirty()';
         control = '<input type="' + type + '" class="ctl" data-key="' + esc(v.key) + '" data-initial="'
           + esc(v.value) + '" value="' + esc(v.value) + '" placeholder="' + esc(ph) + '"'
@@ -498,10 +498,22 @@
       btn.textContent = n ? 'Save ' + n + ' change' + (n === 1 ? '' : 's') : 'Save changes';
     }
 
-    function toggleReveal(btn) {
+    async function toggleReveal(btn) {
       const input = btn.previousElementSibling;
       if (!input) return;
       const reveal = input.type === 'password';
+      const spec = specOf(input.dataset.key);
+      if (reveal && !input.value && spec && spec.isSet) {
+        // Secrets are never in the state payload — pull the live value on demand.
+        try {
+          const data = await postJSON(api('/config/api/reveal'), { key: input.dataset.key });
+          input.value = data.value;
+          input.dataset.initial = data.value;
+        } catch (err) {
+          setStatus('Reveal failed: ' + err.message, 'err');
+          return;
+        }
+      }
       input.type = reveal ? 'text' : 'password';
       btn.textContent = reveal ? 'Hide' : 'Show';
     }
@@ -807,7 +819,7 @@
           + '</span></div>';
       }).filter(Boolean).join('');
       const summary = document.getElementById('plex-reconcile-summary');
-      summary.innerHTML = rows ? '<h3>All removals (deduplicated)</h3>' + rows : '<h3>All removals</h3><span class="hint">nothing to remove — Plex matches the snapshots</span>';
+      summary.innerHTML = rows ? '<h3>All Removals (Deduplicated)</h3>' + rows : '<h3>All Removals</h3><span class="hint">nothing to remove — Plex matches the snapshots</span>';
 
       // Per-scene cards, removals first, then locked/skipped.
       const cards = data.items

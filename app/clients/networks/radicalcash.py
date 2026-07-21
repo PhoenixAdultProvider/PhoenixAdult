@@ -42,7 +42,7 @@ class RadicalCashClient(Client):
                 )
             )
 
-    # ── Context loader — fetch page, pull the embedded Next.js content blob ─────
+    # ── Context Loader — Fetch Page, Pull the Embedded Next.js Content Blob ─────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         details_page_elements = await self.fetch_and_load(payload, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {payload}')
@@ -65,10 +65,12 @@ class RadicalCashClient(Client):
             url=payload, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'], extra=content
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _content(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._content(scene).get('title') or '').strip() or ''

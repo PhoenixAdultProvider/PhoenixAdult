@@ -39,8 +39,6 @@ def _actor_overrides(scene_id: str) -> list[ActorResult]:
 
 
 class GammaEntOtherClient(Client):
-    # ── Search (Algolia) ────────────────────────────────────────────────────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         title = search_data.title.strip()
         scene_id = search_data.scene_id
@@ -92,7 +90,7 @@ class GammaEntOtherClient(Client):
                     )
                 )
 
-    # ── Detail (Algolia; end-to-end JSON override) ──────────────────────────────
+    # ── Context Loader (Algolia; end-to-end JSON override) ──────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')

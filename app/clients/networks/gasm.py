@@ -67,13 +67,15 @@ class GasmClient(Client):
                 )
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         raw = (details_page_elements.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else ''
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

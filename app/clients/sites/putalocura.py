@@ -74,7 +74,29 @@ class PutalocuraClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    async def _fetch_model_index(self, scene: LoadedScene, base: str, letter: str) -> list[dict[str, str]]:
+        if not letter:
+            return []
+
+        url = f'{base}/actrices/{letter.lower()}'
+        model_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'GET {url} (models)')
+        if not model_page_elements:
+            return []
+
+        models: list[dict[str, str]] = []
+        for anchor in model_page_elements['sel'].xpath('//div[contains(@class,"c-boxlist__box--image")]/parent::a'):
+            name = first_attr(anchor, 'normalize-space(.)')
+            if not name:
+                continue
+
+            raw = first_attr(anchor, '(.//img/@src)[1]')
+            models.append({'name': name, 'photoURL': absolute_url(raw, base) if raw else ''})
+
+        return models
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -149,26 +171,6 @@ class PutalocuraClient(Client):
             actors.append(ActorResult(name=actor_name, photo_url=hit['photoURL'] if hit else ''))
 
         metadata.actors = actors
-
-    async def _fetch_model_index(self, scene: LoadedScene, base: str, letter: str) -> list[dict[str, str]]:
-        if not letter:
-            return []
-
-        url = f'{base}/actrices/{letter.lower()}'
-        model_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'GET {url} (models)')
-        if not model_page_elements:
-            return []
-
-        models: list[dict[str, str]] = []
-        for anchor in model_page_elements['sel'].xpath('//div[contains(@class,"c-boxlist__box--image")]/parent::a'):
-            name = first_attr(anchor, 'normalize-space(.)')
-            if not name:
-                continue
-
-            raw = first_attr(anchor, '(.//img/@src)[1]')
-            models.append({'name': name, 'photoURL': absolute_url(raw, base) if raw else ''})
-
-        return models
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

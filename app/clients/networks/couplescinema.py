@@ -72,7 +72,7 @@ class CouplesCinemaClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     @staticmethod
     def _date_part(scene: LoadedScene) -> str | None:
@@ -90,6 +90,8 @@ class CouplesCinemaClient(Client):
 
         raw = (details_page_elements.xpath('(//span[contains(@class,"type")])[1]').xpath('string(.)').get() or '').strip()
         return raw.split('|')[0].strip() or None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

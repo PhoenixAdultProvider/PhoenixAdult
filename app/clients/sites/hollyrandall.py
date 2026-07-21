@@ -40,7 +40,7 @@ class HollyRandallClient(Client):
                 )
             )
 
-    # ── Context loader (curID-packed title/date) ─────────────────────────────
+    # ── Context Loader (curID-packed title/date) ──────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
@@ -72,7 +72,7 @@ class HollyRandallClient(Client):
             html=details_page_elements['html'],
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (scene.fallback_title or '').strip() or ''

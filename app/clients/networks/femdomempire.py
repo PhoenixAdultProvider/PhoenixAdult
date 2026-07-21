@@ -62,7 +62,7 @@ class FemdomEmpireClient(Client):
         if standard_search_results:
             parse_rows(standard_search_results['sel'])
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

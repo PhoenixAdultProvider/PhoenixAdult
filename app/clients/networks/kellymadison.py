@@ -35,6 +35,8 @@ class KellyMadisonClient(Client):
     def __init__(self) -> None:
         super().__init__({'Cookie': _NATS_COOKIE})
 
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = search_data.scene_id or ''
@@ -74,13 +76,15 @@ class KellyMadisonClient(Client):
         search_id = scene_url.rstrip('/').split('/')[-1]
         return 100 if scene_id in (episode_id, search_id) else None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         raw = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw, scene.site.name)
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

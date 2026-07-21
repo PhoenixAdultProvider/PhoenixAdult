@@ -8,6 +8,8 @@ from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PJGirlsClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -31,7 +33,7 @@ class PJGirlsClient(Client):
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date(first_text(source, '(.//a//div//span)[2]'))
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

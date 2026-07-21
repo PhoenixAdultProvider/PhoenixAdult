@@ -49,6 +49,8 @@ class NaughtyAmericaClient(Client):
         async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     async def _search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -134,7 +136,7 @@ class NaughtyAmericaClient(Client):
         )
         return True
 
-    # ── Context loader (curID is the scene URL slug path) ────────────────────────
+    # ── Context Loader (curID is the scene URL slug path) ────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         path = payload.split('|')[0].lstrip('/')
@@ -145,12 +147,14 @@ class NaughtyAmericaClient(Client):
 
         return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=loaded['sel'], html=loaded['html'])
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//a[contains(@class,"site-title")])[1]').xpath('string(.)').get() or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

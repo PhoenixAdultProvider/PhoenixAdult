@@ -11,6 +11,8 @@ _UPLOAD_DATE_RE = re.compile(r'(\d{4})/(\d{2})/(\d{2})')
 
 
 class CaribbeancomClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = (search_data.full_title or search_data.title).replace(' ', '-')
@@ -35,7 +37,7 @@ class CaribbeancomClient(Client):
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         return 100
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -37,7 +37,7 @@ class BrandNewAmateursClient(Client):
                 )
             )
 
-    # ── Context loader (JSON-packed payload carries the actor page URL) ───────
+    # ── Context Loader (JSON-packed payload carries the actor page URL) ───────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -60,7 +60,7 @@ class BrandNewAmateursClient(Client):
             extra=packed.get('actorURL', ''),
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

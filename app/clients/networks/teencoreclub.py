@@ -58,7 +58,7 @@ class TeenCoreClubClient(Client):
 
             page += 1
 
-    # ── Context loader ──────────────────────────────────────────────────────────
+    # ── Context Loader ──────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         details_page_elements = await self.fetch_json(payload, FetchCtx(capture=ctx.capture if ctx else None))

@@ -54,7 +54,7 @@ class BlackPayBackClient(Client):
                 )
             )
 
-    # ── Detail: main page + two-hop IAFD lookup, stashed for the field hooks ──
+    # ── Context Loader (main page + two-hop IAFD lookup, stashed for the field hooks) ──
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         fetch_ctx = FetchCtx(capture=ctx.capture if ctx else None)
@@ -110,11 +110,13 @@ class BlackPayBackClient(Client):
 
         return release_date, actors
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _extra(self, scene: LoadedScene) -> _BpbExtra:
         assert isinstance(scene.extra, _BpbExtra)
         return scene.extra
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._extra(scene).title or ''

@@ -90,7 +90,7 @@ every run. The script prefers the project `.venv` interpreter and sets `PORT` so
 the agent listens on the tunnel's target port. For a stable URL, set up a named
 tunnel with `cloudflared` and point `PHOENIX_BASE_URL` at its hostname.
 
-### Admin surfaces through the tunnel
+### Admin Surfaces Through the Tunnel
 
 `/config` and `/dev` are admin-guarded by `ADMIN_TOKEN`:
 

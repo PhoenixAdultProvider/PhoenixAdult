@@ -330,7 +330,7 @@ class ManualNfoClient(Client):
             )
         )
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: Any, ctx: SceneContext | None = None) -> LoadedScene | None:
         basename = payload.strip()
@@ -352,13 +352,15 @@ class ManualNfoClient(Client):
             extra={'located': located, 'nfo': nfo},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _nfo(self, scene: LoadedScene) -> NfoData | None:
         return scene.extra['nfo'] if isinstance(scene.extra, dict) else None
 
     def _located(self, scene: LoadedScene) -> LocatedNfo | None:
         return scene.extra['located'] if isinstance(scene.extra, dict) else None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)

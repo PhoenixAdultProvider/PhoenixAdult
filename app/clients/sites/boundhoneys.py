@@ -11,6 +11,8 @@ _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " u
 
 
 class BoundHoneysClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title, safe=''))
@@ -31,26 +33,7 @@ class BoundHoneysClient(Client):
 
         return absolute_url(href, loaded.site.base_url)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"updateVideoTitle")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"updateDescription")]//b') or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Bound Honeys'
-
-    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name
-
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     async def _collect_actors(self, scene: LoadedScene) -> list[ActorResult]:
         details_page_elements = scene.require_sel()
@@ -74,6 +57,27 @@ class BoundHoneysClient(Client):
             actors.append(ActorResult(name=actor_name, photo_url=photo))
 
         return actors
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//div[contains(@class,"updateVideoTitle")]') or ''
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"updateDescription")]//b') or ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Bound Honeys'
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

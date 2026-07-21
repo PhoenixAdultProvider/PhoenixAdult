@@ -51,7 +51,7 @@ class FemjoyClient(Client):
                 )
             )
 
-    # ── Context loader (re-query the JSON, find the result by id) ─────────────
+    # ── Context Loader (re-query the JSON, find the result by id) ─────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         first_pipe = payload.find('|')
@@ -76,6 +76,8 @@ class FemjoyClient(Client):
             extra=_FemjoyExtra(result=result, date_fallback=date_fallback),
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _extra(self, scene: LoadedScene) -> _FemjoyExtra:
         assert isinstance(scene.extra, _FemjoyExtra)
         return scene.extra
@@ -89,7 +91,14 @@ class FemjoyClient(Client):
 
         return len(seen)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    async def _actor_thumb_fallback(self, site: ResolvedSiteInfo, actor_name: str, actor_id: Any) -> str:
+        first_name = actor_name.split()[0] if actor_name.split() else ''
+        lookup = f'{site.base_url.rstrip("/")}/api/v2/search/actors?thumb_size=355x475&query={quote(first_name)}'
+        model_page_elements = await self.fetch_json(lookup)
+        match = next((x for x in (model_page_elements or {}).get('results', []) if x.get('id') == actor_id), None)
+        return (match.get('thumb') or {}).get('image') or '' if match else ''
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._extra(scene).result.get('title') or ''
@@ -129,13 +138,6 @@ class FemjoyClient(Client):
             actors.append(ActorResult(name=actor_name, photo_url=photo))
 
         metadata.actors = actors
-
-    async def _actor_thumb_fallback(self, site: ResolvedSiteInfo, actor_name: str, actor_id: Any) -> str:
-        first_name = actor_name.split()[0] if actor_name.split() else ''
-        lookup = f'{site.base_url.rstrip("/")}/api/v2/search/actors?thumb_size=355x475&query={quote(first_name)}'
-        model_page_elements = await self.fetch_json(lookup)
-        match = next((x for x in (model_page_elements or {}).get('results', []) if x.get('id') == actor_id), None)
-        return (match.get('thumb') or {}).get('image') or '' if match else ''
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         directors = [ActorResult(name=d['name']) for d in self._extra(scene).result.get('directors', []) if d.get('name')]

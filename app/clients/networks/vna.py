@@ -50,7 +50,7 @@ class VNAClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     @staticmethod
     def _actors_text(scene: LoadedScene) -> str:
@@ -63,6 +63,8 @@ class VNAClient(Client):
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

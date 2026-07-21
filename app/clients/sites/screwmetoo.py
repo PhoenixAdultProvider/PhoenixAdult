@@ -48,7 +48,7 @@ class ScrewMeTooClient(Client):
                 )
             )
 
-    # ── Context loader (model headshots + cross-page release date) ────────────
+    # ── Context Loader (model headshots + cross-page release date) ────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -94,10 +94,12 @@ class ScrewMeTooClient(Client):
             extra=_SmtExtra(actors=actors, release_date=release_date),
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _extra(self, scene: LoadedScene) -> _SmtExtra:
         return scene.extra if isinstance(scene.extra, _SmtExtra) else _SmtExtra()
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

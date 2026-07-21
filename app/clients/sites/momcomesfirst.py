@@ -13,6 +13,8 @@ _ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
 
 
 class MomComesFirstClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         cleaned = ' '.join(search_data.title.replace('sons', '').replace('mothers', '').replace('moms', '').split())
@@ -38,7 +40,7 @@ class MomComesFirstClient(Client):
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date(first_text(source, './/p//span'), '%b %d, %Y')
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

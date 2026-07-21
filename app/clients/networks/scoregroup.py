@@ -23,6 +23,8 @@ def _clean_title(raw: str) -> str:
 
 
 class ScoreGroupClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + _SEARCH_PATH.replace('{query}', search_data.encoded)
@@ -91,7 +93,7 @@ class ScoreGroupClient(Client):
             )
         )
 
-    # ── Context loader ──────────────────────────────────────────────────────────
+    # ── Context Loader ──────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -122,11 +124,13 @@ class ScoreGroupClient(Client):
             extra={'packed': packed, 'is_latest': is_latest},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _data(self, scene: LoadedScene) -> tuple[dict[str, Any], bool]:
         extra = scene.extra or {}
         return extra.get('packed', {'url': scene.url}), bool(extra.get('is_latest'))
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

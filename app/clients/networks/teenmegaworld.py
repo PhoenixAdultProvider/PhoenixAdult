@@ -14,6 +14,8 @@ _SEARCH_PAGES = 2
 
 
 class TeenMegaWorldClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         sources: list[Any] = []
@@ -36,7 +38,15 @@ class TeenMegaWorldClient(Client):
         raw = (source.xpath('(.//time)[1]').xpath('string(.)').get() or '').strip()
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _tagline(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        raw = (details_page_elements.xpath('(//a[contains(@class,"video-site-link")])[1]').xpath('string(.)').get() or '').strip()
+        return title_case(raw, site_name=scene.site.name) if raw else scene.site.name
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -50,12 +60,6 @@ class TeenMegaWorldClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        raw = (details_page_elements.xpath('(//a[contains(@class,"video-site-link")])[1]').xpath('string(.)').get() or '').strip()
-        return title_case(raw, site_name=scene.site.name) if raw else scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

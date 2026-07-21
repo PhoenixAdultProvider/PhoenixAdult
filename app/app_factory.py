@@ -48,34 +48,34 @@ def create_app() -> FastAPI:
 
     app.add_middleware(RequestContextMiddleware)
 
-    # ── Dynamic provider routes ──────────────────────────────────────────────
+    # ── Dynamic Provider Routes ──────────────────────────────────────────────
     for provider in get_all_providers():
         mount = provider_mount_path(provider)
         app.include_router(create_provider_router(provider), prefix=mount)
 
-    # ── Image serving ────────────────────────────────────────────────────────
+    # ── Image Serving ────────────────────────────────────────────────────────
     app.include_router(image_routes.router, prefix='/images')
     app.include_router(image_routes.cache_router)
 
-    # ── Runtime config UI ────────────────────────────────────────────────────
+    # ── Runtime Config UI ────────────────────────────────────────────────────
     app.include_router(env_routes.router, prefix='/config')
 
-    # ── People Image Cache review UI (admin-guarded) ─────────────────────────
+    # ── People Image Cache Review UI (admin-guarded) ─────────────────────────
     app.include_router(people_cache_routes.router, prefix='/people')
 
-    # ── Snapshot metadata cache review UI (admin-guarded) ────────────────────
+    # ── Snapshot Metadata Cache Review UI (admin-guarded) ────────────────────
     app.include_router(metadata_cache_routes.router, prefix='/metadata')
 
-    # ── ClearLogo cache review UI (admin-guarded) ────────────────────────────
+    # ── ClearLogo Cache Review UI (admin-guarded) ────────────────────────────
     app.include_router(logo_routes.router, prefix='/logos')
 
-    # ── Background scrape queue UI (admin-guarded) ───────────────────────────
+    # ── Background Scrape Queue UI (admin-guarded) ───────────────────────────
     app.include_router(queue_routes.router, prefix='/queue')
 
-    # ── Plex server reconciliation (admin-guarded; no-op until PLEX_* are set) ─
+    # ── Plex Server Reconciliation (admin-guarded; no-op until PLEX_* are set) ─
     app.include_router(plex_routes.router, prefix='/plex')
 
-    # ── Dev / test UI (non-production only, admin-guarded) ───────────────────
+    # ── Dev / Test UI (non-production only, admin-guarded) ───────────────────
     if not env.is_production:
         app.include_router(dev_routes.router, prefix='/dev')
 

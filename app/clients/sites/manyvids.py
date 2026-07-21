@@ -48,7 +48,7 @@ class ManyvidsClient(Client):
             )
         )
 
-    # ── Context loader (detail is a JSON API) ─────────────────────────────────
+    # ── Context Loader (detail is a JSON API) ─────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -62,11 +62,13 @@ class ManyvidsClient(Client):
 
         return LoadedScene(url=url, site=site, scene_date=fallback_date or None, capture=ctx.capture if ctx else None, extra=data)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         assert isinstance(scene.extra, dict)
         return scene.extra
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._data(scene).get('title') or '').strip()

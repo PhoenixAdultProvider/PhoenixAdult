@@ -48,7 +48,7 @@ class ThickCashClient(Client):
                 )
             )
 
-    # ── Context loader — decode the JSON-packed scene; no detail fetch ──────────
+    # ── Context Loader — Decode the JSON-Packed Scene; No Detail Fetch ──────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -61,10 +61,12 @@ class ThickCashClient(Client):
 
         return LoadedScene(url='', site=site, capture=ctx.capture if ctx else None, sel=None, html='', extra=scene)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._packed(scene).get('title') or ''

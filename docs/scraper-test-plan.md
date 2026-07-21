@@ -10,7 +10,7 @@ Every scraper has two layers of verification:
 Plus an optional manual pass in the [`/dev` UI](./dev-ui.md) when you want to eyeball
 a scraper against the live site while developing.
 
-## The gate (before every commit)
+## The Gate (Before Every Commit)
 
 ```bash
 ./.venv/Scripts/python.exe -m ruff format <files>
@@ -22,7 +22,7 @@ a scraper against the live site while developing.
 One commit per scraper. After adding a scraper, regenerate the sitelist
 (`python -m scripts.generate_sitelist`).
 
-## Unit-test conventions
+## Unit-Test Conventions
 
 Tests mirror the source tree: a scraper at `app/clients/networks/<x>.py` (or
 `app/clients/scrapers/<x>.py`) gets `tests/clients/networks/test_<x>.py` (resp.
@@ -97,7 +97,7 @@ Keep fixtures (the HTML/JSON strings) minimal: include only the nodes the select
 read. Split long literal HTML across concatenated strings to stay under the line
 limit.
 
-## Live health checks
+## Live Health Checks
 
 The automated regression net for "does this still work against the real site" is
 `tests/health/fixtures.json` driven by `python -m scripts.site_health`. Add a
@@ -111,7 +111,7 @@ python -m scripts.site_health          # full sweep -> docs/site-health.md
 See [healthcheck.md](./healthcheck.md) for the fixture schema and the per-field
 comparison rules.
 
-## Manual dev-UI smoke (optional)
+## Manual Dev-UI Smoke (Optional)
 
 When iterating on a scraper it's often fastest to watch it live:
 
@@ -123,7 +123,7 @@ When iterating on a scraper it's often fastest to watch it live:
 5. If something's off, expand the capture panel to see the exact HTML the scraper
    saw and re-check your XPath. See [dev-ui.md](./dev-ui.md).
 
-## Protocol per scraper
+## Protocol per Scraper
 
 1. **Search** — type a known scene title/for that network into the filename box; pick the network in the site dropdown; press Enter. Confirm at least one result row.
 2. **Detail** — click the top result. Confirm `title`, `releaseDate`, and `summary` populate.

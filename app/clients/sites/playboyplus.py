@@ -36,7 +36,7 @@ class PlayboyPlusClient(Client):
                 )
             )
 
-    # ── Context loader (curID packs the search-card poster) ───────────────────
+    # ── Context Loader (curID packs the search-card poster) ───────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -55,7 +55,7 @@ class PlayboyPlusClient(Client):
             extra={'poster': poster},
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

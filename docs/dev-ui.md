@@ -11,7 +11,7 @@ outside production and its pipeline endpoints (`POST /dev/test`, `POST /dev/meta
 require the admin token, the same guard as `/config` (see `app/utils/auth/env_auth.py`).
 In a real deployment the route disappears.
 
-## Getting started
+## Getting Started
 
 Start the dev server with auto-reload. The `/dev` UI is only mounted outside
 production, and production is now the default — so set `NODE_ENV=development`:
@@ -32,7 +32,7 @@ column with five functional areas, top to bottom:
 You don't need to fill the whole page — work top-down. Type a filename, press
 Enter, click a result card, build a fixture if it scraped clean.
 
-## The filename input
+## The Filename Input
 
 Type any filename the way Plex would hand it to the matching service. Extension is
 optional. The buttons under the input drop in example formats so you can see the
@@ -49,7 +49,7 @@ content) so you can confirm it understood you. If the parse fails or the site to
 doesn't resolve to a registered site, the pipeline stops there and shows the
 failure in red.
 
-## The search pipeline panel
+## The Search Pipeline Panel
 
 Each search runs as a series of collapsible step cards with an OK/FAIL badge:
 
@@ -64,7 +64,7 @@ carry a "Raw upstream responses" sub-section with the actual responses (the
 per-request `capture` buffer). OK steps default to expanded; FAIL steps collapse so
 the error is the first thing you see.
 
-## The results grid
+## The Results Grid
 
 Successful searches render as cards: thumbnail (or placeholder), scraped title, and
 the assigned score. Click a card to fetch full metadata; the selected card's border
@@ -78,7 +78,7 @@ turns purple. Scores follow the project convention:
 When a score lands in the 70s, eyeball the scraped title against the filename
 before trusting it. Below ~60, treat the match as speculative.
 
-## The metadata panel
+## The Metadata Panel
 
 Clicking a result fetches detail and renders poster + scraped fields: title,
 studio, tagline, release date, summary, genres, actor list (with gender chips when
@@ -87,7 +87,7 @@ strip shows every poster/art URL — click any to open the full image in a new t
 (confirms the URL resolves and the right photo is pulled). The detail-fetch
 pipeline renders below with the same collapsible steps and inline captures.
 
-## Captures: the killer feature
+## Captures: the Killer Feature
 
 Both pipelines push their raw HTTP responses into a capture buffer the UI exposes
 inline. Every fetch shows a method+URL label (clickable), a JSON/HTML content-type
@@ -100,7 +100,7 @@ results but the upstream returned 200, expand the capture body and look at the H
 — your XPath probably doesn't match what's on the page. Copy the URL, open it,
 view-source, confirm the structure.
 
-## Building a fixture
+## Building a Fixture
 
 Once a result scrapes cleanly, the metadata panel's "Fixture" block emits a JSON
 object pre-shaped for `tests/health/fixtures.json`:
@@ -133,7 +133,7 @@ scripts.site_health` will regression-check that site against this filename. The
 match quality below that threshold fails the check. Trim `summary` to a sentence
 (it's a substring match) and drop any genre the upstream re-orders.
 
-## The registered sites table
+## The Registered Sites Table
 
 A sortable table of every registered site. Click column headers to sort; umbrella
 networks are grouped with a "N sites" badge you can expand. Useful for finding an
@@ -147,7 +147,7 @@ type a site uses.
 - **Clipboard copies** work on `localhost` over HTTP (falls back to
   `document.execCommand('copy')` when `navigator.clipboard` is unavailable).
 
-## What it doesn't do
+## What it Doesn't Do
 
 Intentionally minimal: it doesn't persist results across reloads, edit the
 registry/selectors live (those are file edits + restart), replay a previous search,

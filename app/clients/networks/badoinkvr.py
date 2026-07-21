@@ -30,8 +30,6 @@ __testing__ = {'mangle': _mangle, 'title_clean_lower': _title_clean_lower}
 
 
 class BadoinkVrClient(Client):
-    # ── Search (full override: direct sceneID lookup + search page) ──────────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         cleaned = _mangle(search_data.title)
@@ -79,7 +77,32 @@ class BadoinkVrClient(Client):
                 )
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    @staticmethod
+    def _slug_family(scene_url: str, gallery_big: str, count: int) -> list[str]:
+        """Galleries can switch to /content/scenes/{id}/{slug}-{id}[_i].jpg past the teaser;
+        derive that family from the scene URL so the members-only tail is reachable."""
+        cdn = re.match(r'^(https?://[^/]+)/content/', gallery_big)
+        segments = [s for s in urlsplit(scene_url).path.split('/') if s]
+        slug_id = re.match(r'^(.+)-(\d+)$', segments[-1]) if segments else None
+        if slug_id:
+            slug, scene_id = slug_id.group(1).replace('_', '-'), slug_id.group(2)
+        elif len(segments) >= 2 and segments[-2].isdigit():
+            slug, scene_id = segments[-1], segments[-2]
+        else:
+            return []
+        if not cdn:
+            return []
+        base = f'{cdn.group(1)}/content/scenes/{scene_id}/{slug}-{scene_id}'
+        return [f'{base}.jpg', *(f'{base}_{i}.jpg' for i in range(1, count + 1))]
+
+    @staticmethod
+    async def _existing(urls: list[str]) -> list[str]:
+        dims = await asyncio.gather(*(fetch_dimensions(u) for u in urls))
+        return [u for u, d in zip(urls, dims, strict=True) if d]
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -174,26 +197,3 @@ class BadoinkVrClient(Client):
             title=metadata.title.replace('Remastered', '').strip(),
             allow_square=False,
         )
-
-    @staticmethod
-    def _slug_family(scene_url: str, gallery_big: str, count: int) -> list[str]:
-        """Galleries can switch to /content/scenes/{id}/{slug}-{id}[_i].jpg past the teaser;
-        derive that family from the scene URL so the members-only tail is reachable."""
-        cdn = re.match(r'^(https?://[^/]+)/content/', gallery_big)
-        segments = [s for s in urlsplit(scene_url).path.split('/') if s]
-        slug_id = re.match(r'^(.+)-(\d+)$', segments[-1]) if segments else None
-        if slug_id:
-            slug, scene_id = slug_id.group(1).replace('_', '-'), slug_id.group(2)
-        elif len(segments) >= 2 and segments[-2].isdigit():
-            slug, scene_id = segments[-1], segments[-2]
-        else:
-            return []
-        if not cdn:
-            return []
-        base = f'{cdn.group(1)}/content/scenes/{scene_id}/{slug}-{scene_id}'
-        return [f'{base}.jpg', *(f'{base}_{i}.jpg' for i in range(1, count + 1))]
-
-    @staticmethod
-    async def _existing(urls: list[str]) -> list[str]:
-        dims = await asyncio.gather(*(fetch_dimensions(u) for u in urls))
-        return [u for u, d in zip(urls, dims, strict=True) if d]

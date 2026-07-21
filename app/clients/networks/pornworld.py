@@ -96,6 +96,8 @@ class PornWorldClient(Client):
                 )
             )
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     async def _date_crawl(self, search_data: SearchContext, base: str) -> list[SearchResult]:
         assert search_data.search_date is not None
         target = _iso_date_obj(search_data.search_date)
@@ -157,7 +159,7 @@ class PornWorldClient(Client):
 
         return []
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -28,7 +28,7 @@ _FIELD_ORDER: list[tuple[str, str]] = [
 _SKIP = {'status': 'skip', 'expected': '', 'got': ''}
 
 
-# ── Comparison helpers (pure) ──────────────────────────────────────────────────
+# ── Comparison Helpers (pure) ──────────────────────────────────────────────────
 
 
 def _lc(s: str | None) -> str:
@@ -179,7 +179,7 @@ async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
         return r
 
 
-# ── Markdown report (pure) ─────────────────────────────────────────────────────
+# ── Markdown Report (pure) ─────────────────────────────────────────────────────
 
 
 def _esc(s: str) -> str:
@@ -279,7 +279,7 @@ def _existing_detail_blocks(path: Path) -> list[str]:
     return blocks
 
 
-# ── Entry point ─────────────────────────────────────────────────────────────────
+# ── Entry Point ─────────────────────────────────────────────────────────────────
 
 
 async def _main(args: list[str]) -> int:

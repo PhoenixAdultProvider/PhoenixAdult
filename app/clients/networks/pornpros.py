@@ -53,7 +53,7 @@ class PornProsClient(Client):
             )
         )
 
-    # ── Context loader — re-fetch the release JSON by slug ──────────────────────
+    # ── Context Loader — Re-Fetch the Release JSON by Slug ──────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
@@ -68,10 +68,15 @@ class PornProsClient(Client):
             url=f'{base}/api/releases/{slug}', site=site, scene_date=scene_date or None, capture=ctx.capture if ctx else None, sel=None, html='', extra=release
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _r(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    def _tagline(self, scene: LoadedScene) -> str:
+        return str((self._r(scene).get('sponsor') or {}).get('name') or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = str(self._r(scene).get('title') or '').strip()
@@ -83,9 +88,6 @@ class PornProsClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'PornPros'
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        return str((self._r(scene).get('sponsor') or {}).get('name') or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or None

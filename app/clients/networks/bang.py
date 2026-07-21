@@ -49,8 +49,6 @@ __testing__ = {'bangify': _bangify, 'strip_html': _strip_html, 'find_video_ld': 
 
 
 class BangClient(Client):
-    # ── Search (web-search augmentation + on-page grid) ─────────────────────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
@@ -132,7 +130,7 @@ class BangClient(Client):
                     )
                 )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _studio_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -155,6 +153,8 @@ class BangClient(Client):
                 return _bangify(first_attr(el, 'normalize-space(.)'))
 
         return ''
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

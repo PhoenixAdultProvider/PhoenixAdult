@@ -270,7 +270,7 @@ class AdultEmpireClient(Client):
 
         logger.debug(name, f'search "{search_data.title}" -> {len(results)} result(s)')
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -288,10 +288,26 @@ class AdultEmpireClient(Client):
 
         return LoadedScene(url=movie_url, site=site, scene_date=packed.get('searchDate') or None, capture=ctx.capture if ctx else None, sel=sel, extra=packed)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    def _tagline_value(self, scene: LoadedScene) -> str | None:
+        details_page_elements = scene.require_sel()
+
+        series = first_attr(details_page_elements, '(//h2//a[@label="Series"])[1]/text()')
+        if not series:
+            return None
+
+        parts = series.split('"')
+        if len(parts) < 2:
+            return None
+
+        cleaned = re.sub(r'\(.*\)', '', parts[1]).strip()
+        return cleaned or None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -317,20 +333,6 @@ class AdultEmpireClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.studio = _studio(details_page_elements) or ''
-
-    def _tagline_value(self, scene: LoadedScene) -> str | None:
-        details_page_elements = scene.require_sel()
-
-        series = first_attr(details_page_elements, '(//h2//a[@label="Series"])[1]/text()')
-        if not series:
-            return None
-
-        parts = series.split('"')
-        if len(parts) < 2:
-            return None
-
-        cleaned = re.sub(r'\(.*\)', '', parts[1]).strip()
-        return cleaned or None
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline_value(scene)

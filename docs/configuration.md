@@ -189,7 +189,7 @@ pick your server from the discovered list (fills `PLEX_URL`), verify the connect
 (server identity + authenticated check), see the server version with a local-only
 update check (no notifications), and run reconciliation dry-run/apply without curl.
 
-#### Reconciling stale tags
+#### Reconciling Stale Tags
 
 Plex keeps agent-supplied tags that a provider stops returning: change a scene's collection and
 the old one stays on the item. The HTTP provider API has no way to clear it — an agent-framework plugin

@@ -107,7 +107,7 @@ class JavLibraryClient(Client):
         except Exception as err:  # noqa: BLE001
             logger.debug(search_data.site_info.name, f'webSearch fallback: {err}')
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _table_link(self, scene: LoadedScene, label: str) -> str:
         details_page_elements = scene.require_sel()
@@ -135,6 +135,8 @@ class JavLibraryClient(Client):
 
         date = (details_page_elements.xpath('(//td[contains(.,"Release Date:")])[1]/following-sibling::td[1]').xpath('normalize-space(.)').get() or '').strip()
         return (iso_date(date, '%Y-%m-%d') if date else None) or scene.scene_date or None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         jav_id, title = self._og_title_parts(scene)

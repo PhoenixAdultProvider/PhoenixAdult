@@ -8,6 +8,8 @@ from app.utils.helpers.html_helpers import first_text
 
 
 class ReidMyLipsClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = '-'.join(search_data.title.strip().lower().split())
@@ -33,7 +35,7 @@ class ReidMyLipsClient(Client):
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         return 100
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

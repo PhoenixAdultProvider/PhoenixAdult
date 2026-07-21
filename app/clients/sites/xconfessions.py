@@ -137,10 +137,12 @@ class XConfessionsClient(Client):
             url=f'{base_url}/api/movies/slug/{slug}', site=site, scene_date=cur_id_date or None, capture=ctx.capture if ctx else None, extra=scene
         )
 
-    # ── Detail field hooks (all read scene.extra) ─────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
+
+    # ── Update Field Hooks (all read scene.extra) ─────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._data(scene).get('title') or '').strip() or ''

@@ -56,7 +56,7 @@ class IntersecClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -68,6 +68,8 @@ class IntersecClient(Client):
         last = links[-1]
         link_text = f'{last.xpath("string(.)").get() or ""} {last.xpath("@href").get() or ""}'
         return _resolve_tagline(link_text)
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

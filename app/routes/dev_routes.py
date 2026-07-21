@@ -60,7 +60,7 @@ def _lap_timer() -> Callable[[], int]:
     return lap
 
 
-# ── POST /dev/test ────────────────────────────────────────────────────────────
+# ── POST /Dev/Test ────────────────────────────────────────────────────────────
 
 
 @router.post('/test')
@@ -225,7 +225,7 @@ async def dev_test(request: Request) -> JSONResponse:
     return send({'filename': filename, 'steps': steps})
 
 
-# ── POST /dev/metadata ────────────────────────────────────────────────────────
+# ── POST /Dev/Metadata ────────────────────────────────────────────────────────
 
 
 @router.post('/metadata')
@@ -430,7 +430,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     return send({'ratingKey': rating_key, 'steps': steps})
 
 
-# ── GET /dev — Test UI ────────────────────────────────────────────────────────
+# ── GET /Dev — Test UI ────────────────────────────────────────────────────────
 
 
 @router.get('')

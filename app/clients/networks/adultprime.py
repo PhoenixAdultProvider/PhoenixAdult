@@ -43,8 +43,6 @@ __testing__ = {
 
 
 class AdultPrimeClient(Client):
-    # ── Search (full override: direct sceneID lookup + video/performer search) ───
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -101,12 +99,14 @@ class AdultPrimeClient(Client):
                     )
                 )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath(f'{_info_line_xp("Studio")}//a[1]/text()').get() or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

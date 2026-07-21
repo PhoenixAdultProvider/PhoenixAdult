@@ -88,7 +88,7 @@ class DorcelClubClient(Client):
 
                 results.append(card_result(scene_title, scene_url))
 
-    # ── Detail field hooks (branch on movie vs scene URL) ─────────────────────
+    # ── Update Field Hooks (branch on movie vs scene URL) ─────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

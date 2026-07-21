@@ -66,7 +66,7 @@ class VirtualRealClient(Client):
             )
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ld = _last_json_ld(scene)

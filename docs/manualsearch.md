@@ -11,7 +11,7 @@ Each search query can be comprised of *up to* 5 parts, depending on the supporte
 - `SceneID` - A numeric value found in the URL of a scene page.
 - `Direct URL` - A string of characters at the end of a URL of a scene page. Typically includes some combination of a SceneID, Scene Title, or Actor.
 
-## Search types and their capabilities
+## Search Types and their Capabilities
 There are 4 available search/matching methods, as listed below:
 + **Enhanced Search:** `Title` `Actor` `Date` `SceneID`
 + **Limited Search:** `Title` `Actor`
@@ -19,7 +19,7 @@ There are 4 available search/matching methods, as listed below:
 + **Manual NFO:** `manual.<basename>.<ext>` — pulls metadata from a local `.nfo` file
 
 ## Enhanced Search
-#### Multi-search available.
+#### Multi-Search Available.
 + **Available search methods:**
   - **Title**
   - **Actor(s)**
@@ -32,13 +32,13 @@ There are 4 available search/matching methods, as listed below:
 + **SceneID Match:** SceneID can be entered directly after the site name (and date), but before all other search terms. This will increase the possibility for a match.
 
 ## Limited Search
-#### Limited-search available.
+#### Limited-Search Available.
 + **Available search methods:**
   - **Title**
   - **Actor(s)**
 
 ## Exact Match
-#### No search available.
+#### No Search Available.
 *Locating the correct scene is entirely dependent on entering the correct StudioID, ActressID, SceneID, or Direct URL. However, entering additional search terms may help with matching.*
 + **StudioID:** Typically used when sites host many small, independent studios (ie. Clips4Sale).
   - Can add the Date (before the StudioID).
@@ -57,7 +57,7 @@ There are 4 available search/matching methods, as listed below:
 
 *If the studio is not yet supported (or you simply want full control over the metadata), drop a Kodi/XBMC-style `.nfo` file on disk and PhoenixAdult will serve its contents to Plex. Check [the sitelist](./sitelist.md) for upstream-scraped sites first.*
 
-### How it works
+### How it Works
 
 When the filename Plex sends starts with the **match token** (`manual.` by default), the provider skips every upstream scraper, strips the token, and looks for an `.nfo` whose basename matches the rest of the filename exactly. Match found → metadata served from the NFO; match missed → empty result.
 
@@ -101,7 +101,7 @@ the first `<basename>/<basename>.nfo` it finds. Shallower wins on collisions:
 
 Sibling poster/fanart files are preferred over any `<thumb>` / `<fanart><thumb>` URLs declared in the NFO — those URLs are only used when no sibling exists.
 
-### Indexing & freshness
+### Indexing & Freshness
 
 The provider builds an in-memory index of every `.nfo` under `MANUAL_NFO_PATH` on the first lookup, then reuses it for ~60 seconds before refreshing. This keeps Plex match + detail fetches fast even on libraries with thousands of items. Newly-dropped NFOs are picked up two ways:
 - automatically on the next lookup after the 60-second TTL expires, or
@@ -109,11 +109,11 @@ The provider builds an in-memory index of every `.nfo` under `MANUAL_NFO_PATH` o
 
 If you ever need to force a refresh sooner, restart the provider — there's no public flush endpoint.
 
-### Match token
+### Match Token
 
 The token is configurable via `MANUAL_NFO_TOKEN` (default `manual`). The match is case-insensitive on the token, and the rest of the filename (the **basename**) is preserved verbatim — dots, digits, and case — so the on-disk lookup is unambiguous.
 
-### NFO schema
+### NFO Schema
 
 The full schema PhoenixAdult reads (every field is optional except `<title>`):
 
@@ -151,7 +151,7 @@ The full schema PhoenixAdult reads (every field is optional except `<title>`):
 </movie>
 ```
 
-### Malformed XML is repaired, not rejected
+### Malformed XML is Repaired, not Rejected
 
 Tags the provider doesn't know (`<uniqueid>`, `<premiered>`, …) are ignored, and every tag above is
 optional. A file that isn't well-formed XML is repaired rather than dropped:
@@ -167,7 +167,7 @@ optional. A file that isn't well-formed XML is repaired rather than dropped:
 Each repair logs a warning naming the file and quoting the offending line. Writing valid XML
 (`&amp;`, `&lt;`) is still preferred — the repair pass is a safety net, not a licence.
 
-### Pinning the data18 scene
+### Pinning the Data18 Scene
 
 When data18 enrichment is on (`DATA18_ENABLE=true`), extra images are normally found by
 searching data18 for `<title>`. A `<data18>` tag pins the exact scene instead, skipping the
@@ -190,7 +190,7 @@ Notes:
   a warning, and the normal title search runs instead.
 - With a `<data18>` tag, `<title>` is no longer required for enrichment.
 
-### End-to-end example
+### End-to-End Example
 
 Filename Plex sends:
 ```
@@ -260,7 +260,7 @@ Here are some examples for each type of search:
 
 ## Custom Title Naming
 
-#### Create a custom title from data pulled by scrapers
+#### Create a Custom Title from Data Pulled by Scrapers
 
 Enable custom title formats in agent settings
 

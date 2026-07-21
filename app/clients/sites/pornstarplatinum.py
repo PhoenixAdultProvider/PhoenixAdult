@@ -10,6 +10,8 @@ from app.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PornstarPlatinumClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -44,7 +46,7 @@ class PornstarPlatinumClient(Client):
             )
         )
 
-    # ── Context loader (card fields packed into the curID) ────────────────────
+    # ── Context Loader (card fields packed into the curID) ────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -67,10 +69,12 @@ class PornstarPlatinumClient(Client):
             extra=packed,
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._data(scene).get('title') or '').strip()

@@ -65,7 +65,7 @@ class MyDirtyHobbyClient(Client):
                 )
             )
 
-    # ── Context loader (detail JSON embedded in the scene HTML) ───────────────
+    # ── Context Loader (detail JSON embedded in the scene HTML) ───────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -105,6 +105,8 @@ class MyDirtyHobbyClient(Client):
             extra=extra,
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _content(self, scene: LoadedScene) -> dict[str, Any]:
         return (scene.extra or {}).get('content', {}) if isinstance(scene.extra, dict) else {}
 
@@ -114,7 +116,7 @@ class MyDirtyHobbyClient(Client):
 
         return (scene.extra.get('profileHeader') or {}).get('profileAvatar') or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = ((self._content(scene).get('title') or {}).get('text') or '').strip()

@@ -45,7 +45,7 @@ def _strip_extension(filename: str) -> str:
     return re.sub(r'\.[a-z0-9]{2,5}$', '', filename, flags=re.IGNORECASE)
 
 
-# ── Search-title cleanup ──────────────────────────────────────────────────────
+# ── Search-Title Cleanup ──────────────────────────────────────────────────────
 
 _trash_source = ''
 _trash_regex: re.Pattern[str] | None = None

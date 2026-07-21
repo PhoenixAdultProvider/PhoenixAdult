@@ -46,7 +46,7 @@ class VividClient(Client):
                     )
                 )
 
-    # ── Context loader: unpack subsite + poster ───────────────────────────────
+    # ── Context Loader: unpack subsite + poster ───────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
@@ -68,13 +68,15 @@ class VividClient(Client):
             extra={'sub_site': sub_site, 'poster_url': poster_url},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _sub_site(self, scene: LoadedScene) -> str:
         if isinstance(scene.extra, dict):
             return scene.extra.get('sub_site') or scene.site.name
 
         return scene.site.name
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

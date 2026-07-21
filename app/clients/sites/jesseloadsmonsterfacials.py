@@ -57,6 +57,8 @@ class JesseLoadsMonsterFacialsClient(Client):
             if not saw_scene or exact_hit:
                 break
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     def _collect_scenes(self, sel: Selector, results: list[SearchResult], search_data: SearchContext) -> tuple[bool, bool]:
         current_date = ''
         saw_scene = False
@@ -106,7 +108,7 @@ class JesseLoadsMonsterFacialsClient(Client):
 
         return saw_scene, exact_hit
 
-    # ── Detail (decoded from the curID JSON — no HTTP) ────────────────────────
+    # ── Context Loader (decoded from the curID JSON — no HTTP) ────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -116,9 +118,13 @@ class JesseLoadsMonsterFacialsClient(Client):
 
         return LoadedScene(url=extra.get('poster', ''), site=site, extra=extra)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         assert isinstance(scene.extra, dict)
         return scene.extra
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = f'{" and ".join(self._data(scene)["actors"])} from JesseLoadsMonsterFacials.com'

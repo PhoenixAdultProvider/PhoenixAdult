@@ -80,7 +80,7 @@ class KinkClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -88,6 +88,25 @@ class KinkClient(Client):
         link = details_page_elements.xpath('(//div[contains(@class,"shoot-detail-legend")]//a[contains(@href,"/channel/")])[1]')
         channel_text = f'{link.xpath("string(.)").get() or ""} {link.xpath("@href").get() or ""}'
         return _kink_tagline(channel_text, scene.site.name)
+
+    async def _collect_people(self, scene: LoadedScene, xp: str) -> list[ActorResult]:
+        details_page_elements = scene.require_sel()
+
+        base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
+
+        refs: list[tuple[str, str]] = []
+        for el in details_page_elements.xpath(xp):
+            name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
+            href = first_attr(el, '@href')
+            if name:
+                refs.append((name, absolute_url(href, base) if href else ''))
+
+        return await self.resolve_actor_photos(refs, extract_photo, capture=None)
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -147,23 +166,6 @@ class KinkClient(Client):
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.directors = await self._collect_people(scene, '//span[contains(@class,"director-name")]//a') or None
-
-    async def _collect_people(self, scene: LoadedScene, xp: str) -> list[ActorResult]:
-        details_page_elements = scene.require_sel()
-
-        base = scene.site.base_url
-
-        def extract_photo(sel: Selector) -> str:
-            return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
-
-        refs: list[tuple[str, str]] = []
-        for el in details_page_elements.xpath(xp):
-            name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
-            href = first_attr(el, '@href')
-            if name:
-                refs.append((name, absolute_url(href, base) if href else ''))
-
-        return await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

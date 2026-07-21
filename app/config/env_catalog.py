@@ -8,8 +8,8 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 
 # fmt: off
 ENV_GROUP_ORDER = [
-    'Logging', 'Images', 'Manual NFO', 'People cache & sources', 'Gender handling',
-    'Web search', 'HTTP bypass', 'Data18 enrichment', 'MetadataAPI', 'Plex server', 'Misc',
+    'Logging', 'Images', 'Manual NFO', 'People Cache & Sources', 'Gender Handling',
+    'Web Search', 'HTTP Bypass', 'Data18 Enrichment', 'MetadataAPI', 'Plex Server', 'Misc',
 ]
 
 DEFAULT_SEARCH_TITLE_TRASH = [
@@ -43,7 +43,7 @@ class EnvVarSpec:
 ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_LEVEL',
-        'Log level',
+        'Log Level',
         'Verbosity, least to most: error, warn, info, debug, http, verbose. HTTP access lines only appear at http or verbose.',
         'Logging',
         'enum',
@@ -53,7 +53,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'LOG_REDACT_HOSTS',
-        'Redact the server host in logs',
+        'Redact the Server Host in Logs',
         'Public IP addresses are ALWAYS redacted in logs (a real routable address never appears). This flag '
         'additionally redacts the server’s own host/FQDN (from PHOENIX_BASE_URL) and private/LAN/loopback IPs — so '
         'with it OFF you can see your own LAN address (e.g. PEOPLE_IMAGE_URL=localipv4) while testing. Secret query '
@@ -64,7 +64,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'LOG_REDACT_TOKEN',
-        'Redact tokens in logs',
+        'Redact Tokens in Logs',
         'Mask secret query values (?token=…, ?apikey=…, ?password=…) in logs. Defaults to ON when NODE_ENV=production '
         '(so tokens stay out of persisted logs) and OFF otherwise, so you can see the admin token in the startup '
         'banner URL while testing. IP addresses are always redacted regardless.',
@@ -73,11 +73,11 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='false',
     ),
     EnvVarSpec(
-        'IMAGE_DIR', 'Local image directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
+        'IMAGE_DIR', 'Local Image Directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
     ),
     EnvVarSpec(
         'LOGO_CACHE_ENABLE',
-        'ClearLogo cache',
+        'ClearLogo Cache',
         'Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo '
         'once, converting SVG to PNG. Off: only scraped upstream logo URLs are emitted.',
         'Images',
@@ -86,7 +86,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'LOGO_CACHE_DIR',
-        'Logo cache directory',
+        'Logo Cache Directory',
         'Folder holding logo.<site-slug>.<ext> files, organized in per-studio subfolders.',
         'Images',
         'string',
@@ -94,7 +94,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'IMAGE_MAX_BYTES',
-        'Max image size',
+        'Max Image Size',
         'Hard ceiling on a single upstream image fetch — larger images are rejected. '
         'Accepts a plain byte count or a size like 20M, 2000K or 100B (M = MB, K = KB, B = bytes).',
         'Images',
@@ -103,7 +103,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'IMAGE_PROXY_PIN',
-        'Pin proxy fetches to the resolved IP',
+        'Pin Proxy Fetches to the Resolved IP',
         'SSRF hardening for /images/proxy: each hop is resolved once, validated public, and fetched by pinned IP '
         '(hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches.',
         'Images',
@@ -111,11 +111,11 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='true',
     ),
     EnvVarSpec(
-        'MANUAL_NFO_PATH', 'Manual NFO folder', 'Root folder served by the "Manual NFO" scraper.', 'Manual NFO', 'string', default_value='./local/manual'
+        'MANUAL_NFO_PATH', 'Manual NFO Folder', 'Root folder served by the "Manual NFO" scraper.', 'Manual NFO', 'string', default_value='./local/manual'
     ),
     EnvVarSpec(
         'MANUAL_NFO_TOKEN',
-        'Manual NFO filename prefix',
+        'Manual NFO Filename Prefix',
         'Leading filename token that pins a match request to the Manual NFO scraper.',
         'Manual NFO',
         'string',
@@ -123,64 +123,64 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_DIR',
-        'People cache directory',
+        'People Cache Directory',
         'On-disk cache for downloaded actor / director / producer headshots.',
-        'People cache & sources',
+        'People Cache & Sources',
         'string',
         default_value='./local/images/people',
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_ENABLE',
-        'Enable people cache',
+        'Enable People Cache',
         'When off, photo URLs are re-resolved on every scene refresh.',
-        'People cache & sources',
+        'People Cache & Sources',
         'boolean',
         default_value='true',
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_REPLACE_ENABLE',
-        'Force re-fetch cached photos',
+        'Force Re-Fetch Cached Photos',
         'When on, ignores existing cached photos and re-fetches every time.',
-        'People cache & sources',
+        'People Cache & Sources',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'METADATA_CACHE_ENABLE',
-        'Snapshot metadata cache',
+        'Snapshot Metadata Cache',
         'When on, each scraped scene’s metadata + images are snapshotted under the metadata '
         'cache dir and served cache-first on later requests — offline-safe protection against '
         'the source site going down or changing anti-scrape. Manage/purge at /metadata.',
-        'People cache & sources',
+        'People Cache & Sources',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'METADATA_CACHE_DIR',
-        'Metadata cache directory',
+        'Metadata Cache Directory',
         'On-disk location for metadata snapshots (text + images).',
-        'People cache & sources',
+        'People Cache & Sources',
         'string',
         default_value='./local/cache',
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_FACE_ENABLE',
-        'Face-crop cached photos',
+        'Face-Crop Cached Photos',
         'When on (and people caching is enabled), cached headshots are face-detected '
         'and cropped to head + shoulders for Plex’s circular card. Requires '
         'opencv-python-headless (pip install "opencv-python-headless"); no-ops if absent. '
         'Generic/default placeholder images are never cropped. Review/undo crops at /people.',
-        'People cache & sources',
+        'People Cache & Sources',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'PEOPLE_SOURCE_ORDER',
-        'People source order',
+        'People Source Order',
         'Priority order of headshot lookup sources. "Scene" is the actor image from the scene page itself — '
         'remove it to skip the scene image and use only the external sources, or drag it lower to prefer a '
         'provider over it. Drag to reorder; IAFD needs a bypass backend (Impersonate).',
-        'People cache & sources',
+        'People Cache & Sources',
         'list',
         options=[
             'Local Storage',
@@ -199,7 +199,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'PEOPLE_IMAGE_URL',
-        'People image address',
+        'People Image Address',
         'Which base URL actor/director/producer image links use. Plex re-requests these periodically '
         'and does not keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images '
         'break — a stable local address is more durable. baseurl = the configured PHOENIX_BASE_URL '
@@ -209,145 +209,145 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'wrong one (e.g. a VPN owning the default route) — the scheme defaults to http and the '
         'configured PORT is appended when omitted. Metadata (poster/art) images always use baseurl. '
         'A metadata refresh in Plex is needed to pick up changed image URLs.',
-        'People cache & sources',
+        'People Cache & Sources',
         'string',
         default_value='baseurl',
     ),
     EnvVarSpec(
-        'ADULT_EMPIRE_LOGIN_TOKEN', 'Adult Empire login token', 'Session token for the AdultDVDEmpire actor-photo source.', 'People cache & sources', 'secret'
+        'ADULT_EMPIRE_LOGIN_TOKEN', 'Adult Empire Login Token', 'Session token for the AdultDVDEmpire actor-photo source.', 'People Cache & Sources', 'secret'
     ),
     EnvVarSpec(
         'GENDER_DETECT_ENABLE',
-        'Detect actor gender',
+        'Detect Actor Gender',
         'Query IAFD for each uncached actor and bake the gender into the cached filename.',
-        'Gender handling',
+        'Gender Handling',
         'boolean',
         default_value='true',
     ),
     EnvVarSpec(
         'GENDER_SKIP_MALE_ENABLE',
-        'Drop male actors',
+        'Drop Male Actors',
         'When on, male actors are hidden from the served Plex cast list. Applied at serve time, '
         'so it also re-filters already-cached scenes (snapshots keep every actor on disk).',
-        'Gender handling',
+        'Gender Handling',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'GENERIC_IMAGE_ENABLE',
-        'Generic placeholder photos',
+        'Generic Placeholder Photos',
         'Use a generic silhouette image when an actor has no resolvable photo.',
-        'Gender handling',
+        'Gender Handling',
         'boolean',
         default_value='true',
     ),
     EnvVarSpec(
         'GENERIC_FEMALE_URL',
-        'Generic female photo URL',
+        'Generic Female Photo URL',
         'Overrides the built-in female placeholder image.',
-        'Gender handling',
+        'Gender Handling',
         'string',
         default_value=DEFAULT_FEMALE_IMAGE_URL,
         preview='image',
     ),
     EnvVarSpec(
         'GENERIC_MALE_URL',
-        'Generic male photo URL',
+        'Generic Male Photo URL',
         'Overrides the built-in male placeholder image.',
-        'Gender handling',
+        'Gender Handling',
         'string',
         default_value=DEFAULT_MALE_IMAGE_URL,
         preview='image',
     ),
     EnvVarSpec(
         'GOOGLE_SEARCH_API_KEY',
-        'Google CSE API key',
+        'Google CSE API Key',
         'Custom Search API key. With the CX set, Google CSE runs before the DuckDuckGo fallback.',
-        'Web search',
+        'Web Search',
         'secret',
     ),
-    EnvVarSpec('GOOGLE_SEARCH_CX', 'Google CSE engine ID', 'Programmable Search Engine ID (CX) paired with the API key above.', 'Web search', 'secret'),
-    EnvVarSpec('FLARESOLVERR_URL', 'FlareSolverr endpoint', 'Self-hosted FlareSolverr URL used to bypass Cloudflare challenges.', 'HTTP bypass', 'string'),
+    EnvVarSpec('GOOGLE_SEARCH_CX', 'Google CSE Engine ID', 'Programmable Search Engine ID (CX) paired with the API key above.', 'Web Search', 'secret'),
+    EnvVarSpec('FLARESOLVERR_URL', 'FlareSolverr Endpoint', 'Self-hosted FlareSolverr URL used to bypass Cloudflare challenges.', 'HTTP Bypass', 'string'),
     EnvVarSpec(
         'REQBIN_ENABLE',
-        'Enable ReqBin fallback',
+        'Enable ReqBin Fallback',
         'Use the third-party ReqBin service as an HTTP-bypass fallback.',
-        'HTTP bypass',
+        'HTTP Bypass',
         'boolean',
         default_value='false',
     ),
-    EnvVarSpec('REQBIN_API_KEY', 'ReqBin API key', 'API key for the ReqBin HTTP-bypass fallback.', 'HTTP bypass', 'secret'),
+    EnvVarSpec('REQBIN_API_KEY', 'ReqBin API Key', 'API key for the ReqBin HTTP-bypass fallback.', 'HTTP Bypass', 'secret'),
     EnvVarSpec(
         'PLEX_URL',
-        'Plex server URL',
+        'Plex Server URL',
         'Base URL of the Plex server to reconcile against, e.g. http://plex.lan:32400. A LAN address is fine. '
         'Reconciliation is only available when this and PLEX_TOKEN are both set.',
-        'Plex server',
+        'Plex Server',
         'string',
     ),
     EnvVarSpec(
         'PLEX_TOKEN',
-        'Plex token',
+        'Plex Token',
         'X-Plex-Token for the server above. Needs library write access, so treat it like a password. '
         'Fetch one with the Plex tab\'s "Fetch New Token" button (plex.tv sign-in).',
-        'Plex server',
+        'Plex Server',
         'secret',
     ),
     EnvVarSpec(
         'PLEX_CLIENT_ID',
-        'Plex client identifier',
+        'Plex Client Identifier',
         'Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device.',
-        'Plex server',
+        'Plex Server',
         'secret',
     ),
     EnvVarSpec(
         'BYPASS_ORDER',
-        'Bypass attempt order',
+        'Bypass Attempt Order',
         'Order of HTTP-bypass strategies to try. Drag to reorder.',
-        'HTTP bypass',
+        'HTTP Bypass',
         'list',
         options=['Impersonate', 'FlareSolverr', 'Playwright', 'ReqBin'],
         default_value='Impersonate,FlareSolverr,Playwright,ReqBin',
     ),
     EnvVarSpec(
         'PLAYWRIGHT_BROWSER',
-        'Playwright browser engine',
+        'Playwright Browser Engine',
         'Browser the Playwright bypass launches. On FreeBSD/linuxulator, Firefox is far more reliable than Chromium.',
-        'HTTP bypass',
+        'HTTP Bypass',
         'enum',
         options=['chromium', 'firefox', 'webkit'],
         default_value='chromium',
     ),
     EnvVarSpec(
         'BYPASS_AUTO_RETRY',
-        'Auto-retry every 4xx/5xx via bypass',
+        'Auto-Retry Every 4xx/5xx via Bypass',
         'When on, the base Client re-routes every failed scraper request (4xx/5xx) through the bypass chain.',
-        'HTTP bypass',
+        'HTTP Bypass',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'BYPASS_TIMEOUT_MS',
-        'Bypass solve timeout (ms)',
+        'Bypass Solve Timeout (ms)',
         'Per-attempt ceiling for FlareSolverr/Playwright challenge solves; an unsolvable site falls through to the next backend after this long.',
-        'HTTP bypass',
+        'HTTP Bypass',
         'number',
         min=1000,
         default_value='10000',
     ),
     EnvVarSpec(
         'DATA18_ENABLE',
-        'Enable Data18 enrichment',
+        'Enable Data18 Enrichment',
         'Master on/off for data18.com image enrichment (per-site opt-in still required).',
-        'Data18 enrichment',
+        'Data18 Enrichment',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'DATA18_ACCURACY',
-        'Data18 match accuracy',
+        'Data18 Match Accuracy',
         'Minimum match accuracy (0-100). Lower = more matches but more false positives.',
-        'Data18 enrichment',
+        'Data18 Enrichment',
         'number',
         min=0,
         max=100,
@@ -355,22 +355,22 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'DATA18_EXTRA',
-        'Data18 extra galleries',
+        'Data18 Extra Galleries',
         'Include large/low-quality photoset (1001) and 1901 galleries.',
-        'Data18 enrichment',
+        'Data18 Enrichment',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'METADATAAPI_TOKEN',
-        'ThePornDB API token',
+        'ThePornDB API Token',
         'Bearer token for api.theporndb.net. Optional — without it the API serves a reduced response.',
         'MetadataAPI',
         'secret',
     ),
     EnvVarSpec(
         'PHOENIX_EXTRA_COLLECTIONS',
-        'Extra collections',
+        'Extra Collections',
         'Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther.',
         'Misc',
         'boolean',
@@ -378,7 +378,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'STRIP_ENABLE',
-        'Strip junk around the title',
+        'Strip Junk Around the Title',
         'Enable the two strip-symbol rules below, which cut a junk prefix/suffix off the parsed title before searching.',
         'Misc',
         'boolean',
@@ -386,21 +386,21 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'STRIP_SYMBOL',
-        'Strip symbol — keep text before',
+        'Strip Symbol — Keep Text Before',
         'When strip is enabled and this symbol appears in the title, keep only the text BEFORE its first occurrence.',
         'Misc',
         'string',
     ),
     EnvVarSpec(
         'STRIP_SYMBOL_REVERSE',
-        'Strip symbol — keep text after',
+        'Strip Symbol — Keep Text After',
         'When strip is enabled and this symbol appears in the title, keep only the text AFTER its last occurrence.',
         'Misc',
         'string',
     ),
     EnvVarSpec(
         'SEARCH_TITLE_TRASH',
-        'Extra search-title junk tokens',
+        'Extra Search-Title Junk Tokens',
         'Additional whole-word release / scene-group tokens stripped from the parsed title, appended to the built-in list.',
         'Misc',
         'list',
@@ -408,7 +408,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'SCENE_GAP',
-        'Paced scrapers: between-scenes delay',
+        'Paced Scrapers: Between-Scenes Delay',
         'Base seconds between units of work (searches AND scene scrapes share one track) on rate-limited scrapers '
         '(Nubiles, Naughty America); a 10-75s random jitter is always added on top, and at most 4 scenes run '
         'per 10 minutes regardless. Deferred work runs in the background (watch it at /queue); finished background '
@@ -421,7 +421,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'SEARCH_QUEUE_DIR',
-        'Search store directory',
+        'Search Store Directory',
         'On-disk store for finished background search results (paced scrapers), so a later Plex scan '
         'matches without re-searching. Entries expire after 7 days.',
         'Misc',
@@ -430,7 +430,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'SEARCH_STRIP_ACTORS',
-        'Strip actor names — sites',
+        'Strip Actor Names — Sites',
         'Sites whose filenames lead with actor names: the names are dropped when building the site search, '
         'and title scoring uses the best of the stripped and unstripped title. Entries match a site, '
         'a studio, or a whole network (e.g. Nubiles). Type to search.',
@@ -440,7 +440,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'DISABLE_AUTO_MATCH',
-        'Disable automatic matching',
+        'Disable Automatic Matching',
         'When on, suppress every match request Plex did NOT flag as user-initiated (manual=1).',
         'Misc',
         'boolean',
@@ -459,7 +459,7 @@ def is_editable_key(key: str) -> bool:
     return key in _CATALOG_BY_KEY
 
 
-# ── Byte-size helpers ─────────────────────────────────────────────────────────
+# ── Byte-Size Helpers ─────────────────────────────────────────────────────────
 
 _BYTE_UNITS = {'B': 1, 'K': 1024, 'M': 1024 * 1024}
 
@@ -489,7 +489,7 @@ def humanize_bytes(raw: str | None) -> str:
     return f'{n}B'
 
 
-# ── Validation / normalization ────────────────────────────────────────────────
+# ── Validation / Normalization ────────────────────────────────────────────────
 
 
 def normalize_env_value(spec: EnvVarSpec, raw: str) -> tuple[bool, str]:

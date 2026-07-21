@@ -12,6 +12,8 @@ STUDIO = 'New Sensations'
 
 
 class NewSensationsOtherClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         encoded = search_data.title.strip().lower().replace(' ', '+')
@@ -34,7 +36,7 @@ class NewSensationsOtherClient(Client):
         tok = (source.xpath('(.//div[@class="date_small"])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
         return iso_date(tok, '%m/%d/%Y') if tok else None
 
-    # ── Context loader (resolves cast + keeps the last actor page) ──────────────
+    # ── Context Loader (resolves cast + keeps the last actor page) ──────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -77,7 +79,7 @@ class NewSensationsOtherClient(Client):
             extra={'actors': actors, 'last_actor_page': last_actor_page},
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -116,6 +116,18 @@ async def api_save(request: Request) -> JSONResponse:
     return JSONResponse(_build_state())
 
 
+@router.post('/api/reveal')
+async def api_reveal(request: Request) -> JSONResponse:
+    """Return a secret's live value on demand for the Show button — secrets stay out of
+    the bulk /api/state payload."""
+    body = await read_json_body(request)
+    key = str(body.get('key') or '')
+    spec = next((s for s in ENV_CATALOG if s.key == key), None)
+    if spec is None or spec.kind != 'secret':
+        return JSONResponse({'error': 'not a secret key'}, status_code=400)
+    return JSONResponse({'key': key, 'value': os.environ.get(key, '')})
+
+
 @router.post('/api/reset')
 async def api_reset(request: Request) -> JSONResponse:
     """Parses JSON itself (not read_json_body): a malformed body must 400,

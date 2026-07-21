@@ -11,6 +11,8 @@ _READ_LESS_RE = re.compile(r'\s*Read less\s*$', re.IGNORECASE)
 
 
 class DarkRoomVRClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -31,7 +33,7 @@ class DarkRoomVRClient(Client):
 
         return absolute_url(href, loaded.site.base_url)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -52,13 +52,15 @@ class HighTechVRClient(Client):
             )
         )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline(self, scene: LoadedScene) -> str | None:
         details_page_elements = scene.require_sel()
 
         raw = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
         return _tagline_from_title(raw) if raw else None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

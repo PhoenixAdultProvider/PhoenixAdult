@@ -74,7 +74,7 @@ class AlsAngelsClient(Client):
                 )
             )
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
@@ -116,6 +116,8 @@ class AlsAngelsClient(Client):
             extra={'model_id': model_id, 'scene_num': scene_num, 'scene_date': scene_date, 'row': row, 'model_name': model_name},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _ex(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
@@ -125,7 +127,7 @@ class AlsAngelsClient(Client):
             r'Video Type:\s*', '', (row.xpath('(.//span[contains(@class,"videotype")])[1]').xpath('string(.)').get() or ''), flags=re.IGNORECASE
         ).strip()
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         ex = self._ex(scene)

@@ -43,6 +43,8 @@ class GirlsOutWestClient(Client):
                 )
             )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _date_from(self, sel: Any) -> str | None:
         text = first_text(sel, _TRAILER_P_XP)
         parts = text.split('\\')
@@ -51,7 +53,7 @@ class GirlsOutWestClient(Client):
 
         return iso_date(parts[1].strip(), '%m/%d/%Y')
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

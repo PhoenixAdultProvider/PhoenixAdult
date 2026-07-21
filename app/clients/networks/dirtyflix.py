@@ -49,8 +49,6 @@ __testing__ = {'actors_for_scene_id': _actors_for_scene_id, 'scenes_for_actor_na
 
 
 class DirtyFlixClient(Client):
-    # ── Search (paginated listing + shared tour-date resolution) ────────────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         cfg = _SITES.get(search_data.site_info.name)
         if not cfg:
@@ -107,7 +105,30 @@ class DirtyFlixClient(Client):
             )
         )
 
-    # ── Detail (search-page-as-detail: re-find the row by sceneID) ──────────────
+    # ── Search Helpers ──────────────────────────────────────────────────────────
+
+    async def _fetch_tour_dates(self, tour_key: int, capture: list[RawCaptureEntry] | None) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for url in (f'{_TOUR_HOST}/index.php/main/show_one_tour/{tour_key}', f'{_TOUR_HOST}/index.php/main/show_one_tour/{tour_key}/2'):
+            tour_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'GET {url}')
+            if not tour_page_elements:
+                continue
+
+            for item in tour_page_elements['sel'].xpath('//div[contains(@class,"thumbs-item")]'):
+                matches = (_SCENE_ID_RE.search(src) for src in item.xpath('.//img/@src').getall())
+                m = next((x for x in matches if x), None)
+                if not m:
+                    continue
+
+                scene_id = m.group(1)
+                date_raw = (item.xpath('(.//span[contains(@class,"added")])[1]').xpath('string(.)').get() or '').strip()
+                iso = iso_date(date_raw) or date_raw
+                if iso:
+                    out[scene_id] = iso
+
+        return out
+
+    # ── Context Loader (search-page-as-detail: re-find the row by sceneID) ──────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         cfg = _SITES.get(site.name)
@@ -157,28 +178,7 @@ class DirtyFlixClient(Client):
 
         return None
 
-    async def _fetch_tour_dates(self, tour_key: int, capture: list[RawCaptureEntry] | None) -> dict[str, str]:
-        out: dict[str, str] = {}
-        for url in (f'{_TOUR_HOST}/index.php/main/show_one_tour/{tour_key}', f'{_TOUR_HOST}/index.php/main/show_one_tour/{tour_key}/2'):
-            tour_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'GET {url}')
-            if not tour_page_elements:
-                continue
-
-            for item in tour_page_elements['sel'].xpath('//div[contains(@class,"thumbs-item")]'):
-                matches = (_SCENE_ID_RE.search(src) for src in item.xpath('.//img/@src').getall())
-                m = next((x for x in matches if x), None)
-                if not m:
-                    continue
-
-                scene_id = m.group(1)
-                date_raw = (item.xpath('(.//span[contains(@class,"added")])[1]').xpath('string(.)').get() or '').strip()
-                iso = iso_date(date_raw) or date_raw
-                if iso:
-                    out[scene_id] = iso
-
-        return out
-
-    # ── Field hooks (read the row extract stashed in scene.extra) ────────────────
+    # ── Update Field Hooks (read the row extract stashed in scene.extra) ─────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (scene.extra or {}).get('title') or ''

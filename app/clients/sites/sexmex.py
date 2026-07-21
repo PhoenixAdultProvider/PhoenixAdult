@@ -35,6 +35,8 @@ def _cleanup_title(raw: str, actor_names: list[str]) -> str:
 
 
 class SexMexClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         encoded = search_data.title.lower().replace(' ', '+')
@@ -60,7 +62,7 @@ class SexMexClient(Client):
         raw = first_text(source, './/p[contains(@class,"scene-date")]')
         return iso_date(raw) if raw else None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _actor_names(self, scene: LoadedScene) -> list[str]:
         details_page_elements = scene.require_sel()
@@ -70,6 +72,8 @@ class SexMexClient(Client):
             for actor_link in details_page_elements.xpath('//p[@class]//a')
             if first_attr(actor_link, 'normalize-space(.)')
         ]
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

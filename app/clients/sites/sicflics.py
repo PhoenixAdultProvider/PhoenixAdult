@@ -19,6 +19,8 @@ def _actor_from_description(description: str) -> str:
 
 
 class SicflicsClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -62,7 +64,7 @@ class SicflicsClient(Client):
             )
         )
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         try:
@@ -80,10 +82,12 @@ class SicflicsClient(Client):
             url=popup_url, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'], extra=packed
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

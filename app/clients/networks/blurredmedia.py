@@ -25,15 +25,7 @@ __testing__ = {'SESSION_COOKIES': _SESSION_COOKIES}
 
 
 class BlurredMediaClient(Client):
-    async def _session_cookie(self, site: ResolvedSiteInfo) -> str | None:
-        name = _SESSION_COOKIES.get(site.name)
-        if not name:
-            return None
-
-        jar = await get_site_cookies(site.base_url)
-        return f'{name}={jar[name]}' if jar.get(name) else None
-
-    # ── Search (orchestrator) ───────────────────────────────────────────────────
+    # ── Search Field Hooks ──────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
@@ -59,7 +51,7 @@ class BlurredMediaClient(Client):
         tok = (source.xpath('(.//p[contains(@class,"video__stats")])[1]').xpath('string(.)').get() or '').split('|')[0].strip()
         return iso_date(tok) if tok else None
 
-    # ── Detail (cookie-aware context + field hooks) ─────────────────────────────
+    # ── Context Loader (cookie-aware context + field hooks) ─────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         cookie = await self._session_cookie(site)
@@ -84,6 +76,18 @@ class BlurredMediaClient(Client):
             html=details_page_elements['html'],
             art_cookie=cookie,
         )
+
+    # ── Update Field Hook Helpers ───────────────────────────────────────────────
+
+    async def _session_cookie(self, site: ResolvedSiteInfo) -> str | None:
+        name = _SESSION_COOKIES.get(site.name)
+        if not name:
+            return None
+
+        jar = await get_site_cookies(site.base_url)
+        return f'{name}={jar[name]}' if jar.get(name) else None
+
+    # ── Update Field Hooks ──────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

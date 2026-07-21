@@ -52,7 +52,7 @@ _SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
 }
 
 
-# ── Word-type sets ────────────────────────────────────────────────────────────
+# ── Word-Type Sets ────────────────────────────────────────────────────────────
 _ACRONYMS = frozenset({'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'})
 
 _CONTRACTIONS = frozenset({'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'})
@@ -131,7 +131,7 @@ def _capitalize(s: str) -> str:
     return s[0].upper() + s[1:] if s else s
 
 
-# ── Title-case engine ─────────────────────────────────────────────────────────
+# ── Title-Case Engine ─────────────────────────────────────────────────────────
 _TokenKind = Literal['word', 'space', 'symbol', 'punct']
 
 
@@ -158,7 +158,7 @@ class _TitleCaseEngine:
         s = ''.join(t.normalized if t.normalized is not None else t.text for t in tokens)
         return self._post_process(s)
 
-    # ── Pre-process ──────────────────────────────────────────────────────────
+    # ── Pre-Process ──────────────────────────────────────────────────────────
     def _pre_process(self, s: str) -> str:
         s = s.replace('_', ' ')
         s = re.sub(r'[’´]', "'", s)
@@ -201,7 +201,7 @@ class _TitleCaseEngine:
             i += 1
         return tokens
 
-    # ── Word rules ───────────────────────────────────────────────────────────
+    # ── Word Rules ───────────────────────────────────────────────────────────
     def _apply_word_rules(self, tokens: list[_Token]) -> None:
         prev: _Token | None = None
         for token in tokens:
@@ -295,7 +295,7 @@ class _TitleCaseEngine:
         self._manual_cache[word] = word
         return word
 
-    # ── Post-process ─────────────────────────────────────────────────────────
+    # ── Post-Process ─────────────────────────────────────────────────────────
     def _post_process(self, output: str) -> str:
         output = self._normalize_quotes_and_articles(output)
         output = self._fix_spacing(output)
@@ -360,7 +360,7 @@ def title_case(text: str, *, type: str | None = None, site_name: str | None = No
     return _TitleCaseEngine(type, site_name, scraper_type).parse(bounded)
 
 
-# ── Sequence numbers ──────────────────────────────────────────────────────────
+# ── Sequence Numbers ──────────────────────────────────────────────────────────
 def _is_sequence_number(word: str) -> bool:
     if word.isdigit() or word in _ROMAN_NUMERALS:
         return True

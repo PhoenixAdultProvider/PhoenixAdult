@@ -80,7 +80,7 @@ class PervCityClient(Client):
                 )
             )
 
-    # ── Context loader (resolves cast; crawls model pages for a date) ───────────
+    # ── Context Loader (resolves cast; crawls model pages for a date) ───────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -153,7 +153,7 @@ class PervCityClient(Client):
 
         return None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_for(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -166,6 +166,8 @@ class PervCityClient(Client):
             return scene.site.name
 
         return STUDIO
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

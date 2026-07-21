@@ -7,7 +7,7 @@ from app.utils.processors.filename_parser import clean_search_title
 from app.utils.processors.studio_name import normalize_studio
 from app.utils.processors.title_case import convert_sequence_numbers, title_case, title_sort
 
-# ── clean_search_title ────────────────────────────────────────────────────────
+# ── Clean_search_title ────────────────────────────────────────────────────────
 
 
 def test_search_title_trash_builtins_apply_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -20,7 +20,7 @@ def test_search_title_trash_env_extends_builtins(monkeypatch: pytest.MonkeyPatch
     assert clean_search_title('Cool Scene RARBG MYGROUP') == 'Cool Scene'
 
 
-# ── title_sort ────────────────────────────────────────────────────────────────
+# ── Title_sort ────────────────────────────────────────────────────────────────
 
 
 def test_title_sort_strips_leading_article() -> None:
@@ -56,7 +56,7 @@ def test_convert_sequence_numbers_keeps_articles() -> None:
     assert convert_sequence_numbers('The Cool Scene') is None
 
 
-# ── title_case ────────────────────────────────────────────────────────────────
+# ── Title_case ────────────────────────────────────────────────────────────────
 
 
 def test_title_case_lower_exceptions() -> None:
@@ -215,7 +215,7 @@ def test_title_case_empty() -> None:
     assert title_case('') == ''
 
 
-# ── normalize_studio ──────────────────────────────────────────────────────────
+# ── Normalize_studio ──────────────────────────────────────────────────────────
 
 
 def test_studio_registry_is_the_first_authority() -> None:
@@ -250,7 +250,7 @@ def test_studio_empty() -> None:
     assert normalize_studio('') == ''
 
 
-# ── abbreviations ─────────────────────────────────────────────────────────────
+# ── Abbreviations ─────────────────────────────────────────────────────────────
 
 
 def test_abbreviation_expansion() -> None:

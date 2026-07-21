@@ -12,7 +12,7 @@ This document is *model-based*: each section leads with a diagram (UML-style, re
 
 ---
 
-## 1. Purpose & system overview
+## 1. Purpose & System Overview
 
 PhoenixAdult is an HTTP service that implements the **Plex Metadata Provider** contract for adult video libraries. Plex sends it a filename to *match*, then asks it for *metadata* and *images* for the chosen result. The service scrapes ~hundreds of studio/network sites, normalizes the data into Plex's schema, resolves actor headshots from external sources, and proxies all images back through itself.
 
@@ -28,7 +28,7 @@ PhoenixAdult is an HTTP service that implements the **Plex Metadata Provider** c
 
 ---
 
-## 2. System context (C4 — Level 1)
+## 2. System Context (C4 — Level 1)
 
 ```mermaid
 flowchart LR
@@ -58,7 +58,7 @@ flowchart LR
 
 ---
 
-## 3. Use cases
+## 3. Use Cases
 
 ```mermaid
 flowchart LR
@@ -111,7 +111,7 @@ flowchart LR
 
 ---
 
-## 4. Container / component model (C4 — Level 2)
+## 4. Container / Component Model (C4 — Level 2)
 
 ```mermaid
 flowchart TB
@@ -196,7 +196,7 @@ flowchart TB
 
 ---
 
-## 5. Domain & data model
+## 5. Domain & Data Model
 
 ```mermaid
 classDiagram
@@ -289,7 +289,7 @@ classDiagram
   SceneDetail ..> PlexMetadata : MetadataMapper.to_metadata
 ```
 
-### 5.1 Identifier lifecycle (the spine of the system)
+### 5.1 Identifier Lifecycle (the Spine of the System)
 
 The same scene is represented differently at each stage; the encoding is reversible so a Plex `ratingKey` round-trips back to a fetchable scene URL.
 
@@ -315,7 +315,7 @@ flowchart LR
 
 ---
 
-## 6. Scraper client hierarchy (Template Method / field-hook pattern)
+## 6. Scraper Client Hierarchy (Template Method / Field-Hook Pattern)
 
 The base `Client` (`app/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`app/utils/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
 
@@ -357,7 +357,7 @@ The search default = `load_search_context` + per-source `build_search_results` (
 
 ---
 
-## 7. Request flows (sequence models)
+## 7. Request Flows (Sequence Models)
 
 ### 7.1 Match — `POST /library/metadata/matches`
 
@@ -434,7 +434,7 @@ sequenceDiagram
   end
 ```
 
-### 7.3 Scraper fetch with anti-bot bypass fallback
+### 7.3 Scraper Fetch with Anti-Bot Bypass Fallback
 
 ```mermaid
 sequenceDiagram
@@ -459,7 +459,7 @@ sequenceDiagram
   end
 ```
 
-### 7.4 Image proxy — `GET /images/proxy?url=…`
+### 7.4 Image Proxy — `GET /images/proxy?url=…`
 
 ```mermaid
 sequenceDiagram
@@ -485,7 +485,7 @@ sequenceDiagram
 
 `/images/proxy-classified` is the same flow plus a `classify_image(width, height)` step; it returns 404 when the image classifies as `unknown` and stamps `X-Image-Type` on success.
 
-### 7.5 Runtime config override
+### 7.5 Runtime Config Override
 
 ```mermaid
 sequenceDiagram
@@ -510,7 +510,7 @@ sequenceDiagram
   note over OV,FS: On boot, load_overrides() re-applies<br/>FS over .env — overrides WIN.
 ```
 
-### 7.6 Serve budget & deferred work
+### 7.6 Serve Budget & Deferred Work
 
 ```mermaid
 sequenceDiagram
@@ -540,7 +540,7 @@ Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQ
 
 ---
 
-## 8. HTTP / anti-bot bypass model
+## 8. HTTP / Anti-Bot Bypass Model
 
 ```mermaid
 flowchart LR
@@ -572,7 +572,7 @@ flowchart LR
 
 ---
 
-## 9. People (actor) resolution model
+## 9. People (Actor) Resolution Model
 
 ```mermaid
 flowchart TB
@@ -595,7 +595,7 @@ flowchart TB
 
 ---
 
-## 10. Security model (trust boundaries)
+## 10. Security Model (Trust Boundaries)
 
 ```mermaid
 flowchart TB
@@ -643,7 +643,7 @@ flowchart TB
 
 ---
 
-## 11. Configuration model
+## 11. Configuration Model
 
 ```mermaid
 flowchart LR
@@ -690,7 +690,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 
 ---
 
-## 13. Patterns & conventions (map to code)
+## 13. Patterns & Conventions (Map to Code)
 
 | Pattern | Where | Why |
 |---|---|---|
@@ -707,7 +707,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 
 ---
 
-## 14. Directory map (orientation)
+## 14. Directory Map (Orientation)
 
 ```
 app/
@@ -744,7 +744,7 @@ tests/                       # pytest + respx unit / client / selector / health 
 
 ---
 
-## Appendix A — Title-case parser model
+## Appendix A — Title-Case Parser Model
 
 `title_case()` (`app/utils/processors/title_case.py`) normalizes scraped titles and
 actor names for Plex. It is a small pipeline: a stateless transform built from a
@@ -778,7 +778,7 @@ The post-process stage runs six named passes in order (`_post_process`):
 5. `_fix_grammar` — `s's`→`s'` possessives, a/an agreement (with `u`-sound exceptions), honorifics get their period (skipped for `type='name'`).
 6. `_finish_by_type` — titles get `normalize_sequence_separator`; then `expand_initial_pairs`, `W/`→`w/`, and per-scraper phrase corrections (`SCRAPER_PHRASE_CORRECTIONS`).
 
-### A.2 Per-word decision cascade (`normalize_word`)
+### A.2 Per-Word Decision Cascade (`normalize_word`)
 
 ```mermaid
 flowchart TB
@@ -816,7 +816,7 @@ flowchart TB
   mix -- no --> def --> mf
 ```
 
-### A.3 Rule tables (data that drives behavior)
+### A.3 Rule Tables (Data that Drives Behavior)
 
 | Table | Purpose | Examples |
 |---|---|---|
@@ -836,7 +836,7 @@ flowchart TB
 These tables are functional config consumed inline by the engine, so they live in
 `title_case.py` rather than in `_data/json`.
 
-### A.4 Robustness — ReDoS guard
+### A.4 Robustness — ReDoS Guard
 
 The post-process stage includes O(n²) passes that backtrack badly on long
 whitespace-free input. Real titles/names are short, so `title_case()` caps input
@@ -853,7 +853,7 @@ flowchart LR
   cap -- no --> eng
 ```
 
-### A.5 Companion helpers (module exports)
+### A.5 Companion Helpers (Module Exports)
 
 ```mermaid
 flowchart LR

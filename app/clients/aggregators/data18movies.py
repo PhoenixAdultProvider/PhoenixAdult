@@ -85,7 +85,7 @@ class Data18MoviesClient(Client):
             extract_detail=_extract_detail,
         )
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
@@ -96,7 +96,7 @@ class Data18MoviesClient(Client):
 
         return LoadedScene(url=url, site=site, scene_date=fallback_date or None, capture=ctx.capture if ctx else None, sel=loaded)
 
-    # ── Field hooks ─────────────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

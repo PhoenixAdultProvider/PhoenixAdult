@@ -63,7 +63,7 @@ class FAKingsClient(Client):
                     )
                 )
 
-    # ── Detail ──────────────────────────────────────────────────────────────────
+    # ── Context Loader ──────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         scene = await super().load_scene_context(payload, site, ctx)
@@ -72,6 +72,8 @@ class FAKingsClient(Client):
             scene.extra = extra
 
         return scene
+
+    # ── Update Field Hook Helpers ───────────────────────────────────────────────
 
     def _load_model(self, scene: LoadedScene, url: str) -> asyncio.Future[dict[str, Any] | None]:
         extra: _SceneExtra = scene.extra
@@ -95,6 +97,8 @@ class FAKingsClient(Client):
 
         raw = (details_page_elements.xpath('(//strong[contains(.,"Serie")])[1]/following-sibling::a[1]').xpath('string(.)').get() or '').strip()
         return title_case(raw, site_name=scene.site.name) if raw else None
+
+    # ── Update Field Hooks ──────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -19,6 +19,8 @@ _DETAIL_ACTORS_XP = '//div[contains(@class,"info-block_data")]//a | //div[contai
 
 
 class CherryPimpsClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = '+'.join(search_data.title.split())
@@ -44,7 +46,7 @@ class CherryPimpsClient(Client):
         tok = (source.xpath(f'({_SEARCH_DATE_XP})[1]').xpath('string(.)').get() or '').split('|')[-1].strip()
         return iso_date(tok) if tok else None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

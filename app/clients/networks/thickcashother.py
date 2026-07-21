@@ -50,7 +50,7 @@ class ThickCashOtherClient(Client):
                     if href:
                         await add_scene(absolute_url(href, search_data.site_info.base_url))
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

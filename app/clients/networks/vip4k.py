@@ -59,7 +59,18 @@ class VIP4KClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _tagline(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        raw = (
+            details_page_elements.xpath('(//a[contains(@class,"player-additional__site") and contains(@class,"ph_register")])[1]').xpath('string(.)').get()
+            or ''
+        ).strip()
+        return raw.replace('Sis', 'Sis.Porn') if raw else scene.site.name
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -73,15 +84,6 @@ class VIP4KClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        raw = (
-            details_page_elements.xpath('(//a[contains(@class,"player-additional__site") and contains(@class,"ph_register")])[1]').xpath('string(.)').get()
-            or ''
-        ).strip()
-        return raw.replace('Sis', 'Sis.Porn') if raw else scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

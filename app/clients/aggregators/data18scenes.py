@@ -102,7 +102,7 @@ class Data18ScenesClient(Client):
             max_pages=50,
         )
 
-    # ── Context loader ────────────────────────────────────────────────────────
+    # ── Context Loader ────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
@@ -127,10 +127,12 @@ class Data18ScenesClient(Client):
             extra={'studio': studio, 'tagline': '' if same else tagline, 'collections': collections},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _extra(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    # ── Field hooks ─────────────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

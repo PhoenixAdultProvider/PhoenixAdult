@@ -58,6 +58,8 @@ class DickDrainersClient(Client):
 
             results.append(self._result(raw_title, scene_url, search_data, date))
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     def _result(self, title: str, scene_url: str, search_data: SearchContext, date: str | None) -> SearchResult:
         return build_search_result(
             title=title,
@@ -68,7 +70,7 @@ class DickDrainersClient(Client):
             cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

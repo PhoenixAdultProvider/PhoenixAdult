@@ -16,6 +16,8 @@ def _norm(s: str) -> str:
 
 
 class FinishesTheJobClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -50,7 +52,7 @@ class FinishesTheJobClient(Client):
     async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
         return first_text(source, '(.//div[contains(@class,"card-footer")]//a)[1]') or None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

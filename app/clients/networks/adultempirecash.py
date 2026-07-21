@@ -65,27 +65,6 @@ class AdultEmpireCashClient(Client):
         self._confirmed: set[str] = set()
         self._age_lock = asyncio.Lock()
 
-    async def _ensure_age_confirmed(self, base: str) -> None:
-        """The age gate binds ageConfirmed to a server-issued etoken session (a static cookie
-        isn't enough) — run the confirm handshake once per host and let the jar carry it."""
-        if base in self._confirmed:
-            return
-
-        async with self._age_lock:
-            if base in self._confirmed:
-                return
-
-            try:
-                await self.http.get(f'{base}/')
-                await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
-                logger.debug('AdultEmpireCash', f'age-confirm handshake done for {base}')
-            except Exception as err:  # noqa: BLE001 - best-effort; proceed regardless
-                logger.debug('AdultEmpireCash', f'age-confirm handshake failed for {base}: {err}')
-
-            self._confirmed.add(base)
-
-    # ── Search (full override: direct sceneID lookup + per-variant rows) ─────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         await self._ensure_age_confirmed(base)
@@ -126,12 +105,33 @@ class AdultEmpireCashClient(Client):
         await self._ensure_age_confirmed(site.base_url.rstrip('/'))
         return await super().load_scene_context(payload, site, ctx)
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    async def _ensure_age_confirmed(self, base: str) -> None:
+        """The age gate binds ageConfirmed to a server-issued etoken session (a static cookie
+        isn't enough) — run the confirm handshake once per host and let the jar carry it."""
+        if base in self._confirmed:
+            return
+
+        async with self._age_lock:
+            if base in self._confirmed:
+                return
+
+            try:
+                await self.http.get(f'{base}/')
+                await self.http.get(f'{base}/Account/AgeConfirmation?ageConfirmationClicked=true')
+                logger.debug('AdultEmpireCash', f'age-confirm handshake done for {base}')
+            except Exception as err:  # noqa: BLE001 - best-effort; proceed regardless
+                logger.debug('AdultEmpireCash', f'age-confirm handshake failed for {base}: {err}')
+
+            self._confirmed.add(base)
 
     def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return first_attr(details_page_elements, '(//div[@class="studio"]//span)[2]/text()')
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

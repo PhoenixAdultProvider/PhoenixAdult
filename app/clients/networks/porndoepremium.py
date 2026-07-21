@@ -11,6 +11,8 @@ _TITLE_SEL = './/div[@class="-g-vc-item-title"]//a'
 
 
 class PorndoePremiumClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -31,7 +33,14 @@ class PorndoePremiumClient(Client):
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date((source.xpath('(.//div[@class="-g-vc-item-date"])[1]').xpath('string(.)').get() or '').strip())
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _first_actor(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -45,11 +54,6 @@ class PorndoePremiumClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _first_actor(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        return (details_page_elements.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._first_actor(scene) or None

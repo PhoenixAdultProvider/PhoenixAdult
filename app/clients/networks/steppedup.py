@@ -60,7 +60,7 @@ class SteppedUpClient(Client):
                 )
             )
 
-    # ── Context loader — probe buildId, fetch the scene JSON ────────────────────
+    # ── Context Loader — Probe BuildId, Fetch the Scene JSON ────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
@@ -80,10 +80,15 @@ class SteppedUpClient(Client):
             url=f'{base}/scenes/{slug}', site=site, scene_date=scene_date or None, capture=ctx.capture if ctx else None, sel=None, html='', extra=content
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _c(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    def _tagline(self, scene: LoadedScene) -> str:
+        return (self._c(scene).get('site') or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._c(scene).get('title') or '').strip() or ''
@@ -93,9 +98,6 @@ class SteppedUpClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        return (self._c(scene).get('site') or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or None

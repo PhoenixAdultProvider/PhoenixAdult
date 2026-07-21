@@ -159,6 +159,8 @@ class NubilesClient(Client):
         async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     async def _search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -225,7 +227,7 @@ class NubilesClient(Client):
                         )
                     )
 
-    # ── Context loader (curID is a numeric scene id) ────────────────────────────
+    # ── Context Loader (curID is a numeric scene id) ────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
@@ -260,7 +262,7 @@ class NubilesClient(Client):
             title=title,
         )
 
-    # ── Field hooks ────────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _summary_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -273,6 +275,34 @@ class NubilesClient(Client):
 
         paragraphs = [first_attr(p) for p in details_page_elements.xpath('//div[contains(@class,"col-12") and contains(@class,"content-pane-column")]//p')]
         return '\n\n'.join(p for p in paragraphs if p).strip()
+
+    async def _fetch_actor(self, actor_name: str, profile_url: str, site: ResolvedSiteInfo) -> ActorResult:
+        model_page_elements = await self._get(profile_url, site, None, f'GET {profile_url} (actor)')
+        if model_page_elements is None:
+            return ActorResult(name=actor_name)
+
+        photo = to_https(first_attr(model_page_elements, '(//div[contains(@class,"model-profile")]//img)[1]/@src'))
+        gender = 'female' if model_page_elements.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
+        return ActorResult(name=actor_name, photo_url=photo, gender=gender)
+
+    def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
+        for a in sel.xpath('//div[contains(@class,"content-pane-related-links")]/a'):
+            if 'Pic' in (a.xpath('string(.)').get() or ''):
+                href = first_attr(a, '@href')
+                if href:
+                    return href if href.startswith('http') else base + href
+
+        poster = (sel.xpath('(//video)[1]/@poster').get() or sel.xpath('(//div[@class="fake-video-player"]/img)[1]/@src').get() or '').strip()
+        m = _POSTER_SAMPLE_RE.search(poster)
+        if m:
+            return f'{base}/galleries/{m.group(1)}/screenshots'
+
+        if scene_id:
+            return f'{base}/galleries/{scene_id}/screenshots'
+
+        return None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -339,15 +369,6 @@ class NubilesClient(Client):
 
         metadata.actors = actors
 
-    async def _fetch_actor(self, actor_name: str, profile_url: str, site: ResolvedSiteInfo) -> ActorResult:
-        model_page_elements = await self._get(profile_url, site, None, f'GET {profile_url} (actor)')
-        if model_page_elements is None:
-            return ActorResult(name=actor_name)
-
-        photo = to_https(first_attr(model_page_elements, '(//div[contains(@class,"model-profile")]//img)[1]/@src'))
-        gender = 'female' if model_page_elements.xpath('//p[@class="model-profile-subheading"][contains(.,"Figure")]') else ''
-        return ActorResult(name=actor_name, photo_url=photo, gender=gender)
-
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
@@ -376,20 +397,3 @@ class NubilesClient(Client):
                             out.append(to_https(first))
 
         metadata.art = out
-
-    def _find_gallery_url(self, sel: Any, base: str, scene_id: str) -> str | None:
-        for a in sel.xpath('//div[contains(@class,"content-pane-related-links")]/a'):
-            if 'Pic' in (a.xpath('string(.)').get() or ''):
-                href = first_attr(a, '@href')
-                if href:
-                    return href if href.startswith('http') else base + href
-
-        poster = (sel.xpath('(//video)[1]/@poster').get() or sel.xpath('(//div[@class="fake-video-player"]/img)[1]/@src').get() or '').strip()
-        m = _POSTER_SAMPLE_RE.search(poster)
-        if m:
-            return f'{base}/galleries/{m.group(1)}/screenshots'
-
-        if scene_id:
-            return f'{base}/galleries/{scene_id}/screenshots'
-
-        return None

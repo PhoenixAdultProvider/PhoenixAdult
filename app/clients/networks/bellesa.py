@@ -13,18 +13,6 @@ _API = '/api/rest/v1'
 
 
 class BellesaClient(Client):
-    async def _get_json(self, base: str, path: str, capture: list[RawCaptureEntry] | None) -> Any:
-        ctx = FetchCtx(capture=capture, use_bypass=True, headers={'Content-Type': 'application/json', 'Referer': base})
-        loaded = await self.fetch_and_load(f'{base}{_API}/{path}', ctx, f'[Bellesa] {path}')
-        if not loaded:
-            return None
-
-        body = loaded['sel'].xpath('(//body)[1]').xpath('string(.)').get() or ''
-        try:
-            return json.loads(body)
-        except (ValueError, TypeError):
-            return None
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = search_data.scene_id if search_data.scene_id and search_data.scene_id.isdigit() else ''
@@ -93,10 +81,28 @@ class BellesaClient(Client):
             extra=video,
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    async def _get_json(self, base: str, path: str, capture: list[RawCaptureEntry] | None) -> Any:
+        ctx = FetchCtx(capture=capture, use_bypass=True, headers={'Content-Type': 'application/json', 'Referer': base})
+        loaded = await self.fetch_and_load(f'{base}{_API}/{path}', ctx, f'[Bellesa] {path}')
+        if not loaded:
+            return None
+
+        body = loaded['sel'].xpath('(//body)[1]').xpath('string(.)').get() or ''
+        try:
+            return json.loads(body)
+        except (ValueError, TypeError):
+            return None
+
     def _v(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    def _tagline(self, scene: LoadedScene) -> str:
+        providers = self._v(scene).get('content_provider') or []
+        return str(providers[0].get('name')).strip() if providers and isinstance(providers[0], dict) else ''
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = str(self._v(scene).get('title') or '').strip() or ''
@@ -106,10 +112,6 @@ class BellesaClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        providers = self._v(scene).get('content_provider') or []
-        return str(providers[0].get('name')).strip() if providers and isinstance(providers[0], dict) else ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or None

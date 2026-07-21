@@ -12,6 +12,8 @@ _DATE_FMT = '%d %b %Y'
 
 
 class SinXClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -29,7 +31,7 @@ class SinXClient(Client):
         href = (source.xpath(f'({_ANCHOR})[1]/@href').get() or '').strip()
         return absolute_url(href, loaded.site.base_url) if href else ''
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

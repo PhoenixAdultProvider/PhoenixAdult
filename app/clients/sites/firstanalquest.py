@@ -11,6 +11,8 @@ _MODELS_XP = '//ul[contains(.,"Models:")]//li//a'
 
 
 class FirstAnalQuestClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -35,7 +37,7 @@ class FirstAnalQuestClient(Client):
         raw = first_text(source, './/span[contains(@class,"thumb-added")]')
         return iso_date(raw) if raw else None
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

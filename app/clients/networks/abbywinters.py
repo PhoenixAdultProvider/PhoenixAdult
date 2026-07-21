@@ -96,6 +96,8 @@ class AbbyWintersClient(Client):
                 build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=display_date, search_date=search_data.search_date)
             )
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     async def _lookup_date(self, sel: Any, search_data: SearchContext, title: str, sub_site: str, cache: dict[str, Any]) -> str | None:
         name = search_data.site_info.name
         model_link = sel.xpath('(//tr[contains(.,"Scene")]//a)[1]/@href').get()
@@ -127,7 +129,14 @@ class AbbyWintersClient(Client):
         logger.debug(name, f'AbbyWinters._lookup_date: no card matched "{title}"/"{sub_site}"')
         return None
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _subsite(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        return (details_page_elements.xpath('(//div[@id="shoot-featured-image"]//h4)[1]').xpath('string(.)').get() or '').strip()
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -143,11 +152,6 @@ class AbbyWintersClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _subsite(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        return (details_page_elements.xpath('(//div[@id="shoot-featured-image"]//h4)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._subsite(scene) or None

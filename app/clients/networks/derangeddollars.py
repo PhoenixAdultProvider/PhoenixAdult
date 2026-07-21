@@ -43,7 +43,39 @@ class DerangedDollarsClient(Client):
 
             results.append(build_search_result(title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date))
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _tagline(self, scene: LoadedScene) -> str | None:
+        details_page_elements = scene.require_sel()
+
+        raw = details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or ''
+        segments = [s.strip() for s in raw.split('|')]
+        if len(segments) < 2:
+            return None
+
+        return re.sub(r'\.com$', '', segments[1], flags=re.IGNORECASE).strip() or None
+
+    async def _load_model_directory(self, scene: LoadedScene) -> list[tuple[str, str, str]]:
+        base = scene.site.base_url.rstrip('/')
+        entries: list[tuple[str, str, str]] = []
+        for url in (f'{base}/?models', f'{base}/?models/2'):
+            model_page_elements = await self.fetch_and_load(url, None, f'models page {url}')
+            if not model_page_elements:
+                continue
+
+            for director_link in model_page_elements['sel'].xpath('//div[contains(@class,"item")]'):
+                raw = first_attr(director_link)
+                if not raw:
+                    continue
+
+                director_name = raw.split(':', 1)[1].strip() if ':' in raw else raw
+                photo_rel = first_attr(director_link, '(.//img)[1]/@src')
+                photo = absolute_url(photo_rel, scene.site.base_url) if photo_rel else ''
+                entries.append((director_name, director_name, photo))
+
+        return entries
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -57,16 +89,6 @@ class DerangedDollarsClient(Client):
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
-
-    def _tagline(self, scene: LoadedScene) -> str | None:
-        details_page_elements = scene.require_sel()
-
-        raw = details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or ''
-        segments = [s.strip() for s in raw.split('|')]
-        if len(segments) < 2:
-            return None
-
-        return re.sub(r'\.com$', '', segments[1], flags=re.IGNORECASE).strip() or None
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)
@@ -130,25 +152,3 @@ class DerangedDollarsClient(Client):
                 images['push'](m)
 
         metadata.art = images['list']
-
-    # ── Internals ─────────────────────────────────────────────────────────────
-
-    async def _load_model_directory(self, scene: LoadedScene) -> list[tuple[str, str, str]]:
-        base = scene.site.base_url.rstrip('/')
-        entries: list[tuple[str, str, str]] = []
-        for url in (f'{base}/?models', f'{base}/?models/2'):
-            model_page_elements = await self.fetch_and_load(url, None, f'models page {url}')
-            if not model_page_elements:
-                continue
-
-            for director_link in model_page_elements['sel'].xpath('//div[contains(@class,"item")]'):
-                raw = first_attr(director_link)
-                if not raw:
-                    continue
-
-                director_name = raw.split(':', 1)[1].strip() if ':' in raw else raw
-                photo_rel = first_attr(director_link, '(.//img)[1]/@src')
-                photo = absolute_url(photo_rel, scene.site.base_url) if photo_rel else ''
-                entries.append((director_name, director_name, photo))
-
-        return entries

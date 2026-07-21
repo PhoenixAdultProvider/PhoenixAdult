@@ -12,6 +12,8 @@ _INFO_LI = '//ul[contains(@class,"more-info")]/li'
 
 
 class ScrewboxClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -29,7 +31,7 @@ class ScrewboxClient(Client):
         href = first_attr(source, '(.//a/@href)[1]')
         return absolute_url(href, loaded.site.base_url) if href else ''
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -13,6 +13,8 @@ _CAST_XP = '//div[contains(@class,"update_block")]/span[@class="tour_update_mode
 
 
 class MissaXClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
@@ -33,10 +35,12 @@ class MissaXClient(Client):
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date((source.xpath(f'({_SEARCH_DATE_XP})[1]').xpath('string(.)').get() or '').strip())
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _cast_names(self, sel: Any) -> list[str]:
         return [n for n in (first_attr(a, 'normalize-space(.)') for a in sel.xpath(_CAST_XP)) if n]
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

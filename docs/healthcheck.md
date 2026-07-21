@@ -16,7 +16,7 @@ not committed). Each site gets a row in the summary grid with one icon per field
 preserving the other sites without re-running them. Useful flags: `--output <path>`,
 `--no-details`, `--keep-gender-skip`, `--keep-flaresolverr`.
 
-### Fixture schema (`tests/health/fixtures.json`)
+### Fixture Schema (`tests/health/fixtures.json`)
 
 Each fixture is `{ site, filename, expect }` where `expect` may set any subset of the supported assertions:
 
@@ -56,7 +56,7 @@ Each fixture is `{ site, filename, expect }` where `expect` may set any subset o
 
 Any field you don't list is skipped (shown as `—` in the report). A site is "OK" only when every checked field is OK.
 
-### Run-time env overrides
+### Run-Time Env Overrides
 
 The runner forces a couple of env vars for the duration of the sweep so user
 preferences don't mask real regressions:

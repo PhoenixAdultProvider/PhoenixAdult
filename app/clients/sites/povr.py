@@ -57,7 +57,7 @@ class POVRClient(Client):
                 )
             )
 
-    # ── Context loader (ld+json detail; channel packed in curID) ──────────────
+    # ── Context Loader (ld+json detail; channel packed in curID) ──────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -80,13 +80,15 @@ class POVRClient(Client):
             extra={'ld': ld, 'subSite': sub_site},
         )
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _ld(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra.get('ld', {}) if isinstance(scene.extra, dict) else {}
 
     def _sub_site(self, scene: LoadedScene) -> str:
         return scene.extra.get('subSite', '') if isinstance(scene.extra, dict) else ''
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._ld(scene).get('name') or '').strip()

@@ -15,6 +15,8 @@ class UltrafilmsClient(Client):
         if not results:
             await self._parse_page(f'{base}/?s={search_data.encoded}', search_data, results, seen)
 
+    # ── Search Helpers ────────────────────────────────────────────────────────
+
     async def _parse_page(self, url: str, search_data: SearchContext, results: list[SearchResult], seen: set[str]) -> None:
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
@@ -43,7 +45,7 @@ class UltrafilmsClient(Client):
                 )
             )
 
-    # ── Context loader: unpack the poster slot ────────────────────────────────
+    # ── Context Loader: unpack the poster slot ────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         parts = payload.split('|')
@@ -64,7 +66,7 @@ class UltrafilmsClient(Client):
             extra={'poster_url': poster_url},
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

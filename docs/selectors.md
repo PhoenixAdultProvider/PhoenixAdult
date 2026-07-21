@@ -5,7 +5,7 @@ Every client in this provider parses HTML with **XPath** via
 This page collects the parsel
 idioms and gotchas that come up most often.
 
-## The class-selector gotcha
+## The Class-Selector Gotcha
 
 The single most common "the scraper finds 0 rows" bug. `contains(@class,"title")`
 is a plain **substring** match, so it wrongly matches `sup-title`, `date-and-site`,
@@ -21,7 +21,7 @@ Use the loose `contains(@class,"x")` for stable single-class markup, and the `_c
 when a substring would over-match (Karups' `_cls('title')` is the canonical
 example).
 
-## House idioms
+## House Idioms
 
 - **Single text node** — the standard scalar read, trimmed, never throwing:
 
@@ -56,7 +56,7 @@ example).
 - **Images** go through `self.image_collector(clean=...)` which trims, applies the
   per-source transform, skips empties, and de-dupes.
 
-## Common XPath patterns in this repo
+## Common XPath Patterns in this Repo
 
 | Intent | parsel XPath |
 |---|---|
@@ -68,7 +68,7 @@ example).
 | `meta[property="og:image"]` content | `sel.xpath('(//meta[@property="og:image"])[1]/@content').get()` |
 | `(//div[@class="gallery"]//a)[1]/@href` | same |
 
-## Testing a selector quickly
+## Testing a Selector Quickly
 
 Before committing, sanity-check the selector live:
 

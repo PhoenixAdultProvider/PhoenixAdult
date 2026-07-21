@@ -37,10 +37,12 @@ class UnzipVRClient(Client):
 
         return LoadedScene(url=f'{base}/api/content/v1/videos/{payload}', site=site, capture=ctx.capture if ctx else None, sel=None, html='', extra=item)
 
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
     def _item(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (self._item(scene).get('title') or '').strip() or ''

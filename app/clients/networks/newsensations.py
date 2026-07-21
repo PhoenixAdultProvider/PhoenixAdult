@@ -53,7 +53,7 @@ class NewSensationsClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _is_dvd(self, scene: LoadedScene) -> bool:
         return '/dvds/' in scene.url
@@ -65,6 +65,8 @@ class NewSensationsClient(Client):
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//div[@class="indSceneDVD"]/h1)[1]').xpath('string(.)').get() or '').strip() or None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

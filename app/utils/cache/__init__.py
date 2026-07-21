@@ -108,7 +108,7 @@ def _ensure_index() -> dict[str, str]:
     return _index
 
 
-# ── data18 manual-mapping change detection ────────────────────────────────────
+# ── Data18 Manual-Mapping Change Detection ────────────────────────────────────
 
 
 def _data18_fingerprint(response: PlexMetadataResponse) -> str:
@@ -450,7 +450,7 @@ def purge_duplicates() -> int:
     return sum(1 for rel in duplicate_entries() if purge(rel))
 
 
-# ── People-image backfill ─────────────────────────────────────────────────────
+# ── People-Image Backfill ─────────────────────────────────────────────────────
 
 
 def _is_stale_local_thumb(thumb: str) -> bool:

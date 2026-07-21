@@ -45,8 +45,6 @@ __testing__ = {'strip_punct': _strip_punct, 'studio_for': _studio_for, 'title_se
 
 
 class BellaPassClient(Client):
-    # ── Search (direct URL + on-site search + web-search augmentation) ───────────
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = [f'{base}/trailers/{slugify(search_data.title)}.html']
@@ -94,12 +92,14 @@ class BellaPassClient(Client):
                 build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=release, search_date=search_data.search_date)
             )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _title_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return _title_from(details_page_elements, _title_selector_for(scene.site.name))
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._title_of(scene) or ''

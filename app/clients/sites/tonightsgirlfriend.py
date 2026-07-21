@@ -58,7 +58,29 @@ class TonightsGirlfriendClient(Client):
 
         results.extend(await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=MAX_PAGES, full_page=FULL_PAGE_THRESHOLD))
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _linked_actor_names(self, scene: LoadedScene) -> list[str]:
+        details_page_elements = scene.require_sel()
+
+        names = self.dedup_strings([first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath(f'{_GREY_XP}//a')])
+        return names
+
+    def _male_actor_names(self, scene: LoadedScene, linked: list[str]) -> list[str]:
+        details_page_elements = scene.require_sel()
+
+        nodes = details_page_elements.xpath(_GREY_XP)
+        info = first_attr(nodes[0], 'normalize-space(.)') if nodes else ''
+        if not info:
+            return []
+
+        for actor_name in linked:
+            info = info.replace(f'{actor_name},', '').strip()
+
+        out = self.dedup_strings([part.strip() for part in info.split(',')])
+        return out
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         names = self._linked_actor_names(scene)
@@ -141,25 +163,3 @@ class TonightsGirlfriendClient(Client):
             out.append(vertical)
 
         metadata.art = out
-
-    # ── Helpers ──────────────────────────────────────────────────────────────
-
-    def _linked_actor_names(self, scene: LoadedScene) -> list[str]:
-        details_page_elements = scene.require_sel()
-
-        names = self.dedup_strings([first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath(f'{_GREY_XP}//a')])
-        return names
-
-    def _male_actor_names(self, scene: LoadedScene, linked: list[str]) -> list[str]:
-        details_page_elements = scene.require_sel()
-
-        nodes = details_page_elements.xpath(_GREY_XP)
-        info = first_attr(nodes[0], 'normalize-space(.)') if nodes else ''
-        if not info:
-            return []
-
-        for actor_name in linked:
-            info = info.replace(f'{actor_name},', '').strip()
-
-        out = self.dedup_strings([part.strip() for part in info.split(',')])
-        return out

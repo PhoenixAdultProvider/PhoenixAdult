@@ -36,7 +36,7 @@ def load_data(caller_file: str, name: str, kind: Literal['json', 'html', 'path']
     return json.loads((folder / '_data' / 'json' / f'{name}.json').read_text(encoding='utf-8'))
 
 
-# ── curID base64url codec (no padding, matching Node Buffer base64url) ────────
+# ── CurID Base64url Codec (no padding, matching Node Buffer base64url) ────────
 
 
 def b64url_encode(s: str) -> str:
@@ -235,7 +235,7 @@ def css_bg_image(style: str | None) -> str:
     return m.group(1).strip() if m else ''
 
 
-# ── Scoring + search-result builder ───────────────────────────────────────────
+# ── Scoring + Search-Result Builder ───────────────────────────────────────────
 
 
 def sceneid_distance_score(query: str, title: str) -> int:

@@ -73,7 +73,7 @@ def register_fanart_overrides(no_match: list[str] | None = None, bad_match: list
         _BAD_MATCH[_normalize_title(entry['title'])] = BadMatchOverride(site=entry['site'], url=entry['url'], actor_name=entry.get('actorName'))
 
 
-# ── Title normalization + gates ───────────────────────────────────────────────
+# ── Title Normalization + Gates ───────────────────────────────────────────────
 
 
 def _normalize_title(s: str) -> str:
@@ -169,7 +169,7 @@ def _get_adapter(display_name: str) -> FansiteAdapter | None:
     return _FANSITES.get(display_name.lower())
 
 
-# ── Main entry ─────────────────────────────────────────────────────────────────
+# ── Main Entry ─────────────────────────────────────────────────────────────────
 
 
 async def find_fan_art(opts: FindFanArtOptions) -> FindFanArtResult:

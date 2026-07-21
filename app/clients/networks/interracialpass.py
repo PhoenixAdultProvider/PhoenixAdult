@@ -71,7 +71,7 @@ class InterracialPassClient(Client):
                     )
                 )
 
-    # ── Field hooks ───────────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

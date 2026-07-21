@@ -48,7 +48,33 @@ class GirlsRimmingClient(Client):
                 )
             )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
+
+    def _keywords(self, scene: LoadedScene) -> str:
+        details_page_elements = scene.require_sel()
+
+        return details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
+
+    async def _resolve_actor_photo(self, actor_name: str, scene: LoadedScene) -> str:
+        base = scene.site.base_url.rstrip('/')
+        slug = re.sub(r'\s+', '-', actor_name.lower())
+        direct_url = f'{base}/tour/models/{slug}.html'
+        model_page_elements = await self.fetch_and_load(direct_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-direct {actor_name}')
+        if not model_page_elements or model_page_elements['html'].strip() == 'Page not found':
+            model_page_elements = None
+            for u in (x.lower() for x in await web_search_urls(actor_name, scene.site, include=['/models/'])):
+                candidate_page_elements = await self.fetch_and_load(u, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-fallback {actor_name}')
+                if candidate_page_elements and candidate_page_elements['html'].strip() != 'Page not found':
+                    model_page_elements = candidate_page_elements
+                    break
+
+        if not model_page_elements:
+            return ''
+
+        raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
+        return join_url(raw, base) if raw else ''
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -71,11 +97,6 @@ class GirlsRimmingClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
-
-    def _keywords(self, scene: LoadedScene) -> str:
-        details_page_elements = scene.require_sel()
-
-        return details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres: list[str] = []
@@ -109,25 +130,6 @@ class GirlsRimmingClient(Client):
             actors.append(ActorResult(name=actor_name, photo_url=await self._resolve_actor_photo(actor_name, scene)))
 
         metadata.actors = actors
-
-    async def _resolve_actor_photo(self, actor_name: str, scene: LoadedScene) -> str:
-        base = scene.site.base_url.rstrip('/')
-        slug = re.sub(r'\s+', '-', actor_name.lower())
-        direct_url = f'{base}/tour/models/{slug}.html'
-        model_page_elements = await self.fetch_and_load(direct_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-direct {actor_name}')
-        if not model_page_elements or model_page_elements['html'].strip() == 'Page not found':
-            model_page_elements = None
-            for u in (x.lower() for x in await web_search_urls(actor_name, scene.site, include=['/models/'])):
-                candidate_page_elements = await self.fetch_and_load(u, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor-fallback {actor_name}')
-                if candidate_page_elements and candidate_page_elements['html'].strip() != 'Page not found':
-                    model_page_elements = candidate_page_elements
-                    break
-
-        if not model_page_elements:
-            return ''
-
-        raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"model_picture")]//img/@src0_3x)[1]')
-        return join_url(raw, base) if raw else ''
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

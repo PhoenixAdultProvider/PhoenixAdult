@@ -13,6 +13,8 @@ _CATEGORY_TAGLINES: dict[str, str] = load_data(__file__, 'littlecaprice_category
 
 
 class LittleCapriceClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = f'{base}/?s={search_data.encoded}'
@@ -33,7 +35,7 @@ class LittleCapriceClient(Client):
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date((source.xpath('(.//span[contains(@class,"published")])[1]').xpath('string(.)').get() or '').strip())
 
-    # ── Context loader (two-hop: gallery page → video page) ─────────────────────
+    # ── Context Loader (two-hop: gallery page → video page) ─────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         pipe = payload.find('|')
@@ -63,7 +65,7 @@ class LittleCapriceClient(Client):
             extra={'gallery': gallery_page_elements['sel']},
         )
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -74,6 +76,8 @@ class LittleCapriceClient(Client):
                 return _CATEGORY_TAGLINES[token]
 
         return scene.site.name
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

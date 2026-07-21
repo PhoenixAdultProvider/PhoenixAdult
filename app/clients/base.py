@@ -35,7 +35,7 @@ class RawCaptureEntry:
     body: Any
 
 
-# ── Phase contexts ────────────────────────────────────────────────────────────
+# ── Phase Contexts ────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -117,7 +117,7 @@ class SceneDetail:
     logo: str | None = None
 
 
-# ── Loaded contexts handed to the per-field hooks ─────────────────────────────
+# ── Loaded Contexts Handed to the Per-Field Hooks ─────────────────────────────
 
 
 @dataclass
@@ -190,7 +190,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     def tag(self, site: ResolvedSiteInfo) -> str:
         return site.name
 
-    # ── Fetch helpers ──────────────────────────────────────────────────────────
+    # ── Fetch Helpers ──────────────────────────────────────────────────────────
 
     async def fetch_and_load(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
         direct = await self._direct_get(url, ctx.headers if ctx else None)
@@ -246,8 +246,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError:
             return None
-
-    # ── Search orchestrator ─────────────────────────────────────────────────────
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         """Append SearchResults for `ctx` to `results`. The default drives the search-context loader
@@ -354,7 +352,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
         return None
 
-    # ── Shared dedup helpers ─────────────────────────────────────────────────────
+    # ── Shared Dedup Helpers ─────────────────────────────────────────────────────
 
     def dedup_people(self, entries: list[ActorResult]) -> list[ActorResult]:
         out: list[ActorResult] = []
@@ -467,8 +465,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             allow_square=allow_square,
         )
 
-    # ── Detail orchestrator ──────────────────────────────────────────────────────
-
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         """Public detail entry; with a ScenePacer set the scrape runs inside its gate."""
         if self.pacer is None:
@@ -568,6 +564,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
 
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        return None
+
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
 
@@ -583,13 +582,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
-
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
 
     async def fetch_logo(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        """Sets metadata.logo (a clearLogo image URL). Runs AFTER update() and the studio fallback,
-        so logo resolution keys off the final metadata.tagline / metadata.studio (tagline first)."""
         return None

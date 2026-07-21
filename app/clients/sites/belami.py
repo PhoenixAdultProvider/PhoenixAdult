@@ -15,6 +15,8 @@ _VIDEO_ID_RE = re.compile(r'VideoID=([^&]+)')
 
 
 class BelAmiClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         scene_id = search_data.title.strip().split()[0] if search_data.title.strip() else ''
         if not scene_id:
@@ -42,7 +44,7 @@ class BelAmiClient(Client):
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         return 100
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

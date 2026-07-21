@@ -26,6 +26,8 @@ __testing__ = {'strip_brand': _strip_brand}
 
 
 class CzechVRClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title.strip(), safe=''))
@@ -65,7 +67,7 @@ class CzechVRClient(Client):
         datasrc = _CDN_RE.sub('/cdn-cgi/image//', thumb)
         return absolute_url(datasrc, loaded.site.base_url)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

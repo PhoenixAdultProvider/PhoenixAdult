@@ -38,7 +38,7 @@ class SwallowBayClient(Client):
             )
         )
 
-    # ── Context loader (default fetches the scene URL) ─────────────────────────
+    # ── Context Loader (default fetches the scene URL) ─────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url = payload.split('|', 1)[0]
@@ -48,7 +48,7 @@ class SwallowBayClient(Client):
 
         return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'])
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

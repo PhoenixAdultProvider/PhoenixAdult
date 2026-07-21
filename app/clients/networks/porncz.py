@@ -11,6 +11,8 @@ _DOLLS_SITE = 'Czech Real Dolls'
 
 
 class PornCZClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = search_data.title.strip().lower().replace(' ', '+').replace('--', '+')
@@ -36,7 +38,7 @@ class PornCZClient(Client):
 
         return absolute_url(thumb, loaded.site.base_url)
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

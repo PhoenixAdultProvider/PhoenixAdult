@@ -51,6 +51,8 @@ class _SearchExtra(TypedDict):
 
 
 class JAVDatabaseClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         tokens = search_data.title.strip().split()
@@ -96,7 +98,7 @@ class JAVDatabaseClient(Client):
         jav_id = first_attr(source, '(.//p//a[contains(@class,"cut-text")])[1]/text()')
         return sceneid_distance_score(search_javid.lower(), jav_id.lower())
 
-    # ── Detail field hooks ────────────────────────────────────────────────────
+    # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     def _jav_id(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
@@ -114,6 +116,18 @@ class JAVDatabaseClient(Client):
 
         date = _label_text_value(details_page_elements, 'Release Date:')
         return (iso_date(date, '%Y-%m-%d') if date else None) or scene.scene_date or None
+
+    async def _is_unknown_thumb(self, url: str) -> bool:
+        if not url:
+            return False
+
+        try:
+            r = await self.http.get(url)
+            return 'unknown.' in str(r.url)
+        except Exception:  # noqa: BLE001 - unreachable thumb keeps the URL
+            return False
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -156,16 +170,6 @@ class JAVDatabaseClient(Client):
                     genres.append(decensor(genre_name, _CENSORED))
 
         metadata.genres = genres
-
-    async def _is_unknown_thumb(self, url: str) -> bool:
-        if not url:
-            return False
-
-        try:
-            r = await self.http.get(url)
-            return 'unknown.' in str(r.url)
-        except Exception:  # noqa: BLE001 - unreachable thumb keeps the URL
-            return False
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
