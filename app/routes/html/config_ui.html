@@ -104,7 +104,34 @@
             border-radius: 50%; animation: spin 0.9s linear infinite; vertical-align: -2px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     pre.report { background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 0.7rem;
-                 font-size: 0.75rem; margin-top: 0.6rem; max-height: 320px; overflow: auto; white-space: pre-wrap; }
+                 font-size: 0.75rem; margin-top: 0.6rem; max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
+    .recon-counts { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.82rem; color: #94a3b8; }
+    .recon-counts b { color: #f8fafc; font-size: 1rem; margin-right: 0.3rem; }
+    .recon-summary { margin-top: 0.7rem; border: 1px solid #2d3748; border-radius: 6px; background: #0f1117; padding: 0.7rem; }
+    .recon-summary h3 { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .recon-sumrow { display: grid; grid-template-columns: 90px 1fr; gap: 0.3rem 0.8rem; padding: 0.3rem 0;
+                    border-bottom: 1px solid #1a2035; font-size: 0.82rem; }
+    .recon-sumrow:last-child { border-bottom: 0; }
+    .recon-field { color: #7dd3fc; font-weight: 600; }
+    .recon-vals { display: flex; flex-direction: column; gap: 0.25rem; }
+    .chip { display: inline-flex; align-items: baseline; gap: 0.5rem; }
+    .chip .val { background: #1e2433; border: 1px solid #2d3748; border-radius: 4px; padding: 0.08rem 0.45rem;
+                 font-family: ui-monospace, monospace; font-size: 0.78rem; color: #fca5a5; }
+    .chip .why { color: #94a3b8; font-size: 0.76rem; }
+    .chip .why .now { color: #6ee7b7; font-family: ui-monospace, monospace; }
+    .chip .n { color: #475569; font-size: 0.72rem; }
+    .recon-items { margin-top: 0.7rem; max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+    .recon-card { background: #0f1117; border: 1px solid #2d3748; border-radius: 6px; padding: 0.6rem 0.8rem; }
+    .recon-card .t { font-weight: 600; font-size: 0.88rem; color: #e2e8f0; }
+    .recon-card .rk { font-size: 0.7rem; color: #64748b; font-family: ui-monospace, monospace; margin-left: 0.5rem; }
+    .recon-card .frow { display: flex; gap: 0.5rem; align-items: baseline; margin-top: 0.35rem; flex-wrap: wrap; font-size: 0.8rem; }
+    .recon-card .locked-note { color: #fcd34d; font-size: 0.76rem; margin-top: 0.35rem; }
+    details.rawjson { margin-top: 0.7rem; }
+    details.rawjson summary { cursor: pointer; color: #94a3b8; font-size: 0.82rem; display: flex; gap: 0.6rem; align-items: center; }
+    .copy-btn { padding: 0.25rem 0.6rem; font-size: 0.72rem; background: #1f2937; border: 1px solid #2d3748;
+                color: #cbd5e1; border-radius: 5px; cursor: pointer; }
+    .copy-btn:hover { background: #2d3748; }
+    .copy-btn.copied { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
   </style>
 </head>
 <body>
@@ -160,10 +187,22 @@
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runReconcile(false)">Dry run</button>
         <button type="button" class="danger" onclick="runReconcile(true)">Apply removals</button>
-        <input type="text" id="plex-reconcile-limit" placeholder="limit (optional)" style="flex:0 0 130px; min-width:130px">
+        <input type="text" id="plex-reconcile-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px"
+               title="Stop after this many changed items">
         <span class="plex-status" id="plex-reconcile-status"></span>
       </div>
-      <pre class="report" id="plex-reconcile-out" style="display:none"></pre>
+      <div class="hint">Limit stops after N changed items — handy to sample a large library before a full pass.</div>
+      <div id="plex-reconcile-view" style="display:none">
+        <div class="recon-counts" id="plex-reconcile-counts"></div>
+        <div class="recon-summary" id="plex-reconcile-summary"></div>
+        <div class="recon-items" id="plex-reconcile-items"></div>
+        <details class="rawjson">
+          <summary>Raw JSON
+            <button type="button" class="copy-btn" onclick="copyReconcileJson(this, event)">Copy</button>
+          </summary>
+          <pre class="report" id="plex-reconcile-json"></pre>
+        </details>
+      </div>
     </div>
   </div>
 
@@ -729,16 +768,90 @@
       }
     }
 
+    const RECON_FIELDS = ['Collection', 'Genre', 'Role', 'Director', 'Producer'];
+
+    function reasonHtml(reason) {
+      const m = /^recased to "(.*)"$/.exec(reason || '');
+      if (m) return 'recased — now emitted as <span class="now">' + esc(m[1]) + '</span>';
+      return esc(reason || 'no longer emitted by the scraper');
+    }
+
+    function renderReconcile(data) {
+      const counts = document.getElementById('plex-reconcile-counts');
+      counts.innerHTML =
+        '<span><b>' + data.scanned + '</b>scanned</span>'
+        + '<span><b>' + data.matched + '</b>ours</span>'
+        + '<span><b>' + data.changed + '</b>' + (data.applied ? 'changed' : 'would change') + '</span>'
+        + '<span><b>' + data.skippedLocked + '</b>locked</span>'
+        + '<span><b>' + data.skippedNoSnapshot + '</b>no snapshot</span>';
+
+      // Summary: dedup removal values per field across every item, with reason + count.
+      const agg = {};
+      for (const item of data.items) {
+        for (const f of Object.keys(item.removals || {})) {
+          for (const val of item.removals[f]) {
+            const key = f + ' ' + val;
+            if (!agg[key]) agg[key] = { field: f, val: val, reason: (item.reasons && item.reasons[f] && item.reasons[f][val]) || '', n: 0 };
+            agg[key].n++;
+          }
+        }
+      }
+      const rows = RECON_FIELDS.map((f) => {
+        const vals = Object.values(agg).filter((a) => a.field === f);
+        if (!vals.length) return '';
+        vals.sort((a, b) => b.n - a.n || a.val.localeCompare(b.val));
+        return '<div class="recon-sumrow"><span class="recon-field">' + esc(f) + '</span><span class="recon-vals">'
+          + vals.map((a) => '<span class="chip"><span class="val">' + esc(a.val) + '</span>'
+              + '<span class="why">' + reasonHtml(a.reason) + '</span>'
+              + '<span class="n">×' + a.n + '</span></span>').join('')
+          + '</span></div>';
+      }).filter(Boolean).join('');
+      const summary = document.getElementById('plex-reconcile-summary');
+      summary.innerHTML = rows ? '<h3>All removals (deduplicated)</h3>' + rows : '<h3>All removals</h3><span class="hint">nothing to remove — Plex matches the snapshots</span>';
+
+      // Per-scene cards, removals first, then locked/skipped.
+      const cards = data.items
+        .filter((i) => Object.keys(i.removals || {}).length || (i.locked || []).length)
+        .map((i) => {
+          const fields = Object.keys(i.removals || {}).map((f) =>
+            '<div class="frow"><span class="recon-field">' + esc(f) + '</span>'
+            + i.removals[f].map((v) => '<span class="chip"><span class="val">' + esc(v) + '</span>'
+                + '<span class="why">' + reasonHtml(i.reasons && i.reasons[f] && i.reasons[f][v]) + '</span></span>').join(' ')
+            + '</div>').join('');
+          const locked = (i.locked || []).length
+            ? '<div class="locked-note">locked in Plex (skipped): ' + i.locked.map(esc).join(', ') + '</div>' : '';
+          return '<div class="recon-card"><span class="t">' + esc(i.title) + '</span>'
+            + '<span class="rk">' + esc(i.ratingKey) + ' · ' + esc(i.guid.split('/').pop() || '') + '</span>'
+            + fields + locked + '</div>';
+        }).join('');
+      document.getElementById('plex-reconcile-items').innerHTML =
+        cards || '<span class="hint">no per-scene changes</span>';
+
+      document.getElementById('plex-reconcile-json').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('plex-reconcile-view').style.display = 'block';
+    }
+
+    function copyReconcileJson(btn, ev) {
+      if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+      const text = document.getElementById('plex-reconcile-json').textContent || '';
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+      }).catch(() => { btn.textContent = 'Copy failed'; });
+    }
+
     async function runReconcile(apply) {
       if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
-      const qs = (apply ? '?apply=1' : '?') + (limit ? (apply ? '&' : '') + 'limit=' + encodeURIComponent(limit) : '');
+      const params = [];
+      if (apply) params.push('apply=1');
+      if (limit) params.push('limit=' + encodeURIComponent(limit));
       plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
-      const out = document.getElementById('plex-reconcile-out');
       try {
-        const data = await postJSON(api('/plex/reconcile' + qs.replace(/\?$/, '')), {});
-        out.textContent = JSON.stringify(data, null, 2);
-        out.style.display = 'block';
+        const data = await postJSON(api('/plex/reconcile' + (params.length ? '?' + params.join('&') : '')), {});
+        renderReconcile(data);
         plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
       } catch (err) {
         plexStatus('plex-reconcile-status', esc(err.message), 'err');

@@ -34,6 +34,7 @@ class ItemReport:
     title: str
     guid: str
     removals: dict[str, list[str]] = field(default_factory=dict)
+    reasons: dict[str, dict[str, str]] = field(default_factory=dict)
     locked: list[str] = field(default_factory=list)
     skipped: str | None = None
 
@@ -57,7 +58,15 @@ class ReconcileReport:
             'skippedLocked': self.skipped_locked,
             'skippedNoSnapshot': self.skipped_no_snapshot,
             'items': [
-                {'ratingKey': i.rating_key, 'title': i.title, 'guid': i.guid, 'removals': i.removals, 'locked': i.locked, 'skipped': i.skipped}
+                {
+                    'ratingKey': i.rating_key,
+                    'title': i.title,
+                    'guid': i.guid,
+                    'removals': i.removals,
+                    'reasons': i.reasons,
+                    'locked': i.locked,
+                    'skipped': i.skipped,
+                }
                 for i in self.items
             ],
         }
@@ -97,6 +106,16 @@ def _locked_fields(item: dict[str, Any]) -> set[str]:
 
 def _plex_tags(item: dict[str, Any], provider_field: str) -> list[str]:
     return [t['tag'] for t in (item.get(provider_field) or []) if t.get('tag')]
+
+
+def _removal_reason(value: str, desired_values: list[str]) -> str:
+    """Why a Plex-held tag no longer matches the snapshot: a casing/spacing drift of a
+    still-emitted value, or a value the scraper simply stopped emitting."""
+    fold = ' '.join(value.casefold().split())
+    for desired in desired_values:
+        if ' '.join(desired.casefold().split()) == fold:
+            return f'recased to "{desired}"'
+    return 'no longer emitted by the scraper'
 
 
 class PlexClient:
@@ -171,6 +190,7 @@ async def reconcile(apply: bool = False, limit: int | None = None) -> ReconcileR
                         entry.locked.append(provider_field)
                         continue
                     entry.removals[provider_field] = stale
+                    entry.reasons[provider_field] = {value: _removal_reason(value, desired[provider_field]) for value in stale}
 
                 if entry.locked:
                     report.skipped_locked += 1

@@ -298,7 +298,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Plex client identifier',
         'Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device.',
         'Plex server',
-        'string',
+        'secret',
     ),
     EnvVarSpec(
         'BYPASS_ORDER',
