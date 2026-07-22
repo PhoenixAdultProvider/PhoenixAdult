@@ -198,6 +198,10 @@
         <div class="recon-counts" id="plex-reconcile-counts"></div>
         <div class="recon-summary" id="plex-reconcile-summary"></div>
         <div class="recon-items" id="plex-reconcile-items"></div>
+        <div class="plex-row" id="plex-recase-row" style="display:none">
+          <button type="button" class="icon-btn" onclick="copyRecaseScript(this)">Copy Recase Script (PowerShell)</button>
+          <span class="hint">rewrites the tag rows in place — set the two paths at the top, STOP Plex first</span>
+        </div>
         <details class="rawjson">
           <summary>Raw JSON
             <button type="button" class="copy-btn" onclick="copyReconcileJson(this, event)">Copy</button>
@@ -868,19 +872,97 @@
       document.getElementById('plex-reconcile-items').innerHTML =
         cards || '<span class="hint">no per-scene changes</span>';
 
+      RECASES = [];
+      collectRecases(data);
+      document.getElementById('plex-recase-row').style.display = RECASES.length ? 'flex' : 'none';
       document.getElementById('plex-reconcile-json').textContent = JSON.stringify(data, null, 2);
       document.getElementById('plex-reconcile-view').style.display = 'block';
+    }
+
+    let RECASES = [];
+
+    function collectRecases(data) {
+      const seen = {};
+      for (const item of data.items || []) {
+        for (const f of Object.keys(item.reasons || {})) {
+          for (const [oldVal, reason] of Object.entries(item.reasons[f])) {
+            const m = /^recased to "(.*)"$/.exec(reason || '');
+            if (m && !seen[f + '|' + oldVal]) {
+              seen[f + '|' + oldVal] = true;
+              RECASES.push({ field: f, oldVal: oldVal, newVal: m[1] });
+            }
+          }
+        }
+      }
+    }
+
+    function sqlEscape(s) { return s.replace(/'/g, "''"); }
+    function psEscape(s) { return s.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"'); }
+
+    function buildRecaseScript() {
+      const TAG_TYPE = { Genre: 1, Collection: 2, Director: 4, Role: 6, Producer: 7 };
+      const conds = [];
+      const whens = [];
+      for (const r of RECASES) {
+        const type = TAG_TYPE[r.field];
+        const cond = "tag = '" + sqlEscape(r.oldVal) + "'" + (type ? ' AND tag_type = ' + type : '');
+        whens.push('WHEN ' + cond + " THEN '" + sqlEscape(r.newVal) + "'");
+        conds.push('(' + cond + ')');
+      }
+      const sql = 'UPDATE tags SET tag = CASE ' + whens.join(' ') + ' ELSE tag END WHERE ' + conds.join(' OR ') + ';';
+      return [
+        '# Fixes recased Plex tag rows in place (item edits cannot recase shared tags).',
+        '# 1. STOP Plex Media Server completely before running.',
+        '# 2. Set the two paths below, then run in PowerShell.',
+        '# One single UPDATE statement covers all ' + RECASES.length + ' tag(s) — one invocation, no lock races.',
+        '# tag_type: 1 = genre, 2 = collection, 4 = director, 6 = actor, 7 = producer.',
+        '$PlexDB  = "$env:LOCALAPPDATA\\Plex Media Server\\Plug-in Support\\Databases\\com.plexapp.plugins.library.db"   # default install; adjust if relocated',
+        '$PlexEXE = "C:\\Program Files\\Plex\\Plex Media Server\\Plex Media Server.exe"                                  # <-- set me if not default',
+        '',
+        '$SQL = "' + psEscape(sql) + '"',
+        '',
+        '& "$PlexEXE" "-sqlite" "$PlexDB" $SQL',
+        'Write-Host "Done - ' + RECASES.length + ' tag(s) recased. Start Plex again."',
+        '',
+      ].join('\n');
+    }
+
+    function clipboardCopy(text) {
+      // navigator.clipboard needs a secure origin; fall back to execCommand on plain HTTP (LAN).
+      if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+      return new Promise((resolve, reject) => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          document.execCommand('copy') ? resolve() : reject(new Error('copy blocked'));
+        } catch (e) {
+          reject(e);
+        } finally {
+          ta.remove();
+        }
+      });
+    }
+
+    function ackCopy(btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    }
+
+    function copyRecaseScript(btn) {
+      clipboardCopy(buildRecaseScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
     function copyReconcileJson(btn, ev) {
       if (ev) { ev.stopPropagation(); ev.preventDefault(); }
       const text = document.getElementById('plex-reconcile-json').textContent || '';
-      navigator.clipboard.writeText(text).then(() => {
-        const orig = btn.textContent;
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
-      }).catch(() => { btn.textContent = 'Copy failed'; });
+      clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
     async function runReconcile(apply) {
