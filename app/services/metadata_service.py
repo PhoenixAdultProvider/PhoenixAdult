@@ -8,7 +8,7 @@ from app.clients.base import PacingDeferredError, SceneContext, SceneDetail
 from app.mappers.metadata_mapper import MetadataMapper, log_served_images
 from app.models.metadata import PlexMetadataResponse
 from app.models.provider_info import ProviderInfo
-from app.registry import ResolvedSiteInfo, find_site
+from app.registry import ResolvedSiteInfo, canonical_site_display, find_site
 from app.services import scrape_queue
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
@@ -20,6 +20,16 @@ from app.utils.logging.logger import logger
 from app.utils.people import filter_male_actors
 from app.utils.plex.media_type import provider_mount_path
 from app.utils.plex.rating_key import parse_rating_key
+
+
+def _queue_label(rating_key: str) -> str:
+    """Readable /queue label when no search title is known: site + release date."""
+    parsed = parse_rating_key(rating_key)
+    if not parsed or not parsed.get('site_name'):
+        return rating_key
+    site = canonical_site_display(parsed['site_name'] or '') or parsed['site_name']
+    date = parsed.get('release_date')
+    return f'[{site}] {date}' if date else f'[{site}] {parsed.get("cur_id") or rating_key}'
 
 
 def _log_abandoned(task: asyncio.Task[PlexMetadataResponse | None]) -> None:
@@ -166,14 +176,16 @@ class MetadataService:
         _log_served(response, provider)
         return response
 
-    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None) -> bool:
-        """Enqueue a background scrape of this scene into the snapshot cache."""
+    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None) -> bool:
+        """Enqueue a background scrape of this scene into the snapshot cache; `label` is
+        the human name shown on /queue (the rating key stays the dedup key)."""
 
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
 
-        replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language}
-        return scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=rating_key, replay=replay)
+        label = label or _queue_label(rating_key)
+        replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label}
+        return scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=label, replay=replay)
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
         """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""

@@ -25,7 +25,7 @@ async def restore_queue() -> None:
             if provider.id != replay.get('provider'):
                 continue
             if replay.get('kind') == 'update' and replay.get('rating_key'):
-                metadata_service.queue_snapshot(str(replay['rating_key']), provider, replay.get('language'))
+                metadata_service.queue_snapshot(str(replay['rating_key']), provider, replay.get('language'), label=replay.get('label'))
                 restored += 1
             elif replay.get('kind') == 'search':
                 match_service.requeue_search(replay, provider)
