@@ -68,6 +68,52 @@ _current: QueueEntry | None = None
 _current_started: float = 0.0
 _worker: asyncio.Task[None] | None = None
 _loop_id: int | None = None
+_paused_until: float = 0.0
+_pause_reason: str = ''
+
+
+def pause(reason: str, seconds: float) -> None:
+    """Halt the worker (ban detected); it resumes automatically after `seconds`."""
+    global _paused_until, _pause_reason
+    _paused_until = time.monotonic() + seconds
+    _pause_reason = reason
+    logger.warn('scrape-queue', f'queue paused {seconds:.0f}s — {reason}')
+
+
+def resume() -> None:
+    global _paused_until, _pause_reason
+    _paused_until = 0.0
+    _pause_reason = ''
+    logger.info('scrape-queue', 'queue resumed')
+
+
+def paused_for() -> float:
+    return max(0.0, _paused_until - time.monotonic())
+
+
+def flush(kind: str) -> int:
+    """Drop every pending job of this kind (the running job is left alone)."""
+    assert _queue is not None or not _pending
+    if _queue is None:
+        return 0
+    kept: list[tuple[QueueEntry, Callable[[], Awaitable[object]]]] = []
+    dropped = 0
+    while True:
+        try:
+            entry, job = _queue.get_nowait()
+        except asyncio.QueueEmpty:
+            break
+        if entry.kind == kind:
+            _pending.pop(entry.key, None)
+            _persist_remove(entry.key)
+            dropped += 1
+        else:
+            kept.append((entry, job))
+    for item in kept:
+        _queue.put_nowait(item)
+    if dropped:
+        logger.info('scrape-queue', f'flushed {dropped} pending {kind} job(s)')
+    return dropped
 
 
 def _ensure_loop() -> None:
@@ -130,13 +176,15 @@ def snapshot() -> dict[str, object]:
     rows = ([row(_current, running=True)] if _current is not None else []) + [
         row(e, running=False) for e in _pending.values() if _current is None or e.key != _current.key
     ]
-    return {'pending': len(_pending), 'entries': rows}
+    return {'pending': len(_pending), 'entries': rows, 'paused': paused_for() > 0, 'pauseReason': _pause_reason, 'resumeIn': round(paused_for(), 1)}
 
 
 async def _run() -> None:
     global _current, _current_started
     assert _queue is not None
     while True:
+        while (wait := paused_for()) > 0:
+            await asyncio.sleep(min(wait, 5.0))
         try:
             entry, job = _queue.get_nowait()
         except asyncio.QueueEmpty:

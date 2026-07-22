@@ -147,6 +147,12 @@ class NubilesClient(Client):
             await asyncio.sleep(backoff)
         else:
             logger.warn('Nubiles', f'{label} still rate-limited after {_MAX_RETRIES} attempts')
+            self.pacer.flag_ban()
+            return None
+
+        if r.status_code == 403:
+            logger.warn('Nubiles', f'{label} returned 403 — treating as ban')
+            self.pacer.flag_ban()
             return None
 
         if capture is not None:

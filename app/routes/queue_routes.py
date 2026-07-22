@@ -5,6 +5,7 @@ import json
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.routes import read_json_body
 from app.services import scrape_queue
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.helpers.helpers import load_data
@@ -28,3 +29,18 @@ async def page(request: Request) -> HTMLResponse:
 @router.get('/api/state')
 async def state() -> JSONResponse:
     return JSONResponse(_state())
+
+
+@router.post('/api/flush')
+async def flush(request: Request) -> JSONResponse:
+    body = await read_json_body(request)
+    kind = str(body.get('kind') or '')
+    if kind not in ('search', 'update'):
+        return JSONResponse({'error': 'kind must be search or update'}, status_code=400)
+    return JSONResponse({'ok': True, 'flushed': scrape_queue.flush(kind), **_state()})
+
+
+@router.post('/api/resume')
+async def resume() -> JSONResponse:
+    scrape_queue.resume()
+    return JSONResponse({'ok': True, **_state()})

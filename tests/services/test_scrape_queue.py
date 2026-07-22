@@ -69,4 +69,48 @@ async def test_snapshot_reports_current_and_pending_by_kind() -> None:
         if scrape_queue.pending_count() == 0:
             break
         await asyncio.sleep(0.01)
-    assert scrape_queue.snapshot() == {'pending': 0, 'entries': []}
+    snap = scrape_queue.snapshot()
+    assert snap['pending'] == 0 and snap['entries'] == [] and snap['paused'] is False
+
+
+async def test_flush_drops_only_the_requested_kind() -> None:
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow() -> None:
+        started.set()
+        await release.wait()
+
+    async def noop() -> None:
+        pass
+
+    scrape_queue.enqueue('s-run', slow, kind='search')
+    await asyncio.wait_for(started.wait(), timeout=5)
+    scrape_queue.enqueue('s2', noop, kind='search')
+    scrape_queue.enqueue('u2', noop, kind='update')
+    assert scrape_queue.flush('search') == 1
+    assert scrape_queue.is_pending('u2') is True
+    assert scrape_queue.is_pending('s2') is False
+    release.set()
+    for _ in range(100):
+        if scrape_queue.pending_count() == 0:
+            break
+        await asyncio.sleep(0.01)
+
+
+async def test_pause_holds_the_worker_until_resume() -> None:
+    ran = asyncio.Event()
+
+    async def job() -> None:
+        ran.set()
+
+    scrape_queue.pause('test ban', 60.0)
+    try:
+        scrape_queue.enqueue('p1', job, kind='search')
+        await asyncio.sleep(0.05)
+        assert not ran.is_set()
+        assert scrape_queue.snapshot()['paused'] is True
+        scrape_queue.resume()
+        await asyncio.wait_for(ran.wait(), timeout=5)
+    finally:
+        scrape_queue.resume()

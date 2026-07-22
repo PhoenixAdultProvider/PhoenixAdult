@@ -28,15 +28,26 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .pos { color: #475569; font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
     .empty { color: #475569; font-size: 13px; padding: 14px; }
+    .cd.banned { color: #f87171; font-weight: 700; }
+    .pause-banner { background: #7f1d1d; color: #fecaca; border-radius: 6px; padding: 8px 14px; font-size: 13px;
+                    margin-bottom: 12px; display: flex; gap: 12px; align-items: center; }
+    .pause-banner button { padding: 3px 10px; font-size: 12px; border: 1px solid #fca5a5; border-radius: 5px;
+                           background: transparent; color: #fecaca; cursor: pointer; }
+    .flush-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid #7f1d1d; border-radius: 5px;
+                 background: #1f2937; color: #fca5a5; cursor: pointer; vertical-align: 1px; }
+    .flush-btn:hover { background: #7f1d1d; color: #fecaca; }
   </style>
 </head>
 <body>
   <h1>Scrape Queue</h1>
   <div class="sub">background searches and metadata updates deferred by pacing; one sequential worker, oldest first</div>
   <div class="pacers" id="pacers"></div>
-  <h2>Searches <span class="count-badge" id="search-count"></span></h2>
+  <div class="pause-banner" id="pause-banner" style="display:none"></div>
+  <h2>Searches <span class="count-badge" id="search-count"></span>
+    <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button></h2>
   <div class="list" id="searches"></div>
-  <h2>Updates <span class="count-badge" id="update-count"></span></h2>
+  <h2>Updates <span class="count-badge" id="update-count"></span>
+    <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button></h2>
   <div class="list" id="updates"></div>
 
   <script>
@@ -55,11 +66,23 @@
       const drift = (Date.now() - fetchedAt) / 1000;
       document.getElementById('pacers').innerHTML = (STATE.pacers || []).map((p) => {
         const wait = Math.max(0, p.wait - drift);
+        const ban = Math.max(0, (p.ban || 0) - drift);
         const ready = wait <= 0 && !p.busy;
-        return `<div class="pacer"><span class="tag">${esc(p.tag)}</span>` +
-          `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>` +
+        const status = ban > 0 ? `<span class="cd banned">BANNED — ${fmtSecs(ban)}</span>`
+          : `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>`;
+        return `<div class="pacer"><span class="tag">${esc(p.tag)}</span>` + status +
           `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
       }).join('') || '<div class="empty">no paced scrapers registered</div>';
+
+      const banner = document.getElementById('pause-banner');
+      if (STATE.paused) {
+        const left = Math.max(0, (STATE.resumeIn || 0) - drift);
+        banner.innerHTML = `Queue paused — ${esc(STATE.pauseReason || 'ban detected')} · auto-resumes in ${fmtSecs(left)} ` +
+          '<button type="button" onclick="resumeQueue()">Resume now</button>';
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
 
       for (const [kind, listId, countId] of [['search', 'searches', 'search-count'], ['update', 'updates', 'update-count']]) {
         const rows = (STATE.entries || []).filter((e) => e.kind === kind);
@@ -84,6 +107,22 @@
       } catch {}
       render();
     }
+
+    async function post(path, body) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (TOKEN) headers['x-admin-token'] = TOKEN;
+      const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+      if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); render(); }
+    }
+
+    function flushKind(kind) {
+      const n = (STATE.entries || []).filter((e) => e.kind === kind && !e.running).length;
+      if (!n) return;
+      if (!confirm('Drop ' + n + ' pending ' + kind + ' job(s)? Persisted descriptors are removed too.')) return;
+      post('/queue/api/flush', { kind });
+    }
+
+    function resumeQueue() { post('/queue/api/resume'); }
 
     render();
     setInterval(render, 1000);

@@ -36,6 +36,7 @@ def pacer_states() -> list[dict[str, object]]:
                 'window_used': in_window,
                 'window_max': _SCENE_WINDOW_MAX,
                 'busy': p.scene_lock.locked(),
+                'ban': round(max(0.0, p._ban_until - now), 1),
             }
         )
     return out
@@ -63,7 +64,15 @@ class ScenePacer:
         self._last_fetch = 0.0
         self._gap_until = 0.0
         self._scene_starts: deque[float] = deque()
+        self._ban_until = 0.0
         _PACERS.add(self)
+
+    def flag_ban(self, seconds: float = 900.0) -> None:
+        """Ban detected upstream: mark this pacer and pause the shared queue."""
+        from app.services import scrape_queue
+
+        self._ban_until = time.monotonic() + seconds
+        scrape_queue.pause(f'{self.tag} ban detected', seconds)
 
     def jitter(self, base: float) -> float:
         """`base` seconds plus up to pace_jitter of randomness."""
