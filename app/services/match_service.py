@@ -75,9 +75,15 @@ class MatchService:
         paced = self._is_paced(search_data)
         if paced:
             stored = await asyncio.to_thread(search_store.load, key)
+            if stored is None:
+                stored = await asyncio.to_thread(search_store.load_similar, key)
+                if stored is not None:
+                    await asyncio.to_thread(search_store.save, key, stored)
+                    logger.info(provider.id, f'search store substring hit for "{search_data.title}" on {search_data.site_info.name} (renamed file)')
+            else:
+                logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
             if stored is not None:
                 self._search_memo[key] = (time.monotonic(), stored)
-                logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
                 return stored
 
         search_data.allow_slow = allow_slow

@@ -62,3 +62,18 @@ def test_expired_entry_is_dropped(_store_dir: Path) -> None:
     path.write_text(json.dumps(payload), encoding='utf-8')
     assert search_store.load(KEY) is None
     assert not path.exists()
+
+
+def test_load_similar_matches_longer_renamed_query() -> None:
+    old_key = ('Bratty Sis', 'hailey rose', '2024-06-21', '', '')
+    search_store.save(old_key, [SearchResult(title='Stepsisters Mean Pussy', scene_url='https://x/2', cur_id='bs1')])
+    new_key = ('Bratty Sis', 'hailey rose stepsisters mean pussy', '2024-06-21', '', '')
+    similar = search_store.load_similar(new_key)
+    assert similar is not None and similar[0].cur_id == 'bs1'
+
+
+def test_load_similar_requires_same_site_and_date() -> None:
+    search_store.save(('Bratty Sis', 'hailey rose', '2024-06-21', '', ''), [SearchResult(title='X', scene_url='https://x/2', cur_id='bs1')])
+    assert search_store.load_similar(('Bratty Sis', 'hailey rose extra', '2024-06-22', '', '')) is None
+    assert search_store.load_similar(('My Family Pies', 'hailey rose extra', '2024-06-21', '', '')) is None
+    assert search_store.load_similar(('Bratty Sis', 'unrelated title', '2024-06-21', '', '')) is None

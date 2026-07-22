@@ -67,6 +67,34 @@ def load(key: SearchKey) -> list[SearchResult] | None:
     return results
 
 
+def load_similar(key: SearchKey) -> list[SearchResult] | None:
+    """Fallback for renamed files: same site+date+language whose stored title is a
+    substring of the new one (or vice versa) — a longer filename still hits the store."""
+    site, title, date, scene_id, language = key
+    if not date or not title:
+        return None
+    best: tuple[int, SearchKey] | None = None
+    try:
+        entries = list(store_dir().glob('*.json'))
+    except OSError:
+        return None
+    for path in entries:
+        try:
+            stored = json.loads(path.read_text(encoding='utf-8')).get('key') or []
+        except (OSError, ValueError):
+            continue
+        if len(stored) != 5 or stored[0] != site or stored[2] != date or stored[3] != scene_id or stored[4] != language:
+            continue
+        stored_title = str(stored[1])
+        if stored_title == title or not (stored_title in title or title in stored_title):
+            continue
+        if best is None or len(stored_title) > best[0]:
+            best = (len(stored_title), (stored[0], stored_title, stored[2], stored[3], stored[4]))
+    if best is None:
+        return None
+    return load(best[1])
+
+
 def _sweep() -> None:
     cutoff = time.time() - _STORE_TTL
     try:

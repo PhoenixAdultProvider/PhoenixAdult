@@ -176,12 +176,17 @@ class MetadataService:
         _log_served(response, provider)
         return response
 
-    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None) -> bool:
+    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None, force: bool = False) -> bool:
         """Enqueue a background scrape of this scene into the snapshot cache; `label` is
         the human name shown on /queue (the rating key stays the dedup key)."""
 
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
+
+        parsed = parse_rating_key(rating_key)
+        if not force and parsed and parsed['site_name'] and parsed['cur_id'] and metadata_cache.read(parsed['site_name'], parsed['cur_id']) is not None:
+            logger.debug(provider.id, f'snapshot already cached for ratingKey={rating_key} — not queueing')
+            return False
 
         label = label or _queue_label(rating_key)
         replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label}
@@ -189,7 +194,7 @@ class MetadataService:
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
         """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""
-        queued = self.queue_snapshot(rating_key, provider, language)
+        queued = self.queue_snapshot(rating_key, provider, language, force=True)
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
 
