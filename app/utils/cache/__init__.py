@@ -655,6 +655,9 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
             if cased_tagline != md.tagline:
                 md.tagline = cased_tagline
                 changed = True
+        if md.tagline and md.tagline == md.studio:
+            md.tagline = None
+            changed = True
         if md.Collection:
             tags = list(dict.fromkeys(normalize_studio(c.tag) for c in md.Collection if c.tag))
             if tags != [c.tag for c in md.Collection]:
