@@ -95,6 +95,27 @@ def load_similar(key: SearchKey) -> list[SearchResult] | None:
     return load(best[1])
 
 
+def find_title(cur_id: str) -> tuple[str, str] | None:
+    """(title, site/subsite) of any stored result with this cur_id — labels update-queue
+    entries whose Plex request carries only the rating key."""
+    if not cur_id:
+        return None
+    try:
+        entries = list(store_dir().glob('*.json'))
+    except OSError:
+        return None
+    for path in entries:
+        try:
+            payload = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        for r in payload.get('results') or []:
+            if r.get('cur_id') == cur_id and r.get('title'):
+                site = str(r.get('subsite') or (payload.get('key') or [''])[0] or '')
+                return str(r['title']), site
+    return None
+
+
 def _sweep() -> None:
     cutoff = time.time() - _STORE_TTL
     try:

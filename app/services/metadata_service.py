@@ -12,6 +12,7 @@ from app.registry import ResolvedSiteInfo, canonical_site_display, find_site
 from app.services import scrape_queue
 from app.services.scraper_router import ScraperRouter
 from app.utils import cache as metadata_cache
+from app.utils.cache import search_store
 from app.utils.concurrency.coalescer import Coalescer
 from app.utils.helpers.helpers import split_subsite
 from app.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
@@ -23,12 +24,17 @@ from app.utils.plex.rating_key import parse_rating_key
 
 
 def _queue_label(rating_key: str) -> str:
-    """Readable /queue label when no search title is known: site + release date."""
+    """Readable /queue label: the stored search title when the cur_id is known to the
+    search store, else site + release date."""
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed.get('site_name'):
         return rating_key
     site = canonical_site_display(parsed['site_name'] or '') or parsed['site_name']
     date = parsed.get('release_date')
+    found = search_store.find_title(parsed.get('cur_id') or '')
+    if found:
+        title, result_site = found
+        return f'{title} [{result_site or site}] {date}' if date else f'{title} [{result_site or site}]'
     return f'[{site}] {date}' if date else f'[{site}] {parsed.get("cur_id") or rating_key}'
 
 

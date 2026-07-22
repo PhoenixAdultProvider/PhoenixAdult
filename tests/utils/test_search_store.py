@@ -77,3 +77,10 @@ def test_load_similar_requires_same_site_and_date() -> None:
     assert search_store.load_similar(('Bratty Sis', 'hailey rose extra', '2024-06-22', '', '')) is None
     assert search_store.load_similar(('My Family Pies', 'hailey rose extra', '2024-06-21', '', '')) is None
     assert search_store.load_similar(('Bratty Sis', 'unrelated title', '2024-06-21', '', '')) is None
+
+
+def test_find_title_resolves_cur_id_to_stored_result() -> None:
+    search_store.save(KEY, [SearchResult(title='Only You', scene_url='https://x/3', cur_id='xyz9', subsite='Girls Only Porn')])
+    assert search_store.find_title('xyz9') == ('Only You', 'Girls Only Porn')
+    assert search_store.find_title('missing') is None
+    assert search_store.find_title('') is None
