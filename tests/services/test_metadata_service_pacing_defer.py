@@ -14,7 +14,7 @@ RATING_KEY = 'scene-nubilefilms-abc123'
 
 
 def _resp(title: str) -> PlexMetadataResponse:
-    md = {'type': 'movie', 'ratingKey': RATING_KEY, 'guid': 'g', 'title': title, 'studio': 'Nubiles Films'}
+    md = {'type': 'movie', 'ratingKey': RATING_KEY, 'guid': 'g', 'title': title, 'studio': 'Nubile Films'}
     return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': 'p', 'size': 1, 'Metadata': [md]}})
 
 

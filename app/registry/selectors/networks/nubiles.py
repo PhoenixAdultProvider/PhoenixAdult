@@ -10,7 +10,7 @@ PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''
 NUBILES_PORN = 'Nubiles Porn'
-NUBILES_FILMS = 'Nubiles Films'
+NUBILES_FILMS = 'Nubile Films'
 MOM_LOVER = 'Mom Lover'
 
 

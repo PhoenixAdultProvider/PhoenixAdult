@@ -812,11 +812,10 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Mom's Boy Toy
     - Mom's Family Secrets
     - Mom's Tight
-  - Nubiles Films
+  - Nubile Films
     - Girls Only Porn
     - Hot Crazy Mess
     - NF Busty
-    - Nubile Films
     - That Sitcom Show
   - Nubiles Porn
     - Bad Teens Punished
