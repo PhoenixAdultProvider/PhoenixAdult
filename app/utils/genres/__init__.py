@@ -28,7 +28,7 @@ def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None
             continue
         seen.add(key)
         out.append(normalized)
-    return out
+    return sorted(out, key=str.casefold)
 
 
 def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRules) -> str | None:
