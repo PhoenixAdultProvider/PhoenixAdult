@@ -90,15 +90,15 @@ async def test_warm_images_bounds_concurrency(monkeypatch: pytest.MonkeyPatch) -
     assert peak <= nubiles._IMAGE_CONCURRENCY
 
 
-def test_pending_wait_window_cap_after_four() -> None:
+def test_pending_wait_window_cap_after_max_scenes() -> None:
     import time as _t
 
     from app.utils.http import rate_limit_helper as rlh
 
     client = NubilesClient()
     now = _t.monotonic()
-    client.pacer._scene_starts.extend([now - 30, now - 20, now - 10, now - 5])
-    assert 560 < client.pacer.pending_wait() <= rlh._SCENE_WINDOW
+    client.pacer._scene_starts.extend([now - 80 + i * 10 for i in range(rlh._SCENE_WINDOW_MAX)])
+    assert 500 < client.pacer.pending_wait() <= rlh._SCENE_WINDOW
 
 
 def test_pending_wait_ignores_stale_starts_and_uses_gap() -> None:

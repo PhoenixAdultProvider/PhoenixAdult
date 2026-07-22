@@ -6,17 +6,40 @@ from fastapi.responses import JSONResponse
 from app.models.media_provider import MediaProviderResponse
 from app.models.provider_info import ProviderInfo
 from app.routes import plex_json, read_json_body
+from app.services import scrape_queue
 from app.services.match_service import MatchRequest, MatchService
 from app.services.metadata_service import MetadataService
 from app.utils.logging.logger import logger
 from app.utils.plex.media_type import plex_media_type_id
 from app.utils.plex.responses import empty_media_container, media_container
 
+_SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
+
+
+async def restore_queue() -> None:
+    """Re-enqueue background jobs persisted before the last shutdown."""
+    replays = scrape_queue.take_replays()
+    restored = 0
+    for replay in replays.values():
+        for provider, match_service, metadata_service in _SERVICES:
+            if provider.id != replay.get('provider'):
+                continue
+            if replay.get('kind') == 'update' and replay.get('rating_key'):
+                metadata_service.queue_snapshot(str(replay['rating_key']), provider, replay.get('language'))
+                restored += 1
+            elif replay.get('kind') == 'search':
+                match_service.requeue_search(replay, provider)
+                restored += 1
+    if restored:
+        logger.info('scrape-queue', f'restored {restored} queued background job(s) from disk')
+
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
     router = APIRouter()
     match_service = MatchService()
     metadata_service = MetadataService()
+    match_service.metadata_service = metadata_service
+    _SERVICES.append((provider, match_service, metadata_service))
 
     def _empty_container() -> JSONResponse:
         return JSONResponse(empty_media_container(provider.plex_identifier))

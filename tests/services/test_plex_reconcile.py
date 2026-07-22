@@ -77,7 +77,8 @@ async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: py
     assert put.called
     params = put.calls[0].request.url.params
     assert params['id'] == '77'
-    assert params['collection[].tag.tag-'] == 'Brazzers'
+    assert params['collection[0].tag.tag'] == 'Teens Like It Big'
+    assert 'collection[1].tag.tag' not in params
     assert params['collection.locked'] == '0'
 
 

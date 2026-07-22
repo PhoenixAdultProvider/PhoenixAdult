@@ -14,9 +14,9 @@ from app.utils.logging.logger import logger
 PLEX_REQUEST_BUDGET = 85.0
 
 _GAP_JITTER_MIN = 10.0
-_GAP_JITTER_MAX = 75.0
+_GAP_JITTER_MAX = 45.0
 _SCENE_WINDOW = 600.0
-_SCENE_WINDOW_MAX = 4
+_SCENE_WINDOW_MAX = 8
 _SYNC_WAIT_BUDGET = 10.0
 
 _PACERS: weakref.WeakSet[ScenePacer] = weakref.WeakSet()

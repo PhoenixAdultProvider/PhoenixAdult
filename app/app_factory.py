@@ -40,6 +40,9 @@ def _log_startup_banner() -> None:
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
+    from app.routes.provider_router import restore_queue
+
+    await restore_queue()
     yield
 
 

@@ -152,6 +152,14 @@ class PlexClient:
         r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
         r.raise_for_status()
 
+    async def set_tags(self, section: str, rating_key: str, tag: str, values: list[str]) -> None:
+        """Replace the field with exactly these values — removes stale AND fixes recased in one write."""
+        params = {'type': '1', 'id': rating_key, f'{tag}.locked': '0'}
+        for i, value in enumerate(values):
+            params[f'{tag}[{i}].tag.tag'] = value
+        r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
+        r.raise_for_status()
+
     async def aclose(self) -> None:
         await self.http.aclose()
 
@@ -213,8 +221,11 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                 report.items.append(entry)
                 if apply:
                     for provider_field, stale in entry.removals.items():
-                        await client.remove_tags(section, plex_key, _FIELDS[provider_field], stale)
-                    logger.info(_TAG, f'{plex_key} "{entry.title}": removed {entry.removals}')
+                        if provider_field in ('Collection', 'Genre'):
+                            await client.set_tags(section, plex_key, _FIELDS[provider_field], desired[provider_field])
+                        else:
+                            await client.remove_tags(section, plex_key, _FIELDS[provider_field], stale)
+                    logger.info(_TAG, f'{plex_key} "{entry.title}": reconciled {entry.removals}')
     finally:
         await client.aclose()
 

@@ -1,13 +1,57 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
+from app.config.env import env
 from app.utils.logging.logger import logger
 
 _MAX_PENDING = 500
+
+
+def _state_path() -> Path:
+    return Path(env.search_queue_dir) / 'queue-state.json'
+
+
+def _read_state() -> dict[str, dict[str, Any]]:
+    try:
+        data = json.loads(_state_path().read_text(encoding='utf-8'))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _write_state(state: dict[str, dict[str, Any]]) -> None:
+    try:
+        _state_path().parent.mkdir(parents=True, exist_ok=True)
+        _state_path().write_text(json.dumps(state), encoding='utf-8')
+    except OSError as err:
+        logger.warn('scrape-queue', f'could not persist queue state: {err}')
+
+
+def _persist_add(key: str, replay: dict[str, Any]) -> None:
+    state = _read_state()
+    state[key] = replay
+    _write_state(state)
+
+
+def _persist_remove(key: str) -> None:
+    state = _read_state()
+    if state.pop(key, None) is not None:
+        _write_state(state)
+
+
+def take_replays() -> dict[str, dict[str, Any]]:
+    """Drain persisted job descriptors (restart recovery); re-enqueueing re-persists them."""
+    state = _read_state()
+    if state:
+        _write_state({})
+    return state
 
 
 @dataclass
@@ -38,9 +82,9 @@ def _ensure_loop() -> None:
         _worker = None
 
 
-def enqueue(key: str, job: Callable[[], Awaitable[object]], *, kind: str = 'update', label: str = '') -> bool:
-    """Queue a background job for the single sequential worker, deduped by key; False
-    when the key is already pending or the queue is full."""
+def enqueue(key: str, job: Callable[[], Awaitable[object]], *, kind: str = 'update', label: str = '', replay: dict[str, Any] | None = None) -> bool:
+    """Queue a background job for the single sequential worker, deduped by key; False when
+    already pending or full. `replay` persists a descriptor so the job survives a restart."""
     global _worker
     _ensure_loop()
     assert _queue is not None
@@ -48,6 +92,8 @@ def enqueue(key: str, job: Callable[[], Awaitable[object]], *, kind: str = 'upda
         return False
     entry = QueueEntry(key=key, kind=kind, label=label or key, queued_at=time.monotonic())
     _pending[key] = entry
+    if replay is not None:
+        _persist_add(key, replay)
     _queue.put_nowait((entry, job))
     if _worker is None or _worker.done():
         _worker = asyncio.get_running_loop().create_task(_run())
@@ -105,3 +151,4 @@ async def _run() -> None:
         finally:
             _current = None
             _pending.pop(entry.key, None)
+            _persist_remove(entry.key)

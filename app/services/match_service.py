@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import quote
 
 from app.clients import get_client
@@ -45,6 +46,7 @@ class MatchService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
+        self.metadata_service: Any = None
         self._search_memo: dict[tuple[str, str, str, str, str], tuple[float, list[SearchResult]]] = {}
         self._search_coalesce: Coalescer[tuple[str, str, str, str, str], list[SearchResult] | None] = Coalescer()
 
@@ -93,14 +95,61 @@ class MatchService:
 
         return await self._search_coalesce.run(key, _run)
 
+    def requeue_search(self, replay: dict[str, Any], provider: ProviderInfo) -> None:
+        """Rebuild and re-enqueue a persisted background search after a restart."""
+        site = find_site(str(replay.get('search_site') or ''))
+        if site is None:
+            return
+        title = str(replay.get('title') or '')
+        ctx = SearchContext(
+            title=title,
+            encoded=quote(title, safe=''),
+            search_site=str(replay.get('search_site') or ''),
+            site_info=site,
+            search_date=replay.get('date'),
+            language=replay.get('language'),
+            scene_id=replay.get('scene_id'),
+        )
+        self._queue_background_search(ctx, provider, 0.0)
+
+    def _chain_perfect_match(self, results: list[SearchResult], search_data: SearchContext, provider: ProviderInfo) -> None:
+        """A background search that lands a unique perfect match chains straight into a
+        snapshot scrape, so the next refresh serves metadata instead of deferring again."""
+        if self.metadata_service is None:
+            return
+        scored = [(r.score if r.score is not None else title_distance_score(search_data.title, r.title), r) for r in results]
+        perfect = [(s, r) for s, r in scored if s >= 100]
+        if not perfect:
+            return
+        top = max(s for s, _ in perfect)
+        tied = [(s, r) for s, r in perfect if s == top]
+        if len(tied) != 1:
+            return
+        score, raw = tied[0]
+        site = search_data.site_info
+        mapped = self._mapper.to_match_result(raw, site.name, score, provider.plex_identifier, raw.release_date or None, scraper_type=site.scraper_config.type)
+        if self.metadata_service.queue_snapshot(mapped.ratingKey, provider, search_data.language):
+            logger.info(provider.id, f'Perfect background match "{raw.title}" on {site.name} — chained snapshot scrape {mapped.ratingKey}')
+
     def _queue_background_search(self, search_data: SearchContext, provider: ProviderInfo, wait_seconds: float) -> None:
         """Fail the match fast; the queued job searches on the paced track and memoizes."""
 
         async def _job() -> None:
-            await self._search_results(search_data, provider, allow_slow=True)
+            results = await self._search_results(search_data, provider, allow_slow=True)
+            if results:
+                self._chain_perfect_match(results, search_data, provider)
 
         key = ':'.join(('search', provider.id, *self._memo_key(search_data)))
-        queued = scrape_queue.enqueue(key, _job, kind='search', label=f'{search_data.site_info.name} — {search_data.title}')
+        replay = {
+            'kind': 'search',
+            'provider': provider.id,
+            'search_site': search_data.search_site,
+            'title': search_data.title,
+            'date': search_data.search_date,
+            'scene_id': search_data.scene_id,
+            'language': search_data.language,
+        }
+        queued = scrape_queue.enqueue(key, _job, kind='search', label=f'{search_data.site_info.name} — {search_data.title}', replay=replay)
         state = 'queued background search' if queued else 'background search already queued'
         logger.info(
             provider.id,

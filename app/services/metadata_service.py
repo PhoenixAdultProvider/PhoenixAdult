@@ -166,13 +166,18 @@ class MetadataService:
         _log_served(response, provider)
         return response
 
-    def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
-        """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""
+    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None) -> bool:
+        """Enqueue a background scrape of this scene into the snapshot cache."""
 
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
 
-        queued = scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=rating_key)
+        replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language}
+        return scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=rating_key, replay=replay)
+
+    def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
+        """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""
+        queued = self.queue_snapshot(rating_key, provider, language)
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
 
