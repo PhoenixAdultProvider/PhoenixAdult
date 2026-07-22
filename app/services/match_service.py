@@ -133,7 +133,15 @@ class MatchService:
             return
         score, raw = tied[0]
         site = search_data.site_info
-        mapped = self._mapper.to_match_result(raw, site.name, score, provider.plex_identifier, raw.release_date or None, scraper_type=site.scraper_config.type)
+        mapped = self._mapper.to_match_result(
+            raw,
+            site.name,
+            score,
+            provider.plex_identifier,
+            raw.release_date or None,
+            scraper_type=site.scraper_config.type,
+            filename_site=canonical_site_display(search_data.search_site),
+        )
         if self.metadata_service.queue_snapshot(mapped.ratingKey, provider, search_data.language, label=mapped.title):
             logger.info(provider.id, f'Perfect background match "{raw.title}" on {site.name} — chained snapshot scrape {mapped.ratingKey}')
 

@@ -325,10 +325,11 @@ class NubilesClient(Client):
         metadata.studio = scene.site.sub_group if scene.site.sub_group else STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name if scene.site.name != metadata.studio else None
+        sub = scene.subsite or scene.site.name
+        metadata.tagline = sub if sub != metadata.studio else None
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
+        metadata.collections = [scene.subsite or scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
