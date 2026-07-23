@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote
 
 import httpx2
+from PIL import Image as PILImage
 
 from app.config import config, people_image_base
 from app.config.env import env
@@ -188,6 +189,27 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
 
 # ── Write ────────────────────────────────────────────────────────────────────
 
+_SNAPSHOT_IMG_RE = re.compile(r'^/cache/(?P<rel>.+)/images/(?P<name>[^/?#]+)$')
+
+
+def _snapshot_file(url: str, base: str) -> tuple[Path, str] | None:
+    """(on-disk file, filename) when the URL points at an image inside our own snapshot tree."""
+    path = url[len(base) :] if url.startswith(f'{base}/') else url
+    match = _SNAPSHOT_IMG_RE.match(path)
+    if match is None:
+        return None
+    target = safe_join(cache_dir(), f'{match["rel"]}/images/{match["name"]}')
+    return None if target is None else (target, match['name'])
+
+
+def _probe_file(path: Path) -> tuple[int, int, int] | None:
+    try:
+        with PILImage.open(path) as im:
+            width, height = im.size
+        return width, height, path.stat().st_size
+    except (OSError, ValueError):
+        return None
+
 
 def _rebase(obj: Any, base: str, people_base: str) -> Any:
     """Resolve host-relative cached image URLs against the live bases, recursively; people images
@@ -206,8 +228,8 @@ def _rebase(obj: Any, base: str, people_base: str) -> Any:
 
 
 async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
-    """Freeze a scraped scene: download images locally, rewrite URLs, persist JSON.
-    Skips error-looking titles. Atomic (temp dir + rename). Best-effort per image."""
+    """Freeze a scraped scene: new images download locally, already-snapshotted ones are kept
+    in place (never renumbered). Skips error-looking titles. Atomic (temp dir + rename)."""
     if not enabled():
         return False
     try:
@@ -251,9 +273,33 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
     try:
         sem = asyncio.Semaphore(6)
 
+        def _targets() -> list[tuple[dict[str, Any], str, str]]:
+            """(holder dict, key, name hint) for every image URL this snapshot carries."""
+            found: list[tuple[dict[str, Any], str, str]] = [(meta, 'thumb', 'poster'), (meta, 'art', 'art')]
+            found.extend((img, 'url', 'img') for img in meta.get('Image', []))
+            for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+                found.extend((role, 'thumb', 'role') for role in meta.get(role_key, []))
+            found.extend((rating, 'image', 'rating') for rating in meta.get('Rating', []))
+            return [(obj, key, hint) for obj, key, hint in found if obj.get(key)]
+
+        targets = _targets()
+        kept_names = {hit[1] for obj, key, _hint in targets if (hit := _snapshot_file(str(obj[key]), base)) is not None}
+
         def _relativize(u: str) -> str:
             """Strip our own base_url so stored links survive a base_url/tunnel change."""
             return u[len(base) :] if u.startswith(f'{base}/') else u
+
+        def _keep(source: Path, name: str) -> str | None:
+            """Carry an already-snapshotted image into the new generation unchanged."""
+            if not source.is_file():
+                return None
+            img_dir = tmp_dir / 'images'
+            img_dir.mkdir(exist_ok=True)
+            shutil.copy2(source, img_dir / name)
+            local = f'/cache/{rel_path}/images/{name}'
+            if probed := _probe_file(img_dir / name):
+                image_meta[local] = probed
+            return local
 
         async def localize(url: str | None, hint: str) -> str | None:
             """Download an image into the snapshot; people images stay host-relative so
@@ -262,8 +308,14 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
                 return url
             if '/images/local/' in url:
                 return url[url.index('/images/local/') :]
+            if (hit := _snapshot_file(url, base)) is not None:
+                if (kept := _keep(*hit)) is not None:
+                    return kept
+                logger.debug('meta-cache', f'kept snapshot image missing on disk {url}')
+                return _relativize(url)
             target, referers, cookies = proxy_params(url)
-            name = f'{hint}-{counter[0]:02d}{ext_from("", target)}'
+            while (name := f'{hint}-{counter[0]:02d}{ext_from("", target)}') in kept_names:
+                counter[0] += 1
             counter[0] += 1
             try:
                 async with sem:
@@ -281,16 +333,7 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
         async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
             obj[key] = await localize(obj.get(key), hint)
 
-        jobs = []
-        if meta.get('thumb'):
-            jobs.append(_assign(meta, 'thumb', 'poster'))
-        if meta.get('art'):
-            jobs.append(_assign(meta, 'art', 'art'))
-        jobs.extend(_assign(img, 'url', 'img') for img in meta.get('Image', []))
-        for role_key in ('Role', 'Director', 'Producer', 'Writer'):
-            jobs.extend(_assign(role, 'thumb', 'role') for role in meta.get(role_key, []) if role.get('thumb'))
-        jobs.extend(_assign(rating, 'image', 'rating') for rating in meta.get('Rating', []) if rating.get('image'))
-        await asyncio.gather(*jobs)
+        await asyncio.gather(*(_assign(obj, key, hint) for obj, key, hint in targets))
 
         if final_dir.exists():
             shutil.rmtree(final_dir, ignore_errors=True)

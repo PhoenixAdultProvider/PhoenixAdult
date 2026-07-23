@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a125"
+version = "1.0.0a126"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -67,6 +67,7 @@ quote-style = "single"
 select = ["E", "F", "I", "UP", "B", "W"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 markers = ["allow_network: permit real network access in this test"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

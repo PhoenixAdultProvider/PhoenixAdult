@@ -366,7 +366,9 @@ written by the existing temp-dir + rename download flow and served by the `/cach
 route. `scene_images` records what the folder holds: classified `kind`, stored URL
 (`rel_path`), dimensions, byte size, and position.
 
-- **At snapshot write**, dimensions come free from the image fetcher.
+- **At snapshot write**, dimensions come free from the image fetcher. A rewrite keeps
+  images already inside the snapshot tree in place — same names, same bytes, dimensions
+  re-probed locally — so backfill rewrites never re-download or renumber artwork.
 - **At serve**, each image kind is emitted highest resolution first (`width × height`
   descending, unknown dimensions last); fresh scrapes apply the same ordering in the
   mapper from the just-probed dimensions, and the highest-resolution poster becomes the

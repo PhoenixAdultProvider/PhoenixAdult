@@ -9,7 +9,7 @@ import pytest
 import respx
 from PIL import Image as PILImage
 
-from app.models.metadata import PlexData18, PlexMetadataResponse
+from app.models.metadata import PlexData18, PlexImage, PlexMetadataResponse
 from app.utils import cache as mc
 from app.utils import db
 from app.utils.helpers.helpers import b64url_encode, embed_subsite
@@ -670,6 +670,44 @@ async def test_read_orders_each_image_kind_high_to_low(tmp_path: pytest.TempPath
     md = mc.read('Brazzers', 'ord1')['MediaContainer']['Metadata'][0]
     posters = [img['url'] for img in md['Image'] if img['type'] == 'coverPoster']
     assert posters[0].endswith('img-01.jpg') and posters[1].endswith('img-00.jpg')
+
+
+@respx.mock
+async def test_rewrite_keeps_snapshot_images_in_place(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A backfill rewrite must never re-download or renumber already-snapshotted images —
+    renumbering is what scrambled kinds against files across rewrite generations."""
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=_jpeg(30, 45), headers={'content-type': 'image/jpeg'}))
+    respx.get('https://cdn.example/bg.jpg').mock(return_value=httpx.Response(200, content=_jpeg(40, 20), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', thumb='https://cdn.example/p.jpg')
+    resp.MediaContainer.Metadata[0].Image = [
+        PlexImage(url='https://cdn.example/p.jpg', type='coverPoster'),
+        PlexImage(url='https://cdn.example/bg.jpg', type='background'),
+    ]
+    assert await mc.write('Brazzers', 'rw1', resp) is True
+
+    cached = mc.read('Brazzers', 'rw1')
+    assert cached is not None
+    before = {img['url'].rsplit('/', 1)[-1]: img['type'] for img in cached['MediaContainer']['Metadata'][0]['Image']}
+    scene_dir = next(tmp_path.glob('project1service/brazzers/brazzers/*'))
+    poster_bytes = (scene_dir / 'images' / 'img-01.jpg').read_bytes()
+
+    again = PlexMetadataResponse.model_validate(cached)
+    again.MediaContainer.Metadata[0].summary = 'backfilled summary'
+    respx.reset()
+    assert await mc.write('Brazzers', 'rw1', again) is True
+
+    after_md = mc.read('Brazzers', 'rw1')['MediaContainer']['Metadata'][0]
+    after = {img['url'].rsplit('/', 1)[-1]: img['type'] for img in after_md['Image']}
+    assert after == before
+    assert after_md['summary'] == 'backfilled summary'
+    assert after_md['thumb'].endswith('/images/poster-00.jpg')
+    assert (scene_dir / 'images' / 'img-01.jpg').read_bytes() == poster_bytes
+    rows = db.connect().execute('SELECT kind, width, height FROM scene_images ORDER BY pos').fetchall()
+    assert {(r['kind'], r['width'], r['height']) for r in rows} == {('coverPoster', 30, 45), ('background', 40, 20)}
 
 
 def test_tags_for_matches_the_seeded_scene() -> None:
