@@ -1,10 +1,9 @@
-"""One-time metadata-cache migration for a studio rename: rewrites studio/tagline/
-collection strings in snapshots and merges the old studio-slug folders into the new."""
+"""Studio/tagline rename tool: one dimension UPDATE in state.db, image-folder merge to
+the new slug, and rel_path fixups so DB rows keep pointing at the moved files."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import shutil
 import sys
 from pathlib import Path
@@ -12,36 +11,46 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config.env import env
+from app.utils import db
 from app.utils.helpers.helpers import slugify
 
 
-def _rewrite_file(path: Path, old: str, new: str) -> bool:
-    try:
-        data = json.loads(path.read_text(encoding='utf-8'))
-        entries = data['MediaContainer']['Metadata']
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
-    changed = False
-    for md in entries:
-        if not isinstance(md, dict):
-            continue
-        if md.get('studio') == old:
-            md['studio'] = new
-            changed = True
-        if md.get('tagline') == old:
-            md['tagline'] = new
-            changed = True
-        if md.get('tagline') and md.get('tagline') == md.get('studio'):
-            md['tagline'] = None
-            changed = True
-        tags = [c.get('tag') for c in (md.get('Collection') or []) if isinstance(c, dict)]
-        if old in tags:
-            merged = list(dict.fromkeys(new if t == old else t for t in tags if t))
-            md['Collection'] = [{'tag': t} for t in merged]
-            changed = True
-    if changed:
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
-    return changed
+def _rename_dimension(table: str, old: str, new: str) -> int:
+    conn = db.connect()
+    old_row = conn.execute(f'SELECT id FROM {table} WHERE name = ?', (old,)).fetchone()  # noqa: S608 - fixed table names
+    if old_row is None:
+        return 0
+    new_row = conn.execute(f'SELECT id FROM {table} WHERE name = ?', (new,)).fetchone()  # noqa: S608
+    with conn:
+        if new_row is None:
+            conn.execute(f'UPDATE {table} SET name = ? WHERE id = ?', (new, old_row['id']))  # noqa: S608
+            return 1
+        old_id, new_id = old_row['id'], new_row['id']
+        if table == 'studios':
+            conn.execute('UPDATE scenes SET studio_id = ? WHERE studio_id = ?', (new_id, old_id))
+            conn.execute('UPDATE OR IGNORE people SET scope_studio_id = ? WHERE scope_studio_id = ?', (new_id, old_id))
+        if table == 'taglines':
+            conn.execute('UPDATE scenes SET tagline_id = ? WHERE tagline_id = ?', (new_id, old_id))
+        if table == 'collections':
+            conn.execute('UPDATE OR IGNORE scene_collections SET collection_id = ? WHERE collection_id = ?', (new_id, old_id))
+            conn.execute('DELETE FROM scene_collections WHERE collection_id = ?', (old_id,))
+        conn.execute(f'DELETE FROM {table} WHERE id = ?', (old_id,))  # noqa: S608
+    return 1
+
+
+def _fix_rel_paths(old_slug: str, new_slug: str) -> int:
+    conn = db.connect()
+    fixed = 0
+    for table, column in (('scenes', 'rel_path'), ('scene_images', 'rel_path')):
+        for row in conn.execute(f'SELECT rowid AS rid, {column} AS p FROM {table}').fetchall():  # noqa: S608
+            parts = str(row['p']).split('/')
+            if old_slug not in parts:
+                continue
+            new_path = '/'.join(new_slug if seg == old_slug else seg for seg in parts)
+            with conn:
+                conn.execute(f'UPDATE {table} SET {column} = ? WHERE rowid = ?', (new_path, row['rid']))  # noqa: S608
+            fixed += 1
+    return fixed
 
 
 def _merge_dirs(root: Path, old_slug: str, new_slug: str) -> int:
@@ -66,24 +75,22 @@ def _merge_dirs(root: Path, old_slug: str, new_slug: str) -> int:
     return merged
 
 
-def migrate(root: Path, old: str, new: str) -> tuple[int, int]:
-    files = sum(1 for p in root.rglob('*.json') if _rewrite_file(p, old, new))
+def migrate(root: Path, old: str, new: str) -> tuple[int, int, int]:
+    dims = sum(_rename_dimension(t, old, new) for t in ('studios', 'taglines', 'collections'))
     dirs = _merge_dirs(root, slugify(old), slugify(new))
-    return files, dirs
+    paths = _fix_rel_paths(slugify(old), slugify(new))
+    return dims, dirs, paths
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Migrate the metadata cache after a studio rename.')
+    parser = argparse.ArgumentParser(description='Rename a studio/tagline across state.db and the image cache.')
     parser.add_argument('old')
     parser.add_argument('new')
     parser.add_argument('--cache-dir', default=None)
     args = parser.parse_args()
     root = Path(args.cache_dir or env.metadata_cache_dir)
-    if not root.is_dir():
-        print(f'cache dir not found: {root}')
-        return 1
-    files, dirs = migrate(root, args.old, args.new)
-    print(f'rewrote {files} snapshot(s), merged {dirs} folder(s); restart the server to refresh the cache index')
+    dims, dirs, paths = migrate(root, args.old, args.new)
+    print(f'renamed {dims} dimension row(s), merged {dirs} folder(s), fixed {paths} rel_path(s); restart the server')
     return 0
 
 

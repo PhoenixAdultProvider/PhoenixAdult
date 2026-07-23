@@ -32,17 +32,18 @@ async def local_image(filepath: str) -> Response:
     file_path = safe_join(env.image_dir, filepath)
     if not file_path:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
-    if file_path.exists():
-        return FileResponse(file_path)
 
-    cached = safe_join(env.people_cache_dir, filepath)
-    if cached and cached.exists():
-        return FileResponse(cached)
-
+    candidates = [file_path, safe_join(env.people_cache_dir, filepath)]
     if filepath.startswith('logos/'):
-        logo = safe_join(env.logo_cache_dir, filepath[len('logos/') :])
-        if logo and logo.exists():
-            return FileResponse(logo)
+        candidates.append(safe_join(env.logo_cache_dir, filepath[len('logos/') :]))
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        try:
+            stat_result = candidate.stat()
+        except OSError:
+            continue
+        return FileResponse(candidate, stat_result=stat_result)
 
     return JSONResponse({'error': 'Image not found'}, status_code=404)
 

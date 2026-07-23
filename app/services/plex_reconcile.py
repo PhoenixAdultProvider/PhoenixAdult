@@ -9,6 +9,7 @@ import httpx2
 from app.config.env import env
 from app.registry import PROVIDER_DEFINITIONS
 from app.utils import cache as metadata_cache
+from app.utils.cache import scene_store
 from app.utils.http.client import make_http
 from app.utils.logging.logger import logger
 from app.utils.plex.rating_key import parse_rating_key
@@ -78,9 +79,9 @@ def _guid_prefixes() -> tuple[str, ...]:
     return tuple(f'{p.plex_identifier}://' for p in PROVIDER_DEFINITIONS)
 
 
-def _our_rating_key(guid: str) -> str | None:
+def _our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str | None:
     """The provider-side rating key inside one of our guids, else None."""
-    if not guid.startswith(_guid_prefixes()):
+    if not guid.startswith(prefixes if prefixes is not None else _guid_prefixes()):
         return None
     _, _, tail = guid.partition('://')
     _, _, rating_key = tail.partition('/')
@@ -90,16 +91,9 @@ def _our_rating_key(guid: str) -> str | None:
 async def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
     """The tag values from this scene's cached snapshot, or None when it was never snapshotted."""
     parsed = parse_rating_key(rating_key)
-    if not parsed or not parsed['site_name'] or not parsed['cur_id']:
+    if not parsed or not parsed['site_name'] or not parsed['cur_id'] or not metadata_cache.enabled():
         return None
-    cached = await asyncio.to_thread(metadata_cache.read, parsed['site_name'], parsed['cur_id'])
-    if not cached:
-        return None
-    try:
-        md = cached['MediaContainer']['Metadata'][0]
-    except (KeyError, IndexError, TypeError):
-        return None
-    return {name: [t['tag'] for t in (md.get(name) or []) if t.get('tag')] for name in _FIELDS}
+    return await asyncio.to_thread(scene_store.tags_for, parsed['site_name'], parsed['cur_id'])
 
 
 def _locked_fields(item: dict[str, Any]) -> set[str]:
@@ -171,11 +165,12 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
     site_filter = {s.casefold() for s in sites} if sites else None
     client = PlexClient()
+    prefixes = _guid_prefixes()
     try:
         for section in await client.movie_sections():
             for stub in await client.section_items(section):
                 report.scanned += 1
-                rating_key = _our_rating_key(stub.get('guid') or '')
+                rating_key = _our_rating_key(stub.get('guid') or '', prefixes)
                 if not rating_key:
                     continue
                 report.matched += 1

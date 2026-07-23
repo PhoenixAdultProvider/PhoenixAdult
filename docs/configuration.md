@@ -103,8 +103,8 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `METADATA_CACHE_ENABLE` | `false` | Snapshot each scraped scene's metadata + images under the cache dir and serve cache-first afterward — offline-safe protection against a source going down or changing its anti-scrape. Manage/purge at `/metadata`. |
-| `METADATA_CACHE_DIR` | `./local/cache` | On-disk location for those snapshots (text + images). |
+| `METADATA_CACHE_ENABLE` | `false` | Snapshot each scraped scene's metadata + images and serve cache-first afterward — offline-safe protection against a source going down or changing its anti-scrape. Scene text lives in `STATE_DB_PATH`; manage/purge at `/metadata`. |
+| `METADATA_CACHE_DIR` | `./local/cache` | On-disk location for the snapshot image files. |
 
 ### People Cache & Sources
 
@@ -231,7 +231,7 @@ Notes:
 | `PHOENIX_EXTRA_COLLECTIONS` | `false` | Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther. |
 | `DISABLE_AUTO_MATCH` | `false` | Suppress every match request Plex did not flag as user-initiated (`manual=1`). |
 | `SCENE_GAP` | `10` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 10–45s random jitter is always added on top, and at most 8 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead (watch it at `/queue`); finished background searches persist to the search store so a later scan consumes them. |
-| `SEARCH_QUEUE_DIR` | `./local/queue` | On-disk store for finished background search results from paced scrapers, so a later Plex scan matches without re-searching. Entries expire after 7 days. |
+| `STATE_DB_PATH` | `./local/state.db` | SQLite database (WAL) holding queue replays, the search store, and the scene snapshot store (see [database.md](database.md)). Scene text is primary data — do not delete this file; back it up with `VACUUM INTO`. Restart to apply. |
 | `SEARCH_STRIP_ACTORS` | _(unset)_ | Sites whose filenames lead with actor names: the names are dropped when building the site search, and title scoring uses the best of the stripped and unstripped title. Entries match a site, a studio, or a whole network (e.g. `Nubiles`). |
 
 ### Network

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.config.env import env
@@ -16,12 +16,15 @@ router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
 
+_SORT_KEYS = ('title', 'studio', 'release_date', 'updated_at')
+
 
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries = await asyncio.to_thread(metadata_cache.entries)
+    entries, total = await asyncio.to_thread(metadata_cache.entries_page)
     dup_keys = await asyncio.to_thread(metadata_cache.duplicate_entries)
+    studios = await asyncio.to_thread(metadata_cache.studios)
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     token_json = json.dumps(token).replace('<', '\\u003c')
@@ -30,6 +33,8 @@ async def page(request: Request) -> HTMLResponse:
         _TEMPLATE.replace('__STATE__', state)
         .replace('__TOKEN__', token_json)
         .replace('__ENTRIES_JSON__', entries_json)
+        .replace('__TOTAL__', json.dumps(total))
+        .replace('__STUDIOS__', json.dumps(studios).replace('<', '\\u003c'))
         .replace('__DUP_KEYS__', json.dumps(dup_keys).replace('<', '\u003c'))
     )
     return HTMLResponse(body)
@@ -41,11 +46,25 @@ async def state() -> JSONResponse:
 
 
 @router.get('/entries')
-async def entries_json() -> JSONResponse:
+async def entries_json(
+    studio: str = '',
+    query: str = Query('', alias='q'),
+    sort: str = 'updated_at',
+    direction: str = Query('desc', alias='dir'),
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+) -> JSONResponse:
+    sort = sort if sort in _SORT_KEYS else 'updated_at'
+    direction = direction if direction in ('asc', 'desc') else 'desc'
+    entries, total = await asyncio.to_thread(
+        lambda: metadata_cache.entries_page(studio=studio, query=query, sort=sort, direction=direction, limit=limit, offset=offset)
+    )
     return JSONResponse(
         {
-            'entries': await asyncio.to_thread(metadata_cache.entries),
+            'entries': entries,
             'dup_keys': await asyncio.to_thread(metadata_cache.duplicate_entries),
+            'total': total,
+            'studios': await asyncio.to_thread(metadata_cache.studios),
         }
     )
 

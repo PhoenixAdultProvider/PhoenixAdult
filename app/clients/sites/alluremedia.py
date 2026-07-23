@@ -171,8 +171,8 @@ class AllureMediaClient(Client):
             ('//div[contains(@class,"photo_gallery_block")]//img', ('src',)),
             ('//div[contains(@class,"columns") and contains(@class,"mb")]//img', ('src0_2x', 'src')),
         ):
-            for el in details_page_elements.xpath(selector):
-                src = next((v for a in attrs if (v := el.xpath(f'@{a}').get())), '')
+            for row in details_page_elements.xpath(selector):
+                src = next((v for a in attrs if (v := row.xpath(f'@{a}').get())), '')
                 if src:
                     thumbs.append(src)
 

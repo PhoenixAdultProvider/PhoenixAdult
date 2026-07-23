@@ -118,7 +118,7 @@ class IntersecClient(Client):
         details_page_elements = scene.require_sel()
 
         dark = details_page_elements.xpath('(//div[contains(@class,"has-text-white-ter")])[1]//a[contains(@class,"is-dark")]')
-        entries = [ActorResult(name=first_attr(el)) for el in dark[:-1]]
+        entries = [ActorResult(name=first_attr(row)) for row in dark[:-1]]
 
         metadata.actors = self.dedup_people(entries)
 

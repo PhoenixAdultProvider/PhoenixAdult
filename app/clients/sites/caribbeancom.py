@@ -88,8 +88,8 @@ class CaribbeancomClient(Client):
         if constructed != scene.url:
             images.append(constructed)
 
-        for el in details_page_elements.xpath('//img[contains(@class,"gallery-image")]'):
-            src = first_attr(el, '@src')
+        for row in details_page_elements.xpath('//img[contains(@class,"gallery-image")]'):
+            src = first_attr(row, '@src')
             if not src:
                 continue
 

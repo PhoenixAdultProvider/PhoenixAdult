@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-import json
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from app.clients.base import SearchResult
+from app.utils import db
 from app.utils.cache import search_store
 
 KEY = ('Nubile Films', 'cool scene', '2024-01-01', '', '')
 
 
 @pytest.fixture(autouse=True)
-def _store_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    monkeypatch.setenv('SEARCH_QUEUE_DIR', str(tmp_path))
-    return tmp_path
+def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
+    yield tmp_path
+    db.close()
 
 
 def test_normalize_text_lowers_and_collapses_whitespace() -> None:
@@ -30,38 +32,17 @@ def test_round_trip_preserves_results() -> None:
     assert loaded[0] == results[0]
 
 
-def test_empty_results_are_not_persisted(_store_dir: Path) -> None:
+def test_empty_results_are_not_persisted() -> None:
     search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
     search_store.save(KEY, [])
     assert search_store.load(KEY) is None
-    assert not list(_store_dir.glob('*.json'))
 
 
-def test_stored_empty_results_are_treated_as_a_miss(_store_dir: Path) -> None:
+def test_expired_entry_is_dropped() -> None:
     search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
-    path = next(_store_dir.glob('*.json'))
-    payload = json.loads(path.read_text(encoding='utf-8'))
-    payload['results'] = []
-    path.write_text(json.dumps(payload), encoding='utf-8')
+    db.connect().execute('UPDATE searches SET saved_at = ?', (time.time() - search_store._STORE_TTL - 1,))
     assert search_store.load(KEY) is None
-    assert not path.exists()
-
-
-def test_miss_and_corrupt_file_return_none(_store_dir: Path) -> None:
-    assert search_store.load(KEY) is None
-    search_store.save(KEY, [SearchResult(title='X', scene_url='https://x/1', cur_id='abc')])
-    next(_store_dir.glob('*.json')).write_text('not json', encoding='utf-8')
-    assert search_store.load(KEY) is None
-
-
-def test_expired_entry_is_dropped(_store_dir: Path) -> None:
-    search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
-    path = next(_store_dir.glob('*.json'))
-    payload = json.loads(path.read_text(encoding='utf-8'))
-    payload['saved_at'] = time.time() - search_store._STORE_TTL - 1
-    path.write_text(json.dumps(payload), encoding='utf-8')
-    assert search_store.load(KEY) is None
-    assert not path.exists()
+    assert db.connect().execute('SELECT COUNT(*) c FROM searches').fetchone()['c'] == 0
 
 
 def test_load_similar_matches_longer_renamed_query() -> None:
@@ -84,3 +65,12 @@ def test_find_title_resolves_cur_id_to_stored_result() -> None:
     assert search_store.find_title('xyz9') == ('Only You', 'Girls Only Porn')
     assert search_store.find_title('missing') is None
     assert search_store.find_title('') is None
+
+
+def test_sweep_expired_deletes_only_stale_rows() -> None:
+    search_store.save(KEY, [SearchResult(title='Fresh', scene_url='https://x/1', cur_id='abc')])
+    stale = ('Bratty Sis', 'old scene', '2020-01-01', '', '')
+    search_store.save(stale, [SearchResult(title='Old', scene_url='https://x/2', cur_id='old1')])
+    db.connect().execute("UPDATE searches SET saved_at = ? WHERE site = 'Bratty Sis'", (time.time() - search_store._STORE_TTL - 1,))
+    assert search_store.sweep_expired() == 1
+    assert search_store.load(KEY) is not None

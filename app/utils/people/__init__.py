@@ -37,13 +37,9 @@ def _clean_name(raw: str) -> str:
 
 
 def _studio_index_for(studio: str, site_name: str) -> str | None:
-    s1 = studio.replace(' ', '').lower()
-    s2 = site_name.replace(' ', '').lower()
-    for idx, names in actor_rules().studio_indexes.items():
-        lc = [n.replace(' ', '').lower() for n in names]
-        if s1 in lc or s2 in lc:
-            return idx
-    return None
+    lookup = actor_rules().studio_index_lookup
+    hits = [hit for hit in (lookup.get(studio.replace(' ', '').lower()), lookup.get(site_name.replace(' ', '').lower())) if hit is not None]
+    return min(hits)[1] if hits else None
 
 
 def apply_name_aliases(name: str, studio: str, site_name: str) -> str:
@@ -52,14 +48,11 @@ def apply_name_aliases(name: str, studio: str, site_name: str) -> str:
     rules = actor_rules()
     search = name.lower()
     idx = _studio_index_for(studio, site_name)
-    if idx is not None and idx in rules.replace_studios:
-        for canonical, aliases in rules.replace_studios[idx].items():
-            if canonical.lower() == search or search in [a.lower() for a in aliases]:
-                return canonical
-    for canonical, aliases in rules.replace.items():
-        if canonical.lower() == search or search in [a.lower() for a in aliases]:
+    if idx is not None:
+        canonical = rules.replace_studio_lookups.get(idx, {}).get(search)
+        if canonical is not None:
             return canonical
-    return name
+    return rules.replace_lookup.get(search, name)
 
 
 async def _head_is_ok(url: str, headers: dict[str, str]) -> bool:
@@ -88,22 +81,24 @@ class PeopleManager:
         self._actors: list[PersonInput] = []
         self._directors: list[PersonInput] = []
         self._producers: list[PersonInput] = []
+        self._seen: dict[str, set[str]] = {'actor': set(), 'director': set(), 'producer': set()}
         self._sem = asyncio.Semaphore(_MAX_CONCURRENT_LOOKUPS)
 
-    def add_actor(self, name: str, photo: str, gender: Gender = '', role: str = '') -> None:
-        if any(a.name == name for a in self._actors):
+    def _add(self, kind: str, group: list[PersonInput], name: str, photo: str, gender: Gender = '', role: str = '') -> None:
+        seen = self._seen[kind]
+        if name in seen:
             return
-        self._actors.append(PersonInput(name=name, photo=photo, gender=gender, role=role))
+        seen.add(name)
+        group.append(PersonInput(name=name, photo=photo, gender=gender, role=role))
+
+    def add_actor(self, name: str, photo: str, gender: Gender = '', role: str = '') -> None:
+        self._add('actor', self._actors, name, photo, gender, role)
 
     def add_director(self, name: str, photo: str, role: str = '') -> None:
-        if any(a.name == name for a in self._directors):
-            return
-        self._directors.append(PersonInput(name=name, photo=photo, role=role))
+        self._add('director', self._directors, name, photo, role=role)
 
     def add_producer(self, name: str, photo: str, role: str = '') -> None:
-        if any(a.name == name for a in self._producers):
-            return
-        self._producers.append(PersonInput(name=name, photo=photo, role=role))
+        self._add('producer', self._producers, name, photo, role=role)
 
     async def resolve_all(
         self, *, studio: str, site_name: str, referers: list[str] | None = None, cookies: list[str] | None = None

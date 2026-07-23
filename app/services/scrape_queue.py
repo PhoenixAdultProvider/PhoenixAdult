@@ -5,52 +5,32 @@ import json
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-from app.config.env import env
+from app.utils import db
 from app.utils.logging.logger import logger
 
 _MAX_PENDING = 500
 
 
-def _state_path() -> Path:
-    return Path(env.search_queue_dir) / 'queue-state.json'
-
-
-def _read_state() -> dict[str, dict[str, Any]]:
-    try:
-        data = json.loads(_state_path().read_text(encoding='utf-8'))
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
-
-
-def _write_state(state: dict[str, dict[str, Any]]) -> None:
-    try:
-        _state_path().parent.mkdir(parents=True, exist_ok=True)
-        _state_path().write_text(json.dumps(state), encoding='utf-8')
-    except OSError as err:
-        logger.warn('scrape-queue', f'could not persist queue state: {err}')
-
-
 def _persist_add(key: str, replay: dict[str, Any]) -> None:
-    state = _read_state()
-    state[key] = replay
-    _write_state(state)
+    conn = db.connect()
+    conn.execute('INSERT OR REPLACE INTO queue_replays(key, replay, queued_at) VALUES(?, ?, ?)', (key, json.dumps(replay), time.time()))
+    conn.commit()
 
 
 def _persist_remove(key: str) -> None:
-    state = _read_state()
-    if state.pop(key, None) is not None:
-        _write_state(state)
+    conn = db.connect()
+    conn.execute('DELETE FROM queue_replays WHERE key = ?', (key,))
+    conn.commit()
 
 
 def take_replays() -> dict[str, dict[str, Any]]:
     """Drain persisted job descriptors (restart recovery); re-enqueueing re-persists them."""
-    state = _read_state()
-    if state:
-        _write_state({})
+    conn = db.connect()
+    state = {str(r['key']): json.loads(r['replay']) for r in conn.execute('SELECT key, replay FROM queue_replays')}
+    conn.execute('DELETE FROM queue_replays')
+    conn.commit()
     return state
 
 

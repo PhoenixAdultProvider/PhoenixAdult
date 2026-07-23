@@ -61,9 +61,9 @@ class ScrewMeTooClient(Client):
 
         actors: list[ActorResult] = []
         last_model_sel: Selector | None = None
-        for el in details_page_elements['sel'].xpath('//a[contains(@title,"Model Bio")]'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
+        for row in details_page_elements['sel'].xpath('//a[contains(@title,"Model Bio")]'):
+            name = first_attr(row, 'normalize-space(.)')
+            href = first_attr(row, '@href')
             if not name or not href:
                 continue
 

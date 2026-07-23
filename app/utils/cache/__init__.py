@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import re
 import shutil
+import sqlite3
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote
 
 import httpx2
 
 from app.config import config, people_image_base
 from app.config.env import env
-from app.models.metadata import PlexCollection, PlexGenre, PlexImage, PlexMetadataResponse, PlexRole
+from app.models.metadata import PlexCollection, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
 from app.registry import SITE_DEFINITIONS, find_site
+from app.utils.cache import scene_store
 from app.utils.fs.paths import safe_join
 from app.utils.genres import NormalizeGenresOptions, normalize_genres
-from app.utils.helpers.helpers import slugify
-from app.utils.images.ext import IMAGE_EXTS
+from app.utils.helpers.helpers import hash_key, slugify
+from app.utils.images.ext import ext_from
 from app.utils.images.image_fetcher import fetch_image
 from app.utils.images.proxy import proxy_params
 from app.utils.logging.logger import logger
 from app.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
+from app.utils.plex.rating_key import parse_rating_key
 from app.utils.processors.studio_name import normalize_studio
 from app.utils.processors.text_normalize import normalize_text
 from app.utils.processors.title_case import title_case, title_sort
@@ -33,8 +34,6 @@ if TYPE_CHECKING:
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
-_index: dict[str, str] | None = None
-_index_dir: str | None = None
 _write_locks: dict[str, asyncio.Lock] = {}
 _write_lock_users: dict[str, int] = {}
 
@@ -66,8 +65,7 @@ def _hash(site_name: str, cur_id: str) -> str:
     scoped by the resolved site so two sites sharing a cur_id don't collide."""
     site = find_site(site_name)
     base = site.name if site else site_name
-    raw = f'{slugify(base)}\n{cur_id}'
-    return hashlib.sha1(raw.encode('utf-8')).hexdigest()[:12]  # noqa: S324 - non-crypto key
+    return hash_key(slugify(base), cur_id, sep='\n', length=12)
 
 
 def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
@@ -88,24 +86,6 @@ def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
     if site and _scraper_site_count(site.scraper_config.type) >= 2:
         return f'{studio_slug}/{slugify(tagline) or studio_slug}'
     return studio_slug
-
-
-def _ensure_index() -> dict[str, str]:
-    global _index, _index_dir
-    directory = cache_dir()
-    if _index is not None and _index_dir == directory:
-        return _index
-    idx: dict[str, str] = {}
-    root = Path(directory)
-    if root.exists():
-        for meta_file in root.rglob('meta.json'):
-            parent = meta_file.parent
-            if parent.name.endswith('.tmp'):
-                continue
-            idx[parent.name] = parent.relative_to(root).as_posix()
-    _index, _index_dir = idx, directory
-    logger.info('meta-cache', f'Indexed {len(idx)} snapshot(s) ({directory})')
-    return _index
 
 
 # ── Data18 Manual-Mapping Change Detection ────────────────────────────────────
@@ -199,27 +179,14 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
     """Return the frozen PlexMetadataResponse dict, or None if not snapshotted."""
     if not enabled():
         return None
-    scene_hash = _hash(site_name, cur_id)
-    rel_path = _ensure_index().get(scene_hash)
-    if not rel_path:
-        return None
-    try:
-        loaded = json.loads((Path(cache_dir()) / rel_path / 'meta.json').read_text(encoding='utf-8'))
-    except (OSError, ValueError) as err:
-        logger.warn('meta-cache', f'snapshot read failed {rel_path}: {err}')
-        return None
-    if not isinstance(loaded, dict):
+    loaded = scene_store.load(_hash(site_name, cur_id))
+    if loaded is None:
         return None
     rebased = _rebase(loaded, config.base_url.rstrip('/'), people_image_base().rstrip('/'))
     return rebased if isinstance(rebased, dict) else None
 
 
 # ── Write ────────────────────────────────────────────────────────────────────
-
-
-def _ext_of(url: str) -> str:
-    suffix = Path(urlsplit(url).path).suffix.lower()
-    return suffix if suffix in IMAGE_EXTS else '.jpg'
 
 
 def _rebase(obj: Any, base: str, people_base: str) -> Any:
@@ -262,7 +229,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     _write_lock_users[scene_hash] = _write_lock_users.get(scene_hash, 0) + 1
     try:
         async with lock:
-            return await _write_locked(response, scene_hash, rel_path, final_dir)
+            return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir)
     finally:
         _write_lock_users[scene_hash] -= 1
         if _write_lock_users[scene_hash] == 0:
@@ -270,13 +237,14 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
             _write_locks.pop(scene_hash, None)
 
 
-async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
+async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
     data = response.model_dump(by_alias=True, exclude_none=True)
     meta: dict[str, Any] = data['MediaContainer']['Metadata'][0]
     base = config.base_url.rstrip('/')
     counter = [0]
+    image_meta: dict[str, tuple[int, int, int]] = {}
 
     shutil.rmtree(tmp_dir, ignore_errors=True)
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -295,7 +263,7 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
             if '/images/local/' in url:
                 return url[url.index('/images/local/') :]
             target, referers, cookies = proxy_params(url)
-            name = f'{hint}-{counter[0]:02d}{_ext_of(target)}'
+            name = f'{hint}-{counter[0]:02d}{ext_from("", target)}'
             counter[0] += 1
             try:
                 async with sem:
@@ -303,7 +271,9 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
                 img_dir = tmp_dir / 'images'
                 img_dir.mkdir(exist_ok=True)
                 (img_dir / name).write_bytes(entry.data)
-                return f'/cache/{rel_path}/images/{name}'
+                local = f'/cache/{rel_path}/images/{name}'
+                image_meta[local] = (entry.width, entry.height, len(entry.data))
+                return local
             except (httpx2.HTTPError, ValueError, OSError) as err:
                 logger.debug('meta-cache', f'image download failed {target}: {err!r}')
                 return _relativize(url)
@@ -322,7 +292,6 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
         jobs.extend(_assign(rating, 'image', 'rating') for rating in meta.get('Rating', []) if rating.get('image'))
         await asyncio.gather(*jobs)
 
-        (tmp_dir / 'meta.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
         if final_dir.exists():
             shutil.rmtree(final_dir, ignore_errors=True)
         tmp_dir.rename(final_dir)
@@ -331,7 +300,11 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
         logger.warn('meta-cache', f'snapshot write failed {rel_path}: {err}')
         return False
 
-    _ensure_index()[scene_hash] = rel_path
+    try:
+        scene_store.upsert(site_name, cur_id, scene_hash, rel_path, data, image_meta)
+    except sqlite3.Error as err:
+        logger.warn('meta-cache', f'snapshot db write failed {rel_path}: {err}')
+        return False
     logger.info('meta-cache', f'snapshot saved {rel_path} ({meta.get("title", "")})')
     return True
 
@@ -339,79 +312,69 @@ async def _write_locked(response: PlexMetadataResponse, scene_hash: str, rel_pat
 # ── Management (UI) ──────────────────────────────────────────────────────────
 
 
-def entries() -> list[dict[str, Any]]:
-    """All snapshots, newest first, for the /metadata UI."""
+def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     from app.clients.aggregators.data18 import mapping_slug
 
-    out: list[dict[str, Any]] = []
-    root = Path(cache_dir())
-    if not root.exists():
-        return out
-    for mj in root.rglob('meta.json'):
-        scene = mj.parent
-        if scene.name.endswith('.tmp'):
-            continue
-        try:
-            data = json.loads(mj.read_text(encoding='utf-8'))
-            md = (data.get('MediaContainer', {}).get('Metadata') or [{}])[0]
-            mtime = mj.stat().st_mtime
-        except (OSError, ValueError):
-            continue
-        rel = scene.relative_to(root).as_posix()
-        segs = rel.split('/')
-        d18 = md.get('data18') or {}
-        out.append(
-            {
-                'key': rel,
-                'site_slug': segs[-2] if len(segs) >= 2 else rel,
-                'studio_dir': segs[-3] if len(segs) >= 3 else '',
-                'hash': segs[-1],
-                'title': md.get('title', ''),
-                'studio': md.get('studio', ''),
-                'tagline': md.get('tagline', ''),
-                'collections': [t for t in ((c or {}).get('tag', '') for c in md.get('Collection') or []) if t],
-                'date': md.get('originallyAvailableAt', ''),
-                'thumb': md.get('thumb', ''),
-                'images': len(md.get('Image', [])),
-                'mtime': mtime,
-                'data18_id': d18.get('id', ''),
-                'data18_type': d18.get('type', ''),
-                'mapping_slug': mapping_slug(md.get('title', ''), md.get('tagline') or md.get('studio')) or '',
-            }
-        )
-    out.sort(key=lambda e: e['mtime'], reverse=True)
-    return out
+    rel = row['rel_path']
+    segs = rel.split('/')
+    return {
+        'key': rel,
+        'site_slug': segs[-2] if len(segs) >= 2 else rel,
+        'studio_dir': segs[-3] if len(segs) >= 3 else '',
+        'hash': segs[-1],
+        'title': row['title'],
+        'studio': row['studio'],
+        'tagline': row['tagline'],
+        'collections': row['collections'],
+        'date': row['release_date'],
+        'thumb': row['thumb'],
+        'images': row['images'],
+        'mtime': row['updated_at'],
+        'data18_id': row['data18_id'],
+        'data18_type': row['data18_type'],
+        'mapping_slug': mapping_slug(row['title'], row['tagline'] or row['studio'] or None) or '',
+    }
+
+
+def entries() -> list[dict[str, Any]]:
+    """All snapshots, newest first, for the /metadata UI."""
+    rows, _total = scene_store.query_entry_rows(limit=-1)
+    return [_ui_entry(row) for row in rows]
+
+
+def entries_page(
+    *,
+    studio: str = '',
+    query: str = '',
+    sort: str = 'updated_at',
+    direction: str = 'desc',
+    limit: int = 500,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
+    """One filtered/sorted page of snapshots for the /metadata UI, with the total match count."""
+    rows, total = scene_store.query_entry_rows(studio=studio, query=query, sort=sort, direction=direction, limit=limit, offset=offset)
+    return [_ui_entry(row) for row in rows], total
+
+
+def studios() -> list[str]:
+    """Distinct studio names across stored snapshots, for the /metadata studio filter."""
+    return scene_store.studio_names()
 
 
 def change_token() -> str:
-    """Cheap fingerprint of the snapshot set (count + newest mtime), stat-only —
-    the UI polls this and refetches entries only when it changes."""
-    root = Path(cache_dir())
-    if not root.exists():
-        return '0:0'
-    count, newest = 0, 0.0
-    for mj in root.rglob('meta.json'):
-        if mj.parent.name.endswith('.tmp'):
-            continue
-        try:
-            newest = max(newest, mj.stat().st_mtime)
-        except OSError:
-            continue
-        count += 1
-    return f'{count}:{newest}'
+    """Cheap fingerprint of the snapshot set (count + newest write time) — the UI
+    polls this and refetches entries only when it changes."""
+    return scene_store.change_token()
 
 
 def purge(key: str) -> bool:
-    """Remove one snapshot by its relative path. Leaf dirs only — an intermediate
-    studio dir (no meta.json) is refused so one purge can't wipe a whole studio."""
-    target = safe_join(cache_dir(), key)
-    if target is None or not target.exists() or not (target / 'meta.json').exists():
+    """Remove one snapshot (row + image folder) by its relative path. Only exact stored
+    scene paths are accepted, so one purge can't wipe a whole studio."""
+    if not scene_store.delete(key):
         return False
-    shutil.rmtree(target, ignore_errors=True)
-    if _index is not None:
-        leaf = key.rsplit('/', 1)[-1]
-        if _index.get(leaf) == key:
-            del _index[leaf]
+    target = safe_join(cache_dir(), key)
+    if target is not None:
+        shutil.rmtree(target, ignore_errors=True)
     logger.info('meta-cache', f'purged snapshot {key}')
     return True
 
@@ -420,17 +383,11 @@ def duplicate_entries() -> list[str]:
     """Rel paths of sub-site-less snapshots superseded by a sub-site-bearing twin of the same
     scene; a lone sub-site-less snapshot is never reported (its twin is unprovable)."""
     from app.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
-    from app.utils.plex.rating_key import parse_rating_key
 
-    index = _ensure_index()
-    root = Path(cache_dir())
+    keys = scene_store.scene_keys()
+    by_hash = {scene_hash: rel for scene_hash, rel, _rating_key in keys}
     stale: set[str] = set()
-    for rel in set(index.values()):
-        try:
-            data = json.loads((root / rel / 'meta.json').read_text(encoding='utf-8'))
-            rating_key = ((data.get('MediaContainer') or {}).get('Metadata') or [{}])[0].get('ratingKey') or ''
-        except (OSError, ValueError):
-            continue
+    for _scene_hash, rel, rating_key in keys:
         parsed = parse_rating_key(rating_key)
         if not parsed or not parsed['cur_id'] or not parsed['site_name']:
             continue
@@ -440,7 +397,7 @@ def duplicate_entries() -> list[str]:
             continue
         if not subsite:
             continue
-        old_rel = index.get(_hash(parsed['site_name'], b64url_encode(payload)))
+        old_rel = by_hash.get(_hash(parsed['site_name'], b64url_encode(payload)))
         if old_rel and old_rel != rel:
             stale.add(old_rel)
     return sorted(stale)
@@ -625,67 +582,105 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
     return changed
 
 
+def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bool:
+    title = md.title
+    if scraper_type == 'nubiles':
+        from app.clients.networks.nubiles import strip_episode_tag
+
+        title = strip_episode_tag(title)
+    cased_title = title_case(title, site_name=studio, scraper_type=scraper_type)
+    if not cased_title or cased_title == md.title:
+        return False
+    md.title = cased_title
+    md.titleSort = title_sort(cased_title)
+    return True
+
+
+def _normalize_summary(md: PlexMetadata) -> bool:
+    if not md.summary:
+        return False
+    cleaned_summary = normalize_text(md.summary)
+    if cleaned_summary == md.summary:
+        return False
+    md.summary = cleaned_summary
+    return True
+
+
+def _recase_studio_tagline(md: PlexMetadata, studio: str) -> bool:
+    changed = False
+    cased_studio = normalize_studio(studio)
+    if cased_studio and cased_studio != md.studio:
+        md.studio = cased_studio
+        changed = True
+    if md.tagline:
+        cased_tagline = normalize_studio(md.tagline)
+        if cased_tagline != md.tagline:
+            md.tagline = cased_tagline
+            changed = True
+    if md.tagline and md.tagline == md.studio:
+        md.tagline = None
+        changed = True
+    return changed
+
+
+def _recase_collections(md: PlexMetadata) -> bool:
+    if not md.Collection:
+        return False
+    tags = list(dict.fromkeys(normalize_studio(c.tag) for c in md.Collection if c.tag))
+    if tags == [c.tag for c in md.Collection]:
+        return False
+    md.Collection = [PlexCollection(tag=t) for t in tags]
+    return True
+
+
+def _renormalize_genres(md: PlexMetadata, studio: str) -> bool:
+    if not md.Genre:
+        return False
+    old = [g.tag for g in md.Genre]
+    new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio))
+    if new == old:
+        return False
+    md.Genre = [PlexGenre(tag=t) for t in new]
+    return True
+
+
+def _realias_people(md: PlexMetadata, studio: str) -> bool:
+    changed = False
+    for attr in ('Role', 'Director', 'Producer'):
+        roles: list[PlexRole] | None = getattr(md, attr)
+        if not roles:
+            continue
+        seen: set[str] = set()
+        kept: list[PlexRole] = []
+        for r in roles:
+            cased_name = re.sub(r'\s+', ' ', title_case(r.tag, type='name', site_name=studio)).strip()
+            aliased = apply_name_aliases(cased_name, studio, studio)
+            if aliased != r.tag:
+                r.tag = aliased
+                changed = True
+            if aliased.lower() in seen:
+                changed = True
+                continue
+            seen.add(aliased.lower())
+            kept.append(r)
+        if len(kept) != len(roles):
+            setattr(md, attr, kept)
+    return changed
+
+
 def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None) -> bool:
     """Re-run the current text rules on a cached response; mutates in place and returns True if
     anything changed. Applies new rules to what's stored — it can't restore values dropped at scrape."""
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
-        title = md.title
-        if scraper_type == 'nubiles':
-            from app.clients.networks.nubiles import strip_episode_tag
-
-            title = strip_episode_tag(title)
-        cased_title = title_case(title, site_name=studio, scraper_type=scraper_type)
-        if cased_title and cased_title != md.title:
-            md.title = cased_title
-            md.titleSort = title_sort(cased_title)
-            changed = True
-        if md.summary:
-            cleaned_summary = normalize_text(md.summary)
-            if cleaned_summary != md.summary:
-                md.summary = cleaned_summary
-                changed = True
-        cased_studio = normalize_studio(studio)
-        if cased_studio and cased_studio != md.studio:
-            md.studio = cased_studio
-            changed = True
-        if md.tagline:
-            cased_tagline = normalize_studio(md.tagline)
-            if cased_tagline != md.tagline:
-                md.tagline = cased_tagline
-                changed = True
-        if md.tagline and md.tagline == md.studio:
-            md.tagline = None
-            changed = True
-        if md.Collection:
-            tags = list(dict.fromkeys(normalize_studio(c.tag) for c in md.Collection if c.tag))
-            if tags != [c.tag for c in md.Collection]:
-                md.Collection = [PlexCollection(tag=t) for t in tags]
-                changed = True
-        if md.Genre:
-            old = [g.tag for g in md.Genre]
-            new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio))
-            if new != old:
-                md.Genre = [PlexGenre(tag=t) for t in new]
-                changed = True
-        for attr in ('Role', 'Director', 'Producer'):
-            roles: list[PlexRole] | None = getattr(md, attr)
-            if not roles:
-                continue
-            seen: set[str] = set()
-            kept: list[PlexRole] = []
-            for r in roles:
-                cased_name = re.sub(r'\s+', ' ', title_case(r.tag, type='name', site_name=studio)).strip()
-                aliased = apply_name_aliases(cased_name, studio, studio)
-                if aliased != r.tag:
-                    r.tag = aliased
-                    changed = True
-                if aliased.lower() in seen:
-                    changed = True
-                    continue
-                seen.add(aliased.lower())
-                kept.append(r)
-            if len(kept) != len(roles):
-                setattr(md, attr, kept)
+        for field_changed in (
+            _recase_title(md, studio, scraper_type),
+            _normalize_summary(md),
+            _recase_studio_tagline(md, studio),
+            _recase_collections(md),
+            _renormalize_genres(md, studio),
+            _realias_people(md, studio),
+        ):
+            changed = field_changed or changed
     return changed

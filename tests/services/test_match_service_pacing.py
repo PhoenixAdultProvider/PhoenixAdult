@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from app.clients.base import PacingDeferredError, SearchContext, SearchResult
 from app.models.provider_info import ProviderInfo
 from app.registry import find_site
 from app.services.match_service import MatchService
+from app.utils import db
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = find_site('Nubile Films')
@@ -16,9 +18,10 @@ assert SITE is not None
 
 
 @pytest.fixture(autouse=True)
-def _store_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    monkeypatch.setenv('SEARCH_QUEUE_DIR', str(tmp_path))
-    return tmp_path
+def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
+    yield tmp_path
+    db.close()
 
 
 def _ctx(title: str = 'cool scene') -> SearchContext:

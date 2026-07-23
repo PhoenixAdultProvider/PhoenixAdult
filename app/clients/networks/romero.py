@@ -73,8 +73,8 @@ class RomeroClient(Client):
             )
 
         parts: list[str] = []
-        for el in paras:
-            text = first_attr(el)
+        for row in paras:
+            text = first_attr(row)
             if text and text != '\xa0':
                 parts.append(text)
 
@@ -137,13 +137,13 @@ class RomeroClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(_clean_poster)
-        for el in details_page_elements.xpath('//img'):
-            cls = el.xpath('@class').get() or ''
+        for row in details_page_elements.xpath('//img'):
+            cls = row.xpath('@class').get() or ''
             if 'wp-image-4512' in cls or 'wp-image-492' in cls:
                 continue
 
             if ('alignnone' in cls and 'size-full' in cls) or 'size-medium' in cls:
-                images['push'](el.xpath('@src').get() or '')
+                images['push'](row.xpath('@src').get() or '')
 
         xpaths = (
             '//div[@class="iehand"]/a/@href',

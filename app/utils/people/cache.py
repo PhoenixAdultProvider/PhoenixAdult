@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import os
 import re
-import time
+import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -13,11 +13,12 @@ import httpx2
 
 from app.config import people_image_base
 from app.config.env import env
+from app.utils import db
 from app.utils.fs.paths import safe_join
 from app.utils.http.client import make_http
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.images import face_crop, face_crop_log
-from app.utils.images.ext import IMAGE_EXTS
+from app.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content_type
 from app.utils.logging.logger import logger
 from app.utils.people.generic import generic_image_url
 from app.utils.people.types import Gender, PersonType, parse_person_filename
@@ -94,18 +95,15 @@ def _local_url(relpath: str, data: bytes | None = None) -> str:
     return f'{people_image_base()}/images/local/{quoted}{bust}'
 
 
-# ── Index (cache of cache contents) ───────────────────────────────────────────
+# ── Index (people_images table; files are the source of truth) ────────────────
 
-_cached_dir: str | None = None
-_cached_sig: tuple[int, float] | None = None
-_cached_index: dict[str, str] = {}
-_sig_checked_at = 0.0
-_SIG_CHECK_INTERVAL = 30.0
+
+_index = db.ReconciledConn(people_cache_dir, lambda: _rebuild_index(db.connect()))
 
 
 def _served_files(root: Path) -> Iterator[Path]:
     """Cached served images across the type/gender subfolders — skips the originals/
-    backing store, per-folder .face_crop_log.json, and non-images."""
+    backing store, hidden files, and non-images."""
     for entry in root.rglob('*'):
         if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
             continue
@@ -114,56 +112,103 @@ def _served_files(root: Path) -> Iterator[Path]:
         yield entry
 
 
-def _dir_signature(directory: str) -> tuple[int, float]:
-    count = 0
-    mtime = 0.0
-    root = Path(directory)
-    if not root.exists():
-        return count, mtime
-    for entry in _served_files(root):
-        count += 1
-        try:
-            m = entry.stat().st_mtime
-            if m > mtime:
-                mtime = m
-        except OSError:
-            pass
-    return count, mtime
+def reconcile() -> None:
+    """Rebuild the people_images index from the files on disk."""
+    _index.reconcile()
 
 
-def _rebuild_index(directory: str) -> dict[str, str]:
-    idx: dict[str, str] = {}
-    root = Path(directory)
-    if not root.exists():
-        return idx
-    for entry in _served_files(root):
-        key = entry.stem.split('_', 1)[0]
-        idx.setdefault(key, entry.relative_to(root).as_posix())
-    return idx
+def _index_conn() -> sqlite3.Connection:
+    return _index.connect()
 
 
-def _get_index() -> dict[str, str]:
-    global _cached_dir, _cached_sig, _cached_index, _sig_checked_at
-    directory = people_cache_dir()
-    now = time.monotonic()
-    if _cached_dir == directory and now - _sig_checked_at < _SIG_CHECK_INTERVAL:
-        return _cached_index
-    sig = _dir_signature(directory)
-    _sig_checked_at = now
-    if _cached_dir == directory and _cached_sig == sig:
-        return _cached_index
-    logger.info('people-cache', f'Rebuilding Local Actor Image Index ({directory})')
-    _cached_index = _rebuild_index(directory)
-    _cached_dir = directory
-    _cached_sig = sig
-    return _cached_index
+def _rebuild_index(conn: sqlite3.Connection) -> None:
+    root = Path(people_cache_dir())
+    rows: list[tuple[str, str, str, str, str, float]] = []
+    if root.exists():
+        for entry in sorted(_served_files(root)):
+            type, slug, gender = parse_person_filename(entry.name)
+            if not type or not slug:
+                continue
+            try:
+                mtime = entry.stat().st_mtime
+            except OSError:
+                continue
+            rows.append((type, slug, gender, entry.suffix.lower(), entry.relative_to(root).as_posix(), mtime))
+    with conn:
+        conn.execute('DELETE FROM people_images')
+        conn.executemany('INSERT OR IGNORE INTO people_images(type, slug, gender, ext, rel_path, mtime) VALUES(?, ?, ?, ?, ?, ?)', rows)
+    logger.info('people-cache', f'Rebuilt Local Actor Image Index ({len(rows)} files)')
 
 
-def _invalidate_index() -> None:
-    global _cached_dir, _cached_sig, _sig_checked_at
-    _cached_dir = None
-    _cached_sig = None
-    _sig_checked_at = 0.0
+def _index_file(relpath: str) -> None:
+    """Upsert one served file's people_images row from its on-disk state."""
+    target = safe_join(people_cache_dir(), relpath)
+    if target is None:
+        return
+    type, slug, gender = parse_person_filename(target.name)
+    if not type or not slug:
+        return
+    try:
+        mtime = target.stat().st_mtime
+    except OSError:
+        return
+    conn = _index_conn()
+    with conn:
+        conn.execute(
+            'INSERT OR REPLACE INTO people_images(type, slug, gender, ext, rel_path, mtime) VALUES(?, ?, ?, ?, ?, ?)',
+            (type, slug, gender, target.suffix.lower(), relpath, mtime),
+        )
+
+
+def _drop_index_row(relpath: str) -> None:
+    conn = _index_conn()
+    with conn:
+        conn.execute('DELETE FROM people_images WHERE rel_path = ?', (relpath,))
+
+
+def _scan_miss(conn: sqlite3.Connection, type: PersonType, slug: str) -> tuple[str, str] | None:
+    """Manually-dropped files have no row yet: scan the type's subfolders for the
+    person and self-heal the index on a hit."""
+    root = Path(people_cache_dir())
+    subdirs = [f'actors/{bucket}' for bucket in ('male', 'female', 'trans', 'unknown')] if type == 'actor' else [f'{type}s']
+    for subdir in subdirs:
+        folder = root / subdir
+        if not folder.is_dir():
+            continue
+        for entry in sorted(folder.iterdir()):
+            if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
+                continue
+            ftype, fslug, gender = parse_person_filename(entry.name)
+            if (ftype, fslug) != (type, slug):
+                continue
+            relpath = f'{subdir}/{entry.name}'
+            try:
+                mtime = entry.stat().st_mtime
+            except OSError:
+                continue
+            with conn:
+                conn.execute(
+                    'INSERT OR REPLACE INTO people_images(type, slug, gender, ext, rel_path, mtime) VALUES(?, ?, ?, ?, ?, ?)',
+                    (ftype, fslug, gender, entry.suffix.lower(), relpath, mtime),
+                )
+            return relpath, gender
+    return None
+
+
+def _find_row(type: PersonType, slug: str) -> tuple[str, str] | None:
+    """(rel_path, gender) for a cached person: keyed lookup, stale rows healed
+    against disk, scan-on-miss fallback for manually-dropped files."""
+    conn = _index_conn()
+    while True:
+        row = conn.execute('SELECT rel_path, gender FROM people_images WHERE type = ? AND slug = ? ORDER BY rel_path LIMIT 1', (type, slug)).fetchone()
+        if row is None:
+            return _scan_miss(conn, type, slug)
+        relpath = str(row['rel_path'])
+        target = safe_join(people_cache_dir(), relpath)
+        if target is not None and target.is_file():
+            return relpath, str(row['gender'])
+        with conn:
+            conn.execute('DELETE FROM people_images WHERE rel_path = ?', (relpath,))
 
 
 # ── Public ─────────────────────────────────────────────────────────────────────
@@ -172,21 +217,11 @@ def _invalidate_index() -> None:
 def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
     if not cache_enabled():
         return None
-    key = _base_name(name, type)
-    relpath = _get_index().get(key)
-    if not relpath:
+    found = _find_row(type, _slug(name))
+    if found is None:
         return None
-    gender = parse_person_filename(Path(relpath).name)[2]
+    relpath, gender = found
     return {'served_url': _local_url(relpath), 'gender': gender}
-
-
-def _ext_for(content_type: str, upstream_url: str) -> str:
-    from_ct = content_type.split('/')[1].split(';')[0].lower() if '/' in content_type else ''
-    ext = f'.{"jpg" if from_ct == "jpeg" else from_ct}' if from_ct else ''
-    if not ext or ext not in IMAGE_EXTS:
-        tail = upstream_url.split('.')[-1].split('?')[0].lower() if '.' in upstream_url else ''
-        ext = f'.{tail}'
-    return ext if ext in IMAGE_EXTS else ''
 
 
 async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
@@ -197,7 +232,7 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
             resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
             resp.raise_for_status()
             content_type = resp.headers.get('content-type', 'image/jpeg')
-            if content_type.lower().startswith('image/'):
+            if is_image_content_type(content_type):
                 return resp.content, content_type
             logger.debug('people-cache', f'plain fetch returned non-image ({content_type}) for {url}; trying impersonate')
     except (httpx2.HTTPError, OSError) as err:
@@ -232,7 +267,7 @@ async def cache_photo(
         logger.warn('people-cache', f'image too large {upstream_url}')
         return None
 
-    ext = _ext_for(content_type, upstream_url)
+    ext = ext_from(content_type, upstream_url, default='')
     if not ext:
         logger.warn('people-cache', f'invalid extension for {upstream_url} (content-type={content_type})')
         return None
@@ -266,7 +301,7 @@ async def cache_photo(
         face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
 
     await asyncio.to_thread(_write)
-    _invalidate_index()
+    _index_file(relpath)
     logger.info('people-cache', f'cached {relpath}{" (face-cropped)" if cropped else ""}')
     return {'served_url': _local_url(relpath, data), 'gender': gender}
 
@@ -280,7 +315,7 @@ def _is_generic(url: str) -> bool:
 
 
 def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
-    return next((e for e in face_crop_log.recent(subdir_path) if e.get('filename') == filename), None)
+    return face_crop_log.entry_for(subdir_path, filename)
 
 
 async def restore_original(filename: str) -> bool:
@@ -315,7 +350,8 @@ async def restore_original(filename: str) -> bool:
         old = safe_join(directory, subdir, filename)
         if old is not None and old != target and old.exists():
             old.unlink()
-    _invalidate_index()
+        _drop_index_row(f'{subdir}/{filename}')
+    _index_file(f'{subdir}/{target_name}')
     face_crop_log.update(str(subdir_path), filename, filename=target_name, cropped=False)
     logger.info('people-cache', f'restored original for {subdir}/{target_name}')
     return True
@@ -339,7 +375,7 @@ def purge(filename: str) -> bool:
         orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
         if orig is not None and orig.exists():
             orig.unlink()
-    _invalidate_index()
+    _drop_index_row(f'{subdir}/{filename}')
     face_crop_log.remove(str(target.parent), filename)
     logger.info('people-cache', f'purged {subdir}/{filename}')
     return True
@@ -399,6 +435,7 @@ def set_gender(filename: str, new_gender: str) -> str | None:
             )
     else:
         face_crop_log.update(old_log, filename, filename=new_filename, base=new_base)
-    _invalidate_index()
+    _drop_index_row(f'{old_subdir}/{filename}')
+    _index_file(f'{new_subdir}/{new_filename}')
     logger.info('people-cache', f'gender set to "{new_gender or "none"}" -> {new_subdir}/{new_filename}')
     return new_filename

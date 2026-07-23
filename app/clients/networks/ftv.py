@@ -95,8 +95,8 @@ class FTVClient(Client):
         details_page_elements = scene.require_sel()
 
         names = []
-        for el in details_page_elements.xpath('//div[@id="ModelDescription"]//h1'):
-            n = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
+        for row in details_page_elements.xpath('//div[@id="ModelDescription"]//h1'):
+            n = (row.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if n:
                 names.append(n)
 
@@ -138,8 +138,8 @@ class FTVClient(Client):
         summary = (details_page_elements.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip()
         thumbs = details_page_elements.xpath('//div[@id="Thumbs"]//img/@src').getall()
         actors: list[ActorResult] = []
-        for idx, el in enumerate(details_page_elements.xpath('//div[@id="ModelDescription"]//h1')):
-            base_name = (el.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
+        for idx, row in enumerate(details_page_elements.xpath('//div[@id="ModelDescription"]//h1')):
+            base_name = (row.xpath('string(.)').get() or '').replace("'s Statistics", '').strip()
             if not base_name:
                 continue
 

@@ -147,10 +147,10 @@ class BangClient(Client):
     def _tagline_of(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
-        for el in details_page_elements.xpath('//p[contains(.,"eries:")]//a'):
-            href = el.xpath('@href').get() or ''
+        for row in details_page_elements.xpath('//p[contains(.,"eries:")]//a'):
+            href = row.xpath('@href').get() or ''
             if 'originals' in href or 'videos' in href:
-                return _bangify(first_attr(el, 'normalize-space(.)'))
+                return _bangify(first_attr(row, 'normalize-space(.)'))
 
         return ''
 
@@ -227,9 +227,9 @@ class BangClient(Client):
         scene_els = details_page_elements.xpath('//div[contains(@class,"name")]/a[contains(@href,"pornstar") and not(@aria-label)]')
         if scene_els:
             actors: list[ActorResult] = []
-            for el in scene_els:
-                actor_name = (el.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or first_attr(el, 'normalize-space(.)')
-                img = first_attr(el, '(ancestor::div[1]/parent::*//img)[1]/@src')
+            for row in scene_els:
+                actor_name = (row.xpath('(.//span)[1]').xpath('normalize-space(.)').get() or '').strip() or first_attr(row, 'normalize-space(.)')
+                img = first_attr(row, '(ancestor::div[1]/parent::*//img)[1]/@src')
                 photo = img if img and 'placeholder' not in img else ''
                 if actor_name:
                     actors.append(ActorResult(name=actor_name, photo_url=photo))
@@ -252,9 +252,9 @@ class BangClient(Client):
             return ''
 
         refs: list[tuple[str, str]] = []
-        for el in details_page_elements.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
-            actor_name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
+        for row in details_page_elements.xpath('//div[contains(@class,"clear-both")]//a[contains(@href,"pornstar")]'):
+            actor_name = first_attr(row, 'normalize-space(.)')
+            href = first_attr(row, '@href')
             if actor_name and href:
                 refs.append((actor_name, absolute_url(href, scene.site.base_url)))
 
@@ -291,12 +291,12 @@ class BangClient(Client):
                 if poster:
                     out.append(poster)
 
-            for el in details_page_elements.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
-                src = first_attr(el, '@src')
+            for row in details_page_elements.xpath('//img[contains(@class,"object-cover") and contains(@class,"aspect-cover")]'):
+                src = first_attr(row, '@src')
                 if src:
                     out.append(src)
 
-                srcset = el.xpath('@srcset').get() or ''
+                srcset = row.xpath('@srcset').get() or ''
                 for part in srcset.split(','):
                     token = part.strip().split(' ')[0].strip()
                     if token:

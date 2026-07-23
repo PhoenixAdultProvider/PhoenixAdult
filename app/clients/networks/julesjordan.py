@@ -119,14 +119,14 @@ class JulesJordanClient(Client):
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in anchors:
-            actor_name = first_attr(el, 'normalize-space(.)')
+        for row in anchors:
+            actor_name = first_attr(row, 'normalize-space(.)')
             if not actor_name or actor_name in seen:
                 continue
 
             seen.add(actor_name)
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(row, '@href')
             if href:
                 actor_url = absolute_url(href, base)
                 model_page_elements = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')

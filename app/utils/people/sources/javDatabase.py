@@ -12,17 +12,17 @@ class _JavDatabaseSource:
     name = 'JAVDatabase'
 
     async def find(self, actor_name: str, ctx: PersonLookupContext) -> PhotoHit | None:
-        q = '+'.join(actor_name.split())
-        url = f'https://www.javdatabase.com/?wpessid=391488&s={q}'
+        query = '+'.join(actor_name.split())
+        url = f'https://www.javdatabase.com/?wpessid=391488&s={query}'
         logger.debug('javDatabaseSource', f'GET {url}')
         try:
             async with make_source_http() as client:
                 html = (await client.get(url)).text
                 best = ''
                 best_score = float('inf')
-                for el in Selector(text=html).xpath('//div[contains(@class,"idol-thumb")]//img[@class]'):
-                    name = (el.xpath('./@alt').get() or '').strip()
-                    src = el.xpath('./@data-src').get() or ''
+                for thumb_img in Selector(text=html).xpath('//div[contains(@class,"idol-thumb")]//img[@class]'):
+                    name = (thumb_img.xpath('./@alt').get() or '').strip()
+                    src = thumb_img.xpath('./@data-src').get() or ''
                     score = float(levenshtein(actor_name, name))
                     if score < best_score or not best:
                         best_score = score

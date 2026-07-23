@@ -103,14 +103,14 @@ class FinishesTheJobClient(Client):
         def push(raw: str) -> None:
             append_unique(images, raw, scene.site.base_url)
 
-        for el in details_page_elements.xpath('//video[@poster]'):
-            push(el.xpath('@poster').get() or '')
+        for row in details_page_elements.xpath('//video[@poster]'):
+            push(row.xpath('@poster').get() or '')
 
         title = first_text(details_page_elements, '//span[@itemprop="name"]').lower()
         if title:
-            for el in details_page_elements.xpath('//div[contains(@class,"first-set")]//img'):
-                alt = first_attr(el, '@alt').lower()
+            for row in details_page_elements.xpath('//div[contains(@class,"first-set")]//img'):
+                alt = first_attr(row, '@alt').lower()
                 if alt == title:
-                    push(el.xpath('@src').get() or '')
+                    push(row.xpath('@src').get() or '')
 
         metadata.art = images

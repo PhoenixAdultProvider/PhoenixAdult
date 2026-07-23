@@ -61,10 +61,10 @@ class MissaXClient(Client):
         details_page_elements = scene.require_sel()
 
         parts: list[str] = []
-        for el in details_page_elements.xpath(
+        for row in details_page_elements.xpath(
             '//span[@class="latest_update_description"] | //div[@class="container"]//p[@class="dvd-scenes__title"]/following-sibling::p'
         ):
-            t = (el.xpath('string(.)').get() or '').replace('\xa0', '').strip()
+            t = (row.xpath('string(.)').get() or '').replace('\xa0', '').strip()
             if t:
                 parts.append(t)
 

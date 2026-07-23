@@ -128,7 +128,7 @@ class VIP4KClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: image if image.startswith('http') else (f'https:{image}' if image.startswith('//') else image))
-        for el in details_page_elements.xpath('//div[contains(@class,"player-item__block")]//img'):
-            images['push']((el.xpath('@data-src').get() or el.xpath('@src').get() or '').strip())
+        for row in details_page_elements.xpath('//div[contains(@class,"player-item__block")]//img'):
+            images['push']((row.xpath('@data-src').get() or row.xpath('@src').get() or '').strip())
 
         metadata.art = images['list'] or []

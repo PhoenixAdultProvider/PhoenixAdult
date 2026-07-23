@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,7 +16,7 @@ from parsel import Selector
 
 from app.clients.base import Client, SearchContext, SearchResult
 from app.config.env import env
-from app.utils.helpers.helpers import append_unique, build_search_result, load_data, pack_cur_id, sceneid_distance_score, slugify
+from app.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
 from app.utils.helpers.html_helpers import first_attr
 from app.utils.images.image_classifier import classify_image
 from app.utils.images.image_fetcher import fetch_dimensions
@@ -47,11 +48,12 @@ class ManualMapping(TypedDict):
 def _load_manual_mappings(caller_file: str = __file__) -> dict[str, ManualMapping]:
     """Merge data18_manual_mappings.json with every data18_manual_mappings_*.json sibling
     (sorted by name, later files win on a duplicate id)."""
-    folder = Path(caller_file).parent / '_data' / 'json'
+    folder = Path(caller_file).parent / '_data' / 'data18'
     merged: dict[str, ManualMapping] = {}
     for name in ['data18_manual_mappings', *sorted(p.stem for p in folder.glob('data18_manual_mappings_*.json'))]:
-        if (folder / f'{name}.json').exists():
-            merged.update(load_data(caller_file, name))
+        path = folder / f'{name}.json'
+        if path.exists():
+            merged.update(json.loads(path.read_text(encoding='utf-8')))
 
     return merged
 

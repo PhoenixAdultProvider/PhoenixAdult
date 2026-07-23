@@ -98,9 +98,9 @@ class KinkClient(Client):
             return first_attr(sel, '(//div[contains(@class,"biography-container")]//img)[1]/@src')
 
         refs: list[tuple[str, str]] = []
-        for el in details_page_elements.xpath(xp):
-            name = (el.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
-            href = first_attr(el, '@href')
+        for row in details_page_elements.xpath(xp):
+            name = (row.xpath('normalize-space(.)').get() or '').replace(',', '').strip()
+            href = first_attr(row, '@href')
             if name:
                 refs.append((name, absolute_url(href, base) if href else ''))
 

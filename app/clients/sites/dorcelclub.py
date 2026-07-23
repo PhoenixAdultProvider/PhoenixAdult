@@ -147,8 +147,8 @@ class DorcelClubClient(Client):
 
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for el in els:
-            actor_name = first_attr(el, 'normalize-space(.)')
+        for row in els:
+            actor_name = first_attr(row, 'normalize-space(.)')
             if not actor_name or actor_name in seen:
                 continue
 

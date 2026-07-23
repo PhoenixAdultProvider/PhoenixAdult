@@ -17,6 +17,7 @@ from app.utils.http.headers import sanitize_header
 from app.utils.http.impersonate import impersonate_get_bytes
 from app.utils.http.pinned_fetch import fetch_pinned
 from app.utils.http.ssrf_guard import is_blocked_hostname
+from app.utils.images.ext import is_image_content_type
 from app.utils.logging.logger import logger
 
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
@@ -70,9 +71,6 @@ def _cache_put(url: str, entry: ImageEntry) -> None:
         _cache_total_bytes -= len(old.data)
     _cache[url] = entry
     _cache_total_bytes += len(entry.data)
-    now = time.time()
-    for key in [k for k, v in _cache.items() if now - v.cached_at >= _CACHE_TTL]:
-        _cache_total_bytes -= len(_cache.pop(key).data)
     while _cache_total_bytes > _CACHE_MAX_TOTAL_BYTES and _cache:
         _, evicted = _cache.popitem(last=False)
         _cache_total_bytes -= len(evicted.data)
@@ -124,7 +122,7 @@ def _accept_image_response(resp: httpx2.Response, url: str) -> tuple[bytes, str]
     resp.raise_for_status()
     content_type = resp.headers.get('content-type', '')
     data = resp.content
-    if not content_type.lower().startswith('image/'):
+    if not is_image_content_type(content_type):
         raise ValueError(f'non-image content-type "{content_type}" ({len(data)} bytes) from {url}')
     if len(data) > _max_bytes():
         raise ValueError(f'image too large ({len(data)} bytes > {_max_bytes()}) at {url}')

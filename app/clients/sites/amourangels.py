@@ -102,7 +102,7 @@ class AmourAngelsClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
-        for el in details_page_elements.xpath('//td[contains(@class,"noisebg")]//div//img'):
-            images['push'](first_attr(el, '@src'))
+        for row in details_page_elements.xpath('//td[contains(@class,"noisebg")]//div//img'):
+            images['push'](first_attr(row, '@src'))
 
         metadata.art = images['list']

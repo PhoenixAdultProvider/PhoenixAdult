@@ -22,11 +22,11 @@ _LABEL_XP = ' | '.join(f'//{t}' for t in _LABELS)
 
 def _label_text_value(sel: Any, label: str) -> str:
     target = label.strip()
-    for el in sel.xpath(_LABEL_XP):
-        if first_attr(el, 'normalize-space(.)') != target:
+    for row in sel.xpath(_LABEL_XP):
+        if first_attr(row, 'normalize-space(.)') != target:
             continue
 
-        for node in el.xpath('following-sibling::text()').getall():
+        for node in row.xpath('following-sibling::text()').getall():
             txt = str(node).strip()
             if txt:
                 return txt
@@ -36,11 +36,11 @@ def _label_text_value(sel: Any, label: str) -> str:
 
 def _label_link_value(sel: Any, label: str) -> str:
     target = label.strip()
-    for el in sel.xpath(_LABEL_XP):
-        if first_attr(el, 'normalize-space(.)') != target:
+    for row in sel.xpath(_LABEL_XP):
+        if first_attr(row, 'normalize-space(.)') != target:
             continue
 
-        return first_attr(el, 'following-sibling::span[1]//a[1]/text()')
+        return first_attr(row, 'following-sibling::span[1]//a[1]/text()')
 
     return ''
 

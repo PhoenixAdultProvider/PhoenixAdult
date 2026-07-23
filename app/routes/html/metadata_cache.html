@@ -29,6 +29,8 @@
       border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 12px;
     }
     .reset-btn:hover { color: #e2e8f0; border-color: #475569; }
+    .reset-btn:disabled { color: #475569; border-color: #1e2433; cursor: not-allowed; }
+    #pager { display: none; gap: 8px; align-items: center; align-self: flex-end; }
 
     /* ── Table ── */
     .wrap { overflow-x: auto; }
@@ -74,11 +76,11 @@
   <div class="filters">
     <div class="filter-group">
       <label>Search</label>
-      <input type="text" id="q" placeholder="title, studio, tagline…" oninput="render()">
+      <input type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
     </div>
     <div class="filter-group">
       <label>Studio</label>
-      <select id="f-studio" onchange="render()"><option value="">All</option></select>
+      <select id="f-studio" onchange="studioChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Year</label>
@@ -114,6 +116,11 @@
     <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
     <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
     <span class="count-badge" id="count"></span>
+    <span id="pager">
+      <button class="reset-btn" id="prevBtn" onclick="prevPage()">Previous</button>
+      <span class="count-badge" id="pageInfo"></span>
+      <button class="reset-btn" id="nextBtn" onclick="nextPage()">Next</button>
+    </span>
   </div>
 
   <div class="wrap">
@@ -140,12 +147,53 @@
     const TOKEN = __TOKEN__;
     const DUP_KEYS = __DUP_KEYS__;
     let ALL = __ENTRIES_JSON__;
+    let TOTAL = __TOTAL__;
+    let STUDIOS = __STUDIOS__;
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     let shownKeys = [];
     let shownRows = [];
     const STORE_KEY = 'metadata-cache-filters';
     const FILTER_IDS = ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+
+    // ── Server-side query state: studio, q, sort, and pagination hit SQL ──
+    const PAGE_SIZE = 500;
+    let offset = 0;
+    const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio'};
+
+    function serverQuery() {
+      const p = new URLSearchParams();
+      const studio = document.getElementById('f-studio').value;
+      if (studio) p.set('studio', studio);
+      const q = document.getElementById('q').value.trim();
+      if (q) p.set('q', q);
+      p.set('sort', SERVER_SORTS[sortKey] || 'updated_at');
+      p.set('dir', SERVER_SORTS[sortKey] ? (sortDir === 1 ? 'asc' : 'desc') : 'desc');
+      p.set('limit', PAGE_SIZE);
+      p.set('offset', offset);
+      return p.toString();
+    }
+
+    let qTimer = null;
+    function queryChanged() {
+      render();
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => { offset = 0; refreshEntries(); }, 300);
+    }
+
+    function studioChanged() { offset = 0; refreshEntries(); }
+
+    function prevPage() { if (offset > 0) { offset = Math.max(0, offset - PAGE_SIZE); refreshEntries(); } }
+    function nextPage() { if (offset + PAGE_SIZE < TOTAL) { offset += PAGE_SIZE; refreshEntries(); } }
+
+    function updatePager() {
+      const pages = Math.max(1, Math.ceil(TOTAL / PAGE_SIZE));
+      const page = Math.floor(offset / PAGE_SIZE) + 1;
+      document.getElementById('pager').style.display = pages > 1 ? 'inline-flex' : 'none';
+      document.getElementById('pageInfo').textContent = `Page ${page} of ${pages}`;
+      document.getElementById('prevBtn').disabled = offset <= 0;
+      document.getElementById('nextBtn').disabled = offset + PAGE_SIZE >= TOTAL;
+    }
 
     function decorate() {
       ALL.forEach(e => {
@@ -174,7 +222,7 @@
     function buildFacetOptions() {
       const cmp = (a, b) => a.localeCompare(b);
       const specs = {
-        'f-studio': {values: [...new Set(ALL.map(e => e.studio).filter(Boolean))].sort(cmp)},
+        'f-studio': {values: [...STUDIOS].sort(cmp)},
         'f-tagline': {values: [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort(cmp), blank: ALL.some(e => !e.tagline)},
         'f-collection': {values: [...new Set(ALL.flatMap(e => e.collections || []))].sort(cmp), blank: ALL.some(e => !(e.collections || []).length)},
         'f-year': {values: [...new Set(ALL.map(e => e.year).filter(Boolean))].sort().reverse(), blank: ALL.some(e => !e.date)},
@@ -230,15 +278,16 @@
     function sort(key) {
       if (sortKey === key) { sortDir = -sortDir; } else { sortKey = key; sortDir = 1; }
       applyHeaderIndicator();
-      render();
+      if (SERVER_SORTS[key]) { offset = 0; refreshEntries(); } else { render(); }
     }
 
     function reset() {
-      ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'].forEach(id => { document.getElementById(id).value = ''; });
+      FILTER_IDS.forEach(id => { document.getElementById(id).value = ''; });
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applyHeaderIndicator();
-      render();
+      offset = 0;
+      refreshEntries();
     }
 
     function esc(s) {
@@ -282,6 +331,7 @@
     // the current selection, and anything still present in the filtered view.
     function refreshFacets() {
       for (const [id, f] of Object.entries(FACETS)) {
+        if (id === 'f-studio') continue; // options come from the server-wide studio list
         const sel = document.getElementById(id);
         const reachable = new Set(rowsExcept(id).flatMap(e => { const v = f.val(e); return Array.isArray(v) ? v : [v]; }));
         for (const opt of sel.options) {
@@ -312,13 +362,14 @@
         return av < bv ? -sortDir : av > bv ? sortDir : 0;
       });
 
-      document.getElementById('count').textContent = `${rows.length} of ${ALL.length} snapshot(s)`;
+      document.getElementById('count').textContent = `${rows.length} of ${TOTAL} snapshot(s)`;
+      updatePager();
 
       shownRows = rows;
       shownKeys = rows.map(e => e.key);
       const bulkBtn = document.getElementById('purgeAllBtn');
       bulkBtn.disabled = !rows.length;
-      bulkBtn.textContent = rows.length === ALL.length ? `Purge All (${rows.length})` : `Purge Filtered (${rows.length})`;
+      bulkBtn.textContent = rows.length === TOTAL ? `Purge All (${rows.length})` : `Purge Filtered (${rows.length})`;
       const exportBtn = document.getElementById('exportBtn');
       exportBtn.disabled = !rows.length;
       exportBtn.textContent = `Export Mappings (${rows.length})`;
@@ -431,11 +482,17 @@
 
     async function refreshEntries() {
       try {
-        const r = await fetch('/metadata/entries', {headers: authHeaders()});
+        const r = await fetch('/metadata/entries?' + serverQuery(), {headers: authHeaders()});
         if (!r.ok) return;
         const j = await r.json();
         ALL = j.entries;
+        TOTAL = j.total ?? ALL.length;
+        STUDIOS = j.studios || STUDIOS;
         DUP_SET = new Set(j.dup_keys);
+        if (offset > 0 && offset >= TOTAL) {
+          offset = Math.max(0, Math.floor(Math.max(TOTAL - 1, 0) / PAGE_SIZE) * PAGE_SIZE);
+          return refreshEntries();
+        }
         decorate();
         buildFacetOptions();
         updateDupButtons();
@@ -465,10 +522,12 @@
 
     decorate();
     buildFacetOptions();
+    const DEFAULT_QUERY = serverQuery();
     restoreFilters();
     updateDupButtons();
     applyHeaderIndicator();
     render();
+    if (serverQuery() !== DEFAULT_QUERY) refreshEntries();
     pollState();
     setInterval(pollState, 4000);
   </script>

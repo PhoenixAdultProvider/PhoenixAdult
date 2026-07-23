@@ -166,7 +166,7 @@ class XartClient(Client):
         harvest(details_page_elements)
 
         title = first_text(details_page_elements, _TITLE_XP) or ''
-        actor_names = self.dedup_strings([first_attr(el, 'normalize-space(.)') for el in details_page_elements.xpath('//h2//a')])
+        actor_names = self.dedup_strings([first_attr(row, 'normalize-space(.)') for row in details_page_elements.xpath('//h2//a')])
 
         if title and actor_names:
 

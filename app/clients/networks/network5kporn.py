@@ -50,9 +50,9 @@ class Network5KPClient(Client):
 
         sel = Selector(text=html)
         seen: set[str] = set()
-        for el in sel.xpath(f'//div[{_cls("ep")}]'):
-            title = (el.xpath('(.//h3[contains(@class,"ep-title")])[1]').xpath('string(.)').get() or '').strip()
-            scene_url = first_attr(el, '(.//a)[1]/@href')
+        for card in sel.xpath(f'//div[{_cls("ep")}]'):
+            title = (card.xpath('(.//h3[contains(@class,"ep-title")])[1]').xpath('string(.)').get() or '').strip()
+            scene_url = first_attr(card, '(.//a)[1]/@href')
             if not title or not scene_url or scene_url in seen:
                 continue
 

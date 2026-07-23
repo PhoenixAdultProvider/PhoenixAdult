@@ -27,9 +27,9 @@ def _presented_token(request: Request) -> str | None:
     header = request.headers.get('x-admin-token')
     if header:
         return header.strip()
-    q = request.query_params.get('token')
-    if q:
-        return q.strip()
+    token = request.query_params.get('token')
+    if token:
+        return token.strip()
     return None
 
 

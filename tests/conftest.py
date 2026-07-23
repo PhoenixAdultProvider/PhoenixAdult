@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import socket
 import tempfile
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 os.environ['LOG_DIR'] = os.path.join(tempfile.gettempdir(), 'phoenixadult-pytest-logs')
@@ -45,6 +47,16 @@ def _no_live_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(socket, 'getaddrinfo', guarded_gai)
     monkeypatch.setattr(socket.socket, 'connect', guarded_connect)
+
+
+@pytest.fixture(autouse=True)
+def _state_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    """Every test gets its own state.db so nothing leaks into the repo-local default."""
+    from app.utils import db
+
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
+    yield
+    db.close()
 
 
 @pytest.fixture(autouse=True)

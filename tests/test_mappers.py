@@ -10,7 +10,8 @@ from app.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
 from app.utils.plex.rating_key import parse_rating_key, to_rating_key
 
 POSTER, BG, SQ, UNK = 'http://x/poster.jpg', 'http://x/bg.jpg', 'http://x/sq.jpg', 'http://x/unk.jpg'
-_DIMS = {POSTER: (1000, 1500), BG: (1920, 1080), SQ: (1000, 1000), UNK: (1000, 1300)}
+POSTER_XL = 'http://x/poster-xl.jpg'
+_DIMS = {POSTER: (1000, 1500), POSTER_XL: (1200, 1800), BG: (1920, 1080), SQ: (1000, 1000), UNK: (1000, 1300)}
 
 
 async def _image_types(monkeypatch: pytest.MonkeyPatch, urls: list[str]) -> dict[str, list[str]]:
@@ -157,3 +158,21 @@ async def test_images_square_is_last_resort_for_both_slots(monkeypatch: pytest.M
 async def test_images_unknown_promotes_to_poster_but_not_emitted_raw(monkeypatch: pytest.MonkeyPatch) -> None:
     by_type = await _image_types(monkeypatch, [UNK])
     assert by_type == {'coverPoster': [UNK]}
+
+
+async def test_images_sorted_high_to_low_within_each_kind(monkeypatch: pytest.MonkeyPatch) -> None:
+    by_type = await _image_types(monkeypatch, [POSTER, POSTER_XL, BG])
+    assert by_type['coverPoster'] == [POSTER_XL, POSTER]
+    assert by_type['background'] == [BG]
+
+
+async def test_thumb_prefers_highest_resolution_poster(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_dims(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        w, h = _DIMS[url]
+        return {'width': w, 'height': h}
+
+    monkeypatch.setattr(mapper_mod, 'fetch_dimensions', fake_dims)
+    monkeypatch.setattr(mapper_mod, 'proxy_url', lambda url, *a, **k: url)
+    detail = SceneDetail(title='A Scene', summary='', studio='X', genres=[], actors=[], art=[POSTER, POSTER_XL])
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.thumb == POSTER_XL

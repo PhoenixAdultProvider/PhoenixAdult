@@ -225,7 +225,7 @@ def test_manual_mappings_have_no_duplicate_keys() -> None:
         dupes.extend(k for k, n in keys.items() if n > 1)
         return dict(pairs)
 
-    for f in sorted(pathlib.Path('app/clients/aggregators/_data/json').glob('data18_manual_mappings*.json')):
+    for f in sorted(pathlib.Path('app/clients/aggregators/_data/data18').glob('data18_manual_mappings*.json')):
         data = json.loads(f.read_text(encoding='utf-8'), object_pairs_hook=hook)
         for k in data:
             if k in owner:
@@ -251,7 +251,7 @@ def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -
 
     from app.clients.aggregators.data18 import _load_manual_mappings
 
-    folder = Path(str(tmp_path)) / '_data' / 'json'
+    folder = Path(str(tmp_path)) / '_data' / 'data18'
     folder.mkdir(parents=True)
     (folder / 'data18_manual_mappings.json').write_text(
         json.dumps({'1': {'slug': 'base-scene', 'type': 'scene'}, '2': {'slug': 'overridden', 'type': 'scene'}}), encoding='utf-8'

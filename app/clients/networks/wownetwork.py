@@ -22,15 +22,15 @@ class WowNetworkClient(Client):
             )
             return list(search_results['sel'].xpath('//article[contains(@class,"thumb-block")]')) if search_results else None
 
-        def build_row(el: Any) -> SearchResult | None:
-            anchor = el.xpath('(.//a)[1]')
+        def build_row(row: Any) -> SearchResult | None:
+            anchor = row.xpath('(.//a)[1]')
             title = first_attr(anchor, '@title')
             href = first_attr(anchor, '@href')
             if not title or not href:
                 return None
 
             scene_url = absolute_url(href, search_data.site_info.base_url)
-            image = first_attr(el, '(.//img)[1]/@src')
+            image = first_attr(row, '(.//img)[1]/@src')
             image_packed = self.encode(image) if image else ''
             return build_search_result(
                 title=title,

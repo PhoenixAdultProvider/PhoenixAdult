@@ -12,10 +12,35 @@ class ActorRules(NamedTuple):
     replace: dict[str, list[str]]
     replace_studios: dict[str, dict[str, list[str]]]
     studio_indexes: dict[str, list[str]]
+    replace_lookup: dict[str, str]
+    replace_studio_lookups: dict[str, dict[str, str]]
+    studio_index_lookup: dict[str, tuple[int, str]]
+
+
+def _alias_lookup(table: dict[str, list[str]]) -> dict[str, str]:
+    """Lowercased alias/canonical -> canonical map; first entry wins on duplicates,
+    matching the original sequential-scan resolution order."""
+    out: dict[str, str] = {}
+    for canonical, aliases in table.items():
+        out.setdefault(canonical.lower(), canonical)
+        for alias in aliases:
+            out.setdefault(alias.lower(), canonical)
+    return out
 
 
 def _build(raw: dict[str, Any]) -> ActorRules:
-    return ActorRules(raw['replace'], raw['replace_studios'], raw['studio_indexes'])
+    studio_lookup: dict[str, tuple[int, str]] = {}
+    for pos, (idx, names) in enumerate(raw['studio_indexes'].items()):
+        for name in names:
+            studio_lookup.setdefault(name.replace(' ', '').lower(), (pos, idx))
+    return ActorRules(
+        raw['replace'],
+        raw['replace_studios'],
+        raw['studio_indexes'],
+        _alias_lookup(raw['replace']),
+        {idx: _alias_lookup(table) for idx, table in raw['replace_studios'].items()},
+        studio_lookup,
+    )
 
 
 _RULES: MtimeCachedJson[ActorRules] = MtimeCachedJson(_ACTORS_PATH, _build)

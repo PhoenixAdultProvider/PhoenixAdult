@@ -51,14 +51,14 @@ class NewSensationsOtherClient(Client):
         actors: list[ActorResult] = []
         last_actor_page: Any = None
         seen: set[str] = set()
-        for el in details_page_elements['sel'].xpath('//span[@class="update_models"]/a'):
-            name = first_attr(el, 'normalize-space(.)')
+        for row in details_page_elements['sel'].xpath('//span[@class="update_models"]/a'):
+            name = first_attr(row, 'normalize-space(.)')
             if not name or name in seen:
                 continue
 
             seen.add(name)
             photo = ''
-            href = first_attr(el, '@href')
+            href = first_attr(row, '@href')
             if href:
                 model_page_elements = await self.fetch_and_load(absolute_url(href, site.base_url), FetchCtx(capture=capture), f'GET {href} (actor)')
                 if model_page_elements:

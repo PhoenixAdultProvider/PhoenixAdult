@@ -204,6 +204,89 @@ class MetadataService:
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
 
+    async def _pull_data18_enrichment(
+        self,
+        rating_key: str,
+        provider: ProviderInfo,
+        site: ResolvedSiteInfo,
+        cur_id: str,
+        scene_url: str,
+        subsite: str | None,
+        release_date: str | None,
+        language: str | None,
+        allow_slow: bool,
+    ) -> PlexMetadataResponse | None:
+        """Re-scrape a cached scene that lacks a data18 ref: the enriched response (already
+        snapshotted) when the pull found one, None to keep serving the cached snapshot."""
+        logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
+        try:
+            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
+        except PacingDeferredError:
+            fresh = None
+            logger.info(provider.id, f'Enrichment pull deferred by pacing for ratingKey={rating_key} — serving cached snapshot')
+        if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
+            await metadata_cache.write(site.name, cur_id, fresh)
+            logger.info(provider.id, f'data18 enrichment pulled for ratingKey={rating_key}')
+            return fresh
+        logger.info(provider.id, f'No data18 match on pull for ratingKey={rating_key} — serving cached snapshot')
+        return None
+
+    async def _serve_cached(
+        self,
+        response: PlexMetadataResponse,
+        rating_key: str,
+        provider: ProviderInfo,
+        site: ResolvedSiteInfo,
+        cur_id: str,
+        scene_url: str,
+        subsite: str | None,
+        language: str | None,
+        skip_data18: bool,
+    ) -> PlexMetadataResponse:
+        """Serve a cached snapshot, applying the serve-time backfills and rewriting the
+        snapshot when anything changed."""
+
+        async def _fetch_detail() -> SceneDetail | None:
+            """Re-scrape so backfill can try each person's scene image before the
+            external people sources; only invoked when someone is imageless."""
+            if not scene_url:
+                return None
+            try:
+                await ensure_fetchable_url(scene_url)
+            except ValueError as err:
+                logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
+                return None
+            return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
+
+        if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail, skip_data18=skip_data18):
+            logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
+        logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
+        return self._finalize(response, provider, rating_key, cached=True)
+
+    async def _scrape_and_store(
+        self,
+        rating_key: str,
+        provider: ProviderInfo,
+        site: ResolvedSiteInfo,
+        cur_id: str,
+        scene_url: str,
+        subsite: str | None,
+        release_date: str | None,
+        language: str | None,
+        allow_slow: bool,
+    ) -> PlexMetadataResponse | None:
+        """Live-scrape a scene, snapshot it, and serve it; None when the scrape fails
+        (a pacing deferral queues a background scrape instead)."""
+        try:
+            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
+        except PacingDeferredError as err:
+            self._queue_background(rating_key, provider, language, err.wait_seconds)
+            return None
+        if fresh is None:
+            return None
+        await metadata_cache.write(site.name, cur_id, fresh)
+        return self._finalize(fresh, provider, rating_key, cached=False)
+
     async def _fetch_metadata(
         self, rating_key: str, provider: ProviderInfo, language: str | None = None, force: bool = False, allow_slow: bool = False
     ) -> PlexMetadataResponse | None:
@@ -235,48 +318,16 @@ class MetadataService:
 
         pull_attempted = False
         if response is not None and scene_url and metadata_cache.data18_backfill_needed(response, site.name):
-            logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
             pull_attempted = True
-            try:
-                fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, parsed['release_date'], language, allow_slow=allow_slow)
-            except PacingDeferredError:
-                fresh = None
-                logger.info(provider.id, f'Enrichment pull deferred by pacing for ratingKey={rating_key} — serving cached snapshot')
-            if fresh is not None and fresh.MediaContainer.Metadata[0].data18 is not None:
-                await metadata_cache.write(site.name, cur_id, fresh)
-                logger.info(provider.id, f'data18 enrichment pulled for ratingKey={rating_key}')
-                return self._finalize(fresh, provider, rating_key, cached=False)
-            logger.info(provider.id, f'No data18 match on pull for ratingKey={rating_key} — serving cached snapshot')
+            enriched = await self._pull_data18_enrichment(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
+            if enriched is not None:
+                return self._finalize(enriched, provider, rating_key, cached=False)
 
         if response is not None:
-
-            async def _fetch_detail() -> SceneDetail | None:
-                """Re-scrape so backfill can try each person's scene image before the
-                external people sources; only invoked when someone is imageless."""
-                if not scene_url:
-                    return None
-                try:
-                    await ensure_fetchable_url(scene_url)
-                except ValueError as err:
-                    logger.warn(provider.id, f'backfill: refusing blocked sceneURL from ratingKey: {err}')
-                    return None
-                return await self._scraper.fetch_scene_detail(scene_url, site, SceneContext(language=language, subsite=subsite))
-
-            if await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail, skip_data18=pull_attempted):
-                logger.info(provider.id, f'Updated cached metadata for ratingKey={rating_key}')
-            logger.info(provider.id, f'Serving snapshot for ratingKey={rating_key}')
-            return self._finalize(response, provider, rating_key, cached=True)
+            return await self._serve_cached(response, rating_key, provider, site, cur_id, scene_url, subsite, language, skip_data18=pull_attempted)
 
         if not scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
             return None
 
-        try:
-            fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, parsed['release_date'], language, allow_slow=allow_slow)
-        except PacingDeferredError as err:
-            self._queue_background(rating_key, provider, language, err.wait_seconds)
-            return None
-        if fresh is None:
-            return None
-        await metadata_cache.write(site.name, cur_id, fresh)
-        return self._finalize(fresh, provider, rating_key, cached=False)
+        return await self._scrape_and_store(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)

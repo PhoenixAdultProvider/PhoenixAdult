@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -14,6 +15,7 @@ from slugify import slugify as _slugify
 
 from app.utils.logging.logger import logger
 from app.utils.processors.similarity import compare_string
+from app.utils.processors.title_case import convert_sequence_numbers, title_case
 
 if TYPE_CHECKING:
     from app.clients.base import SearchResult
@@ -85,6 +87,12 @@ def slugify(s: str, **kwargs: Any) -> str:
     return _slugify(s, **kwargs)
 
 
+def hash_key(*parts: str, sep: str, length: int | None = None) -> str:
+    """Stable sha1 hex key of the sep-joined parts, truncated to `length` when given."""
+    digest = hashlib.sha1(sep.join(parts).encode('utf-8')).hexdigest()  # noqa: S324 - non-crypto key
+    return digest[:length] if length else digest
+
+
 # ── Dates ─────────────────────────────────────────────────────────────────────
 
 
@@ -94,18 +102,18 @@ def iso_date(raw: str, fmt: str | None = None, is_filename: bool = False) -> str
     trimmed = raw.strip()
     try:
         if fmt:
-            d = datetime.strptime(trimmed, fmt)
+            parsed = datetime.strptime(trimmed, fmt)
         elif is_filename:
             m = re.match(r'^(\d{2}|\d{4})[.\s/-]+(\d{2})[.\s/-]+(\d{2})$', trimmed)
             if not m:
                 return None
             year_fmt = '%y' if len(m.group(1)) == 2 else '%Y'
-            d = datetime.strptime(f'{m.group(1)} {m.group(2)} {m.group(3)}', f'{year_fmt} %m %d')
+            parsed = datetime.strptime(f'{m.group(1)} {m.group(2)} {m.group(3)}', f'{year_fmt} %m %d')
         else:
-            d = date_parser.parse(trimmed)
+            parsed = date_parser.parse(trimmed)
     except (ValueError, OverflowError):
         return None
-    return f'{d.year:04d}-{d.month:02d}-{d.day:02d}'
+    return f'{parsed.year:04d}-{parsed.month:02d}-{parsed.day:02d}'
 
 
 _ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
@@ -145,18 +153,18 @@ def relative_iso_date(raw: str, now: datetime | None = None) -> str | None:
     base = now if now is not None else datetime.now(UTC)
     unit = m.group(2)
     if unit == 'minute':
-        d = base - timedelta(minutes=n)
+        shifted = base - timedelta(minutes=n)
     elif unit == 'hour':
-        d = base - timedelta(hours=n)
+        shifted = base - timedelta(hours=n)
     elif unit == 'day':
-        d = base - timedelta(days=n)
+        shifted = base - timedelta(days=n)
     elif unit == 'week':
-        d = base - timedelta(weeks=n)
+        shifted = base - timedelta(weeks=n)
     elif unit == 'month':
-        d = base - relativedelta(months=n)
+        shifted = base - relativedelta(months=n)
     else:
-        d = base - relativedelta(years=n)
-    return f'{d.year:04d}-{d.month:02d}-{d.day:02d}'
+        shifted = base - relativedelta(years=n)
+    return f'{shifted.year:04d}-{shifted.month:02d}-{shifted.day:02d}'
 
 
 def format_duration(ms: int | None) -> str | None:
@@ -244,13 +252,12 @@ def sceneid_distance_score(query: str, title: str) -> int:
     return score
 
 
+_TITLE_CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
+
+
 def title_distance_score(query: str, title: str) -> int:
-    from app.utils.processors.title_case import convert_sequence_numbers, title_case
-
-    CLEAN_RE = re.compile(r'[^a-z0-9]+', re.IGNORECASE)
-
     def _score(q: str, t: str) -> int:
-        return 100 - compare_string(CLEAN_RE.sub('', q).lower(), CLEAN_RE.sub('', t).lower()).levenshtein
+        return 100 - compare_string(_TITLE_CLEAN_RE.sub('', q).lower(), _TITLE_CLEAN_RE.sub('', t).lower()).levenshtein
 
     query, title = title_case(query), title_case(title)
     score = _score(query, title)

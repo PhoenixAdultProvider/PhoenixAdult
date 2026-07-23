@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import json
+import io
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 import respx
+from PIL import Image as PILImage
 
 from app.models.metadata import PlexData18, PlexMetadataResponse
 from app.utils import cache as mc
+from app.utils import db
 from app.utils.helpers.helpers import b64url_encode, embed_subsite
 from app.utils.images import image_fetcher
 from app.utils.plex.rating_key import to_rating_key
@@ -224,8 +226,6 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
 async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     """Image URLs are stored host-relative and rebased on every read — metadata images (/cache/)
     onto base_url, people images (/images/local/) onto PEOPLE_IMAGE_URL's base — so both survive a tunnel change."""
-    import json
-    from pathlib import Path
     from types import SimpleNamespace
 
     image_fetcher._cache.clear()
@@ -242,10 +242,10 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     )
     assert await mc.write('DickDrainers', 's1', resp) is True
 
-    raw = json.loads(next(Path(str(tmp_path)).rglob('meta.json')).read_text(encoding='utf-8'))
-    rmd = raw['MediaContainer']['Metadata'][0]
-    assert rmd['thumb'].startswith('/cache/')
-    assert rmd['Role'][0]['thumb'] == '/images/local/actor.jane_female.jpg'
+    stored = db.connect().execute('SELECT thumb FROM scenes').fetchone()
+    assert stored['thumb'].startswith('/cache/')
+    stored_role = db.connect().execute('SELECT photo_rel_path FROM scene_people').fetchone()
+    assert stored_role['photo_rel_path'] == '/images/local/actor.jane_female.jpg'
 
     md = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
     assert md['thumb'].startswith('http://tunnel-a:1/cache/')
@@ -263,16 +263,16 @@ async def test_layout_per_registry_type(tmp_path: pytest.TempPathFactory, monkey
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
     assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
-    assert list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*/meta.json'))  # type: ignore[attr-defined]
+    assert list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*'))  # type: ignore[attr-defined]
 
     assert await mc.write('Vixen', 'v1', _resp(studio='Vixen')) is True
-    assert list(tmp_path.glob('strike3/vixen/*/meta.json'))  # type: ignore[attr-defined]
+    assert list(tmp_path.glob('strike3/vixen/*'))  # type: ignore[attr-defined]
 
     assert await mc.write('5Kporn', 'p1', _resp(studio='5Kporn')) is True
-    assert list(tmp_path.glob('5kporn/5kporn/*/meta.json'))  # type: ignore[attr-defined]
+    assert list(tmp_path.glob('5kporn/5kporn/*'))  # type: ignore[attr-defined]
 
     assert await mc.write('5Kteens', 't1', _resp(studio='5Kporn', tagline='5Kteens')) is True
-    assert list(tmp_path.glob('5kporn/5kteens/*/meta.json'))  # type: ignore[attr-defined]
+    assert list(tmp_path.glob('5kporn/5kteens/*'))  # type: ignore[attr-defined]
 
     assert await mc.write('DickDrainers', 'd1', _resp(studio='DickDrainers')) is True
     assert (tmp_path / 'dickdrainers').is_dir()  # type: ignore[operator]
@@ -506,11 +506,14 @@ async def test_backfill_data18_skips_when_disabled(monkeypatch: pytest.MonkeyPat
     assert resp.MediaContainer.Metadata[0].data18 is None
 
 
-def _snapshot(root: Path, rel: str, rating_key: str) -> None:
+def _snapshot(root: Path, rel: str, site: str, cur: str) -> None:
+    from app.utils.cache import scene_store
+
     d = root / rel
     d.mkdir(parents=True, exist_ok=True)
+    rating_key = to_rating_key(cur, site)
     meta = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': rating_key, 'guid': 'g', 'title': 'Scene'}]}}
-    (d / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    scene_store.upsert(site, cur, rel.rsplit('/', 1)[-1], rel, meta, {})
 
 
 def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -519,8 +522,8 @@ def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch:
     new_cur = embed_subsite(old_cur, 'Teens Like It Big')
     old_rel = f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}'
     new_rel = f'brazzers/teens-like-it-big/{mc._hash("Brazzers", new_cur)}'
-    _snapshot(tmp_path, old_rel, to_rating_key(old_cur, 'Brazzers'))
-    _snapshot(tmp_path, new_rel, to_rating_key(new_cur, 'Brazzers'))
+    _snapshot(tmp_path, old_rel, 'Brazzers', old_cur)
+    _snapshot(tmp_path, new_rel, 'Brazzers', new_cur)
 
     assert mc.duplicate_entries() == [old_rel]
     assert mc.purge_duplicates() == 1
@@ -531,7 +534,7 @@ def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch:
 def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     old_cur = b64url_encode('3870731|scene|2015-09-24')
-    _snapshot(tmp_path, f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}', to_rating_key(old_cur, 'Brazzers'))
+    _snapshot(tmp_path, f'brazzers/brazzers/{mc._hash("Brazzers", old_cur)}', 'Brazzers', old_cur)
     assert mc.duplicate_entries() == []
 
 
@@ -612,6 +615,91 @@ def test_reapply_text_rules_leaves_clean_cast_names_untouched(monkeypatch: pytes
     )
     assert mc.reapply_text_rules(resp) is False
     assert [r.tag for r in (resp.MediaContainer.Metadata[0].Role or [])] == ['Danny D', 'Gina Gerson', 'Xander Corvus']
+
+
+def _resp_with_actor(studio: str, actor: str) -> PlexMetadataResponse:
+    return PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Cool Scene', 'studio': studio, 'Role': [{'tag': actor}]}],
+            }
+        }
+    )
+
+
+async def test_scoped_person_wins_for_its_studio(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    assert await mc.write('Brazzers', 'sp1', _resp_with_actor('Brazzers', 'Amanda')) is True
+    conn = db.connect()
+    assert conn.execute('SELECT COUNT(*) AS c FROM people WHERE name = ?', ('Amanda',)).fetchone()['c'] == 1
+
+    studio_id = conn.execute('SELECT id FROM studios WHERE name = ?', ('Brazzers',)).fetchone()['id']
+    with conn:
+        conn.execute('INSERT INTO people(name, scope_studio_id, gender) VALUES(?, ?, ?)', ('Amanda', studio_id, 'female'))
+
+    assert await mc.write('Brazzers', 'sp2', _resp_with_actor('Brazzers', 'Amanda')) is True
+    assert await mc.write('Vixen', 'sp3', _resp_with_actor('Vixen', 'Amanda')) is True
+
+    scoped = mc.read('Brazzers', 'sp2')['MediaContainer']['Metadata'][0]['Role'][0]
+    assert scoped['gender'] == 'female'
+    unscoped = mc.read('Vixen', 'sp3')['MediaContainer']['Metadata'][0]['Role'][0]
+    assert 'gender' not in unscoped
+    assert conn.execute('SELECT COUNT(*) AS c FROM people WHERE name = ?', ('Amanda',)).fetchone()['c'] == 2
+
+
+def _jpeg(width: int, height: int) -> bytes:
+    buf = io.BytesIO()
+    PILImage.new('RGB', (width, height)).save(buf, format='JPEG')
+    return buf.getvalue()
+
+
+@respx.mock
+async def test_read_orders_each_image_kind_high_to_low(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/small.jpg').mock(return_value=httpx.Response(200, content=_jpeg(10, 20), headers={'content-type': 'image/jpeg'}))
+    respx.get('https://cdn.example/large.jpg').mock(return_value=httpx.Response(200, content=_jpeg(20, 40), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', images=['https://cdn.example/small.jpg', 'https://cdn.example/large.jpg'])
+    assert await mc.write('Brazzers', 'ord1', resp) is True
+
+    md = mc.read('Brazzers', 'ord1')['MediaContainer']['Metadata'][0]
+    posters = [img['url'] for img in md['Image'] if img['type'] == 'coverPoster']
+    assert posters[0].endswith('img-01.jpg') and posters[1].endswith('img-00.jpg')
+
+
+def test_tags_for_matches_the_seeded_scene() -> None:
+    from app.utils.cache import scene_store
+
+    md: dict[str, Any] = {
+        'type': 'movie',
+        'ratingKey': 'rk',
+        'guid': 'g',
+        'title': 'T',
+        'studio': 'Brazzers',
+        'Genre': [{'tag': 'Anal'}, {'tag': 'Blonde'}],
+        'Collection': [{'tag': 'Baby Got Boobs'}, {'tag': 'Brazzers Exxtra'}],
+        'Role': [{'tag': 'Jane Doe', 'gender': 'female'}, {'tag': 'John Doe'}],
+        'Director': [{'tag': 'Greg Lansky'}],
+        'Producer': [{'tag': 'Jane Producer'}],
+        'Writer': [{'tag': 'Ghost Writer'}],
+        'Country': [{'tag': 'United States'}],
+    }
+    data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+    scene_store.upsert('Brazzers', 'tf1', mc._hash('Brazzers', 'tf1'), 'brazzers/x', data)
+
+    assert scene_store.tags_for('Brazzers', 'tf1') == {
+        'Collection': ['Baby Got Boobs', 'Brazzers Exxtra'],
+        'Genre': ['Anal', 'Blonde'],
+        'Role': ['Jane Doe', 'John Doe'],
+        'Director': ['Greg Lansky'],
+        'Producer': ['Jane Producer'],
+    }
+    assert scene_store.tags_for('Brazzers', 'missing') is None
 
 
 def test_backfill_recomputes_guid_after_an_identifier_change() -> None:

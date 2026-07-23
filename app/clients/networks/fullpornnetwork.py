@@ -72,8 +72,8 @@ class FullPornNetworkClient(Client):
             )
 
         def harvest(sel: Any) -> None:
-            for el in sel.xpath('//div[contains(@class,"latest-updates")]//div[@data-setid]'):
-                href = first_attr(el, '(.//a[@class="updateimg"])[1]/@href')
+            for card in sel.xpath('//div[contains(@class,"latest-updates")]//div[@data-setid]'):
+                href = first_attr(card, '(.//a[@class="updateimg"])[1]/@href')
                 if not href:
                     continue
 
@@ -81,7 +81,7 @@ class FullPornNetworkClient(Client):
                 if scene_url in seen:
                     continue
 
-                title = _after_colon(el.xpath('string(.)').get() or '')
+                title = _after_colon(card.xpath('string(.)').get() or '')
                 if not title:
                     continue
 

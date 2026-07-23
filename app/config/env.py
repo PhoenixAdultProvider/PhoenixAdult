@@ -93,8 +93,8 @@ class _Env:
             return 10.0
 
     @property
-    def search_queue_dir(self) -> str:
-        return os.environ.get('SEARCH_QUEUE_DIR') or './local/queue'
+    def state_db_path(self) -> str:
+        return os.environ.get('STATE_DB_PATH') or './local/state.db'
 
     @property
     def manual_nfo_path(self) -> str:

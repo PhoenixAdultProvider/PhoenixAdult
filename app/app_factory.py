@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -41,7 +42,13 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
     from app.routes.provider_router import restore_queue
+    from app.utils.images import logo_cache
+    from app.utils.people import cache as people_cache
 
+    if people_cache.cache_enabled():
+        await asyncio.to_thread(people_cache.reconcile)
+    if logo_cache.enabled():
+        await asyncio.to_thread(logo_cache.reconcile)
     await restore_queue()
     yield
 

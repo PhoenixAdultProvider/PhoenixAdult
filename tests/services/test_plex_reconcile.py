@@ -9,7 +9,7 @@ import pytest
 import respx
 
 from app.services import plex_reconcile as pr
-from app.utils import cache as metadata_cache
+from app.utils.cache import scene_store
 
 BASE = 'http://192.0.2.10:32400'
 GUID = 'tv.plex.agents.custom.phoenixadult://movie/scene-brazzers-abc123'
@@ -20,13 +20,11 @@ FOREIGN_GUID = 'plex://movie/5d776b9ad'
 def _plex_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PLEX_URL', BASE)
     monkeypatch.setenv('PLEX_TOKEN', 'test-token')
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
 
 
-def _snapshot(**tags: list[str]) -> dict[str, Any]:
-    md: dict[str, Any] = {'title': 'T'}
-    for name, values in tags.items():
-        md[name] = [{'tag': v} for v in values]
-    return {'MediaContainer': {'Metadata': [md]}}
+def _snapshot(**tags: list[str]) -> dict[str, list[str]]:
+    return {name: tags.get(name, []) for name in pr._FIELDS}
 
 
 def _mock_plex(item: dict[str, Any], guid: str = GUID) -> respx.Route:
@@ -57,7 +55,7 @@ def test_our_rating_key_only_matches_our_guids() -> None:
 
 @respx.mock
 async def test_dry_run_reports_but_does_not_write(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Teens Like It Big'], Genre=['Anal']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Teens Like It Big'], Genre=['Anal']))
     put = _mock_plex({'Collection': [{'tag': 'Brazzers'}, {'tag': 'Teens Like It Big'}], 'Genre': [{'tag': 'Anal'}]})
 
     report = await pr.reconcile(apply=False)
@@ -69,7 +67,7 @@ async def test_dry_run_reports_but_does_not_write(monkeypatch: pytest.MonkeyPatc
 
 @respx.mock
 async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
     put = _mock_plex({'Collection': [{'tag': 'Brazzers'}, {'tag': 'Teens Like It Big'}]})
 
     report = await pr.reconcile(apply=True)
@@ -84,7 +82,7 @@ async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: py
 
 @respx.mock
 async def test_role_maps_to_the_actor_tag(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Role=['Gina Gerson']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Role=['Gina Gerson']))
     put = _mock_plex({'Role': [{'tag': 'Gina Gerson'}, {'tag': 'Ghost Actor'}]})
 
     await pr.reconcile(apply=True)
@@ -94,7 +92,7 @@ async def test_role_maps_to_the_actor_tag(monkeypatch: pytest.MonkeyPatch) -> No
 
 @respx.mock
 async def test_locked_field_is_skipped_and_reported(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
     put = _mock_plex(
         {
             'Collection': [{'tag': 'Brazzers'}, {'tag': 'Teens Like It Big'}],
@@ -111,7 +109,7 @@ async def test_locked_field_is_skipped_and_reported(monkeypatch: pytest.MonkeyPa
 
 @respx.mock
 async def test_scene_without_a_snapshot_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: None)
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: None)
     put = _mock_plex({'Collection': [{'tag': 'Brazzers'}]})
 
     report = await pr.reconcile(apply=True)
@@ -122,7 +120,7 @@ async def test_scene_without_a_snapshot_is_skipped(monkeypatch: pytest.MonkeyPat
 
 @respx.mock
 async def test_items_from_other_agents_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=[]))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=[]))
     put = _mock_plex({'Collection': [{'tag': 'Whatever'}]}, guid=FOREIGN_GUID)
 
     report = await pr.reconcile(apply=True)
@@ -132,7 +130,7 @@ async def test_items_from_other_agents_are_ignored(monkeypatch: pytest.MonkeyPat
 
 @respx.mock
 async def test_token_is_sent_as_a_header_not_a_query_param(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
     _mock_plex({'Collection': [{'tag': 'Teens Like It Big'}]})
 
     await pr.reconcile(apply=False)
@@ -143,7 +141,7 @@ async def test_token_is_sent_as_a_header_not_a_query_param(monkeypatch: pytest.M
 
 @respx.mock
 async def test_field_filter_restricts_removal_types(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Collection=['Keep'], Genre=['Keep']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Keep'], Genre=['Keep']))
     _mock_plex({'ratingKey': '77', 'guid': GUID, 'title': 'A Scene', 'Collection': [{'tag': 'Stale C'}], 'Genre': [{'tag': 'Stale G'}]})
     report = await pr.reconcile(fields={'Genre'})
     assert report.items[0].removals == {'Genre': ['Stale G']}
@@ -152,7 +150,7 @@ async def test_field_filter_restricts_removal_types(monkeypatch: pytest.MonkeyPa
 
 @respx.mock
 async def test_site_filter_skips_other_clients(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata_cache, 'read', lambda s, c: _snapshot(Genre=['Keep']))
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Genre=['Keep']))
     _mock_plex({'ratingKey': '77', 'guid': GUID, 'title': 'A Scene', 'Genre': [{'tag': 'Stale G'}]})
     report = await pr.reconcile(sites={'nubilefilms'})
     assert report.changed == 0

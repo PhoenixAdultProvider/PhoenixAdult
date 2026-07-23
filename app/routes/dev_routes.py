@@ -12,8 +12,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.clients.base import RawCaptureEntry, SceneContext, SceneDetail, SearchContext
 from app.mappers.metadata_mapper import MetadataMapper
-from app.models.metadata import PlexMetadataResponse
-from app.registry import canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
+from app.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
+from app.models.provider_info import ProviderInfo
+from app.registry import ResolvedSiteInfo, canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
 from app.routes import read_json_body
 from app.services.metadata_service import refresh_cached_snapshot
 from app.services.scraper_router import ScraperRouter
@@ -58,6 +59,55 @@ def _lap_timer() -> Callable[[], int]:
         return ms
 
     return lap
+
+
+def _metadata_field_diff(direct: dict[str, Any], reassembled: dict[str, Any]) -> list[str]:
+    """Top-level Metadata field names whose values differ between the two payloads,
+    treating an absent field and an empty list as equal."""
+    md_direct = ((direct.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
+    md_re = ((reassembled.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
+
+    def norm(value: Any) -> Any:
+        return None if value == [] else value
+
+    return sorted(k for k in {*md_direct, *md_re} if norm(md_direct.get(k)) != norm(md_re.get(k)))
+
+
+async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any], written: bool, lap: Callable[[], int]) -> dict[str, Any]:
+    """Re-read the just-written snapshot through the DB reassembly path and diff it
+    against the directly-mapped payload."""
+    step = '6. DB round-trip'
+    if not metadata_cache.enabled():
+        return {
+            'step': step,
+            'ok': True,
+            'data': {'cacheEnabled': False, 'note': 'METADATA_CACHE_ENABLE is off — snapshot not written'},
+            'durationMs': lap(),
+        }
+    if not written:
+        return {
+            'step': step,
+            'ok': False,
+            'data': {'cacheEnabled': True, 'written': False},
+            'error': 'Snapshot write failed or was skipped — nothing to re-read',
+            'durationMs': lap(),
+        }
+    reassembled = await asyncio.to_thread(metadata_cache.read, site_name, cur_id)
+    if reassembled is None:
+        return {
+            'step': step,
+            'ok': False,
+            'data': {'cacheEnabled': True, 'written': True},
+            'error': 'Snapshot re-read returned nothing',
+            'durationMs': lap(),
+        }
+    diff = _metadata_field_diff(direct, reassembled)
+    return {
+        'step': step,
+        'ok': True,
+        'data': {'cacheEnabled': True, 'written': True, 'identical': not diff, 'diffFields': diff, 'reassembled': reassembled},
+        'durationMs': lap(),
+    }
 
 
 # ── POST /Dev/Test ────────────────────────────────────────────────────────────
@@ -236,6 +286,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
     filename = body.get('filename')
     result_score = body.get('resultScore')
     force = bool(body.get('force'))
+    full_pipeline = bool(body.get('fullPipeline'))
     steps: list[dict[str, Any]] = []
 
     if not rating_key or not provider_id:
@@ -308,42 +359,107 @@ async def dev_metadata(request: Request) -> JSONResponse:
     if response is not None and metadata_cache.data18_backfill_needed(response, site.name):
         response = None
     if response is not None:
+        steps.extend(await _cached_metadata_steps(response, site, cur_id, scene_url, subsite, full_pipeline, lap))
+    else:
+        steps.extend(await _live_metadata_steps(rating_key, provider, site, cur_id, scene_url, subsite, parsed, filename, result_score, full_pipeline, lap))
+    return send({'ratingKey': rating_key, 'steps': steps})
 
-        async def _fetch_detail() -> SceneDetail | None:
-            return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
 
-        refreshed = await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail)
-        filter_male_actors(response)
-        md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
+async def _cached_metadata_steps(
+    response: PlexMetadataResponse,
+    site: ResolvedSiteInfo,
+    cur_id: str,
+    scene_url: str,
+    subsite: str | None,
+    full_pipeline: bool,
+    lap: Callable[[], int],
+) -> list[dict[str, Any]]:
+    """Snapshot-serve branch of /Dev/Metadata: refresh the cached response and report it
+    as step dicts (plus the DB round-trip note when the full pipeline is on)."""
+
+    async def _fetch_detail() -> SceneDetail | None:
+        return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
+
+    refreshed = await refresh_cached_snapshot(response, site, cur_id, fetch_detail=_fetch_detail)
+    filter_male_actors(response)
+    md = response.MediaContainer.Metadata[0].model_dump(by_alias=True, exclude_none=True)
+    steps: list[dict[str, Any]] = [
+        {
+            'step': '5. Fetch metadata',
+            'ok': True,
+            'data': {
+                'servedFrom': 'snapshot',
+                'refreshed': refreshed,
+                'title': md.get('title'),
+                'summary': md.get('summary'),
+                'tagline': md.get('tagline'),
+                'studio': md.get('studio'),
+                'contentRating': md.get('contentRating'),
+                'releaseDate': md.get('originallyAvailableAt'),
+                'year': md.get('year'),
+                'genres': [g.get('tag') for g in md.get('Genre', [])],
+                'actors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Role', [])],
+                'directors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Director', [])],
+                'producers': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Producer', [])],
+                'collections': [c.get('tag') for c in md.get('Collection', [])],
+                'thumb': md.get('thumb'),
+                'art': md.get('art'),
+                'images': [{'url': i.get('url'), 'type': i.get('type')} for i in md.get('Image', [])],
+                'captures': [],
+            },
+            'durationMs': lap(),
+        }
+    ]
+    if full_pipeline:
         steps.append(
             {
-                'step': '5. Fetch metadata',
+                'step': '6. DB round-trip',
                 'ok': True,
-                'data': {
-                    'servedFrom': 'snapshot',
-                    'refreshed': refreshed,
-                    'title': md.get('title'),
-                    'summary': md.get('summary'),
-                    'tagline': md.get('tagline'),
-                    'studio': md.get('studio'),
-                    'contentRating': md.get('contentRating'),
-                    'releaseDate': md.get('originallyAvailableAt'),
-                    'year': md.get('year'),
-                    'genres': [g.get('tag') for g in md.get('Genre', [])],
-                    'actors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Role', [])],
-                    'directors': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Director', [])],
-                    'producers': [{'name': r.get('tag'), 'gender': r.get('gender') or '', 'photoURL': r.get('thumb')} for r in md.get('Producer', [])],
-                    'collections': [c.get('tag') for c in md.get('Collection', [])],
-                    'thumb': md.get('thumb'),
-                    'art': md.get('art'),
-                    'images': [{'url': i.get('url'), 'type': i.get('type')} for i in md.get('Image', [])],
-                    'captures': [],
-                },
+                'data': {'cacheEnabled': True, 'note': 'Served from snapshot — this response already came through the DB reassembly path'},
                 'durationMs': lap(),
             }
         )
-        return send({'ratingKey': rating_key, 'steps': steps})
+    return steps
 
+
+def _live_fixture(metadata: PlexMetadata, site: ResolvedSiteInfo, filename: str | None, result_score: Any, roles: list[PlexRole]) -> dict[str, Any]:
+    """The copy-paste test fixture block offered by the /Dev UI for a live scrape."""
+    return {
+        'site': site.name,
+        'filename': filename or '',
+        'expect': {
+            'title': metadata.title or '',
+            'studio': metadata.studio or '',
+            'tagline': metadata.tagline or '',
+            'scenedate': metadata.originallyAvailableAt or '',
+            'summary': metadata.summary or '',
+            'actors': [{'name': r.tag, 'gender': r.gender or ''} for r in roles],
+            'directors': [d.tag for d in metadata.Director or []],
+            'producers': [p.tag for p in metadata.Producer or []],
+            'collections': [c.tag for c in metadata.Collection or []],
+            'genres': [g.tag for g in metadata.Genre or []],
+            'minImages': max(1, min(2, len(metadata.Image or []))),
+            'score': result_score if isinstance(result_score, (int, float)) else 80,
+        },
+    }
+
+
+async def _live_metadata_steps(
+    rating_key: str,
+    provider: ProviderInfo,
+    site: ResolvedSiteInfo,
+    cur_id: str,
+    scene_url: str,
+    subsite: str | None,
+    parsed: dict[str, Any],
+    filename: str | None,
+    result_score: Any,
+    full_pipeline: bool,
+    lap: Callable[[], int],
+) -> list[dict[str, Any]]:
+    """Live-scrape branch of /Dev/Metadata: fetch, map, snapshot, and report the scene
+    as step dicts (plus the DB round-trip diff when the full pipeline is on)."""
+    steps: list[dict[str, Any]] = []
     lap()
     try:
         captures: list[RawCaptureEntry] = []
@@ -358,41 +474,17 @@ async def dev_metadata(request: Request) -> JSONResponse:
                     'durationMs': lap(),
                 }
             )
-            return send({'ratingKey': rating_key, 'steps': steps})
+            return steps
 
         log_detail_summary(provider.id, site.name, detail)
         metadata = await mapper.to_metadata(detail, rating_key, provider.plex_identifier, parsed['release_date'], site, filename_site=subsite)
 
         response = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
+        direct_payload = response.model_dump(by_alias=True, exclude_none=True) if full_pipeline else None
         snapshot_saved = await metadata_cache.write(site.name, cur_id, response)
         filter_male_actors(response)
 
         roles = response.MediaContainer.Metadata[0].Role or []
-        directors = metadata.Director or []
-        producers = metadata.Producer or []
-        collections = metadata.Collection or []
-        genres = metadata.Genre or []
-        images = metadata.Image or []
-
-        fixture = {
-            'site': site.name,
-            'filename': filename or '',
-            'expect': {
-                'title': metadata.title or '',
-                'studio': metadata.studio or '',
-                'tagline': metadata.tagline or '',
-                'scenedate': metadata.originallyAvailableAt or '',
-                'summary': metadata.summary or '',
-                'actors': [{'name': r.tag, 'gender': r.gender or ''} for r in roles],
-                'directors': [d.tag for d in directors],
-                'producers': [p.tag for p in producers],
-                'collections': [c.tag for c in collections],
-                'genres': [g.tag for g in genres],
-                'minImages': max(1, min(2, len(images))),
-                'score': result_score if isinstance(result_score, (int, float)) else 80,
-            },
-        }
-
         steps.append(
             {
                 'step': '5. Fetch metadata',
@@ -408,26 +500,28 @@ async def dev_metadata(request: Request) -> JSONResponse:
                     'contentRating': metadata.contentRating,
                     'releaseDate': metadata.originallyAvailableAt,
                     'year': metadata.year,
-                    'genres': [g.tag for g in genres],
+                    'genres': [g.tag for g in metadata.Genre or []],
                     'actors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in roles],
-                    'directors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in directors],
-                    'producers': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in producers],
-                    'collections': [c.tag for c in collections],
+                    'directors': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Director or []],
+                    'producers': [{'name': r.tag, 'gender': r.gender or '', 'photoURL': r.thumb} for r in metadata.Producer or []],
+                    'collections': [c.tag for c in metadata.Collection or []],
                     'thumb': metadata.thumb,
                     'art': metadata.art,
-                    'images': [{'url': img.url, 'type': img.type} for img in images],
+                    'images': [{'url': img.url, 'type': img.type} for img in metadata.Image or []],
                     'rawImageCount': len(detail.art),
                     'captures': _serialize_captures(captures),
-                    'fixture': fixture,
+                    'fixture': _live_fixture(metadata, site, filename, result_score, roles),
                 },
                 'durationMs': lap(),
             }
         )
+        if full_pipeline:
+            steps.append(await _db_roundtrip_step(site.name, cur_id, direct_payload or {}, snapshot_saved, lap))
     except Exception:  # noqa: BLE001
         logger.error('dev', 'metadata step failed', exc_info=True)
         steps.append({'step': '5. Fetch metadata', 'ok': False, 'error': 'Internal error — see the server log', 'durationMs': lap()})
 
-    return send({'ratingKey': rating_key, 'steps': steps})
+    return steps
 
 
 # ── GET /Dev — Test UI ────────────────────────────────────────────────────────

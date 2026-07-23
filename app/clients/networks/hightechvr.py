@@ -89,8 +89,8 @@ class HighTechVRClient(Client):
         details_page_elements = scene.require_sel()
 
         p = _profile(scene.site.name)
-        el = details_page_elements.xpath(f'({p["release_date"]})[1]')
-        date = (el.xpath(f'@{p["date_attr"]}').get() if p['date_attr'] else el.xpath('string(.)').get()) or ''
+        row = details_page_elements.xpath(f'({p["release_date"]})[1]')
+        date = (row.xpath(f'@{p["date_attr"]}').get() if p['date_attr'] else row.xpath('string(.)').get()) or ''
         date = date.strip()
 
         metadata.release_date = iso_date(date) if date else None
@@ -136,8 +136,8 @@ class HighTechVRClient(Client):
             if url.startswith('http') and url not in images:
                 images.append(url)
 
-        for el in details_page_elements.xpath(p['gallery']):
-            push((el.xpath(f'@{p["gallery_attr"]}').get() or '').strip())
+        for row in details_page_elements.xpath(p['gallery']):
+            push((row.xpath(f'@{p["gallery_attr"]}').get() or '').strip())
 
         poster_el = details_page_elements.xpath(f'({p["poster"]})[1]')
         if poster_el:

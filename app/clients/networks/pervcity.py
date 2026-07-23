@@ -98,9 +98,9 @@ class PervCityClient(Client):
         actors: list[ActorResult] = []
         seen: set[str] = set()
         crawled_date: str | None = None
-        for el in sel.xpath('//h2/span/a | //h3/span/a'):
-            name = first_attr(el, 'normalize-space(.)')
-            href = first_attr(el, '@href')
+        for row in sel.xpath('//h2/span/a | //h3/span/a'):
+            name = first_attr(row, 'normalize-space(.)')
+            href = first_attr(row, '@href')
             if not name or name in seen:
                 continue
 

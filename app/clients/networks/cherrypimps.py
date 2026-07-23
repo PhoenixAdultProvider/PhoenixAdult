@@ -125,9 +125,9 @@ class CherryPimpsClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector()
-        for el in details_page_elements.xpath('//img[contains(@class,"update_thumb")]'):
+        for row in details_page_elements.xpath('//img[contains(@class,"update_thumb")]'):
             for attr in ('@src', '@src0_1x'):
-                raw = (el.xpath(attr).get() or '').strip()
+                raw = (row.xpath(attr).get() or '').strip()
                 if raw.startswith('http'):
                     images['push'](raw)
 

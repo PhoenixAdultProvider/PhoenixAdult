@@ -4,6 +4,7 @@ import importlib.util
 from typing import Any
 
 from app.utils.http.bypass_types import BypassRequest, BypassResponse
+from app.utils.images.ext import is_image_content_type
 from app.utils.logging.logger import logger
 
 _IMPERSONATE = 'chrome120'
@@ -72,7 +73,7 @@ async def impersonate_get_bytes(url: str, headers: dict[str, str] | None = None,
         logger.debug('bypass:Impersonate', f'binary GET {url} -> {r.status_code}')
         return None
     content_type = r.headers.get('content-type', '')
-    if not content_type.lower().startswith('image/'):
+    if not is_image_content_type(content_type):
         logger.debug('bypass:Impersonate', f'binary GET {url} non-image content-type {content_type!r}')
         return None
     return r.content, content_type

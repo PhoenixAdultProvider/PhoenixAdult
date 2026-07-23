@@ -95,9 +95,9 @@ class AlsAngelsClient(Client):
             return None
 
         row = None
-        for el in model_page_elements['sel'].xpath('//tr'):
-            if scene_date and iso_date(_row_date(el)) == scene_date:
-                row = el
+        for table_row in model_page_elements['sel'].xpath('//tr'):
+            if scene_date and iso_date(_row_date(table_row)) == scene_date:
+                row = table_row
                 break
 
         if row is None:

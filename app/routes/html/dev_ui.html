@@ -158,6 +158,11 @@
         <input type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
       <div style="flex:0">
+        <label style="display:flex;align-items:center;gap:0.4rem;margin:2rem 0 0;cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="fullPipeline"> Full Pipeline (DB Round-Trip)
+        </label>
+      </div>
+      <div style="flex:0">
         <button id="runBtn" onclick="runSearch()" style="margin-top:1.6rem">▶ Search</button>
       </div>
     </div>
@@ -191,6 +196,18 @@
       <h2>Images (<span id="img-count">0</span>)</h2>
       <div class="card" style="padding:0.75rem">
         <div class="image-strip" id="image-strip"></div>
+      </div>
+    </div>
+
+    <div id="roundtrip-section" style="display:none">
+      <h2>DB Round-Trip (Reassembled)</h2>
+      <div class="capture">
+        <div class="capture-header">
+          <span class="badge json" onclick="toggle('roundtrip-body')">JSON</span>
+          <span class="capture-label" id="roundtrip-note" onclick="toggle('roundtrip-body')"></span>
+          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">Copy</button>
+        </div>
+        <div class="capture-body" id="roundtrip-body"><pre id="roundtrip-pre"></pre></div>
       </div>
     </div>
 
@@ -398,6 +415,10 @@
           const { fixture: _f, ...rest } = cleanData;
           cleanData = rest;
         }
+        if (cleanData && cleanData.reassembled) {
+          const { reassembled: _r, ...rest } = cleanData;
+          cleanData = rest;
+        }
 
         let body = '';
         if (s.error)    body += '<p class="step-error">⚠ ' + esc(s.error) + '</p>';
@@ -495,6 +516,7 @@
       document.getElementById('meta-fields').innerHTML = '<p style="color:#64748b;font-size:0.85rem"><span class="spinner"></span> Fetching metadata…</p>';
       document.getElementById('meta-poster-wrap').innerHTML = '<div class="meta-poster-placeholder">🎬</div>';
       document.getElementById('fixture-section').style.display = 'none';
+      document.getElementById('roundtrip-section').style.display = 'none';
       document.getElementById('meta-panel').style.display = 'block';
       document.getElementById('meta-heading').textContent = 'Metadata — ' + result.title;
 
@@ -505,17 +527,21 @@
         const res  = await fetch(apiUrl('/dev/metadata'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ratingKey:   result.ratingKey,
-            providerId:  result.providerId,
+            ratingKey:    result.ratingKey,
+            providerId:   result.providerId,
             filename,
-            resultScore: result.score,
+            resultScore:  result.score,
             force,
+            fullPipeline: document.getElementById('fullPipeline').checked,
           }),
         });
         const data = await res.json();
 
         renderSteps(data.steps, 'meta-steps');
         renderLogs(data.logs, 'meta-logs');
+
+        const rtStep = data.steps.find(s => s.step.includes('DB round-trip'));
+        if (rtStep) renderRoundTrip(rtStep);
 
         const metaStep = data.steps.find(s => s.step.includes('Fetch metadata'));
         if (metaStep?.ok && metaStep.data) {
@@ -604,6 +630,22 @@
       } else {
         document.getElementById('meta-images-section').style.display = 'none';
       }
+    }
+
+    function renderRoundTrip(step) {
+      const note = document.getElementById('roundtrip-note');
+      const pre  = document.getElementById('roundtrip-pre');
+      const d    = step.data || {};
+      let text;
+      if (step.error) text = '⚠ ' + step.error;
+      else if (d.cacheEnabled === false) text = d.note || 'Snapshot cache disabled';
+      else if (d.note) text = d.note;
+      else if (d.identical) text = 'Reassembled output matches the directly-mapped response';
+      else text = 'Differs from the directly-mapped response in: ' + (d.diffFields || []).join(', ');
+      note.textContent = text;
+      pre.textContent = d.reassembled ? JSON.stringify(d.reassembled, null, 2) : '';
+      document.getElementById('roundtrip-body').classList.remove('open');
+      document.getElementById('roundtrip-section').style.display = 'block';
     }
 
     function field(label, value) {

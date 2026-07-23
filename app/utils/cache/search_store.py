@@ -1,68 +1,67 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import time
 from dataclasses import asdict
-from pathlib import Path
 
 from app.clients.base import SearchResult
-from app.config.env import env
-from app.utils.logging.logger import logger
+from app.utils import db
+from app.utils.helpers.helpers import hash_key
 
 SearchKey = tuple[str, str, str, str, str]
 
 _STORE_TTL = 7 * 86400.0
-_swept = False
-
-
-def store_dir() -> Path:
-    return Path(env.search_queue_dir)
 
 
 def normalize_text(value: str) -> str:
     return ' '.join(value.lower().split())
 
 
-def _path(key: SearchKey) -> Path:
-    digest = hashlib.sha1('|'.join(key).encode('utf-8')).hexdigest()
-    return store_dir() / f'{digest}.json'
+def _key_hash(key: SearchKey) -> str:
+    return hash_key(*key, sep='|')
+
+
+def _write(key: SearchKey, results: list[SearchResult], saved_at: float) -> None:
+    conn = db.connect()
+    kh = _key_hash(key)
+    with conn:
+        conn.execute(
+            'INSERT OR REPLACE INTO searches(key_hash, site, title, date, scene_id, language, saved_at) VALUES(?, ?, ?, ?, ?, ?, ?)',
+            (kh, *key, saved_at),
+        )
+        conn.execute('DELETE FROM search_results WHERE key_hash = ?', (kh,))
+        conn.executemany(
+            'INSERT INTO search_results(key_hash, pos, cur_id, title, subsite, payload) VALUES(?, ?, ?, ?, ?, ?)',
+            [(kh, i, r.cur_id, r.title, r.subsite or '', json.dumps(asdict(r))) for i, r in enumerate(results)],
+        )
 
 
 def save(key: SearchKey, results: list[SearchResult]) -> None:
     """Empty results are never persisted — a ban/soft-failure window returns [] and must
     retry on the next scan, not poison a week of lookups."""
-    global _swept
-    if not _swept:
-        _swept = True
-        _sweep()
+    conn = db.connect()
     if not results:
-        _path(key).unlink(missing_ok=True)
+        with conn:
+            conn.execute('DELETE FROM searches WHERE key_hash = ?', (_key_hash(key),))
         return
-    try:
-        store_dir().mkdir(parents=True, exist_ok=True)
-        payload = {'key': list(key), 'saved_at': time.time(), 'results': [asdict(r) for r in results]}
-        _path(key).write_text(json.dumps(payload), encoding='utf-8')
-    except OSError as err:
-        logger.warn('search-store', f'could not persist search results: {err}')
+    _write(key, results, time.time())
 
 
 def load(key: SearchKey) -> list[SearchResult] | None:
-    path = _path(key)
-    try:
-        payload = json.loads(path.read_text(encoding='utf-8'))
-    except (OSError, ValueError):
+    conn = db.connect()
+    kh = _key_hash(key)
+    row = conn.execute('SELECT saved_at FROM searches WHERE key_hash = ?', (kh,)).fetchone()
+    if row is None:
         return None
-    if time.time() - float(payload.get('saved_at') or 0) > _STORE_TTL:
-        path.unlink(missing_ok=True)
+    if time.time() - float(row['saved_at']) > _STORE_TTL:
+        with conn:
+            conn.execute('DELETE FROM searches WHERE key_hash = ?', (kh,))
         return None
-    try:
-        results = [SearchResult(**r) for r in payload.get('results') or []]
-    except TypeError:
-        path.unlink(missing_ok=True)
-        return None
+    rows = conn.execute('SELECT payload FROM search_results WHERE key_hash = ? ORDER BY pos', (kh,)).fetchall()
+    results = [SearchResult(**json.loads(r['payload'])) for r in rows]
     if not results:
-        path.unlink(missing_ok=True)
+        with conn:
+            conn.execute('DELETE FROM searches WHERE key_hash = ?', (kh,))
         return None
     return results
 
@@ -73,26 +72,21 @@ def load_similar(key: SearchKey) -> list[SearchResult] | None:
     site, title, date, scene_id, language = key
     if not date or not title:
         return None
-    best: tuple[int, SearchKey] | None = None
-    try:
-        entries = list(store_dir().glob('*.json'))
-    except OSError:
-        return None
-    for path in entries:
-        try:
-            stored = json.loads(path.read_text(encoding='utf-8')).get('key') or []
-        except (OSError, ValueError):
-            continue
-        if len(stored) != 5 or stored[0] != site or stored[2] != date or stored[3] != scene_id or stored[4] != language:
-            continue
-        stored_title = str(stored[1])
+    rows = (
+        db.connect()
+        .execute('SELECT title FROM searches WHERE site = ? AND date = ? AND scene_id = ? AND language = ?', (site, date, scene_id, language))
+        .fetchall()
+    )
+    best: str | None = None
+    for row in rows:
+        stored_title = str(row['title'])
         if stored_title == title or not (stored_title in title or title in stored_title):
             continue
-        if best is None or len(stored_title) > best[0]:
-            best = (len(stored_title), (stored[0], stored_title, stored[2], stored[3], stored[4]))
+        if best is None or len(stored_title) > len(best):
+            best = stored_title
     if best is None:
         return None
-    return load(best[1])
+    return load((site, best, date, scene_id, language))
 
 
 def find_title(cur_id: str) -> tuple[str, str] | None:
@@ -100,29 +94,21 @@ def find_title(cur_id: str) -> tuple[str, str] | None:
     entries whose Plex request carries only the rating key."""
     if not cur_id:
         return None
-    try:
-        entries = list(store_dir().glob('*.json'))
-    except OSError:
+    row = (
+        db.connect()
+        .execute(
+            'SELECT r.title, r.subsite, s.site FROM search_results r JOIN searches s ON s.key_hash = r.key_hash WHERE r.cur_id = ? LIMIT 1',
+            (cur_id,),
+        )
+        .fetchone()
+    )
+    if row is None:
         return None
-    for path in entries:
-        try:
-            payload = json.loads(path.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            continue
-        for r in payload.get('results') or []:
-            if r.get('cur_id') == cur_id and r.get('title'):
-                site = str(r.get('subsite') or (payload.get('key') or [''])[0] or '')
-                return str(r['title']), site
-    return None
+    return str(row['title']), str(row['subsite'] or row['site'])
 
 
-def _sweep() -> None:
-    cutoff = time.time() - _STORE_TTL
-    try:
-        stale = [p for p in store_dir().glob('*.json') if p.stat().st_mtime < cutoff]
-    except OSError:
-        return
-    for p in stale:
-        p.unlink(missing_ok=True)
-    if stale:
-        logger.info('search-store', f'swept {len(stale)} expired search result file(s)')
+def sweep_expired() -> int:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute('DELETE FROM searches WHERE saved_at < ?', (time.time() - _STORE_TTL,))
+    return int(cur.rowcount or 0)

@@ -68,13 +68,19 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     import app.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
-    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [{'key': 'studio/abc'}])
+    monkeypatch.setattr(mcr.metadata_cache, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
+    monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda: ['Studio'])
     client = TestClient(create_app())
     assert client.get('/metadata/state').status_code == 401
     hdr = {'x-admin-token': 'tok'}
     assert client.get('/metadata/state', headers=hdr).json() == {'token': '3:123.0'}
-    assert client.get('/metadata/entries', headers=hdr).json() == {'entries': [{'key': 'studio/abc'}], 'dup_keys': ['studio/abc']}
+    assert client.get('/metadata/entries', headers=hdr).json() == {
+        'entries': [{'key': 'studio/abc'}],
+        'dup_keys': ['studio/abc'],
+        'total': 1,
+        'studios': ['Studio'],
+    }
 
 
 def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -99,3 +105,71 @@ def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     page = TestClient(create_app()).get('/metadata?token=tok')
     assert 'const DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
     assert 'Show Duplicates' in page.text
+
+
+def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'let TOTAL = 0;' in page.text
+    assert 'let STUDIOS = [];' in page.text
+    assert 'serverQuery()' in page.text
+    assert '>Previous<' in page.text and '>Next<' in page.text
+
+
+def _seed_scene(site: str, cur: str, title: str, studio: str, date: str, updated: float) -> None:
+    from app.utils import cache as mc
+    from app.utils.cache import scene_store
+
+    data = {
+        'MediaContainer': {
+            'identifier': 'i',
+            'size': 1,
+            'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'studio': studio, 'originallyAvailableAt': date}],
+        }
+    }
+    scene_store.upsert(site, cur, mc._hash(site, cur), f'{studio.lower()}/{cur}', data, updated_at=updated)
+
+
+def _seed_library() -> None:
+    _seed_scene('Brazzers', 'c1', 'Alpha Scene', 'Brazzers', '2024-01-01', 100.0)
+    _seed_scene('Brazzers', 'c2', 'Bravo Scene', 'Brazzers', '2024-02-01', 200.0)
+    _seed_scene('Vixen', 'c3', 'Charlie Night', 'Vixen', '2024-03-01', 300.0)
+    _seed_scene('Vixen', 'c4', 'Delta Night', 'Vixen', '2024-04-01', 400.0)
+    _seed_scene('Vixen', 'c5', 'Echo Scene', 'Vixen', '2024-05-01', 500.0)
+
+
+def test_entries_endpoint_filters_sorts_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_library()
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    j = client.get('/metadata/entries', headers=hdr).json()
+    assert j['total'] == 5 and len(j['entries']) == 5
+    assert [e['title'] for e in j['entries']] == ['Echo Scene', 'Delta Night', 'Charlie Night', 'Bravo Scene', 'Alpha Scene']
+    assert j['studios'] == ['Brazzers', 'Vixen']
+    assert j['dup_keys'] == []
+
+    j = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers'}).json()
+    assert j['total'] == 2
+    assert {e['studio'] for e in j['entries']} == {'Brazzers'}
+
+    j = client.get('/metadata/entries', headers=hdr, params={'q': 'night'}).json()
+    assert j['total'] == 2
+    assert sorted(e['title'] for e in j['entries']) == ['Charlie Night', 'Delta Night']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'title', 'dir': 'asc'}).json()
+    assert [e['title'] for e in j['entries']] == ['Alpha Scene', 'Bravo Scene', 'Charlie Night', 'Delta Night', 'Echo Scene']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'release_date', 'dir': 'desc'}).json()
+    assert [e['date'] for e in j['entries']] == ['2024-05-01', '2024-04-01', '2024-03-01', '2024-02-01', '2024-01-01']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'title', 'dir': 'asc', 'limit': 2, 'offset': 2}).json()
+    assert j['total'] == 5
+    assert [e['title'] for e in j['entries']] == ['Charlie Night', 'Delta Night']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'bogus', 'dir': 'sideways'}).json()
+    assert [e['title'] for e in j['entries']][0] == 'Echo Scene'
+
+    j = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers', 'q': 'alpha'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'Alpha Scene'

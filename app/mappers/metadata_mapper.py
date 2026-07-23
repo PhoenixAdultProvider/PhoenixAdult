@@ -36,6 +36,44 @@ def _year_of(date: str | None) -> int | None:
     return int(date[0:4]) if date and date[0:4].isdigit() else None
 
 
+def _classify_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
+    """Keep probed images with a servable class; unknown shapes are logged and dropped."""
+    images: list[PlexImage] = []
+    for p in valid:
+        if p['image_class'] in ('coverPoster', 'background', 'backgroundSquare'):
+            images.append(PlexImage(url=p['url'], type=p['image_class']))
+        else:
+            logger.debug(f'Image {p["dims"]["width"]}x{p["dims"]["height"]} unknown: {p["url"]}')
+    return images
+
+
+def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]], by_class: dict[str, list[dict[str, Any]]]) -> None:
+    """Backstops for absent kinds: backgrounds (else everything) double as coverPoster,
+    backgroundSquare doubles as background."""
+    has_poster = any(img.type == 'coverPoster' for img in images)
+    has_background = any(img.type == 'background' for img in images)
+
+    if not has_poster and valid:
+        logger.info(f'No portrait posters; promoting {len(valid)} image(s) to coverPoster')
+        candidates = by_class.get('background', valid) if has_background else valid
+        for p in candidates:
+            images.append(PlexImage(url=p['url'], type='coverPoster'))
+
+    if not has_background and (sq := by_class.get('backgroundSquare')):
+        logger.info(f'No background; promoting {len(sq)} backgroundSquare image(s) to background')
+        for p in sq:
+            images.append(PlexImage(url=p['url'], type='background'))
+
+
+def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]]) -> None:
+    """In-place order: kinds keep first-appearance order, largest area first within a kind."""
+    area = {p['url']: p['dims']['width'] * p['dims']['height'] for p in valid}
+    first_pos: dict[str, int] = {}
+    for idx, img in enumerate(images):
+        first_pos.setdefault(img.type, idx)
+    images.sort(key=lambda img: (first_pos[img.type], -area.get(img.url, 0)))
+
+
 class MetadataMapper:
     def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None, *, passthrough_local: bool = False) -> str | None:
         return proxy_url(url, config.base_url, referers, cookies, passthrough_local=passthrough_local)
@@ -127,7 +165,10 @@ class MetadataMapper:
             Country=[PlexCountry(tag=c) for c in detail.countries] if detail.countries else None,
         )
 
-    async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
+    async def _probe_artwork(self, art: list[str], referers: list[str], cookies: list[str]) -> list[dict[str, Any]]:
+        """Measure and classify each artwork URL; images whose dimensions can't be
+        fetched drop out."""
+
         async def probe(raw_url: str) -> dict[str, Any] | None:
             dims = await fetch_dimensions(raw_url, referers, cookies)
             if not dims:
@@ -135,33 +176,18 @@ class MetadataMapper:
             result = classify_image(dims['width'], dims['height'])
             return {'url': raw_url, 'dims': dims, 'image_class': result.image_class}
 
-        probed = await asyncio.gather(*(probe(u) for u in detail.art))
-        valid = [p for p in probed if p is not None]
+        probed = await asyncio.gather(*(probe(u) for u in art))
+        return [p for p in probed if p is not None]
 
-        images: list[PlexImage] = []
+    async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
+        valid = await self._probe_artwork(detail.art, referers, cookies)
+        by_class: dict[str, list[dict[str, Any]]] = {}
         for p in valid:
-            if p['image_class'] in ('coverPoster', 'background', 'backgroundSquare'):
-                images.append(PlexImage(url=p['url'], type=p['image_class']))
-            else:
-                logger.debug(f'Image {p["dims"]["width"]}x{p["dims"]["height"]} unknown: {p["url"]}')
+            by_class.setdefault(p['image_class'], []).append(p)
 
-        has_poster = any(img.type == 'coverPoster' for img in images)
-        has_background = any(img.type == 'background' for img in images)
-
-        img_by_class: dict[str, list[dict[str, Any]]] = {}
-        for p in valid:
-            img_by_class.setdefault(p['image_class'], []).append(p)
-
-        if not has_poster and valid:
-            logger.info(f'No portrait posters; promoting {len(valid)} image(s) to coverPoster')
-            candidates = img_by_class.get('background', valid) if has_background else valid
-            for p in candidates:
-                images.append(PlexImage(url=p['url'], type='coverPoster'))
-
-        if not has_background and (sq := img_by_class.get('backgroundSquare')):
-            logger.info(f'No background; promoting {len(sq)} backgroundSquare image(s) to background')
-            for p in sq:
-                images.append(PlexImage(url=p['url'], type='background'))
+        images = _classify_artwork(valid)
+        _promote_missing_kinds(images, valid, by_class)
+        _sort_artwork(images, valid)
 
         thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
         art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)

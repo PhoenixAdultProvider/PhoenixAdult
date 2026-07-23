@@ -199,14 +199,14 @@ def _parse_xml(raw: bytes, label: str) -> Any:
 
 def _parse_data18(movie: Any) -> str | None:
     """The <data18> ref: nested <id>/<type> (type defaults to scene) or plain flat text."""
-    el = movie.find('data18')
-    if el is None:
+    row = movie.find('data18')
+    if row is None:
         return None
 
-    if ref_id := _txt(el.findtext('id')):
-        return f'{_txt(el.findtext("type")) or "scene"}s/{ref_id}'
+    if ref_id := _txt(row.findtext('id')):
+        return f'{_txt(row.findtext("type")) or "scene"}s/{ref_id}'
 
-    return _txt(el.text)
+    return _txt(row.text)
 
 
 def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
@@ -229,7 +229,7 @@ def _parse_nfo(data: bytes | str, label: str = '') -> NfoData | None:
             {'name': name, 'role': _txt(a.findtext('role')) or '', 'thumb': _txt(a.findtext('thumb')) or '', 'gender': _txt(a.findtext('gender')) or ''}
         )
 
-    genres = [g for g in (_txt(el.text) for el in movie.findall('genre')) if g]
+    genres = [g for g in (_txt(row.text) for row in movie.findall('genre')) if g]
 
     fanart_el = movie.find('fanart')
     if fanart_el is not None:

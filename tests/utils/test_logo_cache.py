@@ -139,6 +139,42 @@ def test_index_converts_dropped_svgs(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert not svg.exists()
 
 
+def test_index_rebuilds_after_db_loss(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from app.utils import db
+
+    f = _put(tmp_path, 'brazzers', 'logo.brazzers.png')
+    assert logo_cache.find_logo(None, 'Brazzers') == f
+
+    db.close()
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state2.db'))
+    assert logo_cache.find_logo(None, 'Brazzers') == f
+
+
+def test_stale_row_healed_without_invalidate(tmp_path: Path) -> None:
+    f = _put(tmp_path, 'brazzers', 'logo.brazzers.png')
+    assert logo_cache.find_logo(None, 'Brazzers') == f
+    f.unlink()
+    assert logo_cache.find_logo(None, 'Brazzers') is None
+
+
+def test_find_logo_scans_candidate_folders_on_miss(tmp_path: Path) -> None:
+    _put(tmp_path, 'brazzers', 'logo.brazzers.png')
+    assert logo_cache.find_logo(None, 'Brazzers') is not None
+    dropped = _put(tmp_path, 'brazzers', 'logo.baby-got-boobs.png')
+    _put(tmp_path, 'elsewhere', 'logo.unrelated.png')
+    assert logo_cache.find_logo('Baby Got Boobs', 'Brazzers') == dropped
+    assert logo_cache.find_logo('Unrelated', None) is None
+
+
+def test_entries_reads_the_table_without_a_rescan(tmp_path: Path) -> None:
+    _put(tmp_path, 'brazzers', 'logo.brazzers.png')
+    assert {r['slug'] for r in logo_cache.entries()} == {'brazzers'}
+    _put(tmp_path, 'nubiles', 'logo.nubilesnet.png')
+    assert {r['slug'] for r in logo_cache.entries()} == {'brazzers'}
+    logo_cache.invalidate()
+    assert {r['slug'] for r in logo_cache.entries()} == {'brazzers', 'nubilesnet'}
+
+
 def test_entries_and_purge(tmp_path: Path) -> None:
     _put(tmp_path, 'brazzers', 'logo.brazzers.png')
     _put(tmp_path, 'nubiles', 'logo.nubilesnet.png')

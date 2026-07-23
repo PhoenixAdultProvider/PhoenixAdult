@@ -84,7 +84,7 @@ class CumLouderClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
-        for el in details_page_elements.xpath('//div[contains(@class,"box-video-html5")]/video'):
-            images['push'](first_attr(el, '@lazy'))
+        for row in details_page_elements.xpath('//div[contains(@class,"box-video-html5")]/video'):
+            images['push'](first_attr(row, '@lazy'))
 
         metadata.art = images['list']

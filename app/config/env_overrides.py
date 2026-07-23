@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 
 from app.config.env_catalog import is_editable_key
+from app.utils.fs.json_io import read_json
 
 OVERRIDES_PATH = Path(os.environ.get('ENV_OVERRIDES_PATH') or (Path.cwd() / 'env.overrides.json'))
 
@@ -33,11 +34,7 @@ def _persist() -> None:
 def load_overrides() -> None:
     if not OVERRIDES_PATH.exists():
         return
-    try:
-        raw = json.loads(OVERRIDES_PATH.read_text(encoding='utf-8'))
-    except (OSError, ValueError) as err:
-        print(f'[envOverrides] could not read {OVERRIDES_PATH}: {err}')
-        return
+    raw = read_json(OVERRIDES_PATH, tag='envOverrides')
     if not isinstance(raw, dict):
         return
     with _lock:

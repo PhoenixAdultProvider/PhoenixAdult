@@ -150,12 +150,12 @@ class FamilyTherapyClient(Client):
         metadata.release_date = iso_date(date_raw, '%b %d, %Y') or scene.scene_date or None
 
         # Genres
-        metadata.genres = self.dedup_strings([first_attr(el) for el in details_page_elements.xpath('//a[@rel="category tag"]')])
+        metadata.genres = self.dedup_strings([first_attr(row) for row in details_page_elements.xpath('//a[@rel="category tag"]')])
 
         # Actor(s)
         seen: set[str] = set()
-        for el in details_page_elements.xpath('//div[contains(@class,"entry-content")]//p'):
-            m = _STARRING_RE.search(el.xpath('string(.)').get() or '')
+        for row in details_page_elements.xpath('//div[contains(@class,"entry-content")]//p'):
+            m = _STARRING_RE.search(row.xpath('string(.)').get() or '')
             if not m:
                 continue
 

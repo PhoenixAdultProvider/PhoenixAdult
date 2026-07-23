@@ -127,7 +127,7 @@ class RadicalCashOtherClient(Client):
         details_page_elements = scene.require_sel()
 
         p = self._profile(scene.site.name)
-        parts = [first_attr(el) for el in details_page_elements.xpath(f'//{p["summary"]}')]
+        parts = [first_attr(row) for row in details_page_elements.xpath(f'//{p["summary"]}')]
         parts = [t for t in parts if t]
 
         metadata.summary = '\n\n'.join(parts) if parts else ''

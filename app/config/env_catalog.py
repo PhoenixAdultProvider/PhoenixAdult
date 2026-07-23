@@ -420,13 +420,14 @@ ENV_CATALOG: list[EnvVarSpec] = [
         max=3600,
     ),
     EnvVarSpec(
-        'SEARCH_QUEUE_DIR',
-        'Search Store Directory',
-        'On-disk store for finished background search results (paced scrapers), so a later Plex scan '
-        'matches without re-searching. Entries expire after 7 days.',
+        'STATE_DB_PATH',
+        'State Database Path',
+        'SQLite database (WAL) holding queue replays, the search store, and — since the relational scene '
+        'store — PRIMARY scene metadata. Do NOT delete: back up with VACUUM INTO.',
         'Misc',
         'string',
-        default_value='./local/queue',
+        default_value='./local/state.db',
+        requires_restart=True,
     ),
     EnvVarSpec(
         'SEARCH_STRIP_ACTORS',

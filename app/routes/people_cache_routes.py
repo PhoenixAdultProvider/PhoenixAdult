@@ -16,7 +16,7 @@ from app.routes import read_json_body
 from app.utils.auth.env_auth import csrf_guard, env_auth_guard
 from app.utils.images import face_crop, face_crop_log
 from app.utils.images.ext import IMAGE_EXTS
-from app.utils.people.cache import _ORIGINALS_DIR, people_cache_dir, purge, restore_original, set_gender
+from app.utils.people.cache import _ORIGINALS_DIR, _index_conn, people_cache_dir, purge, restore_original, set_gender
 from app.utils.people.types import parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
@@ -42,9 +42,41 @@ def _parse_filename(filename: str) -> tuple[str, str, str] | None:
     return role, slug.replace('-', ' ').title(), gender
 
 
+def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | None:
+    subpath, _, filename = relpath.rpartition('/')
+    parsed = _parse_filename(filename)
+    if not parsed:
+        return None
+    role, name, gender = parsed
+    return {
+        'name': log.get('name') or name,
+        'filename': filename,
+        'relpath': relpath,
+        'type': subpath.replace('/', '-'),
+        'role': role,
+        'gender': gender,
+        'upstream_url': log.get('upstream_url', ''),
+        'cropped': bool(log.get('cropped')),
+        'ts': log.get('ts') or datetime.fromtimestamp(mtime, UTC).strftime('%Y-%m-%d %H:%M:%S'),
+        'mtime': mtime,
+    }
+
+
 def _list_people(directory: str) -> list[dict[str, Any]]:
-    """Every cached headshot across the role/gender subfolders (originals/ skipped), newest first,
-    enriched with crop-log metadata; entries carry relpath (served URL) and `type` (tab)."""
+    """Every cached headshot (originals/ excluded) from the people_images index merged with crop-log
+    metadata, newest first; entries carry relpath (served URL) and `type` (tab)."""
+    rows = _index_conn().execute('SELECT rel_path, mtime FROM people_images ORDER BY rel_path').fetchall()
+    if not rows:
+        return _list_people_files(directory)
+    logs = face_crop_log.entries_by_path()
+    out = [_entry(str(r['rel_path']), float(r['mtime']), logs.get(str(r['rel_path']), {})) for r in rows]
+    kept = [e for e in out if e is not None]
+    kept.sort(key=lambda e: e['mtime'], reverse=True)
+    return kept
+
+
+def _list_people_files(directory: str) -> list[dict[str, Any]]:
+    """Filesystem fallback for an empty index: walk the role/gender subfolders directly."""
     root = Path(directory)
     if not root.exists():
         return []
@@ -58,29 +90,13 @@ def _list_people(directory: str) -> list[dict[str, Any]]:
         for f in sorted(sd.iterdir()):
             if not f.is_file() or f.name.startswith('.') or f.suffix.lower() not in IMAGE_EXTS:
                 continue
-            parsed = _parse_filename(f.name)
-            if not parsed:
-                continue
-            role, name, gender = parsed
-            log = by_file.get(f.name, {})
             try:
                 mtime = f.stat().st_mtime
             except OSError:
                 mtime = 0.0
-            out.append(
-                {
-                    'name': log.get('name') or name,
-                    'filename': f.name,
-                    'relpath': f'{subpath}/{f.name}',
-                    'type': subpath.replace('/', '-'),
-                    'role': role,
-                    'gender': gender,
-                    'upstream_url': log.get('upstream_url', ''),
-                    'cropped': bool(log.get('cropped')),
-                    'ts': log.get('ts') or datetime.fromtimestamp(mtime, UTC).strftime('%Y-%m-%d %H:%M:%S'),
-                    'mtime': mtime,
-                }
-            )
+            entry = _entry(f'{subpath}/{f.name}', mtime, by_file.get(f.name) or {})
+            if entry is not None:
+                out.append(entry)
     out.sort(key=lambda e: e['mtime'], reverse=True)
     return out
 
@@ -105,14 +121,14 @@ def _card(entry: dict[str, Any]) -> str:
     role = str(entry.get('role', ''))
     upstream = str(entry.get('upstream_url', ''))
     cropped = bool(entry.get('cropped'))
-    ts = html.escape(str(entry.get('ts', '')))
+    timestamp = html.escape(str(entry.get('ts', '')))
     gcss = next(css for key, css, _ in _GENDERS if key == _gender_of(str(entry.get('gender', ''))))
     relpath = str(entry.get('relpath', filename))
     ctype = html.escape(str(entry.get('type', '')), quote=True)
     local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
-    fn = html.escape(filename, quote=True)
+    filename_attr = html.escape(filename, quote=True)
     if upstream:
         upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
         restore_btn = '<button class="restore">Use original</button>' if cropped else '<button class="restore" disabled>Original kept</button>'
@@ -120,8 +136,8 @@ def _card(entry: dict[str, Any]) -> str:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
     purge_btn = '<button class="purge">Purge</button>'
-    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{fn}" data-cropped="{1 if cropped else 0}">
-      <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{ts}</span></div>
+    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" data-cropped="{1 if cropped else 0}">
+      <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}

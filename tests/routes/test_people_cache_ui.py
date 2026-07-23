@@ -62,6 +62,62 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
     assert 'display:none}' in page.text.split('.card{')[1].split('\n')[0]
 
 
+def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    from pathlib import Path
+
+    from app.routes import people_cache_routes as pcr
+    from app.utils.images import face_crop_log
+
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    root = Path(str(tmp_path))
+    d = root / 'actors' / 'female'
+    d.mkdir(parents=True)
+    (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
+    (root / 'directors').mkdir()
+    (root / 'directors' / 'director.greg-lansky.png').write_bytes(b'x')
+    (root / 'originals').mkdir()
+    (root / 'originals' / 'actor.jane-doe_female.webp').write_bytes(b'x')
+    face_crop_log.record(
+        str(d),
+        name='Jane Doe',
+        filename='actor.jane-doe_female.jpg',
+        base='actor.jane-doe_female',
+        orig_ext='.webp',
+        upstream_url='https://up/j.webp',
+        cropped=True,
+    )
+
+    entries = pcr._list_people(str(root))
+    by_file = {e['filename']: e for e in entries}
+    assert set(by_file) == {'actor.jane-doe_female.jpg', 'director.greg-lansky.png'}
+    jane = by_file['actor.jane-doe_female.jpg']
+    assert jane['relpath'] == 'actors/female/actor.jane-doe_female.jpg'
+    assert jane['type'] == 'actors-female' and jane['role'] == 'actor' and jane['gender'] == 'female'
+    assert jane['name'] == 'Jane Doe' and jane['cropped'] is True and jane['upstream_url'] == 'https://up/j.webp'
+    assert jane['ts'] == face_crop_log.entry_for(str(d), 'actor.jane-doe_female.jpg')['ts'] and jane['mtime'] > 0  # type: ignore[index]
+    greg = by_file['director.greg-lansky.png']
+    assert greg['type'] == 'directors' and greg['name'] == 'Greg Lansky' and greg['cropped'] is False and greg['upstream_url'] == ''
+
+
+def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    from pathlib import Path
+
+    from app.routes import people_cache_routes as pcr
+    from app.utils import db
+    from app.utils.people import cache as pcache
+
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'actors' / 'male'
+    d.mkdir(parents=True)
+    (d / 'actor.bob_male.jpg').write_bytes(b'x')
+
+    db.connect()
+    monkeypatch.setattr(pcache._index, '_key', (pcache.people_cache_dir(), pcache.env.state_db_path))
+    entries = pcr._list_people(str(tmp_path))
+    assert [e['relpath'] for e in entries] == ['actors/male/actor.bob_male.jpg']
+    assert entries[0]['type'] == 'actors-male'
+
+
 def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 

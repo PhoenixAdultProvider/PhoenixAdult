@@ -114,3 +114,21 @@ async def test_pause_holds_the_worker_until_resume() -> None:
         await asyncio.wait_for(ran.wait(), timeout=5)
     finally:
         scrape_queue.resume()
+
+
+async def test_replays_persist_and_drain_via_db(monkeypatch, tmp_path) -> None:
+    from app.utils import db
+
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
+    try:
+        done = asyncio.Event()
+
+        async def job() -> None:
+            await done.wait()
+
+        scrape_queue.enqueue('r1', job, kind='search', replay={'kind': 'search', 'provider': 'p'})
+        assert scrape_queue.take_replays() == {'r1': {'kind': 'search', 'provider': 'p'}}
+        assert scrape_queue.take_replays() == {}
+        done.set()
+    finally:
+        db.close()

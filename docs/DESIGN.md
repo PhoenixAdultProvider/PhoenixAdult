@@ -313,6 +313,10 @@ flowchart LR
 - `to_rating_key` / `parse_rating_key`: `app/mappers/metadata_mapper.py` (regex `^scene-([a-z0-9]+)-([A-Za-z0-9_-]+)(?:\.(\d{8}))?$`).
 - **Security-relevant:** the decoded `scene_url` is attacker-influenceable and is validated by `ensure_fetchable_url` (`app/utils/http/ssrf_guard.py`) before any fetch (§10).
 
+### 5.2 Persistent State (state.db)
+
+Mutable state — queue replays, the search store, the fully normalized scene snapshot store (scalars on `scenes`; dimension + junction tables for genres, collections, countries, people; image metadata in `scene_images`, image bytes on disk), and the derived people-image/logo indexes plus the face-crop log — lives in one SQLite database opened by `app/utils/db` (WAL, FK-enforced, `PRAGMA user_version` migrations). Schema, normalization rationale, scoped-people resolution, and backup guidance (`VACUUM INTO`) are documented in [database.md](database.md).
+
 ---
 
 ## 6. Scraper Client Hierarchy (Template Method / Field-Hook Pattern)
@@ -536,7 +540,7 @@ sequenceDiagram
   end
 ```
 
-Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the on-disk search store (`app/utils/cache/search_store.py`, `SEARCH_QUEUE_DIR`, case/whitespace-normalized keys, 7-day TTL), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
+Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the search store (`app/utils/cache/search_store.py`, in `state.db`, case/whitespace-normalized keys, 7-day TTL), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
 
 ---
 
