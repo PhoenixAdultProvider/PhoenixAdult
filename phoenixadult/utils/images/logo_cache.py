@@ -33,41 +33,63 @@ def logo_slug(name: str) -> str:
     return re.sub(r'\s+', '-', cleaned.strip())
 
 
-def _magick_bin() -> str | None:
-    """`magick` on PATH, else the usual install prefixes — daemon(8) often runs with a PATH
-    that omits /usr/local/bin, so shutil.which alone misses an installed ImageMagick."""
-    found = shutil.which('magick')
+def _find_bin(name: str) -> str | None:
+    """`name` on PATH, else the usual install prefixes — daemon(8) often runs with a PATH
+    that omits /usr/local/bin, so shutil.which alone misses an installed binary."""
+    found = shutil.which(name)
     if found:
         return found
-    for candidate in ('/usr/local/bin/magick', '/usr/bin/magick', '/opt/homebrew/bin/magick'):
-        if Path(candidate).is_file():
-            return candidate
+    for prefix in ('/usr/local/bin', '/usr/bin', '/opt/homebrew/bin'):
+        if (candidate := Path(prefix) / name).is_file():
+            return str(candidate)
     return None
 
 
-def convert_svg(svg: Path) -> Path | None:
-    """Rasterize an SVG logo to a sibling PNG — ImageMagick when installed, cairosvg
-    otherwise — deleting the SVG on success."""
-    png = svg.with_suffix('.png')
-    ok = False
-    magick = _magick_bin()
-    if magick:
-        try:
-            subprocess.run([magick, '-background', 'none', '-density', '150', str(svg), str(png)], check=True, capture_output=True, timeout=60)
-            ok = png.exists() and png.stat().st_size > 0
-        except (subprocess.SubprocessError, OSError) as err:
-            logger.warn('logo-cache', f'magick conversion failed for {svg.name}: {err!r}')
-    if not ok:
-        try:
-            import cairosvg
+def _rsvg(svg: Path, png: Path) -> bool:
+    rsvg = _find_bin('rsvg-convert')
+    if not rsvg:
+        return False
+    try:
+        subprocess.run([rsvg, '-z', '2', '-o', str(png), str(svg)], check=True, capture_output=True, timeout=60)
+        return png.exists() and png.stat().st_size > 0
+    except (subprocess.SubprocessError, OSError) as err:
+        logger.warn('logo-cache', f'rsvg-convert failed for {svg.name}: {err!r}')
+        return False
 
-            cairosvg.svg2png(url=str(svg), write_to=str(png))
-            ok = png.exists() and png.stat().st_size > 0
-        except ImportError:
-            logger.warn('logo-cache', f'no SVG converter for {svg.name}: install ImageMagick or cairosvg')
-        except Exception as err:  # noqa: BLE001 - a bad SVG just stays unconverted
-            logger.warn('logo-cache', f'cairosvg conversion failed for {svg.name}: {err!r}')
+
+def _cairosvg(svg: Path, png: Path) -> bool | None:
+    """None = cairosvg not installed (try the next converter); True/False = attempt outcome."""
+    try:
+        import cairosvg
+    except ImportError:
+        return None
+    try:
+        cairosvg.svg2png(url=str(svg), write_to=str(png))
+        return png.exists() and png.stat().st_size > 0
+    except Exception as err:  # noqa: BLE001 - a bad SVG just stays unconverted
+        logger.warn('logo-cache', f'cairosvg failed for {svg.name}: {err!r}')
+        return False
+
+
+def _magick(svg: Path, png: Path) -> bool:
+    magick = _find_bin('magick')
+    if not magick:
+        return False
+    try:
+        subprocess.run([magick, '-background', 'none', '-density', '150', str(svg), str(png)], check=True, capture_output=True, timeout=60)
+        return png.exists() and png.stat().st_size > 0
+    except (subprocess.SubprocessError, OSError) as err:
+        logger.warn('logo-cache', f'magick conversion failed for {svg.name}: {err!r}')
+        return False
+
+
+def convert_svg(svg: Path) -> Path | None:
+    """Rasterize an SVG logo to a sibling PNG (deletes the SVG on success). Prefers rsvg-convert
+    then cairosvg; ImageMagick is last as its built-in renderer mangles masks into white blocks."""
+    png = svg.with_suffix('.png')
+    ok = _rsvg(svg, png) or _cairosvg(svg, png) or _magick(svg, png)
     if not ok:
+        logger.warn('logo-cache', f'no working SVG converter for {svg.name}: install graphics/librsvg2-rust (rsvg-convert) or cairosvg')
         png.unlink(missing_ok=True)
         return None
     svg.unlink(missing_ok=True)
