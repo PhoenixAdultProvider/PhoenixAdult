@@ -732,6 +732,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Diary of a MILF
   - Diary of a Nanny
   - Dirty Wives Club
+  - Fans
   - Fast Times
   - Fuck My Ass
   - Housewife 1 on 1
@@ -782,6 +783,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Real Pornstars VR
   - Seduced by a Cougar
   - Show My BF
+  - Shows
   - Single Moms
   - Sleazy Stepdad
   - Slut Stepmom
@@ -790,6 +792,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Spring Break
   - Summer Vacation
   - Super Sluts
+  - T & A
   - Teens Love Cream
   - The Dorm Room
   - The Dressing Room
