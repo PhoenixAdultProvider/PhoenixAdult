@@ -16,7 +16,7 @@ router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
 
-_SORT_KEYS = ('title', 'studio', 'release_date', 'updated_at')
+_SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
 
 
 @router.get('', response_class=HTMLResponse)
@@ -25,6 +25,7 @@ async def page(request: Request) -> HTMLResponse:
     entries, total = await asyncio.to_thread(metadata_cache.entries_page)
     dup_keys = await asyncio.to_thread(metadata_cache.duplicate_entries)
     studios = await asyncio.to_thread(metadata_cache.studios)
+    facets = await asyncio.to_thread(metadata_cache.facets)
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     token_json = json.dumps(token).replace('<', '\\u003c')
@@ -35,6 +36,7 @@ async def page(request: Request) -> HTMLResponse:
         .replace('__ENTRIES_JSON__', entries_json)
         .replace('__TOTAL__', json.dumps(total))
         .replace('__STUDIOS__', json.dumps(studios).replace('<', '\\u003c'))
+        .replace('__FACETS__', json.dumps(facets).replace('<', '\\u003c'))
         .replace('__DUP_KEYS__', json.dumps(dup_keys).replace('<', '\u003c'))
     )
     return HTMLResponse(body)
@@ -49,15 +51,36 @@ async def state() -> JSONResponse:
 async def entries_json(
     studio: str = '',
     query: str = Query('', alias='q'),
+    year: str = '',
+    month: str = '',
+    day: str = '',
+    tagline: str = '',
+    collection: str = '',
+    data18: str = '',
+    dups: int = Query(0, ge=0, le=1),
     sort: str = 'updated_at',
     direction: str = Query('desc', alias='dir'),
-    limit: int = Query(500, ge=1, le=1000),
+    limit: int = Query(500, ge=0, le=1000),
     offset: int = Query(0, ge=0),
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
     entries, total = await asyncio.to_thread(
-        lambda: metadata_cache.entries_page(studio=studio, query=query, sort=sort, direction=direction, limit=limit, offset=offset)
+        lambda: metadata_cache.entries_page(
+            studio=studio,
+            query=query,
+            year=year,
+            month=month,
+            day=day,
+            tagline=tagline,
+            collection=collection,
+            data18=data18,
+            dups_only=bool(dups),
+            sort=sort,
+            direction=direction,
+            limit=limit if limit > 0 else -1,
+            offset=offset,
+        )
     )
     return JSONResponse(
         {
@@ -65,6 +88,7 @@ async def entries_json(
             'dup_keys': await asyncio.to_thread(metadata_cache.duplicate_entries),
             'total': total,
             'studios': await asyncio.to_thread(metadata_cache.studios),
+            'facets': await asyncio.to_thread(metadata_cache.facets),
         }
     )
 

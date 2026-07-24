@@ -8,9 +8,21 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 
 # fmt: off
 ENV_GROUP_ORDER = [
-    'Logging', 'Images', 'Manual NFO', 'People Cache & Sources', 'Gender Handling',
-    'Web Search', 'HTTP Bypass', 'Data18 Enrichment', 'MetadataAPI', 'Plex Server', 'Misc',
+    'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
+    'Data18 Enrichment', 'MetadataAPI', 'Manual NFO', 'People Cache & Sources',
+    'Gender Handling', 'Images', 'Metadata Cache', 'Logging', 'Plex Server',
 ]
+
+ENV_TABS: list[tuple[str, list[str]]] = [
+    ('Matching', ['Matching & Title Parsing']),
+    ('Scraping', ['Scraping & Pacing', 'HTTP Bypass', 'Web Search']),
+    ('Enrichment', ['Data18 Enrichment', 'MetadataAPI', 'Manual NFO']),
+    ('People', ['People Cache & Sources', 'Gender Handling']),
+    ('Images', ['Images']),
+    ('System', ['Metadata Cache', 'Logging']),
+    ('Plex', ['Plex Server']),
+]
+GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
 DEFAULT_SEARCH_TITLE_TRASH = [
     'RARBG', 'COM', r'\d{3,4}x\d{3,4}', 'HEVC', r'H\d{3}', 'AVC', r'\dK',
@@ -151,7 +163,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'When on, each scraped scene’s metadata + images are snapshotted under the metadata '
         'cache dir and served cache-first on later requests — offline-safe protection against '
         'the source site going down or changing anti-scrape. Manage/purge at /metadata.',
-        'People Cache & Sources',
+        'Metadata Cache',
         'boolean',
         default_value='false',
     ),
@@ -159,7 +171,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'METADATA_CACHE_DIR',
         'Metadata Cache Directory',
         'On-disk location for metadata snapshots (text + images).',
-        'People Cache & Sources',
+        'Metadata Cache',
         'string',
         default_value='./local/cache',
     ),
@@ -372,7 +384,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'PHOENIX_EXTRA_COLLECTIONS',
         'Extra Collections',
         'Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther.',
-        'Misc',
+        'Scraping & Pacing',
         'boolean',
         default_value='false',
     ),
@@ -380,7 +392,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'STRIP_ENABLE',
         'Strip Junk Around the Title',
         'Enable the two strip-symbol rules below, which cut a junk prefix/suffix off the parsed title before searching.',
-        'Misc',
+        'Matching & Title Parsing',
         'boolean',
         default_value='false',
     ),
@@ -388,21 +400,21 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'STRIP_SYMBOL',
         'Strip Symbol — Keep Text Before',
         'When strip is enabled and this symbol appears in the title, keep only the text BEFORE its first occurrence.',
-        'Misc',
+        'Matching & Title Parsing',
         'string',
     ),
     EnvVarSpec(
         'STRIP_SYMBOL_REVERSE',
         'Strip Symbol — Keep Text After',
         'When strip is enabled and this symbol appears in the title, keep only the text AFTER its last occurrence.',
-        'Misc',
+        'Matching & Title Parsing',
         'string',
     ),
     EnvVarSpec(
         'SEARCH_TITLE_TRASH',
         'Extra Search-Title Junk Tokens',
         'Additional whole-word release / scene-group tokens stripped from the parsed title, appended to the built-in list.',
-        'Misc',
+        'Matching & Title Parsing',
         'list',
         default_value='',
     ),
@@ -413,7 +425,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         '(Nubiles, Naughty America); a 10-45s random jitter is always added on top, and at most 8 scenes run '
         'per 10 minutes regardless. Deferred work runs in the background (watch it at /queue); finished background '
         'searches persist to the search store so a later scan consumes them.',
-        'Misc',
+        'Scraping & Pacing',
         'number',
         default_value='10',
         min=0,
@@ -423,7 +435,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'REFRESH_FORCE_COUNT',
         'Refreshes Needed to Force a Refetch',
         'How many Plex refreshes of one scene within 60 seconds force a fresh scrape instead of the cached snapshot. Set 1 to refetch on every refresh.',
-        'Misc',
+        'Scraping & Pacing',
         'number',
         default_value='3',
         min=1,
@@ -434,7 +446,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'State Database Path',
         'SQLite database (WAL) holding queue replays, the search store, and — since the relational scene '
         'store — PRIMARY scene metadata. Do NOT delete: back up with VACUUM INTO.',
-        'Misc',
+        'Metadata Cache',
         'string',
         default_value='./local/phoenixadult.db',
         requires_restart=True,
@@ -445,7 +457,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Sites whose filenames lead with actor names: the names are dropped when building the site search, '
         'and title scoring uses the best of the stripped and unstripped title. Entries match a site, '
         'a studio, or a whole network (e.g. Nubiles). Type to search.',
-        'Misc',
+        'Matching & Title Parsing',
         'list',
         default_value='',
     ),
@@ -453,7 +465,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'DISABLE_AUTO_MATCH',
         'Disable Automatic Matching',
         'When on, suppress every match request Plex did NOT flag as user-initiated (manual=1).',
-        'Misc',
+        'Matching & Title Parsing',
         'boolean',
         default_value='false',
     ),

@@ -389,19 +389,45 @@ def entries_page(
     *,
     studio: str = '',
     query: str = '',
+    year: str = '',
+    month: str = '',
+    day: str = '',
+    tagline: str = '',
+    collection: str = '',
+    data18: str = '',
+    dups_only: bool = False,
     sort: str = 'updated_at',
     direction: str = 'desc',
     limit: int = 500,
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
     """One filtered/sorted page of snapshots for the /metadata UI, with the total match count."""
-    rows, total = scene_store.query_entry_rows(studio=studio, query=query, sort=sort, direction=direction, limit=limit, offset=offset)
+    rows, total = scene_store.query_entry_rows(
+        studio=studio,
+        query=query,
+        year=year,
+        month=month,
+        day=day,
+        tagline=tagline,
+        collection=collection,
+        data18=data18,
+        dup_paths=duplicate_entries() if dups_only else None,
+        sort=sort,
+        direction=direction,
+        limit=limit,
+        offset=offset,
+    )
     return [_ui_entry(row) for row in rows], total
 
 
 def studios() -> list[str]:
     """Distinct studio names across stored snapshots, for the /metadata studio filter."""
     return scene_store.studio_names()
+
+
+def facets() -> dict[str, Any]:
+    """Facet dropdown options across all snapshots, for the /metadata UI."""
+    return scene_store.facet_values()
 
 
 def change_token() -> str:

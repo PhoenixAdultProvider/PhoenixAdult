@@ -147,12 +147,9 @@
     <span class="toolbar-status" id="status"></span>
   </div>
 
-  <div class="tabbar">
-    <button id="tabbtn-settings" onclick="showTab('settings')">Settings</button>
-    <button id="tabbtn-plex" onclick="showTab('plex')">Plex</button>
-  </div>
+  <div class="tabbar" id="tabbar"></div>
 
-  <div id="tab-settings" class="tabpane"><div id="groups"></div></div>
+  <div id="tabpanes"></div>
 
   <div id="tab-plex" class="tabpane">
     <h2>Connection</h2>
@@ -238,11 +235,24 @@
     // ── Render ────────────────────────────────────────────────────────────────
 
     const PLEX_GROUP = 'Plex Server';
+    const PLEX_TAB = 'Plex';
+
+    function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+    function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB); }
+    function tabIds() { return [...tabNames().map(tabSlug), 'plex']; }
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
-      document.getElementById('groups').innerHTML =
-        STATE.groups.filter((g) => g.name !== PLEX_GROUP).map(renderGroup).join('');
+      const current = document.querySelector('.tabbar button.active');
+      const currentId = current ? current.id.replace('tabbtn-', '') : null;
+      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB]
+        .map((t) => '<button id="tabbtn-' + (t === PLEX_TAB ? 'plex' : tabSlug(t)) + '" onclick="showTab(\'' + (t === PLEX_TAB ? 'plex' : tabSlug(t)) + '\')">' + esc(t) + '</button>')
+        .join('');
+      document.getElementById('tabpanes').innerHTML = tabNames()
+        .map((t) => '<div id="tab-' + tabSlug(t) + '" class="tabpane">'
+          + STATE.groups.filter((g) => g.tab === t && g.name !== PLEX_GROUP).map(renderGroup).join('')
+          + '</div>')
+        .join('');
       const plexGroup = STATE.groups.find((g) => g.name === PLEX_GROUP);
       document.getElementById('plex-vars').innerHTML = plexGroup ? plexGroup.vars.map(renderVar).join('') : '';
       for (const v of allVars()) {
@@ -252,13 +262,16 @@
           loadPreview(v.key, (inp && inp.value.trim()) || v.defaultValue || '');
         }
       }
+      if (currentId && tabIds().includes(currentId)) showTab(currentId);
       refreshDirty();
     }
 
     function showTab(name) {
-      for (const t of ['settings', 'plex']) {
-        document.getElementById('tab-' + t).classList.toggle('active', t === name);
-        document.getElementById('tabbtn-' + t).classList.toggle('active', t === name);
+      for (const t of tabIds()) {
+        const pane = document.getElementById('tab-' + t);
+        const btn = document.getElementById('tabbtn-' + t);
+        if (pane) pane.classList.toggle('active', t === name);
+        if (btn) btn.classList.toggle('active', t === name);
       }
       if (history.replaceState) history.replaceState(null, '', '#' + name);
       if (name === 'plex') plexUpdateStatus(false);
@@ -546,6 +559,7 @@
     function applyState(newState) {
       STATE.overridesPath = newState.overridesPath;
       STATE.groups = newState.groups;
+      STATE.tabs = newState.tabs || STATE.tabs;
       render();
     }
 
@@ -983,7 +997,8 @@
 
     render();
     initReconFields();
-    showTab(location.hash === '#plex' ? 'plex' : 'settings');
+    const startTab = location.hash.slice(1);
+    showTab(tabIds().includes(startTab) ? startTab : tabIds()[0]);
   </script>
 </body>
 </html>

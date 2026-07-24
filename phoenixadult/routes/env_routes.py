@@ -14,6 +14,8 @@ from phoenixadult.config.env import env
 from phoenixadult.config.env_catalog import (
     ENV_CATALOG,
     ENV_GROUP_ORDER,
+    ENV_TABS,
+    GROUP_TAB,
     EnvVarSpec,
     find_env_var,
     humanize_bytes,
@@ -77,8 +79,8 @@ def _build_state() -> dict[str, Any]:
     def rank(name: str) -> int:
         return ENV_GROUP_ORDER.index(name) if name in ENV_GROUP_ORDER else len(ENV_GROUP_ORDER)
 
-    groups = [{'name': name, 'vars': vars_} for name, vars_ in sorted(by_group.items(), key=lambda kv: rank(kv[0]))]
-    return {'overridesPath': str(OVERRIDES_PATH), 'groups': groups}
+    groups = [{'name': name, 'tab': GROUP_TAB.get(name, 'System'), 'vars': vars_} for name, vars_ in sorted(by_group.items(), key=lambda kv: rank(kv[0]))]
+    return {'overridesPath': str(OVERRIDES_PATH), 'groups': groups, 'tabs': [tab for tab, _tab_groups in ENV_TABS]}
 
 
 @router.get('/api/state')

@@ -279,7 +279,9 @@ _SUMMARY_IMAGES_JOIN = ' LEFT JOIN scene_images si ON si.scene_id = s.id'
 _SORT_COLUMNS = {
     'title': 's.title',
     'studio': "COALESCE(st.name, '')",
+    'tagline': "COALESCE(tl.name, '')",
     'release_date': "COALESCE(s.release_date, '')",
+    'data18_id': "COALESCE(s.data18_id, '')",
     'updated_at': 's.updated_at',
 }
 
@@ -314,27 +316,74 @@ def _collections_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int
     return out
 
 
-def query_entry_rows(
-    *,
-    studio: str = '',
-    query: str = '',
-    sort: str = 'updated_at',
-    direction: str = 'desc',
-    limit: int = 500,
-    offset: int = 0,
-) -> tuple[list[dict[str, Any]], int]:
-    """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI,
-    plus the total number of matching scenes."""
-    conn = db.connect()
+_BLANK = '__blank__'
+
+
+def _entry_filters(
+    studio: str, query: str, year: str, month: str, day: str, tagline: str, collection: str, data18: str, dup_paths: list[str] | None
+) -> tuple[str, list[Any]]:
     where: list[str] = []
     params: list[Any] = []
     if studio:
         where.append('st.name = ?')
         params.append(studio)
     if query:
-        where.append("s.title LIKE ? ESCAPE '\\'")
-        params.append(db.like_contains(query))
-    where_sql = f' WHERE {" AND ".join(where)}' if where else ''
+        where.append("(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')")
+        params.extend([db.like_contains(query)] * 3)
+    if year == _BLANK:
+        where.append("COALESCE(s.release_date, '') = ''")
+    elif year:
+        where.append('substr(s.release_date, 1, 4) = ?')
+        params.append(year)
+    if month:
+        where.append('substr(s.release_date, 6, 2) = ?')
+        params.append(month)
+    if day:
+        where.append('substr(s.release_date, 9, 2) = ?')
+        params.append(day)
+    if tagline == _BLANK:
+        where.append('s.tagline_id IS NULL')
+    elif tagline:
+        where.append('tl.name = ?')
+        params.append(tagline)
+    if collection == _BLANK:
+        where.append('NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)')
+    elif collection:
+        where.append('EXISTS (SELECT 1 FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id WHERE sc.scene_id = s.id AND c.name = ?)')
+        params.append(collection)
+    if data18 == '__set__':
+        where.append("COALESCE(s.data18_id, '') != ''")
+    elif data18 == _BLANK:
+        where.append("COALESCE(s.data18_id, '') = ''")
+    if dup_paths is not None:
+        if dup_paths:
+            where.append(f's.rel_path IN ({",".join("?" * len(dup_paths))})')
+            params.extend(dup_paths)
+        else:
+            where.append('1 = 0')
+    return (f' WHERE {" AND ".join(where)}' if where else ''), params
+
+
+def query_entry_rows(
+    *,
+    studio: str = '',
+    query: str = '',
+    year: str = '',
+    month: str = '',
+    day: str = '',
+    tagline: str = '',
+    collection: str = '',
+    data18: str = '',
+    dup_paths: list[str] | None = None,
+    sort: str = 'updated_at',
+    direction: str = 'desc',
+    limit: int = 500,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
+    """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
+    total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
+    conn = db.connect()
+    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
@@ -344,6 +393,28 @@ def query_entry_rows(
     ).fetchall()
     collections = _collections_for(conn, [int(r['id']) for r in rows])
     return [_summary_row(r, collections) for r in rows], total
+
+
+def facet_values() -> dict[str, Any]:
+    """Distinct facet options across ALL stored scenes, for the /metadata dropdowns."""
+    conn = db.connect()
+
+    def names(sql: str) -> list[str]:
+        return [str(r[0]) for r in conn.execute(sql).fetchall()]
+
+    def exists(sql: str) -> bool:
+        return int(conn.execute(f'SELECT EXISTS ({sql})').fetchone()[0]) == 1
+
+    return {
+        'taglines': names('SELECT DISTINCT tl.name FROM scenes s JOIN taglines tl ON tl.id = s.tagline_id ORDER BY tl.name'),
+        'tagline_blank': exists('SELECT 1 FROM scenes WHERE tagline_id IS NULL'),
+        'collections': names('SELECT DISTINCT c.name FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id ORDER BY c.name'),
+        'collection_blank': exists('SELECT 1 FROM scenes s WHERE NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)'),
+        'years': names("SELECT DISTINCT substr(release_date, 1, 4) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1 DESC"),
+        'year_blank': exists("SELECT 1 FROM scenes WHERE COALESCE(release_date, '') = ''"),
+        'months': names("SELECT DISTINCT substr(release_date, 6, 2) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1"),
+        'days': names("SELECT DISTINCT substr(release_date, 9, 2) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1"),
+    }
 
 
 def studio_names() -> list[str]:

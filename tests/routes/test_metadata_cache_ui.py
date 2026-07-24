@@ -71,6 +71,7 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcr.metadata_cache, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
     monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda: ['Studio'])
+    monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda: {'taglines': ['T']})
     client = TestClient(create_app())
     assert client.get('/metadata/state').status_code == 401
     hdr = {'x-admin-token': 'tok'}
@@ -80,6 +81,7 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
         'dup_keys': ['studio/abc'],
         'total': 1,
         'studios': ['Studio'],
+        'facets': {'taglines': ['T']},
     }
 
 
@@ -112,7 +114,7 @@ def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> Non
     page = TestClient(create_app()).get('/metadata?token=tok')
     assert 'let TOTAL = 0;' in page.text
     assert 'let STUDIOS = [];' in page.text
-    assert 'serverQuery()' in page.text
+    assert 'serverQuery(PAGE_SIZE, true)' in page.text
     assert '>Previous<' in page.text and '>Next<' in page.text
 
 
@@ -173,3 +175,32 @@ def test_entries_endpoint_filters_sorts_and_paginates(monkeypatch: pytest.Monkey
 
     j = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers', 'q': 'alpha'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Alpha Scene'
+
+
+def test_entries_facet_filters_paginate_consistently(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Facet filters run in SQL, so a filtered page total matches the page contents
+    (the old client-side facets produced 138-of-500-page style mismatches)."""
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_library()
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    j = client.get('/metadata/entries', headers=hdr, params={'year': '2024', 'month': '03'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'Charlie Night'
+
+    j = client.get('/metadata/entries', headers=hdr, params={'year': '2024', 'limit': 2, 'offset': 2}).json()
+    assert j['total'] == 5 and len(j['entries']) == 2
+
+    j = client.get('/metadata/entries', headers=hdr, params={'tagline': '__blank__'}).json()
+    assert j['total'] == 5
+
+    j = client.get('/metadata/entries', headers=hdr, params={'data18': '__set__'}).json()
+    assert j['total'] == 0
+
+    j = client.get('/metadata/entries', headers=hdr, params={'limit': 0}).json()
+    assert j['total'] == 5 and len(j['entries']) == 5
+
+    facets = j['facets']
+    assert facets['years'] == ['2024']
+    assert facets['months'] == ['01', '02', '03', '04', '05']
+    assert facets['tagline_blank'] is True

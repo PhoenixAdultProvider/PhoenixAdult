@@ -80,31 +80,31 @@
     </div>
     <div class="filter-group">
       <label>Studio</label>
-      <select id="f-studio" onchange="studioChanged()"><option value="">All</option></select>
+      <select id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Year</label>
-      <select id="f-year" onchange="render()"><option value="">All</option></select>
+      <select id="f-year" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Month</label>
-      <select id="f-month" onchange="render()"><option value="">All</option></select>
+      <select id="f-month" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Day</label>
-      <select id="f-day" onchange="render()"><option value="">All</option></select>
+      <select id="f-day" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Tagline</label>
-      <select id="f-tagline" onchange="render()"><option value="">All</option></select>
+      <select id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Collection</label>
-      <select id="f-collection" onchange="render()"><option value="">All</option></select>
+      <select id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Data18</label>
-      <select id="f-data18" onchange="render()">
+      <select id="f-data18" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__set__">Not Blank</option>
         <option value="__blank__">Blank</option>
@@ -149,39 +149,48 @@
     let ALL = __ENTRIES_JSON__;
     let TOTAL = __TOTAL__;
     let STUDIOS = __STUDIOS__;
+    let FACET_VALUES = __FACETS__;
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
-    let shownKeys = [];
-    let shownRows = [];
     const STORE_KEY = 'metadata-cache-filters';
     const FILTER_IDS = ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
 
-    // ── Server-side query state: studio, q, sort, and pagination hit SQL ──
+    // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
     const PAGE_SIZE = 500;
     let offset = 0;
-    const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio'};
+    const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
+    const FILTER_PARAMS = {'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
-    function serverQuery() {
+    function filterParams() {
       const p = new URLSearchParams();
-      const studio = document.getElementById('f-studio').value;
-      if (studio) p.set('studio', studio);
       const q = document.getElementById('q').value.trim();
       if (q) p.set('q', q);
+      for (const [id, param] of Object.entries(FILTER_PARAMS)) {
+        const v = document.getElementById(id).value;
+        if (v) p.set(param, v);
+      }
+      if (showDupsOnly) p.set('dups', '1');
+      return p;
+    }
+
+    function anyFilterActive() { return [...filterParams().keys()].length > 0; }
+
+    function serverQuery(limit, useOffset) {
+      const p = filterParams();
       p.set('sort', SERVER_SORTS[sortKey] || 'updated_at');
-      p.set('dir', SERVER_SORTS[sortKey] ? (sortDir === 1 ? 'asc' : 'desc') : 'desc');
-      p.set('limit', PAGE_SIZE);
-      p.set('offset', offset);
+      p.set('dir', sortDir === 1 ? 'asc' : 'desc');
+      p.set('limit', limit);
+      p.set('offset', useOffset ? offset : 0);
       return p.toString();
     }
 
     let qTimer = null;
     function queryChanged() {
-      render();
       clearTimeout(qTimer);
       qTimer = setTimeout(() => { offset = 0; refreshEntries(); }, 300);
     }
 
-    function studioChanged() { offset = 0; refreshEntries(); }
+    function facetChanged() { offset = 0; refreshEntries(); }
 
     function prevPage() { if (offset > 0) { offset = Math.max(0, offset - PAGE_SIZE); refreshEntries(); } }
     function nextPage() { if (offset + PAGE_SIZE < TOTAL) { offset += PAGE_SIZE; refreshEntries(); } }
@@ -217,17 +226,16 @@
       sel.value = value;
     }
 
-    // Rebuild the dynamic facet dropdowns from ALL, preserving the current selection
-    // (re-added as an option if its rows vanished, so an active filter never resets).
+    // Rebuild the facet dropdowns from the server-wide value lists, preserving the
+    // current selection (re-added as an option so an active filter never resets).
     function buildFacetOptions() {
-      const cmp = (a, b) => a.localeCompare(b);
       const specs = {
-        'f-studio': {values: [...STUDIOS].sort(cmp)},
-        'f-tagline': {values: [...new Set(ALL.map(e => e.tagline).filter(Boolean))].sort(cmp), blank: ALL.some(e => !e.tagline)},
-        'f-collection': {values: [...new Set(ALL.flatMap(e => e.collections || []))].sort(cmp), blank: ALL.some(e => !(e.collections || []).length)},
-        'f-year': {values: [...new Set(ALL.map(e => e.year).filter(Boolean))].sort().reverse(), blank: ALL.some(e => !e.date)},
-        'f-month': {values: [...new Set(ALL.map(e => e.month).filter(Boolean))].sort(), label: m => `${m} – ${MONTH_NAMES[+m]}`},
-        'f-day': {values: [...new Set(ALL.map(e => e.day).filter(Boolean))].sort()},
+        'f-studio': {values: STUDIOS},
+        'f-tagline': {values: FACET_VALUES.taglines || [], blank: FACET_VALUES.tagline_blank},
+        'f-collection': {values: FACET_VALUES.collections || [], blank: FACET_VALUES.collection_blank},
+        'f-year': {values: FACET_VALUES.years || [], blank: FACET_VALUES.year_blank},
+        'f-month': {values: FACET_VALUES.months || [], label: m => `${m} – ${MONTH_NAMES[+m]}`},
+        'f-day': {values: FACET_VALUES.days || []},
       };
       for (const [id, spec] of Object.entries(specs)) {
         const sel = document.getElementById(id);
@@ -278,11 +286,13 @@
     function sort(key) {
       if (sortKey === key) { sortDir = -sortDir; } else { sortKey = key; sortDir = 1; }
       applyHeaderIndicator();
-      if (SERVER_SORTS[key]) { offset = 0; refreshEntries(); } else { render(); }
+      offset = 0;
+      refreshEntries();
     }
 
     function reset() {
       FILTER_IDS.forEach(id => { document.getElementById(id).value = ''; });
+      if (showDupsOnly) setDupsOnly(false);
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applyHeaderIndicator();
@@ -294,85 +304,22 @@
       return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    const FACETS = {
-      'f-studio':  {pred: (e, v) => e.studio === v,                                val: e => e.studio},
-      'f-year':    {pred: (e, v) => v === '__blank__' ? !e.date : e.year === v,    val: e => e.date ? e.year : '__blank__'},
-      'f-month':   {pred: (e, v) => e.month === v,                                 val: e => e.month},
-      'f-day':     {pred: (e, v) => e.day === v,                                   val: e => e.day},
-      'f-tagline': {pred: (e, v) => v === '__blank__' ? !e.tagline : e.tagline === v, val: e => e.tagline ? e.tagline : '__blank__'},
-      'f-collection': {
-        pred: (e, v) => v === '__blank__' ? !(e.collections || []).length : (e.collections || []).includes(v),
-        val: e => (e.collections || []).length ? e.collections : ['__blank__'],
-      },
-      'f-data18': {pred: (e, v) => v === '__blank__' ? !e.data18_id : !!e.data18_id, val: e => e.data18_id ? '__set__' : '__blank__'},
-    };
-
-    function textPred(e, q) {
-      return !q || [e.title, e.studio, e.tagline, e.date, e.data18_id, ...(e.collections || [])].join(' ').toLowerCase().includes(q);
-    }
-
-    // Rows passing the text query + every facet EXCEPT the one named (so a facet
-    // never hides its own still-selectable options).
-    function rowsExcept(exceptId) {
-      const q = document.getElementById('q').value.toLowerCase();
-      return ALL.filter(e => {
-        if (showDupsOnly && !DUP_SET.has(e.key)) return false;
-        if (!textPred(e, q)) return false;
-        for (const [id, f] of Object.entries(FACETS)) {
-          if (id === exceptId) continue;
-          const v = document.getElementById(id).value;
-          if (v && !f.pred(e, v)) return false;
-        }
-        return true;
-      });
-    }
-
-    // Hide options no longer reachable under the other active filters; keep "All",
-    // the current selection, and anything still present in the filtered view.
-    function refreshFacets() {
-      for (const [id, f] of Object.entries(FACETS)) {
-        if (id === 'f-studio') continue; // options come from the server-wide studio list
-        const sel = document.getElementById(id);
-        const reachable = new Set(rowsExcept(id).flatMap(e => { const v = f.val(e); return Array.isArray(v) ? v : [v]; }));
-        for (const opt of sel.options) {
-          if (opt.value === '') continue; // "All" always shown
-          opt.hidden = !reachable.has(opt.value) && opt.value !== sel.value;
-        }
-      }
-    }
-
     function render() {
       saveFilters();
-      refreshFacets();
-      const q = document.getElementById('q').value.toLowerCase();
+      const rows = ALL;
 
-      let rows = ALL.filter(e => {
-        if (showDupsOnly && !DUP_SET.has(e.key)) return false;
-        if (!textPred(e, q)) return false;
-        for (const [id, f] of Object.entries(FACETS)) {
-          const v = document.getElementById(id).value;
-          if (v && !f.pred(e, v)) return false;
-        }
-        return true;
-      });
-
-      rows.sort((a, b) => {
-        const av = sortKey === 'mtime' ? (a.mtime ?? 0) : String(a[sortKey] ?? '');
-        const bv = sortKey === 'mtime' ? (b.mtime ?? 0) : String(b[sortKey] ?? '');
-        return av < bv ? -sortDir : av > bv ? sortDir : 0;
-      });
-
-      document.getElementById('count').textContent = `${rows.length} of ${TOTAL} snapshot(s)`;
+      document.getElementById('count').textContent = rows.length
+        ? `${offset + 1}–${offset + rows.length} of ${TOTAL} snapshot(s)`
+        : `0 of ${TOTAL} snapshot(s)`;
       updatePager();
 
-      shownRows = rows;
-      shownKeys = rows.map(e => e.key);
+      const filtered = anyFilterActive();
       const bulkBtn = document.getElementById('purgeAllBtn');
-      bulkBtn.disabled = !rows.length;
-      bulkBtn.textContent = rows.length === TOTAL ? `Purge All (${rows.length})` : `Purge Filtered (${rows.length})`;
+      bulkBtn.disabled = !TOTAL;
+      bulkBtn.textContent = filtered ? `Purge Filtered (${TOTAL})` : `Purge All (${TOTAL})`;
       const exportBtn = document.getElementById('exportBtn');
-      exportBtn.disabled = !rows.length;
-      exportBtn.textContent = `Export Mappings (${rows.length})`;
+      exportBtn.disabled = !TOTAL;
+      exportBtn.textContent = `Export Mappings (${TOTAL})`;
 
       const tbody = document.getElementById('tbody');
       const empty = document.getElementById('empty');
@@ -416,9 +363,17 @@
       if (j.ok) refreshNow(); else alert('Purge failed');
     }
 
-    function exportShown() {
-      if (!shownRows.length) return;
-      const lines = shownRows.map(e =>
+    // Every row matching the current filters, unpaged (limit=0 → no limit server-side).
+    async function fetchAllMatching() {
+      const r = await fetch('/metadata/entries?' + serverQuery(0, false), {headers: authHeaders()});
+      if (!r.ok) return null;
+      return (await r.json()).entries || [];
+    }
+
+    async function exportShown() {
+      const rows = await fetchAllMatching();
+      if (!rows || !rows.length) return;
+      const lines = rows.map(e =>
         `  ${JSON.stringify(e.data18_id || '')}: { "slug": ${JSON.stringify(e.mapping_slug || '')}, "type": ${JSON.stringify(e.data18_type || 'scene')} }`
       );
       const blob = new Blob(['{\n' + lines.join(',\n') + '\n}\n'], {type: 'application/json'});
@@ -436,12 +391,14 @@
     }
 
     async function purgeShown() {
-      if (!shownKeys.length) return;
-      const msg = shownKeys.length === ALL.length
-        ? `Purge ALL ${shownKeys.length} cached snapshot(s)? This cannot be undone.`
-        : `Purge the ${shownKeys.length} snapshot(s) matching the current filters? This cannot be undone.`;
+      if (!TOTAL) return;
+      const msg = anyFilterActive()
+        ? `Purge the ${TOTAL} snapshot(s) matching the current filters? This cannot be undone.`
+        : `Purge ALL ${TOTAL} cached snapshot(s)? This cannot be undone.`;
       if (!confirm(msg)) return;
-      const r = await fetch('/metadata/purge-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: shownKeys})});
+      const rows = await fetchAllMatching();
+      if (!rows || !rows.length) return;
+      const r = await fetch('/metadata/purge-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: rows.map(e => e.key)})});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
     }
@@ -464,7 +421,8 @@
 
     function toggleDuplicates() {
       setDupsOnly(!showDupsOnly);
-      render();
+      offset = 0;
+      refreshEntries();
     }
 
     function updateDupButtons() {
@@ -482,12 +440,13 @@
 
     async function refreshEntries() {
       try {
-        const r = await fetch('/metadata/entries?' + serverQuery(), {headers: authHeaders()});
+        const r = await fetch('/metadata/entries?' + serverQuery(PAGE_SIZE, true), {headers: authHeaders()});
         if (!r.ok) return;
         const j = await r.json();
         ALL = j.entries;
         TOTAL = j.total ?? ALL.length;
         STUDIOS = j.studios || STUDIOS;
+        FACET_VALUES = j.facets || FACET_VALUES;
         DUP_SET = new Set(j.dup_keys);
         if (offset > 0 && offset >= TOTAL) {
           offset = Math.max(0, Math.floor(Math.max(TOTAL - 1, 0) / PAGE_SIZE) * PAGE_SIZE);
@@ -522,12 +481,12 @@
 
     decorate();
     buildFacetOptions();
-    const DEFAULT_QUERY = serverQuery();
+    const DEFAULT_QUERY = serverQuery(PAGE_SIZE, true);
     restoreFilters();
     updateDupButtons();
     applyHeaderIndicator();
     render();
-    if (serverQuery() !== DEFAULT_QUERY) refreshEntries();
+    if (serverQuery(PAGE_SIZE, true) !== DEFAULT_QUERY) refreshEntries();
     pollState();
     setInterval(pollState, 4000);
   </script>
