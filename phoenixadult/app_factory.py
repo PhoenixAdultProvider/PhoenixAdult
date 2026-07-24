@@ -47,8 +47,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if people_cache.cache_enabled():
         await asyncio.to_thread(people_cache.reconcile)
-    if logo_cache.enabled():
-        await asyncio.to_thread(logo_cache.reconcile)
+    await asyncio.to_thread(logo_cache.reconcile)
     await restore_queue()
     yield
 

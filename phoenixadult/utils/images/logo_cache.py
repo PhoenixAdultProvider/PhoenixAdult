@@ -11,15 +11,9 @@ from phoenixadult.config import config
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import rel_to
-from phoenixadult.utils.images.ext import ext_from
-from phoenixadult.utils.images.image_fetcher import fetch_image
 from phoenixadult.utils.logging.logger import logger
 
 _RASTER_EXTS = ('.png', '.jpg', '.jpeg', '.webp')
-
-
-def enabled() -> bool:
-    return env.logo_cache_enabled
 
 
 def cache_dir() -> Path:
@@ -183,10 +177,8 @@ def _lookup(conn: sqlite3.Connection, slug: str) -> Path | None:
 
 
 def find_logo(tagline: str | None, studio: str | None) -> Path | None:
-    """First cache hit for the tagline slug then the studio slug (serving priority), scanning the two
-    candidate studio folders once on a miss; None when disabled or neither name matches a file."""
-    if not enabled():
-        return None
+    """First cache hit for the tagline slug then the studio slug (match priority), scanning the two
+    candidate studio folders once on a miss; None when neither name matches a file."""
     conn = _conn()
     scanned = False
     for name in (tagline, studio):
@@ -210,51 +202,6 @@ def local_url(path: Path) -> str | None:
     if rel is None:
         return None
     return f'{config.base_url.rstrip("/")}/images/local/logos/{rel}'
-
-
-async def resolve_logo(tagline: str | None, studio: str | None, upstream: str | None) -> str | None:
-    """Local-first: a cached file always wins; with the cache enabled an upstream URL is downloaded
-    ONCE (SVG rasterized) then served locally; with it disabled the upstream passes through untouched."""
-    hit = find_logo(tagline, studio)
-    if hit:
-        return local_url(hit) or upstream
-    if not upstream or not enabled():
-        return upstream
-    saved = await _download(upstream, tagline, studio)
-    return (local_url(saved) if saved else None) or upstream
-
-
-async def _download(url: str, tagline: str | None, studio: str | None) -> Path | None:
-    slug = logo_slug(tagline or studio or '')
-    folder_slug = logo_slug(studio or tagline or '')
-    if not slug or not folder_slug:
-        return None
-    try:
-        entry = await fetch_image(url)
-    except Exception as err:  # noqa: BLE001 - a failed download just serves upstream
-        logger.warn('logo-cache', f'logo download failed {url}: {err!r}')
-        return None
-    ext = ext_from(entry.content_type, url, allow_svg=True, default='.png')
-    if ext not in (*_RASTER_EXTS, '.svg'):
-        ext = '.png'
-    folder = cache_dir() / folder_slug
-    folder.mkdir(parents=True, exist_ok=True)
-    target = folder / f'logo.{slug}{ext}'
-    target.write_bytes(entry.data)
-    if ext == '.svg':
-        converted = convert_svg(target)
-        if converted is None:
-            target.unlink(missing_ok=True)
-            return None
-        target = converted
-    rel = target.relative_to(cache_dir()).as_posix()
-    conn = _conn()
-    with conn:
-        conn.execute(
-            'INSERT OR REPLACE INTO logos(studio_slug, name_slug, rel_path, mtime) VALUES(?, ?, ?, ?)', (folder_slug, slug, rel, target.stat().st_mtime)
-        )
-    logger.info('logo-cache', f'logo saved {rel}')
-    return target
 
 
 def entries() -> list[dict[str, Any]]:

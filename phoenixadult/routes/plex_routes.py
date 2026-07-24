@@ -98,3 +98,23 @@ async def reconcile(request: Request) -> JSONResponse:
         logger.warn('plex-reconcile', f'Plex request failed: {err}')
         return JSONResponse({'error': 'Plex request failed'}, status_code=502)
     return JSONResponse(report.as_dict())
+
+
+@router.post('/collection-logos')
+async def collection_logos(request: Request) -> JSONResponse:
+    if not plex_reconcile.enabled():
+        return JSONResponse({'error': 'Set PLEX_URL and PLEX_TOKEN to push collection logos'}, status_code=409)
+
+    apply = _truthy(request.query_params.get('apply'))
+    raw_limit = request.query_params.get('limit')
+    try:
+        limit = int(raw_limit) if raw_limit else None
+    except ValueError:
+        return JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+
+    try:
+        report = await plex_reconcile.push_collection_logos(apply=apply, limit=limit)
+    except httpx2.HTTPError as err:
+        logger.warn('plex-reconcile', f'Plex request failed: {err}')
+        return JSONResponse({'error': 'Plex request failed'}, status_code=502)
+    return JSONResponse(report.as_dict())

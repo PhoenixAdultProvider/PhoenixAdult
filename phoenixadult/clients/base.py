@@ -19,7 +19,6 @@ from phoenixadult.utils.http.rate_limit_helper import (
     PacingDeferredError as PacingDeferredError,  # noqa: PLC0414 - explicit re-export for client/service imports
 )
 from phoenixadult.utils.http.rate_limit_helper import ScenePacer
-from phoenixadult.utils.images.logo_cache import resolve_logo
 from phoenixadult.utils.logging.logger import logger
 
 if TYPE_CHECKING:
@@ -116,7 +115,6 @@ class SceneDetail:
     countries: list[str] | None = None
     rating: float | None = None
     audience_rating: float | None = None
-    logo: str | None = None
 
 
 # ── Loaded Contexts Handed to the Per-Field Hooks ─────────────────────────────
@@ -504,11 +502,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.genres = metadata.genres or []
         metadata.actors = metadata.actors or []
         metadata.art = metadata.art or []
-        try:
-            await self.fetch_logo(scene, metadata)
-            metadata.logo = await resolve_logo(metadata.tagline, metadata.studio, metadata.logo)
-        except Exception as err:  # noqa: BLE001 - a missing logo never fails the scene
-            logger.warn(site.name, f'fetch_logo failed for {scene.url}: {err!r}')
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
@@ -585,7 +578,4 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
-
-    async def fetch_logo(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None

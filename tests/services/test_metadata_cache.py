@@ -128,30 +128,6 @@ def test_reapply_text_rules_strips_nubiles_episode_tag() -> None:
     assert untouched.MediaContainer.Metadata[0].title == 'Stepmom Wants to Move In - S2:E1'
 
 
-def test_backfill_logo_fills_only_missing(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    from pathlib import Path
-
-    from phoenixadult.utils.images import logo_cache
-
-    root = Path(str(tmp_path))
-    (root / 'brazzers').mkdir(parents=True)
-    (root / 'brazzers' / 'logo.brazzers.png').write_bytes(b'png')
-    monkeypatch.setenv('LOGO_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('LOGO_CACHE_DIR', str(root))
-    logo_cache.invalidate()
-
-    resp = _resp(studio='Brazzers')
-    assert mc.backfill_logo(resp) is True
-    md = resp.MediaContainer.Metadata[0]
-    logos = [i for i in md.Image or [] if i.type == 'clearLogo']
-    assert len(logos) == 1 and logos[0].url.endswith('/images/local/logos/brazzers/logo.brazzers.png')
-    assert mc.backfill_logo(resp) is False
-
-    monkeypatch.setenv('LOGO_CACHE_ENABLE', 'false')
-    logo_cache.invalidate()
-    assert mc.backfill_logo(_resp(studio='Brazzers')) is False
-
-
 def test_backfill_metadata_attrs_adds_new_fields() -> None:
     resp = PlexMetadataResponse.model_validate(
         {
@@ -225,7 +201,7 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
 @respx.mock
 async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     """Image URLs are stored host-relative and rebased on every read — metadata images (/cache/)
-    onto base_url, people images (/images/local/) onto PEOPLE_IMAGE_URL's base — so both survive a tunnel change."""
+    onto base_url, people images (/images/local/) onto IMAGE_BASE_URL's base — so both survive a tunnel change."""
     from types import SimpleNamespace
 
     image_fetcher._cache.clear()
@@ -234,7 +210,7 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=b'POSTER', headers={'content-type': 'image/jpeg'}))
 
     monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-a:1'))
-    monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://10.0.0.5:3000')
+    monkeypatch.setattr(mc, 'image_base_url', lambda: 'http://10.0.0.5:3000')
     resp = _resp(
         studio='DickDrainers',
         thumb='https://host/images/proxy?url=https%3A%2F%2Fcdn.example%2Fp.jpg',
@@ -252,7 +228,7 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     assert md['Role'][0]['thumb'] == 'http://10.0.0.5:3000/images/local/actor.jane_female.jpg'
 
     monkeypatch.setattr(mc, 'config', SimpleNamespace(base_url='http://tunnel-b:2'))
-    monkeypatch.setattr(mc, 'people_image_base', lambda: 'http://localhost:3000')
+    monkeypatch.setattr(mc, 'image_base_url', lambda: 'http://localhost:3000')
     md2 = mc.read('DickDrainers', 's1')['MediaContainer']['Metadata'][0]
     assert md2['thumb'].startswith('http://tunnel-b:2/cache/')
     assert md2['Role'][0]['thumb'] == 'http://localhost:3000/images/local/actor.jane_female.jpg'

@@ -60,7 +60,7 @@ _Read from the environment at startup; not editable in the Config UI._
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PORT` | `3000` | TCP port the HTTP server binds to. |
-| `PHOENIX_BASE_URL` | `http://localhost:3000` | Public base URL the provider advertises to Plex. Behind a reverse proxy or Cloudflare tunnel, set this to the externally reachable URL — it's the base for served image/poster links (see `PEOPLE_IMAGE_URL` for actor images specifically). |
+| `PHOENIX_BASE_URL` | `http://localhost:3000` | Public base URL the provider advertises to Plex. Behind a reverse proxy or Cloudflare tunnel, set this to the externally reachable URL — it's the base for served image/poster links (see `IMAGE_BASE_URL` for local images specifically). |
 | `NODE_ENV` | `production` | `production` enables prod behavior (host redaction defaults on, no auto-reload, `/dev` disabled). Set `development` (or `dev`/`test`/`local`) for local work and the `/dev` UI. |
 
 ### Admin Auth
@@ -77,7 +77,7 @@ _Read from the environment at startup; not editable in the Config UI._
 | --- | --- | --- |
 | `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose`. Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
-| `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `PEOPLE_IMAGE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
+| `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `IMAGE_BASE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
 | `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see the admin token in URLs while testing. |
 
 ### Images
@@ -87,8 +87,21 @@ _Read from the environment at startup; not editable in the Config UI._
 | `IMAGE_DIR` | `./local/images` | Directory of local image files served back to Plex. |
 | `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch; larger images are rejected. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
 | `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
-| `LOGO_CACHE_ENABLE` | `false` | Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo once, converting SVG to PNG. When **off**, no `clearLogo` is emitted at all — it is stripped from every served response (fresh and cached), so Plex stops receiving logos going forward. Existing logos already in Plex are not removed by this — use the **Purge clearLogos from Plex** script on the Plex tab of `/config` for that. Review the cache at `/logos`. |
-| `LOGO_CACHE_DIR` | `./local/images/logos` | Folder holding `logo.<site-slug>.<ext>` files, organized in per-studio subfolders. |
+| `IMAGE_BASE_URL` | `baseurl` | Base URL Plex uses to fetch our locally-served images — actor/director/producer headshots and the clearLogos pushed to collections. Plex re-requests these and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable (see the option table below). Poster/art images always use `PHOENIX_BASE_URL`. |
+| `LOGO_CACHE_DIR` | `./local/images/logos` | Folder holding `logo.<site-slug>.<ext>` clearLogo files (per-studio subfolders). Scenes are never given logos; instead, manage the files at `/logos` and push them to Plex **collections** from the Plex tab of `/config` ("Push Logos to Collections"). |
+
+`IMAGE_BASE_URL` options:
+
+| Value | Resolves To | Use When |
+| --- | --- | --- |
+| `baseurl` | `PHOENIX_BASE_URL` (tunnel/FQDN) | you want local images on the public URL too |
+| `localhost` | `http://localhost:<PORT>` | Plex runs on the same machine |
+| `localipv4` | `http://<LAN-IPv4>:<PORT>` | Plex is elsewhere on the LAN |
+| `localipv6` | `http://[<LAN-IPv6>]:<PORT>` | LAN, over IPv6 |
+| an explicit address | `http://192.0.2.10:<PORT>` (scheme defaults to http, `PORT` appended when missing) | auto-detection picks the wrong interface |
+
+The LAN address is detected automatically. Changing this value requires a metadata
+refresh in Plex to re-emit the image URLs.
 
 ### Manual NFO
 
@@ -116,21 +129,7 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `PEOPLE_CACHE_REPLACE_ENABLE` | `false` | Ignore existing cached photos and re-fetch every time. |
 | `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people`. |
 | `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. `Scene` is the actor image from the scene page itself — **remove it to skip the scene image** and use only the external providers, or move it lower to prefer a provider over it. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, Scene, AdultDVDEmpire, Freeones, IAFD, Indexxx, Boobpedia, Babes and Stars, Babepedia. |
-| `PEOPLE_IMAGE_URL` | `baseurl` | Which base URL actor/director/producer image links use. Plex re-requests these periodically and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable. See the option table below. Poster/art images always use `PHOENIX_BASE_URL`. |
 | `ADULT_EMPIRE_LOGIN_TOKEN` | _(unset)_ | Session token for the AdultDVDEmpire headshot source. |
-
-`PEOPLE_IMAGE_URL` options:
-
-| Value | Resolves To | Use When |
-| --- | --- | --- |
-| `baseurl` | `PHOENIX_BASE_URL` (tunnel/FQDN) | you want actor images on the public URL too |
-| `localhost` | `http://localhost:<PORT>` | Plex runs on the same machine |
-| `localipv4` | `http://<LAN-IPv4>:<PORT>` | Plex is elsewhere on the LAN |
-| `localipv6` | `http://[<LAN-IPv6>]:<PORT>` | LAN, over IPv6 |
-| an explicit address | `http://192.0.2.10:<PORT>` (scheme defaults to http, `PORT` appended when missing) | auto-detection picks the wrong interface |
-
-The LAN address is detected automatically. Changing this value requires a metadata
-refresh in Plex to re-emit the image URLs.
 
 ### Gender Handling
 

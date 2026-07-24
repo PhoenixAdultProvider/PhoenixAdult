@@ -68,7 +68,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Redact the Server Host in Logs',
         'Public IP addresses are ALWAYS redacted in logs (a real routable address never appears). This flag '
         'additionally redacts the server’s own host/FQDN (from PHOENIX_BASE_URL) and private/LAN/loopback IPs — so '
-        'with it OFF you can see your own LAN address (e.g. PEOPLE_IMAGE_URL=localipv4) while testing. Secret query '
+        'with it OFF you can see your own LAN address (e.g. IMAGE_BASE_URL=localipv4) while testing. Secret query '
         'values are gated separately by LOG_REDACT_TOKEN. Defaults to ON when NODE_ENV=production and OFF otherwise.',
         'Logging',
         'boolean',
@@ -88,18 +88,10 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'IMAGE_DIR', 'Local Image Directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
     ),
     EnvVarSpec(
-        'LOGO_CACHE_ENABLE',
-        'ClearLogo Cache',
-        'Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo '
-        'once, converting SVG to PNG. Off: only scraped upstream logo URLs are emitted.',
-        'Images',
-        'boolean',
-        default_value='false',
-    ),
-    EnvVarSpec(
         'LOGO_CACHE_DIR',
         'Logo Cache Directory',
-        'Folder holding logo.<site-slug>.<ext> files, organized in per-studio subfolders.',
+        'Folder holding logo.<site-slug>.<ext> clearLogo files (per-studio subfolders). Manage them at /logos '
+        'and push them to Plex collections from the Plex tab.',
         'Images',
         'string',
         default_value='./local/images/logos',
@@ -210,18 +202,18 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='Local Storage,Scene,AdultDVDEmpire,Freeones,IAFD,Indexxx,Boobpedia,Babes and Stars,Babepedia',
     ),
     EnvVarSpec(
-        'PEOPLE_IMAGE_URL',
-        'People Image Address',
-        'Which base URL actor/director/producer image links use. Plex re-requests these periodically '
-        'and does not keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images '
-        'break — a stable local address is more durable. baseurl = the configured PHOENIX_BASE_URL '
-        '(tunnel/FQDN); localhost = loopback (Plex on this same machine); localipv4/localipv6 = this '
-        "machine's LAN address (Plex elsewhere on the network); or an explicit address like "
-        '192.0.2.10 or http://192.0.2.10:8080 to pin the interface when auto-detection picks the '
-        'wrong one (e.g. a VPN owning the default route) — the scheme defaults to http and the '
-        'configured PORT is appended when omitted. Metadata (poster/art) images always use baseurl. '
+        'IMAGE_BASE_URL',
+        'Local Image Base Address',
+        'Base URL Plex uses to fetch our locally-served images — actor/director/producer headshots and '
+        'the clearLogos pushed to collections. Plex re-requests these periodically and does not keep them, '
+        'so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address '
+        'is more durable. baseurl = the configured PHOENIX_BASE_URL (tunnel/FQDN); localhost = loopback (Plex '
+        "on this same machine); localipv4/localipv6 = this machine's LAN address (Plex elsewhere on the "
+        'network); or an explicit address like 192.0.2.10 or http://192.0.2.10:8080 to pin the interface when '
+        'auto-detection picks the wrong one (e.g. a VPN owning the default route) — the scheme defaults to http '
+        'and the configured PORT is appended when omitted. Metadata (poster/art) images always use baseurl. '
         'A metadata refresh in Plex is needed to pick up changed image URLs.',
-        'People Cache & Sources',
+        'Images',
         'string',
         default_value='baseurl',
     ),

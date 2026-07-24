@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
-
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.services.metadata_service import MetadataService
@@ -43,43 +41,6 @@ async def test_concurrent_requests_coalesce() -> None:
     a, b = await asyncio.gather(svc.get_metadata('rk', PROVIDER), svc.get_metadata('rk', PROVIDER))
     assert a is b
     assert calls[0] == 1
-
-
-def _response_with_logo() -> PlexMetadataResponse:
-    return PlexMetadataResponse.model_validate(
-        {
-            'MediaContainer': {
-                'identifier': 'p',
-                'size': 1,
-                'Metadata': [
-                    {
-                        'type': 'movie',
-                        'ratingKey': 'rk',
-                        'guid': 'g',
-                        'title': 'T',
-                        'Image': [{'url': '/cache/x/poster.jpg', 'type': 'coverPoster'}, {'url': '/images/local/logos/b/logo.b.png', 'type': 'clearLogo'}],
-                    }
-                ],
-            }
-        }
-    )
-
-
-def test_finalize_strips_clearlogo_when_logos_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.services import metadata_service
-
-    monkeypatch.setattr(metadata_service.logo_cache, 'enabled', lambda: False)
-    out = MetadataService()._finalize(_response_with_logo(), PROVIDER, 'rk', cached=True)
-    kinds = [img.type for img in out.MediaContainer.Metadata[0].Image or []]
-    assert 'clearLogo' not in kinds and 'coverPoster' in kinds
-
-
-def test_finalize_keeps_clearlogo_when_logos_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.services import metadata_service
-
-    monkeypatch.setattr(metadata_service.logo_cache, 'enabled', lambda: True)
-    out = MetadataService()._finalize(_response_with_logo(), PROVIDER, 'rk', cached=True)
-    assert 'clearLogo' in [img.type for img in out.MediaContainer.Metadata[0].Image or []]
 
 
 async def test_distinct_keys_fetch_separately() -> None:

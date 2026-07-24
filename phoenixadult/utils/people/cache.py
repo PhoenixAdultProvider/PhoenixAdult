@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx2
 
-from phoenixadult.config import people_image_base
+from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import safe_join
@@ -92,7 +92,7 @@ def _local_url(relpath: str, data: bytes | None = None) -> str:
     token = _bust_token(relpath, data)
     bust = f'?v={token}' if token else ''
     quoted = '/'.join(quote(part) for part in relpath.split('/'))
-    return f'{people_image_base()}/images/local/{quoted}{bust}'
+    return f'{image_base_url()}/images/local/{quoted}{bust}'
 
 
 # ── Index (people_images table; files are the source of truth) ────────────────

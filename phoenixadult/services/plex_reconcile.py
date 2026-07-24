@@ -154,6 +154,21 @@ class PlexClient:
         r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
         r.raise_for_status()
 
+    async def collections(self, section: str) -> list[dict[str, Any]]:
+        container = await self._get(f'/library/sections/{section}/collections')
+        return list(container.get('Metadata') or [])
+
+    async def clear_logo_candidates(self, rating_key: str) -> list[str]:
+        container = await self._get(f'/library/metadata/{rating_key}/clearLogos')
+        return [str(m.get('key') or '') for m in (container.get('Metadata') or [])]
+
+    async def set_clear_logo(self, rating_key: str, url: str) -> None:
+        """Add the logo as a candidate then select it (Plex's two-step artwork model)."""
+        r = await self.http.post(f'{self.base}/library/metadata/{rating_key}/clearLogos', params={'url': url})
+        r.raise_for_status()
+        r = await self.http.put(f'{self.base}/library/metadata/{rating_key}/clearLogo', params={'url': url})
+        r.raise_for_status()
+
     async def aclose(self) -> None:
         await self.http.aclose()
 
@@ -226,4 +241,65 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
 
     verb = 'removed from' if apply else 'would be removed from'
     logger.info(_TAG, f'scanned {report.scanned}, ours {report.matched}, stale tags {verb} {report.changed} item(s)')
+    return report
+
+
+@dataclass
+class CollectionLogoReport:
+    applied: bool
+    collections: int = 0
+    matched: int = 0
+    pushed: int = 0
+    already: int = 0
+    items: list[dict[str, str]] = field(default_factory=list)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            'applied': self.applied,
+            'collections': self.collections,
+            'matched': self.matched,
+            'pushed': self.pushed,
+            'already': self.already,
+            'items': self.items,
+        }
+
+
+async def push_collection_logos(apply: bool = False, limit: int | None = None) -> CollectionLogoReport:
+    """Set each Plex collection's clearLogo from a matching cached logo file (by name slug); dry-run by
+    default, idempotent. Plex fetches the logo from IMAGE_BASE_URL, so that must reach the Plex server."""
+    from phoenixadult.config import image_base_url
+    from phoenixadult.utils.images import logo_cache
+
+    report = CollectionLogoReport(applied=apply)
+    base = image_base_url().rstrip('/')
+    cache_root = logo_cache.cache_dir()
+    client = PlexClient()
+    try:
+        for section in await client.movie_sections():
+            for col in await client.collections(section):
+                report.collections += 1
+                title = str(col.get('title') or '')
+                plex_key = str(col.get('ratingKey') or '')
+                if not title or not plex_key:
+                    continue
+                hit = await asyncio.to_thread(logo_cache.find_logo, title, None)
+                if hit is None:
+                    continue
+                report.matched += 1
+                marker = f'/images/local/logos/{hit.relative_to(cache_root).as_posix()}'
+                if any(marker in c for c in await client.clear_logo_candidates(plex_key)):
+                    report.already += 1
+                    continue
+                if limit is not None and report.pushed >= limit:
+                    continue
+                report.pushed += 1
+                report.items.append({'title': title, 'ratingKey': plex_key, 'logo': marker.rsplit('/', 1)[-1]})
+                if apply:
+                    await client.set_clear_logo(plex_key, f'{base}{marker}')
+                    logger.info(_TAG, f'collection "{title}" ({plex_key}): logo {marker}')
+    finally:
+        await client.aclose()
+
+    verb = 'set on' if apply else 'would be set on'
+    logger.info(_TAG, f'collections {report.collections}, logo matches {report.matched}, {verb} {report.pushed} (already {report.already})')
     return report

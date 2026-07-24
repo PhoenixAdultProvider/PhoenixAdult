@@ -5,7 +5,7 @@ from typing import Any
 
 from phoenixadult.clients.aggregators.data18 import data18_ref
 from phoenixadult.clients.base import SceneDetail, SearchResult
-from phoenixadult.config import config, people_image_base
+from phoenixadult.config import config, image_base_url
 from phoenixadult.models.metadata import (
     PlexCollection,
     PlexCountry,
@@ -127,8 +127,6 @@ class MetadataMapper:
         cookies = [detail.art_cookie, *site_cookies] if detail.art_cookie else site_cookies
 
         thumb, art, images_proxied = await self._resolve_artwork(detail, referers, cookies)
-        if detail.logo:
-            images_proxied.append(PlexImage(url=self._proxy(detail.logo, referers, cookies, passthrough_local=True) or detail.logo, type='clearLogo'))
         plex_actors, plex_directors, plex_producers = await self._resolve_people(detail, referers, cookies)
 
         effective_date = detail.release_date or fallback_date
@@ -207,7 +205,7 @@ class MetadataMapper:
                 people.add_producer(pr.name, pr.photo_url, pr.role)
         resolved = await people.resolve_all(studio=detail.studio, site_name=detail.studio, referers=referers, cookies=cookies)
 
-        people_base = people_image_base()
+        people_base = image_base_url()
         return (
             to_plex_roles(resolved['actors'], people_base, referers, cookies),
             to_plex_roles(resolved['directors'], people_base, referers, cookies),
@@ -233,7 +231,7 @@ class MetadataMapper:
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
     """Debug-log where each image in the served response points."""
     logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
-    logger.debug(label, f'people image base -> {people_image_base()}')
+    logger.debug(label, f'people image base -> {image_base_url()}')
 
     for md in response.MediaContainer.Metadata:
         if md.thumb:

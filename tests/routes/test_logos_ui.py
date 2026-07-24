@@ -12,7 +12,6 @@ from phoenixadult.utils.images import logo_cache
 @pytest.fixture()
 def _cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    monkeypatch.setenv('LOGO_CACHE_ENABLE', 'true')
     monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
     (tmp_path / 'brazzers').mkdir()
     (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
@@ -27,7 +26,6 @@ def test_requires_auth_and_lists_with_site_names(_cache: Path) -> None:
     assert page.status_code == 200 and 'Logo Cache' in page.text
 
     data = client.get('/logos/api/list', headers={'x-admin-token': 'tok'}).json()
-    assert data['enabled'] is True
     assert data['logos'][0]['slug'] == 'baby-got-boobs'
     assert data['logos'][0]['site'] == 'Baby Got Boobs'
 

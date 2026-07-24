@@ -10,7 +10,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from phoenixadult.config import people_image_base
+from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
@@ -157,8 +157,8 @@ async def page(request: Request) -> HTMLResponse:
     warn = '' if face_crop.available() else '<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>'
     empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>' if not entries else ''
     summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
-    img_base = html.escape(people_image_base())
-    img_opt = html.escape(env.people_image_url_raw)
+    img_base = html.escape(image_base_url())
+    img_opt = html.escape(env.image_base_url_raw)
     tabs = ''.join(
         f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
     )
@@ -199,7 +199,7 @@ async def page(request: Request) -> HTMLResponse:
     <h1>People Image Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
-      <br>Serving people images via <code>PEOPLE_IMAGE_URL={img_opt}</code> → <code>{img_base}</code></div>
+      <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button></div>
     <div class="grid">{cards}</div>

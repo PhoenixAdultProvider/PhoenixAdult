@@ -18,7 +18,6 @@ from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.helpers.helpers import split_subsite
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
-from phoenixadult.utils.images import logo_cache
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import filter_male_actors
 from phoenixadult.utils.plex.media_type import provider_mount_path
@@ -79,8 +78,6 @@ async def refresh_cached_snapshot(
     if not skip_data18 and await metadata_cache.backfill_data18(response, site.name):
         changed = True
     if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
-        changed = True
-    if metadata_cache.backfill_logo(response):
         changed = True
     if metadata_cache.backfill_metadata_attrs(response):
         changed = True
@@ -176,15 +173,10 @@ class MetadataService:
         return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
 
     def _finalize(self, response: PlexMetadataResponse, provider: ProviderInfo, rating_key: str, *, cached: bool) -> PlexMetadataResponse:
-        """Serve-time only (never mutates the snapshot): male-actor filter, clearLogo strip when logos
-        are disabled, key stamping, and logging."""
+        """Serve-time only (never mutates the snapshot): male-actor filter, key stamping, and logging."""
         if removed := filter_male_actors(response):
             noun = 'cached actor(s)' if cached else 'actor(s)'
             logger.info(provider.id, f'Male-actor filter: hid {removed} {noun} from ratingKey={rating_key}')
-        if not logo_cache.enabled():
-            for md in response.MediaContainer.Metadata:
-                if md.Image:
-                    md.Image = [img for img in md.Image if img.type != 'clearLogo']
         _stamp_keys(response, provider)
         log_served_images(response)
         _log_served(response, provider)

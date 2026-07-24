@@ -12,9 +12,9 @@ from urllib.parse import unquote
 import httpx2
 from PIL import Image as PILImage
 
-from phoenixadult.config import config, people_image_base
+from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.models.metadata import PlexCollection, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import PlexCollection, PlexGenre, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.registry import SITE_DEFINITIONS, find_site
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.fs.paths import safe_join
@@ -183,7 +183,7 @@ def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
     loaded = scene_store.load(_hash(site_name, cur_id))
     if loaded is None:
         return None
-    rebased = _rebase(loaded, config.base_url.rstrip('/'), people_image_base().rstrip('/'))
+    rebased = _rebase(loaded, config.base_url.rstrip('/'), image_base_url().rstrip('/'))
     return rebased if isinstance(rebased, dict) else None
 
 
@@ -510,7 +510,7 @@ async def _resolve_and_fill(
         return False
     changed = False
     for entries, key in fill_groups:
-        roles = to_plex_roles(resolved[key], people_image_base(), referers or [], cookies or [])
+        roles = to_plex_roles(resolved[key], image_base_url(), referers or [], cookies or [])
         by_tag = {p.tag: p for p in roles if p.thumb}
         for r in entries:
             if not r.thumb and r.tag and r.tag in by_tag:
@@ -597,26 +597,6 @@ async def backfill_people_images(
         changed = True
 
     logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
-    return changed
-
-
-def backfill_logo(response: PlexMetadataResponse) -> bool:
-    """Add a clearLogo Image to snapshots written before a logo existed. Mutates in place
-    and returns True if anything changed, so the caller can rewrite the snapshot."""
-    from phoenixadult.utils.images import logo_cache
-
-    if not logo_cache.enabled():
-        return False
-    changed = False
-    for md in response.MediaContainer.Metadata:
-        if any(img.type == 'clearLogo' for img in md.Image or []):
-            continue
-        hit = logo_cache.find_logo(md.tagline, md.studio)
-        url = logo_cache.local_url(hit) if hit else None
-        if not url:
-            continue
-        md.Image = [*(md.Image or []), PlexImage(url=url, type='clearLogo')]
-        changed = True
     return changed
 
 

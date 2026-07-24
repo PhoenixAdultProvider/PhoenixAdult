@@ -208,12 +208,27 @@
       </div>
     </div>
 
+    <h2>Push Logos to Collections</h2>
+    <div class="card">
+      <div class="var-desc">Sets each Plex collection's clearLogo from a matching cached logo (by name) — the logo
+        belongs on the sub-site collection, not every scene. Idempotent: collections already carrying our logo are
+        skipped. Plex fetches the image from <b>Local Image Base Address</b> (Images tab), so that must be reachable
+        from the Plex server. Manage the logo files at <a href="/logos" target="_blank">/logos</a>.</div>
+      <div class="plex-row">
+        <button type="button" class="secondary" onclick="runCollectionLogos(false)">Dry run</button>
+        <button type="button" onclick="runCollectionLogos(true)">Apply logos</button>
+        <input type="text" id="plex-collogo-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many pushed collections">
+        <span class="plex-status" id="plex-collogo-status"></span>
+      </div>
+      <div class="plex-kv" id="plex-collogo-out" style="display:none"></div>
+    </div>
+
     <h2>Purge clearLogos from Plex</h2>
     <div class="card">
       <div class="var-desc">Removes provider-supplied clearLogo art from Plex — the applied logo on each item and its
-        candidate entry — leaving the logo files on the server untouched. Plex has no API to unset a logo, so this
-        edits the Plex database directly. To stop new logos being sent, turn off <b>ClearLogo Cache</b> on the Images
-        tab first; then this purge clears what Plex already holds.</div>
+        candidate entry — leaving the logo files on the server untouched. Use this to clear per-scene logos left by
+        earlier versions (scenes no longer receive logos). Plex has no API to unset a logo, so this edits the Plex
+        database directly. Collection logos set above are left intact.</div>
       <div class="plex-row">
         <button type="button" class="icon-btn" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
         <span class="hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
@@ -989,10 +1004,11 @@
       // Provider clearLogos are the only /images/local/logos/ URLs in the library, so the marker is
       // exact. metadata_items.user_clear_logo_url holds the applied selection (a metadata://clearLogos
       // reference), taggings holds the candidate whose thumb_url matches it; clear both.
+      // metadata_type 1 = movie (scenes); collection logos (type 18) are intentionally left alone.
       const marker = '%/images/local/logos/%';
       const sql = [
-        "UPDATE metadata_items SET user_clear_logo_url = NULL WHERE user_clear_logo_url IN (SELECT thumb_url FROM taggings WHERE text LIKE '" + marker + "');",
-        "DELETE FROM taggings WHERE text LIKE '" + marker + "';",
+        "UPDATE metadata_items SET user_clear_logo_url = NULL WHERE metadata_type = 1 AND user_clear_logo_url IN (SELECT thumb_url FROM taggings WHERE text LIKE '" + marker + "');",
+        "DELETE FROM taggings WHERE text LIKE '" + marker + "' AND metadata_item_id IN (SELECT id FROM metadata_items WHERE metadata_type = 1);",
       ].join(' ');
       return [
         '# Removes provider clearLogos from Plex (applied selection + candidate rows).',
@@ -1034,6 +1050,26 @@
         plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
       } catch (err) {
         plexStatus('plex-reconcile-status', esc(err.message), 'err');
+      }
+    }
+
+    async function runCollectionLogos(apply) {
+      if (apply && !confirm('Set clearLogos on matching Plex collections?')) return;
+      const limit = document.getElementById('plex-collogo-limit').value.trim();
+      const params = [];
+      if (apply) params.push('apply=1');
+      if (limit) params.push('limit=' + encodeURIComponent(limit));
+      plexStatus('plex-collogo-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
+      const out = document.getElementById('plex-collogo-out');
+      try {
+        const d = await postJSON(api('/plex/collection-logos' + (params.length ? '?' + params.join('&') : '')), {});
+        const noun = apply ? 'set on' : 'would be set on';
+        out.style.display = 'block';
+        out.innerHTML = `<div>${d.collections} collection(s) · ${d.matched} with a logo · <b>${d.pushed}</b> ${noun} · ${d.already} already done</div>`
+          + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:220px;overflow:auto">' + d.items.map(i => `${esc(i.title)} <span style="color:#64748b">← ${esc(i.logo)}</span>`).join('<br>') + '</div>' : '');
+        plexStatus('plex-collogo-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
+      } catch (err) {
+        plexStatus('plex-collogo-status', esc(err.message), 'err');
       }
     }
 

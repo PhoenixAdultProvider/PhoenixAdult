@@ -21,7 +21,7 @@ def _state() -> dict[str, object]:
     entries = logo_cache.entries()
     for e in entries:
         e['site'] = canonical_site_display(str(e['slug'])) or ''
-    return {'enabled': logo_cache.enabled(), 'dir': str(logo_cache.cache_dir()), 'logos': entries}
+    return {'dir': str(logo_cache.cache_dir()), 'logos': entries}
 
 
 @router.get('', response_class=HTMLResponse)

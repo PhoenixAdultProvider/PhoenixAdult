@@ -77,12 +77,12 @@ def _local_ip(family: socket.AddressFamily, probe: str) -> str:
     return ip
 
 
-def people_image_base() -> str:
-    """Base URL for people-image links, selected by PEOPLE_IMAGE_URL — Plex re-requests these,
-    so a stable local address outlives an ephemeral tunnel FQDN; poster/art keep base_url."""
+def image_base_url() -> str:
+    """Base URL for locally-served images (headshots + collection logos), selected by IMAGE_BASE_URL —
+    Plex re-requests these, so a stable local address outlives an ephemeral tunnel FQDN; poster/art keep base_url."""
     from phoenixadult.config.env import env
 
-    opt = env.people_image_url_raw
+    opt = env.image_base_url_raw
     if opt == 'localhost':
         return f'http://localhost:{config.port}'
     if opt == 'localipv4':

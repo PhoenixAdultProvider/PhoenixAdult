@@ -156,3 +156,48 @@ async def test_site_filter_skips_other_clients(monkeypatch: pytest.MonkeyPatch) 
     assert report.changed == 0
     report = await pr.reconcile(sites={'Brazzers'})
     assert report.changed == 1
+
+
+def _mock_collections(candidates: list[str]) -> tuple[respx.Route, respx.Route]:
+    respx.get(f'{BASE}/library/sections').mock(return_value=httpx.Response(200, json={'MediaContainer': {'Directory': [{'key': '1', 'type': 'movie'}]}}))
+    respx.get(f'{BASE}/library/sections/1/collections').mock(
+        return_value=httpx.Response(200, json={'MediaContainer': {'Metadata': [{'ratingKey': '900', 'title': 'Baby Got Boobs'}]}})
+    )
+    respx.get(url__startswith=f'{BASE}/library/metadata/900/clearLogos').mock(
+        return_value=httpx.Response(200, json={'MediaContainer': {'Metadata': [{'key': k} for k in candidates]}})
+    )
+    post = respx.post(url__startswith=f'{BASE}/library/metadata/900/clearLogos').mock(return_value=httpx.Response(200))
+    put = respx.put(url__startswith=f'{BASE}/library/metadata/900/clearLogo').mock(return_value=httpx.Response(200))
+    return post, put
+
+
+@respx.mock
+async def test_collection_logos_pushes_matching_logo(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    (tmp_path / 'brazzers').mkdir()
+    (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
+    monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
+    from phoenixadult.utils.images import logo_cache
+
+    logo_cache.invalidate()
+    monkeypatch.setattr('phoenixadult.config.image_base_url', lambda: 'http://192.0.2.20:3000')
+    post, put = _mock_collections(candidates=[])
+
+    report = await pr.push_collection_logos(apply=True)
+    assert report.collections == 1 and report.matched == 1 and report.pushed == 1 and report.already == 0
+    assert post.called and put.called
+    assert put.calls[0].request.url.params['url'] == 'http://192.0.2.20:3000/images/local/logos/brazzers/logo.baby-got-boobs.png'
+
+
+@respx.mock
+async def test_collection_logos_skips_already_pushed(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    (tmp_path / 'brazzers').mkdir()
+    (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
+    monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
+    from phoenixadult.utils.images import logo_cache
+
+    logo_cache.invalidate()
+    post, put = _mock_collections(candidates=['http://any:3000/images/local/logos/brazzers/logo.baby-got-boobs.png'])
+
+    report = await pr.push_collection_logos(apply=True)
+    assert report.matched == 1 and report.already == 1 and report.pushed == 0
+    assert not post.called and not put.called

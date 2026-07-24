@@ -38,14 +38,6 @@ async def _to_meta(detail: SceneDetail, filename_site: str | None = None) -> tup
     return md.tagline, [c.tag for c in (md.Collection or [])]
 
 
-async def test_clear_logo_emitted_as_proxied_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mapper_mod, 'proxy_url', lambda url, *a, **k: f'proxied:{url}')
-    detail = SceneDetail(title='A Scene', studio='X', logo='http://x/logo.png')
-    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    logos = [img.url for img in (md.Image or []) if img.type == 'clearLogo']
-    assert logos == ['proxied:http://x/logo.png']
-
-
 async def test_no_logo_no_clear_logo_image() -> None:
     md = await MetadataMapper().to_metadata(SceneDetail(title='A Scene', studio='X'), 'scene-x-YWJj', 'com.plexapp.agents.x')
     assert all(img.type != 'clearLogo' for img in (md.Image or []))
