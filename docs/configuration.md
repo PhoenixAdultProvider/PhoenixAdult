@@ -234,6 +234,7 @@ GET  /plex/libraries                          # movie sections, for the picker
 POST /plex/import?section=27                  # dry run: reports what it would import
 POST /plex/import?section=27&apply=1          # writes the snapshots
 POST /plex/import?section=27&apply=1&limit=50
+POST /plex/import?section=27&apply=1&overwrite=1   # replace cached scenes too
 ```
 
 Pick the library and run it from the **Plex tab** of `/config` ("Import a Library Into the Cache").
@@ -242,7 +243,8 @@ Notes:
 
 - **Dry run by default.** Nothing is written without `apply=1`.
 - **Scenes already cached are skipped**, so a stored fresh scrape is never overwritten by Plex's
-  older copy. Purge a snapshot first if you want the Plex version to win.
+  older copy. Pass `overwrite=1` (or tick "Overwrite Cached Scenes") to replace them instead — use
+  it to re-run an import after a fix rather than purging by hand.
 - Each scene is keyed back to its `(site, cur_id)` from the guid — ours, or the retired bundle's
   numeric site id, falling back to the studio name. Scenes that match none are reported as
   `unresolved` and skipped, never guessed at.

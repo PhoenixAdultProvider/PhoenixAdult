@@ -237,6 +237,9 @@
         <button type="button" class="secondary" onclick="runPlexImport(false)">Dry run</button>
         <button type="button" onclick="runPlexImport(true)">Import</button>
         <input type="text" id="plex-import-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many scanned items">
+        <label class="hint" style="display:flex; align-items:center; gap:6px">
+          <input type="checkbox" id="plex-import-overwrite"> Overwrite cached scenes
+        </label>
         <span class="plex-status" id="plex-import-status"></span>
       </div>
       <div class="plex-kv" id="plex-import-out" style="display:none"></div>
@@ -1110,10 +1113,15 @@
     async function runPlexImport(apply) {
       const section = document.getElementById('plex-import-section').value;
       if (!section) { plexStatus('plex-import-status', 'Pick a library first', 'err'); return; }
-      if (apply && !confirm('Import this library into the metadata cache? Existing snapshots are kept.')) return;
+      const overwrite = document.getElementById('plex-import-overwrite').checked;
+      const warning = overwrite
+        ? 'Import this library, REPLACING scenes already in the cache?'
+        : 'Import this library into the metadata cache? Existing snapshots are kept.';
+      if (apply && !confirm(warning)) return;
       const limit = document.getElementById('plex-import-limit').value.trim();
       const params = ['section=' + encodeURIComponent(section)];
       if (apply) params.push('apply=1');
+      if (overwrite) params.push('overwrite=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
       plexStatus('plex-import-status', '<span class="spin"></span> ' + (apply ? 'Importing…' : 'Dry run…'));
       const out = document.getElementById('plex-import-out');

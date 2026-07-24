@@ -10,7 +10,8 @@ from urllib.parse import quote
 import httpx2
 from PIL import Image as PILImage
 
-from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.mappers.metadata_mapper import build_artwork
+from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
 from phoenixadult.utils import cache as metadata_cache
@@ -151,13 +152,12 @@ async def _stage_image(client: PlexClient, staging: Path, url: str, name: str) -
     return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}', width, height
 
 
-async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> tuple[list[tuple[str, str]], str, str]:
-    """Every poster and art candidate Plex holds, deduplicated and typed by the same aspect-ratio
-    classifier a fresh scrape uses. Also returns the URLs of the ones Plex has selected."""
-    staged: list[tuple[str, str]] = []
-    thumb = art = ''
+async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> list[PlexImage]:
+    """Every poster and art candidate Plex holds, deduplicated across the two buckets and put
+    through the mapper's own artwork pipeline, so shape decides the kind — never the bucket."""
+    probed: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for bucket, fallback, hint in (('posters', 'coverPoster', 'poster'), ('arts', 'background', 'art')):
+    for bucket, hint in (('posters', 'poster'), ('arts', 'art')):
         try:
             candidates = await client.artwork(rating_key, bucket)
         except httpx2.HTTPError as err:
@@ -168,21 +168,15 @@ async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> 
             if ref and ref in seen:
                 continue
             seen.add(ref)
-            result = await _stage_image(client, staging, _candidate_url(client, candidate), f'{hint}-{len(staged):02d}')
+            result = await _stage_image(client, staging, _candidate_url(client, candidate), f'{hint}-{len(probed):02d}')
             if result is None:
                 continue
             url, width, height = result
-            kind = classify_image(width, height).image_class
-            staged.append((url, fallback if kind == 'unknown' else kind))
-            if candidate.get('selected'):
-                if bucket == 'posters':
-                    thumb = url
-                else:
-                    art = url
-    return staged, thumb, art
+            probed.append({'url': url, 'dims': {'width': width, 'height': height}, 'image_class': classify_image(width, height).image_class})
+    return build_artwork(probed)
 
 
-def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[tuple[str, str]], thumb: str = '', art: str = '') -> PlexMetadataResponse:
+def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[PlexImage]) -> PlexMetadataResponse:
     """Assemble a provider response from one Plex item, keyed so a later serve finds it."""
     title = str(item.get('title') or '')
     date = str(item.get('originallyAvailableAt') or '')
@@ -210,17 +204,15 @@ def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[tuple
     for key in _ROLE_FIELDS:
         if roles := _roles(item, key):
             metadata[key] = roles
-    poster = thumb or next((url for url, kind in images if kind == 'coverPoster'), '')
-    background = art or next((url for url, kind in images if kind == 'background'), '')
-    if poster:
+    if poster := next((img.url for img in images if img.type == 'coverPoster'), ''):
         metadata['thumb'] = poster
-    if background:
+    if background := next((img.url for img in images if img.type == 'background'), ''):
         metadata['art'] = background
-    metadata['Image'] = [{'url': url, 'type': kind} for url, kind in images]
+    metadata['Image'] = [{'url': img.url, 'type': img.type} for img in images]
     return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': identifier, 'size': 1, 'Metadata': [metadata]}})
 
 
-async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportReport, apply: bool) -> None:
+async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportReport, apply: bool, overwrite: bool = False) -> None:
     rating_key = str(stub.get('ratingKey') or '')
     title = str(stub.get('title') or '')
     resolved = _resolve(str(stub.get('guid') or ''), str(stub.get('studio') or ''))
@@ -229,7 +221,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key, title, 'unresolved', detail='no site match for its guid or studio'))
         return
     site_name, cur_id = resolved
-    if scene_store.has(_hash(site_name, cur_id)):
+    if not overwrite and scene_store.has(_hash(site_name, cur_id)):
         report.skipped_existing += 1
         report.add(ItemReport(rating_key, title, 'skipped', site_name, cur_id, 'already cached'))
         return
@@ -243,11 +235,10 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         item = await client.item(rating_key)
         if not item:
             raise ValueError('item vanished from Plex')
-        images: list[tuple[str, str]] = []
-        thumb = art = ''
+        images: list[PlexImage] = []
         if staging is not None:
-            images, thumb, art = await _stage_artwork(client, staging, rating_key)
-        response = _build(item, site_name, cur_id, images, thumb, art)
+            images = await _stage_artwork(client, staging, rating_key)
+        response = _build(item, site_name, cur_id, images)
         if await metadata_cache.write(site_name, cur_id, response):
             report.imported += 1
             report.add(ItemReport(rating_key, title, 'imported', site_name, cur_id, f'{len(images)} images'))
@@ -271,7 +262,7 @@ async def libraries() -> list[dict[str, str]]:
         await client.aclose()
 
 
-async def import_library(section: str, apply: bool = False, limit: int | None = None) -> ImportReport:
+async def import_library(section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False) -> ImportReport:
     """Snapshot every scene in one Plex library into the metadata cache. Dry-run by default;
     scenes already cached are left alone so a stored fresh scrape is never overwritten."""
     report = ImportReport(applied=apply, section=section)
@@ -290,7 +281,7 @@ async def import_library(section: str, apply: bool = False, limit: int | None = 
 
         async def _run(stub: dict[str, Any]) -> None:
             async with sem:
-                await _import_one(client, stub, report, apply)
+                await _import_one(client, stub, report, apply, overwrite)
 
         await asyncio.gather(*(_run(stub) for stub in stubs))
     finally:

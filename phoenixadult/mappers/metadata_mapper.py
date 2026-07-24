@@ -65,6 +65,18 @@ def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]],
             images.append(PlexImage(url=p['url'], type='background'))
 
 
+def build_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
+    """Probed images -> the served image list: classify, backfill absent kinds, order. Shared with
+    the Plex import so a recovered scene is typed exactly like a freshly scraped one."""
+    by_class: dict[str, list[dict[str, Any]]] = {}
+    for probed in valid:
+        by_class.setdefault(probed['image_class'], []).append(probed)
+    images = _classify_artwork(valid)
+    _promote_missing_kinds(images, valid, by_class)
+    _sort_artwork(images, valid)
+    return images
+
+
 def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]]) -> None:
     """In-place order: kinds keep first-appearance order, largest area first within a kind."""
     area = {p['url']: p['dims']['width'] * p['dims']['height'] for p in valid}
@@ -179,13 +191,7 @@ class MetadataMapper:
 
     async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         valid = await self._probe_artwork(detail.art, referers, cookies)
-        by_class: dict[str, list[dict[str, Any]]] = {}
-        for p in valid:
-            by_class.setdefault(p['image_class'], []).append(p)
-
-        images = _classify_artwork(valid)
-        _promote_missing_kinds(images, valid, by_class)
-        _sort_artwork(images, valid)
+        images = build_artwork(valid)
 
         thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
         art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)

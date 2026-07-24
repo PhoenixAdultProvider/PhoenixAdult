@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.registry import find_site
 from phoenixadult.services import plex_import
 from phoenixadult.utils.plex import legacy_guid
@@ -65,7 +66,9 @@ def _item() -> dict[str, Any]:
 
 
 def test_build_maps_plex_fields_onto_a_response() -> None:
-    response = plex_import._build(_item(), 'Fit18', 'CUR1', [('/cache/x/images/poster-00.jpg', 'coverPoster')])
+    from phoenixadult.models.metadata import PlexImage
+
+    response = plex_import._build(_item(), 'Fit18', 'CUR1', [PlexImage(url='/cache/x/images/poster-00.jpg', type='coverPoster')])
     md = response.MediaContainer.Metadata[0]
     assert md.title == 'A Scene'
     assert md.studio == 'Fit18'
@@ -92,6 +95,16 @@ async def test_import_skips_already_cached_scenes(monkeypatch: pytest.MonkeyPatc
     assert report.skipped_existing == 1
     assert report.imported == 0
     assert report.items[0].status == 'skipped'
+
+
+@pytest.mark.asyncio
+async def test_overwrite_reimports_a_cached_scene(monkeypatch: pytest.MonkeyPatch) -> None:
+    report = plex_import.ImportReport(applied=False)
+    monkeypatch.setattr(plex_import.scene_store, 'has', lambda _hash: True)
+    stub = {'ratingKey': '1', 'title': 'Cached', 'guid': _LEGACY, 'studio': 'Fit18'}
+    await plex_import._import_one(None, stub, report, apply=False, overwrite=True)  # type: ignore[arg-type]
+    assert report.skipped_existing == 0
+    assert report.importable == 1
 
 
 @pytest.mark.asyncio
@@ -206,12 +219,40 @@ async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, m
             ]
 
     staging = tmp_path / plex_import._STAGING / 'hash01'
-    staged, thumb, art = await plex_import._stage_artwork(_Client(), staging, '51767')  # type: ignore[arg-type]
+    staged = await plex_import._stage_artwork(_Client(), staging, '51767')  # type: ignore[arg-type]
 
     assert len(staged) == 3, 'the art copy of agent_p1 is a duplicate and must not be staged twice'
-    assert [kind for _url, kind in staged] == ['coverPoster', 'coverPoster', 'background']
-    assert thumb.endswith('poster-00.jpg')
-    assert art.endswith('art-02.jpg')
+    assert [img.type for img in staged] == ['coverPoster', 'coverPoster', 'background']
+
+
+def test_odd_shapes_are_dropped_not_called_posters() -> None:
+    """A 480x640 still (aspect 1.33) is not a cover. It must be dropped like a fresh scrape drops
+    it, never typed coverPoster because Plex happened to list it under posters."""
+    from phoenixadult.utils.images.image_classifier import classify_image
+
+    probed = [
+        {'url': '/cache/x/images/poster-00.jpg', 'dims': {'width': 427, 'height': 640}, 'image_class': classify_image(427, 640).image_class},
+        {'url': '/cache/x/images/poster-14.jpg', 'dims': {'width': 480, 'height': 640}, 'image_class': classify_image(480, 640).image_class},
+        {'url': '/cache/x/images/art-27.jpg', 'dims': {'width': 1280, 'height': 720}, 'image_class': classify_image(1280, 720).image_class},
+    ]
+    images = build_artwork(probed)
+    kinds = {img.url: img.type for img in images}
+    assert kinds['/cache/x/images/poster-00.jpg'] == 'coverPoster'
+    assert kinds['/cache/x/images/art-27.jpg'] == 'background'
+    assert '/cache/x/images/poster-14.jpg' not in kinds
+
+
+def test_background_is_promoted_to_poster_only_when_no_poster_exists() -> None:
+    landscape_only = [{'url': '/cache/x/images/art-00.jpg', 'dims': {'width': 1280, 'height': 720}, 'image_class': 'background'}]
+    promoted = build_artwork(landscape_only)
+    assert [img.type for img in promoted] == ['background', 'coverPoster']
+
+    with_poster = [
+        {'url': '/cache/x/images/poster-00.jpg', 'dims': {'width': 427, 'height': 640}, 'image_class': 'coverPoster'},
+        {'url': '/cache/x/images/art-00.jpg', 'dims': {'width': 1280, 'height': 720}, 'image_class': 'background'},
+    ]
+    kept = build_artwork(with_poster)
+    assert [img.type for img in kept] == ['coverPoster', 'background']
 
 
 def test_candidate_ref_collapses_the_same_image_across_buckets() -> None:

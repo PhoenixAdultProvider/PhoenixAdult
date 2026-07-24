@@ -127,7 +127,7 @@ async def import_library(request: Request) -> JSONResponse:
         return JSONResponse({'error': 'limit must be an integer'}, status_code=400)
 
     try:
-        report = await plex_import.import_library(section, apply=apply, limit=limit)
+        report = await plex_import.import_library(section, apply=apply, limit=limit, overwrite=_truthy(request.query_params.get('overwrite')))
     except RuntimeError as err:
         return JSONResponse({'error': str(err)}, status_code=409)
     except httpx2.HTTPError as err:
