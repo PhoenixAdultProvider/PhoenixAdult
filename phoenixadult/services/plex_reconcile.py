@@ -166,6 +166,11 @@ class PlexClient:
         container = await self._get(f'/library/sections/{section}/collections')
         return list(container.get('Metadata') or [])
 
+    async def artwork(self, rating_key: str, kind: str) -> list[dict[str, Any]]:
+        """Every poster/art candidate Plex holds for an item, not just the selected one."""
+        container = await self._get(f'/library/metadata/{rating_key}/{kind}')
+        return list(container.get('Metadata') or [])
+
     async def clear_logo_candidates(self, rating_key: str) -> list[str]:
         container = await self._get(f'/library/metadata/{rating_key}/clearLogos')
         return [str(m.get('key') or '') for m in (container.get('Metadata') or [])]

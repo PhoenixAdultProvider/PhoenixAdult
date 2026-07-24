@@ -122,9 +122,16 @@ async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monke
 
     monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
 
+    import io
+
+    from PIL import Image as PILImage
+
+    buf = io.BytesIO()
+    PILImage.new('RGB', (400, 600)).save(buf, format='JPEG')
+
     class _Response:
         headers = {'content-type': 'image/jpeg'}
-        content = b'jpegbytes'
+        content = buf.getvalue()
 
         def raise_for_status(self) -> None:
             return None
@@ -138,14 +145,90 @@ async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monke
         http = _Http()
 
     staging = tmp_path / plex_import._STAGING / 'abc123def456'
-    url = await plex_import._stage_image(_Client(), staging, '/library/metadata/1/thumb/1', 'poster-00')  # type: ignore[arg-type]
+    result = await plex_import._stage_image(_Client(), staging, 'http://plex.local/thumb', 'poster-00')  # type: ignore[arg-type]
+    assert result is not None
+    url, width, height = result
     assert url == f'/cache/{plex_import._STAGING}/abc123def456/images/poster-00.jpg'
+    assert (width, height) == (400, 600)
 
     resolved = metadata_cache._snapshot_file(url, 'http://provider.local')
     assert resolved is not None
     on_disk, name = resolved
     assert name == 'poster-00.jpg'
-    assert on_disk.is_file() and on_disk.read_bytes() == b'jpegbytes'
+    assert on_disk.is_file()
+
+
+@pytest.mark.asyncio
+async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plex lists the agent's whole image set as poster/art candidates; the import keeps all of
+    them, drops cross-bucket duplicates, and types each by aspect ratio."""
+    import io
+
+    from PIL import Image as PILImage
+
+    from phoenixadult.utils import cache as metadata_cache
+
+    monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
+
+    def _jpeg(width: int, height: int) -> bytes:
+        buf = io.BytesIO()
+        PILImage.new('RGB', (width, height)).save(buf, format='JPEG')
+        return buf.getvalue()
+
+    sizes = {'p1': (1000, 1500), 'p2': (1000, 1500), 'wide': (1920, 1080)}
+
+    class _Response:
+        def __init__(self, body: bytes) -> None:
+            self.content = body
+            self.headers = {'content-type': 'image/jpeg'}
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _Http:
+        async def get(self, url: str) -> _Response:
+            key = next(k for k in sizes if k in url)
+            return _Response(_jpeg(*sizes[key]))
+
+    class _Client:
+        base = 'http://plex.local:32400'
+        http = _Http()
+
+        async def artwork(self, _rating_key: str, kind: str) -> list[dict[str, Any]]:
+            if kind == 'posters':
+                return [
+                    {'ratingKey': 'metadata://posters/agent_p1', 'key': '/p1', 'selected': True},
+                    {'ratingKey': 'metadata://posters/agent_p2', 'key': '/p2'},
+                ]
+            return [
+                {'ratingKey': 'metadata://art/agent_p1', 'key': '/p1'},
+                {'ratingKey': 'metadata://art/agent_wide', 'key': '/wide', 'selected': True},
+            ]
+
+    staging = tmp_path / plex_import._STAGING / 'hash01'
+    staged, thumb, art = await plex_import._stage_artwork(_Client(), staging, '51767')  # type: ignore[arg-type]
+
+    assert len(staged) == 3, 'the art copy of agent_p1 is a duplicate and must not be staged twice'
+    assert [kind for _url, kind in staged] == ['coverPoster', 'coverPoster', 'background']
+    assert thumb.endswith('poster-00.jpg')
+    assert art.endswith('art-02.jpg')
+
+
+def test_candidate_ref_collapses_the_same_image_across_buckets() -> None:
+    poster = {'ratingKey': 'metadata://posters/com.plexapp.agents.phoenixadult_942d'}
+    art = {'ratingKey': 'metadata://art/com.plexapp.agents.phoenixadult_942d'}
+    assert plex_import._candidate_ref(poster) == plex_import._candidate_ref(art)
+
+
+def test_candidate_url_handles_every_key_shape() -> None:
+    class _C:
+        base = 'http://plex.local:32400'
+
+    client = _C()
+    assert plex_import._candidate_url(client, {'key': '/library/metadata/1/thumb/2'}) == 'http://plex.local:32400/library/metadata/1/thumb/2'  # type: ignore[arg-type]
+    assert plex_import._candidate_url(client, {'key': 'http://cdn/x.jpg'}) == 'http://cdn/x.jpg'  # type: ignore[arg-type]
+    photo = plex_import._candidate_url(client, {'ratingKey': 'metadata://posters/agent_abc'})  # type: ignore[arg-type]
+    assert photo.startswith('http://plex.local:32400/photo/:/transcode?url=metadata%3A%2F%2Fposters%2Fagent_abc')
 
 
 def test_report_caps_its_item_list() -> None:

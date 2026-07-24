@@ -246,9 +246,12 @@ Notes:
 - Each scene is keyed back to its `(site, cur_id)` from the guid — ours, or the retired bundle's
   numeric site id, falling back to the studio name. Scenes that match none are reported as
   `unresolved` and skipped, never guessed at.
-- **Poster and background art are imported; actor headshots are not** — the people pipeline resolves
-  those, and the Plex copies are agent-supplied duplicates. Images are staged on disk and adopted by
-  the snapshot writer, so the Plex token never reaches stored metadata.
+- **Every poster and art candidate is imported, not just the two Plex has selected** — the old agent
+  handed Plex its whole image set, so that is where the scene stills live. Duplicates listed under
+  both buckets are collapsed, and each image is typed by the same aspect-ratio classifier a fresh
+  scrape uses. Images are staged on disk and adopted by the snapshot writer, so the Plex token never
+  reaches stored metadata.
+- **Actor headshots are not imported** — the people pipeline resolves those.
 - Retired sites resolve through the **Archive** client (`phoenixadult/clients/aggregators/archive.py`):
   registry entries that exist only so their cached scenes stay servable. It never searches or
   scrapes, and it yields to a real client if that site is ever ported back.

@@ -5,8 +5,10 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import httpx2
+from PIL import Image as PILImage
 
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
@@ -14,6 +16,7 @@ from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import _hash, scene_store
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex import legacy_guid
 from phoenixadult.utils.plex.rating_key import parse_rating_key, to_guid, to_rating_key
@@ -105,23 +108,81 @@ def _roles(item: dict[str, Any], key: str) -> list[dict[str, Any]]:
     return out
 
 
-async def _stage_image(client: PlexClient, staging: Path, plex_path: str, name: str) -> str | None:
-    """Pull one Plex-hosted image into a staging dir and return its /cache/ URL, so the snapshot
-    write adopts the bytes off disk and the Plex token never reaches stored metadata."""
+def _candidate_ref(candidate: dict[str, Any]) -> str:
+    """The bytes a candidate points at. Posters and arts list the same agent images under
+    different buckets, so the trailing hash — not the bucket — identifies a duplicate."""
+    ref = str(candidate.get('ratingKey') or candidate.get('key') or '')
+    return ref.rsplit('/', 1)[-1] if ref else ''
+
+
+def _candidate_url(client: PlexClient, candidate: dict[str, Any]) -> str:
+    """A fetchable URL for one candidate: a server path when Plex gives one, otherwise the photo
+    endpoint, which is the only way to read an agent-supplied `metadata://` image."""
+    key = str(candidate.get('key') or '')
+    if key.startswith('http'):
+        return key
+    if key.startswith('/'):
+        return f'{client.base}{key}'
+    ref = str(candidate.get('ratingKey') or key or '')
+    return f'{client.base}/photo/:/transcode?url={quote(ref, safe="")}&width=4096&height=4096&minSize=0&upscale=0'
+
+
+async def _stage_image(client: PlexClient, staging: Path, url: str, name: str) -> tuple[str, int, int] | None:
+    """Pull one Plex-hosted image into a staging dir and return its /cache/ URL plus dimensions, so
+    the snapshot write adopts the bytes off disk and the Plex token never reaches stored metadata."""
     try:
-        r = await client.http.get(f'{client.base}{plex_path}')
+        r = await client.http.get(url)
         r.raise_for_status()
     except (httpx2.HTTPError, ValueError) as err:
-        logger.debug(_TAG, f'image fetch failed {plex_path}: {err!r}')
+        logger.warn(_TAG, f'image fetch failed {url.split("?")[0]}: {err!r}')
         return None
     ext = '.png' if 'png' in r.headers.get('content-type', '') else '.jpg'
     images = staging / 'images'
     images.mkdir(parents=True, exist_ok=True)
-    (images / f'{name}{ext}').write_bytes(r.content)
-    return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}'
+    target = images / f'{name}{ext}'
+    target.write_bytes(r.content)
+    try:
+        with PILImage.open(target) as im:
+            width, height = im.size
+    except (OSError, ValueError) as err:
+        logger.warn(_TAG, f'image unreadable {target.name}: {err!r}')
+        target.unlink(missing_ok=True)
+        return None
+    return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}', width, height
 
 
-def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[tuple[str, str]]) -> PlexMetadataResponse:
+async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> tuple[list[tuple[str, str]], str, str]:
+    """Every poster and art candidate Plex holds, deduplicated and typed by the same aspect-ratio
+    classifier a fresh scrape uses. Also returns the URLs of the ones Plex has selected."""
+    staged: list[tuple[str, str]] = []
+    thumb = art = ''
+    seen: set[str] = set()
+    for bucket, fallback, hint in (('posters', 'coverPoster', 'poster'), ('arts', 'background', 'art')):
+        try:
+            candidates = await client.artwork(rating_key, bucket)
+        except httpx2.HTTPError as err:
+            logger.warn(_TAG, f'{bucket} listing failed for {rating_key}: {err!r}')
+            continue
+        for candidate in candidates:
+            ref = _candidate_ref(candidate)
+            if ref and ref in seen:
+                continue
+            seen.add(ref)
+            result = await _stage_image(client, staging, _candidate_url(client, candidate), f'{hint}-{len(staged):02d}')
+            if result is None:
+                continue
+            url, width, height = result
+            kind = classify_image(width, height).image_class
+            staged.append((url, fallback if kind == 'unknown' else kind))
+            if candidate.get('selected'):
+                if bucket == 'posters':
+                    thumb = url
+                else:
+                    art = url
+    return staged, thumb, art
+
+
+def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[tuple[str, str]], thumb: str = '', art: str = '') -> PlexMetadataResponse:
     """Assemble a provider response from one Plex item, keyed so a later serve finds it."""
     title = str(item.get('title') or '')
     date = str(item.get('originallyAvailableAt') or '')
@@ -149,11 +210,12 @@ def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[tuple
     for key in _ROLE_FIELDS:
         if roles := _roles(item, key):
             metadata[key] = roles
-    for url, kind in images:
-        if kind == 'coverPoster':
-            metadata['thumb'] = url
-        elif kind == 'background':
-            metadata['art'] = url
+    poster = thumb or next((url for url, kind in images if kind == 'coverPoster'), '')
+    background = art or next((url for url, kind in images if kind == 'background'), '')
+    if poster:
+        metadata['thumb'] = poster
+    if background:
+        metadata['art'] = background
     metadata['Image'] = [{'url': url, 'type': kind} for url, kind in images]
     return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': identifier, 'size': 1, 'Metadata': [metadata]}})
 
@@ -182,11 +244,10 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         if not item:
             raise ValueError('item vanished from Plex')
         images: list[tuple[str, str]] = []
+        thumb = art = ''
         if staging is not None:
-            for source, kind, name in (('thumb', 'coverPoster', 'poster-00'), ('art', 'background', 'art-00')):
-                if item.get(source) and (url := await _stage_image(client, staging, str(item[source]), name)):
-                    images.append((url, kind))
-        response = _build(item, site_name, cur_id, images)
+            images, thumb, art = await _stage_artwork(client, staging, rating_key)
+        response = _build(item, site_name, cur_id, images, thumb, art)
         if await metadata_cache.write(site_name, cur_id, response):
             report.imported += 1
             report.add(ItemReport(rating_key, title, 'imported', site_name, cur_id, f'{len(images)} images'))
