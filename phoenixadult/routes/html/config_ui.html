@@ -207,6 +207,18 @@
         </details>
       </div>
     </div>
+
+    <h2>Purge clearLogos from Plex</h2>
+    <div class="card">
+      <div class="var-desc">Removes provider-supplied clearLogo art from Plex — the applied logo on each item and its
+        candidate entry — leaving the logo files on the server untouched. Plex has no API to unset a logo, so this
+        edits the Plex database directly. To stop new logos being sent, turn off <b>ClearLogo Cache</b> on the Images
+        tab first; then this purge clears what Plex already holds.</div>
+      <div class="plex-row">
+        <button type="button" class="icon-btn" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
+        <span class="hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -971,6 +983,36 @@
 
     function copyRecaseScript(btn) {
       clipboardCopy(buildRecaseScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
+    }
+
+    function buildLogoPurgeScript() {
+      // Provider clearLogos are the only /images/local/logos/ URLs in the library, so the marker is
+      // exact. metadata_items.user_clear_logo_url holds the applied selection (a metadata://clearLogos
+      // reference), taggings holds the candidate whose thumb_url matches it; clear both.
+      const marker = '%/images/local/logos/%';
+      const sql = [
+        "UPDATE metadata_items SET user_clear_logo_url = NULL WHERE user_clear_logo_url IN (SELECT thumb_url FROM taggings WHERE text LIKE '" + marker + "');",
+        "DELETE FROM taggings WHERE text LIKE '" + marker + "';",
+      ].join(' ');
+      return [
+        '# Removes provider clearLogos from Plex (applied selection + candidate rows).',
+        '# 1. Turn off ClearLogo Cache (Images tab) and restart the provider so it stops sending logos.',
+        '# 2. STOP Plex Media Server completely before running.',
+        '# 3. Set the two paths below, then run in PowerShell.',
+        '# Both statements run in one invocation (no lock races). Only our /images/local/logos/ URLs match.',
+        '$PlexDB  = "$env:LOCALAPPDATA\\Plex Media Server\\Plug-in Support\\Databases\\com.plexapp.plugins.library.db"   # default install; adjust if relocated',
+        '$PlexEXE = "C:\\Program Files\\Plex\\Plex Media Server\\Plex Media Server.exe"                                  # <-- set me if not default',
+        '',
+        '$SQL = "' + psEscape(sql) + '"',
+        '',
+        '& "$PlexEXE" "-sqlite" "$PlexDB" $SQL',
+        'Write-Host "Done - provider clearLogos purged. Start Plex again."',
+        '',
+      ].join('\n');
+    }
+
+    function copyLogoPurgeScript(btn) {
+      clipboardCopy(buildLogoPurgeScript()).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
     function copyReconcileJson(btn, ev) {

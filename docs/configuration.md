@@ -87,7 +87,7 @@ _Read from the environment at startup; not editable in the Config UI._
 | `IMAGE_DIR` | `./local/images` | Directory of local image files served back to Plex. |
 | `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch; larger images are rejected. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
 | `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
-| `LOGO_CACHE_ENABLE` | `false` | Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo once, converting SVG to PNG. Off: only scraped upstream logo URLs are emitted. Review the cache at `/logos`. |
+| `LOGO_CACHE_ENABLE` | `false` | Serve site clearLogos from the local logo cache (tagline first, then studio) and download a scraped logo once, converting SVG to PNG. When **off**, no `clearLogo` is emitted at all — it is stripped from every served response (fresh and cached), so Plex stops receiving logos going forward. Existing logos already in Plex are not removed by this — use the **Purge clearLogos from Plex** script on the Plex tab of `/config` for that. Review the cache at `/logos`. |
 | `LOGO_CACHE_DIR` | `./local/images/logos` | Folder holding `logo.<site-slug>.<ext>` files, organized in per-studio subfolders. |
 
 ### Manual NFO
