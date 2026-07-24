@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -37,6 +37,15 @@ def _log_startup_banner() -> None:
         logger.warn(base_url_warning)
 
 
+async def _try_startup(label: str, fn: Callable[[], object]) -> None:
+    """Run a best-effort startup step; log and continue on failure so a bad derived index
+    (e.g. a corrupt state.db freelist) degrades gracefully instead of boot-looping the app."""
+    try:
+        await asyncio.to_thread(fn)
+    except Exception as err:  # noqa: BLE001 - startup must survive a broken derived store
+        logger.error(f'startup step "{label}" failed (continuing): {err!r}')
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
@@ -46,9 +55,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from phoenixadult.utils.people import cache as people_cache
 
     if people_cache.cache_enabled():
-        await asyncio.to_thread(people_cache.reconcile)
-    await asyncio.to_thread(logo_cache.reconcile)
-    await restore_queue()
+        await _try_startup('people-cache reconcile', people_cache.reconcile)
+    await _try_startup('logo-cache reconcile', logo_cache.reconcile)
+    try:
+        await restore_queue()
+    except Exception as err:  # noqa: BLE001 - a broken queue replay must not block serving
+        logger.error(f'startup step "restore-queue" failed (continuing): {err!r}')
     yield
 
 
