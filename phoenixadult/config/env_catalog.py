@@ -442,6 +442,18 @@ ENV_CATALOG: list[EnvVarSpec] = [
         max=10,
     ),
     EnvVarSpec(
+        'SEARCH_STORE_TTL_DAYS',
+        'Search Result Lifetime (Days)',
+        'How long a cached search result stays valid before a later scan re-searches. 0 = perpetual '
+        '(never expires) — the default, so matches survive indefinitely. Empty banned/no-result searches are '
+        'never stored regardless.',
+        'Scraping & Pacing',
+        'number',
+        default_value='0',
+        min=0,
+        max=3650,
+    ),
+    EnvVarSpec(
         'STATE_DB_PATH',
         'State Database Path',
         'SQLite database (WAL) holding queue replays, the search store, and — since the relational scene '

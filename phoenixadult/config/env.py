@@ -100,6 +100,14 @@ class _Env:
             return 3
 
     @property
+    def search_store_ttl_days(self) -> int:
+        """Days a cached search result stays valid; 0 = perpetual (never expires)."""
+        try:
+            return max(0, int(os.environ.get('SEARCH_STORE_TTL_DAYS') or 0))
+        except ValueError:
+            return 0
+
+    @property
     def state_db_path(self) -> str:
         return os.environ.get('STATE_DB_PATH') or './local/phoenixadult.db'
 

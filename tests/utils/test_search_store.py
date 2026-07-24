@@ -38,9 +38,17 @@ def test_empty_results_are_not_persisted() -> None:
     assert search_store.load(KEY) is None
 
 
-def test_expired_entry_is_dropped() -> None:
+def test_perpetual_by_default_never_expires() -> None:
     search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
-    db.connect().execute('UPDATE searches SET saved_at = ?', (time.time() - search_store._STORE_TTL - 1,))
+    db.connect().execute('UPDATE searches SET saved_at = ?', (time.time() - 3650 * 86400,))
+    assert search_store.load(KEY) is not None
+    assert search_store.sweep_expired() == 0
+
+
+def test_expired_entry_is_dropped_when_ttl_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STORE_TTL_DAYS', '7')
+    search_store.save(KEY, [SearchResult(title='Old', scene_url='https://x/1', cur_id='abc')])
+    db.connect().execute('UPDATE searches SET saved_at = ?', (time.time() - 8 * 86400,))
     assert search_store.load(KEY) is None
     assert db.connect().execute('SELECT COUNT(*) c FROM searches').fetchone()['c'] == 0
 
@@ -67,10 +75,11 @@ def test_find_title_resolves_cur_id_to_stored_result() -> None:
     assert search_store.find_title('') is None
 
 
-def test_sweep_expired_deletes_only_stale_rows() -> None:
+def test_sweep_expired_deletes_only_stale_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STORE_TTL_DAYS', '7')
     search_store.save(KEY, [SearchResult(title='Fresh', scene_url='https://x/1', cur_id='abc')])
     stale = ('Bratty Sis', 'old scene', '2020-01-01', '', '')
     search_store.save(stale, [SearchResult(title='Old', scene_url='https://x/2', cur_id='old1')])
-    db.connect().execute("UPDATE searches SET saved_at = ? WHERE site = 'Bratty Sis'", (time.time() - search_store._STORE_TTL - 1,))
+    db.connect().execute("UPDATE searches SET saved_at = ? WHERE site = 'Bratty Sis'", (time.time() - 8 * 86400,))
     assert search_store.sweep_expired() == 1
     assert search_store.load(KEY) is not None

@@ -37,15 +37,15 @@ below).
 
 ## Schema Version 1 — Queue Replays & Search Store
 
-Derived state; safe to delete (queue replays are re-queued by the next scan and
-searches expire within 7 days anyway).
+Derived state — re-derivable by re-scraping, so no permanent data loss on deletion,
+though rebuilding the search store means re-searching every title under anti-ban pacing.
 
 - `queue_replays(key PK, replay JSON, queued_at)` — one row per queued background
   scrape, replacing the whole-file rewrite of `queue-state.json`.
 - `searches(key_hash PK, site, title, date, scene_id, language, saved_at)` +
   `search_results(key_hash FK, pos, cur_id, title, subsite, payload JSON)` — the
-  7-day search store; `load_similar` and `find_title` are indexed lookups instead of
-  per-call directory scans.
+  search store; cached results are perpetual by default (`SEARCH_STORE_TTL_DAYS=0`).
+  `load_similar` and `find_title` are indexed lookups instead of per-call directory scans.
 
 ## Schema Version 2 — the Scene Store
 
@@ -406,8 +406,8 @@ rsync/zfs tooling. Keep `phoenixadult.db` on local storage, not NFS.
 ## Rebuild & Reconciliation Semantics
 
 - **Version-1 tables** (queue replays, search store) are derived: deleting `phoenixadult.db`
-  loses nothing that matters — replays are re-queued by the next scan and searches
-  expire within 7 days anyway.
+  loses no permanent data — replays are re-queued by the next scan, and the search store
+  (perpetual by default) re-populates as titles are searched again under pacing.
 - **Version-3 tables** (people-image index, logo index) are derived from the image
   trees and rebuild from one directory walk at the next startup; the crop log has no
   file source, so a database loss loses its history.
