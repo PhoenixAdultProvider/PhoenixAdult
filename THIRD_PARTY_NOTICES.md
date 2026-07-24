@@ -1,8 +1,10 @@
 # Third-Party Notices
 
-This project is licensed GPLv3+ (see [LICENSE](LICENSE)) and began as a port of
-the original PhoenixAdult Plex agent bundle, credited in
-[README.md](README.md). The following bundled files come from other projects:
+This project is licensed GPLv3+ (see [LICENSE](LICENSE)). It is a from-scratch
+reimplementation whose scraping behavior — site selectors (XPaths) and scrape
+flows — was initially derived from the original PhoenixAdult Plex agent bundle
+credited in [README.md](README.md), and has since diverged as sites changed;
+the code itself is new. The following bundled files come from other projects:
 
 ## YuNet Face-Detection Model
 
