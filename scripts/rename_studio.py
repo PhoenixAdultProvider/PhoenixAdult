@@ -1,4 +1,4 @@
-"""Studio/tagline rename tool: one dimension UPDATE in state.db, image-folder merge to
+"""Studio/tagline rename tool: one dimension UPDATE in phoenixadult.db, image-folder merge to
 the new slug, and rel_path fixups so DB rows keep pointing at the moved files."""
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def migrate(root: Path, old: str, new: str) -> tuple[int, int, int]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Rename a studio/tagline across state.db and the image cache.')
+    parser = argparse.ArgumentParser(description='Rename a studio/tagline across phoenixadult.db and the image cache.')
     parser.add_argument('old')
     parser.add_argument('new')
     parser.add_argument('--cache-dir', default=None)

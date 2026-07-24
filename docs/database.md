@@ -1,7 +1,7 @@
-# Database Design (state.db)
+# Database Design (phoenixadult.db)
 
 All mutable application state that used to live in flat files lives in a single
-SQLite database, `state.db` (`STATE_DB_PATH`, default `./local/state.db`). This document
+SQLite database, `phoenixadult.db` (`STATE_DB_PATH`, default `./local/phoenixadult.db`). This document
 covers the engine choice, the schema, the reasoning behind its shape, and the operational
 lifecycle (backup, rebuild).
 
@@ -237,7 +237,7 @@ last of the throttled directory rescans:
   URL, cropped flag). The preserved pre-crop originals stay files under `originals/`.
 
 Reconciliation: at startup (and lazily on first use after a cache-dir or database
-change) the index tables are rebuilt from one directory walk. Deleting `state.db`
+change) the index tables are rebuilt from one directory walk. Deleting `phoenixadult.db`
 rebuilds both indexes at the next boot; only the crop-log history is lost.
 
 ```mermaid
@@ -382,7 +382,7 @@ files (per-scene `meta.json`, per-key search JSONs, `queue-state.json`, per-fold
 `.migrated` suffix. Those importers were removed once the migration shipped: an install
 upgrading from a pre-database release must run `1.0.0a124` once first (or accept
 starting with an empty scene store). Leftover `.migrated` files are inert rollback
-artifacts, deletable whenever the operator is satisfied — `state.db` is the only live
+artifacts, deletable whenever the operator is satisfied — `phoenixadult.db` is the only live
 copy of the scene text and must be backed up.
 
 Snapshot writes are idempotent upserts keyed on `hash` (`UNIQUE` — this is also what
@@ -392,20 +392,20 @@ scene replaces.
 
 ## Backup — Consistent Copies with VACUUM INTO
 
-Never copy a live WAL database file directly (rsync of `state.db` mid-write can tear).
+Never copy a live WAL database file directly (rsync of `phoenixadult.db` mid-write can tear).
 Take a consistent snapshot through SQLite itself:
 
 ```sh
-sqlite3 ./local/state.db "VACUUM INTO './backups/state-$(date +%Y%m%d).db'"
+sqlite3 ./local/phoenixadult.db "VACUUM INTO './backups/phoenixadult-$(date +%Y%m%d).db'"
 ```
 
 `VACUUM INTO` writes a compacted, transactionally-consistent copy while the app keeps
 running. Back up that copy (plus the image tree, which is plain files) with your normal
-rsync/zfs tooling. Keep `state.db` on local storage, not NFS.
+rsync/zfs tooling. Keep `phoenixadult.db` on local storage, not NFS.
 
 ## Rebuild & Reconciliation Semantics
 
-- **Version-1 tables** (queue replays, search store) are derived: deleting `state.db`
+- **Version-1 tables** (queue replays, search store) are derived: deleting `phoenixadult.db`
   loses nothing that matters — replays are re-queued by the next scan and searches
   expire within 7 days anyway.
 - **Version-3 tables** (people-image index, logo index) are derived from the image

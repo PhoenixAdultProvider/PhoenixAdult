@@ -166,7 +166,7 @@ _conn_path: str | None = None
 
 
 def connect() -> sqlite3.Connection:
-    """The process-wide state.db connection (WAL, FK-enforced, schema migrated);
+    """The process-wide phoenixadult.db connection (WAL, FK-enforced, schema migrated);
     re-opens when STATE_DB_PATH changes (tests)."""
     global _conn, _conn_path
     path = str(Path(env.state_db_path))
@@ -197,14 +197,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.executescript(script)
         conn.execute(f'PRAGMA user_version = {idx}')
         conn.commit()
-        logger.info('db', f'state.db schema migrated to v{idx}')
+        logger.info('db', f'phoenixadult.db schema migrated to v{idx}')
 
 
 # ── Shared Helpers ────────────────────────────────────────────────────────────
 
 
 class ReconciledConn:
-    """Rebuild gate for tables mirroring an on-disk directory: when (dir, state.db path)
+    """Rebuild gate for tables mirroring an on-disk directory: when (dir, phoenixadult.db path)
     changes, the rebuild callback runs once before the shared connection is handed back."""
 
     def __init__(self, dir_of: Callable[[], str], rebuild: Callable[[], object]) -> None:

@@ -94,7 +94,7 @@ class _Env:
 
     @property
     def state_db_path(self) -> str:
-        return os.environ.get('STATE_DB_PATH') or './local/state.db'
+        return os.environ.get('STATE_DB_PATH') or './local/phoenixadult.db'
 
     @property
     def manual_nfo_path(self) -> str:

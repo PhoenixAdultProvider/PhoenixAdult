@@ -426,7 +426,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'store — PRIMARY scene metadata. Do NOT delete: back up with VACUUM INTO.',
         'Misc',
         'string',
-        default_value='./local/state.db',
+        default_value='./local/phoenixadult.db',
         requires_restart=True,
     ),
     EnvVarSpec(
