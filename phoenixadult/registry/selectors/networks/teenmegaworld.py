@@ -37,7 +37,7 @@ TEENMEGAWORLD_SITES: list[SiteInfo] = [
     _site('Creampie Angels', 'creampie-angels.com'),
     _site('Dirty Coach', 'dirty-coach.com'),
     _site('Dirty Doctor', 'dirty-doctor.com'),
-    _site('el Porno Latino'),
+    _site('El Porno Latino'),
     _site('ExGfBox'),
     _site('First BGG', 'firstbgg.com'),
     _site('Fuck Studies', 'fuckstudies.com'),

@@ -51,7 +51,7 @@ async def test_detail_title_actors_image() -> None:
     assert detail.title == 'Collection 1234'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'InTheCrack'
-    assert detail.collections == ['In The Crack']
+    assert detail.collections == ['In the Crack']
     assert detail.release_date == '2021-02-02'
     assert detail.genres == ['Solo']
     assert [a.name for a in detail.actors] == ['Alice Wonder', 'Bea Star']

@@ -23,9 +23,9 @@ def _site(name: str, base_url: str) -> SiteInfo:
 
 
 MODELCENTRO_SITES: list[SiteInfo] = [
-    _site('Fall In Lovia', 'https://www.fallinlovia.com'),
+    _site('Fall in Lovia', 'https://www.fallinlovia.com'),
     _site('Romi Rain', 'https://www.romirain.com'),
-    _site('Jerk Off With Me', 'https://www.jerkoffwithme.com'),
+    _site('Jerk Off with Me', 'https://www.jerkoffwithme.com'),
     _site('Get Your Knees Dirty', 'https://www.getyourkneesdirty.com'),
     _site('Nude Beauties', 'https://nudebeauties.eu'),
     _site('Dani Daniels', 'https://danidaniels.com'),
@@ -34,7 +34,7 @@ MODELCENTRO_SITES: list[SiteInfo] = [
     _site('Katya Clover', 'https://www.katya-clover.com'),
     _site('De Nude Art', 'https://denudeart.com'),
     _site('Lisey Sweet', 'https://theliseysweet.com'),
-    _site('My Life In Miami', 'https://mylifeinmiami.com'),
+    _site('My Life in Miami', 'https://mylifeinmiami.com'),
     _site('Gina Gerson', 'https://www.ginagerson.xxx'),
     _site('Vina Sky XXX', 'https://www.vinaskyxxx.com'),
     _site('Bruce and Morgan', 'https://www.bruceandmorgan.net'),

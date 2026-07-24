@@ -27,6 +27,6 @@ PUFFY_SITES: list[SiteInfo] = [
     _site('Wet and Pissy'),
     _site('Wet and Puffy'),
     _site('Simply Anal'),
-    _site('We Like To Suck'),
+    _site('We Like to Suck'),
     _site('Euro Babe Facials'),
 ]

@@ -32,7 +32,7 @@ PORNDOEPREMIUM_SITES: list[SiteInfo] = [
     _site('Los Consoladores', 'https://vipsexvault.com'),
     _site('Trans Bella', 'https://transbella.com'),
     _site('Her Big Ass', 'https://mamacitaz.com'),
-    _site('Fucked In Traffic', 'https://vipsexvault.com'),
+    _site('Fucked in Traffic', 'https://vipsexvault.com'),
     _site('Las Folladoras', 'https://amateureuro.com'),
     _site('Badtime Stories', 'https://forbondage.com'),
     _site('Exposed Casting', 'https://vipsexvault.com'),

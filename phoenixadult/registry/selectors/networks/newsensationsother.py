@@ -24,7 +24,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
 
 NEWSENSATIONSOTHER_SITES: list[SiteInfo] = [
     _site('Tales From the Edge', 'thetalesfromtheedge.com', '/tour_ttfte/search.php?query={query}'),
-    _site('Fresh Out Of High School', 'freshoutofhighschool.com', '/tour_fohs/search.php?query={query}'),
+    _site('Fresh Out of High School', 'freshoutofhighschool.com', '/tour_fohs/search.php?query={query}'),
     _site('The Tabu Tales', 'thetabutales.com', '/tour_tt/search.php?query={query}'),
     _site("Shane Diesel's Banging Babes", 'www.shanedieselsbanginbabes.com', '/tour_sdbb/search.php?query={query}'),
     _site('The Romance Series', 'theromanceseries.com', '/tour_rs/search.php?query={query}'),

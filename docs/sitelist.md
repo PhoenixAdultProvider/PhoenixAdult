@@ -199,7 +199,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Ginger
   - Petite.XXX
   - Taboo
-  - Wild On Cam
+  - Wild on Cam
 + #### Clips4Sale | ❌ - **StudioID with Title Search**
 + #### ClubFilly | ❌ - **SceneID, DVDs not supported**
 + #### Colette | ✅
@@ -505,7 +505,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Hanna Hilton
     - Lane Sisters
     - Sunny Leone
-  - Out Of the Family
+  - Out of the Family
   - Pretty Dirty
   - Pure Taboo
   - Silvia Saint
@@ -568,7 +568,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Backroom Casting Couch
   - BBC Surprise
   - Exploited College Girls
-  - Hot Milfs Fuck
+  - Hot MILFs Fuck
   - HushPass
   - I Kiss Girls
   - Interracial Pass
@@ -584,7 +584,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Sexually Broken
   - Topgrl
 + #### InTheCrack | ✓ - **Actor only**
-  - In The Crack
+  - In the Crack
 + #### Jacquie Et Michel TV | ✅
 + #### JavBus | ✅ - **SceneID (in form of JAVID)**
 + #### JAVDatabase | ✅ - **SceneID (in form of JAVID)**
@@ -632,7 +632,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Kink Evolved Fights Lesbian Edition
   - Kink Features
   - Kink University
-  - Men In Pain
+  - Men in Pain
   - Men on Edge
   - Naked Kombat
   - Public Disgrace
@@ -700,14 +700,14 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Dani Daniels
   - De Nude Art
   - Dillion Nation
-  - Fall In Lovia
+  - Fall in Lovia
   - Get Your Knees Dirty
   - Gina Gerson
-  - Jerk Off With Me
+  - Jerk Off with Me
   - Katya Clover
   - Lilu Moon
   - Lisey Sweet
-  - My Life In Miami
+  - My Life in Miami
   - Nude Beauties
   - Official Chloe Toy
   - Romi Rain
@@ -720,45 +720,51 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### My Dirty Hobby | ✅
 + #### Naughty America | ✅
   - 2 Chicks Same Time
+  - After School
   - American Daydreams
   - Anal College
   - Asian 1 on 1
   - Ass Masterpiece
   - Big Cock Bully
   - Big Cock Hero
+  - Classroom
   - College Sugarbabes
-  - Diary of a Milf
+  - Diary of a MILF
   - Diary of a Nanny
   - Dirty Wives Club
   - Fast Times
+  - Fuck My Ass
   - Housewife 1 on 1
-  - I have a Wife
+  - I Have a Wife
+  - Inside Naughty America
   - LA Sluts
   - Latin Adultery
   - Latina Stepmom
   - Lesbian Girl on Girl
+  - Live Gym
   - Live Gym Cam
-  - Live Naughty Milf
+  - Live Naughty MILF
   - Live Naughty Nurse
   - Live Naughty Secretary
   - Live Naughty Student
   - Live Naughty Teacher
   - Live Party Girl
-  - Milf Sugar Babes
+  - MILF Sugar Babes
   - Mom's Money
   - Mrs. Creampie
-  - My Dads Hot Girlfriend
-  - My Daughters Hot Friend
+  - My Dad's Hot Girlfriend
+  - My Daughter's Hot Friend
   - My First Sex Teacher
-  - My Friends Hot Girl
-  - My Friends Hot Mom
+  - My Friend's Hot Girl
+  - My Friend's Hot Mom
   - My Girl Loves Anal
-  - My Girlfriends Busty Friend
+  - My Girlfriend
+  - My Girlfriend's Busty Friend
   - My Naughty Latin Maid
   - My Naughty Massage
-  - My Sisters Hot Friend
-  - My Wife is My Pornstar
-  - My Wifes Hot Friend
+  - My Sister's Hot Friend
+  - My Wife Is My Pornstar
+  - My Wife's Hot Friend
   - Naughty Athletics
   - Naughty Bookworms
   - Naughty Country Girls
@@ -768,17 +774,34 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Naughty Weddings
   - Neighbor Affair
   - Open Family
+  - Party Girls
   - Perfect Fucking Strangers
-  - Seduced By A Cougar
+  - Porn Star Experience
+  - Pornstar Wife
+  - Real Girls Now
+  - Real Pornstars VR
+  - Seduced by a Cougar
   - Show My BF
+  - Single Moms
   - Sleazy Stepdad
   - Slut Stepmom
   - Slut Stepsister
   - SoCal Coeds
+  - Spring Break
+  - Summer Vacation
+  - Super Sluts
   - Teens Love Cream
+  - The Dorm Room
+  - The Dressing Room
+  - The Gym
+  - The Office
   - The Passenger
+  - The Spa
   - Thundercock
-  - Tonights Girlfriend Classic
+  - Tonight's Fuck
+  - Tonight's Girlfriend Classic
+  - Trophy Wives
+  - True Slut Stories
   - Watch Your Mom
   - Watch Your Wife
   - Wives on Vacation
@@ -789,7 +812,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Thicc18
 + #### New Sensations | ✅ - **Date Add**
   - FamilyXXX
-  - Fresh Out Of High School
+  - Fresh Out of High School
   - Shane Diesel's Banging Babes
   - Tales From the Edge
   - The Romance Series
@@ -848,10 +871,10 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Perfect Gonzo | ✅
   - All Internal
   - Ass Traffic
-  - Cum For Cover
+  - Cum for Cover
   - Fist Flush
   - Give Me Pink
-  - Milf Thing
+  - MILF Thing
   - Perfect Gonzo Interview
   - PerfectGonzo
   - Primecups
@@ -897,7 +920,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Czech Sex Party
   - Czech Shemale
   - Dellia Twins
-  - Dick On Trip
+  - Dick on Trip
   - Fucking Office
   - Fucking Street
   - Girls Take Away
@@ -907,8 +930,8 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Lady Dee
   - Public From Bohemia
   - Retro Porn CZ
-  - Sex In Taxi
-  - Sex With Muslims
+  - Sex in Taxi
+  - Sex with Muslims
   - Susan Ayn
   - Teen From Bohemia
   - VR Porn CZ
@@ -921,7 +944,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Crowd Bondage
   - Deutschland Report
   - Exposed Casting
-  - Fucked In Traffic
+  - Fucked in Traffic
   - Hausfrau Ficken
   - Her Big Ass
   - La Cochonne
@@ -965,8 +988,8 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Facials Galore
   - Facials4K
   - FantasyHD
-  - Freaks Of Boobs
-  - Freaks Of Cock
+  - Freaks of Boobs
+  - Freaks of Cock
   - Game On
   - Girl Scout Sex
   - GirlCum
@@ -976,7 +999,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Kinky Sluts 4K
   - Lubed
   - Massage Creep
-  - Milf Humiliation
+  - MILF Humiliation
   - Mom4K
   - MomCum
   - My Very First Time
@@ -1034,7 +1057,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Private Stars
   - Russian Fake Agent
   - Russian Teen Ass
-  - Sex on the beach
+  - Sex on the Beach
   - Tight and Teen
 + #### Project1Service | ✅
   - Babes
@@ -1096,7 +1119,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Tugjobs
     - Working Latinas
   - Bi Empire
-  - Blacks On Moms
+  - Blacks on Moms
   - Brazzers
     - Asses in Public
     - Baby Got Boobs
@@ -1108,6 +1131,8 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Big Wet Butts
     - Brazzers Exxtra
     - Brazzers Live
+    - Brazzers University
+    - Brazzers Vault
     - Busty and Real
     - Bustyz
     - Butts and Blacks
@@ -1118,16 +1143,23 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Hot and Mean
     - Hot Chicks Big Asses
     - Jug Fuckers
+    - MILFs in Action
     - MILFs Like It Big
     - Mommy Got Boobs
     - Moms in Control
     - Pornstars Like It Big
     - Racks and Blacks
     - Real Wife Stories
+    - Risky Pleasures
+    - SexPro Adventures
     - She's Gonna Squirt
     - Teens Like It Big
     - Teens Like It Black
+    - Thicc Queens
+    - Viral Vidzz
     - ZZ Series
+    - ZZ Unscripted
+    - ZZ VR
   - Deviant Hardcore
   - Deviante
   - Digital Playground
@@ -1175,7 +1207,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - The White Boxxx
     - Xchimera
     - XXX Shades
-  - Look At Her Now
+  - Look at Her Now
   - Love Her Ass
   - Mia Khalifa
   - Mile High Media
@@ -1291,7 +1323,7 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Puffy Network | ✓
   - Euro Babe Facials
   - Simply Anal
-  - We Like To Suck
+  - We Like to Suck
   - Wet and Pissy
   - Wet and Puffy
 + #### PureCFNM | ❌ - **ActressID with Title Search**
@@ -1354,15 +1386,15 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Z Filmz Originals
 + #### Radical Cash Other | ✅
   - Gonzo Living
-    - Milf Gonzo
+    - MILF Gonzo
     - Teen Gonzo
   - Hitzefrei
     - CityCheck
-    - Cuff em All
+    - Cuff Em All
     - Family Affairs
     - fANALarm
-    - Fuck On Arrival
-    - Milf Hunters
+    - Fuck on Arrival
+    - MILF Hunters
     - Patti's Anal
     - Unleashed
   - PurgatoryX
@@ -1592,7 +1624,7 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### SinX | ✓
   - Fully Clothed Pissing
   - Golden Shower Power
-  - Pissing In Action
+  - Pissing in Action
   - Slime Wave
 + #### Spizoo | ✓
   - Cream Her
@@ -1641,7 +1673,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Creampie Angels
   - Dirty Coach
   - Dirty Doctor
-  - el Porno Latino
+  - El Porno Latino
   - ExGfBox
   - First BGG
   - Fuck Studies
@@ -1706,8 +1738,8 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Teeny Taboo | ✅
 + #### The Score Group | ✅
   - 18 Eighteen
-  - 50 Plus MILFS
-  - 60 Plus MILFS
+  - 50 Plus MILFs
+  - 60 Plus MILFs
   - Big Boob Bundle
   - Bootylicious Mag
   - Christy Marks
@@ -1736,26 +1768,26 @@ To update the site list run `python -m scripts.generate_sitelist`
   - VRB Gay
   - VRB Trans
 + #### VIP4K | ✅
-  - Black 4k
+  - Black 4K
   - Bride 4K
   - Cuck 4K
-  - Daddy 4k
-  - Debt 4k
+  - Daddy 4K
+  - Debt 4K
   - Dyke 4K
-  - Fist 4k
-  - Hunt 4k
+  - Fist 4K
+  - Hunt 4K
   - Ignore 4K
-  - Loan 4k
-  - Mature 4k
+  - Loan 4K
+  - Mature 4K
   - Mommy 4K
-  - Old 4k
-  - Pie 4k
-  - Rim 4k
+  - Old 4K
+  - Pie 4K
+  - Rim 4K
   - Serve 4K
-  - Shame 4k
+  - Shame 4K
   - Sis
-  - Stuck 4k
-  - Tutor 4k
+  - Stuck 4K
+  - Tutor 4K
 + #### VIPissy | ✓
 + #### Virtual Taboo | ✓ - **Title only**
 + #### VirtualRealPorn | ❌ - **Direct URL**
@@ -1801,7 +1833,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Tasha Reign
   - Vicky at Home
   - VNA Live
-  - Women By Julia Ann
+  - Women by Julia Ann
 + #### VogoV | ✓ - **Title only**
 + #### VR Latina | ✅
 + #### VRAllure | ❌ - **Direct URL**
@@ -1819,26 +1851,26 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Escort Trick
   - Exploited 18
   - Handjob Harry
-  - I am Eighteen
+  - I Am Eighteen
   - Lesbian Sistas
   - Make Them Gag
   - Matrix Models
-  - My Milf Boss
+  - My MILF Boss
   - Not So Innocent Teens
   - Rap Video Auditions
   - Real Blowjob Auditions
   - Round Juicy Butts
   - Schoolgirl Internal
   - Service Whores
-  - Sex For Grades
+  - Sex for Grades
   - Spoiled Slut
-  - Swallow For Cash
+  - Swallow for Cash
   - Tight Holes Big Poles
   - Wank My Wood
   - Wankz TV
   - Whale Tailn
   - Wild Massage
-  - XXX At Work
+  - XXX at Work
   - Young Dirty Lesbians
   - Young Sluts Hardcore
 + #### WankzVR | ✅

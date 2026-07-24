@@ -20,7 +20,7 @@ _NAMES = [
     'Private MILFs',
     'Russian Fake Agent',
     'Russian Teen Ass',
-    'Sex on the beach',
+    'Sex on the Beach',
     'Private Stars',
     'Tight and Teen',
 ]

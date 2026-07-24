@@ -3,7 +3,7 @@ from __future__ import annotations
 from phoenixadult.registry.selectors._factory import make_site
 from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
 
-PROVIDER_NAME = 'In The Crack'
+PROVIDER_NAME = 'In the Crack'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneIdName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = 'Actor only'

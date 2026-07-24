@@ -53,7 +53,7 @@ KINK_SITES: list[SiteInfo] = [
     _site('Naked Kombat', 'nakedkombat'),
     _site('Divine Bitches', 'divinebitches'),
     _site('Electrosluts', 'electrosluts'),
-    _site('Men In Pain', 'meninpain'),
+    _site('Men in Pain', 'meninpain'),
     _site('Whipped Ass', 'whippedass'),
     _site('Wired Pussy', 'wiredpussy'),
     _site('Bound Gang Bangs', 'boundgangbangs'),

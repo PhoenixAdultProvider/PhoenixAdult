@@ -41,6 +41,9 @@
   <div class="off-banner" id="off-banner" style="display:none">LOGO_CACHE_ENABLE is off — these files are not being served; only scraped upstream logo URLs are emitted.</div>
   <div class="bar">
     <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
+    <label style="font-size:13px;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
+    </label>
     <span class="count-badge" id="count"></span>
     <button type="button" class="rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
     <span class="rescan-status" id="rescan-status"></span>
@@ -66,8 +69,13 @@
       document.getElementById('dir').textContent = STATE.dir;
       document.getElementById('off-banner').style.display = STATE.enabled ? 'none' : 'block';
       const q = document.getElementById('filter').value.trim().toLowerCase();
-      const rows = STATE.logos.filter((l) => !q || (l.site + ' ' + l.slug + ' ' + l.rel).toLowerCase().includes(q));
-      document.getElementById('count').textContent = rows.length + ' / ' + STATE.logos.length + ' logos';
+      const unmatchedOnly = document.getElementById('unmatched').checked;
+      const rows = STATE.logos.filter((l) => {
+        if (unmatchedOnly && l.site) return false;
+        return !q || (l.site + ' ' + l.slug + ' ' + l.rel).toLowerCase().includes(q);
+      });
+      const noMatch = STATE.logos.filter((l) => !l.site).length;
+      document.getElementById('count').textContent = `${rows.length} / ${STATE.logos.length} logos · ${noMatch} unmatched`;
       document.getElementById('empty').style.display = STATE.logos.length ? 'none' : 'block';
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="card">

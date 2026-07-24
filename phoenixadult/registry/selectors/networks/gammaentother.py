@@ -61,7 +61,7 @@ GAMMAENTOTHER_SITES: list[SiteInfo] = [
     _site('Filthy Kings', 'https://www.filthykings.com', 'Filthy Kings', _ALIASES['Filthy Kings']),
     _site('Mommys Boy', 'http://www.mommysboy.com', "Mommy's Boy"),
     _site('Model Time', 'http://www.modeltime.com', 'Model Time'),
-    _site('Out Of the Family', 'http://www.outofthefamily.com', 'Out Of the Family'),
+    _site('Out of the Family', 'http://www.outofthefamily.com', 'Out of the Family'),
     _site('Give Me Teens', 'http://www.givemeteens.com', 'Give Me Teens'),
     _site('White Ghetto', 'http://www.whiteghetto.com', 'White Ghetto'),
     _site('Silvia Saint', 'http://www.silviasaint.com', 'Silvia Saint'),

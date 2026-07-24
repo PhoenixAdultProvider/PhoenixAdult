@@ -10,7 +10,7 @@ from phoenixadult.clients.networks.modelcentro import ModelCentroClient
 from phoenixadult.registry import find_site
 
 SITE = find_site('Romi Rain')
-JOWM = find_site('Jerk Off With Me')
+JOWM = find_site('Jerk Off with Me')
 assert SITE is not None and JOWM is not None
 
 _TOKEN_HTML = '<html><script>var x = {"ah":"ZYX","aet":99};</script></html>'

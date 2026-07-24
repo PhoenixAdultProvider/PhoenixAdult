@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
-from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.registry import ResolvedSiteInfo, normalize_site_key
 from phoenixadult.utils.helpers.helpers import api_date, build_search_result, load_data, pack_cur_id
 
 _LIST_QUERY = (
@@ -141,7 +141,7 @@ class ModelCentroClient(Client):
         sites = (scene_json.get('sites') or {}).get('collection') or {}
         date = api_date((sites.get(str(sid)) or {}).get('publishDate')) or search_date
 
-        tags_are_actors = site.name == 'Jerk Off With Me'
+        tags_are_actors = normalize_site_key(site.name) == normalize_site_key('Jerk Off with Me')
         tag_aliases = [
             alias for alias in ((t.get('alias') or '').strip() for t in _collection_items((scene_json.get('tags') or {}).get('collection'))) if alias
         ]

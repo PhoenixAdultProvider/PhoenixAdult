@@ -29,5 +29,5 @@ INTERRACIALPASS_SITES: list[SiteInfo] = [
     _site('Exploited College Girls', 'exploitedcollegegirls.com', '/search.php?query={query}'),
     _site('I Kiss Girls', 'www.ikissgirls.com', '/search.php?query={query}'),
     _site('HushPass', 'hushpass.com', '/t1/search.php?query={query}'),
-    _site('Hot Milfs Fuck', 'hotmilfsfuck.com', '/search.php?query={query}'),
+    _site('Hot MILFs Fuck', 'hotmilfsfuck.com', '/search.php?query={query}'),
 ]

@@ -25,7 +25,7 @@ def _site(name: str) -> SiteInfo:
 
 
 SINX_SITES: list[SiteInfo] = [
-    _site('Pissing In Action'),
+    _site('Pissing in Action'),
     _site('Golden Shower Power'),
     _site('Fully Clothed Pissing'),
     _site('Slime Wave'),

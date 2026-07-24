@@ -25,13 +25,13 @@ def _site(name: str, host: str) -> SiteInfo:
 
 PORNCZ_SITES: list[SiteInfo] = [
     _site('Czech Sex Casting', 'www.czechsexcasting.com'),
-    _site('Sex With Muslims', 'www.sexwithmuslims.com'),
-    _site('Sex In Taxi', 'www.sexintaxi.com'),
+    _site('Sex with Muslims', 'www.sexwithmuslims.com'),
+    _site('Sex in Taxi', 'www.sexintaxi.com'),
     _site('VR Porn CZ', 'www.vrporncz.com'),
     _site('Fucking Street', 'www.fuckingstreet.com'),
     _site('Hunter POV', 'www.hunterpov.com'),
     _site('Czech Gypsies', 'www.czechgypsies.com'),
-    _site('Dick On Trip', 'www.dickontrip.com'),
+    _site('Dick on Trip', 'www.dickontrip.com'),
     _site('Czech Boobs', 'www.czechboobs.com'),
     _site('Czech Deviant', 'www.czechdeviant.com'),
     _site('Amateri Premium', 'www.amateripremium.com'),

@@ -61,6 +61,6 @@ VNA_SITES: list[SiteInfo] = [
     _site('POV Mania', 'povmania.com'),
     _site('Girl Girl Mania', 'girlgirlmania.com'),
     _site('Kayla Paige Live', 'kaylapaigelive.com'),
-    _site('Women By Julia Ann', 'womenbyjuliaann.com'),
+    _site('Women by Julia Ann', 'womenbyjuliaann.com'),
     _site('VNA Live', 'vnalive.com'),
 ]
