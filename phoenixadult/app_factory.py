@@ -46,14 +46,31 @@ async def _try_startup(label: str, fn: Callable[[], object]) -> None:
         logger.error(f'startup step "{label}" failed (continuing): {err!r}')
 
 
+async def _backup_task() -> None:
+    """App-driven state-db backups on a timer (no cron): an initial snapshot when none exists, then
+    one every DB_BACKUP_INTERVAL_HOURS. 0 disables."""
+    from phoenixadult.utils.db import maintenance
+
+    hours = env.db_backup_interval_hours
+    if hours <= 0:
+        return
+    if maintenance.newest_valid_backup() is None:
+        await _try_startup('db initial backup', maintenance.backup_once)
+    while True:
+        await asyncio.sleep(hours * 3600)
+        await _try_startup('db backup', maintenance.backup_once)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
     from phoenixadult.routes.provider_router import restore_queue
+    from phoenixadult.utils.db import maintenance
     from phoenixadult.utils.images import logo_cache
     from phoenixadult.utils.people import cache as people_cache
 
+    await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     if people_cache.cache_enabled():
         await _try_startup('people-cache reconcile', people_cache.reconcile)
     await _try_startup('logo-cache reconcile', logo_cache.reconcile)
@@ -61,7 +78,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await restore_queue()
     except Exception as err:  # noqa: BLE001 - a broken queue replay must not block serving
         logger.error(f'startup step "restore-queue" failed (continuing): {err!r}')
-    yield
+
+    backup = asyncio.create_task(_backup_task())
+    try:
+        yield
+    finally:
+        backup.cancel()
 
 
 def create_app() -> FastAPI:

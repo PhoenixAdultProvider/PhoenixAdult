@@ -118,7 +118,10 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | --- | --- | --- |
 | `METADATA_CACHE_ENABLE` | `false` | Snapshot each scraped scene's metadata + images and serve cache-first afterward — offline-safe protection against a source going down or changing its anti-scrape. Scene text lives in `STATE_DB_PATH`; manage/purge at `/metadata`. |
 | `METADATA_CACHE_DIR` | `./local/cache` | On-disk location for the snapshot image files. |
-| `STATE_DB_PATH` | `./local/phoenixadult.db` | SQLite database (WAL) holding queue replays, the search store, and the scene snapshot store (see [database.md](database.md)). Scene text is primary data — do not delete this file; back it up with `VACUUM INTO`. Restart to apply. |
+| `STATE_DB_PATH` | `./local/phoenixadult.db` | SQLite database (WAL) holding queue replays, the search store, and the scene snapshot store (see [database.md](database.md)). Scene text is primary data — do not delete this file. **Keep it on storage only this process touches**: a network mount, or an SMB/NFS-exported path another machine can open, breaks WAL locking and corrupts the file. Restart to apply. |
+| `DB_BACKUP_INTERVAL_HOURS` | `24` | How often the app writes a `VACUUM INTO` snapshot of the state database (no cron — the app runs its own timer). `0` disables. On startup, if the live database fails an integrity check it is quarantined (`*.corrupt-<timestamp>`) and the newest good snapshot is restored automatically. |
+| `DB_BACKUP_KEEP` | `7` | Number of snapshots to retain; older ones are pruned after each backup. |
+| `DB_BACKUP_DIR` | _(next to the DB)_ | Where snapshots are written; blank uses a `backups/` folder beside `STATE_DB_PATH`. A different local disk is safest so one failure doesn't take the database and its backups together. |
 
 ### People Cache & Sources
 

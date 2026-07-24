@@ -449,11 +449,44 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'STATE_DB_PATH',
         'State Database Path',
         'SQLite database (WAL) holding queue replays, the search store, and — since the relational scene '
-        'store — PRIMARY scene metadata. Do NOT delete: back up with VACUUM INTO.',
+        'store — PRIMARY scene metadata. Do NOT delete. Keep it on storage only this process touches: '
+        'a network mount or an SMB-exported path that another machine can open will corrupt WAL. The app '
+        'backs it up and self-heals from those backups (below).',
         'Metadata Cache',
         'string',
         default_value='./local/phoenixadult.db',
         requires_restart=True,
+    ),
+    EnvVarSpec(
+        'DB_BACKUP_INTERVAL_HOURS',
+        'Database Backup Interval (Hours)',
+        'How often the app writes a VACUUM INTO snapshot of the state database (no cron needed). 0 disables '
+        'backups. On startup, if the live database fails its integrity check it is quarantined and the newest '
+        'good snapshot is restored automatically.',
+        'Metadata Cache',
+        'number',
+        default_value='24',
+        min=0,
+        max=8760,
+    ),
+    EnvVarSpec(
+        'DB_BACKUP_KEEP',
+        'Database Backups to Keep',
+        'How many VACUUM INTO snapshots to retain; older ones are pruned after each backup.',
+        'Metadata Cache',
+        'number',
+        default_value='7',
+        min=1,
+        max=365,
+    ),
+    EnvVarSpec(
+        'DB_BACKUP_DIR',
+        'Database Backup Directory',
+        'Where VACUUM INTO snapshots are written. Blank uses a "backups" folder next to STATE_DB_PATH. '
+        'A different local disk is safest, so a disk failure does not take the database and its backups together.',
+        'Metadata Cache',
+        'string',
+        default_value='',
     ),
     EnvVarSpec(
         'SEARCH_STRIP_ACTORS',

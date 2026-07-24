@@ -108,6 +108,25 @@ class _Env:
         return os.environ.get('STATE_DB_PATH') or './local/phoenixadult.db'
 
     @property
+    def db_backup_interval_hours(self) -> int:
+        """Hours between app-triggered VACUUM INTO backups; 0 disables them."""
+        try:
+            return max(0, int(os.environ.get('DB_BACKUP_INTERVAL_HOURS') or 24))
+        except ValueError:
+            return 24
+
+    @property
+    def db_backup_keep(self) -> int:
+        try:
+            return max(1, int(os.environ.get('DB_BACKUP_KEEP') or 7))
+        except ValueError:
+            return 7
+
+    @property
+    def db_backup_dir(self) -> str:
+        return os.environ.get('DB_BACKUP_DIR') or ''
+
+    @property
     def manual_nfo_path(self) -> str:
         return os.environ.get('MANUAL_NFO_PATH') or str(_cwd() / 'local' / 'manual')
 

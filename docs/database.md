@@ -390,18 +390,34 @@ prevents duplicate snapshots of the same scene). A crash between the image-folde
 rename and the row commit leaves only orphan image files, which the next write of that
 scene replaces.
 
-## Backup — Consistent Copies with VACUUM INTO
+## Corruption Prevention
 
-Never copy a live WAL database file directly (rsync of `phoenixadult.db` mid-write can tear).
-Take a consistent snapshot through SQLite itself:
+WAL mode keeps a shared-memory index (`-shm`) and relies on POSIX byte-range locks that
+assume a **single host** with a coherent view of the file. Put the database on storage
+only this process touches. A network mount (NFS/SMB), or a local path **exported** over
+SMB so another machine (a Windows indexer, antivirus, a backup job, a file browser) can
+open it, breaks that assumption and tears the WAL — the classic "database disk image is
+malformed" / freelist corruption. The image and metadata trees are plain files and are
+fine on a share; only `*.db`/`-wal`/`-shm` must stay private to the process.
+
+## Backups & Self-Healing (App-Driven)
+
+The app writes its own `VACUUM INTO` snapshots on a timer — no cron. Every
+`DB_BACKUP_INTERVAL_HOURS` (and once at first boot) it snapshots the database to
+`DB_BACKUP_DIR` (default `backups/` beside `STATE_DB_PATH`), keeping `DB_BACKUP_KEEP`
+generations. `VACUUM INTO` is transactionally consistent while serving and preserves
+`user_version`.
+
+On startup the app runs `PRAGMA quick_check` on the live database. If it fails, the
+corrupt file is quarantined (`*.corrupt-<timestamp>`) and the newest snapshot that passes
+its own integrity check is restored automatically — corruption becomes a logged, self-
+healed event rather than a boot loop. With no valid backup, the corrupt file is left in
+place for manual repair (`sqlite3 phoenixadult.db ".recover"`; the derived stores otherwise
+rebuild by re-scraping). A manual one-off snapshot is still just:
 
 ```sh
 sqlite3 ./local/phoenixadult.db "VACUUM INTO './backups/phoenixadult-$(date +%Y%m%d).db'"
 ```
-
-`VACUUM INTO` writes a compacted, transactionally-consistent copy while the app keeps
-running. Back up that copy (plus the image tree, which is plain files) with your normal
-rsync/zfs tooling. Keep `phoenixadult.db` on local storage, not NFS.
 
 ## Rebuild & Reconciliation Semantics
 
