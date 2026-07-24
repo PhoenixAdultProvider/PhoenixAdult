@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import shutil
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -28,6 +29,7 @@ _STAGING = '_plex-import'
 _MAX_ITEMS = 500
 _CONCURRENCY = 4
 _ROLE_FIELDS = ('Role', 'Director', 'Writer', 'Producer')
+_NAME_BY_CLASS = {'coverPoster': 'poster', 'background': 'art', 'backgroundSquare': 'square'}
 
 
 @dataclass
@@ -128,28 +130,31 @@ def _candidate_url(client: PlexClient, candidate: dict[str, Any]) -> str:
     return f'{client.base}/photo/:/transcode?url={quote(ref, safe="")}&width=4096&height=4096&minSize=0&upscale=0'
 
 
-async def _stage_image(client: PlexClient, staging: Path, url: str, name: str) -> tuple[str, int, int] | None:
-    """Pull one Plex-hosted image into a staging dir and return its /cache/ URL plus dimensions, so
-    the snapshot write adopts the bytes off disk and the Plex token never reaches stored metadata."""
+async def _fetch_candidate(client: PlexClient, url: str) -> tuple[bytes, str, int, int] | None:
+    """Bytes, extension and dimensions for one candidate — measured before anything is written, so
+    the file can be named for what the image actually is rather than the bucket it came from."""
     try:
         r = await client.http.get(url)
         r.raise_for_status()
     except (httpx2.HTTPError, ValueError) as err:
         logger.warn(_TAG, f'image fetch failed {url.split("?")[0]}: {err!r}')
         return None
-    ext = '.png' if 'png' in r.headers.get('content-type', '') else '.jpg'
-    images = staging / 'images'
-    images.mkdir(parents=True, exist_ok=True)
-    target = images / f'{name}{ext}'
-    target.write_bytes(r.content)
     try:
-        with PILImage.open(target) as im:
+        with PILImage.open(BytesIO(r.content)) as im:
             width, height = im.size
     except (OSError, ValueError) as err:
-        logger.warn(_TAG, f'image unreadable {target.name}: {err!r}')
-        target.unlink(missing_ok=True)
+        logger.warn(_TAG, f'image unreadable from {url.split("?")[0]}: {err!r}')
         return None
-    return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}', width, height
+    return r.content, '.png' if 'png' in r.headers.get('content-type', '') else '.jpg', width, height
+
+
+def _stage_image(staging: Path, name: str, content: bytes, ext: str) -> str:
+    """Write staged bytes and return the /cache/ URL the snapshot writer will adopt them from, so
+    the Plex token never reaches stored metadata."""
+    images = staging / 'images'
+    images.mkdir(parents=True, exist_ok=True)
+    (images / f'{name}{ext}').write_bytes(content)
+    return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}'
 
 
 async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> list[PlexImage]:
@@ -157,7 +162,8 @@ async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> 
     through the mapper's own artwork pipeline, so shape decides the kind — never the bucket."""
     probed: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for bucket, hint in (('posters', 'poster'), ('arts', 'art')):
+    counts: dict[str, int] = {}
+    for bucket in ('posters', 'arts'):
         try:
             candidates = await client.artwork(rating_key, bucket)
         except httpx2.HTTPError as err:
@@ -168,11 +174,15 @@ async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> 
             if ref and ref in seen:
                 continue
             seen.add(ref)
-            result = await _stage_image(client, staging, _candidate_url(client, candidate), f'{hint}-{len(probed):02d}')
-            if result is None:
+            fetched = await _fetch_candidate(client, _candidate_url(client, candidate))
+            if fetched is None:
                 continue
-            url, width, height = result
-            probed.append({'url': url, 'dims': {'width': width, 'height': height}, 'image_class': classify_image(width, height).image_class})
+            content, ext, width, height = fetched
+            image_class = classify_image(width, height).image_class
+            hint = _NAME_BY_CLASS.get(image_class) or ('poster' if height > width else 'art')
+            counts[hint] = counts.get(hint, 0) + 1
+            url = _stage_image(staging, f'{hint}-{counts[hint] - 1:02d}', content, ext)
+            probed.append({'url': url, 'dims': {'width': width, 'height': height}, 'image_class': image_class})
     return build_artwork(probed)
 
 

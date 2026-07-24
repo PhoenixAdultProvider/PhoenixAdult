@@ -36,15 +36,20 @@ def _year_of(date: str | None) -> int | None:
     return int(date[0:4]) if date and date[0:4].isdigit() else None
 
 
-def _classify_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
-    """Keep probed images with a servable class; unknown shapes are logged and dropped."""
+def _classify_artwork(valid: list[dict[str, Any]]) -> tuple[list[PlexImage], set[str]]:
+    """Keep probed images with a servable class. An off-ratio portrait is still a usable cover, so it
+    is kept and returned in the demoted set to sort behind the properly shaped ones."""
     images: list[PlexImage] = []
+    demoted: set[str] = set()
     for p in valid:
         if p['image_class'] in ('coverPoster', 'background', 'backgroundSquare'):
             images.append(PlexImage(url=p['url'], type=p['image_class']))
+        elif p['dims']['height'] > p['dims']['width']:
+            images.append(PlexImage(url=p['url'], type='coverPoster'))
+            demoted.add(p['url'])
         else:
             logger.debug(f'Image {p["dims"]["width"]}x{p["dims"]["height"]} unknown: {p["url"]}')
-    return images
+    return images, demoted
 
 
 def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]], by_class: dict[str, list[dict[str, Any]]]) -> None:
@@ -54,8 +59,8 @@ def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]],
     has_background = any(img.type == 'background' for img in images)
 
     if not has_poster and valid:
-        logger.info(f'No portrait posters; promoting {len(valid)} image(s) to coverPoster')
         candidates = by_class.get('background', valid) if has_background else valid
+        logger.info(f'No portrait posters; promoting {len(candidates)} of {len(valid)} image(s) to coverPoster')
         for p in candidates:
             images.append(PlexImage(url=p['url'], type='coverPoster'))
 
@@ -71,19 +76,21 @@ def build_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
     by_class: dict[str, list[dict[str, Any]]] = {}
     for probed in valid:
         by_class.setdefault(probed['image_class'], []).append(probed)
-    images = _classify_artwork(valid)
+    images, demoted = _classify_artwork(valid)
     _promote_missing_kinds(images, valid, by_class)
-    _sort_artwork(images, valid)
+    _sort_artwork(images, valid, demoted)
     return images
 
 
-def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]]) -> None:
-    """In-place order: kinds keep first-appearance order, largest area first within a kind."""
+def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted: set[str] | None = None) -> None:
+    """In-place order: kinds keep first-appearance order, largest area first within a kind, with
+    off-ratio covers held back to the end of their kind."""
     area = {p['url']: p['dims']['width'] * p['dims']['height'] for p in valid}
+    held_back = demoted or set()
     first_pos: dict[str, int] = {}
     for idx, img in enumerate(images):
         first_pos.setdefault(img.type, idx)
-    images.sort(key=lambda img: (first_pos[img.type], -area.get(img.url, 0)))
+    images.sort(key=lambda img: (first_pos[img.type], img.url in held_back, -area.get(img.url, 0)))
 
 
 class MetadataMapper:

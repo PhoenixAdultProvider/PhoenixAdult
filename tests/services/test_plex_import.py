@@ -158,11 +158,12 @@ async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monke
         http = _Http()
 
     staging = tmp_path / plex_import._STAGING / 'abc123def456'
-    result = await plex_import._stage_image(_Client(), staging, 'http://plex.local/thumb', 'poster-00')  # type: ignore[arg-type]
-    assert result is not None
-    url, width, height = result
-    assert url == f'/cache/{plex_import._STAGING}/abc123def456/images/poster-00.jpg'
+    fetched = await plex_import._fetch_candidate(_Client(), 'http://plex.local/thumb')  # type: ignore[arg-type]
+    assert fetched is not None
+    content, ext, width, height = fetched
     assert (width, height) == (400, 600)
+    url = plex_import._stage_image(staging, 'poster-00', content, ext)
+    assert url == f'/cache/{plex_import._STAGING}/abc123def456/images/poster-00.jpg'
 
     resolved = metadata_cache._snapshot_file(url, 'http://provider.local')
     assert resolved is not None
@@ -224,10 +225,13 @@ async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, m
     assert len(staged) == 3, 'the art copy of agent_p1 is a duplicate and must not be staged twice'
     assert [img.type for img in staged] == ['coverPoster', 'coverPoster', 'background']
 
+    names = sorted(p.name for p in (staging / 'images').iterdir())
+    assert names == ['art-00.jpg', 'poster-00.jpg', 'poster-01.jpg'], 'files are named for their shape, not the Plex bucket'
 
-def test_odd_shapes_are_dropped_not_called_posters() -> None:
-    """A 480x640 still (aspect 1.33) is not a cover. It must be dropped like a fresh scrape drops
-    it, never typed coverPoster because Plex happened to list it under posters."""
+
+def test_odd_portraits_are_kept_but_ranked_last() -> None:
+    """A 480x640 still (aspect 1.33) is a usable cover but not a proper one: it is kept so the
+    bytes are not lost, and sorts behind the correctly shaped 1.5 poster."""
     from phoenixadult.utils.images.image_classifier import classify_image
 
     probed = [
@@ -237,9 +241,9 @@ def test_odd_shapes_are_dropped_not_called_posters() -> None:
     ]
     images = build_artwork(probed)
     kinds = {img.url: img.type for img in images}
-    assert kinds['/cache/x/images/poster-00.jpg'] == 'coverPoster'
     assert kinds['/cache/x/images/art-27.jpg'] == 'background'
-    assert '/cache/x/images/poster-14.jpg' not in kinds
+    covers = [img.url for img in images if img.type == 'coverPoster']
+    assert covers == ['/cache/x/images/poster-00.jpg', '/cache/x/images/poster-14.jpg'], 'the off-ratio portrait is kept but ranked last'
 
 
 def test_background_is_promoted_to_poster_only_when_no_poster_exists() -> None:
