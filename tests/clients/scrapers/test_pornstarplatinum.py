@@ -5,10 +5,10 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.pornstarplatinum import PornstarPlatinumClient
-from app.registry import find_site
-from app.utils.helpers.helpers import pack_cur_id
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.pornstarplatinum import PornstarPlatinumClient
+from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.helpers import pack_cur_id
 
 SITE = find_site('Pornstar Platinum')
 assert SITE is not None

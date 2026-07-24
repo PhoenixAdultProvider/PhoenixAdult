@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
+from phoenixadult.app_factory import create_app
 
 
 def test_cache_route_serves_and_images_prefix_is_gone(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:

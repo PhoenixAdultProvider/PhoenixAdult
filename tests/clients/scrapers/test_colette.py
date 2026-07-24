@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import colette as colette_module
-from app.clients.sites.colette import ColetteClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import colette as colette_module
+from phoenixadult.clients.sites.colette import ColetteClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Colette')
 assert SITE is not None

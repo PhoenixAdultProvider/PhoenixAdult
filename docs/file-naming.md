@@ -42,7 +42,7 @@ Real world examples:
 - `MomsTeachSex - 314082` (taken from the URL [https://momsteachsex.com/tube/watch/**314082**](https://momsteachsex.com/tube/watch/314082))
 - `Babes - 3075191 - Give In to Desire` (taken from the URL [https://www.babes.com/scene/**3075191**/1](https://www.babes.com/scene/3075191/1))
 
-> The filename parser lives in `app/utils/processors/filename_parser.py`
+> The filename parser lives in `phoenixadult/utils/processors/filename_parser.py`
 > (`get_site_name_from_registry`). The site token is matched case-insensitively
 > against the registry; the rest of the name resolves to a date, a SceneID, a
 > title, and/or actor(s) depending on the site's `content_type`.

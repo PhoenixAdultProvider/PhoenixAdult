@@ -5,9 +5,9 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.mydirtyhobby import MyDirtyHobbyClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.mydirtyhobby import MyDirtyHobbyClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('My Dirty Hobby')
 assert SITE is not None

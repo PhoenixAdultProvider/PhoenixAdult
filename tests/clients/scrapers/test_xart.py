@@ -6,10 +6,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.sites.xart as xart_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.xart import XartClient
-from app.registry import find_site
+import phoenixadult.clients.sites.xart as xart_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.xart import XartClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('X-Art')
 assert SITE is not None

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-import app.mappers.metadata_mapper as mapper_mod
-from app.clients.base import SceneDetail, SearchResult
-from app.mappers.metadata_mapper import MetadataMapper
-from app.registry import find_site, normalize_site_key
-from app.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
-from app.utils.plex.rating_key import parse_rating_key, to_rating_key
+import phoenixadult.mappers.metadata_mapper as mapper_mod
+from phoenixadult.clients.base import SceneDetail, SearchResult
+from phoenixadult.mappers.metadata_mapper import MetadataMapper
+from phoenixadult.registry import find_site, normalize_site_key
+from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
+from phoenixadult.utils.plex.rating_key import parse_rating_key, to_rating_key
 
 POSTER, BG, SQ, UNK = 'http://x/poster.jpg', 'http://x/bg.jpg', 'http://x/sq.jpg', 'http://x/unk.jpg'
 POSTER_XL = 'http://x/poster-xl.jpg'

@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.newsensations as ns_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.newsensations import NewSensationsClient
-from app.registry import find_site
+import phoenixadult.clients.networks.newsensations as ns_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.newsensations import NewSensationsClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('New Sensations')
 assert SITE is not None

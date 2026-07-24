@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.utils import db
+from phoenixadult.utils import db
 from scripts.rename_studio import migrate
 
 

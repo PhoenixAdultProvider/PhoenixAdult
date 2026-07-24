@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import plumperpass as pp_module
-from app.clients.sites.plumperpass import PlumperPassClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import plumperpass as pp_module
+from phoenixadult.clients.sites.plumperpass import PlumperPassClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('PlumperPass')
 assert SITE is not None

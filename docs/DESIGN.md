@@ -107,7 +107,7 @@ flowchart LR
 | Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
 
-> Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`app/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
+> Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`phoenixadult/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
 
 ---
 
@@ -121,7 +121,7 @@ flowchart TB
   classDef u fill:#1e2433,stroke:#64748b,color:#cbd5e1;
   classDef ext fill:#0f1117,stroke:#475569,color:#94a3b8;
 
-  subgraph app["FastAPI app (app/app_factory.py)"]
+  subgraph app["FastAPI app (phoenixadult/app_factory.py)"]
     direction TB
     mw["request-logging middleware"]:::r
     pr["provider_router<br/>/library/metadata/*"]:::r
@@ -143,7 +143,7 @@ flowchart TB
     base["base Client<br/>(field-hook orchestrator)"]:::c
   end
 
-  subgraph reg["Registry (app/registry)"]
+  subgraph reg["Registry (phoenixadult/registry)"]
     prov["ProviderInfo"]:::u
     site["SiteInfo / ResolvedSiteInfo"]:::u
     scfg["ScraperConfig union"]:::u
@@ -188,11 +188,11 @@ flowchart TB
 
 **Key relationships**
 
-- **Routes are thin.** `provider_router` (`app/routes/provider_router.py`) delegates immediately to `MatchService` / `MetadataService`.
-- **`ScraperRouter`** (`app/services/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`app/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
-- **`MetadataMapper`** (`app/mappers/metadata_mapper.py`) translates the scraper's `SceneDetail` into Plex's schema and rewrites every image URL through the `/images/proxy` endpoint.
+- **Routes are thin.** `provider_router` (`phoenixadult/routes/provider_router.py`) delegates immediately to `MatchService` / `MetadataService`.
+- **`ScraperRouter`** (`phoenixadult/services/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`phoenixadult/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
+- **`MetadataMapper`** (`phoenixadult/mappers/metadata_mapper.py`) translates the scraper's `SceneDetail` into Plex's schema and rewrites every image URL through the `/images/proxy` endpoint.
 - **Registry** is static data: providers, sites, and per-site `ScraperConfig` that selects and parameterizes a client.
-- **`scrape_queue`** (`app/services/scrape_queue.py`) is a single sequential background worker (dedup by key, 500-job cap). When pacing or the serve budget defers a search/update (§7.6), the services enqueue it here to finish off the request path.
+- **`scrape_queue`** (`phoenixadult/services/scrape_queue.py`) is a single sequential background worker (dedup by key, 500-job cap). When pacing or the serve budget defers a search/update (§7.6), the services enqueue it here to finish off the request path.
 
 ---
 
@@ -309,19 +309,19 @@ flowchart LR
   rk -->|parse_rating_key + decode| surl -->|fetch_scene_detail| detail
 ```
 
-- Encode/decode: `Client.encode` / `Client.decode` = base64url, backed by `b64url_encode` / `b64url_decode` (`app/utils/helpers/helpers.py`); `cur_id` is assembled by `pack_cur_id`.
-- `to_rating_key` / `parse_rating_key`: `app/mappers/metadata_mapper.py` (regex `^scene-([a-z0-9]+)-([A-Za-z0-9_-]+)(?:\.(\d{8}))?$`).
-- **Security-relevant:** the decoded `scene_url` is attacker-influenceable and is validated by `ensure_fetchable_url` (`app/utils/http/ssrf_guard.py`) before any fetch (§10).
+- Encode/decode: `Client.encode` / `Client.decode` = base64url, backed by `b64url_encode` / `b64url_decode` (`phoenixadult/utils/helpers/helpers.py`); `cur_id` is assembled by `pack_cur_id`.
+- `to_rating_key` / `parse_rating_key`: `phoenixadult/mappers/metadata_mapper.py` (regex `^scene-([a-z0-9]+)-([A-Za-z0-9_-]+)(?:\.(\d{8}))?$`).
+- **Security-relevant:** the decoded `scene_url` is attacker-influenceable and is validated by `ensure_fetchable_url` (`phoenixadult/utils/http/ssrf_guard.py`) before any fetch (§10).
 
 ### 5.2 Persistent State (phoenixadult.db)
 
-Mutable state — queue replays, the search store, the fully normalized scene snapshot store (scalars on `scenes`; dimension + junction tables for genres, collections, countries, people; image metadata in `scene_images`, image bytes on disk), and the derived people-image/logo indexes plus the face-crop log — lives in one SQLite database opened by `app/utils/db` (WAL, FK-enforced, `PRAGMA user_version` migrations). Schema, normalization rationale, scoped-people resolution, and backup guidance (`VACUUM INTO`) are documented in [database.md](database.md).
+Mutable state — queue replays, the search store, the fully normalized scene snapshot store (scalars on `scenes`; dimension + junction tables for genres, collections, countries, people; image metadata in `scene_images`, image bytes on disk), and the derived people-image/logo indexes plus the face-crop log — lives in one SQLite database opened by `phoenixadult/utils/db` (WAL, FK-enforced, `PRAGMA user_version` migrations). Schema, normalization rationale, scoped-people resolution, and backup guidance (`VACUUM INTO`) are documented in [database.md](database.md).
 
 ---
 
 ## 6. Scraper Client Hierarchy (Template Method / Field-Hook Pattern)
 
-The base `Client` (`app/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`app/utils/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
+The base `Client` (`phoenixadult/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`phoenixadult/utils/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
 
 ```mermaid
 classDiagram
@@ -341,13 +341,13 @@ classDiagram
     #fetch_and_load(url, ctx) parsel.Selector  bypass-aware
     #fetch_json(url, ctx) Any  bypass-aware
   }
-  class sites["app/clients/sites/* (93)"] {
+  class sites["phoenixadult/clients/sites/* (93)"] {
     «per-site XPath flow»
   }
-  class networks["app/clients/networks/* (77)"] {
+  class networks["phoenixadult/clients/networks/* (77)"] {
     «per-network flow»
   }
-  class aggregators["app/clients/aggregators/* (9)"] {
+  class aggregators["phoenixadult/clients/aggregators/* (9)"] {
     «Data18 / JavBus / MetadataAPI / …»
   }
 
@@ -357,7 +357,7 @@ classDiagram
   note for Client "178 dedicated subclasses registered in CLIENT_REGISTRY; ScraperConfig.type selects one instance."
 ```
 
-The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls` / `logo`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`. A `SceneDetail.logo` (from `fetch_logo`) is emitted as a `clearLogo` image; with `LOGO_CACHE_ENABLE` on, `app/utils/images/logo_cache.py` serves it local-first from `logos/<studio-slug>/logo.<site-slug>.<ext>` (tagline first, then studio), downloading a scraped logo once and rasterizing SVG to PNG (ImageMagick, falling back to cairosvg); the cache is reviewable at `/logos`.
+The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls` / `logo`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`. A `SceneDetail.logo` (from `fetch_logo`) is emitted as a `clearLogo` image; with `LOGO_CACHE_ENABLE` on, `phoenixadult/utils/images/logo_cache.py` serves it local-first from `logos/<studio-slug>/logo.<site-slug>.<ext>` (tagline first, then studio), downloading a scraped logo once and rasterizing SVG to PNG (ImageMagick, falling back to cairosvg); the cache is reviewable at `/logos`.
 
 ---
 
@@ -540,7 +540,7 @@ sequenceDiagram
   end
 ```
 
-Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the search store (`app/utils/cache/search_store.py`, in `phoenixadult.db`, case/whitespace-normalized keys, 7-day TTL), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
+Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the search store (`phoenixadult/utils/cache/search_store.py`, in `phoenixadult.db`, case/whitespace-normalized keys, 7-day TTL), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
 
 ---
 
@@ -565,14 +565,14 @@ flowchart LR
   chain -.-> note1
 ```
 
-- `make_http` (`app/utils/http/client.py`) builds a shared `httpx2.AsyncClient` (UA, optional proxy honouring `NO_PROXY`, TLS verification intentionally relaxed — `verify=False` — for janky CDNs; see §10 residuals).
-- `app/utils/http/bypass.py` (`bypass_get` / `bypass_post` / `http_bypass`) orders backends by `BYPASS_ORDER`, skips unavailable ones (each backend exposes `is_available()`), and returns the first 2xx that isn't itself a challenge page. The default order is **Impersonate → FlareSolverr → Playwright → ReqBin**; backends live in `impersonate.py`, `flaresolverr.py`, `playwright.py`, `reqbin.py`. The entry point used by clients is `bypass_get` (and `bypass_post` for GraphQL), surfaced on the base via `FetchCtx.use_bypass`.
+- `make_http` (`phoenixadult/utils/http/client.py`) builds a shared `httpx2.AsyncClient` (UA, optional proxy honouring `NO_PROXY`, TLS verification intentionally relaxed — `verify=False` — for janky CDNs; see §10 residuals).
+- `phoenixadult/utils/http/bypass.py` (`bypass_get` / `bypass_post` / `http_bypass`) orders backends by `BYPASS_ORDER`, skips unavailable ones (each backend exposes `is_available()`), and returns the first 2xx that isn't itself a challenge page. The default order is **Impersonate → FlareSolverr → Playwright → ReqBin**; backends live in `impersonate.py`, `flaresolverr.py`, `playwright.py`, `reqbin.py`. The entry point used by clients is `bypass_get` (and `bypass_post` for GraphQL), surfaced on the base via `FetchCtx.use_bypass`.
   - **Impersonate** (`impersonate.py`) uses `curl_cffi` to mimic a real Chrome TLS/JA3 fingerprint. It is the only backend that defeats fingerprint-based Cloudflare blocks *and* forwards custom headers (e.g. `Referer`), so it leads the chain. Optional — install with `pip install -e ".[impersonate]"`; absent, it's skipped.
   - **FlareSolverr** solves Cloudflare interstitials via a sidecar container; it drops custom request headers.
   - **Playwright** drives headless Chromium (optional — `pip install -e ".[playwright]"`); forwards headers via the browser context.
   - **ReqBin** is a third-party fetch relay.
   - Challenge detection: a 2xx whose body still contains a challenge marker (AWS WAF, `just a moment`, `cf-chl-`, Turnstile) is treated as unsolved, so the chain continues to the next backend.
-- **Ban-avoidance pacing** (`ScenePacer`, `app/utils/http/rate_limit_helper.py`): ban-prone scrapers (`nubiles.py`, `naughtyamerica.py`) set `Client.pacer`, and the base orchestrators route every search and scene scrape through it. Searches and scenes share **one** gap track — after any turn the next waits `SCENE_GAP` (default 10s) plus a random 10–45s jitter — with a hard cap of 8 scenes per 10 minutes and jittered per-request spacing inside a scrape. A foreground (Plex-facing) request that would wait >10s raises `PacingDeferredError` and is finished via `scrape_queue` instead (§7.6).
+- **Ban-avoidance pacing** (`ScenePacer`, `phoenixadult/utils/http/rate_limit_helper.py`): ban-prone scrapers (`nubiles.py`, `naughtyamerica.py`) set `Client.pacer`, and the base orchestrators route every search and scene scrape through it. Searches and scenes share **one** gap track — after any turn the next waits `SCENE_GAP` (default 10s) plus a random 10–45s jitter — with a hard cap of 8 scenes per 10 minutes and jittered per-request spacing inside a scrape. A foreground (Plex-facing) request that would wait >10s raises `PacingDeferredError` and is finished via `scrape_queue` instead (§7.6).
 
 ---
 
@@ -595,7 +595,7 @@ flowchart TB
   out -.-> note
 ```
 
-`PeopleManager.resolve_all` (`app/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `app/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `app/utils/people/sources/` (10 site-specific XPath sources: `iafd`, `freeones`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javBus`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Gender detection (`iafd_gender_check`, `app/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
+`PeopleManager.resolve_all` (`phoenixadult/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `phoenixadult/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `phoenixadult/utils/people/sources/` (10 site-specific XPath sources: `iafd`, `freeones`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javBus`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Gender detection (`iafd_gender_check`, `phoenixadult/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
 
 ---
 
@@ -631,9 +631,9 @@ flowchart TB
 
 **Controls in place**
 
-- **Admin auth** (`env_auth_guard`, `app/utils/auth/env_auth.py`): wired as a router dependency (`APIRouter(dependencies=[Depends(env_auth_guard)])`) on both `env_routes` and `dev_routes`. When `ADMIN_TOKEN` is set, allows loopback **or** a matching token (timing-safe `hmac.compare_digest`, accepted via `Authorization: Bearer`, `X-Admin-Token`, or `?token=`). When `ADMIN_TOKEN` is blank, auth is **disabled** (open surfaces) — a deliberate convenience default for trusted/local networks.
-- **SSRF guard** (`app/utils/http/ssrf_guard.py`): scheme allow-list + private/loopback/link-local/CGNAT/metadata (`169.254.169.254`) blocklist with hostname resolution; applied to the image proxy (`assert_fetchable_url`) and to the rating-key-decoded scene URL (`ensure_fetchable_url`).
-- **Path safety**: `_safe_path` (`app/routes/image_routes.py`) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
+- **Admin auth** (`env_auth_guard`, `phoenixadult/utils/auth/env_auth.py`): wired as a router dependency (`APIRouter(dependencies=[Depends(env_auth_guard)])`) on both `env_routes` and `dev_routes`. When `ADMIN_TOKEN` is set, allows loopback **or** a matching token (timing-safe `hmac.compare_digest`, accepted via `Authorization: Bearer`, `X-Admin-Token`, or `?token=`). When `ADMIN_TOKEN` is blank, auth is **disabled** (open surfaces) — a deliberate convenience default for trusted/local networks.
+- **SSRF guard** (`phoenixadult/utils/http/ssrf_guard.py`): scheme allow-list + private/loopback/link-local/CGNAT/metadata (`169.254.169.254`) blocklist with hostname resolution; applied to the image proxy (`assert_fetchable_url`) and to the rating-key-decoded scene URL (`ensure_fetchable_url`).
+- **Path safety**: `_safe_path` (`phoenixadult/routes/image_routes.py`) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
 - **Secret hygiene**: `/config/api/state` redacts secret values (exposes only whether set); the request-logging middleware deliberately does not log `/config` bodies (they can carry secrets being saved).
 
 **Known residuals (documented, not yet fixed)** — see also `memory` notes:
@@ -666,10 +666,10 @@ flowchart LR
   envmod -.-> note
 ```
 
-- Single source of env reads: `app/config/env.py` — an `_Env` instance with lazy `@property` getters so a runtime override (or a test mutating `os.environ`) is reflected immediately.
-- `app/config/__init__.py` bootstraps the process: `load_dotenv()` then `load_overrides()`, and exposes the immutable startup `config` snapshot (`port`, `base_url`, `log_level`). Base URL env var is `PHOENIX_BASE_URL` (default `http://localhost:3000`).
-- `app/config/env_catalog.py` (`ENV_CATALOG`, `EnvVarSpec`, `normalize_env_value`) is the authority for what the config UI may edit and how values validate/normalize.
-- `app/config/env_overrides.py` (`set_override` / `clear_override` / `load_overrides`, file `env.overrides.json`) persists UI edits and re-applies them on boot — **this is the #1 debugging gotcha** (a stale override silently shadows `.env`).
+- Single source of env reads: `phoenixadult/config/env.py` — an `_Env` instance with lazy `@property` getters so a runtime override (or a test mutating `os.environ`) is reflected immediately.
+- `phoenixadult/config/__init__.py` bootstraps the process: `load_dotenv()` then `load_overrides()`, and exposes the immutable startup `config` snapshot (`port`, `base_url`, `log_level`). Base URL env var is `PHOENIX_BASE_URL` (default `http://localhost:3000`).
+- `phoenixadult/config/env_catalog.py` (`ENV_CATALOG`, `EnvVarSpec`, `normalize_env_value`) is the authority for what the config UI may edit and how values validate/normalize.
+- `phoenixadult/config/env_overrides.py` (`set_override` / `clear_override` / `load_overrides`, file `env.overrides.json`) persists UI edits and re-applies them on boot — **this is the #1 debugging gotcha** (a stale override silently shadows `.env`).
 
 ---
 
@@ -690,7 +690,7 @@ flowchart LR
   proc -->|HTTPS| net
 ```
 
-Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run it with `python -m app.main` (it calls `uvicorn.run`, auto-reloading outside production). Restart is supervised: `POST /config/api/restart` sends `SIGTERM` to its own PID and relies on a process supervisor to relaunch. FlareSolverr is an optional sidecar.
+Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run it with `python -m phoenixadult.main` (it calls `uvicorn.run`, auto-reloading outside production). Restart is supervised: `POST /config/api/restart` sends `SIGTERM` to its own PID and relies on a process supervisor to relaunch. FlareSolverr is an optional sidecar.
 
 ---
 
@@ -704,17 +704,17 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 | Chain of Responsibility | bypass chain; people-source order | ordered fallback |
 | Facade | Services over scraper/mapper/people | thin routes |
 | Guard / Boundary validation | `ssrf_guard`, `_safe_path`, `env_auth_guard` | trust boundaries |
-| Lazy config accessor | `app/config/env.py` property getters | testability + runtime overrides |
+| Lazy config accessor | `phoenixadult/config/env.py` property getters | testability + runtime overrides |
 | Fail-fast + deferred work | `ScenePacer` + `scrape_queue` + serve budgets | Plex's 90s timeout vs. slow, ban-prone sites |
 
-**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `app/utils/searchengines/`) provides a "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
+**Conventions:** every scraper is hand-written (no shared `JsonClient`); shared helpers are explicit (`GraphQLClient`, `html_helpers`, image adapters). HTML parsing is **XPath-only via parsel** (lxml-backed). `RawCaptureEntry` capture entries thread raw upstream responses to the dev UI. Optional web-search augmentation (`web_search_available` / `web_search`, `phoenixadult/utils/searchengines/`) provides a "find scene URL via search engine" path and is used by a number of clients (e.g. `adultempire`, `colette`, `girlsoutwest`). Commits follow Conventional Commits; the pre-commit gate is `ruff format` → `ruff check` → `mypy app` → `pytest` (tests use **pytest + respx**).
 
 ---
 
 ## 14. Directory Map (Orientation)
 
 ```
-app/
+phoenixadult/
   main.py, app_factory.py    # uvicorn entrypoint + FastAPI wiring/bootstrap
   routes/                    # provider_router, image_routes, env_routes, dev_routes,
                              #   metadata_cache_routes, people_cache_routes, logo_routes,
@@ -742,7 +742,7 @@ docs/DESIGN.md               # this document
 tests/                       # pytest + respx unit / client / selector / health fixtures
 ```
 
-**Useful commands:** `NODE_ENV=development python -m app.main` (dev, auto-reload) · `python -m app.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
+**Useful commands:** `NODE_ENV=development python -m phoenixadult.main` (dev, auto-reload) · `python -m phoenixadult.main` (run) · `python -m scripts.generate_sitelist` (site list) · `python -m scripts.site_health` (health) · `pwsh scripts/start-with-tunnel.ps1` (tunnel).
 
 ---
 
@@ -750,7 +750,7 @@ tests/                       # pytest + respx unit / client / selector / health 
 
 ## Appendix A — Title-Case Parser Model
 
-`title_case()` (`app/utils/processors/title_case.py`) normalizes scraped titles and
+`title_case()` (`phoenixadult/utils/processors/title_case.py`) normalizes scraped titles and
 actor names for Plex. It is a small pipeline: a stateless transform built from a
 tokenizer, a per-word rule engine driven by lookup tables, and a post-process
 regex stage. It is invoked by `MetadataMapper` (clean title + genre labels) and

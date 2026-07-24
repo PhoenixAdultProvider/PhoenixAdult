@@ -6,9 +6,9 @@ import httpx
 import pytest
 import respx
 
-from app.utils.people import PeopleManager, to_plex_roles
-from app.utils.people.data import actor_rules
-from app.utils.people.types import ResolvedPerson
+from phoenixadult.utils.people import PeopleManager, to_plex_roles
+from phoenixadult.utils.people.data import actor_rules
+from phoenixadult.utils.people.types import ResolvedPerson
 
 
 @pytest.fixture(autouse=True)
@@ -50,7 +50,7 @@ async def test_male_actor_resolved_not_dropped_at_resolution(monkeypatch: pytest
 
 
 def _response_with_roles(roles: list[dict[str, str]]) -> Any:
-    from app.models.metadata import PlexMetadataResponse
+    from phoenixadult.models.metadata import PlexMetadataResponse
 
     return PlexMetadataResponse.model_validate(
         {'MediaContainer': {'identifier': 'id', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'T', 'Role': roles}]}}
@@ -59,7 +59,7 @@ def _response_with_roles(roles: list[dict[str, str]]) -> Any:
 
 def test_filter_male_actors_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
-    from app.utils.people import filter_male_actors
+    from phoenixadult.utils.people import filter_male_actors
 
     resp = _response_with_roles([{'tag': 'A', 'gender': 'male'}, {'tag': 'B', 'gender': 'female'}])
     assert filter_male_actors(resp) == 0
@@ -68,7 +68,7 @@ def test_filter_male_actors_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) 
 
 def test_filter_male_actors_drops_male_by_field_and_filename(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
-    from app.utils.people import filter_male_actors
+    from phoenixadult.utils.people import filter_male_actors
 
     resp = _response_with_roles(
         [
@@ -92,8 +92,8 @@ async def test_generic_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch) -> None:
-    import app.utils.people.sources as sources
-    from app.utils.people.types import PhotoHit
+    import phoenixadult.utils.people.sources as sources
+    from phoenixadult.utils.people.types import PhotoHit
 
     class _GenderOnly:
         name = 'GenderOnly'
@@ -112,8 +112,8 @@ async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch
 
 @respx.mock
 async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    import app.utils.people.sources as sources
-    from app.utils.people.types import PhotoHit
+    import phoenixadult.utils.people.sources as sources
+    from phoenixadult.utils.people.types import PhotoHit
 
     class _GenderOnly:
         name = 'GenderOnly'
@@ -148,7 +148,7 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     ],
 )
 def test_scene_image_pref(monkeypatch: pytest.MonkeyPatch, order: str | None, expected: tuple[bool, bool]) -> None:
-    from app.utils.people.sources import scene_image_pref
+    from phoenixadult.utils.people.sources import scene_image_pref
 
     if order is None:
         monkeypatch.delenv('PEOPLE_SOURCE_ORDER', raising=False)

@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.bellapass as bp_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.bellapass import BellaPassClient, __testing__
-from app.registry import find_site
+import phoenixadult.clients.networks.bellapass as bp_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.bellapass import BellaPassClient, __testing__
+from phoenixadult.registry import find_site
 
 BELLA = find_site('BellaPass')
 HUSSIE = find_site('Hussie Pass')

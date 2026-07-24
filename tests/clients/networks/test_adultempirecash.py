@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
+from phoenixadult.registry import find_site
 
 STANDARD = find_site('Conor Coxxx')
 IMGFLUID = find_site('Jays POV')

@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.badoinkvr as badoinkvr_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.badoinkvr import BadoinkVrClient, __testing__
-from app.registry import find_site
+import phoenixadult.clients.networks.badoinkvr as badoinkvr_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.badoinkvr import BadoinkVrClient, __testing__
+from phoenixadult.registry import find_site
 
 SITE = find_site('BaDoinkVR')
 COSPLAY = find_site('VRCosplayX')

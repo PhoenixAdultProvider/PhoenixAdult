@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.pervcity as pc_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.pervcity import PervCityClient
-from app.registry import find_site
+import phoenixadult.clients.networks.pervcity as pc_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.pervcity import PervCityClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Anal Overdose')
 assert SITE is not None

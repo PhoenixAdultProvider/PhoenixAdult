@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from app.utils.genres import data as gdata
-from app.utils.people import data as pdata
+from phoenixadult.utils.genres import data as gdata
+from phoenixadult.utils.people import data as pdata
 
 
 def test_genre_rules_reloads_on_mtime_change(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:

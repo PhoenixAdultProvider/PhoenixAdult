@@ -34,7 +34,7 @@ cp .env.example .env
 
 # .env.example ships NODE_ENV=production; set development for local work + the /dev UI.
 # Outside production this auto-reloads on change; PORT (default 3000) sets the port.
-NODE_ENV=development python -m app.main
+NODE_ENV=development python -m phoenixadult.main
 ```
 
 - Health: `GET /health`
@@ -59,10 +59,10 @@ pytest
 ### Clients
 
 Each site/network/database gets its own dedicated `Client` subclass under
-`app/clients/` — grouped into `aggregators/` (databases like Data18, JavBus),
+`phoenixadult/clients/` — grouped into `aggregators/` (databases like Data18, JavBus),
 `networks/` (multi-site networks), and `sites/` (single sites). Every client is
-registered by its scraper-config `type` in `app/clients/__init__.py`, with its
-URL/selector definitions in `app/registry/selectors/`.
+registered by its scraper-config `type` in `phoenixadult/clients/__init__.py`, with its
+URL/selector definitions in `phoenixadult/registry/selectors/`.
 
 Each client should prefer the base **field-hook orchestrator** —
 override `load_scene_context` + the per-field `fetch_*` hooks (`fetch_title`,
@@ -75,7 +75,7 @@ override `load_scene_context` + the per-field `fetch_*` hooks (`fetch_title`,
 It downloads `cloudflared.exe` on first run, opens an ephemeral
 `https://*.trycloudflare.com` quick tunnel to `http://localhost:3000`, writes
 that URL into `.env` as `PHOENIX_BASE_URL`, then starts the app
-(`python -m app.main`, which auto-reloads in dev). Ctrl+C tears the tunnel down.
+(`python -m phoenixadult.main`, which auto-reloads in dev). Ctrl+C tears the tunnel down.
 
 ```bash
 pwsh -ExecutionPolicy Bypass -File scripts/start-with-tunnel.ps1

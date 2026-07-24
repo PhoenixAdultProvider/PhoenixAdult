@@ -6,7 +6,7 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import Client
+from phoenixadult.clients.base import Client
 
 
 class _C(Client):

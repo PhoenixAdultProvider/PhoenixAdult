@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import app.config as cfg
+import phoenixadult.config as cfg
 
 
 def test_default_derives_from_port():

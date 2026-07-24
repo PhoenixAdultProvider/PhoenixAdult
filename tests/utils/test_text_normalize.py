@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.utils.processors.text_normalize import normalize_text
+from phoenixadult.utils.processors.text_normalize import normalize_text
 
 
 @pytest.mark.parametrize(

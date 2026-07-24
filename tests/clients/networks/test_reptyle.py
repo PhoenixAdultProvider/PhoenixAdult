@@ -6,10 +6,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.aggregators.data18 as data18_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.reptyle import ReptyleClient
-from app.registry import find_site
+import phoenixadult.clients.aggregators.data18 as data18_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.reptyle import ReptyleClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('TeamSkeet')
 assert SITE is not None

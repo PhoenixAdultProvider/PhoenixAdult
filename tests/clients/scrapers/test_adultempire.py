@@ -6,10 +6,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.sites.adultempire as ae_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.adultempire import AdultEmpireClient
-from app.registry import find_site
+import phoenixadult.clients.sites.adultempire as ae_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.adultempire import AdultEmpireClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Adult Empire')
 assert SITE is not None

@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from app.utils.http import pinned_fetch, ssrf_guard
-from app.utils.http.pinned_fetch import fetch_pinned
+from phoenixadult.utils.http import pinned_fetch, ssrf_guard
+from phoenixadult.utils.http.pinned_fetch import fetch_pinned
 
 IP = '203.0.113.7'
 

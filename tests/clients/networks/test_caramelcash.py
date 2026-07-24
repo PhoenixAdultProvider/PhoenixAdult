@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.caramelcash as cc_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.caramelcash import CaramelCashClient, __testing__
-from app.registry import find_site
+import phoenixadult.clients.networks.caramelcash as cc_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.caramelcash import CaramelCashClient, __testing__
+from phoenixadult.registry import find_site
 
 SITE = find_site('Alex Legend')
 assert SITE is not None

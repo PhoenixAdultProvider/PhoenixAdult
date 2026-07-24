@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from app.services import scrape_queue
+from phoenixadult.services import scrape_queue
 
 
 async def test_enqueue_runs_jobs_sequentially_and_dedupes() -> None:
@@ -117,7 +117,7 @@ async def test_pause_holds_the_worker_until_resume() -> None:
 
 
 async def test_replays_persist_and_drain_via_db(monkeypatch, tmp_path) -> None:
-    from app.utils import db
+    from phoenixadult.utils import db
 
     monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
     try:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.utils.processors.similarity import compare_string
+from phoenixadult.utils.processors.similarity import compare_string
 
 
 def test_levenshtein_case_insensitive_by_default() -> None:

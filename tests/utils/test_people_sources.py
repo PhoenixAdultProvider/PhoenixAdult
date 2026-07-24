@@ -4,14 +4,14 @@ import httpx
 import pytest
 import respx
 
-import app.utils.people.sources as people_sources
-from app.utils.people.sources import find_photo
-from app.utils.people.sources.babepedia import babepedia_source
-from app.utils.people.sources.boobpedia import boobpedia_source
-from app.utils.people.sources.freeones import freeones_source
-from app.utils.people.sources.indexxx import indexxx_source
-from app.utils.people.sources.javBus import jav_bus_source
-from app.utils.people.types import PersonLookupContext, PhotoHit
+import phoenixadult.utils.people.sources as people_sources
+from phoenixadult.utils.people.sources import find_photo
+from phoenixadult.utils.people.sources.babepedia import babepedia_source
+from phoenixadult.utils.people.sources.boobpedia import boobpedia_source
+from phoenixadult.utils.people.sources.freeones import freeones_source
+from phoenixadult.utils.people.sources.indexxx import indexxx_source
+from phoenixadult.utils.people.sources.javBus import jav_bus_source
+from phoenixadult.utils.people.types import PersonLookupContext, PhotoHit
 
 CTX = PersonLookupContext(type='actor')
 

@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.fullpornnetwork as fpn_mod
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+import phoenixadult.clients.networks.fullpornnetwork as fpn_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('James Deen')
 assert SITE is not None

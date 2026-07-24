@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.registry import find_site
-from app.utils.processors.actor_strip import actor_strip_candidates, best_title_score, enabled_for, split_actor_prefix, strip_actor_prefix
+from phoenixadult.registry import find_site
+from phoenixadult.utils.processors.actor_strip import actor_strip_candidates, best_title_score, enabled_for, split_actor_prefix, strip_actor_prefix
 
 NUBILE_FILMS = find_site('Nubile Films')
 MY_FAMILY_PIES = find_site('My Family Pies')

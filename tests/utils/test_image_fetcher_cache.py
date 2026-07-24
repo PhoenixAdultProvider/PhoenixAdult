@@ -4,8 +4,8 @@ import time
 
 import pytest
 
-from app.utils.images import image_fetcher as fetcher
-from app.utils.images.image_fetcher import ImageEntry, _cache_get, _cache_put
+from phoenixadult.utils.images import image_fetcher as fetcher
+from phoenixadult.utils.images.image_fetcher import ImageEntry, _cache_get, _cache_put
 
 
 @pytest.fixture(autouse=True)

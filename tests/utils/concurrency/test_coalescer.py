@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from app.utils.concurrency.coalescer import Coalescer, coalesce_future
+from phoenixadult.utils.concurrency.coalescer import Coalescer, coalesce_future
 
 
 async def test_run_coalesces_concurrent_calls() -> None:

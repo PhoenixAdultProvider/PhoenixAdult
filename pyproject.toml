@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a128"
+version = "1.0.0a129"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -51,10 +51,10 @@ impersonate = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["phoenixadult*"]
 
 [tool.setuptools.package-data]
-app = ["**/*.html", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx"]
+phoenixadult = ["**/*.html", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx"]
 
 [tool.ruff]
 line-length = 160
@@ -72,11 +72,11 @@ markers = ["allow_network: permit real network access in this test"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-addopts = "--cov=app --cov-report=term-missing"
+addopts = "--cov=phoenixadult --cov-report=term-missing"
 
 [tool.coverage.run]
 branch = true
-source = ["app"]
+source = ["phoenixadult"]
 
 [tool.coverage.report]
 show_missing = true

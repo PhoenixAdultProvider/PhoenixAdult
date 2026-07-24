@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from app.utils.concurrency.single_flight import SingleFlight
+from phoenixadult.utils.concurrency.single_flight import SingleFlight
 
 
 async def test_caches_until_expiry() -> None:

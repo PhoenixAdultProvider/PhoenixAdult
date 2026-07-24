@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.registry import ResolvedSiteInfo, get_all_providers, get_sites_for_provider
+from phoenixadult.registry import ResolvedSiteInfo, get_all_providers, get_sites_for_provider
 
 _METHOD_ICON = {'enhanced': '✅', 'limited': '✓', 'exact': '❌'}
 _METHOD_RANK = {'enhanced': 3, 'limited': 2, 'exact': 1}

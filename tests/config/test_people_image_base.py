@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import socket
 
-import app.config as cfg
+import phoenixadult.config as cfg
 
 _DOC_IPV4 = '192.0.2.10'
 _DOC_IPV6 = '2001:db8::10'

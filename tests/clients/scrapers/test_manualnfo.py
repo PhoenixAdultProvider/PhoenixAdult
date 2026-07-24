@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-import app.clients.aggregators.data18 as data18_module
-import app.clients.sites.manualnfo as mn_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.manualnfo import ManualNfoClient
-from app.registry import find_site
+import phoenixadult.clients.aggregators.data18 as data18_module
+import phoenixadult.clients.sites.manualnfo as mn_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.manualnfo import ManualNfoClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Manual NFO')
 assert SITE is not None

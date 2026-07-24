@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 
-from app.models.metadata import PlexMetadataResponse
-from app.models.provider_info import ProviderInfo
-from app.services.metadata_service import MetadataService
+from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.services.metadata_service import MetadataService
 
 PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 

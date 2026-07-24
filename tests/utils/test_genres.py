@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.utils.genres import NormalizeGenresOptions, normalize_genres
+from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 
 
 def test_genres_alias_replacement() -> None:

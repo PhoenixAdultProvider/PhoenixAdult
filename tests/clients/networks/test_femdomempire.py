@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.femdomempire import FemdomEmpireClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.femdomempire import FemdomEmpireClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Femdom Empire')
 assert SITE is not None

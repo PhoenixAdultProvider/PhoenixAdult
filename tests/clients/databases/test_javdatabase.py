@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.aggregators.javdatabase import JAVDatabaseClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+from phoenixadult.clients.aggregators.javdatabase import JAVDatabaseClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('JAVDatabase')
 assert SITE is not None

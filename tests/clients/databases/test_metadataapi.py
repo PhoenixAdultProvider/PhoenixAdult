@@ -5,9 +5,9 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.aggregators.metadataapi import MetadataAPIClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+from phoenixadult.clients.aggregators.metadataapi import MetadataAPIClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('MetadataAPI')
 assert SITE is not None

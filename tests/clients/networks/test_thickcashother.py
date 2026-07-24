@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.thickcashother as mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.thickcashother import ThickCashOtherClient
-from app.registry import find_site
+import phoenixadult.clients.networks.thickcashother as mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.thickcashother import ThickCashOtherClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('MilfAF')
 assert SITE is not None

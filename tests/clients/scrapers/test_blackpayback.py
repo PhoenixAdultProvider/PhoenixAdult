@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import blackpayback as bpb_module
-from app.clients.sites.blackpayback import BlackPayBackClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import blackpayback as bpb_module
+from phoenixadult.clients.sites.blackpayback import BlackPayBackClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Black PayBack')
 assert SITE is not None

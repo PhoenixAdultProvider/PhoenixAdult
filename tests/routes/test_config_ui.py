@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
+from phoenixadult.app_factory import create_app
 
 TOKEN = 'cfgtoken'
 
@@ -45,7 +45,7 @@ def test_config_api_save_rejects_unknown_key(client: TestClient) -> None:
 def test_config_api_restart_reloads_in_dev(client: TestClient, tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     from pathlib import Path
 
-    from app.routes import env_routes
+    from phoenixadult.routes import env_routes
 
     monkeypatch.setenv('NODE_ENV', 'development')
     sentinel = Path(str(tmp_path)) / 'main.py'
@@ -56,7 +56,7 @@ def test_config_api_restart_reloads_in_dev(client: TestClient, tmp_path: pytest.
 
 
 def test_config_api_restart_shuts_down_in_prod(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.routes import env_routes
+    from phoenixadult.routes import env_routes
 
     monkeypatch.setenv('NODE_ENV', 'production')
     killed: list[int] = []

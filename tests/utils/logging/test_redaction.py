@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from app.utils.logging.redaction import RedactionFilter, redact
+from phoenixadult.utils.logging.redaction import RedactionFilter, redact
 
 
 def test_redact_own_host_keeps_scheme_and_path(monkeypatch):
@@ -155,14 +155,14 @@ def test_filter_redacts_token_in_uvicorn_access_path(monkeypatch):
 
 @pytest.mark.parametrize('flag', ['1', 'yes', 'on', 'TRUE'])
 def test_flag_truthy_values(monkeypatch, flag):
-    from app.config.env import env
+    from phoenixadult.config.env import env
 
     monkeypatch.setenv('LOG_REDACT_HOSTS', flag)
     assert env.log_redact_hosts is True
 
 
 def test_log_redact_token_follows_production_default(monkeypatch):
-    from app.config.env import env
+    from phoenixadult.config.env import env
 
     monkeypatch.delenv('LOG_REDACT_TOKEN', raising=False)
     monkeypatch.delenv('NODE_ENV', raising=False)

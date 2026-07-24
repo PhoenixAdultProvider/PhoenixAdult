@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.clients.aggregators.pornbox import _clean_summary
+from phoenixadult.clients.aggregators.pornbox import _clean_summary
 
 
 @pytest.mark.parametrize(

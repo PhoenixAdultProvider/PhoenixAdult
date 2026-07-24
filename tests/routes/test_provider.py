@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
-from app.registry import get_all_providers
-from app.utils.plex.media_type import provider_mount_path
+from phoenixadult.app_factory import create_app
+from phoenixadult.registry import get_all_providers
+from phoenixadult.utils.plex.media_type import provider_mount_path
 
 
 @pytest.fixture

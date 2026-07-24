@@ -5,10 +5,10 @@ import json
 import httpx
 import respx
 
-import app.clients.networks.gammaentother as geo_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.gammaentother import GammaEntOtherClient
-from app.registry import find_site
+import phoenixadult.clients.networks.gammaentother as geo_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.gammaentother import GammaEntOtherClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Girlsway')
 assert SITE is not None

@@ -5,8 +5,8 @@ import io
 import pytest
 from PIL import Image
 
-from app.utils.images import face_crop_log
-from app.utils.images.face_crop import crop_to_headshot
+from phoenixadult.utils.images import face_crop_log
+from phoenixadult.utils.images.face_crop import crop_to_headshot
 
 
 def _solid_jpeg(color: tuple[int, int, int] = (128, 128, 128), size: int = 400) -> bytes:
@@ -25,7 +25,7 @@ def test_crop_no_face_keeps_original() -> None:
 
 def test_headshot_crop_is_head_and_shoulders() -> None:
     np = pytest.importorskip('numpy')
-    from app.utils.images.face_crop import _headshot_crop
+    from phoenixadult.utils.images.face_crop import _headshot_crop
 
     x, y, w, h = 300, 100, 111, 156
     img = np.zeros((900, 700, 3), dtype=np.uint8)
@@ -45,7 +45,7 @@ def test_headshot_crop_is_head_and_shoulders() -> None:
 
 def test_headshot_crop_keeps_original_when_already_closeup() -> None:
     np = pytest.importorskip('numpy')
-    from app.utils.images.face_crop import _headshot_crop
+    from phoenixadult.utils.images.face_crop import _headshot_crop
 
     img = np.zeros((150, 150, 3), dtype=np.uint8)
     assert _headshot_crop(np, img, (15, 15, 120, 120)) is None

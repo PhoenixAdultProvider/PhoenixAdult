@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import sexlikereal as slr_module
-from app.clients.sites.sexlikereal import SexLikeRealClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import sexlikereal as slr_module
+from phoenixadult.clients.sites.sexlikereal import SexLikeRealClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Sex Like Real')
 assert SITE is not None

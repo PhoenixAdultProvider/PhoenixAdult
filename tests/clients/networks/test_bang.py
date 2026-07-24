@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.bang as bang_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.bang import BangClient, __testing__
-from app.registry import find_site
+import phoenixadult.clients.networks.bang as bang_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.bang import BangClient, __testing__
+from phoenixadult.registry import find_site
 
 SITE = find_site('Bang')
 assert SITE is not None

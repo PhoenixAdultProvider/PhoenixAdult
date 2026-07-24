@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.aggregators.data18empire as d18e_module
-from app.clients.aggregators.data18empire import Data18EmpireClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+import phoenixadult.clients.aggregators.data18empire as d18e_module
+from phoenixadult.clients.aggregators.data18empire import Data18EmpireClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('Data18 Empire')
 assert SITE is not None

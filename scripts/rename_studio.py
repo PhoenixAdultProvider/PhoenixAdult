@@ -10,9 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config.env import env
-from app.utils import db
-from app.utils.helpers.helpers import slugify
+from phoenixadult.config.env import env
+from phoenixadult.utils import db
+from phoenixadult.utils.helpers.helpers import slugify
 
 
 def _rename_dimension(table: str, old: str, new: str) -> int:

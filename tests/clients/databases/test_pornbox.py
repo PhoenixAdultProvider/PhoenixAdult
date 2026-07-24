@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.aggregators.pornbox import PornboxClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+from phoenixadult.clients.aggregators.pornbox import PornboxClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('Pornbox')
 assert SITE is not None

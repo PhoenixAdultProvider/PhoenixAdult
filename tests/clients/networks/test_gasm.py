@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.gasm import GasmClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.gasm import GasmClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('GASM')
 MAGMA = find_site('Magma Film')

@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.porndoepremium import PorndoePremiumClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.porndoepremium import PorndoePremiumClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Chicas Loca')
 assert SITE is not None

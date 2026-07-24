@@ -4,20 +4,20 @@ import httpx
 import pytest
 import respx
 
-from app.utils.http.bypass import bypass_get, http_bypass
-from app.utils.http.bypass_types import BypassRequest
+from phoenixadult.utils.http.bypass import bypass_get, http_bypass
+from phoenixadult.utils.http.bypass_types import BypassRequest
 
 
 def test_impersonate_registered_first() -> None:
-    from app.utils.http.bypass import ALL_BACKENDS
-    from app.utils.http.impersonate import impersonate_backend
+    from phoenixadult.utils.http.bypass import ALL_BACKENDS
+    from phoenixadult.utils.http.impersonate import impersonate_backend
 
     assert ALL_BACKENDS[0] is impersonate_backend
     assert impersonate_backend.name == 'Impersonate'
 
 
 def test_configured_order_includes_impersonate(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.utils.http.bypass import _configured_order
+    from phoenixadult.utils.http.bypass import _configured_order
 
     monkeypatch.setenv('BYPASS_ORDER', 'Impersonate,FlareSolverr')
     assert [b.name for b in _configured_order()] == ['Impersonate', 'FlareSolverr']

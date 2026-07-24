@@ -5,9 +5,9 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.vivid import VividClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.vivid import VividClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Vivid')
 assert SITE is not None

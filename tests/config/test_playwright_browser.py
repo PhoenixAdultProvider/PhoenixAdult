@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.config.env import env
-from app.config.env_catalog import ENV_CATALOG
+from phoenixadult.config.env import env
+from phoenixadult.config.env_catalog import ENV_CATALOG
 
 
 def test_default_is_chromium(monkeypatch: pytest.MonkeyPatch) -> None:

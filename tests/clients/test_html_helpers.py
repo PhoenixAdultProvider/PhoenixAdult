@@ -6,9 +6,9 @@ import httpx
 import pytest
 import respx
 
-from app.models.scraper_config import ScraperConfig
-from app.registry import ResolvedSiteInfo
-from app.utils.helpers.html_helpers import append_year_param, script_match, web_search_urls
+from phoenixadult.models.scraper_config import ScraperConfig
+from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.html_helpers import append_year_param, script_match, web_search_urls
 
 _DDG = """<html><body>
   <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fscene-1&rut=x">one</a>

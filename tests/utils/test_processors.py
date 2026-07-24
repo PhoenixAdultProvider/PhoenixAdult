@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from app.utils.processors.abbreviations import expand_abbreviations
-from app.utils.processors.filename_parser import clean_search_title
-from app.utils.processors.studio_name import normalize_studio
-from app.utils.processors.title_case import convert_sequence_numbers, title_case, title_sort
+from phoenixadult.utils.processors.abbreviations import expand_abbreviations
+from phoenixadult.utils.processors.filename_parser import clean_search_title
+from phoenixadult.utils.processors.studio_name import normalize_studio
+from phoenixadult.utils.processors.title_case import convert_sequence_numbers, title_case, title_sort
 
 # ── Clean_search_title ────────────────────────────────────────────────────────
 

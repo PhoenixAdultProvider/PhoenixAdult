@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import putalocura as pl_module
-from app.clients.sites.putalocura import PutalocuraClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import putalocura as pl_module
+from phoenixadult.clients.sites.putalocura import PutalocuraClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Putalocura')
 assert SITE is not None

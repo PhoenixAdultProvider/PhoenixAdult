@@ -4,7 +4,7 @@ import httpx
 import httpx2
 import respx
 
-from app.utils.helpers.javbus_images import fetch_javbus_images
+from phoenixadult.utils.helpers.javbus_images import fetch_javbus_images
 
 _HTML = (
     '<html>'

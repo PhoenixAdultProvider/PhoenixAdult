@@ -8,7 +8,7 @@ XPath selector hit. It's also where you build fixture entries for
 
 The `/dev` surface is **admin-guarded and non-production**: it's mounted only
 outside production and its pipeline endpoints (`POST /dev/test`, `POST /dev/metadata`)
-require the admin token, the same guard as `/config` (see `app/utils/auth/env_auth.py`).
+require the admin token, the same guard as `/config` (see `phoenixadult/utils/auth/env_auth.py`).
 In a real deployment the route disappears.
 
 ## Getting Started
@@ -17,7 +17,7 @@ Start the dev server with auto-reload. The `/dev` UI is only mounted outside
 production, and production is now the default — so set `NODE_ENV=development`:
 
 ```bash
-NODE_ENV=development python -m app.main   # auto-reloads outside production; PORT defaults to 3000
+NODE_ENV=development python -m phoenixadult.main   # auto-reloads outside production; PORT defaults to 3000
 ```
 
 Open `http://localhost:3000/dev` in a browser. The page is a single scrollable
@@ -44,7 +44,7 @@ supported shapes:
 - **id + name** — `sitename - 12345 - Scene Title`
 
 The site token comes first in every form. After parsing, the UI shows what the
-filename parser (`app/utils/processors/filename_parser.py`) pulled out (site, date,
+filename parser (`phoenixadult/utils/processors/filename_parser.py`) pulled out (site, date,
 content) so you can confirm it understood you. If the parse fails or the site token
 doesn't resolve to a registered site, the pipeline stops there and shows the
 failure in red.

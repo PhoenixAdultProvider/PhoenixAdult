@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.utils.helpers.helpers import format_duration, pack_cur_id, title_distance_score, unpack_cur_id
+from phoenixadult.utils.helpers.helpers import format_duration, pack_cur_id, title_distance_score, unpack_cur_id
 
 
 def test_cur_id_roundtrip() -> None:

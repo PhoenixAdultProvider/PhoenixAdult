@@ -5,9 +5,9 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.virtualreal import VirtualRealClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.virtualreal import VirtualRealClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('VirtualRealPorn')
 assert SITE is not None

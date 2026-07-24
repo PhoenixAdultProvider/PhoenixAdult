@@ -5,9 +5,9 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.cumlouder import CumLouderClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.cumlouder import CumLouderClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('CumLouder')
 assert SITE is not None

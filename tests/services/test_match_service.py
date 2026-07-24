@@ -4,9 +4,9 @@ from typing import Any
 
 import pytest
 
-from app.clients.base import SearchResult
-from app.registry import find_site, get_all_providers
-from app.services.match_service import MatchRequest, MatchService
+from phoenixadult.clients.base import SearchResult
+from phoenixadult.registry import find_site, get_all_providers
+from phoenixadult.services.match_service import MatchRequest, MatchService
 
 SITE = find_site('JoyBear')
 assert SITE is not None

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from app.utils.logging.uvicorn_logging import StartupAddressFilter
+from phoenixadult.utils.logging.uvicorn_logging import StartupAddressFilter
 
 
 def _record(msg: str) -> logging.LogRecord:

@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.melonechallenge import MeloneChallengeClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.melonechallenge import MeloneChallengeClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Melone Challenge')
 assert SITE is not None

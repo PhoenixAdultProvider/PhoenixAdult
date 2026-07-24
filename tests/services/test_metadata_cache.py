@@ -9,12 +9,12 @@ import pytest
 import respx
 from PIL import Image as PILImage
 
-from app.models.metadata import PlexData18, PlexImage, PlexMetadataResponse
-from app.utils import cache as mc
-from app.utils import db
-from app.utils.helpers.helpers import b64url_encode, embed_subsite
-from app.utils.images import image_fetcher
-from app.utils.plex.rating_key import to_rating_key
+from phoenixadult.models.metadata import PlexData18, PlexImage, PlexMetadataResponse
+from phoenixadult.utils import cache as mc
+from phoenixadult.utils import db
+from phoenixadult.utils.helpers.helpers import b64url_encode, embed_subsite
+from phoenixadult.utils.images import image_fetcher
+from phoenixadult.utils.plex.rating_key import to_rating_key
 
 
 def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -131,7 +131,7 @@ def test_reapply_text_rules_strips_nubiles_episode_tag() -> None:
 def test_backfill_logo_fills_only_missing(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     from pathlib import Path
 
-    from app.utils.images import logo_cache
+    from phoenixadult.utils.images import logo_cache
 
     root = Path(str(tmp_path))
     (root / 'brazzers').mkdir(parents=True)
@@ -337,7 +337,7 @@ async def test_purge(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.Monke
 
 
 async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.utils.people.types import PersonLookupContext, PhotoHit
+    from phoenixadult.utils.people.types import PersonLookupContext, PhotoHit
 
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
@@ -354,7 +354,7 @@ async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPa
     async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
         return photos.get(name, PhotoHit(url=''))
 
-    monkeypatch.setattr('app.utils.people.find_photo', fake_find_photo)
+    monkeypatch.setattr('phoenixadult.utils.people.find_photo', fake_find_photo)
 
     resp = PlexMetadataResponse.model_validate(
         {
@@ -406,7 +406,7 @@ async def test_backfill_noop_when_all_thumbs_present(tmp_path: pytest.TempPathFa
 
 
 async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.utils.people.types import PersonLookupContext, PhotoHit
+    from phoenixadult.utils.people.types import PersonLookupContext, PhotoHit
 
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
@@ -416,7 +416,7 @@ async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPath
     async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
         return PhotoHit(url='https://cdn.example/greg-new.jpg', gender='male') if name == 'Greg Lansky' else PhotoHit(url='')
 
-    monkeypatch.setattr('app.utils.people.find_photo', fake_find_photo)
+    monkeypatch.setattr('phoenixadult.utils.people.find_photo', fake_find_photo)
 
     resp = PlexMetadataResponse.model_validate(
         {
@@ -507,7 +507,7 @@ async def test_backfill_data18_skips_when_disabled(monkeypatch: pytest.MonkeyPat
 
 
 def _snapshot(root: Path, rel: str, site: str, cur: str) -> None:
-    from app.utils.cache import scene_store
+    from phoenixadult.utils.cache import scene_store
 
     d = root / rel
     d.mkdir(parents=True, exist_ok=True)
@@ -711,7 +711,7 @@ async def test_rewrite_keeps_snapshot_images_in_place(tmp_path: Path, monkeypatc
 
 
 def test_tags_for_matches_the_seeded_scene() -> None:
-    from app.utils.cache import scene_store
+    from phoenixadult.utils.cache import scene_store
 
     md: dict[str, Any] = {
         'type': 'movie',

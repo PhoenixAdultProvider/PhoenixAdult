@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from app.config.env_catalog import ENV_CATALOG
+from phoenixadult.config.env_catalog import ENV_CATALOG
 
 _EXAMPLE = Path(__file__).resolve().parents[2] / '.env.example'
 

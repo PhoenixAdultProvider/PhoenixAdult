@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import lustreality as lr_module
-from app.clients.sites.lustreality import LustRealityClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import lustreality as lr_module
+from phoenixadult.clients.sites.lustreality import LustRealityClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Lust Reality')
 assert SITE is not None

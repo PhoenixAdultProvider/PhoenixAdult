@@ -1,0 +1,116 @@
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, title_distance_score
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+
+_NON_ALNUM_RE = re.compile(r'[^a-z0-9]', re.IGNORECASE)
+_SUBSITE_RE = re.compile(r'scene/(.*?)/')
+
+
+def _norm(s: str) -> str:
+    return _NON_ALNUM_RE.sub('', s).lower()
+
+
+class FinishesTheJobClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
+            return None
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"scene")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
+
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return first_text(source, './/h3[@itemprop="name"]')
+
+    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
+        href = first_attr(source, '(.//a/@href)[1]')
+        if not href:
+            return ''
+
+        return absolute_url(href, loaded.site.base_url)
+
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return loaded.ctx.search_date
+
+    async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
+        title = first_text(source, './/h3[@itemprop="name"]')
+        footer_href = first_attr(source, '(.//div[contains(@class,"card-footer")]//a/@href)[1]')
+        m = _SUBSITE_RE.search(footer_href)
+        sub_site = m.group(1) if m else ''
+        bad_subsite = _norm(sub_site) != _norm(loaded.site.name)
+        return title_distance_score(loaded.ctx.title, title) - (10 if bad_subsite else 0)
+
+    async def fetch_search_subsite(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return first_text(source, '(.//div[contains(@class,"card-footer")]//a)[1]') or None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//span[@itemprop="name"]') or ''
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//p[@itemprop="description"]') or ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = 'Finishes The Job'
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//p[contains(.,"Categories")]//a')
+        ]
+
+        metadata.genres = self.dedup_strings(values)
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        entries = [
+            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
+            for actor_link in details_page_elements.xpath('//h2[contains(.,"Starring")]//a')
+        ]
+
+        metadata.actors = self.dedup_people(entries)
+
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        images: list[str] = []
+
+        def push(raw: str) -> None:
+            append_unique(images, raw, scene.site.base_url)
+
+        for row in details_page_elements.xpath('//video[@poster]'):
+            push(row.xpath('@poster').get() or '')
+
+        title = first_text(details_page_elements, '//span[@itemprop="name"]').lower()
+        if title:
+            for row in details_page_elements.xpath('//div[contains(@class,"first-set")]//img'):
+                alt = first_attr(row, '@alt').lower()
+                if alt == title:
+                    push(row.xpath('@src').get() or '')
+
+        metadata.art = images

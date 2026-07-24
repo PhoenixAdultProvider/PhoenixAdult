@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.aggregators.javlibrary as jl_module
-from app.clients.aggregators.javlibrary import JavLibraryClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+import phoenixadult.clients.aggregators.javlibrary as jl_module
+from phoenixadult.clients.aggregators.javlibrary import JavLibraryClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('JAVLibrary')
 assert SITE is not None

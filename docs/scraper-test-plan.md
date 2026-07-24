@@ -24,8 +24,8 @@ One commit per scraper. After adding a scraper, regenerate the sitelist
 
 ## Unit-Test Conventions
 
-Tests mirror the source tree: a scraper at `app/clients/networks/<x>.py` (or
-`app/clients/scrapers/<x>.py`) gets `tests/clients/networks/test_<x>.py` (resp.
+Tests mirror the source tree: a scraper at `phoenixadult/clients/networks/<x>.py` (or
+`phoenixadult/clients/scrapers/<x>.py`) gets `tests/clients/networks/test_<x>.py` (resp.
 `tests/clients/scrapers/test_<x>.py`). Each module is `respx`-mocked — no network.
 
 A typical module covers **search** and **detail** for one site:
@@ -34,9 +34,9 @@ A typical module covers **search** and **detail** for one site:
 import httpx
 import respx
 
-from app.clients.base import SearchContext
-from app.clients.networks.example import ExampleClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext
+from phoenixadult.clients.networks.example import ExampleClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Example Site')
 assert SITE is not None
@@ -115,7 +115,7 @@ comparison rules.
 
 When iterating on a scraper it's often fastest to watch it live:
 
-1. `NODE_ENV=development python -m app.main` → open `http://localhost:3000/dev`.
+1. `NODE_ENV=development python -m phoenixadult.main` → open `http://localhost:3000/dev`.
 2. Type a known filename for the site, press Enter — confirm ≥1 result.
 3. Click the top result — confirm `title`, `release_date`, `summary` populate.
 4. Confirm ≥1 image URL appears and opens; confirm actors + genres (some sites

@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.blurredmedia import BlurredMediaClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.blurredmedia import BlurredMediaClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Gay Hoopla')
 assert SITE is not None

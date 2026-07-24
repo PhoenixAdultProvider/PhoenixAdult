@@ -6,11 +6,11 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
-from app.clients.base import SceneDetail
-from app.models.metadata import PlexMetadata
-from app.utils.helpers.helpers import b64url_encode
-from app.utils.plex.rating_key import to_rating_key
+from phoenixadult.app_factory import create_app
+from phoenixadult.clients.base import SceneDetail
+from phoenixadult.models.metadata import PlexMetadata
+from phoenixadult.utils.helpers.helpers import b64url_encode
+from phoenixadult.utils.plex.rating_key import to_rating_key
 
 TOKEN = 'devtoken'
 
@@ -78,7 +78,7 @@ def test_dev_metadata_requires_fields(client: TestClient) -> None:
 
 
 def _stub_live_scrape(monkeypatch: pytest.MonkeyPatch) -> None:
-    import app.routes.dev_routes as dr
+    import phoenixadult.routes.dev_routes as dr
 
     async def fake_fetch(scene_url: str, site: Any, ctx: Any = None) -> SceneDetail:
         return SceneDetail(title='Cool Scene', studio='Brazzers')

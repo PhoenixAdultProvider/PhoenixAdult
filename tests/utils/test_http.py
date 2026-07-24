@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.utils.http.ssrf_guard import is_blocked_hostname, is_private_address
+from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname, is_private_address
 
 
 def test_ssrf_guard_blocks_private() -> None:

@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.pornpros import PornProsClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.pornpros import PornProsClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Cum4K')
 assert SITE is not None

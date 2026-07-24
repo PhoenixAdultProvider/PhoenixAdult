@@ -5,9 +5,9 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.aggregators.javbus import JavBusClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+from phoenixadult.clients.aggregators.javbus import JavBusClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('JavBus')
 assert SITE is not None

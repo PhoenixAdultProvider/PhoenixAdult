@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.momcomesfirst import MomComesFirstClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.momcomesfirst import MomComesFirstClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Mom Comes First')
 assert SITE is not None

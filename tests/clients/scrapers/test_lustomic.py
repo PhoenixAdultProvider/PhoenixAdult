@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.lustomic import LustomicClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.lustomic import LustomicClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Lustomic')
 assert SITE is not None

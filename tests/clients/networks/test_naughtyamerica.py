@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.naughtyamerica as na
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.naughtyamerica import NaughtyAmericaClient
-from app.registry import find_site
+import phoenixadult.clients.networks.naughtyamerica as na
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.naughtyamerica import NaughtyAmericaClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Naughty Office')
 assert SITE is not None
@@ -15,7 +15,7 @@ assert SITE is not None
 
 @pytest.fixture(autouse=True)
 def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
-    import app.utils.http.rate_limit_helper as rlh
+    import phoenixadult.utils.http.rate_limit_helper as rlh
 
     monkeypatch.setattr(na, '_PACE_SECONDS', 0.0)
     monkeypatch.setattr(na, '_PACE_JITTER', 0.0)

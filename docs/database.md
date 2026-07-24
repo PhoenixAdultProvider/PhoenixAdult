@@ -14,7 +14,7 @@ MySQL/MariaDB) would add a daemon and provisioning burden to solve concurrency p
 this workload does not have. Redis has the wrong durability model for primary data, and
 distributed batch systems are orders of magnitude away from a ~6,000-row catalog.
 
-Connection setup (`app/utils/db/connect`):
+Connection setup (`phoenixadult/utils/db/connect`):
 
 | Pragma | Value | Why |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Connection setup (`app/utils/db/connect`):
 | `foreign_keys` | `ON` | SQLite defaults FK enforcement off; the scene tables rely on it (`ON DELETE CASCADE` junction cleanup). |
 
 Schema versioning uses `PRAGMA user_version` with a linear, append-only migration list
-(`_MIGRATIONS` in `app/utils/db/__init__.py`). A migration script is never edited after
+(`_MIGRATIONS` in `phoenixadult/utils/db/__init__.py`). A migration script is never edited after
 it ships; changes append a new version.
 
 ## Design Principle
@@ -55,7 +55,7 @@ dimension + junction pairs (`genres`, `collections`, `countries`, `people`), and
 metadata in `scene_images` (the bytes stay in the per-scene folder on disk).
 The serve path assembles `PlexMetadataResponse` straight from these tables, and the
 scrape path decomposes each snapshot into them in a single transaction
-(`app/utils/cache/scene_store.py`).
+(`phoenixadult/utils/cache/scene_store.py`).
 
 ### Entity-Relationship Diagram
 

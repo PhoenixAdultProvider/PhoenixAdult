@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from app.utils import db
-from app.utils.images import face_crop_log
-from app.utils.people import cache
+from phoenixadult.utils import db
+from phoenixadult.utils.images import face_crop_log
+from phoenixadult.utils.people import cache
 
 
 @pytest.fixture(autouse=True)

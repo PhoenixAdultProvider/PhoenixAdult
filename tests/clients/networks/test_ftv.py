@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.ftv as ftv_mod
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+import phoenixadult.clients.networks.ftv as ftv_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('FTVGirls')
 assert SITE is not None

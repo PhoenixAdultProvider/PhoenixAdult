@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.sites.teenytaboo as tt_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.teenytaboo import TeenyTabooClient
-from app.registry import find_site
+import phoenixadult.clients.sites.teenytaboo as tt_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.teenytaboo import TeenyTabooClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Teeny Taboo')
 assert SITE is not None

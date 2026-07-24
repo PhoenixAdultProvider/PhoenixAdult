@@ -24,19 +24,19 @@ Tests mirror the source tree under `tests/` (e.g. `tests/utils/test_processors.p
 
 ## Done — framework foundation
 
-- [x] App factory + entrypoint (`app/app_factory.py`, `app/main.py`)
-- [x] Config: env, env catalog, runtime overrides (`app/config/`)
-- [x] Registry: `SiteInfo`, provider/site tables, lookups (`app/registry/`)
-- [x] Base `Client` + field-hook orchestrator (`app/clients/base.py`)
-- [x] Scraper-type → client dispatch (`app/clients/__init__.py`, `routes/scraper_router.py`)
-- [x] Services: match + metadata (`app/services/`)
-- [x] Mapper: results → Plex models (`app/mappers/metadata_mapper.py`)
-- [x] Routes: provider, image proxy, config UI, dev UI (`app/routes/`)
-- [x] Admin auth guard (`app/routes/env_auth.py`)
-- [x] Logging + per-request capture + orchestrator logs (`app/utils/logging/`)
-- [x] HTTP client (`app/utils/http/client.py`)
-- [x] SSRF guard (`app/utils/http/ssrf_guard.py`)
-- [x] Helpers: curID codec, slug, dates, scoring, search-result builder (`app/utils/helpers/`)
+- [x] App factory + entrypoint (`phoenixadult/app_factory.py`, `phoenixadult/main.py`)
+- [x] Config: env, env catalog, runtime overrides (`phoenixadult/config/`)
+- [x] Registry: `SiteInfo`, provider/site tables, lookups (`phoenixadult/registry/`)
+- [x] Base `Client` + field-hook orchestrator (`phoenixadult/clients/base.py`)
+- [x] Scraper-type → client dispatch (`phoenixadult/clients/__init__.py`, `routes/scraper_router.py`)
+- [x] Services: match + metadata (`phoenixadult/services/`)
+- [x] Mapper: results → Plex models (`phoenixadult/mappers/metadata_mapper.py`)
+- [x] Routes: provider, image proxy, config UI, dev UI (`phoenixadult/routes/`)
+- [x] Admin auth guard (`phoenixadult/routes/env_auth.py`)
+- [x] Logging + per-request capture + orchestrator logs (`phoenixadult/utils/logging/`)
+- [x] HTTP client (`phoenixadult/utils/http/client.py`)
+- [x] SSRF guard (`phoenixadult/utils/http/ssrf_guard.py`)
+- [x] Helpers: curID codec, slug, dates, scoring, search-result builder (`phoenixadult/utils/helpers/`)
 - [x] Processors: abbreviations (full data), filename parser, search query, similarity
 - [x] Images: classifier, fetcher (Pillow), referers
 - [x] Cloudflare quick-tunnel launcher (`scripts/start-with-tunnel.ps1`)
@@ -47,16 +47,16 @@ Tests mirror the source tree under `tests/` (e.g. `tests/utils/test_processors.p
 
 Port these first so scrapers emit correct metadata from day one.
 
-- [x] Genres DB — full pipeline (`app/utils/genres/`)
+- [x] Genres DB — full pipeline (`phoenixadult/utils/genres/`)
   - [x] Synonym/canonical map (`_data/json/genres.json`; legacy `PAdatabaseGenres.py`)
   - [x] Skip lists (exact + partial, in `genres.json`)
-- [x] Title casing — full engine (`app/utils/processors/title_case.py`)
+- [x] Title casing — full engine (`phoenixadult/utils/processors/title_case.py`)
   - [x] Exception / acronym / size / per-site tables + manual corrections + post-process pass
 - [x] Studio-name normalization (`processors/studio_name.py` + `_data/json/studios.json`)
 
 ## Tier 2 — people (actor / director / producer resolution) — DONE
 
-Replace the pass-through placeholder in `app/utils/people/`.
+Replace the pass-through placeholder in `phoenixadult/utils/people/`.
 
 - [x] Photo source base (`sources/_http.py`) + source registry (`sources/__init__.py`)
 - [x] localStorage source
@@ -76,7 +76,7 @@ Replace the pass-through placeholder in `app/utils/people/`.
 - [x] Full PeopleManager pipeline (clean → alias → cache/HEAD/sources/generic → gender)
 
 **Tier 2 complete.** All 10 photo sources are site-specific XPath modules under
-`app/utils/people/sources/` wired into `ALL_SOURCES`. IAFD-backed lookups (gender
+`phoenixadult/utils/people/sources/` wired into `ALL_SOURCES`. IAFD-backed lookups (gender
 detection + the IAFD source) only return data once the bypass chain (Tier 3) lands.
 
 ## Tier 3 — cross-cutting subsystems (many scrapers opt in) — DONE
@@ -86,26 +86,26 @@ detection + the IAFD source) only return data once the bypass chain (Tier 3) lan
   - [x] Playwright provider (optional; only if `playwright` is installed)
   - [x] ReqBin provider
   - Unblocks IAFD-backed people lookups (gender + IAFD source) when configured.
-- [x] Search engines (URL-resolution fallback) — `app/clients/searchengines/`
+- [x] Search engines (URL-resolution fallback) — `phoenixadult/clients/searchengines/`
   - [x] DuckDuckGo (HTML scrape, XPath)
   - [x] Google CSE (`web_search` / `web_search_filtered` chain)
 - [x] Data18 image enrichment
-  - [x] `Data18Client` engine (`app/clients/databases/data18.py`, XPath; + dice metric in similarity)
-  - [x] JavBus images helper (`app/clients/helpers/javbus_images.py`)
-  - [x] Fanart + fansite image adapters (`app/utils/images/fanart.py` + `fansite_adapters.py`,
+  - [x] `Data18Client` engine (`phoenixadult/clients/databases/data18.py`, XPath; + dice metric in similarity)
+  - [x] JavBus images helper (`phoenixadult/clients/helpers/javbus_images.py`)
+  - [x] Fanart + fansite image adapters (`phoenixadult/utils/images/fanart.py` + `fansite_adapters.py`,
         16 adapters; parsel `.css()` with a `:not(:contains())` shim). Xart's
         `xartFanArtOverrides` data lands when the Xart scraper is ported (Tier 4).
   - [x] (legacy reference: `PAdata18ImageSearch.py`)
 
 **Tier 3 complete.**
-- [x] Captcha proof-of-work solver (`app/utils/captcha/pow.py`)
-- [x] Per-site cookies (`app/utils/cookies/site_cookies.py`)
-- [x] Shared HTML helpers (`app/clients/helpers/html_helpers.py`) — XPath/web-search
-- [x] Shared GraphQL helper (`app/clients/helpers/graphql_client.py`)
+- [x] Captcha proof-of-work solver (`phoenixadult/utils/captcha/pow.py`)
+- [x] Per-site cookies (`phoenixadult/utils/cookies/site_cookies.py`)
+- [x] Shared HTML helpers (`phoenixadult/clients/helpers/html_helpers.py`) — XPath/web-search
+- [x] Shared GraphQL helper (`phoenixadult/clients/helpers/graphql_client.py`)
 
 ## UI / parity polish
 
-- [x] Config UI styling — full styled page at `app/routes/html/config_ui.html`
+- [x] Config UI styling — full styled page at `phoenixadult/routes/html/config_ui.html`
       (dark theme, sticky toolbar, grouped cards,
       per-var badges, secret reveal, image preview, drag-sortable list controls,
       dirty tracking, save/reset/reload/restart). Client-rendered from the state
@@ -113,8 +113,8 @@ detection + the IAFD source) only return data once the bypass chain (Tier 3) lan
 
 ## Tier 4 — scrapers (dedicated client + selector + data + tests each)
 
-Each item = `Client` subclass in `app/clients/` (`aggregators/`, `networks/`, or
-`sites/`), selector in `app/registry/selectors/`, registry wiring, `_data/json`
+Each item = `Client` subclass in `phoenixadult/clients/` (`aggregators/`, `networks/`, or
+`sites/`), selector in `phoenixadult/registry/selectors/`, registry wiring, `_data/json`
 assets, and a fixture-driven test. Run `ruff`/`mypy`/`pytest` before each commit
 (one commit per scraper).
 
@@ -353,7 +353,7 @@ Reconcile against legacy behaviour when the related scrapers land (don't drop si
 
 - [ ] Extras / trailers (`PAextras.py`)
 - [ ] Collections (`PAcollections.py`)
-- [ ] Captcha helper (`PAcaptchaHelper.py`) vs `app/utils/captcha/pow.py`
+- [ ] Captcha helper (`PAcaptchaHelper.py`) vs `phoenixadult/utils/captcha/pow.py`
 - [ ] Confirm search method/notes from legacy `PAsiteList.py` per scraper
 
 ## Image-URL policy (2026-06-17 decision)

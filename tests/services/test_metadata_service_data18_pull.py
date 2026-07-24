@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-import app.services.metadata_service as ms
-from app.models.metadata import PlexMetadataResponse
-from app.models.provider_info import ProviderInfo
-from app.services.metadata_service import MetadataService
-from app.utils import cache as metadata_cache
+import phoenixadult.services.metadata_service as ms
+from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.services.metadata_service import MetadataService
+from phoenixadult.utils import cache as metadata_cache
 
 PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 RATING_KEY = 'scene-brazzers-abc123'

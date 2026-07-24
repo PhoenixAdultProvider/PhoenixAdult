@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from app.utils.images import logo_cache
-from app.utils.images.image_fetcher import ImageEntry
+from phoenixadult.utils.images import logo_cache
+from phoenixadult.utils.images.image_fetcher import ImageEntry
 
 
 @pytest.fixture(autouse=True)
@@ -140,7 +140,7 @@ def test_index_converts_dropped_svgs(monkeypatch: pytest.MonkeyPatch, tmp_path: 
 
 
 def test_index_rebuilds_after_db_loss(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from app.utils import db
+    from phoenixadult.utils import db
 
     f = _put(tmp_path, 'brazzers', 'logo.brazzers.png')
     assert logo_cache.find_logo(None, 'Brazzers') == f

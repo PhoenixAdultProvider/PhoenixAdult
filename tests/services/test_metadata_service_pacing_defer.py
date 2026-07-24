@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from app.clients.base import PacingDeferredError
-from app.models.metadata import PlexMetadataResponse
-from app.models.provider_info import ProviderInfo
-from app.services import scrape_queue
-from app.services.metadata_service import MetadataService
-from app.utils import cache as metadata_cache
+from phoenixadult.clients.base import PacingDeferredError
+from phoenixadult.models.metadata import PlexMetadataResponse
+from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.services import scrape_queue
+from phoenixadult.services.metadata_service import MetadataService
+from phoenixadult.utils import cache as metadata_cache
 
 PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 RATING_KEY = 'scene-nubilefilms-abc123'

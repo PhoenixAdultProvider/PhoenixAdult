@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.expliciteart import ExpliciteArtClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.expliciteart import ExpliciteArtClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Explicite Art')
 assert SITE is not None
@@ -55,6 +55,6 @@ async def test_detail_fields() -> None:
 
 
 def test_registered() -> None:
-    from app.clients import CLIENT_REGISTRY
+    from phoenixadult.clients import CLIENT_REGISTRY
 
     assert 'expliciteart' in CLIENT_REGISTRY

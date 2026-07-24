@@ -123,7 +123,7 @@ def _changed_files(diff_args: list[str]) -> list[str]:
     return [
         f
         for f in _git('diff', *diff_args, '--name-only', '--diff-filter=ACM').splitlines()
-        if f.endswith('.py') and (f.startswith('app/') or f.startswith('tests/'))
+        if f.endswith('.py') and (f.startswith('phoenixadult/') or f.startswith('tests/'))
     ]
 
 
@@ -133,7 +133,7 @@ def main() -> int:
     if scan_all:
         rng = None
         diff_args = []
-        files = sorted(str(p).replace('\\', '/') for base in ('app', 'tests') for p in Path(base).rglob('*.py'))
+        files = sorted(str(p).replace('\\', '/') for base in ('phoenixadult', 'tests') for p in Path(base).rglob('*.py'))
     else:
         diff_args = [rng] if rng else ['--cached']
         files = _changed_files(diff_args)

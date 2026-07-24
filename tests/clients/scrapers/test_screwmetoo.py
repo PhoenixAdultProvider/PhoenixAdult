@@ -4,10 +4,10 @@ import httpx
 import respx
 from parsel import Selector
 
-import app.clients.sites.screwmetoo as smt_module
-from app.clients.base import ActorResult, LoadedScene, SceneDetail, SearchContext, SearchResult
-from app.clients.sites.screwmetoo import ScrewMeTooClient
-from app.registry import find_site
+import phoenixadult.clients.sites.screwmetoo as smt_module
+from phoenixadult.clients.base import ActorResult, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.sites.screwmetoo import ScrewMeTooClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('ScrewMeToo')
 assert SITE is not None

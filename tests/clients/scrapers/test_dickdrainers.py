@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import dickdrainers as dd_module
-from app.clients.sites.dickdrainers import DickDrainersClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import dickdrainers as dd_module
+from phoenixadult.clients.sites.dickdrainers import DickDrainersClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('DickDrainers')
 assert SITE is not None

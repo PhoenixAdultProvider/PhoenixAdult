@@ -6,9 +6,9 @@ import httpx
 import pytest
 import respx
 
-from app.clients.aggregators.data18scenes import Data18ScenesClient
-from app.clients.base import SearchContext, SearchResult
-from app.registry import find_site
+from phoenixadult.clients.aggregators.data18scenes import Data18ScenesClient
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.registry import find_site
 
 SITE = find_site('Data18 Scenes')
 assert SITE is not None
@@ -63,7 +63,7 @@ SCENE_PAGE_MINISERIE = f"""<html><body>{_HEAD}
 
 @respx.mock
 async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
+    monkeypatch.setattr('phoenixadult.clients.aggregators.data18.web_search', no_web_search)
     q = quote('Fun Scene')
     respx.get(f'https://www.data18.com/sys/live.php?index=&key={q}&key2={q}&next=1&page=0').mock(return_value=httpx.Response(200, text=SEARCH_PAGE))
     results: list[SearchResult] = []
@@ -76,7 +76,7 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch, no_web_search:
 
 @respx.mock
 async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
+    monkeypatch.setattr('phoenixadult.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE))
     results: list[SearchResult] = []
@@ -88,7 +88,7 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch, no_web_se
 
 @respx.mock
 async def test_search_direct_scene_id_falls_back_to_studio(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
+    monkeypatch.setattr('phoenixadult.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text='<html>pages: 1</html>'))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE_STUDIO_ONLY))
     results: list[SearchResult] = []
@@ -148,7 +148,7 @@ _SEARCH_ID_VS_TITLE = """<html><body>
 
 @respx.mock
 async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
+    monkeypatch.setattr('phoenixadult.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     respx.get('https://www.data18.com/scenes/9999').mock(return_value=httpx.Response(200, text=SCENE_PAGE))
     results: list[SearchResult] = []
@@ -163,7 +163,7 @@ async def test_scene_id_beats_a_perfect_title_match(monkeypatch: pytest.MonkeyPa
 
 @respx.mock
 async def test_without_scene_id_scoring_falls_back_to_date_then_title(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr('app.clients.aggregators.data18.web_search', no_web_search)
+    monkeypatch.setattr('phoenixadult.clients.aggregators.data18.web_search', no_web_search)
     respx.get(url__regex=r'https://www\.data18\.com/sys/live\.php.*').mock(return_value=httpx.Response(200, text=_SEARCH_ID_VS_TITLE))
     results: list[SearchResult] = []
     await Data18ScenesClient().search(results, SearchContext(title='Fun Scene', encoded='Fun+Scene', search_site=SITE.name, site_info=SITE))

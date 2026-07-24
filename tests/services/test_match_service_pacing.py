@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from app.clients.base import PacingDeferredError, SearchContext, SearchResult
-from app.models.provider_info import ProviderInfo
-from app.registry import find_site
-from app.services.match_service import MatchService
-from app.utils import db
+from phoenixadult.clients.base import PacingDeferredError, SearchContext, SearchResult
+from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.registry import find_site
+from phoenixadult.services.match_service import MatchService
+from phoenixadult.utils import db
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = find_site('Nubile Films')

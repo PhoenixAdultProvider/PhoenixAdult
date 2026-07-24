@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from app.clients.base import SearchResult
-from app.utils import db
-from app.utils.cache import search_store
+from phoenixadult.clients.base import SearchResult
+from phoenixadult.utils import db
+from phoenixadult.utils.cache import search_store
 
 KEY = ('Nubile Films', 'cool scene', '2024-01-01', '', '')
 

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
-from app.utils.images import logo_cache
+from phoenixadult.app_factory import create_app
+from phoenixadult.utils.images import logo_cache
 
 
 @pytest.fixture()

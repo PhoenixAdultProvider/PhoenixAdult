@@ -11,9 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image as PILImage
 
-from app.config.env import env
-from app.utils import db
-from app.utils.images.image_classifier import classify_image
+from phoenixadult.config.env import env
+from phoenixadult.utils import db
+from phoenixadult.utils.images.image_classifier import classify_image
 
 
 def _file_class(path: Path) -> str | None:
@@ -73,6 +73,7 @@ def scene_mismatches() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description='Find scenes whose stored artwork kinds contradict the files on disk.')
     parser.add_argument('--show-unlocalized', action='store_true', help='also list scenes whose images still point upstream')
+    parser.add_argument('--purge', action='store_true', help='delete the corrupted scenes (rows + folders) so a normal Plex refresh re-scrapes them')
     args = parser.parse_args()
 
     corrupted, unlocalized = scene_mismatches()
@@ -88,6 +89,11 @@ def main() -> int:
         if args.show_unlocalized:
             for m in unlocalized:
                 print(f'  {m["site"]} — {m["title"]}  ({m["rel_path"]})')
+    if args.purge and corrupted:
+        from phoenixadult.utils import cache as metadata_cache
+
+        removed = sum(1 for m in corrupted if metadata_cache.purge(m['rel_path']))
+        print(f'\nPurged {removed}/{len(corrupted)} scene(s); a normal Plex metadata refresh now re-scrapes them.')
     return 0
 
 

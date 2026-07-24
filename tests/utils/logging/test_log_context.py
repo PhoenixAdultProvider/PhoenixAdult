@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from app.utils.logging.context import SESSION_ID, current_request_id, request_id_scope
-from app.utils.logging.logger import logger
+from phoenixadult.utils.logging.context import SESSION_ID, current_request_id, request_id_scope
+from phoenixadult.utils.logging.logger import logger
 
 
 def test_default_is_session_id_not_dashes():
@@ -47,12 +47,12 @@ def test_middleware_shares_id_across_endpoint_and_access_log():
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from app.utils.logging.request_context import RequestContextMiddleware
+    from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 
     captured: list[logging.LogRecord] = []
     handler = logging.Handler()
     handler.emit = captured.append  # type: ignore[method-assign]
-    from app.utils.logging.context import HTTP
+    from phoenixadult.utils.logging.context import HTTP
 
     base = logging.getLogger('phoenixadult')
     base.addHandler(handler)
@@ -83,8 +83,8 @@ def test_middleware_shares_id_across_endpoint_and_access_log():
 def test_http_and_verbose_sit_below_debug() -> None:
     import logging
 
-    from app.utils.logging.context import HTTP, VERBOSE
-    from app.utils.logging.logger import _LEVEL_MAP
+    from phoenixadult.utils.logging.context import HTTP, VERBOSE
+    from phoenixadult.utils.logging.logger import _LEVEL_MAP
 
     assert VERBOSE < HTTP < logging.DEBUG
     assert not HTTP >= _LEVEL_MAP['info']

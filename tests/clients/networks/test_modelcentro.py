@@ -5,9 +5,9 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.modelcentro import ModelCentroClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.modelcentro import ModelCentroClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Romi Rain')
 JOWM = find_site('Jerk Off With Me')

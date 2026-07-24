@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.scoregroup as sg_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.scoregroup import ScoreGroupClient
-from app.registry import find_site
+import phoenixadult.clients.networks.scoregroup as sg_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Scoreland')
 assert SITE is not None

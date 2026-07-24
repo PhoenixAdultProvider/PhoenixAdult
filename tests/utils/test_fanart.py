@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 from parsel import Selector
 
-import app.utils.images.fansite_adapters  # noqa: F401 - registers the adapters
-from app.utils.images import fanart
-from app.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
+import phoenixadult.utils.images.fansite_adapters  # noqa: F401 - registers the adapters
+from phoenixadult.utils.images import fanart
+from phoenixadult.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
 
 _IMAGEPOST = """<html>
   <h1>Jane Doe Scene</h1>

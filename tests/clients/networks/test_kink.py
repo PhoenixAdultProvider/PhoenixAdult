@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.kink import KinkClient, _kink_tagline
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.kink import KinkClient, _kink_tagline
+from phoenixadult.registry import find_site
 
 SITE = find_site('Kink')
 assert SITE is not None

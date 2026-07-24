@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from typing import Any
+
+from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+
+_HARDCODED_DIRECTOR = 'Markus Dupree'
+
+
+class VogoVClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not search_results:
+            return None
+
+        sources = list(search_results['sel'].xpath('//div[contains(@class,"video-post-content")]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
+
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return first_attr(source, '(.//a[contains(@class,"video-post-main")]//img/@alt)[1]')
+
+    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
+        href = first_attr(source, '(.//a[contains(@class,"video-post-main")]/@href)[1]')
+        if not href:
+            return ''
+
+        return absolute_url(href, loaded.site.base_url)
+
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        raw = first_text(source, './/span[contains(@class,"video-data") and contains(@class,"float-right")]//em')
+        return iso_date(raw) if raw else None
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.title = first_text(details_page_elements, '//div[contains(@class,"video-page-header")]//h1') or ''
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"info-video-description")]//p') or ''
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        date = first_text(details_page_elements, '//ul[contains(@class,"list-unstyled") and contains(@class,"info-video-details")]//li[1]//span[1]')
+        if date:
+            parsed = iso_date(date)
+            if parsed:
+                metadata.release_date = parsed
+                return
+
+        if scene.scene_date:
+            metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"info-video-category")]//a')
+        ]
+
+        metadata.genres = self.dedup_strings(values)
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        base = scene.site.base_url
+        actors: list[ActorResult] = []
+        seen: set[str] = set()
+        for actor_link in details_page_elements.xpath('//div[contains(@class,"info-video-models")]//a'):
+            actor_name = first_attr(actor_link, 'normalize-space(.)')
+            href = first_attr(actor_link, '@href')
+            if not actor_name or actor_name in seen:
+                continue
+
+            seen.add(actor_name)
+            photo = ''
+            if href:
+                url = absolute_url(href, base)
+                model_page_elements = await self.fetch_and_load(url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
+                if model_page_elements:
+                    photo = first_attr(model_page_elements['sel'], '(//div[contains(@class,"m-images")]//img/@src)[1]')
+
+            actors.append(ActorResult(name=actor_name, photo_url=photo))
+
+        metadata.actors = actors
+
+    async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.directors = [ActorResult(name=_HARDCODED_DIRECTOR)]
+
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        base = scene.site.base_url
+        images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
+        for href in details_page_elements.xpath('//div[contains(@class,"swiper-wrapper")]//figure//a/@href').getall():
+            images['push'](href)
+
+        metadata.art = images['list']

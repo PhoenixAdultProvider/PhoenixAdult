@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-import app.utils.logging.best_effort as be
+import phoenixadult.utils.logging.best_effort as be
 
 
 def test_swallows_exception_and_logs(monkeypatch: pytest.MonkeyPatch) -> None:

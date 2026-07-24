@@ -5,10 +5,10 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.povr import POVRClient
-from app.registry import find_site
-from app.utils.helpers.helpers import pack_cur_id
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.povr import POVRClient
+from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.helpers import pack_cur_id
 
 SITE = find_site('POVR')
 assert SITE is not None

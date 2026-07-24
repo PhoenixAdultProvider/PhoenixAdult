@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.dirtyflix import DirtyFlixClient, __testing__
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.dirtyflix import DirtyFlixClient, __testing__
+from phoenixadult.registry import find_site
 
 SITE = find_site('Tricky Agent')
 assert SITE is not None

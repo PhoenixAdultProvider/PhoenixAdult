@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.loveherfilms import LoveHerFilmsClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.loveherfilms import LoveHerFilmsClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('LoveHerFeet')
 assert SITE is not None

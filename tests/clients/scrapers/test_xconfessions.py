@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.xconfessions import XConfessionsClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.xconfessions import XConfessionsClient
+from phoenixadult.registry import find_site
 
 XC = find_site('XConfessions')
 LC = find_site('LustCinema')

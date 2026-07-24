@@ -8,8 +8,8 @@ import httpx
 import pytest
 import respx
 
-from app.services import plex_reconcile as pr
-from app.utils.cache import scene_store
+from phoenixadult.services import plex_reconcile as pr
+from phoenixadult.utils.cache import scene_store
 
 BASE = 'http://192.0.2.10:32400'
 GUID = 'tv.plex.agents.custom.phoenixadult://movie/scene-brazzers-abc123'

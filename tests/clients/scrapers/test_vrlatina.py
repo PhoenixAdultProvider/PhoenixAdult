@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.sites.vrlatina as vrl_module
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.vrlatina import VRLatinaClient
-from app.registry import find_site
+import phoenixadult.clients.sites.vrlatina as vrl_module
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.vrlatina import VRLatinaClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('VR Latina')
 assert SITE is not None

@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from app.clients.aggregators.data18 import Data18Client, data18_ref, manual_mapping_url, mapping_slug, scene_url_from_ref
+from phoenixadult.clients.aggregators.data18 import Data18Client, data18_ref, manual_mapping_url, mapping_slug, scene_url_from_ref
 
 _SEARCH = (
     '<html>pages: 1'
@@ -160,14 +160,14 @@ def test_manual_mapping_list_values_resolve_to_the_shared_scene() -> None:
 
 
 def test_manual_mapping_movie_type_builds_movie_url(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
+    from phoenixadult.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
 
     monkeypatch.setitem(DATA18_MANUAL_MAPPINGS, '1227431', {'slug': '2-broke-girls-a-xxx-parody-somesite', 'type': 'movie'})
     assert manual_mapping_url('2-broke-girls-a-xxx-parody-somesite') == 'https://www.data18.com/movies/1227431'
 
 
 async def test_enrich_images_allow_square_false_drops_squares(monkeypatch: pytest.MonkeyPatch) -> None:
-    import app.clients.aggregators.data18 as data18_module
+    import phoenixadult.clients.aggregators.data18 as data18_module
 
     client = Data18Client()
     urls = ['https://cdn.example/sq.jpg', 'https://cdn.example/wide.jpg', 'https://cdn.example/unprobed.jpg']
@@ -225,7 +225,7 @@ def test_manual_mappings_have_no_duplicate_keys() -> None:
         dupes.extend(k for k, n in keys.items() if n > 1)
         return dict(pairs)
 
-    for f in sorted(pathlib.Path('app/clients/aggregators/_data/data18').glob('data18_manual_mappings*.json')):
+    for f in sorted(pathlib.Path('phoenixadult/clients/aggregators/_data/data18').glob('data18_manual_mappings*.json')):
         data = json.loads(f.read_text(encoding='utf-8'), object_pairs_hook=hook)
         for k in data:
             if k in owner:
@@ -236,7 +236,7 @@ def test_manual_mappings_have_no_duplicate_keys() -> None:
 
 
 def test_manual_mappings_entries_are_well_formed() -> None:
-    from app.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
+    from phoenixadult.clients.aggregators.data18 import DATA18_MANUAL_MAPPINGS
 
     for d18, entry in DATA18_MANUAL_MAPPINGS.items():
         assert d18.isdigit(), d18
@@ -249,7 +249,7 @@ def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -
     import json
     from pathlib import Path
 
-    from app.clients.aggregators.data18 import _load_manual_mappings
+    from phoenixadult.clients.aggregators.data18 import _load_manual_mappings
 
     folder = Path(str(tmp_path)) / '_data' / 'data18'
     folder.mkdir(parents=True)

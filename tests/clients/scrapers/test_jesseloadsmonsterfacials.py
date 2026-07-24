@@ -5,10 +5,10 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.jesseloadsmonsterfacials import JesseLoadsMonsterFacialsClient
-from app.registry import find_site
-from app.utils.helpers.helpers import pack_cur_id
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.jesseloadsmonsterfacials import JesseLoadsMonsterFacialsClient
+from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.helpers import pack_cur_id
 
 SITE = find_site('Jesse Loads Monster Facials')
 assert SITE is not None

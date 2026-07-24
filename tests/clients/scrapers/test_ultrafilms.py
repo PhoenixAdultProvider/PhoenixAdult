@@ -5,9 +5,9 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.ultrafilms import UltrafilmsClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.ultrafilms import UltrafilmsClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Ultrafilms')
 assert SITE is not None

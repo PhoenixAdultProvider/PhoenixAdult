@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.vna as mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.vna import VNAClient
-from app.registry import find_site
+import phoenixadult.clients.networks.vna as mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.vna import VNAClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Sara Jay')
 assert SITE is not None

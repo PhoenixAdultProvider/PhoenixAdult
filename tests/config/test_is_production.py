@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.config.env import env
+from phoenixadult.config.env import env
 
 
 def test_unset_defaults_to_production(monkeypatch):

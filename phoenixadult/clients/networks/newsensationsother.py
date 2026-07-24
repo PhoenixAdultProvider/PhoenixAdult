@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+from typing import Any
+
+from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext
+from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.processors.title_case import title_case
+
+STUDIO = 'New Sensations'
+
+
+class NewSensationsOtherClient(Client):
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        base = search_data.site_info.base_url.rstrip('/')
+        encoded = search_data.title.strip().lower().replace(' ', '+')
+        url = base + search_data.site_info.search_path.replace('{query}', encoded)
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        if not search_results:
+            return None
+
+        sources = list(search_results['sel'].xpath('//div[@class="update_details"]'))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
+
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return (source.xpath('(.//a)[1]').xpath('string(.)').get() or '').strip()
+
+    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
+        href = first_attr(source, '(.//a)[1]/@href')
+        return absolute_url(href, loaded.site.base_url) if href else ''
+
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        tok = (source.xpath('(.//div[@class="date_small"])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()
+        return iso_date(tok, '%m/%d/%Y') if tok else None
+
+    # ── Context Loader (resolves cast + keeps the last actor page) ──────────────
+
+    async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
+        pipe = payload.find('|')
+        url = payload[:pipe] if pipe >= 0 else payload
+        fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
+        capture = ctx.capture if ctx else None
+
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'[{site.name}] scene {url}')
+        if not details_page_elements:
+            return None
+
+        actors: list[ActorResult] = []
+        last_actor_page: Any = None
+        seen: set[str] = set()
+        for row in details_page_elements['sel'].xpath('//span[@class="update_models"]/a'):
+            name = first_attr(row, 'normalize-space(.)')
+            if not name or name in seen:
+                continue
+
+            seen.add(name)
+            photo = ''
+            href = first_attr(row, '@href')
+            if href:
+                model_page_elements = await self.fetch_and_load(absolute_url(href, site.base_url), FetchCtx(capture=capture), f'GET {href} (actor)')
+                if model_page_elements:
+                    last_actor_page = model_page_elements['sel']
+                    raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]/img)[1]/@src0_1x')
+                    if raw:
+                        photo = absolute_url(raw, site.base_url)
+
+            actors.append(ActorResult(name=name, photo_url=photo))
+
+        return LoadedScene(
+            url=url,
+            site=site,
+            scene_date=fallback or None,
+            capture=capture,
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
+            extra={'actors': actors, 'last_actor_page': last_actor_page},
+        )
+
+    # ── Update Field Hooks ────────────────────────────────────────────────────
+
+    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.title = (details_page_elements.xpath('(//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip()
+
+    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        metadata.summary = (details_page_elements.xpath('(//span[@class="update_description"])[1]').xpath('string(.)').get() or '').strip()
+
+    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.studio = STUDIO
+
+    async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.tagline = scene.site.name
+
+    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.collections = [scene.site.name]
+
+    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.release_date = scene.scene_date or None
+
+    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        values: list[str | None] = [
+            title_case((genre_link.xpath('normalize-space(.)').get() or '').replace('-', ''))
+            for genre_link in details_page_elements.xpath('//span[@class="update_tags"]/a')
+        ]
+
+        metadata.genres = self.dedup_strings(values)
+
+    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        metadata.actors = (scene.extra or {}).get('actors') or []
+
+    async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        details_page_elements = scene.require_sel()
+
+        base = scene.site.base_url
+        images = self.image_collector(lambda image: absolute_url(image.strip(), base))
+
+        for src in details_page_elements.xpath('//div[contains(@class,"mejs-layers")]//img/@src').getall():
+            images['push'](src)
+
+        last = (scene.extra or {}).get('last_actor_page')
+        if last is not None:
+            title = (details_page_elements.xpath('(//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip().lower()
+            for block in last.xpath('//div[contains(@class,"table") and contains(@class,"dvd_info")]'):
+                block_title = (block.xpath('(.//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip().lower()
+                if block_title != title:
+                    continue
+
+                for src in block.xpath('.//div[@class="cell"]//img/@src0_3x').getall():
+                    images['push'](src)
+
+        metadata.art = images['list']

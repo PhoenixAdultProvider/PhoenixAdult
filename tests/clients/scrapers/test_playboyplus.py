@@ -3,10 +3,10 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites.playboyplus import PlayboyPlusClient
-from app.registry import find_site
-from app.utils.helpers.helpers import pack_cur_id
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites.playboyplus import PlayboyPlusClient
+from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.helpers import pack_cur_id
 
 SITE = find_site('Playboy Plus')
 assert SITE is not None

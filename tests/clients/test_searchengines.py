@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from app.utils.searchengines import web_search, web_search_filtered
-from app.utils.searchengines.duckduckgo import DuckDuckGoClient
-from app.utils.searchengines.types import SearchOptions
+from phoenixadult.utils.searchengines import web_search, web_search_filtered
+from phoenixadult.utils.searchengines.duckduckgo import DuckDuckGoClient
+from phoenixadult.utils.searchengines.types import SearchOptions
 
 DDG_HTML = """<html><body>
   <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fscene-1&rut=x">one</a>

@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from app.utils.images import face_crop, face_crop_log
-from app.utils.people import cache
-from app.utils.people.generic import generic_image_url
+from phoenixadult.utils.images import face_crop, face_crop_log
+from phoenixadult.utils.people import cache
+from phoenixadult.utils.people.generic import generic_image_url
 
 
 @respx.mock

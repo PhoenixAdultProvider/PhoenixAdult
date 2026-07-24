@@ -231,6 +231,7 @@ Notes:
 | `PHOENIX_EXTRA_COLLECTIONS` | `false` | Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther. |
 | `DISABLE_AUTO_MATCH` | `false` | Suppress every match request Plex did not flag as user-initiated (`manual=1`). |
 | `SCENE_GAP` | `10` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 10–45s random jitter is always added on top, and at most 8 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead (watch it at `/queue`); finished background searches persist to the search store so a later scan consumes them. |
+| `REFRESH_FORCE_COUNT` | `3` | Plex refreshes of one scene within 60 seconds that force a fresh scrape instead of the cached snapshot. Set `1` to refetch on every refresh. |
 | `STATE_DB_PATH` | `./local/phoenixadult.db` | SQLite database (WAL) holding queue replays, the search store, and the scene snapshot store (see [database.md](database.md)). Scene text is primary data — do not delete this file; back it up with `VACUUM INTO`. Restart to apply. |
 | `SEARCH_STRIP_ACTORS` | _(unset)_ | Sites whose filenames lead with actor names: the names are dropped when building the site search, and title scoring uses the best of the stripped and unstripped title. Entries match a site, a studio, or a whole network (e.g. `Nubiles`). |
 

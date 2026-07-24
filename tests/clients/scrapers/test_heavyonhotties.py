@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import heavyonhotties as hoh_module
-from app.clients.sites.heavyonhotties import HeavyOnHottiesClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import heavyonhotties as hoh_module
+from phoenixadult.clients.sites.heavyonhotties import HeavyOnHottiesClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Heavy on Hotties')
 assert SITE is not None

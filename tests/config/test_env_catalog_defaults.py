@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 import pytest
 
-from app.config.env import env
-from app.config.env_catalog import ENV_CATALOG, EnvVarSpec
+from phoenixadult.config.env import env
+from phoenixadult.config.env_catalog import ENV_CATALOG, EnvVarSpec
 
 _DERIVED = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'}
 

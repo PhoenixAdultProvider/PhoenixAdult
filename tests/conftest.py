@@ -52,7 +52,7 @@ def _no_live_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyP
 @pytest.fixture(autouse=True)
 def _state_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
     """Every test gets its own state.db so nothing leaks into the repo-local default."""
-    from app.utils import db
+    from phoenixadult.utils import db
 
     monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
     yield
@@ -66,7 +66,7 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
     monkeypatch.delenv('REQBIN_ENABLE', raising=False)
-    from app.utils.http.impersonate import impersonate_backend
+    from phoenixadult.utils.http.impersonate import impersonate_backend
 
     monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)
 

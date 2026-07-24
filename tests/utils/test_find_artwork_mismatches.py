@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from PIL import Image as PILImage
 
-from app.utils import db
-from app.utils.cache import scene_store
+from phoenixadult.utils import db
+from phoenixadult.utils.cache import scene_store
 from scripts.find_artwork_mismatches import scene_mismatches
 
 

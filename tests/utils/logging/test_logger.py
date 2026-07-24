@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from app.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import logger
 
 
 def _capture(records: list[logging.LogRecord]) -> logging.Handler:

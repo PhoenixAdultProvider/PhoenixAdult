@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.pornworld import PornWorldClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.pornworld import PornWorldClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('DDF Busty')
 assert SITE is not None

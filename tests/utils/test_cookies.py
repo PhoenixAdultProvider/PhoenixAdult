@@ -4,7 +4,7 @@ import httpx
 import httpx2
 import respx
 
-from app.utils.cookies.site_cookies import get_site_cookies, parse_set_cookie
+from phoenixadult.utils.cookies.site_cookies import get_site_cookies, parse_set_cookie
 
 
 def test_parse_set_cookie() -> None:

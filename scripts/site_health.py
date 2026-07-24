@@ -98,12 +98,12 @@ def _check_threshold(min_val: int | None, got: float) -> dict[str, str]:
 
 
 async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
-    from app.clients.base import SceneContext, SearchContext
-    from app.mappers.metadata_mapper import MetadataMapper
-    from app.registry import find_site, get_all_providers
-    from app.services.scraper_router import ScraperRouter
-    from app.utils.processors.filename_parser import get_site_name_from_registry
-    from app.utils.processors.search_query import build_search_pieces
+    from phoenixadult.clients.base import SceneContext, SearchContext
+    from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.registry import find_site, get_all_providers
+    from phoenixadult.services.scraper_router import ScraperRouter
+    from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry
+    from phoenixadult.utils.processors.search_query import build_search_pieces
 
     r: dict[str, Any] = {'site': fx['site'], 'filename': fx['filename'], 'ok': False, 'reason': '', 'fields': _blank_fields()}
     try:

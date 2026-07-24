@@ -5,7 +5,7 @@ import hashlib
 import httpx
 import respx
 
-from app.utils.captcha.pow import get_verified_cookies, solve_pow
+from phoenixadult.utils.captcha.pow import get_verified_cookies, solve_pow
 
 
 def test_solve_pow_meets_target() -> None:

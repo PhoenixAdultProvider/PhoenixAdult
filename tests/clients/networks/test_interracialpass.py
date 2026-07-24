@@ -3,9 +3,9 @@ from __future__ import annotations
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.interracialpass import InterracialPassClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.interracialpass import InterracialPassClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Interracial Pass')
 BBC = find_site('BBC Surprise')

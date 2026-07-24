@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.sites import girlsrimming as gr_module
-from app.clients.sites.girlsrimming import GirlsRimmingClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.sites import girlsrimming as gr_module
+from phoenixadult.clients.sites.girlsrimming import GirlsRimmingClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Girls Rimming')
 assert SITE is not None

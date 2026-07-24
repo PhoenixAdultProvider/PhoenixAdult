@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.app_factory import create_app
+from phoenixadult.app_factory import create_app
 
 
 def test_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -65,8 +65,8 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
 def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
-    from app.routes import people_cache_routes as pcr
-    from app.utils.images import face_crop_log
+    from phoenixadult.routes import people_cache_routes as pcr
+    from phoenixadult.utils.images import face_crop_log
 
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     root = Path(str(tmp_path))
@@ -102,9 +102,9 @@ def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch,
 def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
-    from app.routes import people_cache_routes as pcr
-    from app.utils import db
-    from app.utils.people import cache as pcache
+    from phoenixadult.routes import people_cache_routes as pcr
+    from phoenixadult.utils import db
+    from phoenixadult.utils.people import cache as pcache
 
     monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
     d = Path(str(tmp_path)) / 'actors' / 'male'

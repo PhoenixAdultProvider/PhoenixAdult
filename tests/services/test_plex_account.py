@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from app.services import plex_account
+from phoenixadult.services import plex_account
 
 BASE = 'http://192.0.2.10:32400'
 

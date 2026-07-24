@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.utils.images.image_fetcher import _is_data18_host, _referers_for
+from phoenixadult.utils.images.image_fetcher import _is_data18_host, _referers_for
 
 _DT18_REFERERS = ['http://i.dt18.com', 'https://www.data18.com']
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.utils.images.image_classifier import classify_image
+from phoenixadult.utils.images.image_classifier import classify_image
 
 
 @pytest.mark.parametrize(

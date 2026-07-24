@@ -4,10 +4,10 @@ import httpx
 import pytest
 import respx
 
-import app.clients.networks.radicalcashother as rc_mod
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.radicalcashother import RadicalCashOtherClient
-from app.registry import find_site
+import phoenixadult.clients.networks.radicalcashother as rc_mod
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.radicalcashother import RadicalCashOtherClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('PurgatoryX')
 assert SITE is not None

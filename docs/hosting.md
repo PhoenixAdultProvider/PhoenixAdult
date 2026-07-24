@@ -19,7 +19,7 @@ What this does:
 2. Opens an ephemeral Quick Tunnel pointing at `http://localhost:3000`.
 3. Scrapes the generated `https://*.trycloudflare.com` URL from cloudflared's log.
 4. Rewrites the `PHOENIX_BASE_URL=` line in `.env` to that URL (other keys untouched).
-5. Starts the app via `python -m app.main` (preferring the project `.venv`). Ctrl+C
+5. Starts the app via `python -m phoenixadult.main` (preferring the project `.venv`). Ctrl+C
    kills both the app and the tunnel.
 
 Run it on every reboot. The Quick Tunnel URL changes each time - the script
@@ -37,8 +37,8 @@ named-tunnel steps below.
 2. **Start the app** in one terminal:
 
    ```bash
-   uvicorn app.main:app --port 3000
-   # or: python -m app.main
+   uvicorn phoenixadult.main:app --port 3000
+   # or: python -m phoenixadult.main
    ```
 
 3. **Test the tunnel once.** In another terminal:

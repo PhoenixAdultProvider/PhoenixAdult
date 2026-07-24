@@ -5,9 +5,9 @@ import json
 import httpx
 import respx
 
-from app.clients.base import SearchContext, SearchResult
-from app.clients.networks.radicalcash import RadicalCashClient
-from app.registry import find_site
+from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.networks.radicalcash import RadicalCashClient
+from phoenixadult.registry import find_site
 
 SITE = find_site('Inserted')
 assert SITE is not None
