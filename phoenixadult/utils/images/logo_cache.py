@@ -33,12 +33,24 @@ def logo_slug(name: str) -> str:
     return re.sub(r'\s+', '-', cleaned.strip())
 
 
+def _magick_bin() -> str | None:
+    """`magick` on PATH, else the usual install prefixes — daemon(8) often runs with a PATH
+    that omits /usr/local/bin, so shutil.which alone misses an installed ImageMagick."""
+    found = shutil.which('magick')
+    if found:
+        return found
+    for candidate in ('/usr/local/bin/magick', '/usr/bin/magick', '/opt/homebrew/bin/magick'):
+        if Path(candidate).is_file():
+            return candidate
+    return None
+
+
 def convert_svg(svg: Path) -> Path | None:
     """Rasterize an SVG logo to a sibling PNG — ImageMagick when installed, cairosvg
     otherwise — deleting the SVG on success."""
     png = svg.with_suffix('.png')
     ok = False
-    magick = shutil.which('magick')
+    magick = _magick_bin()
     if magick:
         try:
             subprocess.run([magick, '-background', 'none', '-density', '150', str(svg), str(png)], check=True, capture_output=True, timeout=60)
@@ -266,3 +278,34 @@ def purge_all() -> int:
     with conn:
         conn.execute('DELETE FROM logos')
     return count
+
+
+def _adopt_manual_drops() -> int:
+    """Rename manually-dropped logo files (any name) to `logo.<slug>.<ext>` so the reconcile
+    picks them up; the studio folder is the drop target, the file stem becomes the name slug."""
+    root = cache_dir()
+    if not root.exists():
+        return 0
+    adopted = 0
+    for f in sorted(root.rglob('*')):
+        if not f.is_file() or f.name.startswith('logo.') or f.name.startswith('.'):
+            continue
+        if f.suffix.lower() not in (*_RASTER_EXTS, '.svg'):
+            continue
+        slug = logo_slug(f.stem)
+        if not slug:
+            continue
+        target = f.with_name(f'logo.{slug}{f.suffix.lower()}')
+        if target.exists():
+            continue
+        f.rename(target)
+        adopted += 1
+    return adopted
+
+
+def rescan() -> int:
+    """Adopt manual drops then rebuild the index (converting any SVG to PNG), so a
+    hand-placed logo is served without a restart. Returns the number of cached logos."""
+    _adopt_manual_drops()
+    reconcile()
+    return len(entries())

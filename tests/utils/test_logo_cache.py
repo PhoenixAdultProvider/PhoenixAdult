@@ -139,6 +139,32 @@ def test_index_converts_dropped_svgs(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert not svg.exists()
 
 
+def test_magick_bin_falls_back_to_install_prefix(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """daemon(8) can run with a PATH lacking /usr/local/bin; the absolute-path fallback still
+    finds an installed magick that shutil.which misses."""
+    monkeypatch.setattr(logo_cache.shutil, 'which', lambda _name: None)
+    monkeypatch.setattr(logo_cache.Path, 'is_file', lambda self: self.as_posix() == '/usr/local/bin/magick')
+    assert logo_cache._magick_bin() == '/usr/local/bin/magick'
+
+
+def test_rescan_adopts_and_converts_manual_drops(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A manually-sourced file (any name) is renamed logo.<slug>.<ext>, an SVG is converted,
+    and the logo is served without a restart."""
+    _put(tmp_path, 'badoinkvr', 'BadoinkVR Logo.svg', b'<svg/>')
+    _put(tmp_path, 'brazzers', 'brazzers.png', b'png')
+
+    def fake_convert(path: Path) -> Path:
+        png = path.with_suffix('.png')
+        png.write_bytes(b'converted')
+        path.unlink()
+        return png
+
+    monkeypatch.setattr(logo_cache, 'convert_svg', fake_convert)
+    assert logo_cache.rescan() == 2
+    assert (tmp_path / 'badoinkvr' / 'logo.badoinkvr-logo.png').exists()
+    assert logo_cache.find_logo(None, 'Brazzers') == tmp_path / 'brazzers' / 'logo.brazzers.png'
+
+
 def test_index_rebuilds_after_db_loss(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from phoenixadult.utils import db
 

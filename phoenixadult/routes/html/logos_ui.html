@@ -16,7 +16,11 @@
     .bar input[type=text] { background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
     .bar input[type=text]::placeholder { color: #475569; }
     .count-badge { font-size: 12px; color: #64748b; }
-    .purge-all-btn { margin-left: auto; padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid #2563eb; border-radius: 6px; background: #1e293b; color: #60a5fa; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .rescan-btn:hover { background: #1d4ed8; color: #fff; }
+    .rescan-btn:disabled { border-color: #334155; color: #64748b; cursor: default; }
+    .rescan-status { font-size: 12px; color: #64748b; }
+    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
     .purge-all-btn:hover { background: #dc2626; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
     .card { background: #151b29; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -32,15 +36,18 @@
 </head>
 <body>
   <h1>Logo Cache</h1>
-  <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code></div>
+  <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.
+    Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.</div>
   <div class="off-banner" id="off-banner" style="display:none">LOGO_CACHE_ENABLE is off — these files are not being served; only scraped upstream logo URLs are emitted.</div>
   <div class="bar">
     <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
     <span class="count-badge" id="count"></span>
+    <button type="button" class="rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+    <span class="rescan-status" id="rescan-status"></span>
     <button type="button" class="purge-all-btn" onclick="purgeAll()">Purge all</button>
   </div>
   <div class="grid" id="grid"></div>
-  <div class="empty" id="empty" style="display:none">no logos cached — drop logo.&lt;site-slug&gt;.png files into the cache directory</div>
+  <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
 
   <script>
     let STATE = __STATE_JSON__;
@@ -86,6 +93,22 @@
       if (!confirm('Delete ALL cached logos?')) return;
       await api('/logos/api/purge-all', { method: 'POST' });
       refresh();
+    }
+
+    async function rescan() {
+      const btn = document.getElementById('rescanBtn');
+      const status = document.getElementById('rescan-status');
+      btn.disabled = true;
+      status.textContent = 'Converting…';
+      try {
+        const r = await (await api('/logos/api/rescan', { method: 'POST' })).json();
+        status.textContent = r.ok ? `${r.count} logo(s) cached` : 'rescan failed';
+        await refresh();
+      } catch {
+        status.textContent = 'rescan failed';
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     render();

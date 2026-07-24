@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 from fastapi import APIRouter, Depends, Request
@@ -48,3 +49,8 @@ async def purge(request: Request) -> JSONResponse:
 @router.post('/api/purge-all')
 async def purge_all() -> JSONResponse:
     return JSONResponse({'ok': True, 'purged': logo_cache.purge_all()})
+
+
+@router.post('/api/rescan')
+async def rescan() -> JSONResponse:
+    return JSONResponse({'ok': True, 'count': await asyncio.to_thread(logo_cache.rescan)})
