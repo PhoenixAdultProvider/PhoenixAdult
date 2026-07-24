@@ -114,6 +114,40 @@ async def test_dry_run_counts_without_writing(monkeypatch: pytest.MonkeyPatch) -
     assert report.items[0].status == 'importable'
 
 
+@pytest.mark.asyncio
+async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The staged URL must resolve back through the snapshot writer's own /cache/ lookup, or the
+    bytes are silently dropped and the scene lands imageless."""
+    from phoenixadult.utils import cache as metadata_cache
+
+    monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
+
+    class _Response:
+        headers = {'content-type': 'image/jpeg'}
+        content = b'jpegbytes'
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _Http:
+        async def get(self, _url: str) -> _Response:
+            return _Response()
+
+    class _Client:
+        base = 'http://plex.local:32400'
+        http = _Http()
+
+    staging = tmp_path / plex_import._STAGING / 'abc123def456'
+    url = await plex_import._stage_image(_Client(), staging, '/library/metadata/1/thumb/1', 'poster-00')  # type: ignore[arg-type]
+    assert url == f'/cache/{plex_import._STAGING}/abc123def456/images/poster-00.jpg'
+
+    resolved = metadata_cache._snapshot_file(url, 'http://provider.local')
+    assert resolved is not None
+    on_disk, name = resolved
+    assert name == 'poster-00.jpg'
+    assert on_disk.is_file() and on_disk.read_bytes() == b'jpegbytes'
+
+
 def test_report_caps_its_item_list() -> None:
     report = plex_import.ImportReport(applied=False)
     for i in range(plex_import._MAX_ITEMS + 25):

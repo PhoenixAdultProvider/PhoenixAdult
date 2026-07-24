@@ -115,8 +115,9 @@ async def _stage_image(client: PlexClient, staging: Path, plex_path: str, name: 
         logger.debug(_TAG, f'image fetch failed {plex_path}: {err!r}')
         return None
     ext = '.png' if 'png' in r.headers.get('content-type', '') else '.jpg'
-    staging.mkdir(parents=True, exist_ok=True)
-    (staging / f'{name}{ext}').write_bytes(r.content)
+    images = staging / 'images'
+    images.mkdir(parents=True, exist_ok=True)
+    (images / f'{name}{ext}').write_bytes(r.content)
     return f'/cache/{_STAGING}/{staging.name}/images/{name}{ext}'
 
 
@@ -175,7 +176,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key, title, 'importable', site_name, cur_id))
         return
 
-    staging = safe_join(metadata_cache.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}/images')
+    staging = safe_join(metadata_cache.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}')
     try:
         item = await client.item(rating_key)
         if not item:
@@ -197,7 +198,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key, title, 'failed', site_name, cur_id, repr(err)))
     finally:
         if staging is not None:
-            shutil.rmtree(staging.parent, ignore_errors=True)
+            shutil.rmtree(staging, ignore_errors=True)
 
 
 async def libraries() -> list[dict[str, str]]:
