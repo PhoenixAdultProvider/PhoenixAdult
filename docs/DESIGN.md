@@ -719,10 +719,10 @@ phoenixadult/
                              #   metadata_cache_routes, people_cache_routes, logo_routes,
                              #   queue_routes, plex_routes (+ html/)
   services/                  # match_service, metadata_service, scraper_router, scrape_queue,
-                             #   plex_reconcile, plex_account
+                             #   plex_reconcile, plex_account, plex_import
   mappers/                   # metadata_mapper
-  clients/                   # base Client (base.py) + 178 dedicated clients:
-                             #   sites/ (93), networks/ (77), aggregators/ (9)
+  clients/                   # base Client (base.py) + 179 dedicated clients:
+                             #   sites/ (93), networks/ (76), aggregators/ (10)
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider

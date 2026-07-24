@@ -141,6 +141,55 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### ALS Angels | ❌ - **Actress name with subject, Date Add**
 + #### Amour Angels | ❌ - **SceneID**
 + #### AnalVids | ✅
++ #### Archive | ✓ - **Cached Scenes Only — Site Retired**
+  - 3dxstar Channel PornPortal
+  - Abby Winters Podcast
+  - Aleah Jasmine
+  - Aletta Ocean Live
+  - Alexis Monroe
+  - Anal Channel PornPortal
+  - Angela White
+  - ArchAngel
+  - Assylum
+  - ATK Girlfriends
+  - Aunt Judys
+  - Aunt Judys XXX
+  - Aussie Ass
+  - Ava Dawn
+  - Bang My Hand
+  - BBW Channel PornPortal
+  - Bella HD
+  - Bella Next Door
+  - Bryci
+  - Cali Carter
+  - Cece September
+  - Cosplay Channel PornPortal
+  - Czech AR
+  - Dirty Sluts and Studs
+  - Ebony Channel PornPortal
+  - Girls In Nylon
+  - HD19
+  - Hunter Leigh
+  - Jana Fox
+  - Joe Perv
+  - Katie Banks
+  - Katie Kox
+  - Kiera King
+  - KinkVR
+  - Latina Channel PornPortal
+  - Lee Bang XXX
+  - Lesbian Channel PornPortal
+  - Milf Channel PornPortal
+  - Monroe Lee
+  - RealityGang Channel PornPortal
+  - SlaveMouth
+  - Sophie Dee and Friends
+  - Stepfamily Channel PornPortal
+  - Talia Shepard
+  - Teen Channel PornPortal
+  - The Squirt Instructor
+  - VR Channel PornPortal
+  - We Like Girls
 + #### BaDoink VR | ✅
   - 18VR
   - BabeVR
@@ -411,8 +460,10 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Caught Fapping
     - Couple Swapping
     - Dare We Share
+    - Girl Core
     - Kiss Me Fuck Me
     - Modern Day Sins
+    - Moms on Moms
     - Oopsie
     - Poly Family Life
     - Real Sensual

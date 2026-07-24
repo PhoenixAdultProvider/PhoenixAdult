@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
-from phoenixadult.services import plex_account, plex_reconcile
+from phoenixadult.services import plex_account, plex_import, plex_reconcile
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.logging.logger import logger
 
@@ -96,6 +96,42 @@ async def reconcile(request: Request) -> JSONResponse:
         report = await plex_reconcile.reconcile(apply=apply, limit=limit, fields=_csv('fields'), sites=_csv('sites'))
     except httpx2.HTTPError as err:
         logger.warn('plex-reconcile', f'Plex request failed: {err}')
+        return JSONResponse({'error': 'Plex request failed'}, status_code=502)
+    return JSONResponse(report.as_dict())
+
+
+@router.get('/libraries')
+async def libraries() -> JSONResponse:
+    if not plex_reconcile.enabled():
+        return JSONResponse({'error': 'Set PLEX_URL and PLEX_TOKEN to list libraries'}, status_code=409)
+    try:
+        return JSONResponse({'libraries': await plex_import.libraries()})
+    except httpx2.HTTPError as err:
+        logger.warn('plex-import', f'library list failed: {err}')
+        return JSONResponse({'error': 'Could not list libraries from Plex'}, status_code=502)
+
+
+@router.post('/import')
+async def import_library(request: Request) -> JSONResponse:
+    if not plex_reconcile.enabled():
+        return JSONResponse({'error': 'Set PLEX_URL and PLEX_TOKEN to import'}, status_code=409)
+
+    section = (request.query_params.get('section') or '').strip()
+    if not section:
+        return JSONResponse({'error': 'section is required'}, status_code=400)
+    apply = _truthy(request.query_params.get('apply'))
+    raw_limit = request.query_params.get('limit')
+    try:
+        limit = int(raw_limit) if raw_limit else None
+    except ValueError:
+        return JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+
+    try:
+        report = await plex_import.import_library(section, apply=apply, limit=limit)
+    except RuntimeError as err:
+        return JSONResponse({'error': str(err)}, status_code=409)
+    except httpx2.HTTPError as err:
+        logger.warn('plex-import', f'Plex request failed: {err}')
         return JSONResponse({'error': 'Plex request failed'}, status_code=502)
     return JSONResponse(report.as_dict())
 

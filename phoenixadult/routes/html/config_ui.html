@@ -223,6 +223,25 @@
       <div class="plex-kv" id="plex-collogo-out" style="display:none"></div>
     </div>
 
+    <h2>Import a Library Into the Cache</h2>
+    <div class="card">
+      <div class="var-desc">Reads every scene in one Plex movie library and stores it as a provider snapshot (metadata
+        plus poster and background art), so content whose site is gone stays servable. Scenes already cached are left
+        alone — a stored fresh scrape is never overwritten. Actor headshots are not imported; the people pipeline
+        resolves those. Scenes whose site is not in the registry are reported as unresolved and skipped.</div>
+      <div class="plex-row">
+        <select id="plex-import-section" style="flex:1 1 260px; min-width:260px"><option value="">Loading libraries…</option></select>
+        <button type="button" class="secondary" onclick="loadPlexLibraries()">Refresh</button>
+      </div>
+      <div class="plex-row">
+        <button type="button" class="secondary" onclick="runPlexImport(false)">Dry run</button>
+        <button type="button" onclick="runPlexImport(true)">Import</button>
+        <input type="text" id="plex-import-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many scanned items">
+        <span class="plex-status" id="plex-import-status"></span>
+      </div>
+      <div class="plex-kv" id="plex-import-out" style="display:none"></div>
+    </div>
+
     <h2>Purge clearLogos from Plex</h2>
     <div class="card">
       <div class="var-desc">Removes provider-supplied clearLogo art from Plex — the applied logo on each item and its
@@ -1073,8 +1092,47 @@
       }
     }
 
+    async function loadPlexLibraries() {
+      const sel = document.getElementById('plex-import-section');
+      try {
+        const res = await fetch(api('/plex/libraries'));
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
+        const libs = d.libraries || [];
+        sel.innerHTML = libs.length
+          ? libs.map(l => `<option value="${esc(l.key)}">${esc(l.title)}</option>`).join('')
+          : '<option value="">No movie libraries found</option>';
+      } catch (err) {
+        sel.innerHTML = `<option value="">${esc(err.message)}</option>`;
+      }
+    }
+
+    async function runPlexImport(apply) {
+      const section = document.getElementById('plex-import-section').value;
+      if (!section) { plexStatus('plex-import-status', 'Pick a library first', 'err'); return; }
+      if (apply && !confirm('Import this library into the metadata cache? Existing snapshots are kept.')) return;
+      const limit = document.getElementById('plex-import-limit').value.trim();
+      const params = ['section=' + encodeURIComponent(section)];
+      if (apply) params.push('apply=1');
+      if (limit) params.push('limit=' + encodeURIComponent(limit));
+      plexStatus('plex-import-status', '<span class="spin"></span> ' + (apply ? 'Importing…' : 'Dry run…'));
+      const out = document.getElementById('plex-import-out');
+      try {
+        const d = await postJSON(api('/plex/import?' + params.join('&')), {});
+        const headline = apply ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
+        out.style.display = 'block';
+        out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
+          + (d.itemsTruncated ? `<div class="hint">plus ${d.itemsTruncated} more not listed</div>` : '')
+          + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map(i => `${esc(i.status)} — ${esc(i.title)} <span style="color:#64748b">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>`).join('<br>') + '</div>' : '');
+        plexStatus('plex-import-status', apply ? 'Import complete.' : 'Dry run complete.', 'ok');
+      } catch (err) {
+        plexStatus('plex-import-status', esc(err.message), 'err');
+      }
+    }
+
     render();
     initReconFields();
+    loadPlexLibraries();
     const startTab = location.hash.slice(1);
     showTab(tabIds().includes(startTab) ? startTab : tabIds()[0]);
   </script>

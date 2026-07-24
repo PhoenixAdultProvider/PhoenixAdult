@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from phoenixadult.clients.aggregators.archive import ArchiveClient
 from phoenixadult.clients.aggregators.data18empire import Data18EmpireClient
 from phoenixadult.clients.aggregators.data18movies import Data18MoviesClient
 from phoenixadult.clients.aggregators.data18scenes import Data18ScenesClient
@@ -182,6 +183,7 @@ from phoenixadult.clients.sites.xvirtual import XVirtualClient
 
 CLIENT_REGISTRY: dict[str, Client] = {
     'abbywinters': AbbyWintersClient(),
+    'archive': ArchiveClient(),
     'adultempire': AdultEmpireClient(),
     'adultempirecash': AdultEmpireCashClient(),
     'adultprime': AdultPrimeClient(),

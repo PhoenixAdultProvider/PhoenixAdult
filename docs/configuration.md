@@ -223,6 +223,38 @@ Notes:
   traffic.
 - Items matched by another agent are ignored — only guids carrying our provider identifier.
 
+#### Importing a Library Into the Cache
+
+Scenes whose site has gone offline can no longer be re-scraped, but Plex still holds the metadata it
+was given. Import reads one Plex movie library and writes each scene back as a provider snapshot, so
+that history survives a cache purge or a rematch.
+
+```
+GET  /plex/libraries                          # movie sections, for the picker
+POST /plex/import?section=27                  # dry run: reports what it would import
+POST /plex/import?section=27&apply=1          # writes the snapshots
+POST /plex/import?section=27&apply=1&limit=50
+```
+
+Pick the library and run it from the **Plex tab** of `/config` ("Import a Library Into the Cache").
+
+Notes:
+
+- **Dry run by default.** Nothing is written without `apply=1`.
+- **Scenes already cached are skipped**, so a stored fresh scrape is never overwritten by Plex's
+  older copy. Purge a snapshot first if you want the Plex version to win.
+- Each scene is keyed back to its `(site, cur_id)` from the guid — ours, or the retired bundle's
+  numeric site id, falling back to the studio name. Scenes that match none are reported as
+  `unresolved` and skipped, never guessed at.
+- **Poster and background art are imported; actor headshots are not** — the people pipeline resolves
+  those, and the Plex copies are agent-supplied duplicates. Images are staged on disk and adopted by
+  the snapshot writer, so the Plex token never reaches stored metadata.
+- Retired sites resolve through the **Archive** client (`phoenixadult/clients/aggregators/archive.py`):
+  registry entries that exist only so their cached scenes stay servable. It never searches or
+  scrapes, and it yields to a real client if that site is ever ported back.
+- The per-item list in the report is capped at 500 entries; anything beyond that is counted in
+  `itemsTruncated`.
+
 ### Matching & Title Parsing
 
 | Variable | Default | Description |

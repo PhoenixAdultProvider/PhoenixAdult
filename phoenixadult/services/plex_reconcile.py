@@ -132,6 +132,14 @@ class PlexClient:
         container = await self._get('/library/sections')
         return [d['key'] for d in (container.get('Directory') or []) if d.get('type') == 'movie' and d.get('key')]
 
+    async def movie_libraries(self) -> list[dict[str, str]]:
+        container = await self._get('/library/sections')
+        return [
+            {'key': str(d['key']), 'title': str(d.get('title') or d['key'])}
+            for d in (container.get('Directory') or [])
+            if d.get('type') == 'movie' and d.get('key')
+        ]
+
     async def section_items(self, section: str) -> list[dict[str, Any]]:
         container = await self._get(f'/library/sections/{section}/all', type='1', includeGuids='1')
         return list(container.get('Metadata') or [])

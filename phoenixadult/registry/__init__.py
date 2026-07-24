@@ -6,6 +6,7 @@ import unicodedata
 
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
+from phoenixadult.registry.selectors.aggregators.archive import ARCHIVE_SITES as _ARCHIVE_SITES
 from phoenixadult.registry.site_info import ContentType, ResolvedSiteInfo, SiteInfo
 
 __all__ = [
@@ -28,19 +29,27 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.143',
+        version='1.0.0-alpha.144',
         media_type='movie',
     ),
 ]
 
 DEFAULT_PROVIDER_ID = PROVIDER_DEFINITIONS[0].id
 
-SITE_DEFINITIONS: list[SiteInfo] = [*_SELECTOR_SITES]
-
 
 def normalize_site_key(token: str) -> str:
     folded = unicodedata.normalize('NFKD', token).encode('ascii', 'ignore').decode('ascii')
     return re.sub(r'[^a-z0-9]', '', folded.lower())
+
+
+def _with_archive(sites: list[SiteInfo], archived: list[SiteInfo]) -> list[SiteInfo]:
+    """Archive entries only fill gaps: a name a real client already claims keeps its scraper, so
+    porting a retired site later silently retires its archive stand-in."""
+    taken = {normalize_site_key(token) for site in sites for token in [site.name, *site.aliases]}
+    return [*sites, *(site for site in archived if normalize_site_key(site.name) not in taken)]
+
+
+SITE_DEFINITIONS: list[SiteInfo] = _with_archive(list(_SELECTOR_SITES), _ARCHIVE_SITES)
 
 
 def _build_tables(
