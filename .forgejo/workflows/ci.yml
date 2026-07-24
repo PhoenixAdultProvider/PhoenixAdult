@@ -44,7 +44,7 @@ jobs:
         run: ruff check .
 
       - name: Type check
-        run: mypy app
+        run: mypy phoenixadult
 
       - name: Tests
         run: pytest -q --no-cov

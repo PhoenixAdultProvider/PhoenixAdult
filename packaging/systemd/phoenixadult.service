@@ -14,7 +14,7 @@ Group=phoenixadult
 WorkingDirectory=/var/lib/phoenixadult
 Environment=PORT=3000
 EnvironmentFile=-/var/lib/phoenixadult/.env
-ExecStart=/var/lib/phoenixadult/venv/bin/python -m app.main
+ExecStart=/var/lib/phoenixadult/venv/bin/python -m phoenixadult.main
 
 # always: the config-UI "Restart" button exits 0 and must come back up.
 Restart=always

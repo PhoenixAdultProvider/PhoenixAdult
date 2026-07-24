@@ -149,10 +149,10 @@ Write-Log ".env updated -> PHOENIX_BASE_URL=$tunnelUrl"
 # ── 5. Start the agent in foreground; clean up tunnel on exit ────────────────
 Push-Location $ProjectRoot
 try {
-  Write-Log "Starting python -m app.main (reload) on port $Port ..."
+  Write-Log "Starting python -m phoenixadult.main (reload) on port $Port ..."
   $env:PORT = "$Port"
   $env:NODE_ENV = 'development'  # dev launcher — reload + /dev UI + timestamped uvicorn logs
-  & $PyExe -m app.main
+  & $PyExe -m phoenixadult.main
 } finally {
   Pop-Location
   if ($cfdProc -and -not $cfdProc.HasExited) {

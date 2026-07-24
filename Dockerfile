@@ -18,7 +18,7 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir '.[impersonate]'
 
 # Replace the dependency layer's empty dist with the real package.
-COPY app ./app
+COPY phoenixadult ./phoenixadult
 RUN pip install --no-cache-dir --no-deps .
 
 # uid 1000 matches the default host user so the ./local and ./logs bind mounts stay writable.
@@ -30,4 +30,4 @@ USER phoenixadult
 EXPOSE 3000
 HEALTHCHECK --interval=60s --timeout=5s --start-period=20s \
     CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '3000') + '/health')"
-CMD ["python", "-m", "app.main"]
+CMD ["python", "-m", "phoenixadult.main"]
