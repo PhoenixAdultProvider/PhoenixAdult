@@ -6,13 +6,20 @@ from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
-from phoenixadult.utils.processors.actor_strip import enabled_for, strip_actor_prefix
+from phoenixadult.utils.processors.actor_strip import strip_actor_prefix
 
 _GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
 
 
 def _query_slug(title: str) -> str:
     return slugify(title.lower().replace("'s", ' s').replace("'", '').replace('.', ''))
+
+
+def _slug_candidates(title: str) -> list[str]:
+    """The release slug is the title alone, but these filenames usually lead with the actor names.
+    Trying the title as given first means a title that starts with a name still wins on its own."""
+    forms = [title, strip_actor_prefix(title)]
+    return list(dict.fromkeys(slug for slug in (_query_slug(form) for form in forms) if slug))
 
 
 class PornProsClient(Client):
@@ -33,11 +40,15 @@ class PornProsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         title = search_data.title
-        if enabled_for(search_data.site_info):
-            title = strip_actor_prefix(title)
 
-        slug = _query_slug(title)
-        release = await self._release(base, slug, search_data.capture)
+        release: dict[str, Any] | None = None
+        slug = ''
+        for candidate in _slug_candidates(title):
+            release = await self._release(base, candidate, search_data.capture)
+            if release:
+                slug = candidate
+                break
+
         if not release:
             return
 

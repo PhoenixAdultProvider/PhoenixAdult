@@ -64,6 +64,16 @@ async def test_find_scene_url_movie_kind_matches_movie_hrefs() -> None:
 
 
 @respx.mock
+async def test_find_scene_url_matches_a_provider_spelled_without_spaces() -> None:
+    """A network's own label for a sub-site ("18YearsOld") and Data18's ("18 Years Old") are the
+    same name; provider carries 0.9 of the score, so an unnormalized compare sinks a real match."""
+    page = _SEARCH.replace('Some Title', 'Playing Hooky').replace('BangBros', '18 Years Old').replace('123-some-title', '123-playing-hooky')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=page))
+    url = await Data18Client().find_scene_url(None, 'Playing Hooky', ['18YearsOld', 'Porn Pros'], datetime(2024, 1, 2))
+    assert url == 'https://www.data18.com/scenes/123-playing-hooky'
+
+
+@respx.mock
 async def test_find_scene_url_rejects_low_accuracy() -> None:
     respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(return_value=httpx.Response(200, text=_SEARCH))
     url = await Data18Client().find_scene_url(None, 'Totally Different', ['OtherStudio'], datetime(2010, 5, 5))

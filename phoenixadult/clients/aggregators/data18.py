@@ -16,6 +16,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, SearchContext, SearchResult
 from phoenixadult.config.env import env
+from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -189,8 +190,10 @@ def _similarity(a: str, b: str) -> float:
 
 
 def _provider_similarity(a: str | list[str], b: str | list[str]) -> float:
-    a_list = a if isinstance(a, list) else [a]
-    b_list = b if isinstance(b, list) else [b]
+    """Registry-normalized: a network's own label for a sub-site ("18YearsOld") and Data18's
+    ("18 Years Old") are one name spelled two ways, and provider carries 0.9 of the score."""
+    a_list = [normalize_site_key(x) for x in (a if isinstance(a, list) else [a])]
+    b_list = [normalize_site_key(y) for y in (b if isinstance(b, list) else [b])]
     best = 0.0
     for x in a_list:
         for y in b_list:
