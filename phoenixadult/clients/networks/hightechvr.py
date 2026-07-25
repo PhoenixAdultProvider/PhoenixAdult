@@ -78,7 +78,7 @@ class HighTechVRClient(Client):
         metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline(scene)
+        metadata.tagline = self._tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._tagline(scene)

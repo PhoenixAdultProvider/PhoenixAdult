@@ -105,7 +105,7 @@ async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.title == 'Cool Scene - Part One'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Nubile Films'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen']
     assert detail.actors[0].name == 'Jane Doe'

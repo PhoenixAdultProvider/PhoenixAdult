@@ -154,7 +154,7 @@ class AbbyWintersClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._subsite(scene) or None
+        metadata.tagline = self._subsite(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._subsite(scene)

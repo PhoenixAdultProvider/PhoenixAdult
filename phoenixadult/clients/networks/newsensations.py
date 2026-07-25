@@ -86,7 +86,7 @@ class NewSensationsClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._dvd_tagline(scene)
+        metadata.tagline = self._dvd_tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if self._is_dvd(scene):

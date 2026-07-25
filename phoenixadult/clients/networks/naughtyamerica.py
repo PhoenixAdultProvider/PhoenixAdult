@@ -172,7 +172,7 @@ class NaughtyAmericaClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene) or None
+        metadata.tagline = self._tagline_of(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tag = self._tagline_of(scene)

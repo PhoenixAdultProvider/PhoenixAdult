@@ -43,7 +43,7 @@ There are 4 available search/matching methods, as listed below:
 + **StudioID:** Typically used when sites host many small, independent studios (ie. Clips4Sale).
   - Can add the Date (before the StudioID).
   - Can add a Title/Actor (after the StudioID). This acts as a search term.
-+ **ActressID:** Typically used when actresses have their own page, but scenes do not. 
++ **ActressID:** Typically used when actresses have their own page, but scenes do not.
   - Can add the Date (before the ActressID).
   - Can add a Title/Actor (after the ActressID). This acts as a search term.
 + **SceneID**
@@ -240,7 +240,7 @@ Here are some examples for each type of search:
     - `SN` - `SceneID`
   - A direct url match, using only a suffix:
     - `SiteName` - `Direct URL`
-      - `PornPros` - `eager-hands` (taken from the URL [https://pornpros.com/video/**eager-hands**](https://dereferer.me/?https%3A//pornpros.com/video/eager-hands))
+      - `Porn Pros` - `eager-hands` (taken from the URL [https://pornpros.com/video/**eager-hands**](https://dereferer.me/?https%3A//pornpros.com/video/eager-hands))
     - `SiteName` - `YY-MM-DD` - `Direct URL`
       - `Mylf` - `2019.01.01` - `1809 manicured-milf-masturbation` (taken from the URL [https://www.mylf.com/movies/**1809/manicured-milf-masturbation**](https://dereferer.me/?https%3A//www.mylf.com/movies/1809/manicured-milf-masturbation))
       - `Wicked` - `2019.10.10` - `Stranger-Than-Fiction 77675` (taken from the URL [https://www.wicked.com/en/movie/**Stranger-Than-Fiction/77675**](https://dereferer.me/?https%3A//www.wicked.com/en/movie/Stranger-Than-Fiction/77675))

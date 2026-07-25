@@ -85,7 +85,7 @@ async def test_detail_end_to_end_json() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A wild blurb.'
     assert detail.studio == 'Watch4Beauty'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['Watch4Beauty']
     assert detail.release_date == '2024-01-05'
     assert detail.year == 2024

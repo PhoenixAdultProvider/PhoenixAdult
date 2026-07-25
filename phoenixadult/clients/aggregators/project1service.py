@@ -242,7 +242,7 @@ class Project1ServiceClient(Client):
         colls = detail.get('collections') or []
         sub_site = (colls[0].get('name') or '').strip() if colls and isinstance(colls[0], dict) else ''
         has_sub = bool(sub_site) and _normalize(sub_site) != _normalize(metadata.studio)
-        metadata.tagline = sub_site if has_sub else None
+        metadata.tagline = sub_site if has_sub else ''
         metadata.collections = [sub_site] if has_sub else [metadata.studio]
 
         # Release Date

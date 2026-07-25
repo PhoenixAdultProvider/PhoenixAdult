@@ -81,7 +81,7 @@ class JulesJordanClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.tagline = _desc_row(details_page_elements, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or None
+        metadata.tagline = _desc_row(details_page_elements, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [STUDIO]

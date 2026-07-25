@@ -293,19 +293,19 @@ class AdultEmpireClient(Client):
     def _packed(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra if isinstance(scene.extra, dict) else {}
 
-    def _tagline_value(self, scene: LoadedScene) -> str | None:
+    def _tagline_value(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         series = first_attr(details_page_elements, '(//h2//a[@label="Series"])[1]/text()')
         if not series:
-            return None
+            return ''
 
         parts = series.split('"')
         if len(parts) < 2:
-            return None
+            return ''
 
         cleaned = re.sub(r'\(.*\)', '', parts[1]).strip()
-        return cleaned or None
+        return cleaned
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

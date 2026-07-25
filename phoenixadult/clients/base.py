@@ -97,12 +97,12 @@ class SceneDetail:
     title: str = ''
     summary: str = ''
     studio: str = ''
+    tagline: str = ''
     genres: list[str] = field(default_factory=list)
     actors: list[ActorResult] = field(default_factory=list)
     art: list[str] = field(default_factory=list)
     art_referer: str | None = None
     art_cookie: str | None = None
-    tagline: str | None = None
     release_date: str | None = None
     year: int | None = None
     collections: list[str] | None = None

@@ -66,7 +66,7 @@ class DirtyHardDriveClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name if scene.site.name != STUDIO else None
+        metadata.tagline = scene.site.name if scene.site.name != STUDIO else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

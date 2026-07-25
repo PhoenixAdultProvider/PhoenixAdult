@@ -89,7 +89,7 @@ async def test_detail_subbrand_is_own_studio() -> None:
     assert detail is not None
     assert detail.title == 'Sub Scene'
     assert detail.studio == 'Hussie Pass'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['Hussie Pass']
 
 

@@ -253,7 +253,7 @@ class Clips4SaleClient(Client):
 
         # Tagline and Collection(s)
         tagline_override = ruled['tagline_override']
-        metadata.tagline = tagline_override or clip.get('studioTitle') or None
+        metadata.tagline = tagline_override or clip.get('studioTitle') or ''
         metadata.collections = [tagline_override] if tagline_override else ([clip['studioTitle']] if clip.get('studioTitle') else None)
 
         # Release Date

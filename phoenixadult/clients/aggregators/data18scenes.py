@@ -168,7 +168,7 @@ class Data18ScenesClient(Client):
         metadata.studio = self._extra(scene).get('studio') or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._extra(scene).get('tagline') or None
+        metadata.tagline = self._extra(scene).get('tagline') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         c = self._extra(scene).get('collections') or []

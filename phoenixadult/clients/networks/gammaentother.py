@@ -191,7 +191,7 @@ class GammaEntOtherClient(Client):
                 add_collection(d['movie_title'])
 
         metadata.studio = studio
-        metadata.tagline = tagline
+        metadata.tagline = tagline or ''
         metadata.collections = collections or None
 
         # Genres

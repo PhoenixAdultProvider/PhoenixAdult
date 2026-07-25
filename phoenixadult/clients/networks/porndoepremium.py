@@ -56,7 +56,7 @@ class PorndoePremiumClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._first_actor(scene) or None
+        metadata.tagline = self._first_actor(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tag = self._first_actor(scene)

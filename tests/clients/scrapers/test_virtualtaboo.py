@@ -83,7 +83,7 @@ async def test_detail_full_summary() -> None:
     assert detail.title == 'wild scene'
     assert detail.summary == 'Full description text.'
     assert detail.studio == 'Virtual Taboo'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['Virtual Taboo']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']

@@ -52,7 +52,7 @@ async def test_detail_parent_network() -> None:
     assert detail.title == 'Some Scene'
     assert detail.summary == 'A scene.'
     assert detail.studio == 'Brazzers Network'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['Brazzers', 'Brazzers Network']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Blonde']

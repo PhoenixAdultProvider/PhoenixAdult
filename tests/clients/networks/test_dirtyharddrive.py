@@ -67,7 +67,7 @@ async def test_detail_with_playlist_poster() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Dirty Hard Drive'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['Dirty Hard Drive']
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'

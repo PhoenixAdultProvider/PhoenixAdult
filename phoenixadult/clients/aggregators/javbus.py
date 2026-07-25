@@ -127,7 +127,7 @@ class JavBusClient(Client):
 
         series = first_attr(details_page_elements, '(//p//a[contains(@href,"/series/")])[1]/text()')
 
-        metadata.tagline = f'Series: {series}' if series else None
+        metadata.tagline = f'Series: {series}' if series else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

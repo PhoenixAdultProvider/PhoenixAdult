@@ -326,7 +326,7 @@ class NubilesClient(Client):
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         sub = scene.subsite or scene.site.name
-        metadata.tagline = sub if sub != metadata.studio else None
+        metadata.tagline = sub if sub != metadata.studio else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.subsite or scene.site.name]

@@ -50,7 +50,7 @@ async def test_detail() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
-    assert detail.studio == 'PornPros'
+    assert detail.studio == 'Porn Pros'
     assert detail.tagline == 'Cum4K'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen', 'Creampie']

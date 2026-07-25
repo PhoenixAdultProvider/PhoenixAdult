@@ -80,7 +80,7 @@ class ManyvidsClient(Client):
         metadata.studio = 'ManyVids'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = ((self._data(scene).get('model') or {}).get('displayName') or '').strip() or None
+        metadata.tagline = ((self._data(scene).get('model') or {}).get('displayName') or '').strip()
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = ((self._data(scene).get('model') or {}).get('displayName') or '').strip()

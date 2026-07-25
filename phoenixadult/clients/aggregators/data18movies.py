@@ -123,7 +123,7 @@ class Data18MoviesClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.tagline = _resolve_series(details_page_elements, _resolve_studio(details_page_elements)) or None
+        metadata.tagline = _resolve_series(details_page_elements, _resolve_studio(details_page_elements)) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

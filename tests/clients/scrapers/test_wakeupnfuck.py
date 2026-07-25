@@ -48,7 +48,7 @@ async def test_detail_publish_date_split() -> None:
     assert detail is not None
     assert detail.title == 'wild scene'
     assert detail.studio == 'WakeUpNFuck'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['WakeUpNFuck']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Hardcore', 'POV']

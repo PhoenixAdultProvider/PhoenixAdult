@@ -154,7 +154,7 @@ class JavLibraryClient(Client):
         metadata.studio = self._table_link(scene, 'Maker:') or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._table_link(scene, 'Label:') or None
+        metadata.tagline = self._table_link(scene, 'Label:') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         label = self._table_link(scene, 'Label:')

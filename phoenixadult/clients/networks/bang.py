@@ -186,7 +186,7 @@ class BangClient(Client):
         metadata.studio = self._studio_of(scene)
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene) or None
+        metadata.tagline = self._tagline_of(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

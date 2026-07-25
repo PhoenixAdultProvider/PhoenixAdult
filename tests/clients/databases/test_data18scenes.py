@@ -118,12 +118,12 @@ async def test_detail(no_web_search: object) -> None:
     [
         (SCENE_PAGE, 'Brazzers', 'Teens Like It Big'),
         (SCENE_PAGE_BARE_SUBSITE, 'Brazzers', 'Brazzers Exxtra'),
-        (SCENE_PAGE_STUDIO_ONLY, 'Hussie Pass', None),
+        (SCENE_PAGE_STUDIO_ONLY, 'Hussie Pass', ''),
         (SCENE_PAGE_WEBSERIE, 'TeamSkeet', 'Her Freshman Year'),
         (SCENE_PAGE_MINISERIE, 'Brazzers', 'Yoga Freaks'),
     ],
 )
-async def test_detail_studio_and_tagline_per_network_shape(page: str, studio: str, tagline: str | None, no_web_search: object) -> None:
+async def test_detail_studio_and_tagline_per_network_shape(page: str, studio: str, tagline: str, no_web_search: object) -> None:
     url = 'https://www.data18.com/scenes/9999'
     respx.get(url).mock(return_value=httpx.Response(200, text=page))
     detail = await Data18ScenesClient().fetch_scene_detail(url, SITE)

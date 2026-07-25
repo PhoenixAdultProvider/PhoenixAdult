@@ -89,7 +89,7 @@ class RadicalCashClient(Client):
         site = (self._content(scene).get('site') or '').strip()
         studio = self._profile(scene.site.name)['studio']
 
-        metadata.tagline = site if site and site != studio else None
+        metadata.tagline = site if site and site != studio else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         site = (self._content(scene).get('site') or '').strip()

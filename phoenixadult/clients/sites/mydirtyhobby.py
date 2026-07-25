@@ -128,7 +128,7 @@ class MyDirtyHobbyClient(Client):
         metadata.studio = 'My Dirty Hobby'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = (self._avatar(scene).get('title') or '').strip() or None
+        metadata.tagline = (self._avatar(scene).get('title') or '').strip()
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         name = (self._avatar(scene).get('title') or '').strip()

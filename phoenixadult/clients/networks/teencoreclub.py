@@ -101,7 +101,7 @@ class TeenCoreClubClient(Client):
         if label:
             tagline = _CAMEL_RE.sub(r'\1 \2', label.split('.')[0].strip())
 
-        metadata.tagline = tagline if tagline and tagline != STUDIO else None
+        metadata.tagline = tagline if tagline and tagline != STUDIO else ''
         metadata.collections = [tagline] if tagline else None
 
         # Release Date

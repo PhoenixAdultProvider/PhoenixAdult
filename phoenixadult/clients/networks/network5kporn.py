@@ -101,7 +101,7 @@ class Network5KPClient(Client):
 
         # Tagline and Collection(s)
         tagline = '5Kteens' if '5KT' in scene_url else site.name
-        metadata.tagline = tagline if tagline != STUDIO else None
+        metadata.tagline = tagline if tagline != STUDIO else ''
         metadata.collections = [tagline]
 
         # Release Date

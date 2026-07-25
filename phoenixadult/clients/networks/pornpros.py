@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
@@ -87,10 +88,10 @@ class PornProsClient(Client):
         metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'PornPros'
+        metadata.studio = 'Porn Pros'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline(scene) or None
+        metadata.tagline = self._tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         t = self._tagline(scene)
@@ -131,3 +132,8 @@ class PornProsClient(Client):
             images['push'](img)
 
         metadata.art = images['list']
+
+        # Posters from Data18
+        await self.enrich_from_data18(
+            metadata, scene.site, scene_id=mapping_slug(metadata.title, metadata.tagline), providers=[metadata.tagline, metadata.studio]
+        )

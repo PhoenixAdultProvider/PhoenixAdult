@@ -100,7 +100,7 @@ async def test_detail_prefers_datetime_attribute() -> None:
     assert detail is not None
     assert detail.release_date == '2024-01-05'
     assert detail.studio == 'Empire Studios'
-    assert detail.tagline is None
+    assert detail.tagline == ''
 
 
 @respx.mock
@@ -110,7 +110,7 @@ async def test_detail_strips_reptyle_suffix_and_drops_echoed_subsite() -> None:
     detail = await Data18MoviesClient().fetch_scene_detail(url, SITE)
     assert detail is not None
     assert detail.studio == 'TeamSkeet'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['TeamSkeet']
 
 

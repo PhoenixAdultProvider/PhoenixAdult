@@ -382,7 +382,7 @@ class ManualNfoClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)
 
-        metadata.tagline = (nfo.tagline if nfo else None) or None
+        metadata.tagline = (nfo.tagline if nfo else '') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         nfo = self._nfo(scene)

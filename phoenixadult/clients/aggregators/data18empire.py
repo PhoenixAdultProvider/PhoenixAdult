@@ -203,7 +203,7 @@ class Data18EmpireClient(Client):
         tagline = self._tagline_raw(scene)
         studio = self._studio(scene)
 
-        metadata.tagline = tagline if tagline and tagline != studio else None
+        metadata.tagline = tagline if tagline and tagline != studio else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [self._tagline_raw(scene) or self._studio(scene) or scene.site.name]

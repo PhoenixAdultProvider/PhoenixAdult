@@ -29,7 +29,7 @@ async def _image_types(monkeypatch: pytest.MonkeyPatch, urls: list[str]) -> dict
     return by_type
 
 
-def _detail(studio: str, tagline: str | None = None, collections: list[str] | None = None) -> SceneDetail:
+def _detail(studio: str, tagline: str = '', collections: list[str] | None = None) -> SceneDetail:
     return SceneDetail(title='A Scene', summary='', studio=studio, genres=[], actors=[], art=[], tagline=tagline, collections=collections)
 
 
@@ -117,12 +117,12 @@ async def test_metadata_tagline_chain_scrape_wins() -> None:
 
 
 async def test_metadata_tagline_chain_falls_back_to_filename_subsite() -> None:
-    tagline, collections = await _to_meta(_detail('Brazzers', tagline=None), filename_site='Big Tits at School')
+    tagline, collections = await _to_meta(_detail('Brazzers'), filename_site='Big Tits at School')
     assert tagline == 'Big Tits at School' and collections == ['Big Tits at School']
 
 
 async def test_metadata_tagline_chain_blank_when_no_subsite() -> None:
-    tagline, collections = await _to_meta(_detail('Brazzers', tagline=None), filename_site='Brazzers')
+    tagline, collections = await _to_meta(_detail('Brazzers'), filename_site='Brazzers')
     assert tagline is None and collections == ['Brazzers']
 
 

@@ -65,7 +65,7 @@ class AnalVidsClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.tagline = first_text(details_page_elements, _GENRES_LIST_FIRST_A) or None
+        metadata.tagline = first_text(details_page_elements, _GENRES_LIST_FIRST_A)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

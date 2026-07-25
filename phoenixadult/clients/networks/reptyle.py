@@ -137,7 +137,7 @@ class ReptyleClient(Client):
         metadata.studio = site.name
 
         # Tagline and Collection(s)
-        metadata.tagline = sub_site if has_sub else None
+        metadata.tagline = sub_site if has_sub else ''
         metadata.collections = [sub_site] if has_sub else [site.name]
 
         # Release Date

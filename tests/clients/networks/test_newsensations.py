@@ -56,7 +56,7 @@ async def test_detail_scene() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'New Sensations'
-    assert detail.tagline is None
+    assert detail.tagline == ''
     assert detail.collections == ['New Sensations']
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'

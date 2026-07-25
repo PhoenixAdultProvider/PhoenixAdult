@@ -334,7 +334,7 @@ When iterating on a scraper it's often fastest to watch it live:
 | ⬜ | Pornbox | enhanced | |
 | ⬜ | PornCZ | limited | |
 | ⬜ | Porndoe Premium | enhanced | |
-| ⬜ | PornPros | enhanced | |
+| ⬜ | Porn Pros | enhanced | |
 | ⬜ | Pornstar Platinum | enhanced | |
 | ⬜ | PornWorld | enhanced | |
 | ⬜ | POVR | limited | |
