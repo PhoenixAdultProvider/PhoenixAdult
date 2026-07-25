@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+
+import pytest
 
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
@@ -23,7 +26,9 @@ def test_decode_still_returns_a_real_scene_url() -> None:
     assert ScraperRouter().decode(b64url_encode('https://example.com/scene/1')) == 'https://example.com/scene/1'
 
 
-async def test_an_imported_scene_serves_from_cache_despite_its_legacy_cur_id() -> None:
+async def test_an_imported_scene_serves_from_cache_despite_its_legacy_cur_id(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     site, cur_id = 'Thicc18', _BINARY_CUR_ID
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Imported Scene', 'studio': site}
     data = {'MediaContainer': {'identifier': 'phoenixadult', 'size': 1, 'Metadata': [md]}}
