@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Callable
 from pathlib import Path
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.logging.logger import logger
+
+_BUSY_TIMEOUT_MS = 5000
 
 _MIGRATIONS: list[str] = [
     """
@@ -161,34 +164,64 @@ _MIGRATIONS: list[str] = [
     """,
 ]
 
-_conn: sqlite3.Connection | None = None
-_conn_path: str | None = None
+_local = threading.local()
+_open: list[sqlite3.Connection] = []
+_lock = threading.Lock()
+_current: tuple[str, int] = ('', 0)
+_migrated = False
+
+
+def _discard() -> None:
+    """Close every handle and move to a new epoch, so each thread reopens on its next call
+    instead of returning a connection someone else closed. Caller holds the lock."""
+    global _current, _migrated
+    for conn in _open:
+        conn.close()
+    _open.clear()
+    _migrated = False
+    _current = (_current[0], _current[1] + 1)
+
+
+def _epoch() -> tuple[str, int]:
+    """The (path, epoch) a thread's connection must match to still be usable."""
+    global _current
+    path = str(Path(env.state_db_path))
+    with _lock:
+        if _current[0] != path:
+            _discard()
+            _current = (path, _current[1])
+        return _current
 
 
 def connect() -> sqlite3.Connection:
-    """The process-wide phoenixadult.db connection (WAL, FK-enforced, schema migrated);
-    re-opens when STATE_DB_PATH changes (tests)."""
-    global _conn, _conn_path
-    path = str(Path(env.state_db_path))
-    if _conn is not None and _conn_path == path:
-        return _conn
-    close()
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA synchronous=NORMAL')
-    conn.execute('PRAGMA foreign_keys=ON')
-    _migrate(conn)
-    _conn, _conn_path = conn, path
+    """This thread's connection (WAL, FK-enforced, migrated) — one handle is not safe to share
+    across the to_thread workers. Opening is serialized: a fresh database's WAL switch needs a lock."""
+    global _migrated
+    key = _epoch()
+    cached: sqlite3.Connection | None = getattr(_local, 'conn', None)
+    if cached is not None and getattr(_local, 'key', None) == key:
+        return cached
+    Path(key[0]).parent.mkdir(parents=True, exist_ok=True)
+    with _lock:
+        conn = sqlite3.connect(key[0], check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute(f'PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}')
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.execute('PRAGMA foreign_keys=ON')
+        if not _migrated:
+            _migrate(conn)
+            _migrated = True
+        _open.append(conn)
+    _local.conn, _local.key = conn, key
     return conn
 
 
 def close() -> None:
-    global _conn, _conn_path
-    if _conn is not None:
-        _conn.close()
-        _conn, _conn_path = None, None
+    """Drop every open connection, not just the caller's — a worker's stale handle would otherwise
+    keep a swapped-out database file alive."""
+    with _lock:
+        _discard()
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

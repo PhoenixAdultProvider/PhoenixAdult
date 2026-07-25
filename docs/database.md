@@ -21,6 +21,15 @@ Connection setup (`phoenixadult/utils/db/connect`):
 | `journal_mode` | `WAL` | Crash-safe atomic transactions; readers never block the writer. Fixes the torn-write risk the JSON stores had. |
 | `synchronous` | `NORMAL` | The right durability/latency trade-off under WAL — a power loss can lose the last transaction(s) but never corrupts the file. |
 | `foreign_keys` | `ON` | SQLite defaults FK enforcement off; the scene tables rely on it (`ON DELETE CASCADE` junction cleanup). |
+| `busy_timeout` | `5000` | Concurrent writers wait for the lock instead of raising `database is locked`. |
+
+**Connections are per-thread.** A `sqlite3.Connection` tolerates use from another thread
+(`check_same_thread=False`) but is not safe for *concurrent* use — two threads inside `execute()`
+on one handle raise `InterfaceError: bad parameter or other API misuse`. Serving reads the cache
+through `asyncio.to_thread`, so every worker gets its own connection, tracked in a registry that
+`close()` drains together (a stale handle in a worker would otherwise pin a swapped-out database
+file). Opening is serialized under a lock: switching a fresh database to WAL needs a lock that
+`busy_timeout` does not wait out, so the first connection sets it and the rest find it set.
 
 Schema versioning uses `PRAGMA user_version` with a linear, append-only migration list
 (`_MIGRATIONS` in `phoenixadult/utils/db/__init__.py`). A migration script is never edited after
