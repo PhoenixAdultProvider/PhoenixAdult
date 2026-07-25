@@ -70,8 +70,16 @@ def test_retired_sites_resolve_to_the_archive_client() -> None:
 
 
 def test_archive_never_shadows_a_live_client() -> None:
-    site = find_site('Fit18')
-    assert site is not None and site.scraper_config.type == 'network18'
+    import dataclasses
+
+    from phoenixadult.registry import _with_archive
+    from phoenixadult.registry.selectors.aggregators.archive import ARCHIVE_SITES
+
+    live = find_site('Brazzers')
+    assert live is not None
+    stand_in = dataclasses.replace(ARCHIVE_SITES[0], name=live.name)
+    merged = _with_archive([live], [stand_in])
+    assert [site.scraper_config.type for site in merged] == [live.scraper_config.type]
 
 
 def _item() -> dict[str, Any]:

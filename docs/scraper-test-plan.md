@@ -316,7 +316,6 @@ When iterating on a scraper it's often fastest to watch it live:
 |---|---|---|---|
 | ⬜ | Naughty America | enhanced | |
 | ⬜ | Naughty America Other Sites | limited | |
-| ⬜ | Network 18 | limited | |
 | ⬜ | New Sensations | enhanced | |
 | ⬜ | Nubiles | enhanced | |
 | ⬜ | NVG Network | exact | |

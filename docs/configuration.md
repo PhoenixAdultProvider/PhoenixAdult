@@ -258,7 +258,9 @@ Notes:
 - **Actor headshots are not imported** — the people pipeline resolves those.
 - Retired sites resolve through the **Archive** client (`phoenixadult/clients/aggregators/archive.py`):
   registry entries that exist only so their cached scenes stay servable. It never scrapes, and it
-  yields to a real client if that site is ever ported back. Its **search reads the metadata cache**
+  yields to a real client if that site is ever ported back — its retired scraper waits in
+  `phoenixadult/graveyard/`, imported by nothing but still linted and type-checked, so restoring it
+  is re-registration rather than archaeology. Its **search reads the metadata cache**
   — cached scenes for that site scored against the query — so an imported scene can still be
   matched in Plex, which is what makes importing foreign-agent content worth doing.
 - The per-item list in the report is capped at 500 entries; anything beyond that is counted in

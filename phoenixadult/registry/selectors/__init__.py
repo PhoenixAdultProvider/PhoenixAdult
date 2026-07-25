@@ -50,7 +50,6 @@ from phoenixadult.registry.selectors.networks.missax import MISSAX_SITES
 from phoenixadult.registry.selectors.networks.modelcentro import MODELCENTRO_SITES
 from phoenixadult.registry.selectors.networks.naughtyamerica import NAUGHTYAMERICA_SITES
 from phoenixadult.registry.selectors.networks.network5kporn import SITES_5KPORN
-from phoenixadult.registry.selectors.networks.network18 import NETWORK18_SITES
 from phoenixadult.registry.selectors.networks.newsensations import NEWSENSATIONS_SITES
 from phoenixadult.registry.selectors.networks.newsensationsother import NEWSENSATIONSOTHER_SITES
 from phoenixadult.registry.selectors.networks.nubiles import NUBILES_SITES

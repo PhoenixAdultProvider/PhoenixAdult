@@ -52,7 +52,6 @@ from phoenixadult.clients.networks.missax import MissaXClient
 from phoenixadult.clients.networks.modelcentro import ModelCentroClient
 from phoenixadult.clients.networks.naughtyamerica import NaughtyAmericaClient
 from phoenixadult.clients.networks.network5kporn import Network5KPClient
-from phoenixadult.clients.networks.network18 import Network18Client
 from phoenixadult.clients.networks.newsensations import NewSensationsClient
 from phoenixadult.clients.networks.newsensationsother import NewSensationsOtherClient
 from phoenixadult.clients.networks.nubiles import NubilesClient
@@ -225,7 +224,6 @@ CLIENT_REGISTRY: dict[str, Client] = {
     'modelcentro': ModelCentroClient(),
     'nvg': NVGClient(),
     'naughtyamerica': NaughtyAmericaClient(),
-    'network18': Network18Client(),
     '5kporn': Network5KPClient(),
     'newsensations': NewSensationsClient(),
     'newsensationsother': NewSensationsOtherClient(),

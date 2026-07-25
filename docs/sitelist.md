@@ -167,6 +167,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Czech AR
   - Dirty Sluts and Studs
   - Ebony Channel PornPortal
+  - Fit18
   - Girls In Nylon
   - HD19
   - Hunter Leigh
@@ -188,6 +189,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Talia Shepard
   - Teen Channel PornPortal
   - The Squirt Instructor
+  - Thicc18
   - VR Channel PornPortal
   - We Like Girls
 + #### BaDoink VR | ✅
@@ -861,9 +863,6 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Wives on Vacation
 + #### Naughty America Other Sites | ✓ - **Actor only**
   - Tonights Girlfriend
-+ #### Network 18 | ✓ - **Title or Actor Name**
-  - Fit18
-  - Thicc18
 + #### New Sensations | ✅ - **Date Add**
   - FamilyXXX
   - Fresh Out of High School

@@ -343,10 +343,10 @@ classDiagram
   class sites["phoenixadult/clients/sites/* (93)"] {
     «per-site XPath flow»
   }
-  class networks["phoenixadult/clients/networks/* (77)"] {
+  class networks["phoenixadult/clients/networks/* (76)"] {
     «per-network flow»
   }
-  class aggregators["phoenixadult/clients/aggregators/* (9)"] {
+  class aggregators["phoenixadult/clients/aggregators/* (11)"] {
     «Data18 / JavBus / MetadataAPI / …»
   }
 
@@ -721,11 +721,12 @@ phoenixadult/
   services/                  # match_service, metadata_service, scraper_router, scrape_queue,
                              #   plex_reconcile, plex_account, plex_import
   mappers/                   # metadata_mapper
-  clients/                   # base Client (base.py) + 179 dedicated clients:
-                             #   sites/ (93), networks/ (76), aggregators/ (10)
+  clients/                   # base Client (base.py) + 180 dedicated clients:
+                             #   sites/ (93), networks/ (76), aggregators/ (11)
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider
+  graveyard/                 # retired scrapers, imported by nothing (see §Archive)
   utils/
     http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin,
                              #   ssrf_guard, rate_limit_helper (ScenePacer)
