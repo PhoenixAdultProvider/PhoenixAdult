@@ -245,9 +245,11 @@ Notes:
 - **Scenes already cached are skipped**, so a stored fresh scrape is never overwritten by Plex's
   older copy. Pass `overwrite=1` (or tick "Overwrite Cached Scenes") to replace them instead — use
   it to re-run an import after a fix rather than purging by hand.
-- Each scene is keyed back to its `(site, cur_id)` from the guid — ours, or the retired bundle's
-  numeric site id, falling back to the studio name. Scenes that match none are reported as
-  `unresolved` and skipped, never guessed at.
+- Each scene is keyed back to its `(site, cur_id)` from the guid — ours first, then the retired
+  bundle's numeric site id, then the studio name. That last step also recovers scenes **another
+  agent matched** (Kodi NFO, `local`, and friends): when the studio names a site we know, the
+  scene is keyed on the identifier that agent's own guid carries. Scenes that match none are
+  reported as `unresolved` with the reason, and skipped — never guessed at.
 - **Every poster and art candidate is imported, not just the two Plex has selected** — the old agent
   handed Plex its whole image set, so that is where the scene stills live. Duplicates listed under
   both buckets are collapsed, and each image is typed by the same aspect-ratio classifier a fresh
@@ -255,8 +257,10 @@ Notes:
   reaches stored metadata.
 - **Actor headshots are not imported** — the people pipeline resolves those.
 - Retired sites resolve through the **Archive** client (`phoenixadult/clients/aggregators/archive.py`):
-  registry entries that exist only so their cached scenes stay servable. It never searches or
-  scrapes, and it yields to a real client if that site is ever ported back.
+  registry entries that exist only so their cached scenes stay servable. It never scrapes, and it
+  yields to a real client if that site is ever ported back. Its **search reads the metadata cache**
+  — cached scenes for that site scored against the query — so an imported scene can still be
+  matched in Plex, which is what makes importing foreign-agent content worth doing.
 - The per-item list in the report is capped at 500 entries; anything beyond that is counted in
   `itemsTruncated`.
 

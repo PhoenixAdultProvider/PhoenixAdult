@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 from dataclasses import dataclass, field
 from io import BytesIO
@@ -18,6 +19,7 @@ from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import _hash, scene_store
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.helpers.helpers import pack_cur_id
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex import legacy_guid
@@ -30,6 +32,7 @@ _MAX_ITEMS = 500
 _CONCURRENCY = 4
 _ROLE_FIELDS = ('Role', 'Director', 'Writer', 'Producer')
 _NAME_BY_CLASS = {'coverPoster': 'poster', 'background': 'art', 'backgroundSquare': 'square'}
+_FOREIGN_GUID = re.compile(r'^[A-Za-z0-9._-]+://(?P<id>[^?#]+)')
 
 
 @dataclass
@@ -80,18 +83,36 @@ class ImportReport:
             self.items_truncated += 1
 
 
+def _foreign_cur_id(guid: str) -> str:
+    """A cur_id for an item some other agent matched: its own guid identifier, packed like any
+    scraped cur_id so it survives the rating-key round trip."""
+    match = _FOREIGN_GUID.match(guid)
+    return pack_cur_id([match['id']]) if match else ''
+
+
 def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
     """(site name, cur_id) for a Plex item: our own guid first, then the retired bundle's numeric
-    site id, then the studio field — so a legacy id we no longer ship still resolves by name."""
+    site id, then the studio field — which is what recovers a scene another agent matched."""
     if rating_key := _our_rating_key(guid):
         parsed = parse_rating_key(rating_key)
         if parsed and parsed['site_name'] and parsed['cur_id']:
             return str(parsed['site_name']), str(parsed['cur_id'])
     if decoded := legacy_guid.decode(guid):
         return decoded
-    cur_id = legacy_guid.payload(guid)
     site = find_site(studio) if studio else None
-    return (site.name, cur_id) if site and cur_id else None
+    if site is None:
+        return None
+    cur_id = legacy_guid.payload(guid) or _foreign_cur_id(guid)
+    return (site.name, cur_id) if cur_id else None
+
+
+def _unresolved_detail(guid: str, studio: str) -> str:
+    """Why one item could not be keyed, in the terms the operator can act on."""
+    if not studio:
+        return 'guid is not ours and the item has no studio to fall back on'
+    if find_site(studio) is None:
+        return f'studio "{studio}" matches no site in the registry'
+    return 'guid carries no identifier to key a cache entry on'
 
 
 def _tags(item: dict[str, Any], key: str) -> list[dict[str, str]]:
@@ -225,10 +246,11 @@ def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[PlexI
 async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportReport, apply: bool, overwrite: bool = False) -> None:
     rating_key = str(stub.get('ratingKey') or '')
     title = str(stub.get('title') or '')
-    resolved = _resolve(str(stub.get('guid') or ''), str(stub.get('studio') or ''))
+    guid, studio = str(stub.get('guid') or ''), str(stub.get('studio') or '')
+    resolved = _resolve(guid, studio)
     if resolved is None:
         report.unresolved += 1
-        report.add(ItemReport(rating_key, title, 'unresolved', detail='no site match for its guid or studio'))
+        report.add(ItemReport(rating_key, title, 'unresolved', detail=_unresolved_detail(guid, studio)))
         return
     site_name, cur_id = resolved
     if not overwrite and scene_store.has(_hash(site_name, cur_id)):

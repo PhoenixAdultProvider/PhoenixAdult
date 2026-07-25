@@ -8,6 +8,7 @@ from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.registry import find_site
 from phoenixadult.services import plex_import
 from phoenixadult.utils.plex import legacy_guid
+from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 _LEGACY = 'com.plexapp.agents.phoenixadult://KPS8XwrLBhi6HyW8Wv4yFYDLR6|1336|2025-11-28?lang=en'
 _LEGACY_NO_DATE = 'com.plexapp.agents.phoenixadult://2HeX3Zi2vTf1nifUQ6koPrKwVKMd|651?lang=en'
@@ -38,6 +39,29 @@ def test_resolve_falls_back_to_studio_when_legacy_id_is_unknown() -> None:
 def test_resolve_gives_up_without_a_site() -> None:
     assert plex_import._resolve('local://12345', '') is None
     assert plex_import._resolve('com.plexapp.agents.phoenixadult://XYZ|99999999|2025-01-01', 'Nope Not A Site') is None
+
+
+def test_resolve_recovers_an_item_another_agent_matched() -> None:
+    from phoenixadult.utils.helpers.helpers import b64url_decode
+
+    resolved = plex_import._resolve('com.plexapp.agents.xbmcnfo://AA196?lang=xn', 'Aussie Ass')
+    assert resolved is not None
+    site_name, cur_id = resolved
+    assert site_name == 'Aussie Ass'
+    assert b64url_decode(cur_id) == 'AA196'
+
+
+def test_foreign_cur_id_survives_the_rating_key_round_trip() -> None:
+    from phoenixadult.utils.plex.rating_key import to_rating_key
+
+    cur_id = plex_import._foreign_cur_id('com.plexapp.agents.xbmcnfo://AA196?lang=xn')
+    assert parse_rating_key(to_rating_key(cur_id, 'Aussie Ass')) == {'site_name': 'aussieass', 'cur_id': cur_id, 'release_date': None}
+
+
+def test_unresolved_detail_names_the_actual_gap() -> None:
+    assert 'no studio' in plex_import._unresolved_detail('local://12345', '')
+    assert 'registry' in plex_import._unresolved_detail('local://12345', 'Nope Not A Site')
+    assert 'identifier' in plex_import._unresolved_detail('nonsense-guid', 'Aussie Ass')
 
 
 def test_retired_sites_resolve_to_the_archive_client() -> None:
