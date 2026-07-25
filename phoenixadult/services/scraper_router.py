@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import binascii
+
 from phoenixadult.clients import get_client
 from phoenixadult.clients.base import SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import b64url_decode
+from phoenixadult.utils.logging.logger import logger
 
 
 class ScraperRouter:
@@ -24,4 +27,10 @@ class ScraperRouter:
         return await client.fetch_scene_detail(scene_url, site, ctx)
 
     def decode(self, cur_id: str) -> str:
-        return b64url_decode(cur_id)
+        """An imported scene's cur_id is whatever its old agent minted — often raw bytes, not our
+        encoded scene URL. That carries no URL rather than being an error, so it decodes to ''."""
+        try:
+            return b64url_decode(cur_id)
+        except (UnicodeDecodeError, binascii.Error, ValueError):
+            logger.debug('scraper', f'cur_id {cur_id} carries no scene URL')
+            return ''
