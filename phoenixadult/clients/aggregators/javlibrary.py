@@ -54,6 +54,7 @@ class JavLibraryClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=f'[{jav_id}] {title}',
                     scene_url=scene_url,
                     query=search_javid or search_data.title,

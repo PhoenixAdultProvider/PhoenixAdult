@@ -318,6 +318,7 @@ class ManualNfoClient(Client):
 
         results.append(
             build_search_result(
+                site=search_data.site_info,
                 title=title,
                 scene_url=str(located.nfo_path),
                 search_url=str(located.nfo_path),

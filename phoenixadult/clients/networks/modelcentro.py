@@ -82,6 +82,7 @@ class ModelCentroClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=scene['title'].strip(),
                     scene_url=f'{base}/scene/{sid}/',
                     query=query,

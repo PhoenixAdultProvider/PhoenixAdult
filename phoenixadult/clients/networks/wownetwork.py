@@ -33,6 +33,7 @@ class WowNetworkClient(Client):
             image = first_attr(row, '(.//img)[1]/@src')
             image_packed = self.encode(image) if image else ''
             return build_search_result(
+                site=search_data.site_info,
                 title=title,
                 scene_url=scene_url,
                 query=search_data.title,

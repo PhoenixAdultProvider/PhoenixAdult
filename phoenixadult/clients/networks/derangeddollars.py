@@ -41,7 +41,11 @@ class DerangedDollarsClient(Client):
             date_raw = ','.join(lch.split(',')[-2:]).strip()
             date_iso = iso_date(date_raw) if date_raw else None
 
-            results.append(build_search_result(title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date))
+            results.append(
+                build_search_result(
+                    site=search_data.site_info, title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date
+                )
+            )
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 

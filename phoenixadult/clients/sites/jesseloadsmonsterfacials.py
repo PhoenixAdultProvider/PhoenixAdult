@@ -97,6 +97,7 @@ class JesseLoadsMonsterFacialsClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=' and '.join(actors),
                     scene_url=poster,
                     query=search_data.title,

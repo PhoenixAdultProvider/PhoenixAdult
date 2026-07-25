@@ -322,6 +322,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         subsite = await self.fetch_search_subsite(source, loaded)
         results.append(
             build_search_result(
+                site=loaded.site,
                 title=title,
                 scene_url=scene_url,
                 query=loaded.ctx.title,

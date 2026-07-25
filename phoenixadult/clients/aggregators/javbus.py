@@ -64,6 +64,7 @@ class JavBusClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=f'[{label}][{jav_id}] {title}',
                         scene_url=scene_url,
                         query=search_data.title,
@@ -83,6 +84,7 @@ class JavBusClient(Client):
 
                     results.append(
                         build_search_result(
+                            site=search_data.site_info,
                             title=f'[Direct][{javid}] {jav_title}',
                             scene_url=direct_url,
                             query=search_data.title,

@@ -37,7 +37,13 @@ class FemdomEmpireClient(Client):
 
                 results.append(
                     build_search_result(
-                        title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date, score=score
+                        site=search_data.site_info,
+                        title=title,
+                        scene_url=scene_url,
+                        query=search_data.title,
+                        display_date=date_iso,
+                        search_date=search_data.search_date,
+                        score=score,
                     )
                 )
 
@@ -51,7 +57,7 @@ class FemdomEmpireClient(Client):
 
         manual = _MANUAL_MATCHES.get(search_data.title.strip())
         if manual:
-            results.append(build_search_result(title=manual['title'], scene_url=manual['url'], query=search_data.title, score=101))
+            results.append(build_search_result(site=search_data.site_info, title=manual['title'], scene_url=manual['url'], query=search_data.title, score=101))
 
         if results:
             return

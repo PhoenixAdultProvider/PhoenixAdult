@@ -25,7 +25,14 @@ class UnzipVRClient(Client):
                 continue
 
             results.append(
-                build_search_result(title=title, scene_url=slug, query=search_data.title, search_date=search_data.search_date, cur_id=pack_cur_id([slug]))
+                build_search_result(
+                    site=search_data.site_info,
+                    title=title,
+                    scene_url=slug,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    cur_id=pack_cur_id([slug]),
+                )
             )
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:

@@ -53,6 +53,7 @@ class XartClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=scene_url,
                         query=search_data.title,
@@ -69,6 +70,7 @@ class XartClient(Client):
             if scene_url not in seen:
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=manual['title'],
                         scene_url=scene_url,
                         query=search_data.title,

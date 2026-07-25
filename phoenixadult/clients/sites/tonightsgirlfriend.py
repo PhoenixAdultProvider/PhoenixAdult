@@ -48,6 +48,7 @@ class TonightsGirlfriendClient(Client):
             raw_date = first_text(row, './/span[contains(@class,"scene-date")]')
             date = iso_date(raw_date) if raw_date else None
             return build_search_result(
+                site=search_data.site_info,
                 title=', '.join(actor_names),
                 scene_url=scene_url,
                 query=actor_names[0],

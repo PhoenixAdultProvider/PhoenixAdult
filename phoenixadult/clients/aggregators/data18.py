@@ -298,6 +298,7 @@ class Data18Client(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=c.url,
                     query=text or search_data.title,
@@ -327,6 +328,7 @@ class Data18Client(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=url,
                     query=text or search_data.title,

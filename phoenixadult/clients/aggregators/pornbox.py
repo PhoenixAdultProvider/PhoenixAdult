@@ -46,6 +46,7 @@ class PornboxClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=f'{prefix}{scene.get("scene_name") or ""}'.strip(),
                     scene_url=scene_url,
                     query=search_data.title,

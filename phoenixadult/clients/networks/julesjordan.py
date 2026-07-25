@@ -28,6 +28,7 @@ class JulesJordanClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=search_data.title,
                     scene_url=direct_url,
                     query=search_data.title,
@@ -55,6 +56,7 @@ class JulesJordanClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=scene_url,
                         query=search_data.title,

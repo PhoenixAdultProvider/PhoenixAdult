@@ -93,7 +93,14 @@ class AbbyWintersClient(Client):
             logger.debug(name, f'AbbyWinters: scene "{title}" [{sub_site}] -> date {display_date or "NOT FOUND"}')
 
             results.append(
-                build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=display_date, search_date=search_data.search_date)
+                build_search_result(
+                    site=search_data.site_info,
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    display_date=display_date,
+                    search_date=search_data.search_date,
+                )
             )
 
     # ── Search Helpers ────────────────────────────────────────────────────────

@@ -89,7 +89,14 @@ class BellaPassClient(Client):
             release = iso_date(date_raw) or search_data.search_date
 
             results.append(
-                build_search_result(title=title, scene_url=scene_url, query=search_data.title, display_date=release, search_date=search_data.search_date)
+                build_search_result(
+                    site=search_data.site_info,
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    display_date=release,
+                    search_date=search_data.search_date,
+                )
             )
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────

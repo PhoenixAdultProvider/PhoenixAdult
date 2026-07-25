@@ -234,6 +234,7 @@ class AdultEmpireClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=_fmt_movie_display(title, studio, result_type, result_vol_num),
                     scene_url=movie_url,
                     query=search_data.title,
@@ -247,6 +248,7 @@ class AdultEmpireClient(Client):
             for row in _scene_rows(sel):
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=_fmt_split_display(title, row['scene_num'], row['scene_title'], row['actor_names'], studio, result_type),
                         scene_url=movie_url,
                         query=search_data.title,

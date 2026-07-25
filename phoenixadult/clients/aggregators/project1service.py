@@ -187,6 +187,7 @@ class Project1ServiceClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=f'[Trailer] {title}' if type_ == 'trailer' else title,
                         scene_url=url,
                         query=q,

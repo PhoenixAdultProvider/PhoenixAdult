@@ -58,6 +58,7 @@ class NVGClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=(updates.get('short_title') or '').strip(),
                         scene_url=base,
                         query=search_data.title,
@@ -97,6 +98,7 @@ class NVGClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=scene_url,
                     query=search_data.title,

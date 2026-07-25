@@ -46,6 +46,7 @@ class ColetteClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=scene_url,
                     query=search_data.title,

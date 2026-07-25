@@ -83,7 +83,12 @@ class BangClient(Client):
 
                 results.append(
                     build_search_result(
-                        title=_bangify(title), scene_url=url, query=search_data.title, display_date=release, search_date=search_data.search_date
+                        site=search_data.site_info,
+                        title=_bangify(title),
+                        scene_url=url,
+                        query=search_data.title,
+                        display_date=release,
+                        search_date=search_data.search_date,
                     )
                 )
 
@@ -121,6 +126,7 @@ class BangClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=_bangify(title),
                         scene_url=scene_url,
                         query=search_data.title,

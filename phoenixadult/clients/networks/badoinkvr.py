@@ -43,7 +43,13 @@ class BadoinkVrClient(Client):
                     thumb = first_attr(direct_page_elements['sel'], '(//img[contains(@class,"video-image")])[1]/@src')
                     results.append(
                         build_search_result(
-                            title=title, scene_url=url, query=search_data.title, search_date=search_data.search_date, score=100, thumb_url=thumb or None
+                            site=search_data.site_info,
+                            title=title,
+                            scene_url=url,
+                            query=search_data.title,
+                            search_date=search_data.search_date,
+                            score=100,
+                            thumb_url=thumb or None,
                         )
                     )
                     return
@@ -73,7 +79,13 @@ class BadoinkVrClient(Client):
 
             results.append(
                 build_search_result(
-                    title=title_attr, scene_url=abs_href, query=search_data.title, display_date=release, search_date=search_data.search_date, score=score
+                    site=search_data.site_info,
+                    title=title_attr,
+                    scene_url=abs_href,
+                    query=search_data.title,
+                    display_date=release,
+                    search_date=search_data.search_date,
+                    score=score,
                 )
             )
 

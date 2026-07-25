@@ -62,6 +62,7 @@ class FullPornNetworkClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=scene_url,
                     query=q,
@@ -87,7 +88,7 @@ class FullPornNetworkClient(Client):
 
                 seen.add(scene_url)
 
-                results.append(build_search_result(title=title, scene_url=scene_url, query=q, search_date=search_data.search_date))
+                results.append(build_search_result(site=search_data.site_info, title=title, scene_url=scene_url, query=q, search_date=search_data.search_date))
 
         for model_url in model_urls:
             search_results = await self.fetch_and_load(model_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] model {model_url}')

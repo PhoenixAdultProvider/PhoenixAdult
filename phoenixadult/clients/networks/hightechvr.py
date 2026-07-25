@@ -48,7 +48,13 @@ class HighTechVRClient(Client):
 
         results.append(
             build_search_result(
-                title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, score=100, cur_id=pack_cur_id([scene_url])
+                site=search_data.site_info,
+                title=title,
+                scene_url=scene_url,
+                query=search_data.title,
+                search_date=search_data.search_date,
+                score=100,
+                cur_id=pack_cur_id([scene_url]),
             )
         )
 

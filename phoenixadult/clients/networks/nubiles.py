@@ -222,6 +222,7 @@ class NubilesClient(Client):
 
                     results.append(
                         build_search_result(
+                            site=search_data.site_info,
                             title=display_title,
                             scene_url=link_raw if link_raw.startswith('http') else base + link_raw,
                             query=search_data.title,

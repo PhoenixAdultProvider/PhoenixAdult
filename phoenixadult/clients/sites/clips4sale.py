@@ -161,6 +161,7 @@ class Clips4SaleClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=_clean_title(clip['title']),
                     scene_url=clip_url,
                     query=rest,
@@ -193,6 +194,7 @@ class Clips4SaleClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=_clean_title(c['title']),
                     scene_url=clip_url,
                     query=rest,

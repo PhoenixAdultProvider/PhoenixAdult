@@ -43,6 +43,7 @@ class MetadataAPIClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=s.get('title') or '',
                     scene_url=f'{_API_BASE}/scenes/{scene_id}',
                     query=search_data.title,

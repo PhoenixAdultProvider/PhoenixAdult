@@ -47,6 +47,7 @@ class PornWorldClient(Client):
                 if title:
                     results.append(
                         build_search_result(
+                            site=search_data.site_info,
                             title=title,
                             scene_url=scene_url,
                             query=search_data.title,
@@ -71,6 +72,7 @@ class PornWorldClient(Client):
             if title and href:
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=join_url(href, base),
                         query=search_data.title,
@@ -88,6 +90,7 @@ class PornWorldClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=join_url(href, base),
                     query=search_data.title,
@@ -145,6 +148,7 @@ class PornWorldClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=join_url(href, base),
                         query=search_data.title,

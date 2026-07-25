@@ -27,6 +27,7 @@ class BellesaClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=str(video['title']).strip(),
                     scene_url=str(video.get('id')),
                     query=search_data.title,
@@ -52,6 +53,7 @@ class BellesaClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=str(vid),
                     query=search_data.title,

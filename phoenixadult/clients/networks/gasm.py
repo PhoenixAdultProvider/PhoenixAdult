@@ -33,7 +33,13 @@ class GasmClient(Client):
 
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date, score=100
+                    site=search_data.site_info,
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    display_date=date_iso,
+                    search_date=search_data.search_date,
+                    score=100,
                 )
             )
             return
@@ -59,6 +65,7 @@ class GasmClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=scene_url,
                     query=search_data.title,

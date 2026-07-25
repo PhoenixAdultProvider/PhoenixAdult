@@ -39,6 +39,7 @@ class ThickCashClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=search_url,
                     query=scene_title or search_data.title,

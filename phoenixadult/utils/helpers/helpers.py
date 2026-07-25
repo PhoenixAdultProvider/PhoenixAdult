@@ -19,6 +19,7 @@ from phoenixadult.utils.processors.title_case import convert_sequence_numbers, t
 
 if TYPE_CHECKING:
     from phoenixadult.clients.base import SearchResult
+    from phoenixadult.registry import ResolvedSiteInfo
 
 
 @overload
@@ -286,15 +287,17 @@ def build_search_result(
     thumb_url: str | None = None,
     search_url: str | None = None,
     subsite: str | None = None,
+    site: ResolvedSiteInfo,
 ) -> SearchResult:
     from phoenixadult.clients.base import SearchResult
+    from phoenixadult.utils.processors.actor_strip import best_title_score
 
     if score is not None:
         computed = score
     elif search_date and display_date:
         computed = date_distance_score(search_date, display_date)
     else:
-        computed = title_distance_score(query, title)
+        computed = best_title_score(query, title, site)
 
     logger.debug('Result Builder', f'Final score: {computed}')
     release_date = display_date or search_date or None

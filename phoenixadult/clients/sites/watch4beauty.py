@@ -85,6 +85,7 @@ class Watch4BeautyClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=scene_name,
                     scene_url=f'{base}/api/issues/{scene_slug}',
                     query=search_data.title,

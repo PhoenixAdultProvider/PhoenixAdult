@@ -49,6 +49,7 @@ class Network18Client(GraphQLClient):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=item.get('name') or '',
                     scene_url=item['itemId'],
                     query=search_data.title,

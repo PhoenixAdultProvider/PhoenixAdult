@@ -40,7 +40,12 @@ class InterracialPassClient(Client):
 
                 results.append(
                     build_search_result(
-                        title=title, scene_url=direct_url, query=search_data.title, display_date=iso_date(raw_date), search_date=search_data.search_date
+                        site=search_data.site_info,
+                        title=title,
+                        scene_url=direct_url,
+                        query=search_data.title,
+                        display_date=iso_date(raw_date),
+                        search_date=search_data.search_date,
                     )
                 )
 
@@ -63,6 +68,7 @@ class InterracialPassClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=scene_url,
                         query=search_data.title,

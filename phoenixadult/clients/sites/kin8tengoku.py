@@ -37,6 +37,7 @@ class Kin8tengokuClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=raw_title,
                         scene_url=direct_url,
                         query=search_data.title,
@@ -66,6 +67,7 @@ class Kin8tengokuClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=raw_title,
                         scene_url=scene_url,
                         query=keyword or search_data.title,

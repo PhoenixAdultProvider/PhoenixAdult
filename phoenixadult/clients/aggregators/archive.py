@@ -22,6 +22,7 @@ class ArchiveClient(Client):
         rows = await asyncio.to_thread(scene_store.site_scenes, search_data.site_info.name)
         scored = [
             build_search_result(
+                site=search_data.site_info,
                 title=row['title'],
                 scene_url='',
                 query=search_data.title,

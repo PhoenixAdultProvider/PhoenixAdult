@@ -54,6 +54,7 @@ class PornProsClient(Client):
 
         results.append(
             build_search_result(
+                site=search_data.site_info,
                 title=(release.get('title') or '').strip(),
                 scene_url=f'{base}/api/releases/{slug}',
                 query=title,

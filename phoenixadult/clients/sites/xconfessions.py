@@ -90,6 +90,7 @@ class XConfessionsClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=f'{base_url}/api/movies/slug/{slug}',
                     query=search_data.title,
@@ -106,6 +107,7 @@ class XConfessionsClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=direct['title'].strip(),
                         scene_url=f'{base_url}/api/movies/slug/{direct_slug}',
                         query=search_data.title,

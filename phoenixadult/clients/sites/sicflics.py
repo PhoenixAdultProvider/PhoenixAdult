@@ -55,6 +55,7 @@ class SicflicsClient(Client):
 
         results.append(
             build_search_result(
+                site=loaded.site,
                 title=title,
                 scene_url=popup_url,
                 query=loaded.ctx.title,

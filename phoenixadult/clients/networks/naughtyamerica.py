@@ -86,6 +86,7 @@ class NaughtyAmericaClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=raw_title,
                         scene_url=f'{_SCENE_BASE}/{path}',
                         query=search_data.title,
@@ -125,6 +126,7 @@ class NaughtyAmericaClient(Client):
 
         results.append(
             build_search_result(
+                site=search_data.site_info,
                 title=title,
                 scene_url=f'{_SCENE_BASE}/{path}',
                 query=search_data.title,

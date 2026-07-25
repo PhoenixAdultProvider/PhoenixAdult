@@ -61,6 +61,7 @@ class Strike3Client(GraphQLClient):
             if isinstance(v, dict) and v.get('slug') and v.get('title'):
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=v['title'],
                         scene_url=v['slug'],
                         query=text,
@@ -89,6 +90,7 @@ class Strike3Client(GraphQLClient):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=v['title'],
                     scene_url=v['slug'],
                     query=text,

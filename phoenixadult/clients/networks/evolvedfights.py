@@ -44,7 +44,11 @@ class EvolvedFightsClient(Client):
             raw = (details_page_elements['sel'].xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
             date_iso = iso_date(raw, _DATE_FMT) if raw else None
 
-            results.append(build_search_result(title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date))
+            results.append(
+                build_search_result(
+                    site=search_data.site_info, title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date
+                )
+            )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

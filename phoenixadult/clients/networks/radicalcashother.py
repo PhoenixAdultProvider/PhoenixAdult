@@ -69,6 +69,7 @@ class RadicalCashOtherClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=scene_url,
                         query=search_data.title,
@@ -98,6 +99,7 @@ class RadicalCashOtherClient(Client):
 
                     results.append(
                         build_search_result(
+                            site=search_data.site_info,
                             title=search_data.title,
                             scene_url=scene_url,
                             query=search_data.title,
@@ -110,7 +112,12 @@ class RadicalCashOtherClient(Client):
 
                 results.append(
                     build_search_result(
-                        title=search_data.title, scene_url=url, query=search_data.title, search_date=search_data.search_date, cur_id=pack_cur_id([url])
+                        site=search_data.site_info,
+                        title=search_data.title,
+                        scene_url=url,
+                        query=search_data.title,
+                        search_date=search_data.search_date,
+                        cur_id=pack_cur_id([url]),
                     )
                 )
 

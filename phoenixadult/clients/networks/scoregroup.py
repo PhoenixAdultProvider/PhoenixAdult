@@ -63,7 +63,12 @@ class ScoreGroupClient(Client):
 
             results.append(
                 build_search_result(
-                    title=_clean_title(title), scene_url=source['_url'], query=ctx.title, search_date=ctx.search_date, cur_id=pack_cur_id([packed])
+                    site=loaded.site,
+                    title=_clean_title(title),
+                    scene_url=source['_url'],
+                    query=ctx.title,
+                    search_date=ctx.search_date,
+                    cur_id=pack_cur_id([packed]),
                 )
             )
             return
@@ -89,7 +94,13 @@ class ScoreGroupClient(Client):
 
         results.append(
             build_search_result(
-                title=_clean_title(raw_title), scene_url=scene_url, query=ctx.title, search_date=ctx.search_date, score=score, cur_id=pack_cur_id([packed])
+                site=loaded.site,
+                title=_clean_title(raw_title),
+                scene_url=scene_url,
+                query=ctx.title,
+                search_date=ctx.search_date,
+                score=score,
+                cur_id=pack_cur_id([packed]),
             )
         )
 

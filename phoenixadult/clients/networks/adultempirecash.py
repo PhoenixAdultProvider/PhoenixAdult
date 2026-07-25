@@ -76,7 +76,7 @@ class AdultEmpireCashClient(Client):
             if search_results:
                 title = first_attr(search_results['sel'], '(//h1[@class="description"])[1]/text()')
                 if title:
-                    results.append(build_search_result(title=title, scene_url=direct_url, query=search_data.title, score=100))
+                    results.append(build_search_result(site=search_data.site_info, title=title, scene_url=direct_url, query=search_data.title, score=100))
 
         url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'GET {url}')
@@ -93,6 +93,7 @@ class AdultEmpireCashClient(Client):
 
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=title,
                         scene_url=abs_url,
                         query=search_data.title,

@@ -90,7 +90,12 @@ class GammaEntClient(Client):
 
             results.append(
                 build_search_result(
-                    title=row['title'], scene_url=row['scene_url'], query=search_data.title, display_date=date_iso, search_date=search_data.search_date
+                    site=search_data.site_info,
+                    title=row['title'],
+                    scene_url=row['scene_url'],
+                    query=search_data.title,
+                    display_date=date_iso,
+                    search_date=search_data.search_date,
                 )
             )
 

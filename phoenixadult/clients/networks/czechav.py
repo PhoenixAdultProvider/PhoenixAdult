@@ -40,7 +40,13 @@ class CzechAVClient(Client):
 
             results.append(
                 build_search_result(
-                    title=title, scene_url=scene_url, query=search_data.title, search_date=search_data.search_date, score=score, thumb_url=thumb or None
+                    site=search_data.site_info,
+                    title=title,
+                    scene_url=scene_url,
+                    query=search_data.title,
+                    search_date=search_data.search_date,
+                    score=score,
+                    thumb_url=thumb or None,
                 )
             )
 

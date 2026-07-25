@@ -1,7 +1,7 @@
 {
   "partial_skip": ["180", "1080p", "180°", "4k", "5k", "60 FPS", "60fps", "60p", "6k", "7k", "8k", "aprilfools", "best of", "chibbles", "folsom", "funscript", "hd"],
   "replace": {
-    "18-Year-Old": ["18", "18 year", "18yo", "eighteen", "eighteen and..."],
+    "18-Year-Old": ["18", "18 year", "18yo", "eighteen", "eighteen and...", "18yearsold"],
     "19-Year-Old": ["19", "nineteen"],
     "69 (Position)": ["69", "69 position", "sixty-nine", "standing 69"],
     "All Natural": ["natural"],
@@ -250,6 +250,7 @@
     "Stereoscopic 3D",
     "acworthy",
     "adalind grey",
+    "alex grey",
     "aliana dawson",
     "alli addison",
     "anthony pierce",

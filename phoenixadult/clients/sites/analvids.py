@@ -36,6 +36,7 @@ class AnalVidsClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=term['name'].strip(),
                     scene_url=scene_url,
                     query=text,

@@ -107,6 +107,7 @@ class Data18EmpireClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=title,
                     scene_url=movie_url,
                     query=search_data.title,
@@ -120,6 +121,7 @@ class Data18EmpireClient(Client):
             for scene_num in range(1, scene_count + 1):
                 results.append(
                     build_search_result(
+                        site=search_data.site_info,
                         title=f'{title} [Scene {scene_num}]',
                         scene_url=movie_url,
                         query=search_data.title,

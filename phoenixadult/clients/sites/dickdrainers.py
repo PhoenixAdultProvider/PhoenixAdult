@@ -62,6 +62,7 @@ class DickDrainersClient(Client):
 
     def _result(self, title: str, scene_url: str, search_data: SearchContext, date: str | None) -> SearchResult:
         return build_search_result(
+            site=search_data.site_info,
             title=title,
             scene_url=scene_url,
             query=search_data.title,

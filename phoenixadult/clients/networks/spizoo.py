@@ -61,6 +61,7 @@ class SpizooClient(Client):
 
             results.append(
                 build_search_result(
+                    site=search_data.site_info,
                     title=_strip_4k(raw_title),
                     scene_url=scene_url,
                     query=search_data.title,
