@@ -265,8 +265,6 @@ def delete(rel_path: str) -> bool:
 
 
 def site_scenes(site: str) -> list[dict[str, str]]:
-    """Every cached scene for one site, as search fodder — the only way a retired site's scenes
-    can still be found, since nothing is left to scrape."""
     rows = db.connect().execute('SELECT cur_id, title, release_date, thumb FROM scenes WHERE site = ? ORDER BY title', (site,)).fetchall()
     return [{'cur_id': str(r['cur_id']), 'title': str(r['title']), 'release_date': str(r['release_date'] or ''), 'thumb': str(r['thumb'] or '')} for r in rows]
 

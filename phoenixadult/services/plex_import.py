@@ -84,8 +84,6 @@ class ImportReport:
 
 
 def _foreign_cur_id(guid: str) -> str:
-    """A cur_id for an item some other agent matched: its own guid identifier, packed like any
-    scraped cur_id so it survives the rating-key round trip."""
     match = _FOREIGN_GUID.match(guid)
     return pack_cur_id([match['id']]) if match else ''
 
@@ -107,7 +105,6 @@ def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
 
 
 def _unresolved_detail(guid: str, studio: str) -> str:
-    """Why one item could not be keyed, in the terms the operator can act on."""
     if not studio:
         return 'guid is not ours and the item has no studio to fall back on'
     if find_site(studio) is None:

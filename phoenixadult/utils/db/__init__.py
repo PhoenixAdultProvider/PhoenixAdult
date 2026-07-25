@@ -172,8 +172,6 @@ _migrated = False
 
 
 def _discard() -> None:
-    """Close every handle and move to a new epoch, so each thread reopens on its next call
-    instead of returning a connection someone else closed. Caller holds the lock."""
     global _current, _migrated
     for conn in _open:
         conn.close()
@@ -183,7 +181,6 @@ def _discard() -> None:
 
 
 def _epoch() -> tuple[str, int]:
-    """The (path, epoch) a thread's connection must match to still be usable."""
     global _current
     path = str(Path(env.state_db_path))
     with _lock:
@@ -218,8 +215,6 @@ def connect() -> sqlite3.Connection:
 
 
 def close() -> None:
-    """Drop every open connection, not just the caller's — a worker's stale handle would otherwise
-    keep a swapped-out database file alive."""
     with _lock:
         _discard()
 

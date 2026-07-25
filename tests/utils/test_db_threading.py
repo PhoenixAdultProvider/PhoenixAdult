@@ -11,7 +11,6 @@ _ROUNDS = 25
 
 
 def _run(target: Any) -> list[Any]:
-    """Run target on _THREADS threads that are all alive at once, and collect what they return."""
     out: list[Any] = []
     barrier = threading.Barrier(_THREADS)
     guard = threading.Lock()

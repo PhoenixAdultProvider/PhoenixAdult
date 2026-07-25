@@ -12,16 +12,12 @@ MAX_RESULTS = 20
 
 
 def _absolute(thumb: str) -> str | None:
-    """Snapshot thumbs are stored host-relative; a search response needs a fetchable URL."""
     if not thumb:
         return None
     return f'{config.base_url}{thumb}' if thumb.startswith('/') else thumb
 
 
 class ArchiveClient(Client):
-    """Retired sites: nothing is left to scrape, so search reads the metadata cache and scene
-    detail is a no-op — a stored scene stays matchable, it just never leaves the provider."""
-
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         rows = await asyncio.to_thread(scene_store.site_scenes, search_data.site_info.name)
         scored = [

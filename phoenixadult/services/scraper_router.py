@@ -27,8 +27,6 @@ class ScraperRouter:
         return await client.fetch_scene_detail(scene_url, site, ctx)
 
     def decode(self, cur_id: str) -> str:
-        """An imported scene's cur_id is whatever its old agent minted — often raw bytes, not our
-        encoded scene URL. That carries no URL rather than being an error, so it decodes to ''."""
         try:
             return b64url_decode(cur_id)
         except (UnicodeDecodeError, binascii.Error, ValueError):

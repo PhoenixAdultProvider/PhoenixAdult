@@ -190,8 +190,6 @@ def _similarity(a: str, b: str) -> float:
 
 
 def _provider_similarity(a: str | list[str], b: str | list[str]) -> float:
-    """Registry-normalized: a network's own label for a sub-site ("18YearsOld") and Data18's
-    ("18 Years Old") are one name spelled two ways, and provider carries 0.9 of the score."""
     a_list = [normalize_site_key(x) for x in (a if isinstance(a, list) else [a])]
     b_list = [normalize_site_key(y) for y in (b if isinstance(b, list) else [b])]
     best = 0.0

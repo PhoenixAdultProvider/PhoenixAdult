@@ -16,8 +16,6 @@ def _query_slug(title: str) -> str:
 
 
 def _slug_candidates(title: str) -> list[str]:
-    """The release slug is the title alone, but these filenames usually lead with the actor names.
-    Trying the title as given first means a title that starts with a name still wins on its own."""
     forms = [title, strip_actor_prefix(title)]
     return list(dict.fromkeys(slug for slug in (_query_slug(form) for form in forms) if slug))
 
