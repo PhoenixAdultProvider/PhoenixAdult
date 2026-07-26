@@ -422,6 +422,79 @@ To update the site list run `python -m scripts.generate_sitelist`
   - FTVMilfs
 + #### Fitting-Room | ❌ - **SceneID**
 + #### FuckingAwesome | ✅
++ #### FuckYouCash | ✅ - **Title only — must match the slug in the scene URL**
+  - Anal4K
+  - BAEB
+  - BBC Pie
+  - Casting Couch-X
+  - Cum4K
+  - Exotic4K
+  - Facials4K
+  - FantasyHD
+  - Girl Cum
+  - Holed
+  - Lubed
+  - Mom4K
+  - My Very First Time
+  - Nanny Spy
+  - Passion-HD
+  - POVD
+  - Pure Mature
+  - Spy Fam
+  - Strippers 4K
+  - Tiny4K
+  - WetVR
+  - Porn Pros
+    - 18 Years Old
+    - 40oz Bounce
+    - Cock Competition
+    - Cruelty Party
+    - Cum Disgrace
+    - Cumshot Surprise
+    - Deep Throat Love
+    - Disgraced 18
+    - Euro Humpers
+    - Flexible Positions
+    - Freaks of Boobs
+    - Freaks of Cock
+    - Jurassic Cock
+    - Massage Creep
+    - MILF Humiliation
+    - Pimp Parade
+    - Public Violations
+    - Real Ex-Girlfriends
+    - Shady Pi
+    - Squirt Disgrace
+    - TeenBFF
+  - Porn+
+    - Asians Exploited
+    - BBC POVD
+    - Bikini Smash
+    - Boobs4K
+    - Caged Sex
+    - Creepy Pa
+    - Double Trouble
+    - Exploited Cheerleaders
+    - Facials Galore
+    - Game On
+    - Girl Scout Sex
+    - Glory Hole 4K
+    - Kinky Sluts 4K
+    - MomCum
+    - Passion Fuck
+    - Penis to Pussy
+    - Pornstars in Cars
+    - Property Exploits
+    - Public Pickup
+    - RV Adventures
+    - School of Cock
+    - Sexercise
+    - Shower 4K
+    - Squirt Bomb
+    - Strip Club Tryouts
+    - Throat Creampies
+    - Waxxxed
+    - Zoom POV
 + #### FuelVirtual | ✅
   - FuckedHard18
   - MassageGirls18
@@ -953,71 +1026,6 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Sluts Around Town
 + #### Playboy Plus | ✅
 + #### PlumperPass | ✅
-+ #### Porn Pros | ✅ - **Title only — must match the slug in the scene URL**
-  - 18 Years Old
-  - 40oz Bounce
-  - Anal4K
-  - Asians Exploited
-  - BAEB
-  - BBC Pie
-  - BBC POVD
-  - Bikini Smash
-  - Caged Sex
-  - Casting Couch-X
-  - Cock Competition
-  - Creepy Pa
-  - Cruelty Party
-  - Cum Disgrace
-  - Cum4K
-  - Cumshot Surprise
-  - Deep Throat Love
-  - Disgraced 18
-  - Double Trouble
-  - Euro Humpers
-  - Exotic4K
-  - Exploited Cheerleaders
-  - Facials Galore
-  - Facials4K
-  - FantasyHD
-  - Freaks of Boobs
-  - Freaks of Cock
-  - Game On
-  - Girl Cum
-  - Girl Scout Sex
-  - Glory Hole 4K
-  - Holed
-  - Jurassic Cock
-  - Kinky Sluts 4K
-  - Lubed
-  - Massage Creep
-  - MILF Humiliation
-  - Mom4K
-  - MomCum
-  - My Very First Time
-  - Nanny Spy
-  - Passion-HD
-  - Pimp Parade
-  - PornPlus
-  - POVD
-  - Property Exploits
-  - Pure Mature
-  - Real ExGirlfriends
-  - RV Adventures
-  - School of Cock
-  - Sexercise
-  - Shady Pi
-  - Shower 4K
-  - Spy Fam
-  - Squirt Bomb
-  - Squirt Disgrace
-  - Strip Club Tryouts
-  - Strippers 4K
-  - TeenBFF
-  - Throat Creampies
-  - Tiny4K
-  - Waxxxed
-  - WetVR
-  - Zoom POV
 + #### Pornbox | ✅
 + #### PornCZ | ✓ - **Title or Actor**
   - Amateri Premium

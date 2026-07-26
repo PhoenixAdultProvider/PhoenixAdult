@@ -9,7 +9,8 @@ from phoenixadult.utils.helpers.helpers import build_search_result, dict_values_
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.actor_strip import actor_strip_candidates
 
-_GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
+_GENRES: dict[str, list[str]] = load_data(__file__, 'fuckyoucash_genres')
+_DATA18_NAMES = {'Porn+': 'PornPlus'}
 _ACTORS_REPLACE: dict[str, tuple[str, str]] = {
     '40oz-zombie-booty': ('Vanessa', 'Vanessa Cruz'),
     'double-o-negro-mammoth-bootay': ('Vanessa', 'Vanessa Monet'),
@@ -25,7 +26,7 @@ def _slug_candidates(title: str) -> list[str]:
     return list(dict.fromkeys(slug for slug in (_query_slug(form) for form in actor_strip_candidates(title)) if slug))
 
 
-class PornProsClient(Client):
+class FuckYouCashClient(Client):
     async def _release(self, base: str, slug: str, capture: Any) -> dict[str, Any] | None:
         headers = {'x-site': base}
         data = await self.fetch_json(f'{base}/api/releases/{slug}', FetchCtx(capture=capture), headers=headers)
@@ -89,6 +90,12 @@ class PornProsClient(Client):
     def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
 
+    def _sub_site(self, scene: LoadedScene) -> str:
+        if not scene.site.sub_group:
+            return ''
+        sponsor = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
+        return sponsor if sponsor and sponsor != scene.site.sub_group else ''
+
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -100,15 +107,15 @@ class PornProsClient(Client):
         metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Porn Pros'
+        metadata.studio = scene.site.sub_group or scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
+        metadata.tagline = self._sub_site(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        tagline = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
+        studio = scene.site.sub_group or scene.site.name
 
-        metadata.collections = [tagline] if tagline else None
+        metadata.collections = [self._sub_site(scene) or studio]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         date = iso_date(self._data(scene).get('releasedAt') or '')
@@ -152,5 +159,8 @@ class PornProsClient(Client):
 
         # Posters from Data18
         await self.enrich_from_data18(
-            metadata, scene.site, scene_id=mapping_slug(metadata.title, metadata.tagline), providers=[metadata.tagline, metadata.studio]
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, metadata.tagline),
+            providers=list(dict.fromkeys(_DATA18_NAMES.get(p, p) for p in (metadata.tagline, metadata.studio, scene.site.name) if p)),
         )

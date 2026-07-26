@@ -29,6 +29,7 @@ from phoenixadult.registry.selectors.networks.evolvedfights import EVOLVEDFIGHTS
 from phoenixadult.registry.selectors.networks.fakings import FAKINGS_SITES
 from phoenixadult.registry.selectors.networks.femdomempire import FEMDOMEMPIRE_SITES
 from phoenixadult.registry.selectors.networks.ftv import FTV_SITES
+from phoenixadult.registry.selectors.networks.fuckyoucash import FUCKYOUCASH_SITES
 from phoenixadult.registry.selectors.networks.fuelvirtual import FUELVIRTUAL_SITES
 from phoenixadult.registry.selectors.networks.fullpornnetwork import FULLPORNNETWORK_SITES
 from phoenixadult.registry.selectors.networks.gammaent import GAMMAENT_SITES
@@ -60,7 +61,6 @@ from phoenixadult.registry.selectors.networks.pkjmedia import PKJMEDIA_SITES
 from phoenixadult.registry.selectors.networks.pornbox import PORNBOX_SITES
 from phoenixadult.registry.selectors.networks.porncz import PORNCZ_SITES
 from phoenixadult.registry.selectors.networks.porndoepremium import PORNDOEPREMIUM_SITES
-from phoenixadult.registry.selectors.networks.pornpros import PORNPROS_SITES
 from phoenixadult.registry.selectors.networks.pornworld import PORNWORLD_SITES
 from phoenixadult.registry.selectors.networks.private import PRIVATE_SITES
 from phoenixadult.registry.selectors.networks.puba import PUBA_SITES

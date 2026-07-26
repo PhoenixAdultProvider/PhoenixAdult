@@ -31,6 +31,7 @@ from phoenixadult.clients.networks.evolvedfights import EvolvedFightsClient
 from phoenixadult.clients.networks.fakings import FAKingsClient
 from phoenixadult.clients.networks.femdomempire import FemdomEmpireClient
 from phoenixadult.clients.networks.ftv import FTVClient
+from phoenixadult.clients.networks.fuckyoucash import FuckYouCashClient
 from phoenixadult.clients.networks.fuelvirtual import FuelVirtualClient
 from phoenixadult.clients.networks.fullpornnetwork import FullPornNetworkClient
 from phoenixadult.clients.networks.gammaent import GammaEntClient
@@ -61,7 +62,6 @@ from phoenixadult.clients.networks.pervcity import PervCityClient
 from phoenixadult.clients.networks.pkjmedia import PKJMediaClient
 from phoenixadult.clients.networks.porncz import PornCZClient
 from phoenixadult.clients.networks.porndoepremium import PorndoePremiumClient
-from phoenixadult.clients.networks.pornpros import PornProsClient
 from phoenixadult.clients.networks.pornworld import PornWorldClient
 from phoenixadult.clients.networks.private import PrivateClient
 from phoenixadult.clients.networks.puffy import PuffyClient
@@ -234,7 +234,7 @@ CLIENT_REGISTRY: dict[str, Client] = {
     'porncz': PornCZClient(),
     'pornworld': PornWorldClient(),
     'porndoepremium': PorndoePremiumClient(),
-    'pornpros': PornProsClient(),
+    'fuckyoucash': FuckYouCashClient(),
     'private': PrivateClient(),
     'project1service': Project1ServiceClient(),
     'puffy': PuffyClient(),
