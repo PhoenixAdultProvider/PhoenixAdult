@@ -31,6 +31,10 @@ through `asyncio.to_thread`, so every worker gets its own connection, tracked in
 file). Opening is serialized under a lock: switching a fresh database to WAL needs a lock that
 `busy_timeout` does not wait out, so the first connection sets it and the rest find it set.
 
+`force_refresh` is a one-shot flag, not stored state: a people-cache edit sets it on every scene
+crediting that performer, and the next serve consumes it to rebuild their headshot URLs. The
+snapshot upsert deliberately omits the column, so rewriting a scene never clears a pending flag.
+
 Schema versioning uses `PRAGMA user_version` with a linear, append-only migration list
 (`_MIGRATIONS` in `phoenixadult/utils/db/__init__.py`). A migration script is never edited after
 it ships; changes append a new version.
@@ -173,10 +177,12 @@ CREATE TABLE scenes (
   art             TEXT,
   studio_id       INTEGER REFERENCES studios(id),
   tagline_id      INTEGER REFERENCES taglines(id),
-  updated_at      REAL NOT NULL
+  updated_at      REAL NOT NULL,
+  force_refresh   INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX scenes_rel ON scenes(rel_path);
 CREATE INDEX scenes_updated ON scenes(updated_at);
+CREATE INDEX scenes_force ON scenes(force_refresh) WHERE force_refresh = 1;
 CREATE TABLE scene_genres (
   scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
   genre_id INTEGER NOT NULL REFERENCES genres(id),

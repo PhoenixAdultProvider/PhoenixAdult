@@ -15,6 +15,7 @@ from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
@@ -152,7 +153,8 @@ def _card(entry: dict[str, Any]) -> str:
     edit_btn = '<button class="edit">Edit</button>'
     purge_btn = '<button class="purge">Purge</button>'
     search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
-    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" data-cropped="{1 if cropped else 0}" data-name="{search_key}">
+    flags = f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}"'
+    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
@@ -222,6 +224,7 @@ async def page(request: Request) -> HTMLResponse:
       .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
       .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
+      .noupstream.on{{background:#7c2d12;color:#fff;border-color:#ea580c}}
       .tab .cnt{{opacity:.65;font-size:11px}}
     </style></head><body>
     <h1>People Cache</h1>
@@ -229,7 +232,8 @@ async def page(request: Request) -> HTMLResponse:
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
-    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button></div>
+    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button>
+      <button class="tab noupstream" id="upstreamToggle">No upstream</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
@@ -260,6 +264,7 @@ async def page(request: Request) -> HTMLResponse:
         location.href = '/people/edit?' + p.toString();
       }}
       let croppedOnly = false;
+      let noUpstreamOnly = false;
       let curTab = '';
       function showTab(t){{
         curTab = t;
@@ -268,7 +273,8 @@ async def page(request: Request) -> HTMLResponse:
         const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
         let n=0;
         document.querySelectorAll('.card').forEach(c=>{{
-          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!needle || (c.dataset.name||'').includes(needle));
+          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!noUpstreamOnly || c.dataset.upstream==='0')
+            && (!needle || (c.dataset.name||'').includes(needle));
           c.style.display=m?'block':'none'; if(m)n++;
         }});
         document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
@@ -278,6 +284,11 @@ async def page(request: Request) -> HTMLResponse:
       document.getElementById('cropToggle').addEventListener('click', () => {{
         croppedOnly = !croppedOnly;
         document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
+        showTab(curTab);
+      }});
+      document.getElementById('upstreamToggle').addEventListener('click', () => {{
+        noUpstreamOnly = !noUpstreamOnly;
+        document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
         showTab(curTab);
       }});
       document.addEventListener('click', e => {{
@@ -308,9 +319,10 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot with that filename.</p>', status_code=404)
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
-    subtitle = f'{html.escape(str(entry["name"]))} · {html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code>'
+    subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code>'
     body = (
-        _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
+        _EDIT_TEMPLATE.replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
+        .replace('__SUBTITLE__', subtitle)
         .replace('__CACHED_SRC__', html.escape(cached_src, quote=True))
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__FILENAME__', _json_attr(filename))
@@ -339,8 +351,9 @@ async def save(request: Request) -> JSONResponse:
     cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop)
     if cached is None:
         return JSONResponse({'ok': False, 'error': 'could not download or store that image'}, status_code=400)
-    logger.info('people-cache', f'edited {filename}: upstream={upstream} cropped={wants_crop}')
-    return JSONResponse({'ok': True, 'changed': True})
+    flagged = await asyncio.to_thread(scene_store.flag_people_changed, str(entry['name']))
+    logger.info('people-cache', f'edited {filename}: upstream={upstream} cropped={wants_crop}; {len(flagged)} scene(s) flagged to re-push')
+    return JSONResponse({'ok': True, 'changed': True, 'scenes': len(flagged)})
 
 
 @router.post('/restore')

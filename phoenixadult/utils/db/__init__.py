@@ -162,6 +162,10 @@ _MIGRATIONS: list[str] = [
       cropped_at REAL NOT NULL
     );
     """,
+    """
+    ALTER TABLE scenes ADD COLUMN force_refresh INTEGER NOT NULL DEFAULT 0;
+    CREATE INDEX scenes_force ON scenes(force_refresh) WHERE force_refresh = 1;
+    """,
 ]
 
 _local = threading.local()

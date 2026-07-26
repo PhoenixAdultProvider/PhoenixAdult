@@ -211,11 +211,21 @@ Remove button; a pasted URL is downloaded on save). Notes:
   old directory is removed and the response reports the new key.
 - The title cannot be blank, and the snapshot writer still rejects error-looking titles.
 
-`/people/edit` covers the upstream original URL and cropped status. Saving a change **re-downloads
-the image and replaces the cached file**, cropping per the checkbox rather than
-`PEOPLE_CACHE_FACE_ENABLE` — so it doubles as a way to crop or un-crop one headshot. The checkbox
-is disabled when `opencv-python-headless` is absent. `/people` also has a name search filtering the
-current tab.
+`/people/edit` covers the upstream original URL and cropped status, with the performer's name as the
+heading plus **Copy** and **Search IAFD** buttons. Saving a change **re-downloads the image and
+replaces the cached file**, cropping per the checkbox rather than `PEOPLE_CACHE_FACE_ENABLE` — so it
+doubles as a way to crop or un-crop one headshot. The checkbox is disabled when
+`opencv-python-headless` is absent.
+
+Saving also **flags every scene crediting that performer to re-push their headshots**. A snapshot
+freezes the served image URL, which carries a content-hash cache-buster; replacing the bytes changes
+the token, but a cached serve would keep handing Plex the old URL and Plex only re-fetches when a URL
+changes. The flag (`scenes.force_refresh`) makes the next serve clear that scene's people-cache
+thumbs so the image backfill rebuilds them at the current bytes, then clears itself — one forced
+re-push per edit, not a permanent state.
+
+`/people` also has a name search over the current tab and a **No upstream** filter next to
+**Cropped only**, for headshots with no recorded source URL (they cannot be re-pulled or restored).
 
 #### Reconciling Stale Tags
 

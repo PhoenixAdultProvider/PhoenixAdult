@@ -452,6 +452,25 @@ _EDITABLE_TAGS = {'Genre': PlexGenre, 'Collection': PlexCollection, 'Country': P
 _EDITABLE_ROLES = ('Role', 'Director', 'Producer')
 
 
+def drop_stale_people_thumbs(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:
+    """Clear the cached headshot URLs of a scene flagged by a people-cache edit, so the image
+    backfill rebuilds them at the current bytes and Plex sees a URL it has not fetched before."""
+    if not scene_store.take_force_refresh(_hash(site_name, cur_id)):
+        return False
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return False
+    cleared = 0
+    for attr in _EDITABLE_ROLES:
+        for role in getattr(md, attr) or []:
+            if role.thumb and '/images/local/' in role.thumb:
+                role.thumb = None
+                cleared += 1
+    logger.info('meta-cache', f'forced people re-push for "{md.title}": {cleared} headshot(s) to re-resolve')
+    return True
+
+
 def load_for_edit(key: str) -> dict[str, Any] | None:
     """The stored snapshot for one rel path, host-relative URLs left intact so the editor shows
     what is on disk rather than a rebased copy."""

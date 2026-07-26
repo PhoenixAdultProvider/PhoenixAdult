@@ -174,3 +174,25 @@ async def test_metadata_save_keeps_kept_images_and_deletes_dropped_ones(monkeypa
     served = mc.load_for_edit(moved)
     assert served is not None
     assert [i['type'] for i in served['MediaContainer']['Metadata'][0]['Image']] == ['background']
+
+
+def test_editing_a_headshot_flags_the_scenes_crediting_that_actor(client: TestClient, tmp_path: Path) -> None:
+    _snapshot(tmp_path)
+    assert scene_store.flag_people_changed('Jane Doe') == ['A Cached Scene']
+    assert scene_store.flag_people_changed('Nobody At All') == []
+
+
+def test_force_refresh_clears_local_thumbs_once(client: TestClient, tmp_path: Path) -> None:
+    _snapshot(tmp_path)
+    scene_store.flag_people_changed('Jane Doe')
+
+    stored = mc.load_for_edit(f'brazzers/{mc._hash(SITE, CUR_ID)}')
+    assert stored is not None
+    response = PlexMetadataResponse.model_validate(stored)
+    assert response.MediaContainer.Metadata[0].Role[0].thumb is not None
+
+    assert mc.drop_stale_people_thumbs(response, SITE, CUR_ID) is True
+    assert response.MediaContainer.Metadata[0].Role[0].thumb is None
+
+    again = PlexMetadataResponse.model_validate(stored)
+    assert mc.drop_stale_people_thumbs(again, SITE, CUR_ID) is False

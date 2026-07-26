@@ -264,6 +264,27 @@ def delete(rel_path: str) -> bool:
     return bool(cur.rowcount)
 
 
+def flag_people_changed(name: str) -> list[str]:
+    """Mark every scene crediting `name` for a forced re-push, returning their titles. A cached
+    serve freezes the headshot URL, so a re-cached image only reaches Plex once that URL is rebuilt."""
+    conn = db.connect()
+    with conn:
+        rows = conn.execute(
+            'SELECT s.hash, s.title FROM scenes s JOIN scene_people sp ON sp.scene_id = s.id JOIN people p ON p.id = sp.person_id WHERE p.name = ?',
+            (name,),
+        ).fetchall()
+        if rows:
+            conn.execute(f'UPDATE scenes SET force_refresh = 1 WHERE hash IN ({",".join("?" * len(rows))})', [r['hash'] for r in rows])
+    return [str(r['title']) for r in rows]
+
+
+def take_force_refresh(scene_hash: str) -> bool:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute('UPDATE scenes SET force_refresh = 0 WHERE hash = ? AND force_refresh = 1', (scene_hash,))
+    return bool(cur.rowcount)
+
+
 def identity_for(rel_path: str) -> tuple[str, str] | None:
     row = db.connect().execute('SELECT site, cur_id FROM scenes WHERE rel_path = ?', (rel_path,)).fetchone()
     return (str(row['site']), str(row['cur_id'])) if row else None

@@ -9,7 +9,11 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
-    h1 { font-size: 20px; margin: 0 0 4px; }
+    h1 { font-size: 30px; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .copy { padding: 5px 14px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 12px; font-family: inherit; }
+    .copy:hover { color: #e2e8f0; border-color: #475569; }
+    .copy.done { background: #15803d; border-color: #15803d; color: #fff; }
+    a.iafd { text-decoration: none; line-height: normal; }
     .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
     .sub code { color: #cbd5e1; }
     h1, .sub, .wrap { max-width: 900px; margin-inline: auto; }
@@ -44,7 +48,7 @@
   </style>
 </head>
 <body>
-  <h1>Edit Headshot</h1>
+  <h1><span id="actorName">__ACTOR_NAME__</span><button class="copy" id="copyName" title="Copy name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a></h1>
   <div class="sub">__SUBTITLE__</div>
 
   <div class="wrap">
@@ -116,6 +120,26 @@
     }
     qs('f-upstream').addEventListener('change', refreshUpstream);
     refreshUpstream();
+
+    qs('iafdLink').href = 'https://www.iafd.com/results.asp?searchtype=comprehensive&searchstring=' + encodeURIComponent(ENTRY.name || '').replace(/%20/g, '+');
+
+    qs('copyName').onclick = async () => {
+      const button = qs('copyName');
+      const name = ENTRY.name || '';
+      try {
+        await navigator.clipboard.writeText(name);
+      } catch {
+        const field = document.createElement('textarea');
+        field.value = name;
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand('copy');
+        field.remove();
+      }
+      button.textContent = 'Copied';
+      button.classList.add('done');
+      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 1200);
+    };
   </script>
 </body>
 </html>
