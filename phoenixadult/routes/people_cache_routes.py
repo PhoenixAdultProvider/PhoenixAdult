@@ -179,7 +179,8 @@ async def page(request: Request) -> HTMLResponse:
         f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
     )
     cards = '\n'.join(_card(e) for e in entries)
-    body = f"""<!doctype html><html><head><meta charset="utf-8"><title>People Cache</title>
+    body = f"""<!doctype html><html><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
     <style>
       body{{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}}
       h1{{font-size:20px}} .sub{{color:#94a3b8;font-size:13px;margin-bottom:20px}}
@@ -209,9 +210,14 @@ async def page(request: Request) -> HTMLResponse:
       button.edit:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
       button.purge{{background:#b91c1c;flex:0 0 90px}}
       .search{{margin-bottom:16px}}
-      .search input{{width:320px;background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
+      .search input{{width:320px;max-width:100%;background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
       .search input:focus{{outline:0;border-color:#2563eb}}
       .search .cnt{{color:#64748b;font-size:12px;margin-left:10px}}
+      @media (max-width:720px){{
+        body{{padding:14px}}
+        .grid{{grid-template-columns:1fr}}
+        .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
+      }}
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
       .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}

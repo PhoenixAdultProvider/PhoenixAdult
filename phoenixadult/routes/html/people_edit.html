@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="alternate icon" href="/favicon.ico">
   <title>Edit Headshot</title>
@@ -15,7 +16,7 @@
     fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0; background: #151b29; }
     legend { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
     label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    input[type=text] { width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
     input[type=text]:focus { outline: 0; border-color: #2563eb; }
     .hint { font-size: 11px; color: #475569; margin-top: 4px; }
     .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: #cbd5e1; }
@@ -31,6 +32,16 @@
     .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .cancel:hover { color: #e2e8f0; }
     .status { font-size: 12px; color: #64748b; }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      .wrap { grid-template-columns: 1fr; }
+      .imgs { flex-wrap: wrap; }
+      figure { flex: 1 1 140px; }
+      figure img { height: 200px; }
+      .bar { flex-wrap: wrap; }
+      .save, .cancel { flex: 1 1 auto; }
+    }
   </style>
 </head>
 <body>
