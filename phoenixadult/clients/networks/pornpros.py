@@ -6,7 +6,7 @@ from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
-from phoenixadult.utils.processors.actor_strip import strip_actor_prefix
+from phoenixadult.utils.processors.actor_strip import actor_strip_candidates
 
 _GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
 
@@ -16,8 +16,7 @@ def _query_slug(title: str) -> str:
 
 
 def _slug_candidates(title: str) -> list[str]:
-    forms = [title, strip_actor_prefix(title)]
-    return list(dict.fromkeys(slug for slug in (_query_slug(form) for form in forms) if slug))
+    return list(dict.fromkeys(slug for slug in (_query_slug(form) for form in actor_strip_candidates(title)) if slug))
 
 
 class PornProsClient(Client):
@@ -81,19 +80,16 @@ class PornProsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _r(self, scene: LoadedScene) -> dict[str, Any]:
+    def _data(self, scene: LoadedScene) -> dict[str, Any]:
         return scene.extra or {}
-
-    def _tagline(self, scene: LoadedScene) -> str:
-        return str((self._r(scene).get('sponsor') or {}).get('name') or '').strip()
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = str(self._r(scene).get('title') or '').strip()
+        metadata.title = str(self._data(scene).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        summary = str(self._r(scene).get('description') or '').strip()
+        summary = str(self._data(scene).get('description') or '').strip()
 
         metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
@@ -101,33 +97,33 @@ class PornProsClient(Client):
         metadata.studio = 'Porn Pros'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline(scene) or ''
+        metadata.tagline = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        t = self._tagline(scene)
+        tagline = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
 
-        metadata.collections = [t] if t else None
+        metadata.collections = [tagline] if tagline else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        d = iso_date(self._r(scene).get('releasedAt') or '')
+        date = iso_date(self._data(scene).get('releasedAt') or '')
 
-        metadata.release_date = d or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
+        metadata.release_date = date or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = self.dedup_strings(
             [
                 str(genre_name).replace('_', ' ').replace('-', ' ').strip()
-                for genre_name in [*(self._r(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
+                for genre_name in [*(self._data(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
             ]
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in self._r(scene).get('actors') or []:
-            raw = str(a.get('name') or '').strip()
-            names = [p.strip() for p in raw.split('&')] if '&' in raw else [raw]
-            for actor_name in names:
+        for actor in self._data(scene).get('actors') or []:
+            raw_name = str(actor.get('name') or '').strip()
+            actor_names = [name.strip() for name in raw_name.split('&')] if '&' in raw_name else [raw_name]
+            for actor_name in actor_names:
                 if actor_name and actor_name not in seen:
                     seen.add(actor_name)
                     actors.append(ActorResult(name=actor_name))
@@ -135,7 +131,7 @@ class PornProsClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        release = self._r(scene)
+        release = self._data(scene)
         images = self.image_collector()
         images['push'](release.get('posterUrl'))
         for img in release.get('thumbUrls') or []:

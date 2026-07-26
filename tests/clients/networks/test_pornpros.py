@@ -29,9 +29,8 @@ def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_falls_back_past_the_actor_prefix() -> None:
-    respx.get('https://cum4k.com/api/releases/jane-doe-cool-scene').mock(return_value=httpx.Response(404))
-    respx.get('https://cum4k.com/api/releases/jane-doe-cool--scene').mock(return_value=httpx.Response(404))
     respx.get('https://cum4k.com/api/releases/cool-scene').mock(return_value=httpx.Response(200, json=_RELEASE))
+    respx.route(method='GET', url__regex=r'cum4k\.com/api/releases/.*').mock(return_value=httpx.Response(404))
     results: list[SearchResult] = []
     await PornProsClient().search(results, _ctx())
     assert len(results) == 1
