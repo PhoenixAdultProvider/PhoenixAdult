@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
@@ -315,6 +316,17 @@ def build_search_result(
         search_url=search_url or None,
         subsite=subsite or None,
     )
+
+
+def dict_values_from_key[T](table: Mapping[Any, T], identifier: str) -> T | None:
+    """Case-insensitive lookup where a key may be a tuple of equivalent identifiers."""
+    wanted = str(identifier).casefold()
+    for key, values in table.items():
+        keys = key if isinstance(key, tuple) else (key,)
+        if any(str(candidate).casefold() == wanted for candidate in keys):
+            return values
+
+    return None
 
 
 def decensor(text: str, replacements: dict[str, str]) -> str:

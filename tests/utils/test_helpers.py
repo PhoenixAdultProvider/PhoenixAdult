@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from phoenixadult.utils.helpers.helpers import format_duration, pack_cur_id, title_distance_score, unpack_cur_id
+from phoenixadult.utils.helpers.helpers import dict_values_from_key, format_duration, pack_cur_id, title_distance_score, unpack_cur_id
 
 
 def test_cur_id_roundtrip() -> None:
@@ -36,3 +36,15 @@ def test_title_distance_score_keeps_distinct_ordinals_apart() -> None:
 def test_title_distance_score_rotates_trailing_articles() -> None:
     assert title_distance_score('The Big Movie', 'Big Movie, The') == 100
     assert title_distance_score('A Whore of Wall Street', 'Whore of Wall Street, A') == 100
+
+
+def test_dict_values_from_key_matches_case_insensitively() -> None:
+    table = {'40oz-zombie-booty': ('Vanessa', 'Vanessa Cruz')}
+    assert dict_values_from_key(table, '40oz-zombie-booty') == ('Vanessa', 'Vanessa Cruz')
+    assert dict_values_from_key(table, '40OZ-Zombie-Booty') == ('Vanessa', 'Vanessa Cruz')
+    assert dict_values_from_key(table, 'other-scene') is None
+
+
+def test_dict_values_from_key_accepts_a_tuple_of_equivalent_keys() -> None:
+    table = {('one-title', 'other-title'): ('Vanessa', 'Vanessa Monet')}
+    assert dict_values_from_key(table, 'other-title') == ('Vanessa', 'Vanessa Monet')

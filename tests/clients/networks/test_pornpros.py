@@ -61,3 +61,21 @@ async def test_detail() -> None:
     names = [a.name for a in (detail.actors or [])]
     assert names == ['Jane Doe', 'John Smith']
     assert detail.art == ['https://cdn/p.jpg?token=x', 'https://cdn/t1.jpg?token=y']
+
+
+@respx.mock
+async def test_detail_renames_a_shared_first_name_per_scene() -> None:
+    release = {**_RELEASE, 'title': '40oz Zombie Booty', 'actors': [{'name': 'Vanessa'}]}
+    respx.get('https://cum4k.com/api/releases/40oz-zombie-booty').mock(return_value=httpx.Response(200, json=release))
+    detail = await PornProsClient().fetch_scene_detail('40oz-zombie-booty|2021-03-04', SITE)
+    assert detail is not None
+    assert [a.name for a in detail.actors] == ['Vanessa Cruz']
+
+
+@respx.mock
+async def test_detail_leaves_an_unlisted_scene_alone() -> None:
+    release = {**_RELEASE, 'title': 'Some Other Scene', 'actors': [{'name': 'Vanessa'}]}
+    respx.get('https://cum4k.com/api/releases/some-other-scene').mock(return_value=httpx.Response(200, json=release))
+    detail = await PornProsClient().fetch_scene_detail('some-other-scene|2021-03-04', SITE)
+    assert detail is not None
+    assert [a.name for a in detail.actors] == ['Vanessa']

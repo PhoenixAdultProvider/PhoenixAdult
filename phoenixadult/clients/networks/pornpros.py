@@ -5,10 +5,14 @@ from typing import Any
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, slugify
+from phoenixadult.utils.helpers.helpers import build_search_result, dict_values_from_key, iso_date, load_data, pack_cur_id, slugify
 from phoenixadult.utils.processors.actor_strip import actor_strip_candidates
 
 _GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
+_ACTORS_REPLACE: dict[str, tuple[str, str]] = {
+    '40oz-zombie-booty': ('Vanessa', 'Vanessa Cruz'),
+    'double-o-negro-mammoth-bootay': ('Vanessa', 'Vanessa Monet'),
+}
 
 
 def _query_slug(title: str) -> str:
@@ -118,15 +122,18 @@ class PornProsClient(Client):
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
+        release = self._data(scene)
+        rename = dict_values_from_key(_ACTORS_REPLACE, _query_slug(str(release.get('title') or '')))
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for actor in self._data(scene).get('actors') or []:
+        for actor in release.get('actors') or []:
             raw_name = str(actor.get('name') or '').strip()
             actor_names = [name.strip() for name in raw_name.split('&')] if '&' in raw_name else [raw_name]
             for actor_name in actor_names:
-                if actor_name and actor_name not in seen:
-                    seen.add(actor_name)
-                    actors.append(ActorResult(name=actor_name))
+                credited = rename[1] if rename and actor_name.casefold() == rename[0].casefold() else actor_name
+                if credited and credited not in seen:
+                    seen.add(credited)
+                    actors.append(ActorResult(name=credited))
 
         metadata.actors = actors
 
