@@ -12,7 +12,7 @@
     h1 { font-size: 20px; margin: 0 0 4px; }
     .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
     .sub code { color: #cbd5e1; }
-    .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+    .cols { max-width: 900px; }
     fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: #151b29; }
     legend { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
     label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
@@ -42,7 +42,7 @@
     .img .drop { width: 100%; margin-top: 6px; padding: 4px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1e293b; color: #f87171; cursor: pointer; font-size: 11px; }
     .img .drop:hover { background: #7f1d1d; color: #fff; }
 
-    .bar { display: flex; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: #0f1117; padding: 14px 0; border-top: 1px solid #1a2035; }
+    .bar { display: flex; gap: 10px; align-items: center; margin-top: 8px; max-width: 900px; position: sticky; bottom: 0; background: #0f1117; padding: 14px 0; border-top: 1px solid #1a2035; }
     .save { padding: 9px 22px; border: 0; border-radius: 6px; background: #15803d; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; }
     .save:hover { background: #16a34a; }
     .save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
@@ -52,7 +52,6 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      .cols { grid-template-columns: 1fr; gap: 0; }
       .imgs { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
       .addrow { flex-wrap: wrap; }
       .addrow button { width: 100%; padding: 8px 14px; }
@@ -66,7 +65,6 @@
   <div class="sub">__SUBTITLE__</div>
 
   <div class="cols">
-    <div>
       <fieldset>
         <legend>Scene</legend>
         <label for="f-title">Title</label>
@@ -95,9 +93,7 @@
         <div class="chips" id="c-Collection"></div>
         <div class="addrow"><input type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>
       </fieldset>
-    </div>
 
-    <div>
       <fieldset>
         <legend>Actors</legend>
         <div class="chips" id="c-Role"></div>
@@ -123,7 +119,6 @@
         <div class="addrow"><input type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>
         <div class="hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
       </fieldset>
-    </div>
   </div>
 
   <div class="bar">

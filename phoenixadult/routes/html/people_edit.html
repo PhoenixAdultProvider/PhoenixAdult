@@ -12,8 +12,8 @@
     h1 { font-size: 20px; margin: 0 0 4px; }
     .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
     .sub code { color: #cbd5e1; }
-    .wrap { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; }
-    fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0; background: #151b29; }
+    .wrap { max-width: 720px; }
+    fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: #151b29; }
     legend { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
     label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
     input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
@@ -35,7 +35,6 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      .wrap { grid-template-columns: 1fr; }
       .imgs { flex-wrap: wrap; }
       figure { flex: 1 1 140px; }
       figure img { height: 200px; }
@@ -56,11 +55,6 @@
       <div class="hint">Saving a changed URL re-downloads the image and replaces the cached file.</div>
       <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:#cbd5e1">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
-      <div class="bar">
-        <button class="save" id="saveBtn" onclick="save()">Save</button>
-        <button class="cancel" onclick="leave()">Cancel</button>
-        <span class="status" id="status"></span>
-      </div>
     </fieldset>
 
     <fieldset>
@@ -70,6 +64,12 @@
         <figure><figcaption>upstream original</figcaption><img id="upstreamImg" alt=""></figure>
       </div>
     </fieldset>
+
+    <div class="bar">
+      <button class="save" id="saveBtn" onclick="save()">Save</button>
+      <button class="cancel" onclick="leave()">Cancel</button>
+      <span class="status" id="status"></span>
+    </div>
   </div>
 
   <script>
