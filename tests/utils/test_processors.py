@@ -123,9 +123,11 @@ def test_title_case_honorifics_get_a_period() -> None:
     assert title_case('1st time') == '1st Time'
 
 
-def test_title_case_name_skips_honorific_period() -> None:
+def test_title_case_name_takes_a_honorific_period_only_when_leading() -> None:
+    assert title_case('ms juicy', type='name') == 'Ms. Juicy'
+    assert title_case('dr love', type='name') == 'Dr. Love'
     assert title_case('summer col', type='name') == 'Summer Col'
-    assert title_case('dr love', type='name') == 'Dr Love'
+    assert title_case('sara st james', type='name') == 'Sara St James'
     assert title_case('summer col') == 'Summer Col.'
 
 

@@ -58,7 +58,7 @@ _ACRONYMS = frozenset({'ai', 'vr', 'hd', 'uhd', 'sd', 'hdr', '4k', '3d', '2d'})
 _CONTRACTIONS = frozenset({'re', 't', 's', 'd', 'll', 've', 'm', 'am', 'ed'})
 
 _HONORIFICS = frozenset({
-    'mr', 'mrs', 'ms', 'mx', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
+    'mr', 'mrs', 'ms', 'mx', 'mz', 'dr', 'prof', 'sr', 'jr', 'st', 'rev', 'fr',
     'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
 })
 
@@ -103,7 +103,9 @@ _ARTICLE_RE = re.compile(r'^(the|a|an)\s+', re.IGNORECASE)
 _A_BEFORE_VOWEL_RE = re.compile(r'\b([Aa])(?=\s+([AEIOUaeiou][\w.]*))')
 _AN_BEFORE_WORD_RE = re.compile(r'\b([Aa])n\b(?=\s+([\w.]+))')
 _A_STAYS_RE = re.compile(r'^(?:uni|use|usu|ubi|ur[ie]|u\.|uk$|ufo|eu|one$|once$|ewe)', re.IGNORECASE)
-_HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
+_HONORIFIC_ALT = '|'.join(sorted(_HONORIFICS, key=len, reverse=True))
+_HONORIFIC_RE = re.compile(r'\b(' + _HONORIFIC_ALT + r')\b(?!\.)', re.IGNORECASE)
+_LEADING_HONORIFIC_RE = re.compile(r'^(' + _HONORIFIC_ALT + r')\b(?!\.)', re.IGNORECASE)
 _OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
 _SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
 _BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
@@ -336,9 +338,8 @@ class _TitleCaseEngine:
         output = _POSSESSIVE_S_RE.sub("'", output)
         output = _A_BEFORE_VOWEL_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else ('An' if m.group(1) == 'A' else 'an'), output)
         output = _AN_BEFORE_WORD_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else f'{m.group(1)}n', output)
-        if self.type != 'name':
-            output = _HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
-        return output
+        honorifics = _LEADING_HONORIFIC_RE if self.type == 'name' else _HONORIFIC_RE
+        return honorifics.sub(lambda m: m.group(1).capitalize() + '.', output)
 
     def _finish_by_type(self, output: str) -> str:
         if self.type == 'title':
