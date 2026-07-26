@@ -21,6 +21,12 @@ def encode_name(name: str) -> str:
 
 _PERIOD_FIXES: list[tuple[str, str]] = [
     (r'^dr%20', 'Dr%2E%20'),
+    (r'^mr%20', 'Mr%2E%20'),
+    (r'^mrs%20', 'Mrs%2E%20'),
+    (r'^ms%20', 'Ms%2E%20'),
+    (r'^mz%20', 'Mz%2E%20'),
+    (r'^mx%20', 'Mx%2E%20'),
+    (r'^prof%20', 'Prof%2E%20'),
     (r'%20st%20', '%20St.%20'),
     (r'^j%20', 'J%2E%20'),
     (r'^wc%20', 'W%2EC%2E%20'),

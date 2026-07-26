@@ -13,8 +13,6 @@ _BASE = 'https://www.iafd.com'
 
 
 async def iafd_best_match(actor_name: str, studio: str = '') -> tuple[str, Gender] | None:
-    """IAFD comprehensive search via the anti-bot bypass chain (Cloudflare 403s a plain client); returns
-    (href, gender) for the closest match or None. A `studio` alias mention forces a row to best score."""
     try:
         enc = fix_iafd_encoding(encode_name(actor_name))
         search_url = f'{_BASE}/results.asp?searchtype=comprehensive&searchstring={enc}'
