@@ -6,12 +6,14 @@ from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, dict_values_from_key, iso_date, load_data, pack_cur_id, slugify
+from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.actor_strip import actor_strip_candidates
 
 _GENRES: dict[str, list[str]] = load_data(__file__, 'pornpros_genres')
 _ACTORS_REPLACE: dict[str, tuple[str, str]] = {
     '40oz-zombie-booty': ('Vanessa', 'Vanessa Cruz'),
     'double-o-negro-mammoth-bootay': ('Vanessa', 'Vanessa Monet'),
+    'juicy-ass-moon-bounce': ('Zo', 'Daiquiri Holland & Vanessa Monet'),
 }
 
 
@@ -123,17 +125,19 @@ class PornProsClient(Client):
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         release = self._data(scene)
-        rename = dict_values_from_key(_ACTORS_REPLACE, _query_slug(str(release.get('title') or '')))
+        title = str(release.get('title') or '')
+        rename = dict_values_from_key(_ACTORS_REPLACE, _query_slug(title))
         actors: list[ActorResult] = []
         seen: set[str] = set()
         for actor in release.get('actors') or []:
-            raw_name = str(actor.get('name') or '').strip()
-            actor_names = [name.strip() for name in raw_name.split('&')] if '&' in raw_name else [raw_name]
-            for actor_name in actor_names:
+            for actor_name in (part.strip() for part in str(actor.get('name') or '').split('&')):
                 credited = rename[1] if rename and actor_name.casefold() == rename[0].casefold() else actor_name
-                if credited and credited not in seen:
-                    seen.add(credited)
-                    actors.append(ActorResult(name=credited))
+                if credited != actor_name:
+                    logger.info(scene.site.name, f'recredited "{actor_name}" as "{credited}" on "{title}"')
+                for final_name in (part.strip() for part in credited.split('&')):
+                    if final_name and final_name not in seen:
+                        seen.add(final_name)
+                        actors.append(ActorResult(name=final_name))
 
         metadata.actors = actors
 

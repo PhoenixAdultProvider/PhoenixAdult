@@ -79,3 +79,12 @@ async def test_detail_leaves_an_unlisted_scene_alone() -> None:
     detail = await PornProsClient().fetch_scene_detail('some-other-scene|2021-03-04', SITE)
     assert detail is not None
     assert [a.name for a in detail.actors] == ['Vanessa']
+
+
+@respx.mock
+async def test_detail_rename_can_expand_into_two_credits() -> None:
+    release = {**_RELEASE, 'title': 'Juicy Ass Moon Bounce', 'actors': [{'name': 'Zo'}]}
+    respx.get('https://cum4k.com/api/releases/juicy-ass-moon-bounce').mock(return_value=httpx.Response(200, json=release))
+    detail = await PornProsClient().fetch_scene_detail('juicy-ass-moon-bounce|2021-03-04', SITE)
+    assert detail is not None
+    assert [a.name for a in detail.actors] == ['Daiquiri Holland', 'Vanessa Monet']

@@ -737,3 +737,32 @@ def test_backfill_recomputes_guid_after_an_identifier_change() -> None:
     assert mc.backfill_metadata_attrs(resp) is True
     assert resp.MediaContainer.Metadata[0].guid == 'tv.plex.agents.custom.phoenixadult://movie/scene-brazzers-abc123.20200101'
     assert mc.backfill_metadata_attrs(resp) is False
+
+
+def test_recredited_actor_drops_its_now_wrong_headshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Vanessa Cruz' if name == 'Vanessa' else name)
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [
+                    {
+                        'type': 'movie',
+                        'ratingKey': 'rk',
+                        'guid': 'g',
+                        'title': 'T',
+                        'studio': 'Porn Pros',
+                        'Role': [
+                            {'tag': 'Vanessa', 'thumb': 'http://host/images/local/actor/vanessa.jpg'},
+                            {'tag': 'Kept Name', 'thumb': 'http://host/images/local/actor/kept-name.jpg'},
+                        ],
+                    }
+                ],
+            }
+        }
+    )
+    assert mc.reapply_text_rules(resp) is True
+    roles = resp.MediaContainer.Metadata[0].Role or []
+    assert [(r.tag, r.thumb) for r in roles] == [('Vanessa Cruz', None), ('Kept Name', 'http://host/images/local/actor/kept-name.jpg')]

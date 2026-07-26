@@ -705,7 +705,10 @@ def _realias_people(md: PlexMetadata, studio: str) -> bool:
             cased_name = re.sub(r'\s+', ' ', title_case(r.tag, type='name', site_name=studio)).strip()
             aliased = apply_name_aliases(cased_name, studio, studio)
             if aliased != r.tag:
+                logger.info('meta-cache', f'recredited "{r.tag}" as "{aliased}"')
                 r.tag = aliased
+                if r.thumb and '/images/local/' in r.thumb:
+                    r.thumb = None
                 changed = True
             if aliased.lower() in seen:
                 changed = True
