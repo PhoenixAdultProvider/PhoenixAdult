@@ -224,8 +224,8 @@ changes. The flag (`scenes.force_refresh`) makes the next serve clear that scene
 thumbs so the image backfill rebuilds them at the current bytes, then clears itself — one forced
 re-push per edit, not a permanent state.
 
-`/people` also has a name search over the current tab and a **No upstream** filter next to
-**Cropped only**, for headshots with no recorded source URL (they cannot be re-pulled or restored).
+`/people` also has a name search over the current tab and a **No Upstream** filter next to
+**Cropped Only**, for headshots with no recorded source URL (they cannot be re-pulled or restored).
 
 #### Reconciling Stale Tags
 

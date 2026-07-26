@@ -79,7 +79,7 @@
       if (STATE.paused) {
         const left = Math.max(0, (STATE.resumeIn || 0) - drift);
         banner.innerHTML = `Queue paused — ${esc(STATE.pauseReason || 'ban detected')} · auto-resumes in ${fmtSecs(left)} ` +
-          '<button type="button" onclick="resumeQueue()">Resume now</button>';
+          '<button type="button" onclick="resumeQueue()">Resume Now</button>';
         banner.style.display = 'flex';
       } else {
         banner.style.display = 'none';

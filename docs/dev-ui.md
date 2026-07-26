@@ -147,7 +147,7 @@ type a site uses.
 - **Clipboard copies** work on `localhost` over HTTP (falls back to
   `document.execCommand('copy')` when `navigator.clipboard` is unavailable).
 
-## What it Doesn't Do
+## What It Doesn't Do
 
 Intentionally minimal: it doesn't persist results across reloads, edit the
 registry/selectors live (those are file edits + restart), replay a previous search,

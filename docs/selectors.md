@@ -56,7 +56,7 @@ example).
 - **Images** go through `self.image_collector(clean=...)` which trims, applies the
   per-source transform, skips empties, and de-dupes.
 
-## Common XPath Patterns in this Repo
+## Common XPath Patterns in This Repo
 
 | Intent | parsel XPath |
 |---|---|

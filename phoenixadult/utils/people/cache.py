@@ -328,7 +328,7 @@ def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
 
 async def restore_original(filename: str) -> bool:
     """Replace a cropped cache file with its un-cropped original: preserved local copy first
-    (offline-safe), else re-download upstream. Backs the /people 'Use original' action."""
+    (offline-safe), else re-download upstream. Backs the /people 'Use Original' action."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)

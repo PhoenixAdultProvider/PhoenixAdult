@@ -145,8 +145,8 @@ def _card(entry: dict[str, Any]) -> str:
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
     filename_attr = html.escape(filename, quote=True)
     if upstream:
-        upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
-        restore_btn = '<button class="restore">Use original</button>' if cropped else '<button class="restore" disabled>Original Kept</button>'
+        upstream_fig = f'<figure><figcaption>Upstream Original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
+        restore_btn = '<button class="restore">Use Original</button>' if cropped else '<button class="restore" disabled>Original Kept</button>'
     else:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No Upstream Recorded</button>'
@@ -157,7 +157,7 @@ def _card(entry: dict[str, Any]) -> str:
     return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
-        <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
+        <figure><figcaption>Cached (Shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}
       </div>
       {_gender_buttons(str(entry.get('gender', '')))}
@@ -229,7 +229,7 @@ async def page(request: Request) -> HTMLResponse:
     </style></head><body>
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
-      "Use original" restores the preserved pre-crop original (Plex may need a refresh).
+      "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>

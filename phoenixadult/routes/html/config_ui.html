@@ -140,10 +140,10 @@
     <code id="ovPath"></code>.</p>
 
   <div class="toolbar">
-    <button id="saveBtn" onclick="save()" disabled>Save changes</button>
-    <button class="secondary" onclick="resetAll()">Reset all overrides</button>
+    <button id="saveBtn" onclick="save()" disabled>Save Changes</button>
+    <button class="secondary" onclick="resetAll()">Reset All Overrides</button>
     <button class="secondary" onclick="reload()">Reload</button>
-    <button class="danger" onclick="restartServer()">Restart server</button>
+    <button class="danger" onclick="restartServer()">Restart Server</button>
     <span class="toolbar-status" id="status"></span>
   </div>
 
@@ -157,13 +157,13 @@
       <div id="plex-vars"></div>
       <div class="plex-row">
         <button type="button" onclick="fetchPlexToken()">Fetch New Token</button>
-        <button type="button" class="secondary" onclick="loadPlexServers()">Discover servers</button>
-        <button type="button" class="secondary" onclick="verifyPlexServer()">Verify server</button>
+        <button type="button" class="secondary" onclick="loadPlexServers()">Discover Servers</button>
+        <button type="button" class="secondary" onclick="verifyPlexServer()">Verify Server</button>
         <span class="plex-status" id="plex-auth-status"></span>
       </div>
       <div class="plex-row" id="plex-server-pick" style="display:none">
         <select id="plex-server-select"></select>
-        <button type="button" class="icon-btn" onclick="usePlexServer()">Use this address</button>
+        <button type="button" class="icon-btn" onclick="usePlexServer()">Use This Address</button>
       </div>
       <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
     </div>
@@ -171,7 +171,7 @@
     <h2>Server</h2>
     <div class="card">
       <div class="plex-row">
-        <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for update</button>
+        <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for Update</button>
         <span class="plex-status" id="plex-update-status"></span>
       </div>
       <div class="plex-kv" id="plex-update-out" style="display:none"></div>
@@ -182,8 +182,8 @@
       <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit
         (Collection, Genre, Role, Director, Producer). Dry run reports without writing.</div>
       <div class="plex-row">
-        <button type="button" class="secondary" onclick="runReconcile(false)">Dry run</button>
-        <button type="button" class="danger" onclick="runReconcile(true)">Apply removals</button>
+        <button type="button" class="secondary" onclick="runReconcile(false)">Dry Run</button>
+        <button type="button" class="danger" onclick="runReconcile(true)">Apply Removals</button>
         <input type="text" id="plex-reconcile-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px"
                title="Stop after this many changed items">
         <span class="plex-status" id="plex-reconcile-status"></span>
@@ -215,8 +215,8 @@
         skipped. Plex fetches the image from <b>Local Image Base Address</b> (Images tab), so that must be reachable
         from the Plex server. Manage the logo files at <a href="/logos" target="_blank">/logos</a>.</div>
       <div class="plex-row">
-        <button type="button" class="secondary" onclick="runCollectionLogos(false)">Dry run</button>
-        <button type="button" onclick="runCollectionLogos(true)">Apply logos</button>
+        <button type="button" class="secondary" onclick="runCollectionLogos(false)">Dry Run</button>
+        <button type="button" onclick="runCollectionLogos(true)">Apply Logos</button>
         <input type="text" id="plex-collogo-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many pushed collections">
         <span class="plex-status" id="plex-collogo-status"></span>
       </div>
@@ -234,7 +234,7 @@
         <button type="button" class="secondary" onclick="loadPlexLibraries()">Refresh</button>
       </div>
       <div class="plex-row">
-        <button type="button" class="secondary" onclick="runPlexImport(false)">Dry run</button>
+        <button type="button" class="secondary" onclick="runPlexImport(false)">Dry Run</button>
         <button type="button" onclick="runPlexImport(true)">Import</button>
         <input type="text" id="plex-import-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many scanned items">
         <label class="hint" style="display:flex; align-items:center; gap:6px">
@@ -374,7 +374,7 @@
       }
 
       const resetBtn = '<button type="button" class="icon-btn" data-reset="' + esc(v.key) + '"'
-        + (v.overridden ? '' : ' disabled') + ' title="Clear this override">Reset</button>';
+        + (v.overridden ? '' : ' disabled') + ' title="Clear This Override">Reset</button>';
       const imgPrev = v.preview === 'image'
         ? '<img class="img-preview" id="imgprev-' + esc(v.key) + '" alt="preview">' : '';
       const defHint = (!v.value && v.defaultValue && v.kind !== 'boolean' && v.kind !== 'enum' && v.kind !== 'list')
@@ -414,7 +414,7 @@
         add.innerHTML = remaining.length
           ? '<select class="src-add-select">'
             + remaining.map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('')
-            + '</select><button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add source</button>'
+            + '</select><button type="button" class="icon-btn" data-list-add="' + esc(key) + '">Add Source</button>'
           : '<span class="hint">all known sources added</span>';
       } else {
         const dl = opts.length

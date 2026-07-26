@@ -149,12 +149,12 @@
         <input type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
         <div class="examples">
           <span style="font-size:0.72rem;color:#475569;align-self:center">Examples:</span>
-          <button class="example-btn" onclick="setExample('sitename.24.03.15.scene.name.mp4')">date short</button>
-          <button class="example-btn" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">date long</button>
+          <button class="example-btn" onclick="setExample('sitename.24.03.15.scene.name.mp4')">Date Short</button>
+          <button class="example-btn" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
         </div>
       </div>
       <div style="flex:0;min-width:6rem">
-        <label for="year-override">Year (override)</label>
+        <label for="year-override">Year (Override)</label>
         <input type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
       <div style="flex:0">
@@ -218,7 +218,7 @@
           <span class="badge json">JSON</span>
           <span class="capture-label" style="cursor:default">Suggested fixture for this result</span>
           <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
-          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy one-liner</button>
+          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy One-Liner</button>
         </div>
         <div class="capture-body open"><pre id="fixture-pre"></pre></div>
         <pre id="fixture-pre-oneline" style="display:none"></pre>

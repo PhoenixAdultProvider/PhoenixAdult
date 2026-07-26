@@ -1,5 +1,5 @@
 # Hosting
-## Cloudflare Tunnel (Required when Plex Routes Through images.plex.tv)
+## Cloudflare Tunnel (Required When Plex Routes Through images.plex.tv)
 
 ### Option A - Native Windows
 

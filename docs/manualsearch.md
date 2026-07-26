@@ -11,7 +11,7 @@ Each search query can be comprised of *up to* 5 parts, depending on the supporte
 - `SceneID` - A numeric value found in the URL of a scene page.
 - `Direct URL` - A string of characters at the end of a URL of a scene page. Typically includes some combination of a SceneID, Scene Title, or Actor.
 
-## Search Types and their Capabilities
+## Search Types and Their Capabilities
 There are 4 available search/matching methods, as listed below:
 + **Enhanced Search:** `Title` `Actor` `Date` `SceneID`
 + **Limited Search:** `Title` `Actor`
@@ -57,7 +57,7 @@ There are 4 available search/matching methods, as listed below:
 
 *If the studio is not yet supported (or you simply want full control over the metadata), drop a Kodi/XBMC-style `.nfo` file on disk and PhoenixAdult will serve its contents to Plex. Check [the sitelist](./sitelist.md) for upstream-scraped sites first.*
 
-### How it Works
+### How It Works
 
 When the filename Plex sends starts with the **match token** (`manual.` by default), the provider skips every upstream scraper, strips the token, and looks for an `.nfo` whose basename matches the rest of the filename exactly. Match found → metadata served from the NFO; match missed → empty result.
 
@@ -151,7 +151,7 @@ The full schema PhoenixAdult reads (every field is optional except `<title>`):
 </movie>
 ```
 
-### Malformed XML is Repaired, not Rejected
+### Malformed XML is Repaired, Not Rejected
 
 Tags the provider doesn't know (`<uniqueid>`, `<premiered>`, …) are ignored, and every tag above is
 optional. A file that isn't well-formed XML is repaired rather than dropped:

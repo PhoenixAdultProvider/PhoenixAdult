@@ -821,7 +821,7 @@ flowchart TB
   mix -- no --> def --> mf
 ```
 
-### A.3 Rule Tables (Data that Drives Behavior)
+### A.3 Rule Tables (Data That Drives Behavior)
 
 | Table | Purpose | Examples |
 |---|---|---|

@@ -28,7 +28,7 @@ Real world examples:
 Some sites do not have a search function available. This is where SceneID and Direct URL come in to play.
 These usually don't make the most intuitive filenames, so it is often better to use the [Match...] function in Plex. See the [manual searching document](./manualsearch.md) for more information.
 
-#### If You Would Prefer to Integrate SceneIDs into your Filenames, Instead of Manually Matching in Plex, Here are Some Naming Structures We Recommend:
+#### If You Would Prefer to Integrate SceneIDs into Your Filenames, Instead of Manually Matching in Plex, Here are Some Naming Structures We Recommend:
 
 - `SiteName` - `YYYY-MM-DD` - `SceneID` `.[ext]`
 - `sitename`.`YY.MM.DD`.`SceneID` `.[ext]`
