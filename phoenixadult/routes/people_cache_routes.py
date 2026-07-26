@@ -146,10 +146,10 @@ def _card(entry: dict[str, Any]) -> str:
     filename_attr = html.escape(filename, quote=True)
     if upstream:
         upstream_fig = f'<figure><figcaption>upstream original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
-        restore_btn = '<button class="restore">Use original</button>' if cropped else '<button class="restore" disabled>Original kept</button>'
+        restore_btn = '<button class="restore">Use original</button>' if cropped else '<button class="restore" disabled>Original Kept</button>'
     else:
         upstream_fig = ''
-        restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
+        restore_btn = '<button class="restore" disabled>No Upstream Recorded</button>'
     edit_btn = '<button class="edit">Edit</button>'
     purge_btn = '<button class="purge">Purge</button>'
     search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
@@ -232,8 +232,8 @@ async def page(request: Request) -> HTMLResponse:
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
-    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button>
-      <button class="tab noupstream" id="upstreamToggle">No upstream</button></div>
+    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
+      <button class="tab noupstream" id="upstreamToggle">No Upstream</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
@@ -263,9 +263,24 @@ async def page(request: Request) -> HTMLResponse:
         if (TOKEN) p.set('token', TOKEN);
         location.href = '/people/edit?' + p.toString();
       }}
+      const STORE_KEY = 'people-cache-filters';
       let croppedOnly = false;
       let noUpstreamOnly = false;
       let curTab = '';
+      function saveFilters(){{
+        const search = document.getElementById('nameSearch').value;
+        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, search}})); }} catch {{}}
+      }}
+      function restoreFilters(){{
+        let saved;
+        try {{ saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }} catch {{}}
+        if(!saved) return;
+        croppedOnly = !!saved.croppedOnly;
+        noUpstreamOnly = !!saved.noUpstreamOnly;
+        document.getElementById('nameSearch').value = saved.search || '';
+        document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
+        document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
+      }}
       function showTab(t){{
         curTab = t;
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
@@ -279,6 +294,7 @@ async def page(request: Request) -> HTMLResponse:
         }});
         document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
+        saveFilters();
       }}
       document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
       document.getElementById('cropToggle').addEventListener('click', () => {{
@@ -303,6 +319,7 @@ async def page(request: Request) -> HTMLResponse:
       }});
       const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
       const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
+      restoreFilters();
       showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
     </script></body></html>"""
     return HTMLResponse(body)
