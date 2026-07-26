@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import os
 import re
@@ -14,6 +13,7 @@ import httpx2
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
@@ -285,7 +285,7 @@ async def cache_photo(
     face_on = crop if crop is not None else (env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES)
     cropped = False
     if face_on:
-        out = await asyncio.to_thread(face_crop.crop_to_headshot, data)
+        out = await run_in('image', face_crop.crop_to_headshot, data)
         if out is not None:
             data, ext, cropped = out, '.jpg', True
 
@@ -308,7 +308,7 @@ async def cache_photo(
             orig_path.write_bytes(original)
         face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
 
-    await asyncio.to_thread(_write)
+    await run_in('fs', _write)
     _index_file(relpath)
     logger.info('people-cache', f'cached {relpath}{" (face-cropped)" if cropped else ""}')
     return {'served_url': _local_url(relpath, data), 'gender': gender}

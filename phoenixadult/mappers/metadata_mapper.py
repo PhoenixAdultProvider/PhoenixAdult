@@ -31,6 +31,8 @@ from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.text_normalize import normalize_text
 from phoenixadult.utils.processors.title_case import title_case, title_sort
 
+_PROBE_CONCURRENCY = 8
+
 
 def _year_of(date: str | None) -> int | None:
     return int(date[0:4]) if date and date[0:4].isdigit() else None
@@ -186,8 +188,11 @@ class MetadataMapper:
         """Measure and classify each artwork URL; images whose dimensions can't be
         fetched drop out."""
 
+        sem = asyncio.Semaphore(_PROBE_CONCURRENCY)
+
         async def probe(raw_url: str) -> dict[str, Any] | None:
-            dims = await fetch_dimensions(raw_url, referers, cookies)
+            async with sem:
+                dims = await fetch_dimensions(raw_url, referers, cookies)
             if not dims:
                 return None
             result = classify_image(dims['width'], dims['height'])

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -10,6 +9,7 @@ from phoenixadult.config.env import env
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.rating_key import parse_rating_key
@@ -93,7 +93,7 @@ async def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed['site_name'] or not parsed['cur_id'] or not metadata_cache.enabled():
         return None
-    return await asyncio.to_thread(scene_store.tags_for, parsed['site_name'], parsed['cur_id'])
+    return await run_in('store', scene_store.tags_for, parsed['site_name'], parsed['cur_id'])
 
 
 def _locked_fields(item: dict[str, Any]) -> set[str]:
@@ -295,7 +295,7 @@ async def push_collection_logos(apply: bool = False, limit: int | None = None) -
                 plex_key = str(col.get('ratingKey') or '')
                 if not title or not plex_key:
                     continue
-                hit = await asyncio.to_thread(logo_cache.find_logo, title, None)
+                hit = await run_in('store', logo_cache.find_logo, title, None)
                 if hit is None:
                     continue
                 report.matched += 1

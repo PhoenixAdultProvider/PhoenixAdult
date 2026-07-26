@@ -13,6 +13,7 @@ from phoenixadult.config.env import env
 from phoenixadult.registry import get_all_providers
 from phoenixadult.routes import dev_routes, env_routes, image_routes, logo_routes, metadata_cache_routes, people_cache_routes, plex_routes, queue_routes
 from phoenixadult.routes.provider_router import create_provider_router
+from phoenixadult.utils.concurrency import pools
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 from phoenixadult.utils.logging.uvicorn_logging import configure_uvicorn_logging
@@ -84,6 +85,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         backup.cancel()
+        pools.shutdown()
 
 
 def create_app() -> FastAPI:

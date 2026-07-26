@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import html
 import json
 from typing import Any
@@ -12,6 +11,7 @@ from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
@@ -31,10 +31,10 @@ def _json_attr(value: object) -> str:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries, total = await asyncio.to_thread(metadata_cache.entries_page)
-    dup_keys = await asyncio.to_thread(metadata_cache.duplicate_entries)
-    studios = await asyncio.to_thread(metadata_cache.studios)
-    facets = await asyncio.to_thread(metadata_cache.facets)
+    entries, total = await run_in('store', metadata_cache.entries_page)
+    dup_keys = await run_in('store', metadata_cache.duplicate_entries)
+    studios = await run_in('store', metadata_cache.studios)
+    facets = await run_in('store', metadata_cache.facets)
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     token_json = json.dumps(token).replace('<', '\\u003c')
@@ -53,7 +53,7 @@ async def page(request: Request) -> HTMLResponse:
 
 @router.get('/edit', response_class=HTMLResponse)
 async def edit_page(request: Request, key: str = '') -> HTMLResponse:
-    loaded = await asyncio.to_thread(metadata_cache.load_for_edit, key) if '/' in key else None
+    loaded = await run_in('store', metadata_cache.load_for_edit, key) if '/' in key else None
     if loaded is None:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
@@ -89,7 +89,7 @@ async def save(request: Request) -> JSONResponse:
 
 @router.get('/state')
 async def state() -> JSONResponse:
-    return JSONResponse({'token': await asyncio.to_thread(metadata_cache.change_token)})
+    return JSONResponse({'token': await run_in('store', metadata_cache.change_token)})
 
 
 @router.get('/entries')
@@ -110,7 +110,8 @@ async def entries_json(
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
-    entries, total = await asyncio.to_thread(
+    entries, total = await run_in(
+        'store',
         lambda: metadata_cache.entries_page(
             studio=studio,
             query=query,
@@ -125,15 +126,15 @@ async def entries_json(
             direction=direction,
             limit=limit if limit > 0 else -1,
             offset=offset,
-        )
+        ),
     )
     return JSONResponse(
         {
             'entries': entries,
-            'dup_keys': await asyncio.to_thread(metadata_cache.duplicate_entries),
+            'dup_keys': await run_in('store', metadata_cache.duplicate_entries),
             'total': total,
-            'studios': await asyncio.to_thread(metadata_cache.studios),
-            'facets': await asyncio.to_thread(metadata_cache.facets),
+            'studios': await run_in('store', metadata_cache.studios),
+            'facets': await run_in('store', metadata_cache.facets),
         }
     )
 
@@ -144,7 +145,7 @@ async def purge(request: Request) -> JSONResponse:
     key = str(data.get('key', ''))
     if '/' not in key:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
-    ok = await asyncio.to_thread(metadata_cache.purge, key)
+    ok = await run_in('store', metadata_cache.purge, key)
     return JSONResponse({'ok': ok})
 
 
@@ -156,11 +157,11 @@ async def purge_bulk(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
     purged = 0
     for key in keys:
-        if await asyncio.to_thread(metadata_cache.purge, key):
+        if await run_in('store', metadata_cache.purge, key):
             purged += 1
     return JSONResponse({'ok': True, 'purged': purged})
 
 
 @router.post('/purge-duplicates')
 async def purge_duplicates() -> JSONResponse:
-    return JSONResponse({'ok': True, 'purged': await asyncio.to_thread(metadata_cache.purge_duplicates)})
+    return JSONResponse({'ok': True, 'purged': await run_in('store', metadata_cache.purge_duplicates)})

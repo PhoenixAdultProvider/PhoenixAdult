@@ -15,6 +15,7 @@ from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import split_subsite
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
@@ -312,7 +313,7 @@ class MetadataService:
 
         scene_url, subsite = split_subsite(self._scraper.decode(cur_id))
 
-        cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
+        cached = None if force else await run_in('store', metadata_cache.read, site.name, cur_id)
         response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
         if response is not None and metadata_cache.data18_remap_needed(response, site.name):
             logger.info(provider.id, f'data18 mapping changed for ratingKey={rating_key} — re-scraping')

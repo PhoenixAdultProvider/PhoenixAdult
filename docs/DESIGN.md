@@ -542,6 +542,22 @@ sequenceDiagram
 
 Plex aborts provider requests at ~90s, so both services cap serving at `PLEX_REQUEST_BUDGET` (85s): `MetadataService.get_metadata` wraps the coalesced scrape in `wait_for(shield(...))` — on timeout the scrape *continues* and lands in the snapshot cache — while `MatchService.match` cancels outright. Work deferred by pacing (`PacingDeferredError`, raised when a foreground request would wait >10s) is re-run through `scrape_queue` with `allow_slow=True`, which is allowed to sleep through the shared gap. On paced sites a finished background search persists to the search store (`phoenixadult/utils/cache/search_store.py`, in `phoenixadult.db`, case/whitespace-normalized keys, lifetime `SEARCH_STORE_TTL_DAYS` — perpetual by default), so any later Plex scan matches without re-searching; the in-memory memo fronts the store. The queue and pacer state are visible at `/queue`.
 
+### 7.7 Thread Pools — Keeping the UI Responsive Under Load
+
+Every route is `async def`, so anything synchronous runs on the event loop unless handed to a thread. `asyncio.to_thread` hands work to the **one** default executor (`min(32, cpu+4)`), which every caller shares — so a scrape probing 60+ artwork URLs, each ending in a Pillow decode, could fill it and leave a `/people` or `/metadata` page's SQLite read queued behind image work.
+
+`phoenixadult/utils/concurrency/pools.py` replaces that single pool with named, bounded ones, and `run_in(name, fn, …)` is a drop-in for `to_thread` against a chosen pool (it copies contextvars the same way, so request-id logging survives):
+
+| Pool | Size | Carries |
+|---|---|---|
+| `store` | 4 | SQLite reads/writes — cache pages, editors, search store, serve-path snapshot reads |
+| `image` | `min(8, cpu/2)` | Pillow decode/dimension probing, face cropping |
+| `fs` | 4 | People-cache file writes |
+
+Artwork probing is additionally capped at `_PROBE_CONCURRENCY` (8) per scene, so one scene's image set arrives as a stream rather than a burst. Pools are created on first use and shut down in the lifespan's `finally`.
+
+The `store` bound doubles as a cap on SQLite connections: connections are per-thread (§5), so a 4-thread pool means at most four from that pool rather than one per default-executor thread.
+
 ---
 
 ## 8. HTTP / Anti-Bot Bypass Model
@@ -736,6 +752,7 @@ phoenixadult/
     people/                  # PeopleManager (__init__), sources/, cache, gender, generic, data
     processors/              # filename_parser, search_query, similarity, title_case, studio_name,
                              #   abbreviations, actor_strip
+    concurrency/             # pools (named thread pools), coalescer, single_flight
     logging/, genres/, captcha/, cookies/, helpers/
   config/                    # env, env_catalog, env_overrides, __init__
 scripts/                     # generate_sitelist, site_health, start-with-tunnel.ps1

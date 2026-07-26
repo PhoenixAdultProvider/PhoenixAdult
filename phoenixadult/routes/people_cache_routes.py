@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import html
 import json
 from datetime import UTC, datetime
@@ -16,6 +15,7 @@ from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
@@ -168,7 +168,7 @@ def _card(entry: dict[str, Any]) -> str:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries = await asyncio.to_thread(_list_people, people_cache_dir())
+    entries = await run_in('store', _list_people, people_cache_dir())
     type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
     default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
     token = html.escape(request.query_params.get('token', ''), quote=True)
@@ -331,7 +331,7 @@ def _find_entry(filename: str) -> dict[str, Any] | None:
 
 @router.get('/edit', response_class=HTMLResponse)
 async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
-    entry = await asyncio.to_thread(_find_entry, filename) if filename else None
+    entry = await run_in('store', _find_entry, filename) if filename else None
     if entry is None:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot with that filename.</p>', status_code=404)
     relpath = str(entry.get('relpath', filename))
@@ -357,7 +357,7 @@ async def save(request: Request) -> JSONResponse:
     wants_crop = bool(data.get('cropped'))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
-    entry = await asyncio.to_thread(_find_entry, filename)
+    entry = await run_in('store', _find_entry, filename)
     if entry is None:
         return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
     if not upstream:
@@ -368,7 +368,7 @@ async def save(request: Request) -> JSONResponse:
     cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop)
     if cached is None:
         return JSONResponse({'ok': False, 'error': 'could not download or store that image'}, status_code=400)
-    flagged = await asyncio.to_thread(scene_store.flag_people_changed, str(entry['name']))
+    flagged = await run_in('store', scene_store.flag_people_changed, str(entry['name']))
     logger.info('people-cache', f'edited {filename}: upstream={upstream} cropped={wants_crop}; {len(flagged)} scene(s) flagged to re-push')
     return JSONResponse({'ok': True, 'changed': True, 'scenes': len(flagged)})
 

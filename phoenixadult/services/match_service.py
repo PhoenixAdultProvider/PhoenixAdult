@@ -17,6 +17,7 @@ from phoenixadult.services import scrape_queue
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.logging.logger import logger
@@ -74,11 +75,11 @@ class MatchService:
 
         paced = self._is_paced(search_data)
         if paced:
-            stored = await asyncio.to_thread(search_store.load, key)
+            stored = await run_in('store', search_store.load, key)
             if stored is None:
-                stored = await asyncio.to_thread(search_store.load_similar, key)
+                stored = await run_in('store', search_store.load_similar, key)
                 if stored is not None:
-                    await asyncio.to_thread(search_store.save, key, stored)
+                    await run_in('store', search_store.save, key, stored)
                     logger.info(provider.id, f'search store substring hit for "{search_data.title}" on {search_data.site_info.name} (renamed file)')
             else:
                 logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
@@ -96,7 +97,7 @@ class MatchService:
                     cutoff = time.monotonic() - _SEARCH_MEMO_TTL
                     self._search_memo = {k: v for k, v in self._search_memo.items() if v[0] >= cutoff}
                 if paced:
-                    await asyncio.to_thread(search_store.save, key, raw)
+                    await run_in('store', search_store.save, key, raw)
             return raw
 
         return await self._search_coalesce.run(key, _run)

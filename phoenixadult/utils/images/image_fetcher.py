@@ -12,6 +12,7 @@ from PIL import Image
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.concurrency.coalescer import Coalescer
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import DEFAULT_UA, make_http
 from phoenixadult.utils.http.headers import sanitize_header
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
@@ -202,7 +203,7 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
 
     data, content_type = payload
     try:
-        width, height = await asyncio.to_thread(_decode_dims, data)
+        width, height = await run_in('image', _decode_dims, data)
     except Exception:  # noqa: BLE001 - undecodable image still served, just unsized
         width, height = 0, 0
 

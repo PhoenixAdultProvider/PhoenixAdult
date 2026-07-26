@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import asyncio
-
 from phoenixadult.clients.base import Client, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config import config
 from phoenixadult.registry.site_info import ResolvedSiteInfo
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import build_search_result, title_distance_score
 
 MAX_RESULTS = 20
@@ -19,7 +18,7 @@ def _absolute(thumb: str) -> str | None:
 
 class ArchiveClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        rows = await asyncio.to_thread(scene_store.site_scenes, search_data.site_info.name)
+        rows = await run_in('store', scene_store.site_scenes, search_data.site_info.name)
         scored = [
             build_search_result(
                 site=search_data.site_info,
