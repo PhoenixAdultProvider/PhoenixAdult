@@ -264,6 +264,11 @@ def delete(rel_path: str) -> bool:
     return bool(cur.rowcount)
 
 
+def identity_for(rel_path: str) -> tuple[str, str] | None:
+    row = db.connect().execute('SELECT site, cur_id FROM scenes WHERE rel_path = ?', (rel_path,)).fetchone()
+    return (str(row['site']), str(row['cur_id'])) if row else None
+
+
 def site_scenes(site: str) -> list[dict[str, str]]:
     rows = db.connect().execute('SELECT cur_id, title, release_date, thumb FROM scenes WHERE site = ? ORDER BY title', (site,)).fetchall()
     return [{'cur_id': str(r['cur_id']), 'title': str(r['title']), 'release_date': str(r['release_date'] or ''), 'thumb': str(r['thumb'] or '')} for r in rows]

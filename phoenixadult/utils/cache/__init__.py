@@ -14,7 +14,7 @@ from PIL import Image as PILImage
 
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.models.metadata import PlexCollection, PlexGenre, PlexMetadata, PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.registry import SITE_DEFINITIONS, find_site
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.fs.paths import safe_join
@@ -446,6 +446,74 @@ def purge(key: str) -> bool:
         shutil.rmtree(target, ignore_errors=True)
     logger.info('meta-cache', f'purged snapshot {key}')
     return True
+
+
+_EDITABLE_TAGS = {'Genre': PlexGenre, 'Collection': PlexCollection, 'Country': PlexCountry}
+_EDITABLE_ROLES = ('Role', 'Director', 'Producer')
+
+
+def load_for_edit(key: str) -> dict[str, Any] | None:
+    """The stored snapshot for one rel path, host-relative URLs left intact so the editor shows
+    what is on disk rather than a rebased copy."""
+    identity = scene_store.identity_for(key)
+    if identity is None:
+        return None
+    loaded = scene_store.load(key.rsplit('/', 1)[-1])
+    return loaded if isinstance(loaded, dict) else None
+
+
+def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
+    if title := str(fields.get('title', '') or '').strip():
+        md.title = title
+    for attr in ('titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt'):
+        if attr in fields:
+            setattr(md, attr, str(fields[attr] or '').strip() or None)
+    date = md.originallyAvailableAt or ''
+    md.year = int(date[0:4]) if date[0:4].isdigit() else None
+    for attr, model in _EDITABLE_TAGS.items():
+        if attr in fields:
+            tags = [str(t).strip() for t in fields[attr] or [] if str(t).strip()]
+            setattr(md, attr, [model(tag=tag) for tag in dict.fromkeys(tags)] or None)
+    existing = {attr: {r.tag: r for r in (getattr(md, attr) or [])} for attr in _EDITABLE_ROLES}
+    for attr in _EDITABLE_ROLES:
+        if attr not in fields:
+            continue
+        kept: list[PlexRole] = []
+        for pos, raw in enumerate(fields[attr] or []):
+            tag = str(raw).strip()
+            if not tag or any(r.tag == tag for r in kept):
+                continue
+            prior = existing[attr].get(tag) or PlexRole(tag=tag)
+            kept.append(PlexRole(tag=tag, role=prior.role, thumb=prior.thumb, gender=prior.gender, order=pos))
+        setattr(md, attr, kept or None)
+    if 'Image' in fields:
+        images = [PlexImage(url=str(i.get('url', '')).strip(), type=str(i.get('type', '')).strip() or 'coverPoster') for i in fields['Image'] or []]
+        md.Image = [i for i in images if i.url] or None
+        md.thumb = next((i.url for i in md.Image or [] if i.type == 'coverPoster'), None)
+        md.art = next((i.url for i in md.Image or [] if i.type == 'background'), None)
+
+
+async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
+    """Rewrite one snapshot from the editor's fields, returning its new rel path (a studio or
+    tagline change moves the folder). Images absent from the list are dropped with the write."""
+    identity = scene_store.identity_for(key)
+    loaded = load_for_edit(key)
+    if identity is None or loaded is None:
+        return None
+    site_name, cur_id = identity
+    response = PlexMetadataResponse.model_validate(loaded)
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return None
+    _apply_edits(md, fields)
+    if not await write(site_name, cur_id, response):
+        return None
+    moved = f'{_rel_dir(site_name, md.studio or "", md.tagline or "")}/{_hash(site_name, cur_id)}'
+    if moved != key and (stale := safe_join(cache_dir(), key)) is not None:
+        shutil.rmtree(stale, ignore_errors=True)
+        logger.info('meta-cache', f'edited snapshot moved {key} -> {moved}')
+    return moved
 
 
 def duplicate_entries() -> list[str]:

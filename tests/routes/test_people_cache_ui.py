@@ -12,7 +12,7 @@ def test_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
     assert client.get('/people').status_code == 401
     page = client.get('/people?token=tok')
     assert page.status_code == 200
-    assert 'People Image Cache' in page.text
+    assert 'People Cache' in page.text
 
 
 def test_restore_requires_filename(monkeypatch: pytest.MonkeyPatch) -> None:

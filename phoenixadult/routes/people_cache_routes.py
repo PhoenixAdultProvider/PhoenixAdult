@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -14,12 +15,21 @@ from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
-from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, people_cache_dir, purge, restore_original, set_gender
-from phoenixadult.utils.people.types import parse_person_filename
+from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
+from phoenixadult.utils.people.types import Gender, parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+
+_EDIT_TEMPLATE: str = load_data(__file__, 'people_edit', kind='html')
+
+
+def _json_attr(value: object) -> str:
+    return json.dumps(value).replace('<', '\\u003c')
+
 
 _ROLES = ('actor', 'director', 'producer')
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
@@ -101,8 +111,12 @@ def _list_people_files(directory: str) -> list[dict[str, Any]]:
     return out
 
 
-def _gender_of(gender: str) -> str:
-    return gender if gender in ('male', 'female', 'trans') else ''
+def _gender_of(gender: str) -> Gender:
+    match gender:
+        case 'male' | 'female' | 'trans':
+            return gender
+        case _:
+            return ''
 
 
 def _gender_buttons(gender: str) -> str:
@@ -135,15 +149,17 @@ def _card(entry: dict[str, Any]) -> str:
     else:
         upstream_fig = ''
         restore_btn = '<button class="restore" disabled>No upstream recorded</button>'
+    edit_btn = '<button class="edit">Edit</button>'
     purge_btn = '<button class="purge">Purge</button>'
-    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" data-cropped="{1 if cropped else 0}">
+    search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
+    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" data-cropped="{1 if cropped else 0}" data-name="{search_key}">
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
         <figure><figcaption>cached (shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}
       </div>
       {_gender_buttons(str(entry.get('gender', '')))}
-      <div class="actions">{restore_btn}{purge_btn}</div>
+      <div class="actions">{restore_btn}{edit_btn}{purge_btn}</div>
     </div>"""
 
 
@@ -163,7 +179,7 @@ async def page(request: Request) -> HTMLResponse:
         f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
     )
     cards = '\n'.join(_card(e) for e in entries)
-    body = f"""<!doctype html><html><head><meta charset="utf-8"><title>People image cache</title>
+    body = f"""<!doctype html><html><head><meta charset="utf-8"><title>People Cache</title>
     <style>
       body{{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}}
       h1{{font-size:20px}} .sub{{color:#94a3b8;font-size:13px;margin-bottom:20px}}
@@ -189,19 +205,26 @@ async def page(request: Request) -> HTMLResponse:
       button:disabled{{cursor:default;opacity:.7}}
       .actions{{display:flex;gap:8px}}
       button.restore{{background:#2563eb;flex:1}} button.restore:disabled{{background:#334155;color:#94a3b8;opacity:1}}
+      button.edit{{background:#1e2433;border:1px solid #334155;color:#cbd5e1;flex:0 0 80px}}
+      button.edit:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
       button.purge{{background:#b91c1c;flex:0 0 90px}}
+      .search{{margin-bottom:16px}}
+      .search input{{width:320px;background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
+      .search input:focus{{outline:0;border-color:#2563eb}}
+      .search .cnt{{color:#64748b;font-size:12px;margin-left:10px}}
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
       .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
       .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
       .tab .cnt{{opacity:.65;font-size:11px}}
     </style></head><body>
-    <h1>People Image Cache</h1>
+    <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped only</button></div>
+    <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {empty}
@@ -225,19 +248,27 @@ async def page(request: Request) -> HTMLResponse:
         const j = await post('/people/purge', {{filename}});
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
+      function edit(filename){{
+        const p = new URLSearchParams({{filename}});
+        if (TOKEN) p.set('token', TOKEN);
+        location.href = '/people/edit?' + p.toString();
+      }}
       let croppedOnly = false;
       let curTab = '';
       function showTab(t){{
         curTab = t;
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+        const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
         let n=0;
         document.querySelectorAll('.card').forEach(c=>{{
-          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1');
+          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!needle || (c.dataset.name||'').includes(needle));
           c.style.display=m?'block':'none'; if(m)n++;
         }});
+        document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
       }}
+      document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
       document.getElementById('cropToggle').addEventListener('click', () => {{
         croppedOnly = !croppedOnly;
         document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
@@ -249,6 +280,7 @@ async def page(request: Request) -> HTMLResponse:
         const fn = b.closest('.card')?.dataset.fn;
         if (!fn) return;
         if (b.classList.contains('purge')) purge(fn);
+        else if (b.classList.contains('edit')) edit(fn);
         else if (b.classList.contains('restore')) restore(fn);
         else if (b.classList.contains('g')) setGender(fn, b.dataset.g);
       }});
@@ -257,6 +289,52 @@ async def page(request: Request) -> HTMLResponse:
       showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
     </script></body></html>"""
     return HTMLResponse(body)
+
+
+def _find_entry(filename: str) -> dict[str, Any] | None:
+    return next((e for e in _list_people(people_cache_dir()) if e['filename'] == filename), None)
+
+
+@router.get('/edit', response_class=HTMLResponse)
+async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
+    entry = await asyncio.to_thread(_find_entry, filename) if filename else None
+    if entry is None:
+        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot with that filename.</p>', status_code=404)
+    relpath = str(entry.get('relpath', filename))
+    cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
+    subtitle = f'{html.escape(str(entry["name"]))} · {html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code>'
+    body = (
+        _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
+        .replace('__CACHED_SRC__', html.escape(cached_src, quote=True))
+        .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
+        .replace('__FILENAME__', _json_attr(filename))
+        .replace('__ENTRY__', _json_attr(entry))
+        .replace('__CROP_AVAILABLE__', 'true' if face_crop.available() else 'false')
+    )
+    return HTMLResponse(body)
+
+
+@router.post('/save')
+async def save(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    filename = str(data.get('filename', ''))
+    upstream = str(data.get('upstream_url', '')).strip()
+    wants_crop = bool(data.get('cropped'))
+    if not filename:
+        return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
+    entry = await asyncio.to_thread(_find_entry, filename)
+    if entry is None:
+        return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
+    if not upstream:
+        return JSONResponse({'ok': False, 'error': 'an upstream URL is required to re-cache the image'}, status_code=400)
+    if upstream == entry['upstream_url'] and wants_crop == entry['cropped']:
+        return JSONResponse({'ok': True, 'changed': False})
+    role: Any = entry['role']
+    cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop)
+    if cached is None:
+        return JSONResponse({'ok': False, 'error': 'could not download or store that image'}, status_code=400)
+    logger.info('people-cache', f'edited {filename}: upstream={upstream} cropped={wants_crop}')
+    return JSONResponse({'ok': True, 'changed': True})
 
 
 @router.post('/restore')

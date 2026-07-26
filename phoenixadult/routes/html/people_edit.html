@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <title>Edit Headshot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: #cbd5e1; }
+    .wrap { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 20px; align-items: start; }
+    fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0; background: #151b29; }
+    legend { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
+    label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
+    input[type=text] { width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    input[type=text]:focus { outline: 0; border-color: #2563eb; }
+    .hint { font-size: 11px; color: #475569; margin-top: 4px; }
+    .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: #cbd5e1; }
+    .toggle input { width: 16px; height: 16px; accent-color: #2563eb; }
+    .imgs { display: flex; gap: 12px; }
+    figure { margin: 0; flex: 1; text-align: center; }
+    figcaption { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    figure img { width: 100%; height: 240px; object-fit: contain; background: #0b0d12; border-radius: 6px; }
+    .bar { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: #15803d; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .save:hover { background: #16a34a; }
+    .save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
+    .cancel:hover { color: #e2e8f0; }
+    .status { font-size: 12px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <h1>Edit Headshot</h1>
+  <div class="sub">__SUBTITLE__</div>
+
+  <div class="wrap">
+    <fieldset>
+      <legend>Source</legend>
+      <label for="f-upstream">Upstream Original URL</label>
+      <input type="text" id="f-upstream" placeholder="https://…">
+      <div class="hint">Saving a changed URL re-downloads the image and replaces the cached file.</div>
+      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:#cbd5e1">Cropped Status — face-crop the image</label></div>
+      <div class="hint" id="cropHint"></div>
+      <div class="bar">
+        <button class="save" id="saveBtn" onclick="save()">Save</button>
+        <button class="cancel" onclick="leave()">Cancel</button>
+        <span class="status" id="status"></span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Preview</legend>
+      <div class="imgs">
+        <figure><figcaption>cached (shown in Plex)</figcaption><img id="cachedImg" src="__CACHED_SRC__" alt=""></figure>
+        <figure><figcaption>upstream original</figcaption><img id="upstreamImg" alt=""></figure>
+      </div>
+    </fieldset>
+  </div>
+
+  <script>
+    const TOKEN = __TOKEN__;
+    const FILENAME = __FILENAME__;
+    const ENTRY = __ENTRY__;
+    const CROP_AVAILABLE = __CROP_AVAILABLE__;
+
+    function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
+    function qs(id) { return document.getElementById(id); }
+    function leave() { location.href = '/people' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '') + '#' + ENTRY.type; }
+
+    function proxied(url) { return url ? '/images/proxy?url=' + encodeURIComponent(url) : ''; }
+
+    function refreshUpstream() {
+      const url = qs('f-upstream').value.trim();
+      const img = qs('upstreamImg');
+      img.src = proxied(url);
+      img.style.visibility = url ? 'visible' : 'hidden';
+    }
+
+    async function save() {
+      const btn = qs('saveBtn');
+      btn.disabled = true;
+      qs('status').textContent = 'Saving…';
+      const body = {filename: FILENAME, upstream_url: qs('f-upstream').value.trim(), cropped: qs('f-cropped').checked};
+      let payload = {};
+      try {
+        const r = await fetch('/people/save', {method: 'POST', headers: hdrs(), body: JSON.stringify(body)});
+        payload = await r.json();
+      } catch (err) {
+        payload = {ok: false, error: String(err)};
+      }
+      if (payload.ok) { leave(); return; }
+      btn.disabled = false;
+      qs('status').textContent = 'Save failed: ' + (payload.error || 'unknown error');
+    }
+
+    qs('f-upstream').value = ENTRY.upstream_url || '';
+    qs('f-cropped').checked = !!ENTRY.cropped;
+    if (!CROP_AVAILABLE) {
+      qs('f-cropped').disabled = true;
+      qs('cropHint').textContent = 'opencv-python-headless is not installed — cropping is unavailable.';
+    }
+    qs('f-upstream').addEventListener('change', refreshUpstream);
+    refreshUpstream();
+  </script>
+</body>
+</html>

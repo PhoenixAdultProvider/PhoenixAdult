@@ -103,7 +103,7 @@ def create_app() -> FastAPI:
     # ── Runtime Config UI ────────────────────────────────────────────────────
     app.include_router(env_routes.router, prefix='/config')
 
-    # ── People Image Cache Review UI (admin-guarded) ─────────────────────────
+    # ── People Cache Review UI (admin-guarded) ─────────────────────────
     app.include_router(people_cache_routes.router, prefix='/people')
 
     # ── Snapshot Metadata Cache Review UI (admin-guarded) ────────────────────

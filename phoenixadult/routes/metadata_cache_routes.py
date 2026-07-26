@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import json
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -15,8 +17,15 @@ from phoenixadult.utils.helpers.helpers import load_data
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
+_EDIT_TEMPLATE: str = load_data(__file__, 'metadata_edit', kind='html')
 
 _SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
+_EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt')
+_EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
+
+
+def _json_attr(value: object) -> str:
+    return json.dumps(value).replace('<', '\\u003c')
 
 
 @router.get('', response_class=HTMLResponse)
@@ -40,6 +49,42 @@ async def page(request: Request) -> HTMLResponse:
         .replace('__DUP_KEYS__', json.dumps(dup_keys).replace('<', '\u003c'))
     )
     return HTMLResponse(body)
+
+
+@router.get('/edit', response_class=HTMLResponse)
+async def edit_page(request: Request, key: str = '') -> HTMLResponse:
+    loaded = await asyncio.to_thread(metadata_cache.load_for_edit, key) if '/' in key else None
+    if loaded is None:
+        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
+    md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
+    subtitle = f'<code>{html.escape(key)}</code>'
+    body = (
+        _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
+        .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
+        .replace('__KEY__', _json_attr(key))
+        .replace('__METADATA__', _json_attr(md[0]))
+    )
+    return HTMLResponse(body)
+
+
+@router.post('/save')
+async def save(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    key = str(data.get('key', ''))
+    if '/' not in key:
+        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+    fields: dict[str, Any] = {name: data[name] for name in _EDIT_TEXT if name in data}
+    for name in _EDIT_TAGS:
+        if isinstance(data.get(name), list):
+            fields[name] = data[name]
+    if isinstance(data.get('Image'), list):
+        fields['Image'] = [image for image in data['Image'] if isinstance(image, dict)]
+    if not str(fields.get('title', '')).strip():
+        return JSONResponse({'ok': False, 'error': 'title is required'}, status_code=400)
+    moved = await metadata_cache.save_edits(key, fields)
+    if moved is None:
+        return JSONResponse({'ok': False, 'error': 'snapshot not written — check the title and METADATA_CACHE_ENABLE'}, status_code=400)
+    return JSONResponse({'ok': True, 'key': moved})
 
 
 @router.get('/state')

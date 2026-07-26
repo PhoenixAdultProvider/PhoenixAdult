@@ -55,6 +55,8 @@
     /* ── Misc ── */
     .blank { color: #334155; }
     .cached-ts { color: #94a3b8; white-space: nowrap; }
+    .edit-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #cbd5e1; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
+    .edit-btn:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
     .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .purge-btn:hover { background: #dc2626; }
     .purge-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
@@ -135,6 +137,7 @@
           <th class="sortable" data-key="tagline" onclick="sort('tagline')">Tagline</th>
           <th class="sortable" data-key="year" onclick="sort('year')">Year</th>
           <th class="sortable" data-key="data18_id" onclick="sort('data18_id')">Data18</th>
+          <th>Edit</th>
           <th>Purge</th>
         </tr>
       </thead>
@@ -345,6 +348,7 @@
           <td>${tagline}</td>
           <td>${year}</td>
           <td>${data18}</td>
+          <td><button class="edit-btn" onclick="edit(${key})">Edit</button></td>
           <td><button class="purge-btn" onclick="purge(${key})">Purge</button></td>
         </tr>`;
       }).join('');
@@ -354,6 +358,12 @@
       const h = Object.assign({}, extra || {});
       if (TOKEN) h['x-admin-token'] = TOKEN;
       return h;
+    }
+
+    function edit(key) {
+      const p = new URLSearchParams({key});
+      if (TOKEN) p.set('token', TOKEN);
+      location.href = '/metadata/edit?' + p.toString();
     }
 
     async function purge(key) {

@@ -246,14 +246,22 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
 
 
 async def cache_photo(
-    upstream_url: str, name: str, type: PersonType, gender: Gender, headers: dict[str, str] | None = None, source: str = ''
+    upstream_url: str,
+    name: str,
+    type: PersonType,
+    gender: Gender,
+    headers: dict[str, str] | None = None,
+    source: str = '',
+    *,
+    replace: bool = False,
+    crop: bool | None = None,
 ) -> dict[str, str] | None:
     if not cache_enabled():
         return None
     directory = people_cache_dir()
     os.makedirs(directory, exist_ok=True)
 
-    if not cache_replace_enabled():
+    if not replace and not cache_replace_enabled():
         existing = lookup_cached(name, type)
         if existing:
             return existing
@@ -274,7 +282,7 @@ async def cache_photo(
 
     orig_ext = ext
     original = data
-    face_on = env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES
+    face_on = crop if crop is not None else (env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES)
     cropped = False
     if face_on:
         out = await asyncio.to_thread(face_crop.crop_to_headshot, data)

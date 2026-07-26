@@ -192,6 +192,31 @@ pick your server from the discovered list (fills `PLEX_URL`), verify the connect
 (server identity + authenticated check), see the server version with a local-only
 update check (no notifications), and run reconciliation dry-run/apply without curl.
 
+### Editing a Cached Scene or Headshot
+
+Both review UIs have per-row editors. The **Edit** button on `/metadata` (left of Purge) opens
+`/metadata/edit?key=<rel path>`; the one on `/people` (between "Use Original" and Purge) opens
+`/people/edit?filename=<file>`. Saving writes and returns to the list; Cancel discards.
+
+`/metadata/edit` covers title, sort title, studio, tagline, summary, date, genres, collections,
+actors, directors, producers, and the image set (previewed as a grid, each with its kind and a
+Remove button; a pasted URL is downloaded on save). Notes:
+
+- **Only the fields you send change.** Everything else in the snapshot — ratingKey, guid, data18
+  reference, ratings, duration — is preserved.
+- **Removing an image deletes the file**, because the snapshot writer copies only still-referenced
+  images into the new generation. Add it back by URL if that was a mistake.
+- **A kept actor keeps their headshot**; a newly added one resolves on the next serve.
+- **Changing Studio or Tagline moves the snapshot folder** (the layout is derived from them). The
+  old directory is removed and the response reports the new key.
+- The title cannot be blank, and the snapshot writer still rejects error-looking titles.
+
+`/people/edit` covers the upstream original URL and cropped status. Saving a change **re-downloads
+the image and replaces the cached file**, cropping per the checkbox rather than
+`PEOPLE_CACHE_FACE_ENABLE` — so it doubles as a way to crop or un-crop one headshot. The checkbox
+is disabled when `opencv-python-headless` is absent. `/people` also has a name search filtering the
+current tab.
+
 #### Reconciling Stale Tags
 
 Plex keeps agent-supplied tags that a provider stops returning: change a scene's collection and
