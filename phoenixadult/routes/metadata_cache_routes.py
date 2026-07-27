@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 from typing import Any
@@ -31,10 +32,12 @@ def _json_attr(value: object) -> str:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries, total = await run_in('store', metadata_cache.entries_page)
-    dup_keys = await run_in('store', metadata_cache.duplicate_entries)
-    studios = await run_in('store', metadata_cache.studios)
-    facets = await run_in('store', metadata_cache.facets)
+    (entries, total), dup_keys, studios, facets = await asyncio.gather(
+        run_in('store', metadata_cache.entries_page),
+        run_in('store', metadata_cache.duplicate_entries),
+        run_in('store', metadata_cache.studios),
+        run_in('store', metadata_cache.facets),
+    )
     token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     token_json = json.dumps(token).replace('<', '\\u003c')
@@ -111,34 +114,32 @@ async def entries_json(
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
-    entries, total = await run_in(
-        'store',
-        lambda: metadata_cache.entries_page(
-            studio=studio,
-            query=query,
-            year=year,
-            month=month,
-            day=day,
-            tagline=tagline,
-            collection=collection,
-            data18=data18,
-            provider=provider,
-            dups_only=bool(dups),
-            sort=sort,
-            direction=direction,
-            limit=limit if limit > 0 else -1,
-            offset=offset,
+    dup_keys = await run_in('store', metadata_cache.duplicate_entries)
+    (entries, total), studios, facets = await asyncio.gather(
+        run_in(
+            'store',
+            lambda: metadata_cache.entries_page(
+                studio=studio,
+                query=query,
+                year=year,
+                month=month,
+                day=day,
+                tagline=tagline,
+                collection=collection,
+                data18=data18,
+                provider=provider,
+                dups_only=bool(dups),
+                dup_paths=dup_keys,
+                sort=sort,
+                direction=direction,
+                limit=limit if limit > 0 else -1,
+                offset=offset,
+            ),
         ),
+        run_in('store', metadata_cache.studios),
+        run_in('store', metadata_cache.facets),
     )
-    return JSONResponse(
-        {
-            'entries': entries,
-            'dup_keys': await run_in('store', metadata_cache.duplicate_entries),
-            'total': total,
-            'studios': await run_in('store', metadata_cache.studios),
-            'facets': await run_in('store', metadata_cache.facets),
-        }
-    )
+    return JSONResponse({'entries': entries, 'dup_keys': dup_keys, 'total': total, 'studios': studios, 'facets': facets})
 
 
 @router.post('/purge')
@@ -157,10 +158,7 @@ async def purge_bulk(request: Request) -> JSONResponse:
     keys = data.get('keys')
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
         return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
-    purged = 0
-    for key in keys:
-        if await run_in('store', metadata_cache.purge, key):
-            purged += 1
+    purged = await run_in('store', lambda: sum(1 for key in keys if metadata_cache.purge(key)))
     return JSONResponse({'ok': True, 'purged': purged})
 
 
