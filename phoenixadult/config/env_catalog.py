@@ -199,7 +199,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
             'JAVBus',
             'JAVDatabase',
         ],
-        default_value='Local Storage,Scene,IAFD,AdultDVDEmpire,Freeones,Indexxx,Boobpedia,Babes and Stars,Babepedia,JAVBus,JAVDatabase',
+        default_value='Local Storage,Scene,IAFD,AdultDVDEmpire,Freeones,Indexxx,Boobpedia,Babes and Stars,Babepedia',
     ),
     EnvVarSpec(
         'IMAGE_BASE_URL',

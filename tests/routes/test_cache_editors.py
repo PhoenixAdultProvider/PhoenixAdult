@@ -248,3 +248,29 @@ def test_people_lookup_offers_only_remote_sources() -> None:
     names = [s.name for s in FETCHABLE_SOURCES]
     assert 'Local Storage' not in names
     assert 'IAFD' in names and 'Freeones' in names
+
+
+def test_people_page_offers_bulk_fetch(client: TestClient) -> None:
+    page = client.get('/people')
+    assert page.status_code == 200
+    assert 'Fetch Images for Shown' in page.text
+    assert 'bulkSource' in page.text
+    assert '<option value="IAFD">' in page.text
+    assert '<option value="Local Storage">' not in page.text
+
+
+def test_bulk_fetch_validates_source_and_selection(client: TestClient) -> None:
+    bad_source = client.post('/people/bulk-fetch', json={'source': 'Nope', 'filenames': ['actor.x.jpg']})
+    assert bad_source.status_code == 400
+
+    empty = client.post('/people/bulk-fetch', json={'source': 'IAFD', 'filenames': []})
+    assert empty.status_code == 400
+
+
+def test_bulk_fetch_reports_unknown_people_as_failed(client: TestClient) -> None:
+    r = client.post('/people/bulk-fetch', json={'source': 'IAFD', 'filenames': ['actor.not-cached.jpg']})
+    assert r.status_code == 200
+    body = r.json()
+    assert body['ok'] is True
+    assert body['updated'] == 0
+    assert body['failed'] == 1

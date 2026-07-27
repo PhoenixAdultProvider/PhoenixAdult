@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 from datetime import UTC, datetime
@@ -29,6 +30,8 @@ router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _EDIT_TEMPLATE: str = load_data(__file__, 'people_edit', kind='html')
 FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_storage_source.name]
+_BULK_CONCURRENCY = 3
+_BULK_MAX = 250
 
 
 def _json_attr(value: object) -> str:
@@ -184,6 +187,7 @@ async def page(request: Request) -> HTMLResponse:
         f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
     )
     cards = '\n'.join(_card(e) for e in entries)
+    source_options = ''.join(f'<option value="{html.escape(s.name, quote=True)}">{html.escape(s.name)}</option>' for s in FETCHABLE_SOURCES)
     body = f"""<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
     <style>
@@ -218,6 +222,11 @@ async def page(request: Request) -> HTMLResponse:
       .search input{{width:320px;max-width:100%;background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
       .search input:focus{{outline:0;border-color:#2563eb}}
       .search .cnt{{color:#64748b;font-size:12px;margin-left:10px}}
+      .search{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}}
+      .search select{{background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
+      button.bulk{{width:auto;margin:0;padding:7px 16px;background:#1e2433;border:1px solid #334155;color:#cbd5e1}}
+      button.bulk:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
+      button.bulk:disabled{{background:#1e2433;color:#64748b}}
       @media (max-width:720px){{
         body{{padding:14px}}
         .grid{{grid-template-columns:1fr}}
@@ -237,7 +246,10 @@ async def page(request: Request) -> HTMLResponse:
     {warn}
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
       <button class="tab noupstream" id="upstreamToggle">No Upstream</button></div>
-    <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span></div>
+    <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
+      <select id="bulkSource">{source_options}</select>
+      <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
+      <span class="cnt" id="bulkStatus"></span></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {empty}
@@ -300,6 +312,34 @@ async def page(request: Request) -> HTMLResponse:
         saveFilters();
       }}
       document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
+      function shownFilenames(){{
+        return Array.from(document.querySelectorAll('.card'))
+          .filter(c => c.style.display !== 'none')
+          .map(c => c.dataset.fn)
+          .filter(Boolean);
+      }}
+      document.getElementById('bulkBtn').addEventListener('click', async () => {{
+        const btn = document.getElementById('bulkBtn');
+        const status = document.getElementById('bulkStatus');
+        const source = document.getElementById('bulkSource').value;
+        const filenames = shownFilenames();
+        if(!filenames.length){{ status.textContent = 'Nothing shown to fetch'; return; }}
+        if(!confirm('Replace the cached image for '+filenames.length+' shown '+(filenames.length===1?'person':'people')+' using '+source+'?')) return;
+        btn.disabled = true;
+        status.textContent = 'Fetching '+filenames.length+' from '+source+'…';
+        let j = {{}};
+        try {{
+          const r = await fetch('/people/bulk-fetch', {{method:'POST', headers:hdrs(), body:JSON.stringify({{source, filenames}})}});
+          j = await r.json();
+        }} catch(err) {{ j = {{ok:false, error:String(err)}}; }}
+        btn.disabled = false;
+        if(!j.ok) {{ status.textContent = j.error || 'Bulk fetch failed'; return; }}
+        const parts = [j.updated+' updated', j.missed+' not found'];
+        if(j.failed) parts.push(j.failed+' failed');
+        if(j.truncated) parts.push(j.truncated+' skipped over the batch cap');
+        status.textContent = parts.join(', ');
+        if(j.updated) setTimeout(() => location.reload(), 1200);
+      }});
       document.getElementById('cropToggle').addEventListener('click', () => {{
         croppedOnly = !croppedOnly;
         document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
@@ -374,6 +414,55 @@ async def lookup(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': f'{source.name} has no image for "{entry["name"]}"'}, status_code=404)
     logger.info('people-cache', f'{source.name} offered an image for {entry["name"]}')
     return JSONResponse({'ok': True, 'url': hit.url, 'gender': hit.gender or '', 'source': source.name})
+
+
+@router.post('/bulk-fetch')
+async def bulk_fetch(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    wanted = str(data.get('source', ''))
+    raw = data.get('filenames')
+    filenames = [str(f) for f in raw if isinstance(f, str)] if isinstance(raw, list) else []
+    source = next((s for s in FETCHABLE_SOURCES if s.name == wanted), None)
+    if source is None:
+        return JSONResponse({'ok': False, 'error': 'unknown source'}, status_code=400)
+    if not filenames:
+        return JSONResponse({'ok': False, 'error': 'no people selected'}, status_code=400)
+
+    truncated = max(0, len(filenames) - _BULK_MAX)
+    filenames = filenames[:_BULK_MAX]
+    known = {e['filename']: e for e in await run_in('store', _list_people, people_cache_dir())}
+    sem = asyncio.Semaphore(_BULK_CONCURRENCY)
+    updated: list[str] = []
+    missed: list[str] = []
+    failed: list[str] = []
+
+    async def _one(filename: str) -> None:
+        entry = known.get(filename)
+        if entry is None:
+            failed.append(filename)
+            return
+        name = str(entry['name'])
+        role: Any = entry['role']
+        async with sem:
+            try:
+                hit = await source.find(name, PersonLookupContext(type=role))
+            except Exception as err:  # noqa: BLE001 - one person failing must not abort the batch
+                logger.warn('people-cache', f'{source.name} threw for {name}: {err!r}')
+                failed.append(name)
+                return
+            if hit is None or not hit.url:
+                missed.append(name)
+                return
+            cached = await cache_photo(hit.url, name, role, _gender_of(str(entry['gender'])), replace=True, crop=bool(entry['cropped']))
+        if cached is None:
+            failed.append(name)
+            return
+        await run_in('store', scene_store.flag_people_changed, name)
+        updated.append(name)
+
+    await asyncio.gather(*(_one(f) for f in filenames))
+    logger.info('people-cache', f'bulk fetch from {source.name}: {len(updated)} updated, {len(missed)} not found, {len(failed)} failed')
+    return JSONResponse({'ok': True, 'source': source.name, 'updated': len(updated), 'missed': len(missed), 'failed': len(failed), 'truncated': truncated})
 
 
 @router.post('/save')
