@@ -13,11 +13,12 @@ PORN_PROS = 'Porn Pros'
 PORN_PLUS = 'Porn+'
 
 
-def _site(name: str, host: str, data18: bool = True) -> SiteInfo:
+def _site(name: str, host: str, fallback: str = '', data18: bool = True) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
         base_url=f'https://{host}',
+        fallback_url=f'https://{fallback}' if fallback else '',
         search_path='',
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
@@ -62,15 +63,15 @@ PORN_PLUS_SITES = [
     _site('Bikini Smash', 'pornplus.com', data18=False),
     _site('Boobs4K', 'pornplus.com', data18=False),
     _site('Caged Sex', 'pornplus.com'),
-    _site('Creepy Pa', 'pornplus.com', data18=False),
+    _site('Creepy Pa', 'pornplus.com', fallback='creepypa.com', data18=False),
     _site('Double Trouble', 'pornplus.com'),
     _site('Exploited Cheerleaders', 'pornplus.com', data18=False),
     _site('Facials Galore', 'pornplus.com'),
     _site('Game On', 'pornplus.com'),
     _site('Girl Scout Sex', 'pornplus.com', data18=False),
     _site('Glory Hole 4K', 'pornplus.com'),
-    _site('Kinky Sluts 4K', 'pornplus.com'),
-    _site('MomCum', 'pornplus.com'),
+    _site('Kinky Sluts 4K', 'pornplus.com', fallback='kinkysluts4k.org'),
+    _site('MomCum', 'pornplus.com', fallback='momcum.com'),
     _site('Passion Fuck', 'pornplus.com'),
     _site('Penis to Pussy', 'pornplus.com'),
     _site('Porn+', 'pornplus.com'),

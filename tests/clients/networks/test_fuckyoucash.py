@@ -137,3 +137,50 @@ async def test_data18_receives_pornplus_while_the_studio_stays_porn_plus(monkeyp
     assert detail.studio == 'Porn+'
     assert 'PornPlus' in seen[0]
     assert 'Porn+' not in seen[0]
+
+
+@respx.mock
+async def test_detail_falls_back_to_the_sub_site_host() -> None:
+    site = find_site('MomCum')
+    assert site is not None and site.fallback_url == 'https://momcum.com'
+    respx.get('https://pornplus.com/api/releases/cool-scene').mock(return_value=httpx.Response(404))
+    route = respx.get('https://momcum.com/api/releases/cool-scene').mock(return_value=httpx.Response(200, json=_RELEASE))
+
+    detail = await FuckYouCashClient().fetch_scene_detail('cool-scene|2021-03-04', site)
+
+    assert detail is not None
+    assert detail.title == 'Cool Scene'
+    assert route.calls[0].request.headers['x-site'] == 'https://momcum.com'
+
+
+@respx.mock
+async def test_detail_tries_both_hosts_before_the_double_dash_slug() -> None:
+    site = find_site('MomCum')
+    assert site is not None
+    seen: list[str] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        seen.append(f'{request.url.host}{request.url.path}')
+        return httpx.Response(404)
+
+    respx.route(method='GET', url__regex=r'.*/api/releases/.*').mock(side_effect=record)
+    assert await FuckYouCashClient().fetch_scene_detail('cool-scene|2021-03-04', site) is None
+    assert seen == [
+        'pornplus.com/api/releases/cool-scene',
+        'momcum.com/api/releases/cool-scene',
+        'pornplus.com/api/releases/cool--scene',
+        'momcum.com/api/releases/cool--scene',
+    ]
+
+
+@respx.mock
+async def test_detail_of_a_site_without_a_fallback_asks_one_host_only() -> None:
+    seen: list[str] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.host)
+        return httpx.Response(404)
+
+    respx.route(method='GET', url__regex=r'.*/api/releases/.*').mock(side_effect=record)
+    assert await FuckYouCashClient().fetch_scene_detail('cool-scene|2021-03-04', SITE) is None
+    assert set(seen) == {'cum4k.com'}

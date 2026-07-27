@@ -9,6 +9,7 @@ def make_site(
     *,
     scraper_type: str,
     base_url: str,
+    fallback_url: str = '',
     search_path: str = '/',
     content_type: ContentType = 'sceneName',
     data18_enrichment: bool = False,
@@ -29,6 +30,7 @@ def make_site(
     return SiteInfo(
         name=name,
         base_url=base_url,
+        fallback_url=fallback_url,
         search_path=search_path,
         content_type=content_type,
         scraper_config=ScraperConfig(type=scraper_type, data18_enrichment=data18_enrichment),

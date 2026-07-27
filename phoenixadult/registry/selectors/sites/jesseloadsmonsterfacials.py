@@ -8,7 +8,7 @@ PROVIDER_CONTENT_TYPE: ContentType = 'actors'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = 'Actor only'
 
-JESSELOADSMONSTERFACIALS_SITES: list[SiteInfo] = [
+JLMF_SITES: list[SiteInfo] = [
     make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,

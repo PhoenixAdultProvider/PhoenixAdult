@@ -27,17 +27,17 @@ def _slug_candidates(title: str) -> list[str]:
 
 
 class FuckYouCashClient(Client):
-    async def _release(self, base: str, slug: str, capture: Any) -> dict[str, Any] | None:
-        headers = {'x-site': base}
-        data = await self.fetch_json(f'{base}/api/releases/{slug}', FetchCtx(capture=capture), headers=headers)
-        if isinstance(data, dict) and data.get('title'):
-            return data
-
-        if '-' in slug and '--' not in slug:
-            head, _sep, tail = slug.rpartition('-')
-            data = await self.fetch_json(f'{base}/api/releases/{head}--{tail}', FetchCtx(capture=capture), headers=headers)
-            if isinstance(data, dict) and data.get('title'):
-                return data
+    async def _release(self, base: str, slug: str, capture: Any, fallback: str = '') -> dict[str, Any] | None:
+        hosts = [host for host in (base, fallback) if host]
+        head, _sep, tail = slug.rpartition('-')
+        doubled = f'{head}--{tail}' if '-' in slug and '--' not in slug else ''
+        for candidate in (slug, doubled):
+            if not candidate:
+                continue
+            for host in hosts:
+                data = await self.fetch_json(f'{host}/api/releases/{candidate}', FetchCtx(capture=capture), headers={'x-site': host})
+                if isinstance(data, dict) and data.get('title'):
+                    return data
 
         return None
 
@@ -48,7 +48,7 @@ class FuckYouCashClient(Client):
         release: dict[str, Any] | None = None
         slug = ''
         for candidate in _slug_candidates(title):
-            release = await self._release(base, candidate, search_data.capture)
+            release = await self._release(base, candidate, search_data.capture, search_data.site_info.fallback_url)
             if release:
                 slug = candidate
                 break
@@ -77,7 +77,7 @@ class FuckYouCashClient(Client):
         pipe = payload.find('|')
         slug = payload[:pipe] if pipe >= 0 else payload
         scene_date = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        release = await self._release(base, slug, ctx.capture if ctx else None)
+        release = await self._release(base, slug, ctx.capture if ctx else None, site.fallback_url)
         if not release:
             return None
 

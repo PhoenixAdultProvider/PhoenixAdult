@@ -17,6 +17,7 @@ class SiteInfo:
     search_path: str
     content_type: ContentType
     scraper_config: ScraperConfig
+    fallback_url: str = ''
     provider_id: str | None = None
     provider_name: str | None = None
     direct_url_template: str | None = None

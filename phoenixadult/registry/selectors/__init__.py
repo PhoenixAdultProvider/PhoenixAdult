@@ -125,7 +125,7 @@ from phoenixadult.registry.selectors.sites.hotwifexxx import HOTWIFEXXX_SITES
 from phoenixadult.registry.selectors.sites.hucows import HUCOWS_SITES
 from phoenixadult.registry.selectors.sites.inthecrack import INTHECRACK_SITES
 from phoenixadult.registry.selectors.sites.jacquieetmichel import JACQUIEETMICHEL_SITES
-from phoenixadult.registry.selectors.sites.jesseloadsmonsterfacials import JESSELOADSMONSTERFACIALS_SITES
+from phoenixadult.registry.selectors.sites.jesseloadsmonsterfacials import JLMF_SITES
 from phoenixadult.registry.selectors.sites.jvrporn import JVRPORN_SITES
 from phoenixadult.registry.selectors.sites.kin8tengoku import KIN8TENGOKU_SITES
 from phoenixadult.registry.selectors.sites.lustomic import LUSTOMIC_SITES
