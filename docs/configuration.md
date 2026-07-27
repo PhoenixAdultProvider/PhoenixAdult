@@ -192,6 +192,13 @@ pick your server from the discovered list (fills `PLEX_URL`), verify the connect
 (server identity + authenticated check), see the server version with a local-only
 update check (no notifications), and run reconciliation dry-run/apply without curl.
 
+### Reviewing Cached Scenes
+
+`/metadata` filters run in SQL, so a filtered page's total always matches its contents. The bar
+covers search, **Provider** (the registry site the snapshot was scraped as — distinct from Studio,
+which is the label Plex shows), Studio, Year, Month, Day, Tagline, Collection and Data18, and every
+filter narrows Export Mappings and the bulk purge to the same set.
+
 ### Editing a Cached Scene or Headshot
 
 Both review UIs have per-row editors. The **Edit** button on `/metadata` (left of Purge) opens
@@ -199,11 +206,17 @@ Both review UIs have per-row editors. The **Edit** button on `/metadata` (left o
 `/people/edit?filename=<file>`. Saving writes and returns to the list; Cancel discards.
 
 `/metadata/edit` covers title, sort title, studio, tagline, summary, date, genres, collections,
-actors, directors, producers, and the image set (previewed as a grid, each with its kind and a
-Remove button; a pasted URL is downloaded on save). Notes:
+actors, directors, producers, the Data18 reference, and the image set (previewed as a grid, each
+with its kind and a Remove button; a pasted URL is downloaded on save). Notes:
 
-- **Only the fields you send change.** Everything else in the snapshot — ratingKey, guid, data18
-  reference, ratings, duration — is preserved.
+- **Only the fields you send change.** Everything else in the snapshot — ratingKey, guid, ratings,
+  duration — is preserved.
+- **The Data18 ID is editable, and an edited one is flagged manual.** A scene's reference is in one
+  of three states: *blank* (none recorded), *filled* (the scrape resolved it) or *manual* (typed
+  here). Clearing the ID drops the reference. The state is a real column, so `/metadata` can filter
+  on it — set **Data18** to *Manual* and **Export Mappings** writes just the hand-made ones to a
+  `data18_manual_mappings*.json` you can drop in next to the base mappings file. A later scrape that
+  resolves the same ID on its own records it as *filled*.
 - **Removing an image deletes the file**, because the snapshot writer copies only still-referenced
   images into the new generation. Add it back by URL if that was a mistake.
 - **A kept actor keeps their headshot**; a newly added one resolves on the next serve.

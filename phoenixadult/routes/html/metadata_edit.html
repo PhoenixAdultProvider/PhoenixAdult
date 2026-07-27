@@ -20,7 +20,11 @@
       width: 100%; max-width: 100%; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
       padding: 7px 10px; border-radius: 6px; font-size: 13px; font-family: inherit;
     }
+    select { width: 100%; max-width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
     input[type=date] { -webkit-appearance: none; appearance: none; }
+    .state { text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 1px 7px; border-radius: 10px; background: #334155; color: #cbd5e1; }
+    .state.manual { background: #7c3aed; color: #fff; }
+    .state.filled { background: #1e3a8a; color: #fff; }
     input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
     textarea { min-height: 110px; resize: vertical; }
     input:focus, textarea:focus { outline: 0; border-color: #2563eb; }
@@ -80,6 +84,19 @@
         <input type="text" id="f-tagline">
         <label for="f-summary">Summary</label>
         <textarea id="f-summary"></textarea>
+      </fieldset>
+
+      <fieldset>
+        <legend>Data18</legend>
+        <label for="f-data18Id">Data18 ID</label>
+        <input type="text" id="f-data18Id" placeholder="e.g. 123456">
+        <label for="f-data18Type">Data18 Type</label>
+        <select id="f-data18Type">
+          <option value="scene">scene</option>
+          <option value="movie">movie</option>
+        </select>
+        <div class="hint">State: <span id="d18state"></span>. Typing an ID here marks it <b>manual</b>, which
+          the cache list can filter on so hand-made mappings export on their own. Clearing it drops the ref.</div>
       </fieldset>
 
       <fieldset>
@@ -193,6 +210,21 @@
       });
     }
 
+    function data18State() {
+      const id = qs('f-data18Id').value.trim();
+      if (!id) return 'blank';
+      const stored = MD.data18 || {};
+      if (id === (stored.id || '') && qs('f-data18Type').value === (stored.type || 'scene')) return stored.manual ? 'manual' : 'filled';
+      return 'manual';
+    }
+
+    function renderData18State() {
+      const state = data18State();
+      const box = qs('d18state');
+      box.textContent = state;
+      box.className = 'state ' + state;
+    }
+
     function load() {
       qs('f-title').value = MD.title || '';
       qs('f-titleSort').value = MD.titleSort || '';
@@ -200,6 +232,9 @@
       qs('f-studio').value = MD.studio || '';
       qs('f-tagline').value = MD.tagline || '';
       qs('f-summary').value = MD.summary || '';
+      qs('f-data18Id').value = (MD.data18 || {}).id || '';
+      qs('f-data18Type').value = (MD.data18 || {}).type || 'scene';
+      renderData18State();
       LISTS.Genre = (MD.Genre || []).map(g => g.tag);
       LISTS.Collection = (MD.Collection || []).map(c => c.tag);
       LISTS.Role = (MD.Role || []).map(r => r.tag);
@@ -222,6 +257,8 @@
         studio: qs('f-studio').value.trim(),
         tagline: qs('f-tagline').value.trim(),
         summary: qs('f-summary').value.trim(),
+        data18_id: qs('f-data18Id').value.trim(),
+        data18_type: qs('f-data18Type').value,
         Genre: LISTS.Genre,
         Collection: LISTS.Collection,
         Role: LISTS.Role,
@@ -255,6 +292,8 @@
       renderImages();
     };
     qs('a-img').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); qs('addImg').click(); } });
+    qs('f-data18Id').addEventListener('input', renderData18State);
+    qs('f-data18Type').addEventListener('change', renderData18State);
 
     load();
   </script>

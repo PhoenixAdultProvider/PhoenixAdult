@@ -173,6 +173,7 @@ CREATE TABLE scenes (
   is_adult        INTEGER,
   data18_type     TEXT,
   data18_id       TEXT,
+  data18_manual   INTEGER NOT NULL DEFAULT 0,
   thumb           TEXT,
   art             TEXT,
   studio_id       INTEGER REFERENCES studios(id),
@@ -323,6 +324,13 @@ no source claims is recorded as `Scene`: before this version the cache only ever
 people-source image, the scene page's image, or the silhouette, so an unclaimed host was
 a scene image by elimination. This is the first migration step that is a Python callable
 rather than a SQL script — `_MIGRATIONS` accepts either.
+
+## Schema Version 6 — Manual Data18 References
+
+`scenes.data18_manual` marks a Data18 reference typed into the snapshot editor rather than resolved
+by a scrape, giving the reference three states: blank (no id), filled (scraped) and manual. The
+`/metadata` Data18 filter reads it, so hand-made mappings can be listed and exported on their own.
+It round-trips through the snapshot as `data18.manual`, set only when true.
 
 ## Why This Shape
 

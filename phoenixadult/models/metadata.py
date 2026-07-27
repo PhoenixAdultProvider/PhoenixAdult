@@ -39,6 +39,7 @@ class PlexGuid(_Model):
 class PlexData18(_Model):
     type: Literal['scene', 'movie']
     id: str
+    manual: bool | None = None
 
 
 class PlexCollection(_Model):

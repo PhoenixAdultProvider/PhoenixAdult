@@ -20,7 +20,7 @@ _TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
 _EDIT_TEMPLATE: str = load_data(__file__, 'metadata_edit', kind='html')
 
 _SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
-_EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt')
+_EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt', 'data18_id', 'data18_type')
 _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 
 
@@ -102,6 +102,7 @@ async def entries_json(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
+    provider: str = '',
     dups: int = Query(0, ge=0, le=1),
     sort: str = 'updated_at',
     direction: str = Query('desc', alias='dir'),
@@ -121,6 +122,7 @@ async def entries_json(
             tagline=tagline,
             collection=collection,
             data18=data18,
+            provider=provider,
             dups_only=bool(dups),
             sort=sort,
             direction=direction,

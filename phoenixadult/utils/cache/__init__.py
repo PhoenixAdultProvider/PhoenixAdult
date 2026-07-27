@@ -6,7 +6,7 @@ import shutil
 import sqlite3
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import unquote
 
 import httpx2
@@ -14,7 +14,7 @@ from PIL import Image as PILImage
 
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.fs.paths import safe_join
@@ -362,6 +362,7 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     segs = rel.split('/')
     return {
         'key': rel,
+        'provider': row['site'],
         'site_slug': segs[-2] if len(segs) >= 2 else rel,
         'studio_dir': segs[-3] if len(segs) >= 3 else '',
         'hash': segs[-1],
@@ -375,6 +376,7 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
         'mtime': row['updated_at'],
         'data18_id': row['data18_id'],
         'data18_type': row['data18_type'],
+        'data18_manual': row['data18_manual'],
         'mapping_slug': mapping_slug(row['title'], row['tagline'] or row['studio'] or None) or '',
     }
 
@@ -395,6 +397,7 @@ def entries_page(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
+    provider: str = '',
     dups_only: bool = False,
     sort: str = 'updated_at',
     direction: str = 'desc',
@@ -411,6 +414,7 @@ def entries_page(
         tagline=tagline,
         collection=collection,
         data18=data18,
+        provider=provider,
         dup_paths=duplicate_entries() if dups_only else None,
         sort=sort,
         direction=direction,
@@ -501,6 +505,22 @@ def load_for_edit(key: str) -> dict[str, Any] | None:
     return loaded if isinstance(loaded, dict) else None
 
 
+def _apply_data18_edit(md: PlexMetadata, fields: dict[str, Any]) -> None:
+    """A data18 ref the editor changed is flagged manual, so hand-entered mappings can be told
+    apart from scraped ones and exported. Re-saving an unchanged ref keeps whichever it was."""
+    if 'data18_id' not in fields:
+        return
+    edited = str(fields['data18_id'] or '').strip()
+    if not edited:
+        md.data18 = None
+        return
+    raw_type = str(fields.get('data18_type') or '').strip() or (md.data18.type if md.data18 else '')
+    kind: Literal['scene', 'movie'] = 'movie' if raw_type == 'movie' else 'scene'
+    if md.data18 and md.data18.id == edited and md.data18.type == kind:
+        return
+    md.data18 = PlexData18(type=kind, id=edited, manual=True)
+
+
 def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
     if title := str(fields.get('title', '') or '').strip():
         md.title = title
@@ -525,6 +545,7 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
             prior = existing[attr].get(tag) or PlexRole(tag=tag)
             kept.append(PlexRole(tag=tag, role=prior.role, thumb=prior.thumb, gender=prior.gender, order=pos))
         setattr(md, attr, kept or None)
+    _apply_data18_edit(md, fields)
     if 'Image' in fields:
         images = [PlexImage(url=str(i.get('url', '')).strip(), type=str(i.get('type', '')).strip() or 'coverPoster') for i in fields['Image'] or []]
         md.Image = [i for i in images if i.url] or None

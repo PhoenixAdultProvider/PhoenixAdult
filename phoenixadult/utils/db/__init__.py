@@ -190,6 +190,9 @@ _MIGRATIONS: list[_Migration] = [
     CREATE INDEX scenes_force ON scenes(force_refresh) WHERE force_refresh = 1;
     """,
     _backfill_image_sources,
+    """
+    ALTER TABLE scenes ADD COLUMN data18_manual INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 _local = threading.local()

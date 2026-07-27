@@ -35,6 +35,7 @@ _SCENE_COLUMNS = (
     'is_adult',
     'data18_type',
     'data18_id',
+    'data18_manual',
     'thumb',
     'art',
     'studio_id',
@@ -108,6 +109,7 @@ def upsert(
                 None if is_adult is None else int(bool(is_adult)),
                 d18.get('type'),
                 d18.get('id'),
+                int(bool(d18.get('manual'))),
                 md.get('thumb'),
                 md.get('art'),
                 studio_id,
@@ -201,6 +203,8 @@ def load(scene_hash: str) -> dict[str, Any] | None:
         md['tagline'] = row['tagline_name']
     if row['data18_type']:
         md['data18'] = {'type': row['data18_type'], 'id': row['data18_id']}
+        if row['data18_manual']:
+            md['data18']['manual'] = True
     if row['content_rating'] is not None:
         md['contentRating'] = row['content_rating']
     if row['is_adult'] is not None:
@@ -302,7 +306,7 @@ def scene_keys() -> list[tuple[str, str, str]]:
 
 
 _SUMMARY_SELECT = (
-    'SELECT s.id, s.rel_path, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, '
+    'SELECT s.id, s.rel_path, s.site, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, '
     'st.name AS studio, tl.name AS tagline, COUNT(si.id) AS images '
 )
 _SUMMARY_TABLES = 'FROM scenes s LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id'
@@ -320,6 +324,7 @@ _SORT_COLUMNS = {
 def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]]) -> dict[str, Any]:
     return {
         'rel_path': str(r['rel_path']),
+        'site': str(r['site']),
         'title': str(r['title']),
         'studio': str(r['studio'] or ''),
         'tagline': str(r['tagline'] or ''),
@@ -330,6 +335,7 @@ def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]]) -> dict[str,
         'updated_at': float(r['updated_at']),
         'data18_id': str(r['data18_id'] or ''),
         'data18_type': str(r['data18_type'] or ''),
+        'data18_manual': bool(r['data18_manual']),
     }
 
 
@@ -348,16 +354,20 @@ def _collections_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int
 
 
 _BLANK = '__blank__'
+_MANUAL = '__manual__'
 
 
 def _entry_filters(
-    studio: str, query: str, year: str, month: str, day: str, tagline: str, collection: str, data18: str, dup_paths: list[str] | None
+    studio: str, query: str, year: str, month: str, day: str, tagline: str, collection: str, data18: str, provider: str, dup_paths: list[str] | None
 ) -> tuple[str, list[Any]]:
     where: list[str] = []
     params: list[Any] = []
     if studio:
         where.append('st.name = ?')
         params.append(studio)
+    if provider:
+        where.append('s.site = ?')
+        params.append(provider)
     if query:
         where.append("(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')")
         params.extend([db.like_contains(query)] * 3)
@@ -384,6 +394,8 @@ def _entry_filters(
         params.append(collection)
     if data18 == '__set__':
         where.append("COALESCE(s.data18_id, '') != ''")
+    elif data18 == _MANUAL:
+        where.append("COALESCE(s.data18_id, '') != '' AND s.data18_manual = 1")
     elif data18 == _BLANK:
         where.append("COALESCE(s.data18_id, '') = ''")
     if dup_paths is not None:
@@ -405,6 +417,7 @@ def query_entry_rows(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
+    provider: str = '',
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
     direction: str = 'desc',
@@ -414,7 +427,7 @@ def query_entry_rows(
     """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
     total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
     conn = db.connect()
-    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, dup_paths)
+    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, provider, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
@@ -441,6 +454,8 @@ def facet_values() -> dict[str, Any]:
         'tagline_blank': exists('SELECT 1 FROM scenes WHERE tagline_id IS NULL'),
         'collections': names('SELECT DISTINCT c.name FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id ORDER BY c.name'),
         'collection_blank': exists('SELECT 1 FROM scenes s WHERE NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)'),
+        'providers': names("SELECT DISTINCT site FROM scenes WHERE COALESCE(site, '') != '' ORDER BY site COLLATE NOCASE"),
+        'data18_manual': exists('SELECT 1 FROM scenes WHERE data18_manual = 1'),
         'years': names("SELECT DISTINCT substr(release_date, 1, 4) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1 DESC"),
         'year_blank': exists("SELECT 1 FROM scenes WHERE COALESCE(release_date, '') = ''"),
         'months': names("SELECT DISTINCT substr(release_date, 6, 2) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1"),

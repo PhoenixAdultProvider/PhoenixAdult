@@ -55,6 +55,7 @@
 
     /* ── Misc ── */
     .blank { color: #334155; }
+    .manual { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: #7c3aed; color: #fff; vertical-align: middle; }
     .cached-ts { color: #94a3b8; white-space: nowrap; }
     .edit-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #cbd5e1; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .edit-btn:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
@@ -80,6 +81,10 @@
     <div class="filter-group">
       <label>Search</label>
       <input type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
+    </div>
+    <div class="filter-group">
+      <label>Provider</label>
+      <select id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Studio</label>
@@ -109,7 +114,8 @@
       <label>Data18</label>
       <select id="f-data18" onchange="facetChanged()">
         <option value="">All</option>
-        <option value="__set__">Not Blank</option>
+        <option value="__set__">Filled</option>
+        <option value="__manual__">Manual</option>
         <option value="__blank__">Blank</option>
       </select>
     </div>
@@ -157,13 +163,13 @@
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     const STORE_KEY = 'metadata-cache-filters';
-    const FILTER_IDS = ['q', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    const FILTER_IDS = ['q', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
     const PAGE_SIZE = 500;
     let offset = 0;
     const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
-    const FILTER_PARAMS = {'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
+    const FILTER_PARAMS = {'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
     function filterParams() {
       const p = new URLSearchParams();
@@ -234,6 +240,7 @@
     // current selection (re-added as an option so an active filter never resets).
     function buildFacetOptions() {
       const specs = {
+        'f-provider': {values: FACET_VALUES.providers || []},
         'f-studio': {values: STUDIOS},
         'f-tagline': {values: FACET_VALUES.taglines || [], blank: FACET_VALUES.tagline_blank},
         'f-collection': {values: FACET_VALUES.collections || [], blank: FACET_VALUES.collection_blank},
@@ -338,7 +345,9 @@
         const date = e.date ? esc(e.date) : '<span class="blank">—</span>';
         const tagline = e.tagline ? esc(e.tagline) : '<span class="blank">—</span>';
         const year = e.year ? esc(e.year) : '<span class="blank">—</span>';
-        const data18 = e.data18_id ? esc(e.data18_id) : '<span class="blank">—</span>';
+        const data18 = e.data18_id
+          ? esc(e.data18_id) + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
+          : '<span class="blank">—</span>';
         const key = esc(JSON.stringify(e.key));
         return `<tr>
           <td class="thumb-cell">${thumb}</td>
@@ -390,7 +399,7 @@
       const blob = new Blob(['{\n' + lines.join(',\n') + '\n}\n'], {type: 'application/json'});
       // Name per the active filter (tagline > collection > studio) so the file drops
       // straight in next to the base mappings file.
-      const scope = ['f-tagline', 'f-collection', 'f-studio']
+      const scope = ['f-tagline', 'f-collection', 'f-studio', 'f-provider']
         .map(id => document.getElementById(id).value)
         .find(v => v && v !== '__blank__');
       const suffix = scope ? `_${scope.replace(/\W/g, '').toLowerCase()}` : '';

@@ -297,3 +297,49 @@ def test_bulk_fetch_page_renders_a_progress_bar(client: TestClient) -> None:
     page = client.get('/people')
     assert 'bulkProgress' in page.text
     assert "'Fetching '+msg.done+' of '+msg.total+' from '+source" in page.text
+
+
+def test_metadata_save_flags_a_hand_entered_data18_id(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path)
+    r = client.post('/metadata/save', json={'key': rel, 'title': 'A Cached Scene', 'data18_id': '987654', 'data18_type': 'scene'})
+    assert r.status_code == 200, r.text
+
+    stored = mc.load_for_edit(r.json()['key'])
+    assert stored is not None
+    assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'scene', 'id': '987654', 'manual': True}
+
+    entries, _total = mc.entries_page(data18='__manual__')
+    assert [e['data18_id'] for e in entries] == ['987654']
+    assert entries[0]['data18_manual'] is True
+
+
+def test_a_scraped_data18_id_stays_filled_across_a_resave(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path, data18={'type': 'movie', 'id': '111'})
+    r = client.post('/metadata/save', json={'key': rel, 'title': 'A Cached Scene', 'data18_id': '111', 'data18_type': 'movie'})
+    assert r.status_code == 200, r.text
+
+    stored = mc.load_for_edit(r.json()['key'])
+    assert stored is not None
+    assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'movie', 'id': '111'}
+    assert mc.entries_page(data18='__manual__')[1] == 0
+    assert mc.entries_page(data18='__set__')[1] == 1
+
+
+def test_clearing_the_data18_id_drops_the_ref(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path, data18={'type': 'scene', 'id': '222'})
+    r = client.post('/metadata/save', json={'key': rel, 'title': 'A Cached Scene', 'data18_id': ''})
+    assert r.status_code == 200, r.text
+
+    stored = mc.load_for_edit(r.json()['key'])
+    assert stored is not None
+    assert 'data18' not in stored['MediaContainer']['Metadata'][0]
+    assert mc.entries_page(data18='__blank__')[1] == 1
+
+
+def test_metadata_edit_page_offers_the_data18_fields(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path, data18={'type': 'scene', 'id': '333'})
+    page = client.get('/metadata/edit', params={'key': rel})
+    assert page.status_code == 200
+    assert 'f-data18Id' in page.text
+    assert 'f-data18Type' in page.text
+    assert '"333"' in page.text

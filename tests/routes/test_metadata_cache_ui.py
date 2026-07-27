@@ -204,3 +204,27 @@ def test_entries_facet_filters_paginate_consistently(monkeypatch: pytest.MonkeyP
     assert facets['years'] == ['2024']
     assert facets['months'] == ['01', '02', '03', '04', '05']
     assert facets['tagline_blank'] is True
+
+
+def test_entries_filter_by_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_library()
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    j = client.get('/metadata/entries', headers=hdr).json()
+    assert j['facets']['providers'] == ['Brazzers', 'Vixen']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Vixen'}).json()
+    assert j['total'] == 3
+    assert {e['provider'] for e in j['entries']} == {'Vixen'}
+
+    assert client.get('/metadata/entries', headers=hdr, params={'provider': 'Nope'}).json()['total'] == 0
+
+
+def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'f-provider' in page.text
+    assert '>Provider<' in page.text
+    assert '<option value="__manual__">Manual</option>' in page.text
