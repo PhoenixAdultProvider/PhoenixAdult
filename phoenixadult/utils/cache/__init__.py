@@ -17,6 +17,7 @@ from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.helpers import hash_key, slugify
@@ -268,8 +269,11 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
     counter = [0]
     image_meta: dict[str, tuple[int, int, int]] = {}
 
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    def _reset_tmp() -> None:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    await run_in('fs', _reset_tmp)
     try:
         sem = asyncio.Semaphore(6)
 
@@ -289,17 +293,18 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
             """Strip our own base_url so stored links survive a base_url/tunnel change."""
             return u[len(base) :] if u.startswith(f'{base}/') else u
 
-        def _keep(source: Path, name: str) -> str | None:
-            """Carry an already-snapshotted image into the new generation unchanged."""
+        def _keep(source: Path, name: str) -> tuple[str, tuple[int, int, int] | None] | None:
             if not source.is_file():
                 return None
             img_dir = tmp_dir / 'images'
             img_dir.mkdir(exist_ok=True)
             shutil.copy2(source, img_dir / name)
-            local = f'/cache/{rel_path}/images/{name}'
-            if probed := _probe_file(img_dir / name):
-                image_meta[local] = probed
-            return local
+            return f'/cache/{rel_path}/images/{name}', _probe_file(img_dir / name)
+
+        def _store_bytes(name: str, payload: bytes) -> None:
+            img_dir = tmp_dir / 'images'
+            img_dir.mkdir(exist_ok=True)
+            (img_dir / name).write_bytes(payload)
 
         async def localize(url: str | None, hint: str) -> str | None:
             """Download an image into the snapshot; people images stay host-relative so
@@ -309,8 +314,11 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
             if '/images/local/' in url:
                 return url[url.index('/images/local/') :]
             if (hit := _snapshot_file(url, base)) is not None:
-                if (kept := _keep(*hit)) is not None:
-                    return kept
+                if (kept := await run_in('fs', _keep, *hit)) is not None:
+                    local, probed = kept
+                    if probed:
+                        image_meta[local] = probed
+                    return local
                 logger.debug('meta-cache', f'kept snapshot image missing on disk {url}')
                 return _relativize(url)
             target, referers, cookies = proxy_params(url)
@@ -320,9 +328,7 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
             try:
                 async with sem:
                     entry = await fetch_image(target, referers or None, cookies or None)
-                img_dir = tmp_dir / 'images'
-                img_dir.mkdir(exist_ok=True)
-                (img_dir / name).write_bytes(entry.data)
+                await run_in('fs', _store_bytes, name, entry.data)
                 local = f'/cache/{rel_path}/images/{name}'
                 image_meta[local] = (entry.width, entry.height, len(entry.data))
                 return local
@@ -330,21 +336,33 @@ async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: 
                 logger.debug('meta-cache', f'image download failed {target}: {err!r}')
                 return _relativize(url)
 
-        async def _assign(obj: dict[str, Any], key: str, hint: str) -> None:
-            obj[key] = await localize(obj.get(key), hint)
+        by_url: dict[str, list[tuple[dict[str, Any], str]]] = {}
+        hints: dict[str, str] = {}
+        for obj, key, hint in targets:
+            url = str(obj[key])
+            by_url.setdefault(url, []).append((obj, key))
+            hints.setdefault(url, hint)
 
-        await asyncio.gather(*(_assign(obj, key, hint) for obj, key, hint in targets))
+        async def _assign(url: str, holders: list[tuple[dict[str, Any], str]]) -> None:
+            resolved = await localize(url, hints[url])
+            for obj, key in holders:
+                obj[key] = resolved
 
-        if final_dir.exists():
-            shutil.rmtree(final_dir, ignore_errors=True)
-        tmp_dir.rename(final_dir)
+        await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
+
+        def _promote() -> None:
+            if final_dir.exists():
+                shutil.rmtree(final_dir, ignore_errors=True)
+            tmp_dir.rename(final_dir)
+
+        await run_in('fs', _promote)
     except OSError as err:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        await run_in('fs', shutil.rmtree, tmp_dir, ignore_errors=True)
         logger.warn('meta-cache', f'snapshot write failed {rel_path}: {err}')
         return False
 
     try:
-        scene_store.upsert(site_name, cur_id, scene_hash, rel_path, data, image_meta)
+        await run_in('store', scene_store.upsert, site_name, cur_id, scene_hash, rel_path, data, image_meta)
     except sqlite3.Error as err:
         logger.warn('meta-cache', f'snapshot db write failed {rel_path}: {err}')
         return False

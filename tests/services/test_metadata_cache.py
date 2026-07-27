@@ -766,3 +766,43 @@ def test_recredited_actor_drops_its_now_wrong_headshot(monkeypatch: pytest.Monke
     assert mc.reapply_text_rules(resp) is True
     roles = resp.MediaContainer.Metadata[0].Role or []
     assert [(r.tag, r.thumb) for r in roles] == [('Vanessa Cruz', None), ('Kept Name', 'http://host/images/local/actor/kept-name.jpg')]
+
+
+@respx.mock
+async def test_a_url_used_twice_is_fetched_and_stored_once(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    route = respx.get('https://cdn.example/shared.jpg').mock(return_value=httpx.Response(200, content=b'SHARED', headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', thumb='https://cdn.example/shared.jpg', images=['https://cdn.example/shared.jpg'])
+    assert await mc.write('Brazzers', 'shared1', resp) is True
+
+    assert route.call_count == 1
+    stored = list(tmp_path.glob('**/images/*.jpg'))  # type: ignore[attr-defined]
+    assert len(stored) == 1
+
+    cached = mc.read('Brazzers', 'shared1')
+    assert cached is not None
+    md = cached['MediaContainer']['Metadata'][0]
+    assert md['thumb'] == md['Image'][0]['url']
+
+
+@respx.mock
+async def test_rewrite_reuses_a_kept_image_referenced_twice(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/keep.jpg').mock(return_value=httpx.Response(200, content=b'KEEP', headers={'content-type': 'image/jpeg'}))
+
+    first = _resp(studio='Brazzers', thumb='https://cdn.example/keep.jpg', images=['https://cdn.example/keep.jpg'])
+    assert await mc.write('Brazzers', 'keep1', first) is True
+    cached = mc.read('Brazzers', 'keep1')
+    assert cached is not None
+    local = cached['MediaContainer']['Metadata'][0]['thumb']
+
+    again = _resp(studio='Brazzers', thumb=local, images=[local])
+    assert await mc.write('Brazzers', 'keep1', again) is True
+
+    stored = list(tmp_path.glob('**/images/*.jpg'))  # type: ignore[attr-defined]
+    assert len(stored) == 1 and stored[0].read_bytes() == b'KEEP'
