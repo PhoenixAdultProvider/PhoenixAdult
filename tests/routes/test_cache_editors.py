@@ -248,7 +248,8 @@ def test_people_lookup_offers_only_remote_sources() -> None:
 
     names = [s.name for s in FETCHABLE_SOURCES]
     assert 'Local Storage' not in names
-    assert 'IAFD' in names and 'Freeones' in names
+    assert 'IAFD' in names and 'Indexxx' in names
+    assert 'Freeones' not in names and 'JAVBus' not in names
 
 
 def test_people_page_offers_bulk_fetch(client: TestClient) -> None:

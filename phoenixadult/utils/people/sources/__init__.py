@@ -6,10 +6,8 @@ from phoenixadult.utils.people.sources.adultDvdEmpire import adult_dvd_empire_so
 from phoenixadult.utils.people.sources.babepedia import babepedia_source
 from phoenixadult.utils.people.sources.babesAndStars import babes_and_stars_source
 from phoenixadult.utils.people.sources.boobpedia import boobpedia_source
-from phoenixadult.utils.people.sources.freeones import freeones_source
 from phoenixadult.utils.people.sources.iafd import iafd_source
 from phoenixadult.utils.people.sources.indexxx import indexxx_source
-from phoenixadult.utils.people.sources.javBus import jav_bus_source
 from phoenixadult.utils.people.sources.javDatabase import jav_database_source
 from phoenixadult.utils.people.sources.localStorage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, PhotoHit
@@ -18,12 +16,10 @@ ALL_SOURCES: list[PersonSource] = [
     local_storage_source,
     iafd_source,
     adult_dvd_empire_source,
-    freeones_source,
     indexxx_source,
     boobpedia_source,
     babes_and_stars_source,
     babepedia_source,
-    jav_bus_source,
     jav_database_source,
 ]
 

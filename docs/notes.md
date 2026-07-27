@@ -5,7 +5,7 @@
 Adoption is opt-in per call site. Not every scraper routes through the bypass
 orchestrator — that would be a sweeping change. Two ways to use it where you need
 it (typically the CDN/Cloudflare-protected people sources under
-`phoenixadult/utils/people/sources/`, e.g. IAFD / JavBus):
+`phoenixadult/utils/people/sources/`, e.g. IAFD):
 
 1. **Inside a `Client`** — pass `use_bypass=True` on the `FetchCtx` so the
    base `fetch_and_load` / `fetch_json` go through the bypass chain:

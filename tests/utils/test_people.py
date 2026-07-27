@@ -142,8 +142,8 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
         (None, (True, True)),
         ('Local Storage', (False, False)),
         ('Local Storage,Scene,AdultDVDEmpire', (True, True)),
-        ('Scene,Freeones', (True, True)),
-        ('Freeones,Scene', (True, False)),
+        ('Scene,Indexxx', (True, True)),
+        ('Indexxx,Scene', (True, False)),
         ('Local Storage,Scene', (True, True)),
     ],
 )

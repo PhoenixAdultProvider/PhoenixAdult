@@ -22,7 +22,7 @@ PhoenixAdult is an HTTP service that implements the **Plex Metadata Provider** c
 | Scraper config variants (`type`) | ≈178 |
 | `Client` subclasses | 178 (registered in `CLIENT_REGISTRY`) |
 | Site/network definition groups | 178 (spanning ~1,200 individual sites) |
-| Actor-photo sources | 10 (IAFD, Freeones, AdultDVDEmpire, Babepedia, …) |
+| Actor-photo sources | 8 (IAFD, AdultDVDEmpire, Indexxx, Babepedia, …) |
 | HTTP-bypass backends | 4 (Impersonate, FlareSolverr, Playwright, ReqBin) |
 | Runtime | Python 3.13, FastAPI, uvicorn, httpx2 (async), parsel (XPath / lxml), Pillow |
 
@@ -42,7 +42,7 @@ flowchart LR
 
   sites["Upstream studio/network sites<br/>(HTML + JSON APIs)"]:::ext
   flare["Impersonate / FlareSolverr / Playwright / ReqBin<br/>(anti-bot bypass)"]:::ext
-  photos["Actor-photo & gender sources<br/>(IAFD, Freeones, …)"]:::ext
+  photos["Actor-photo & gender sources<br/>(IAFD, AdultDVDEmpire, …)"]:::ext
   websearch["Google CSE / DuckDuckGo<br/>(fallback site search)"]:::ext
 
   plex -- "match / metadata / image requests (HTTP)" --> sys
@@ -611,7 +611,7 @@ flowchart TB
   out -.-> note
 ```
 
-`PeopleManager.resolve_all` (`phoenixadult/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `phoenixadult/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `phoenixadult/utils/people/sources/` (10 site-specific XPath sources: `iafd`, `freeones`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javBus`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Gender detection (`iafd_gender_check`, `phoenixadult/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
+`PeopleManager.resolve_all` (`phoenixadult/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `phoenixadult/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `phoenixadult/utils/people/sources/` (8 site-specific XPath sources: `iafd`, `adultDvdEmpire`, `babepedia`, `babesAndStars`, `boobpedia`, `indexxx`, `javDatabase`, `localStorage`) and are fanned by `find_photo`. Retired sources (Freeones, JAVBus) wait in `phoenixadult/graveyard/`. Gender detection (`iafd_gender_check`, `phoenixadult/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
 
 ---
 
@@ -743,7 +743,7 @@ phoenixadult/
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider
-  graveyard/                 # retired scrapers, imported by nothing (see §Archive)
+  graveyard/                 # retired scrapers and people sources, imported by nothing (see §Archive)
   utils/
     http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin,
                              #   ssrf_guard, rate_limit_helper (ScenePacer)
