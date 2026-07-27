@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+import pytest
+
 from phoenixadult.utils import db
 from phoenixadult.utils.cache import scene_store
 
@@ -50,3 +52,57 @@ def test_concurrent_readers_do_not_trip_over_each_other() -> None:
         return sum(1 for _ in range(_ROUNDS) for n in range(10) if scene_store.load(f'h{n}') is not None)
 
     assert _run(hammer) == [_ROUNDS * 10] * _THREADS
+
+
+def test_a_stale_index_rebuilds_exactly_once_under_concurrent_readers() -> None:
+    import time
+
+    calls: list[int] = []
+
+    def rebuild() -> None:
+        calls.append(1)
+        time.sleep(0.05)
+
+    gate = db.ReconciledConn(lambda: 'some-cache-dir', rebuild)
+    _run(gate.connect)
+
+    assert len(calls) == 1
+
+
+def test_a_failed_rebuild_is_retried_rather_than_marked_done() -> None:
+    attempts: list[int] = []
+
+    def rebuild() -> None:
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise RuntimeError('rebuild failed')
+
+    gate = db.ReconciledConn(lambda: 'another-cache-dir', rebuild)
+    with pytest.raises(RuntimeError):
+        gate.connect()
+    gate.connect()
+
+    assert len(attempts) == 2
+
+
+def test_a_reader_waits_for_an_in_flight_rebuild() -> None:
+    import time
+
+    state = {'building': False}
+    started = threading.Event()
+
+    def rebuild() -> None:
+        state['building'] = True
+        started.set()
+        time.sleep(0.1)
+        state['building'] = False
+
+    gate = db.ReconciledConn(lambda: 'busy-cache-dir', rebuild)
+    builder = threading.Thread(target=gate.connect)
+    builder.start()
+    started.wait(1)
+    gate.connect()
+    seen_mid_rebuild = state['building']
+    builder.join()
+
+    assert seen_mid_rebuild is False

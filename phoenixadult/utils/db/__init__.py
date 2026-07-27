@@ -271,17 +271,28 @@ class ReconciledConn:
         self._dir_of = dir_of
         self._rebuild = rebuild
         self._key: tuple[str, str] | None = None
+        self._lock = threading.Lock()
 
     def invalidate(self) -> None:
-        self._key = None
+        with self._lock:
+            self._key = None
 
     def reconcile(self) -> None:
-        self._key = (self._dir_of(), env.state_db_path)
+        with self._lock:
+            self._rebuild_locked()
+
+    def _rebuild_locked(self) -> None:
+        """The key is stored only after a successful rebuild: a reader that arrives mid-rebuild
+        waits on the lock rather than seeing the half-emptied table, and a failed rebuild retries."""
+        key = (self._dir_of(), env.state_db_path)
         self._rebuild()
+        self._key = key
 
     def connect(self) -> sqlite3.Connection:
         if self._key != (self._dir_of(), env.state_db_path):
-            self.reconcile()
+            with self._lock:
+                if self._key != (self._dir_of(), env.state_db_path):
+                    self._rebuild_locked()
         return connect()
 
 
