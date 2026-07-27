@@ -236,7 +236,9 @@ recorded" is a filter away. It asks for confirmation with the count, then for ea
 name up at that source and, on a hit, replaces the cached file, keeping that person's existing
 cropped setting and flagging their scenes to re-push. Lookups run three at a time to stay polite to
 the source, and a batch is capped at 250 people — anything beyond that is reported as skipped rather
-than silently dropped. A person the source doesn't know is left exactly as they were.
+than silently dropped. A person the source doesn't know is left exactly as they were. Progress
+streams back per person (`Fetching 21 of 60 from IAFD…` plus a bar), so a long batch shows how far
+along it is rather than sitting on one static count.
 
 #### Reconciling Stale Tags
 

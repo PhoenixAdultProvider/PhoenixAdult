@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -267,10 +268,31 @@ def test_bulk_fetch_validates_source_and_selection(client: TestClient) -> None:
     assert empty.status_code == 400
 
 
+def _ndjson(payload: str) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in payload.splitlines() if line.strip()]
+
+
 def test_bulk_fetch_reports_unknown_people_as_failed(client: TestClient) -> None:
     r = client.post('/people/bulk-fetch', json={'source': 'IAFD', 'filenames': ['actor.not-cached.jpg']})
     assert r.status_code == 200
-    body = r.json()
+    body = _ndjson(r.text)[-1]
     assert body['ok'] is True
     assert body['updated'] == 0
     assert body['failed'] == 1
+
+
+def test_bulk_fetch_streams_progress_per_person(client: TestClient) -> None:
+    names = [f'actor.nobody-{n}.jpg' for n in range(3)]
+    r = client.post('/people/bulk-fetch', json={'source': 'IAFD', 'filenames': names})
+    assert r.status_code == 200
+    lines = _ndjson(r.text)
+    assert lines[0] == {'source': 'IAFD', 'total': 3}
+    assert [line['done'] for line in lines[1:-1]] == [1, 2, 3]
+    assert all(line['total'] == 3 for line in lines[1:-1])
+    assert lines[-1]['ok'] is True and lines[-1]['failed'] == 3
+
+
+def test_bulk_fetch_page_renders_a_progress_bar(client: TestClient) -> None:
+    page = client.get('/people')
+    assert 'bulkProgress' in page.text
+    assert "'Fetching '+msg.done+' of '+msg.total+' from '+source" in page.text

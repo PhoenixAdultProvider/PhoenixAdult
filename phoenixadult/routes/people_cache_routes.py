@@ -3,13 +3,14 @@ from __future__ import annotations
 import asyncio
 import html
 import json
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
@@ -24,7 +25,7 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.localStorage import local_storage_source
-from phoenixadult.utils.people.types import Gender, PersonLookupContext, parse_person_filename
+from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
@@ -227,6 +228,8 @@ async def page(request: Request) -> HTMLResponse:
       button.bulk{{width:auto;margin:0;padding:7px 16px;background:#1e2433;border:1px solid #334155;color:#cbd5e1}}
       button.bulk:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
       button.bulk:disabled{{background:#1e2433;color:#64748b}}
+      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:#1e2433;border:1px solid #334155;border-radius:6px;overflow:hidden}}
+      .progress .fill{{height:100%;width:0;background:#2563eb;transition:width .15s linear}}
       @media (max-width:720px){{
         body{{padding:14px}}
         .grid{{grid-template-columns:1fr}}
@@ -249,6 +252,7 @@ async def page(request: Request) -> HTMLResponse:
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
       <select id="bulkSource">{source_options}</select>
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
+      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span></div>
     <div class="grid">{cards}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
@@ -318,6 +322,27 @@ async def page(request: Request) -> HTMLResponse:
           .map(c => c.dataset.fn)
           .filter(Boolean);
       }}
+      function setProgress(done, total){{
+        const bar = document.getElementById('bulkProgress');
+        bar.hidden = false;
+        document.getElementById('bulkFill').style.width = (total ? (done/total)*100 : 0)+'%';
+      }}
+      async function* ndjson(response){{
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for(;;){{
+          const {{done, value}} = await reader.read();
+          buf += done ? '' : decoder.decode(value, {{stream:true}});
+          let cut;
+          while((cut = buf.indexOf('\\n')) >= 0){{
+            const line = buf.slice(0, cut).trim();
+            buf = buf.slice(cut+1);
+            if(line) yield JSON.parse(line);
+          }}
+          if(done) return;
+        }}
+      }}
       document.getElementById('bulkBtn').addEventListener('click', async () => {{
         const btn = document.getElementById('bulkBtn');
         const status = document.getElementById('bulkStatus');
@@ -326,19 +351,36 @@ async def page(request: Request) -> HTMLResponse:
         if(!filenames.length){{ status.textContent = 'Nothing shown to fetch'; return; }}
         if(!confirm('Replace the cached image for '+filenames.length+' shown '+(filenames.length===1?'person':'people')+' using '+source+'?')) return;
         btn.disabled = true;
-        status.textContent = 'Fetching '+filenames.length+' from '+source+'…';
-        let j = {{}};
+        setProgress(0, filenames.length);
+        status.textContent = 'Fetching 0 of '+filenames.length+' from '+source+'…';
+        let summary = null;
         try {{
           const r = await fetch('/people/bulk-fetch', {{method:'POST', headers:hdrs(), body:JSON.stringify({{source, filenames}})}});
-          j = await r.json();
-        }} catch(err) {{ j = {{ok:false, error:String(err)}}; }}
+          if(!r.ok) {{
+            const err = await r.json().catch(()=>({{}}));
+            throw new Error(err.error || 'Bulk fetch failed');
+          }}
+          for await (const msg of ndjson(r)){{
+            if(msg.done){{
+              setProgress(msg.done, msg.total);
+              status.textContent = 'Fetching '+msg.done+' of '+msg.total+' from '+source+'…';
+            }}
+            if(msg.ok) summary = msg;
+          }}
+        }} catch(err) {{
+          btn.disabled = false;
+          document.getElementById('bulkProgress').hidden = true;
+          status.textContent = String(err.message || err);
+          return;
+        }}
         btn.disabled = false;
-        if(!j.ok) {{ status.textContent = j.error || 'Bulk fetch failed'; return; }}
-        const parts = [j.updated+' updated', j.missed+' not found'];
-        if(j.failed) parts.push(j.failed+' failed');
-        if(j.truncated) parts.push(j.truncated+' skipped over the batch cap');
+        if(!summary) {{ status.textContent = 'Bulk fetch ended early'; return; }}
+        setProgress(1, 1);
+        const parts = [summary.updated+' updated', summary.missed+' not found'];
+        if(summary.failed) parts.push(summary.failed+' failed');
+        if(summary.truncated) parts.push(summary.truncated+' skipped over the batch cap');
         status.textContent = parts.join(', ');
-        if(j.updated) setTimeout(() => location.reload(), 1200);
+        if(summary.updated) setTimeout(() => location.reload(), 1200);
       }});
       document.getElementById('cropToggle').addEventListener('click', () => {{
         croppedOnly = !croppedOnly;
@@ -417,7 +459,7 @@ async def lookup(request: Request) -> JSONResponse:
 
 
 @router.post('/bulk-fetch')
-async def bulk_fetch(request: Request) -> JSONResponse:
+async def bulk_fetch(request: Request) -> Response:
     data = await read_json_body(request)
     wanted = str(data.get('source', ''))
     raw = data.get('filenames')
@@ -429,40 +471,62 @@ async def bulk_fetch(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'no people selected'}, status_code=400)
 
     truncated = max(0, len(filenames) - _BULK_MAX)
-    filenames = filenames[:_BULK_MAX]
     known = {e['filename']: e for e in await run_in('store', _list_people, people_cache_dir())}
+    stream = _bulk_stream(source, filenames[:_BULK_MAX], known, truncated)
+    return StreamingResponse(stream, media_type='application/x-ndjson')
+
+
+async def _fetch_into_cache(source: PersonSource, filename: str, entry: dict[str, Any] | None) -> tuple[str, str]:
+    """(outcome, display name) for one person of a bulk fetch: 'updated', 'missed' or 'failed'."""
+    if entry is None:
+        return 'failed', filename
+    name = str(entry['name'])
+    role: Any = entry['role']
+    try:
+        hit = await source.find(name, PersonLookupContext(type=role))
+    except Exception as err:  # noqa: BLE001 - one person failing must not abort the batch
+        logger.warn('people-cache', f'{source.name} threw for {name}: {err!r}')
+        return 'failed', name
+    if hit is None or not hit.url:
+        return 'missed', name
+    cached = await cache_photo(hit.url, name, role, _gender_of(str(entry['gender'])), replace=True, crop=bool(entry['cropped']), source=source.name)
+    if cached is None:
+        return 'failed', name
+    await run_in('store', scene_store.flag_people_changed, name)
+    return 'updated', name
+
+
+async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[str, dict[str, Any]], truncated: int) -> AsyncIterator[str]:
+    """NDJSON progress for a bulk fetch: a header line, one line per person as they land, then a
+    summary — the page can only show "N of M" while the batch is still running."""
+    total = len(filenames)
     sem = asyncio.Semaphore(_BULK_CONCURRENCY)
-    updated: list[str] = []
-    missed: list[str] = []
-    failed: list[str] = []
+    tally = {'updated': 0, 'missed': 0, 'failed': 0}
+    queue: asyncio.Queue[tuple[str, str] | None] = asyncio.Queue()
 
     async def _one(filename: str) -> None:
-        entry = known.get(filename)
-        if entry is None:
-            failed.append(filename)
-            return
-        name = str(entry['name'])
-        role: Any = entry['role']
         async with sem:
-            try:
-                hit = await source.find(name, PersonLookupContext(type=role))
-            except Exception as err:  # noqa: BLE001 - one person failing must not abort the batch
-                logger.warn('people-cache', f'{source.name} threw for {name}: {err!r}')
-                failed.append(name)
-                return
-            if hit is None or not hit.url:
-                missed.append(name)
-                return
-            cached = await cache_photo(hit.url, name, role, _gender_of(str(entry['gender'])), replace=True, crop=bool(entry['cropped']))
-        if cached is None:
-            failed.append(name)
-            return
-        await run_in('store', scene_store.flag_people_changed, name)
-        updated.append(name)
+            outcome, name = await _fetch_into_cache(source, filename, known.get(filename))
+        tally[outcome] += 1
+        await queue.put((outcome, name))
 
-    await asyncio.gather(*(_one(f) for f in filenames))
-    logger.info('people-cache', f'bulk fetch from {source.name}: {len(updated)} updated, {len(missed)} not found, {len(failed)} failed')
-    return JSONResponse({'ok': True, 'source': source.name, 'updated': len(updated), 'missed': len(missed), 'failed': len(failed), 'truncated': truncated})
+    async def _run() -> None:
+        try:
+            await asyncio.gather(*(_one(f) for f in filenames))
+        finally:
+            await queue.put(None)
+
+    runner = asyncio.create_task(_run())
+    yield json.dumps({'source': source.name, 'total': total}) + '\n'
+    done = 0
+    try:
+        while (item := await queue.get()) is not None:
+            done += 1
+            yield json.dumps({'done': done, 'total': total, 'outcome': item[0], 'name': item[1]}) + '\n'
+    finally:
+        runner.cancel()
+    logger.info('people-cache', f'bulk fetch from {source.name}: {tally["updated"]} updated, {tally["missed"]} not found, {tally["failed"]} failed')
+    yield json.dumps({'ok': True, 'source': source.name, **tally, 'truncated': truncated}) + '\n'
 
 
 @router.post('/save')
