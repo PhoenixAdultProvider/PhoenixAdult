@@ -23,6 +23,11 @@
     input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
     input[type=text]:focus { outline: 0; border-color: #2563eb; }
     .hint { font-size: 11px; color: #475569; margin-top: 4px; }
+    .fetchrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    .fetchrow select { flex: 1 1 180px; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #cbd5e1; cursor: pointer; font-size: 13px; font-family: inherit; }
+    .fetch:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .fetch:disabled { color: #64748b; cursor: not-allowed; background: #1e2433; }
     .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: #cbd5e1; }
     .toggle input { width: 16px; height: 16px; accent-color: #2563eb; }
     .imgs { display: flex; gap: 12px; }
@@ -56,7 +61,12 @@
       <legend>Source</legend>
       <label for="f-upstream">Upstream Original URL</label>
       <input type="text" id="f-upstream" placeholder="https://…">
-      <div class="hint">Saving a changed URL re-downloads the image and replaces the cached file.</div>
+      <div class="fetchrow">
+        <select id="f-source"></select>
+        <button class="fetch" id="fetchBtn">Fetch From</button>
+        <span class="status" id="fetchStatus"></span>
+      </div>
+      <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
       <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:#cbd5e1">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
     </fieldset>
@@ -80,6 +90,7 @@
     const TOKEN = __TOKEN__;
     const FILENAME = __FILENAME__;
     const ENTRY = __ENTRY__;
+    const SOURCES = __SOURCES__;
     const CROP_AVAILABLE = __CROP_AVAILABLE__;
 
     function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
@@ -120,6 +131,32 @@
     }
     qs('f-upstream').addEventListener('change', refreshUpstream);
     refreshUpstream();
+
+    SOURCES.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      qs('f-source').appendChild(opt);
+    });
+
+    qs('fetchBtn').onclick = async () => {
+      const button = qs('fetchBtn');
+      const source = qs('f-source').value;
+      button.disabled = true;
+      qs('fetchStatus').textContent = 'Searching ' + source + '…';
+      let payload = {};
+      try {
+        const r = await fetch('/people/lookup', {method: 'POST', headers: hdrs(), body: JSON.stringify({filename: FILENAME, source})});
+        payload = await r.json();
+      } catch (err) {
+        payload = {ok: false, error: String(err)};
+      }
+      button.disabled = false;
+      if (!payload.ok) { qs('fetchStatus').textContent = payload.error || 'Lookup failed'; return; }
+      qs('f-upstream').value = payload.url;
+      refreshUpstream();
+      qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply';
+    };
 
     qs('iafdLink').href = 'https://www.iafd.com/results.asp?searchtype=comprehensive&searchstring=' + encodeURIComponent(ENTRY.name || '').replace(/%20/g, '+');
 

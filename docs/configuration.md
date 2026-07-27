@@ -212,7 +212,10 @@ Remove button; a pasted URL is downloaded on save). Notes:
 - The title cannot be blank, and the snapshot writer still rejects error-looking titles.
 
 `/people/edit` covers the upstream original URL and cropped status, with the performer's name as the
-heading plus **Copy** and **Search IAFD** buttons. Saving a change **re-downloads the image and
+heading plus **Copy** and **Search IAFD** buttons. **Fetch From** runs one chosen photo source
+(dropdown; `PEOPLE_SOURCE_ORDER`'s remote sources, minus Local Storage — it returns an
+already-cached local file, not an upstream URL) and fills the URL field with what it finds. Nothing
+is downloaded until you save, so a wrong hit costs nothing. Saving a change **re-downloads the image and
 replaces the cached file**, cropping per the checkbox rather than `PEOPLE_CACHE_FACE_ENABLE` — so it
 doubles as a way to crop or un-crop one headshot. The checkbox is disabled when
 `opencv-python-headless` is absent.

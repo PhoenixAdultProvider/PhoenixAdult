@@ -21,11 +21,14 @@ from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
-from phoenixadult.utils.people.types import Gender, parse_person_filename
+from phoenixadult.utils.people.sources import ALL_SOURCES
+from phoenixadult.utils.people.sources.localStorage import local_storage_source
+from phoenixadult.utils.people.types import Gender, PersonLookupContext, parse_person_filename
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _EDIT_TEMPLATE: str = load_data(__file__, 'people_edit', kind='html')
+FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_storage_source.name]
 
 
 def _json_attr(value: object) -> str:
@@ -344,9 +347,33 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__FILENAME__', _json_attr(filename))
         .replace('__ENTRY__', _json_attr(entry))
+        .replace('__SOURCES__', _json_attr([source.name for source in FETCHABLE_SOURCES]))
         .replace('__CROP_AVAILABLE__', 'true' if face_crop.available() else 'false')
     )
     return HTMLResponse(body)
+
+
+@router.post('/lookup')
+async def lookup(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    filename = str(data.get('filename', ''))
+    wanted = str(data.get('source', ''))
+    entry = await run_in('store', _find_entry, filename) if filename else None
+    if entry is None:
+        return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
+    source = next((s for s in FETCHABLE_SOURCES if s.name == wanted), None)
+    if source is None:
+        return JSONResponse({'ok': False, 'error': 'unknown source'}, status_code=400)
+    role: Any = entry['role']
+    try:
+        hit = await source.find(str(entry['name']), PersonLookupContext(type=role))
+    except Exception as err:  # noqa: BLE001 - a failing source is a miss, not a 500
+        logger.warn('people-cache', f'{source.name} lookup failed for {entry["name"]}: {err!r}')
+        return JSONResponse({'ok': False, 'error': f'{source.name} lookup failed'}, status_code=502)
+    if hit is None or not hit.url:
+        return JSONResponse({'ok': False, 'error': f'{source.name} has no image for "{entry["name"]}"'}, status_code=404)
+    logger.info('people-cache', f'{source.name} offered an image for {entry["name"]}')
+    return JSONResponse({'ok': True, 'url': hit.url, 'gender': hit.gender or '', 'source': source.name})
 
 
 @router.post('/save')

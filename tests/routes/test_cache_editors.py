@@ -235,3 +235,16 @@ def test_backfill_studio_leaves_a_payload_derived_client_alone() -> None:
     )
     assert mc.backfill_studio(response, site) is False
     assert response.MediaContainer.Metadata[0].studio == 'Some Payload Studio'
+
+
+def test_people_lookup_rejects_an_unknown_source(client: TestClient, tmp_path: Path) -> None:
+    r = client.post('/people/lookup', json={'filename': 'actor.nobody.jpg', 'source': 'Not A Source'})
+    assert r.status_code == 404
+
+
+def test_people_lookup_offers_only_remote_sources() -> None:
+    from phoenixadult.routes.people_cache_routes import FETCHABLE_SOURCES
+
+    names = [s.name for s in FETCHABLE_SOURCES]
+    assert 'Local Storage' not in names
+    assert 'IAFD' in names and 'Freeones' in names
