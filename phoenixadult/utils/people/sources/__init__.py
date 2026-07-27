@@ -16,10 +16,10 @@ from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonS
 
 ALL_SOURCES: list[PersonSource] = [
     local_storage_source,
-    freeones_source,
     iafd_source,
-    indexxx_source,
     adult_dvd_empire_source,
+    freeones_source,
+    indexxx_source,
     boobpedia_source,
     babes_and_stars_source,
     babepedia_source,
