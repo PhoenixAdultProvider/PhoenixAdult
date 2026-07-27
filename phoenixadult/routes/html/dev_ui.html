@@ -24,6 +24,10 @@
     .example-btn { background: none; border: 1px solid #2d3748; border-radius: 4px; color: #94a3b8; font-size: 0.75rem; padding: 0.2rem 0.5rem; cursor: pointer; }
     .example-btn:hover { border-color: #6366f1; color: #a5b4fc; background: none; }
     code { background: #0f1117; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: #7dd3fc; }
+    .row > .field-year { flex: 0; min-width: 6rem; }
+    .row > .field-tight { flex: 0; }
+    .pipeline-toggle { display: flex; align-items: center; gap: 0.4rem; margin: 2rem 0 0; cursor: pointer; white-space: nowrap; }
+    .run-btn { margin-top: 1.6rem; }
 
     .step { border: 1px solid #2d3748; border-radius: 8px; overflow: hidden; margin-bottom: 0.6rem; }
     .step-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; background: #1a2035; }
@@ -134,6 +138,57 @@
     table.sites-table th:nth-child(4), table.sites-table td:nth-child(4) { width: 46%; }
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #374151; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      h1 { font-size: 1.25rem; }
+      h2 { margin: 1.1rem 0 0.5rem; }
+      .card { padding: 0.9rem; }
+      input[type=text] { font-size: 16px; }
+
+      .row { gap: 0.6rem; }
+      .row > div, .row > .field-year, .row > .field-tight { flex: 1 1 100%; min-width: 0; }
+      .pipeline-toggle { margin: 0.2rem 0 0; white-space: normal; }
+      .run-btn { margin-top: 0.2rem; width: 100%; padding: 0.75rem 1rem; }
+
+      .step-header { flex-wrap: wrap; gap: 0.35rem 0.6rem; padding: 0.7rem 0.8rem; }
+      .step-header .badge { order: 1; }
+      .step-duration { order: 2; margin-left: auto; }
+      .step-title { order: 3; flex: 1 1 100%; min-width: 0; line-height: 1.35; overflow-wrap: anywhere; }
+      .step-body { padding: 0.6rem 0.7rem; }
+
+      pre { font-size: 0.72rem; padding: 0.6rem; max-height: 300px; overflow-wrap: anywhere; word-break: normal; }
+      code { overflow-wrap: anywhere; }
+
+      .capture-header { flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem 0.6rem; }
+      .capture-header .badge { order: 1; }
+      .capture-size { order: 2; margin-left: auto; }
+      .capture-label { order: 3; flex: 1 1 100%; word-break: normal; overflow-wrap: anywhere; }
+      .capture-header .copy-btn { order: 4; flex: 1 1 auto; padding: 0.45rem 0.5rem; }
+
+      .log-box { max-height: 260px; padding: 0.5rem 0.6rem; }
+      .results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+
+      .meta-layout { grid-template-columns: 1fr; gap: 0.9rem; }
+      #meta-poster-wrap { max-width: 170px; margin: 0 auto; }
+      #meta-fields { min-width: 0; }
+      .meta-value { overflow-wrap: anywhere; }
+      .actor-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 0.75rem 0.4rem; }
+      .actor-card { width: auto; }
+
+      table.sites-table, table.sites-table tbody { display: block; }
+      table.sites-table thead { display: none; }
+      table.sites-table tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid #1a2035; }
+      table.sites-table td:nth-child(n) { display: block; width: auto; padding: 0; border: 0; }
+      .c-site { font-size: 0.95rem; margin-bottom: 0.35rem; }
+      .c-type, .c-scraper, .c-aliases { display: flex; gap: 0.5rem; align-items: baseline; margin-top: 0.25rem; }
+      .c-type::before, .c-scraper::before, .c-aliases::before {
+        content: attr(data-label); flex: 0 0 auto; color: #64748b; font-size: 0.62rem;
+        text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .c-aliases details { flex: 1 1 auto; min-width: 0; }
+      .alias-chip { white-space: normal; overflow-wrap: anywhere; }
+    }
   </style>
 </head>
 <body>
@@ -153,17 +208,17 @@
           <button class="example-btn" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
         </div>
       </div>
-      <div style="flex:0;min-width:6rem">
+      <div class="field-year">
         <label for="year-override">Year (Override)</label>
         <input type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
-      <div style="flex:0">
-        <label style="display:flex;align-items:center;gap:0.4rem;margin:2rem 0 0;cursor:pointer;white-space:nowrap">
+      <div class="field-tight">
+        <label class="pipeline-toggle">
           <input type="checkbox" id="fullPipeline"> Full Pipeline (DB Round-Trip)
         </label>
       </div>
-      <div style="flex:0">
-        <button id="runBtn" onclick="runSearch()" style="margin-top:1.6rem">▶ Search</button>
+      <div class="field-tight">
+        <button id="runBtn" class="run-btn" onclick="runSearch()">▶ Search</button>
       </div>
     </div>
   </div>
@@ -249,6 +304,7 @@
     // Forward the admin token (from the page URL ?token=) onto the API calls so
     // the dev UI works behind a tunnel where requests aren't loopback.
     const AUTH_TOKEN = new URLSearchParams(location.search).get('token') || '';
+    const NARROW = window.matchMedia('(max-width: 720px)');
     function apiUrl(path) {
       if (!AUTH_TOKEN) return path;
       return path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(AUTH_TOKEN);
@@ -435,7 +491,7 @@
             <span class="step-title">${esc(s.step)}</span>
             <span class="step-duration">${s.durationMs != null ? s.durationMs + 'ms' : ''}</span>
           </div>
-          <div class="step-body ${s.ok ? 'open' : ''}" id="${id}">
+          <div class="step-body ${(NARROW.matches ? !s.ok : s.ok) ? 'open' : ''}" id="${id}">
             ${body || '<p style="color:#475569;font-size:0.82rem">No data</p>'}
           </div>
         </div>`;
@@ -577,7 +633,7 @@
 
       const fields = [];
       const refreshBtn = ' <button onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot" '
-        + 'style="cursor:pointer;background:#1e3a5f;color:#bfdbfe;border:1px solid #2563eb;border-radius:5px;padding:2px 8px;font-size:0.75rem;font-weight:700">🔄 Fetch upstream</button>';
+        + 'style="cursor:pointer;background:#1e3a5f;color:#bfdbfe;border:1px solid #2563eb;border-radius:5px;padding:2px 8px;font-size:0.75rem;font-weight:700">🔄 Fetch Upstream</button>';
       if (meta.servedFrom === 'snapshot') {
         fields.push(field('Source', '<span class="meta-tag" style="background:#064e3b;color:#a7f3d0;border-color:#065f46;font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>' + refreshBtn));
       } else if (meta.servedFrom === 'live') {

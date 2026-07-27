@@ -586,10 +586,10 @@ def _render_ui(sites: list[dict[str, Any]]) -> str:
         tr_class = ' class="group-row"' if s['grouped'] else ''
         rows.append(
             f'<tr{tr_class}>\n'
-            f'      <td>{name_cell}</td>\n'
-            f'      <td><code>{html.escape(s["contentType"])}</code></td>\n'
-            f'      <td><code>{html.escape(s["scraperType"])}</code></td>\n'
-            f'      <td>{alias_cell}</td>\n'
+            f'      <td class="c-site">{name_cell}</td>\n'
+            f'      <td class="c-type" data-label="Content Type"><code>{html.escape(s["contentType"])}</code></td>\n'
+            f'      <td class="c-scraper" data-label="Scraper"><code>{html.escape(s["scraperType"])}</code></td>\n'
+            f'      <td class="c-aliases" data-label="Aliases">{alias_cell}</td>\n'
             f'    </tr>'
         )
 

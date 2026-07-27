@@ -156,3 +156,12 @@ def test_dev_page_has_full_pipeline_toggle(client: TestClient) -> None:
     r = client.get('/dev', params={'token': TOKEN})
     assert 'Full Pipeline (DB Round-Trip)' in r.text
     assert 'roundtrip-section' in r.text
+
+
+def test_dev_page_has_a_mobile_layout(client: TestClient) -> None:
+    r = client.get('/dev', params={'token': TOKEN})
+    assert r.status_code == 200
+    assert '@media (max-width: 720px)' in r.text
+    assert 'data-label="Content Type"' in r.text
+    assert 'class="c-site"' in r.text
+    assert 'style="flex:0' not in r.text
