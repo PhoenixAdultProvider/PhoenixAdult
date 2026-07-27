@@ -33,6 +33,17 @@
     .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1f2937; color: #fca5a5; cursor: pointer; font-size: 12px; }
     .purge-btn:hover { background: #7f1d1d; color: #fecaca; }
     .empty { color: #475569; font-size: 14px; padding: 40px; text-align: center; }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      .sub code { overflow-wrap: anywhere; }
+      .bar { gap: 8px; }
+      .bar input[type=text] { width: 100%; flex: 1 1 100%; font-size: 16px; }
+      .rescan-btn { margin-left: 0; }
+      .rescan-btn, .purge-all-btn { flex: 1 1 auto; }
+      .grid { grid-template-columns: 1fr; }
+      .empty { padding: 24px 12px; }
+    }
   </style>
 </head>
 <body>
