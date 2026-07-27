@@ -80,9 +80,10 @@ async def refresh_cached_snapshot(
         changed = True
     if metadata_cache.drop_stale_people_thumbs(response, site.name, cur_id):
         changed = True
-    if await metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail):
-        changed = True
-    if not skip_data18 and await metadata_cache.backfill_data18(response, site.name):
+    backfills = [metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)]
+    if not skip_data18:
+        backfills.append(metadata_cache.backfill_data18(response, site.name))
+    if any(await asyncio.gather(*backfills)):
         changed = True
     if metadata_cache.backfill_metadata_attrs(response):
         changed = True

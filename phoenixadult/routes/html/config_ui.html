@@ -308,6 +308,7 @@
 
   <script>
     const STATE = __STATE_JSON__;
+    let plexLibrariesLoaded = false;
     const LISTS = {};                 // key → ordered array (list controls)
     const PREVIEW_PREFIX = 'phoenixcfg:img:';
     const imgDebounce = {};
@@ -370,6 +371,7 @@
         if (pane) pane.classList.toggle('active', t === name);
         if (btn) btn.classList.toggle('active', t === name);
       }
+      if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadPlexLibraries(); }
       const activeBtn = document.getElementById('tabbtn-' + name);
       if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
       if (history.replaceState) history.replaceState(null, '', '#' + name);
@@ -700,13 +702,12 @@
 
       // Image-URL fields: probe the URL before saving. A URL that doesn't
       // resolve to an image is reverted and reported.
+      const probes = changed
+        .filter((c) => { const spec = specOf(c.dataset.key); return spec && spec.preview === 'image' && c.value.trim(); })
+        .map((c) => testImage(c.value.trim()).then((ok) => ({ control: c, ok })));
       const failed = [];
-      for (const c of changed) {
-        const spec = specOf(c.dataset.key);
-        if (spec && spec.preview === 'image' && c.value.trim()) {
-          const ok = await testImage(c.value.trim());
-          if (!ok) { c.value = c.dataset.initial; failed.push(c.dataset.key); }
-        }
+      for (const { control, ok } of await Promise.all(probes)) {
+        if (!ok) { control.value = control.dataset.initial; failed.push(control.dataset.key); }
       }
       if (failed.length) refreshDirty();
 
@@ -854,9 +855,9 @@
           if (data.token) {
             clearInterval(poll);
             try { popup.close(); } catch (e) {}
-            await postJSON(api('/config/api/save'), { updates: { PLEX_TOKEN: data.token, PLEX_CLIENT_ID: pin.clientId } });
+            const saved = await postJSON(api('/config/api/save'), { updates: { PLEX_TOKEN: data.token, PLEX_CLIENT_ID: pin.clientId } });
             plexStatus('plex-auth-status', 'Authentication successful — token saved.', 'ok');
-            await reload();
+            applyState(saved);
             loadPlexServers();
           }
         } catch (e) { /* keep polling */ }
@@ -1221,7 +1222,6 @@
 
     render();
     initReconFields();
-    loadPlexLibraries();
     const startTab = location.hash.slice(1);
     showTab(tabIds().includes(startTab) ? startTab : tabIds()[0]);
   </script>

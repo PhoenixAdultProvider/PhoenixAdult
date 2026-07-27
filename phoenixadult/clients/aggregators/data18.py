@@ -27,6 +27,7 @@ from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import convert_sequence_numbers
 from phoenixadult.utils.searchengines import SearchOptions, web_search
 
+_GALLERY_CONCURRENCY = 3
 _BASE = 'https://www.data18.com'
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
@@ -653,12 +654,16 @@ class Data18Client(Client):
         movie_id = id_match.group(1) if id_match else ''
         movie_prefix = movie_id[1:]
         if movie_prefix:
-            for gallery in sel.xpath('//div[@id="galleriesoff"]//div'):
-                gallery_id = (gallery.xpath('./@id').get() or '').replace('gallery', '')
-                if not gallery_id:
-                    continue
+            gallery_ids = [
+                gid for gallery in sel.xpath('//div[@id="galleriesoff"]//div') if (gid := (gallery.xpath('./@id').get() or '').replace('gallery', ''))
+            ]
+            sem = asyncio.Semaphore(_GALLERY_CONCURRENCY)
 
-                viewer = await self.fetch_page(f'{_BASE}/sys/media_photos.php?movie={movie_prefix}&pic={gallery_id}')
+            async def viewer_for(gallery_id: str) -> Selector | None:
+                async with sem:
+                    return await self.fetch_page(f'{_BASE}/sys/media_photos.php?movie={movie_prefix}&pic={gallery_id}')
+
+            for viewer in await asyncio.gather(*(viewer_for(gid) for gid in gallery_ids)):
                 if not viewer:
                     continue
 
