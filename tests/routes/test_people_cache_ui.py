@@ -130,3 +130,12 @@ def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPa
     page = TestClient(create_app()).get('/people?token=tok')
     assert 'data-cropped="0"' in page.text
     assert 'id="cropToggle"' in page.text
+
+
+def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/people?token=tok')
+    assert 'filtersToggle' in page.text
+    assert 'body.filters-open .tabs' in page.text
+    assert 'updateFiltersToggle()' in page.text
+    assert '@media (max-width:720px)' in page.text

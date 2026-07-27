@@ -188,7 +188,8 @@ async def page(request: Request) -> HTMLResponse:
     img_base = html.escape(image_base_url())
     img_opt = html.escape(env.image_base_url_raw)
     tabs = ''.join(
-        f'<button class="tab" data-t="{t}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>' for t, label in _TABS
+        f'<button class="tab" data-t="{t}" data-label="{label}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>'
+        for t, label in _TABS
     )
     cards = '\n'.join(_card(e) for e in entries)
     source_options = ''.join(f'<option value="{html.escape(s.name, quote=True)}">{html.escape(s.name)}</option>' for s in FETCHABLE_SOURCES)
@@ -234,23 +235,38 @@ async def page(request: Request) -> HTMLResponse:
       button.bulk:disabled{{background:#1e2433;color:#64748b}}
       .progress{{flex:1 1 220px;max-width:320px;height:8px;background:#1e2433;border:1px solid #334155;border-radius:6px;overflow:hidden}}
       .progress .fill{{height:100%;width:0;background:#2563eb;transition:width .15s linear}}
-      @media (max-width:720px){{
-        body{{padding:14px}}
-        .grid{{grid-template-columns:1fr}}
-        .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
-      }}
+      .filters-toggle{{display:none}}
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
       .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
       .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
       .noupstream.on{{background:#7c2d12;color:#fff;border-color:#ea580c}}
       .tab .cnt{{opacity:.65;font-size:11px}}
+      @media (max-width:720px){{
+        body{{padding:14px}}
+        .grid{{grid-template-columns:1fr}}
+        .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
+        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid #334155;
+          border-radius:6px;background:#1e2433;color:#cbd5e1;font-size:13px;cursor:pointer}}
+        .filters-toggle.on{{border-color:#2563eb;color:#e2e8f0}}
+        .tabs{{display:none;flex-direction:column;gap:6px}}
+        body.filters-open .tabs{{display:flex}}
+        .tab{{width:100%}} .croptoggle{{margin-left:0}}
+        .search{{gap:10px}}
+        .search input{{width:100%;flex:1 1 100%}}
+        .search>select,.search>button.bulk,.search>.progress,.search>#bulkStatus{{display:none}}
+        body.filters-open .search>select,body.filters-open .search>button.bulk{{display:block;width:100%;max-width:none}}
+        body.filters-open .search>.progress{{display:block;max-width:none;flex:1 1 100%}}
+        body.filters-open .search>#bulkStatus{{display:block}}
+        body.filters-open .search>.progress[hidden]{{display:none}}
+      }}
     </style></head><body>
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
       <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
     {warn}
+    <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
       <button class="tab noupstream" id="upstreamToggle">No Upstream</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
@@ -317,7 +333,20 @@ async def page(request: Request) -> HTMLResponse:
         }});
         document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
+        updateFiltersToggle();
         saveFilters();
+      }}
+      function toggleFilters(){{
+        const open = document.body.classList.toggle('filters-open');
+        document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+      }}
+      function updateFiltersToggle(){{
+        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0);
+        const tab = document.querySelector('.tab.active');
+        const label = tab ? tab.dataset.label : 'People';
+        const btn = document.getElementById('filtersToggle');
+        btn.textContent = label + ' · Filters' + (active ? ' ('+active+' Active)' : '');
+        btn.classList.toggle('on', active > 0);
       }}
       document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
       function shownFilenames(){{
