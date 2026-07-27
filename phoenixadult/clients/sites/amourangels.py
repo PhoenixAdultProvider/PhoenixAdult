@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from parsel import Selector
+
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
@@ -73,31 +75,25 @@ class AmourAngelsClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+        base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            raw = (
+                sel.xpath('(//td[contains(@class,"modelinfo-bg")]//td[1]//img/@src)[1]').get()
+                or sel.xpath('(//td[contains(@class,"modelinfo-bg")]//img/@src)[1]').get()
+                or ''
+            )
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//td[contains(@class,"modinfo")]//a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
             href = first_attr(actor_link, '@href')
-            if not actor_name or not href:
-                continue
+            if actor_name and href:
+                refs.append((actor_name.lower(), absolute_url(href, base)))
 
-            actor_url = absolute_url(href, scene.site.base_url)
-            model_page_elements = await self.fetch_and_load(actor_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
-            photo = ''
-            if model_page_elements:
-                raw = (
-                    model_page_elements['sel'].xpath('(//td[contains(@class,"modelinfo-bg")]//td[1]//img/@src)[1]').get()
-                    or model_page_elements['sel'].xpath('(//td[contains(@class,"modelinfo-bg")]//img/@src)[1]').get()
-                    or ''
-                )
-                photo = absolute_url(raw, scene.site.base_url) if raw else ''
-
-            lname = actor_name.lower()
-            if lname not in seen:
-                seen.add(lname)
-                actors.append(ActorResult(name=lname, photo_url=photo, gender='female'))
-
-        metadata.actors = actors
+        resolved = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture, label=scene.site.name)
+        metadata.actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender='female') for a in resolved]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

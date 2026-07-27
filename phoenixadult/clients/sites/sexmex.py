@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
@@ -115,20 +117,18 @@ class SexMexClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url.rstrip('/')
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//img/@src)[1]')
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//p[@class]//a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
             href = first_attr(actor_link, '@href')
-            if not actor_name or not href or actor_name in seen:
-                continue
+            if actor_name and href:
+                refs.append((actor_name, f'{base}/tour/{href}'))
 
-            seen.add(actor_name)
-            model_page_elements = await self.fetch_and_load(f'{base}/tour/{href}', FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}')
-            photo = first_attr(model_page_elements['sel'], '(//img/@src)[1]') if model_page_elements else ''
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture, label=scene.site.name)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

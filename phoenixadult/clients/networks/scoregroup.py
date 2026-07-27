@@ -4,6 +4,8 @@ import json
 import re
 from typing import Any
 
+from parsel import Selector
+
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
@@ -214,6 +216,12 @@ class ScoreGroupClient(Client):
             return
 
         base = scene.site.base_url
+
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//div[contains(@class,"item-img")]//img)[1]/@src')
+
+        refs: list[tuple[str, str]] = []
+        genders: dict[str, str] = {}
         for actor_link in details_page_elements.xpath('//div//span[@class="value"]/a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
             href = first_attr(actor_link, '@href').split('?')[0]
@@ -221,13 +229,11 @@ class ScoreGroupClient(Client):
                 continue
 
             seen.add(actor_name)
-            gender = 'male' if '/male-' in href else ''
-            photo = ''
-            if href:
-                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {actor_name}')
-                photo = first_attr(model_page_elements['sel'], '(//div[contains(@class,"item-img")]//img)[1]/@src') if model_page_elements else ''
+            genders[actor_name] = 'male' if '/male-' in href else ''
+            refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            actors.append(ActorResult(name=actor_name, photo_url=photo, gender=gender))
+        resolved = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name)
+        actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender=genders.get(a.name, '')) for a in resolved]
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):
             actors.append(ActorResult(name='Christy Marks'))

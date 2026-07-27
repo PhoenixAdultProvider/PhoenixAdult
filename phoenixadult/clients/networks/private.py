@@ -4,7 +4,7 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
@@ -133,24 +133,20 @@ class PrivateClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url
-        actors: list[ActorResult] = []
+
+        def extract_photo(sel: Selector) -> str:
+            srcset = sel.xpath('(//img[@srcset])[1]/@srcset').get() or ''
+            last = srcset.split(',')[-1].strip() if srcset else ''
+            return last.split()[0] if last else ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//li[@class="tag-models"]//a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
-            if not actor_name:
-                continue
-
-            photo = ''
             href = first_attr(actor_link, '@href')
-            if href:
-                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                srcset = (model_page_elements['sel'].xpath('(//img[@srcset])[1]/@srcset').get() or '') if model_page_elements else ''
-                last = srcset.split(',')[-1].strip() if srcset else ''
-                if last:
-                    photo = last.split()[0]
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

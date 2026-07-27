@@ -4,6 +4,8 @@ import re
 from typing import Any
 from urllib.parse import quote
 
+from parsel import Selector
+
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_data, pack_cur_id
@@ -114,28 +116,20 @@ class AllureMediaClient(Client):
         title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
         summary = (details_page_elements.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip()
 
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+        def extract_photo(sel: Selector) -> str:
+            img = first_attr(sel, '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src')
+            return absolute_url(img, base) if img else ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div[contains(@class,"backgroundcolor_info")]//span[contains(@class,"update_models")]//a'):
             actor_name = first_attr(actor_link)
             href = first_attr(actor_link, '@href')
-            if not actor_name or actor_name in seen:
-                continue
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            seen.add(actor_name)
-            photo = ''
-            if href:
-                model_page_elements = await self.fetch_and_load(
-                    absolute_url(href, base), FetchCtx(capture=scene.capture), f'[{scene.site.name}] actor {actor_name}'
-                )
-                img = (
-                    first_attr(model_page_elements['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]//img)[1]/@src')
-                    if model_page_elements
-                    else ''
-                )
-                photo = (absolute_url(img, base)) if img else ''
-
-            actors.append(ActorResult(name=actor_name, photo_url=photo.replace('1x', '3x')))
+        resolved = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture, label=scene.site.name)
+        actors = [ActorResult(name=a.name, photo_url=a.photo_url.replace('1x', '3x')) for a in resolved]
+        seen = {a.name for a in actors}
 
         for actor_name in _SCENE_ACTORS:
             if (actor_name in title or actor_name in summary) and actor_name not in seen:

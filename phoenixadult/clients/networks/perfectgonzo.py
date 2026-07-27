@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
@@ -85,21 +87,19 @@ class PerfectGonzoClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src')
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
             href = first_attr(actor_link, '@href')
-            if not actor_name or not href or actor_name in seen:
-                continue
+            if actor_name and href:
+                refs.append((actor_name, absolute_url(href, base)))
 
-            seen.add(actor_name)
-            model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {actor_name}')
-            raw = first_attr(model_page_elements['sel'], '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src') if model_page_elements else ''
-            photo = (absolute_url(raw, base)) if raw else ''
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, join_url, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
@@ -119,26 +121,18 @@ class JulesJordanClient(Client):
         else:
             anchors = details_page_elements.xpath('//div[contains(@class,"player-scene-description")]//span[contains(text(),"Starring:")]/..//a')
 
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x')
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for row in anchors:
             actor_name = first_attr(row, 'normalize-space(.)')
-            if not actor_name or actor_name in seen:
-                continue
-
-            seen.add(actor_name)
-            photo = ''
             href = first_attr(row, '@href')
-            if href:
-                actor_url = absolute_url(href, base)
-                model_page_elements = await self.fetch_and_load(actor_url, None, f'GET {actor_url} (actor)')
-                raw = first_attr(model_page_elements['sel'], '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x') if model_page_elements else ''
-                if raw:
-                    photo = absolute_url(raw, base)
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

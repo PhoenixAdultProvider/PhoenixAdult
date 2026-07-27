@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.logging.best_effort import best_effort
@@ -132,25 +134,19 @@ class NewSensationsClient(Client):
 
         base = scene.site.base_url
         xp = '//span[@class="tour_update_models"]/a' if self._is_dvd(scene) else '//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//div[@class="modelBioPic"]/img)[1]/@src0_3x')
+            return absolute_url(raw, base) if raw else ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(xp):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
-            if not actor_name or actor_name in seen:
-                continue
-
-            seen.add(actor_name)
-            photo = ''
             href = first_attr(actor_link, '@href')
-            if href:
-                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'GET {href} (actor)')
-                raw = first_attr(model_page_elements['sel'], '(//div[@class="modelBioPic"]/img)[1]/@src0_3x') if model_page_elements else ''
-                if raw:
-                    photo = absolute_url(raw, base)
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

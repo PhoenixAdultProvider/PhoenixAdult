@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, load_data
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
@@ -164,22 +166,17 @@ class AdultPrimeClient(Client):
         names = self.dedup_strings(
             [first_attr(actor_link, 'normalize-space(.)') for actor_link in details_page_elements.xpath(f'{_info_line_xp("Performer")}/a')]
         )
-        actors: list[ActorResult] = []
+
+        def extract_photo(sel: Selector) -> str:
+            style = sel.xpath('(//div[contains(@class,"performer-container")]//div[contains(@class,"ratio-square")]/@style)[1]').get() or ''
+            return css_bg_image(style)
+
+        refs: list[tuple[str, str]] = []
         for actor_name in names:
             q = quote(actor_name, safe='').replace('%20', '+')
-            url = f'{base}{scene.site.search_path}performer&q={q}'
-            model_page_elements = await self.fetch_and_load(url, None, f'GET {url} (actor)')
-            style = (
-                (
-                    model_page_elements['sel'].xpath('(//div[contains(@class,"performer-container")]//div[contains(@class,"ratio-square")]/@style)[1]').get()
-                    or ''
-                )
-                if model_page_elements
-                else ''
-            )
-            actors.append(ActorResult(name=actor_name, photo_url=css_bg_image(style)))
+            refs.append((actor_name, f'{base}{scene.site.search_path}performer&q={q}'))
 
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

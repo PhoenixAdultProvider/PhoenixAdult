@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import httpx2
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.logging.best_effort import best_effort
@@ -144,26 +144,21 @@ class PlumperPassClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url.rstrip('/')
-        actors: list[ActorResult] = []
+
+        def extract_photo(sel: Selector) -> str:
+            raw = first_attr(sel, '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]')
+            if not raw:
+                return ''
+            return raw if raw.startswith('http') else f'{base}/t1/{raw}'
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//h3[contains(@class,"releases")]//a'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
-            if not actor_name:
-                continue
-
-            photo = ''
             href = first_attr(actor_link, '@href')
-            if href:
-                model_page_elements = await self.fetch_and_load(f'{base}/t1/{href}', FetchCtx(capture=scene.capture), f'GET {href} (actor)')
-                raw = (
-                    first_attr(model_page_elements['sel'], '(//div[contains(@class,"row") and contains(@class,"mainrow")]//img/@src)[1]')
-                    if model_page_elements
-                    else ''
-                )
-                photo = (raw if raw.startswith('http') else f'{base}/t1/{raw}') if raw else ''
+            if actor_name:
+                refs.append((actor_name, f'{base}/t1/{href}' if href else ''))
 
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

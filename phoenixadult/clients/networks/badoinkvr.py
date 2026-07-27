@@ -4,6 +4,8 @@ import asyncio
 import re
 from urllib.parse import quote, urlsplit
 
+from parsel import Selector
+
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
@@ -148,6 +150,9 @@ class BadoinkVrClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
+        def extract_photo(sel: Selector) -> str:
+            return first_attr(sel, '(//img[contains(@class,"girl-details-photo")])[1]/@src')
+
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//a[contains(@class,"video-actor-link")]'):
             actor_name = first_attr(actor_link, 'normalize-space(.)')
@@ -156,14 +161,8 @@ class BadoinkVrClient(Client):
             if actor_name and actor_photo_url:
                 refs.append((actor_name, absolute_url(actor_photo_url, scene.site.base_url)))
 
-        actors: list[ActorResult] = []
-        for actor_name, href in refs:
-            model_page_elements = await self.fetch_and_load(href, None, f'GET {href} (actor)')
-            actor_photo_url = first_attr(model_page_elements['sel'], '(//img[contains(@class,"girl-details-photo")])[1]/@src') if model_page_elements else ''
-
-            actors.append(ActorResult(name=actor_name, photo_url=actor_photo_url, gender='female'))
-
-        metadata.actors = actors or []
+        resolved = await self.resolve_actor_photos(refs, extract_photo, label='actor')
+        metadata.actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender='female') for a in resolved]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         """The DOM gallery is a truncated teaser (~5 items); the zip photo count is the real
