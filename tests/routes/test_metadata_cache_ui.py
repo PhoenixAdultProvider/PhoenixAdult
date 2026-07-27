@@ -246,3 +246,22 @@ def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'f-provider' in page.text
     assert '>Provider<' in page.text
     assert '<option value="__manual__">Manual</option>' in page.text
+
+
+def test_page_has_a_mobile_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert '@media (max-width: 720px)' in page.text
+    assert 'data-label="Data18"' in page.text
+    assert 'class="c-title"' in page.text
+    assert 'filtersToggle' in page.text
+    assert 'tbody td:has(> .blank) { display: none; }' in page.text
+
+
+def test_page_has_a_mobile_sort_control(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'mobileSort' in page.text
+    assert '>Sort By<' in page.text
+    assert 'buildSortOptions()' in page.text
+    assert 'applySortIndicators()' in page.text
