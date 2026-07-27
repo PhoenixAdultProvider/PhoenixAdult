@@ -196,3 +196,42 @@ def test_force_refresh_clears_local_thumbs_once(client: TestClient, tmp_path: Pa
 
     again = PlexMetadataResponse.model_validate(stored)
     assert mc.drop_stale_people_thumbs(again, SITE, CUR_ID) is False
+
+
+def test_backfill_studio_corrects_a_regrouped_site() -> None:
+    from phoenixadult.registry import find_site
+
+    site = find_site('Cum4K')
+    assert site is not None and site.sub_group is None
+    response = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'p',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Old Scene', 'studio': 'Porn Pros', 'tagline': 'Cum4K'}],
+            }
+        }
+    )
+    assert mc.backfill_studio(response, site) is True
+    md = response.MediaContainer.Metadata[0]
+    assert md.studio == 'Cum4K'
+    assert md.tagline is None
+    assert mc.backfill_studio(response, site) is False
+
+
+def test_backfill_studio_leaves_a_payload_derived_client_alone() -> None:
+    from phoenixadult.registry import find_site
+
+    site = find_site('Adult Time')
+    assert site is not None and site.scraper_config.type == 'gammaentother'
+    response = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'p',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'A Scene', 'studio': 'Some Payload Studio'}],
+            }
+        }
+    )
+    assert mc.backfill_studio(response, site) is False
+    assert response.MediaContainer.Metadata[0].studio == 'Some Payload Studio'

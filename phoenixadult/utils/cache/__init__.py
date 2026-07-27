@@ -15,7 +15,7 @@ from PIL import Image as PILImage
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
-from phoenixadult.registry import SITE_DEFINITIONS, find_site
+from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -450,6 +450,26 @@ def purge(key: str) -> bool:
 
 _EDITABLE_TAGS = {'Genre': PlexGenre, 'Collection': PlexCollection, 'Country': PlexCountry}
 _EDITABLE_ROLES = ('Role', 'Director', 'Producer')
+
+
+def backfill_studio(response: PlexMetadataResponse, site: ResolvedSiteInfo) -> bool:
+    from phoenixadult.clients import get_client
+
+    client = get_client(site.scraper_config.type)
+    derived = client.studio_for(site) if client else None
+    if not derived:
+        return False
+    try:
+        md = response.MediaContainer.Metadata[0]
+    except (AttributeError, IndexError):
+        return False
+    if normalize_studio(derived) == md.studio:
+        return False
+    logger.info('meta-cache', f'restudioed "{md.title}": {md.studio!r} -> {normalize_studio(derived)!r}')
+    md.studio = normalize_studio(derived)
+    if md.tagline and md.tagline == md.studio:
+        md.tagline = None
+    return True
 
 
 def drop_stale_people_thumbs(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:

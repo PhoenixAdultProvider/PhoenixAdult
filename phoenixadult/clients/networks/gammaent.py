@@ -204,8 +204,11 @@ class GammaEntClient(Client):
 
         metadata.summary = _BR_RE.sub('\n', summary).strip() or ''
 
+    def studio_for(self, site: ResolvedSiteInfo) -> str | None:
+        return site.sub_group or site.name
+
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.sub_group or scene.site.name
+        metadata.studio = self.studio_for(scene.site) or scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline_of(scene)

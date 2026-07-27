@@ -75,7 +75,9 @@ async def refresh_cached_snapshot(
 ) -> bool:
     """Apply the serve-time backfills to a cached snapshot in place, rewriting it if anything changed (returned).
     `skip_data18` avoids a second data18 search when the caller's enrichment pull already searched this serve."""
-    changed = metadata_cache.reapply_text_rules(response, site.scraper_config.type)
+    changed = metadata_cache.backfill_studio(response, site)
+    if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
+        changed = True
     if metadata_cache.drop_stale_people_thumbs(response, site.name, cur_id):
         changed = True
     if await metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail):

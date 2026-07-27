@@ -190,6 +190,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     def tag(self, site: ResolvedSiteInfo) -> str:
         return site.name
 
+    def studio_for(self, site: ResolvedSiteInfo) -> str | None:
+        return None
+
     # ── Fetch Helpers ──────────────────────────────────────────────────────────
 
     async def fetch_and_load(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:

@@ -322,8 +322,11 @@ class NubilesClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = self._summary_of(scene)
 
+    def studio_for(self, site: ResolvedSiteInfo) -> str | None:
+        return site.sub_group or STUDIO
+
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.sub_group if scene.site.sub_group else STUDIO
+        metadata.studio = self.studio_for(scene.site) or STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         sub = scene.subsite or scene.site.name
