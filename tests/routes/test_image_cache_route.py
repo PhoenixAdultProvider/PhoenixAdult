@@ -19,3 +19,18 @@ def test_cache_route_serves_and_images_prefix_is_gone(tmp_path: pytest.TempPathF
     assert client.get('/images/cache/brazzers/baby-got-boobs/abc/images/poster-00.jpg').status_code == 404
     assert client.get('/cache/brazzers/baby-got-boobs/abc/images/missing.jpg').status_code == 404
     assert client.get('/cache/brazzers/evil.txt').status_code == 400
+
+
+def test_versioned_local_images_are_cached_immutably(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+    (tmp_path / 'poster.jpg').write_bytes(b'\xff\xd8\xff\xe0JPEG')
+    client = TestClient(create_app())
+
+    versioned = client.get('/images/local/poster.jpg', params={'v': 'abc123'})
+    assert versioned.status_code == 200
+    assert versioned.headers['cache-control'] == 'public, max-age=31536000, immutable'
+
+    bare = client.get('/images/local/poster.jpg')
+    assert bare.status_code == 200
+    assert bare.headers['cache-control'] == 'public, max-age=300'

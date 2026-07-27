@@ -17,6 +17,8 @@ router = APIRouter()
 cache_router = APIRouter()
 
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
+_VERSIONED_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+_REVALIDATE_CACHE_CONTROL = 'public, max-age=300'
 
 
 def _read_multi(request: Request, key: str) -> list[str]:
@@ -24,7 +26,7 @@ def _read_multi(request: Request, key: str) -> list[str]:
 
 
 @router.get('/local/{filepath:path}')
-async def local_image(filepath: str) -> Response:
+async def local_image(request: Request, filepath: str) -> Response:
     """:path so people images can live in role/gender subfolders (actors/female/…)."""
     if Path(filepath).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
@@ -43,7 +45,8 @@ async def local_image(filepath: str) -> Response:
             stat_result = candidate.stat()
         except OSError:
             continue
-        return FileResponse(candidate, stat_result=stat_result)
+        cache_control = _VERSIONED_CACHE_CONTROL if request.query_params.get('v') else _REVALIDATE_CACHE_CONTROL
+        return FileResponse(candidate, stat_result=stat_result, headers={'Cache-Control': cache_control})
 
     return JSONResponse({'error': 'Image not found'}, status_code=404)
 
@@ -55,7 +58,7 @@ async def cached_metadata_image(splat: str) -> Response:
     file_path = safe_join(env.metadata_cache_dir, splat)
     if not file_path or not file_path.exists():
         return JSONResponse({'error': 'Image not found'}, status_code=404)
-    return FileResponse(file_path)
+    return FileResponse(file_path, headers={'Cache-Control': _REVALIDATE_CACHE_CONTROL})
 
 
 @router.get('/manual-nfo/{splat:path}')
