@@ -602,7 +602,7 @@ async def purge_file(request: Request) -> JSONResponse:
     filename = str(data.get('filename', ''))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
-    return JSONResponse({'ok': purge(filename)})
+    return JSONResponse({'ok': await run_in('fs', purge, filename)})
 
 
 @router.post('/gender')
@@ -614,5 +614,5 @@ async def gender(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
     if new_gender not in ('', 'male', 'female', 'trans'):
         return JSONResponse({'ok': False, 'error': 'invalid gender'}, status_code=400)
-    new_filename = set_gender(filename, new_gender)
+    new_filename = await run_in('fs', set_gender, filename, new_gender)
     return JSONResponse({'ok': new_filename is not None, 'filename': new_filename})

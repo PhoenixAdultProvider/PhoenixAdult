@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 import html
 import time
@@ -20,6 +19,7 @@ from phoenixadult.services.metadata_service import refresh_cached_snapshot
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import embed_subsite, load_data, split_subsite, title_distance_score
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.log_capture import begin_capture
@@ -92,7 +92,7 @@ async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any]
             'error': 'Snapshot write failed or was skipped — nothing to re-read',
             'durationMs': lap(),
         }
-    reassembled = await asyncio.to_thread(metadata_cache.read, site_name, cur_id)
+    reassembled = await run_in('store', metadata_cache.read, site_name, cur_id)
     if reassembled is None:
         return {
             'step': step,
@@ -352,7 +352,7 @@ async def dev_metadata(request: Request) -> JSONResponse:
         steps.append({'step': '4. Decode identifier', 'ok': False, 'error': f'sceneURL blocked: {err}', 'durationMs': lap()})
         return send({'ratingKey': rating_key, 'steps': steps})
 
-    cached = None if force else await asyncio.to_thread(metadata_cache.read, site.name, cur_id)
+    cached = None if force else await run_in('store', metadata_cache.read, site.name, cur_id)
     response = PlexMetadataResponse.model_validate(cached) if cached is not None else None
     if response is not None and metadata_cache.data18_remap_needed(response, site.name):
         response = None

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 
 from fastapi import APIRouter, Depends, Request
@@ -9,6 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from phoenixadult.registry import canonical_site_display
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import logo_cache
 
@@ -27,12 +27,12 @@ def _state() -> dict[str, object]:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    return HTMLResponse(_TEMPLATE.replace('__STATE_JSON__', json.dumps(_state())))
+    return HTMLResponse(_TEMPLATE.replace('__STATE_JSON__', json.dumps(await run_in('store', _state))))
 
 
 @router.get('/api/list')
 async def list_logos() -> JSONResponse:
-    return JSONResponse(_state())
+    return JSONResponse(await run_in('store', _state))
 
 
 @router.post('/api/purge')
@@ -41,16 +41,16 @@ async def purge(request: Request) -> JSONResponse:
     rel = str(body.get('rel') or '')
     if not rel:
         return JSONResponse({'error': 'rel required'}, status_code=400)
-    if not logo_cache.purge(rel):
+    if not await run_in('fs', logo_cache.purge, rel):
         return JSONResponse({'error': 'not found'}, status_code=404)
     return JSONResponse({'ok': True})
 
 
 @router.post('/api/purge-all')
 async def purge_all() -> JSONResponse:
-    return JSONResponse({'ok': True, 'purged': logo_cache.purge_all()})
+    return JSONResponse({'ok': True, 'purged': await run_in('fs', logo_cache.purge_all)})
 
 
 @router.post('/api/rescan')
 async def rescan() -> JSONResponse:
-    return JSONResponse({'ok': True, 'count': await asyncio.to_thread(logo_cache.rescan)})
+    return JSONResponse({'ok': True, 'count': await run_in('fs', logo_cache.rescan)})
