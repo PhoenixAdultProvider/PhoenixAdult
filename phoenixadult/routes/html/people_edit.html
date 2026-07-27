@@ -97,6 +97,8 @@
     function qs(id) { return document.getElementById(id); }
     function leave() { location.href = '/people' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '') + '#' + ENTRY.type; }
 
+    const fetched = {url: '', source: ''};
+
     function proxied(url) { return url ? '/images/proxy?url=' + encodeURIComponent(url) : ''; }
 
     function refreshUpstream() {
@@ -110,7 +112,8 @@
       const btn = qs('saveBtn');
       btn.disabled = true;
       qs('status').textContent = 'Saving…';
-      const body = {filename: FILENAME, upstream_url: qs('f-upstream').value.trim(), cropped: qs('f-cropped').checked};
+      const upstream = qs('f-upstream').value.trim();
+      const body = {filename: FILENAME, upstream_url: upstream, cropped: qs('f-cropped').checked, source: upstream === fetched.url ? fetched.source : ''};
       let payload = {};
       try {
         const r = await fetch('/people/save', {method: 'POST', headers: hdrs(), body: JSON.stringify(body)});
@@ -154,6 +157,8 @@
       button.disabled = false;
       if (!payload.ok) { qs('fetchStatus').textContent = payload.error || 'Lookup failed'; return; }
       qs('f-upstream').value = payload.url;
+      fetched.url = payload.url;
+      fetched.source = payload.source;
       refreshUpstream();
       qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply';
     };

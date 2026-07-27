@@ -14,6 +14,7 @@ from phoenixadult.utils.people.cache import cache_enabled, cache_photo, cache_re
 from phoenixadult.utils.people.data import actor_rules
 from phoenixadult.utils.people.gender import gender_detect_enabled, iafd_gender_check
 from phoenixadult.utils.people.generic import gender_skip_male_enabled, generic_image_enabled, generic_image_url
+from phoenixadult.utils.people.image_source import GENERIC_SOURCE, SCENE_SOURCE
 from phoenixadult.utils.people.sources import find_photo, scene_image_pref
 from phoenixadult.utils.people.types import (
     Gender,
@@ -151,7 +152,7 @@ class PeopleManager:
         gender = await self._detect_gender(name, type, gender)
         if not cache_enabled():
             return entry.photo, gender
-        cached = await cache_photo(entry.photo, name, type, gender, headers)
+        cached = await cache_photo(entry.photo, name, type, gender, headers, source=SCENE_SOURCE)
         if cached:
             return cached['served_url'], gender or cached['gender']  # type: ignore[return-value]
         return '', gender
@@ -188,7 +189,7 @@ class PeopleManager:
         if not photo and generic_image_enabled() and gender in ('male', 'female'):
             generic_url = generic_image_url(gender)
             if cache_enabled():
-                cached = await cache_photo(generic_url, name, type, gender)
+                cached = await cache_photo(generic_url, name, type, gender, source=GENERIC_SOURCE)
                 photo = cached['served_url'] if cached else generic_url
             else:
                 photo = generic_url

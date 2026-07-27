@@ -74,6 +74,7 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
         'role': role,
         'gender': gender,
         'upstream_url': log.get('upstream_url', ''),
+        'source': log.get('source', ''),
         'cropped': bool(log.get('cropped')),
         'ts': log.get('ts') or datetime.fromtimestamp(mtime, UTC).strftime('%Y-%m-%d %H:%M:%S'),
         'mtime': mtime,
@@ -150,6 +151,8 @@ def _card(entry: dict[str, Any]) -> str:
     local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
     crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
+    source = str(entry.get('source', ''))
+    source_badge = f'<span class="badge src">{html.escape(source)}</span>' if source else ''
     filename_attr = html.escape(filename, quote=True)
     if upstream:
         upstream_fig = f'<figure><figcaption>Upstream Original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
@@ -162,7 +165,7 @@ def _card(entry: dict[str, Any]) -> str:
     search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
     flags = f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}"'
     return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
-      <div class="hd">{role_badge}<b>{name}</b> {crop_badge}<span class="ts">{timestamp}</span></div>
+      <div class="hd">{role_badge}<b>{name}</b> {crop_badge}{source_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
         <figure><figcaption>Cached (Shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}
@@ -204,6 +207,7 @@ async def page(request: Request) -> HTMLResponse:
       .card.gn{{border-left-color:#64748b}}
       .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px}} .ts{{margin-left:auto;color:#64748b;font-size:12px}}
       .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:#1e3a8a}} .badge.orig{{background:#334155}}
+      .badge.src{{background:#0f172a;border:1px solid #334155;color:#94a3b8}}
       .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:#475569}}
       .role.r-actor{{background:#0e7490}} .role.r-director{{background:#7c3aed}} .role.r-producer{{background:#b45309}}
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
@@ -421,7 +425,8 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot with that filename.</p>', status_code=404)
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
-    subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code>'
+    origin = html.escape(str(entry.get('source', '')) or 'unrecorded')
+    subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code> · from {origin}'
     body = (
         _EDIT_TEMPLATE.replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
         .replace('__SUBTITLE__', subtitle)
@@ -534,6 +539,7 @@ async def save(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
     upstream = str(data.get('upstream_url', '')).strip()
+    picked = str(data.get('source', ''))
     wants_crop = bool(data.get('cropped'))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
@@ -545,7 +551,8 @@ async def save(request: Request) -> JSONResponse:
     if upstream == entry['upstream_url'] and wants_crop == entry['cropped']:
         return JSONResponse({'ok': True, 'changed': False})
     role: Any = entry['role']
-    cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop)
+    source = picked if any(s.name == picked for s in FETCHABLE_SOURCES) else ''
+    cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop, source=source)
     if cached is None:
         return JSONResponse({'ok': False, 'error': 'could not download or store that image'}, status_code=400)
     flagged = await run_in('store', scene_store.flag_people_changed, str(entry['name']))

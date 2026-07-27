@@ -247,9 +247,10 @@ last of the throttled directory rescans:
   under `LOGO_CACHE_DIR`), keyed `(studio_slug, name_slug)`. `find_logo` tries the
   tagline slug then the studio slug as two keyed SELECTs (lowest `rel_path` wins on
   duplicates, matching the old first-file-wins scan order); downloads insert their row.
-- `crop_log` — the face-crop audit log. `rel_path` is the served file's path relative
+- `crop_log` — the per-headshot record. `rel_path` is the served file's path relative
   to the people cache root; `entry` keeps the JSON payload (name, filenames, upstream
-  URL, cropped flag). The preserved pre-crop originals stay files under `originals/`.
+  URL, cropped flag) and `source` names where the image came from (`IAFD`, `Scene`,
+  `Generic`, …). The preserved pre-crop originals stay files under `originals/`.
 
 Reconciliation: at startup (and lazily on first use after a cache-dir or database
 change) the index tables are rebuilt from one directory walk. Deleting `phoenixadult.db`
@@ -275,6 +276,7 @@ erDiagram
     text rel_path PK "served file, relative to PEOPLE_CACHE_DIR"
     text entry "JSON crop-log payload"
     real cropped_at
+    text source "headshot source the image came from"
   }
 ```
 
@@ -299,9 +301,28 @@ CREATE INDEX logos_name ON logos(name_slug);
 CREATE TABLE crop_log (
   rel_path   TEXT PRIMARY KEY,
   entry      TEXT NOT NULL,
-  cropped_at REAL NOT NULL
+  cropped_at REAL NOT NULL,
+  source     TEXT NOT NULL DEFAULT ''
 );
 ```
+
+## Schema Version 5 — Headshot Sources
+
+`crop_log.source` records which headshot source produced each cached image, so the
+people UI can say where a face came from and a bulk re-fetch can be aimed at one
+source's images. It is written by `cache_photo`: callers that know the source pass it
+(`Scene` for the scene page's own actor image, `Generic` for the silhouette, the source
+name for a provider hit or a Fetch From), and anything else is derived from the image
+host by `source_for_url` (`phoenixadult/utils/people/image_source.py`).
+
+The column is authoritative and the JSON `entry` blob never carries a source; readers in
+`face_crop_log` fold the column into the dict they return.
+
+Existing rows were backfilled at migration time from their stored `upstream_url`. A URL
+no source claims is recorded as `Scene`: before this version the cache only ever wrote a
+people-source image, the scene page's image, or the silhouette, so an unclaimed host was
+a scene image by elimination. This is the first migration step that is a Python callable
+rather than a SQL script — `_MIGRATIONS` accepts either.
 
 ## Why This Shape
 

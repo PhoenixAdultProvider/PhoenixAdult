@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from urllib.parse import urlsplit
+
+SCENE_SOURCE = 'Scene'
+GENERIC_SOURCE = 'Generic'
+
+_BY_HOST: dict[str, str] = {
+    'iafd.com': 'IAFD',
+    'adultempire.com': 'AdultDVDEmpire',
+    'adultdvdempire.com': 'AdultDVDEmpire',
+    'indexxx.com': 'Indexxx',
+    'babepedia.com': 'Babepedia',
+    'babesandstars.com': 'Babes and Stars',
+    'boobpedia.com': 'Boobpedia',
+    'javdatabase.com': 'JAVDatabase',
+    'javbus.com': 'JAVBus',
+    'freeones.com': 'Freeones',
+}
+
+
+def _registrable(host: str) -> str:
+    parts = host.lower().split(':')[0].split('.')
+    return '.'.join(parts[-2:]) if len(parts) >= 2 else ''
+
+
+def source_for_url(url: str) -> str:
+    """The headshot source a cached image URL came from, by host — '' when no source claims it
+    (a scene page or a hand-entered URL), so callers that know better can say so."""
+    from phoenixadult.utils.people.generic import generic_image_url
+
+    if not url:
+        return ''
+    if url in {generic_image_url('female'), generic_image_url('male')}:
+        return GENERIC_SOURCE
+    host = urlsplit(url).hostname or ''
+    return _BY_HOST.get(_registrable(host), '')

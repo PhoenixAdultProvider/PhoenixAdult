@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -10,7 +11,29 @@ from phoenixadult.utils.logging.logger import logger
 
 _BUSY_TIMEOUT_MS = 5000
 
-_MIGRATIONS: list[str] = [
+
+def _backfill_image_sources(conn: sqlite3.Connection) -> None:
+    """Existing headshots only ever came from a people source, the scene page or the silhouette,
+    so a URL no source claims is a scene image."""
+    from phoenixadult.utils.people.image_source import SCENE_SOURCE, source_for_url
+
+    conn.execute("ALTER TABLE crop_log ADD COLUMN source TEXT NOT NULL DEFAULT ''")
+    derived: list[tuple[str, str]] = []
+    for row in conn.execute('SELECT rel_path, entry FROM crop_log').fetchall():
+        try:
+            entry = json.loads(str(row['entry']))
+        except ValueError:
+            continue
+        url = str(entry.get('upstream_url') or '') if isinstance(entry, dict) else ''
+        if url:
+            derived.append((source_for_url(url) or SCENE_SOURCE, str(row['rel_path'])))
+    conn.executemany('UPDATE crop_log SET source = ? WHERE rel_path = ?', derived)
+    logger.info('db', f'derived the source of {len(derived)} cached headshot(s) from their URLs')
+
+
+_Migration = str | Callable[[sqlite3.Connection], None]
+
+_MIGRATIONS: list[_Migration] = [
     """
     CREATE TABLE queue_replays (
       key       TEXT PRIMARY KEY,
@@ -166,6 +189,7 @@ _MIGRATIONS: list[str] = [
     ALTER TABLE scenes ADD COLUMN force_refresh INTEGER NOT NULL DEFAULT 0;
     CREATE INDEX scenes_force ON scenes(force_refresh) WHERE force_refresh = 1;
     """,
+    _backfill_image_sources,
 ]
 
 _local = threading.local()
@@ -225,8 +249,11 @@ def close() -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
-    for idx, script in enumerate(_MIGRATIONS[version:], start=version + 1):
-        conn.executescript(script)
+    for idx, step in enumerate(_MIGRATIONS[version:], start=version + 1):
+        if isinstance(step, str):
+            conn.executescript(step)
+        else:
+            step(conn)
         conn.execute(f'PRAGMA user_version = {idx}')
         conn.commit()
         logger.info('db', f'phoenixadult.db schema migrated to v{idx}')

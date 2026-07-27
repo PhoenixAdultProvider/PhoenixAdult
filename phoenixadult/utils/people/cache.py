@@ -20,7 +20,7 @@ from phoenixadult.utils.http.impersonate import impersonate_get_bytes
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content_type
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.generic import generic_image_url
+from phoenixadult.utils.people.image_source import GENERIC_SOURCE, source_for_url
 from phoenixadult.utils.people.types import Gender, PersonType, parse_person_filename
 
 
@@ -260,6 +260,7 @@ async def cache_photo(
         return None
     directory = people_cache_dir()
     os.makedirs(directory, exist_ok=True)
+    source = source or source_for_url(upstream_url)
 
     if not replace and not cache_replace_enabled():
         existing = lookup_cached(name, type)
@@ -282,7 +283,7 @@ async def cache_photo(
 
     orig_ext = ext
     original = data
-    face_on = crop if crop is not None else (env.people_cache_face_enabled and not _is_generic(upstream_url) and source not in _NO_CROP_SOURCES)
+    face_on = crop if crop is not None else (env.people_cache_face_enabled and source not in _NO_CROP_SOURCES)
     cropped = False
     if face_on:
         out = await run_in('image', face_crop.crop_to_headshot, data)
@@ -306,20 +307,17 @@ async def cache_photo(
         if orig_path is not None:
             orig_path.parent.mkdir(parents=True, exist_ok=True)
             orig_path.write_bytes(original)
-        face_crop_log.record(str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped)
+        face_crop_log.record(
+            str(filepath.parent), name=name, filename=filename, base=name_base, orig_ext=orig_ext, upstream_url=upstream_url, cropped=cropped, source=source
+        )
 
     await run_in('fs', _write)
     _index_file(relpath)
-    logger.info('people-cache', f'cached {relpath}{" (face-cropped)" if cropped else ""}')
+    logger.info('people-cache', f'cached {relpath} from {source or "an unrecorded source"}{" (face-cropped)" if cropped else ""}')
     return {'served_url': _local_url(relpath, data), 'gender': gender}
 
 
-_NO_CROP_SOURCES = {'IAFD'}
-
-
-def _is_generic(url: str) -> bool:
-    """True for the silhouette placeholder, which is cached but must never be face-cropped."""
-    return bool(url) and url in {generic_image_url('female'), generic_image_url('male')}
+_NO_CROP_SOURCES = {'IAFD', GENERIC_SOURCE}
 
 
 def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
@@ -440,6 +438,7 @@ def set_gender(filename: str, new_gender: str) -> str | None:
                 orig_ext=entry.get('orig_ext') or '.jpg',
                 upstream_url=entry.get('upstream_url', ''),
                 cropped=bool(entry.get('cropped')),
+                source=entry.get('source', ''),
             )
     else:
         face_crop_log.update(old_log, filename, filename=new_filename, base=new_base)

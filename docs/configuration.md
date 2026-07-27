@@ -230,6 +230,11 @@ re-push per edit, not a permanent state.
 `/people` also has a name search over the current tab and a **No Upstream** filter next to
 **Cropped Only**, for headshots with no recorded source URL (they cannot be re-pulled or restored).
 
+Each card carries the source its image came from — `IAFD`, `Indexxx`, `Scene` for the scene page's
+own actor image, `Generic` for the silhouette — and the editor repeats it under the name. Sources
+are recorded as images are cached; images that predate the recording had theirs derived from the
+image host, with anything no source claims counted as `Scene`.
+
 **Fetch Images for Shown** applies one source to everyone the current filters leave visible — tab,
 Cropped Only, No Upstream and the name search all narrow it, so "every actor with no upstream
 recorded" is a filter away. It asks for confirmation with the count, then for each person looks the
