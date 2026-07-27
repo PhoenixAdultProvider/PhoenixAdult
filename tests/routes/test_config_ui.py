@@ -64,3 +64,14 @@ def test_config_api_restart_shuts_down_in_prod(client: TestClient, monkeypatch: 
     r = client.post('/config/api/restart', params={'token': TOKEN})
     assert r.status_code == 200 and r.json()['method'] == 'shutdown'
     assert killed
+
+
+def test_config_page_has_a_mobile_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+    body = TestClient(create_app()).get('/config').text
+    assert '@media (max-width: 720px)' in body
+    assert 'toolbarToggle' in body
+    assert 'attachTouchDrag' in body
+    assert 'touch-action: none' in body
+    assert 'style="flex:0 0 170px' not in body
+    assert 'style="flex:1 1 260px' not in body

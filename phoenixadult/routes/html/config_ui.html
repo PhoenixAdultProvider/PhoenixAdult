@@ -43,6 +43,8 @@
     input:focus, select:focus { border-color: #6366f1; }
     input.changed, select.changed { border-color: #fcd34d; }
     select { flex: 0 0 auto; min-width: 130px; }
+    input.limit-input { flex: 0 0 170px; min-width: 170px; }
+    select.lib-select { flex: 1 1 260px; min-width: 260px; }
     .icon-btn { padding: 0.45rem 0.7rem; font-size: 0.78rem; background: #1f2937; border: 1px solid #2d3748;
                 color: #cbd5e1; border-radius: 6px; cursor: pointer; }
     .icon-btn:hover { background: #2d3748; }
@@ -62,7 +64,7 @@
     .srcitem { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.55rem; background: #1e2433;
                border: 1px solid #2d3748; border-radius: 5px; cursor: grab; font-size: 0.85rem; min-width: 0; }
     .srcitem.dragging { opacity: 0.4; }
-    .drag-grip { color: #475569; cursor: grab; font-size: 0.85rem; }
+    .drag-grip { color: #475569; cursor: grab; font-size: 0.85rem; touch-action: none; }
     .srcitem-name { flex: 1; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .srcitem-x { padding: 0 0.45rem; font-size: 0.9rem; line-height: 1; background: #1f2937;
                  border: 1px solid #2d3748; color: #fca5a5; border-radius: 4px; }
@@ -132,6 +134,51 @@
                 color: #cbd5e1; border-radius: 5px; cursor: pointer; }
     .copy-btn:hover { background: #2d3748; }
     .copy-btn.copied { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+    .toolbar-toggle { display: none; }
+    .toolbar-toggle.on { border-color: #6366f1; color: #e2e8f0; }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      h1 { font-size: 1.25rem; }
+      h2 { margin: 1.2rem 0 0.5rem; }
+      .card { padding: 0.85rem 0.9rem; }
+
+      .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.6rem 0; }
+      .toolbar button { width: 100%; padding: 0.65rem 0.5rem; font-size: 0.85rem; white-space: normal; }
+      .toolbar-toggle { display: block; }
+      .toolbar > .toolbar-extra { display: none; }
+      .toolbar.open > .toolbar-extra { display: block; }
+      .toolbar-status { grid-column: 1 / -1; min-width: 0; font-size: 0.78rem; }
+
+      .tabbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-top: 0.75rem;
+                -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+                mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%); }
+      .tabbar::-webkit-scrollbar { display: none; }
+      .tabbar button { flex: 0 0 auto; padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+
+      input[type=text], input[type=password], select { flex: 1 1 100%; min-width: 0; font-size: 16px; }
+      input.limit-input, select.lib-select { flex: 1 1 100%; min-width: 0; }
+      .var { padding: 0.75rem 0; }
+      .var-key { overflow-wrap: anywhere; }
+      .var-control { gap: 0.4rem; }
+      .var-control .icon-btn { flex: 1 1 auto; padding: 0.55rem 0.7rem; }
+
+      .srclist { grid-template-columns: 1fr; }
+      .srcitem { padding: 0.55rem; }
+      .srcitem-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+      .drag-grip { padding: 0.35rem 0.5rem; margin: -0.35rem 0; }
+      .srcadd { flex-wrap: wrap; }
+      .src-add-select { flex: 1 1 100%; min-width: 0; font-size: 16px; }
+      .srcadd .icon-btn { flex: 1 1 auto; }
+
+      .plex-row { gap: 0.4rem; }
+      .plex-row button { flex: 1 1 auto; }
+      .plex-kv { grid-template-columns: 1fr; gap: 0.1rem; overflow-wrap: anywhere; }
+      .recon-sumrow { grid-template-columns: 1fr; }
+      .recon-items { max-height: 50vh; }
+      pre.report { font-size: 0.7rem; max-height: 240px; overflow-wrap: anywhere; }
+      details.rawjson summary { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -139,11 +186,12 @@
   <p class="sub">Change runtime configuration without restarting. Overrides apply immediately and persist to
     <code id="ovPath"></code>.</p>
 
-  <div class="toolbar">
+  <div class="toolbar" id="toolbar">
     <button id="saveBtn" onclick="save()" disabled>Save Changes</button>
-    <button class="secondary" onclick="resetAll()">Reset All Overrides</button>
-    <button class="secondary" onclick="reload()">Reload</button>
-    <button class="danger" onclick="restartServer()">Restart Server</button>
+    <button class="secondary toolbar-toggle" id="toolbarToggle" onclick="toggleToolbar()" aria-expanded="false">More Actions</button>
+    <button class="secondary toolbar-extra" onclick="resetAll()">Reset All Overrides</button>
+    <button class="secondary toolbar-extra" onclick="reload()">Reload</button>
+    <button class="danger toolbar-extra" onclick="restartServer()">Restart Server</button>
     <span class="toolbar-status" id="status"></span>
   </div>
 
@@ -184,7 +232,7 @@
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runReconcile(false)">Dry Run</button>
         <button type="button" class="danger" onclick="runReconcile(true)">Apply Removals</button>
-        <input type="text" id="plex-reconcile-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px"
+        <input type="text" id="plex-reconcile-limit" placeholder="limit" class="limit-input"
                title="Stop after this many changed items">
         <span class="plex-status" id="plex-reconcile-status"></span>
       </div>
@@ -217,7 +265,7 @@
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runCollectionLogos(false)">Dry Run</button>
         <button type="button" onclick="runCollectionLogos(true)">Apply Logos</button>
-        <input type="text" id="plex-collogo-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many pushed collections">
+        <input type="text" id="plex-collogo-limit" placeholder="limit" class="limit-input" title="Stop after this many pushed collections">
         <span class="plex-status" id="plex-collogo-status"></span>
       </div>
       <div class="plex-kv" id="plex-collogo-out" style="display:none"></div>
@@ -230,13 +278,13 @@
         alone — a stored fresh scrape is never overwritten. Actor headshots are not imported; the people pipeline
         resolves those. Scenes whose site is not in the registry are reported as unresolved and skipped.</div>
       <div class="plex-row">
-        <select id="plex-import-section" style="flex:1 1 260px; min-width:260px"><option value="">Loading libraries…</option></select>
+        <select id="plex-import-section" class="lib-select"><option value="">Loading libraries…</option></select>
         <button type="button" class="secondary" onclick="loadPlexLibraries()">Refresh</button>
       </div>
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runPlexImport(false)">Dry Run</button>
         <button type="button" onclick="runPlexImport(true)">Import</button>
-        <input type="text" id="plex-import-limit" placeholder="limit" style="flex:0 0 170px; min-width:170px" title="Stop after this many scanned items">
+        <input type="text" id="plex-import-limit" placeholder="limit" class="limit-input" title="Stop after this many scanned items">
         <label class="hint" style="display:flex; align-items:center; gap:6px">
           <input type="checkbox" id="plex-import-overwrite"> Overwrite cached scenes
         </label>
@@ -322,6 +370,8 @@
         if (pane) pane.classList.toggle('active', t === name);
         if (btn) btn.classList.toggle('active', t === name);
       }
+      const activeBtn = document.getElementById('tabbtn-' + name);
+      if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
       if (history.replaceState) history.replaceState(null, '', '#' + name);
       if (name === 'plex') plexUpdateStatus(false);
     }
@@ -432,16 +482,39 @@
       attachDrag(key);
     }
 
+    function commitOrder(key, list, item) {
+      if (!item.classList.contains('dragging')) return;
+      item.classList.remove('dragging');
+      LISTS[key] = [...list.querySelectorAll('.srcitem-name')].map((n) => n.textContent);
+      rebuildList(key);
+      refreshDirty();
+    }
+
+    function attachTouchDrag(key, list, item) {
+      const grip = item.querySelector('.drag-grip');
+      if (!grip) return;
+      grip.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        item.classList.add('dragging');
+      }, { passive: false });
+      grip.addEventListener('touchmove', (e) => {
+        if (!item.classList.contains('dragging')) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const after = dragAfterElement(list, touch.clientX, touch.clientY);
+        if (after == null) list.appendChild(item);
+        else list.insertBefore(item, after);
+      }, { passive: false });
+      grip.addEventListener('touchend', () => commitOrder(key, list, item));
+      grip.addEventListener('touchcancel', () => commitOrder(key, list, item));
+    }
+
     function attachDrag(key) {
       const list = document.getElementById('srclist-' + key);
       list.querySelectorAll('.srcitem').forEach((item) => {
         item.addEventListener('dragstart', () => item.classList.add('dragging'));
-        item.addEventListener('dragend', () => {
-          item.classList.remove('dragging');
-          LISTS[key] = [...list.querySelectorAll('.srcitem-name')].map((n) => n.textContent);
-          rebuildList(key);
-          refreshDirty();
-        });
+        item.addEventListener('dragend', () => commitOrder(key, list, item));
+        attachTouchDrag(key, list, item);
       });
       list.ondragover = (e) => {
         e.preventDefault();
@@ -563,7 +636,7 @@
       }
       const btn = document.getElementById('saveBtn');
       btn.disabled = n === 0;
-      btn.textContent = n ? 'Save ' + n + ' change' + (n === 1 ? '' : 's') : 'Save changes';
+      btn.textContent = n ? 'Save ' + n + ' Change' + (n === 1 ? '' : 's') : 'Save Changes';
     }
 
     async function toggleReveal(btn) {
@@ -584,6 +657,14 @@
       }
       input.type = reveal ? 'text' : 'password';
       btn.textContent = reveal ? 'Hide' : 'Show';
+    }
+
+    function toggleToolbar() {
+      const open = document.getElementById('toolbar').classList.toggle('open');
+      const btn = document.getElementById('toolbarToggle');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.classList.toggle('on', open);
+      btn.textContent = open ? 'Fewer Actions' : 'More Actions';
     }
 
     function setStatus(msg, kind) {
