@@ -82,7 +82,8 @@ async def _proxy(request: Request, send_body: bool, *, classify: bool = False) -
         return JSONResponse({'error': 'Missing url'}, status_code=400)
     try:
         target = await assert_fetchable_url(raw_url)
-    except ValueError:
+    except ValueError as err:
+        logger.warn('proxy-classified' if classify else 'proxy', f'400 {raw_url} - {err}')
         return JSONResponse({'error': 'Invalid url'}, status_code=400)
     try:
         entry = await fetch_image(target, _read_multi(request, 'referer'), _read_multi(request, 'cookie'), pinned=env.image_proxy_pin)

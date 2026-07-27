@@ -34,3 +34,15 @@ def test_versioned_local_images_are_cached_immutably(tmp_path: pytest.TempPathFa
     bare = client.get('/images/local/poster.jpg')
     assert bare.status_code == 200
     assert bare.headers['cache-control'] == 'public, max-age=300'
+
+
+def test_a_rejected_proxy_url_is_logged_with_its_reason(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+    client = TestClient(create_app())
+
+    with caplog.at_level('WARNING'):
+        r = client.get('/images/proxy', params={'url': 'ftp://example.com/x.jpg'})
+
+    assert r.status_code == 400
+    assert r.json() == {'error': 'Invalid url'}
+    assert 'blocked scheme' in caplog.text
