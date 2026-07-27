@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from starlette.middleware.gzip import GZipMiddleware
 
 from phoenixadult.config import base_url_config_warning, config
 from phoenixadult.config.env import env
@@ -91,6 +92,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan)
 
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
 
     # ── Dynamic Provider Routes ──────────────────────────────────────────────
