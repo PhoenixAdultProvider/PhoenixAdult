@@ -18,6 +18,8 @@ __all__ = [
     'SITE_DEFINITIONS',
     'normalize_site_key',
     'canonical_site_display',
+    'provider_name_for',
+    'provider_name_tokens',
     'get_all_providers',
     'get_provider',
     'find_site',
@@ -29,7 +31,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.180',
+        version='1.0.0-alpha.181',
         media_type='movie',
     ),
 ]
@@ -54,7 +56,7 @@ SITE_DEFINITIONS: list[SiteInfo] = _with_archive(list(_SELECTOR_SITES), _ARCHIVE
 
 def _build_tables(
     providers: list[ProviderInfo], sites: list[SiteInfo]
-) -> tuple[dict[str, ProviderInfo], dict[str, ResolvedSiteInfo], dict[str, list[ResolvedSiteInfo]], dict[str, str]]:
+) -> tuple[dict[str, ProviderInfo], dict[str, ResolvedSiteInfo], dict[str, list[ResolvedSiteInfo]], dict[str, str], dict[str, list[str]]]:
     provider_by_id = {p.id: p for p in providers}
 
     resolved: list[ResolvedSiteInfo] = []
@@ -81,10 +83,14 @@ def _build_tables(
     for site in resolved:
         sites_by_provider[site.provider_id].append(site)
 
-    return provider_by_id, site_by_token, sites_by_provider, display_by_token
+    tokens_by_provider_name: dict[str, list[str]] = {}
+    for site in resolved:
+        tokens_by_provider_name.setdefault(site.provider_name or site.name, []).extend([site.name, *site.aliases])
+
+    return provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name
 
 
-provider_by_id, site_by_token, sites_by_provider, display_by_token = _build_tables(PROVIDER_DEFINITIONS, SITE_DEFINITIONS)
+provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name = _build_tables(PROVIDER_DEFINITIONS, SITE_DEFINITIONS)
 
 
 def get_all_providers() -> list[ProviderInfo]:
@@ -102,6 +108,15 @@ def find_site(token: str) -> ResolvedSiteInfo | None:
 def canonical_site_display(token: str) -> str | None:
     """The registry-curated display form (site name or alias) for `token`, if known."""
     return display_by_token.get(normalize_site_key(token))
+
+
+def provider_name_for(token: str) -> str:
+    site = find_site(token)
+    return (site.provider_name or site.name) if site else ''
+
+
+def provider_name_tokens(provider_name: str) -> list[str]:
+    return tokens_by_provider_name.get(provider_name, [])
 
 
 def get_sites_for_provider(provider_id: str) -> list[ResolvedSiteInfo]:

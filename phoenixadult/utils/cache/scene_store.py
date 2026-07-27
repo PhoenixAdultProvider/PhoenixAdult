@@ -358,16 +358,28 @@ _MANUAL = '__manual__'
 
 
 def _entry_filters(
-    studio: str, query: str, year: str, month: str, day: str, tagline: str, collection: str, data18: str, provider: str, dup_paths: list[str] | None
+    studio: str,
+    query: str,
+    year: str,
+    month: str,
+    day: str,
+    tagline: str,
+    collection: str,
+    data18: str,
+    provider_sites: list[str] | None,
+    dup_paths: list[str] | None,
 ) -> tuple[str, list[Any]]:
     where: list[str] = []
     params: list[Any] = []
     if studio:
         where.append('st.name = ?')
         params.append(studio)
-    if provider:
-        where.append('s.site = ?')
-        params.append(provider)
+    if provider_sites is not None:
+        if provider_sites:
+            where.append(f's.site IN ({",".join("?" * len(provider_sites))})')
+            params.extend(provider_sites)
+        else:
+            where.append('1 = 0')
     if query:
         where.append("(s.title LIKE ? ESCAPE '\\' OR COALESCE(st.name, '') LIKE ? ESCAPE '\\' OR COALESCE(tl.name, '') LIKE ? ESCAPE '\\')")
         params.extend([db.like_contains(query)] * 3)
@@ -417,7 +429,7 @@ def query_entry_rows(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
-    provider: str = '',
+    provider_sites: list[str] | None = None,
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
     direction: str = 'desc',
@@ -427,7 +439,7 @@ def query_entry_rows(
     """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
     total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
     conn = db.connect()
-    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, provider, dup_paths)
+    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, provider_sites, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
@@ -454,7 +466,7 @@ def facet_values() -> dict[str, Any]:
         'tagline_blank': exists('SELECT 1 FROM scenes WHERE tagline_id IS NULL'),
         'collections': names('SELECT DISTINCT c.name FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id ORDER BY c.name'),
         'collection_blank': exists('SELECT 1 FROM scenes s WHERE NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)'),
-        'providers': names("SELECT DISTINCT site FROM scenes WHERE COALESCE(site, '') != '' ORDER BY site COLLATE NOCASE"),
+        'sites': names("SELECT DISTINCT site FROM scenes WHERE COALESCE(site, '') != '' ORDER BY site COLLATE NOCASE"),
         'data18_manual': exists('SELECT 1 FROM scenes WHERE data18_manual = 1'),
         'years': names("SELECT DISTINCT substr(release_date, 1, 4) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1 DESC"),
         'year_blank': exists("SELECT 1 FROM scenes WHERE COALESCE(release_date, '') = ''"),

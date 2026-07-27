@@ -213,13 +213,31 @@ def test_entries_filter_by_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     hdr = {'x-admin-token': 'tok'}
 
     j = client.get('/metadata/entries', headers=hdr).json()
-    assert j['facets']['providers'] == ['Brazzers', 'Vixen']
+    assert j['facets']['providers'] == ['Project1Service', 'Strike3']
+    assert {e['provider'] for e in j['entries']} == {'Project1Service', 'Strike3'}
 
-    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Vixen'}).json()
+    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Strike3'}).json()
     assert j['total'] == 3
-    assert {e['provider'] for e in j['entries']} == {'Vixen'}
+    assert {e['studio'] for e in j['entries']} == {'Vixen'}
 
+    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Project1Service'}).json()
+    assert j['total'] == 2
+
+    assert client.get('/metadata/entries', headers=hdr, params={'provider': 'Vixen'}).json()['total'] == 0
     assert client.get('/metadata/entries', headers=hdr, params={'provider': 'Nope'}).json()['total'] == 0
+
+
+def test_a_provider_the_registry_forgot_still_filters_to_itself(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_scene('Some Retired Site', 'c9', 'Orphan Scene', 'Retired', '2024-06-01', 600.0)
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    j = client.get('/metadata/entries', headers=hdr).json()
+    assert j['facets']['providers'] == ['Some Retired Site']
+
+    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Some Retired Site'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'Orphan Scene'
 
 
 def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:

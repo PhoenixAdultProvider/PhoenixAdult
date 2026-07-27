@@ -43,8 +43,6 @@ def record(directory: str, *, name: str, filename: str, base: str, orig_ext: str
 
 
 def _parse_entry(raw: str, source: str = '') -> dict[str, Any] | None:
-    """The stored entry with its source column folded in — the column is authoritative, the
-    JSON blob never carries one."""
     try:
         entry = json.loads(raw)
     except ValueError:

@@ -13,8 +13,6 @@ _BUSY_TIMEOUT_MS = 5000
 
 
 def _backfill_image_sources(conn: sqlite3.Connection) -> None:
-    """Existing headshots only ever came from a people source, the scene page or the silhouette,
-    so a URL no source claims is a scene image."""
     from phoenixadult.utils.people.image_source import SCENE_SOURCE, source_for_url
 
     conn.execute("ALTER TABLE crop_log ADD COLUMN source TEXT NOT NULL DEFAULT ''")

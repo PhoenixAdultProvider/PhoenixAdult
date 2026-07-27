@@ -25,8 +25,6 @@ def _registrable(host: str) -> str:
 
 
 def source_for_url(url: str) -> str:
-    """The headshot source a cached image URL came from, by host — '' when no source claims it
-    (a scene page or a hand-entered URL), so callers that know better can say so."""
     from phoenixadult.utils.people.generic import generic_image_url
 
     if not url:

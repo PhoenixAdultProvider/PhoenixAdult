@@ -195,9 +195,13 @@ update check (no notifications), and run reconciliation dry-run/apply without cu
 ### Reviewing Cached Scenes
 
 `/metadata` filters run in SQL, so a filtered page's total always matches its contents. The bar
-covers search, **Provider** (the registry site the snapshot was scraped as — distinct from Studio,
-which is the label Plex shows), Studio, Year, Month, Day, Tagline, Collection and Data18, and every
+covers search, **Provider**, Studio, Year, Month, Day, Tagline, Collection and Data18, and every
 filter narrows Export Mappings and the bulk purge to the same set.
+
+**Provider** is the network a snapshot's site is registered under — the `PROVIDER_NAME` in its
+selector file, so Brazzers filters under `Project1Service` and Vixen under `Strike3`. It is resolved
+from the registry at query time rather than stored on the row, so regrouping a site moves its
+snapshots immediately, with nothing to backfill.
 
 ### Editing a Cached Scene or Headshot
 

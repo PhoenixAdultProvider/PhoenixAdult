@@ -15,7 +15,7 @@ from PIL import Image as PILImage
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
-from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site
+from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -362,7 +362,7 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     segs = rel.split('/')
     return {
         'key': rel,
-        'provider': row['site'],
+        'provider': provider_name_for(row['site']) or row['site'],
         'site_slug': segs[-2] if len(segs) >= 2 else rel,
         'studio_dir': segs[-3] if len(segs) >= 3 else '',
         'hash': segs[-1],
@@ -385,6 +385,11 @@ def entries() -> list[dict[str, Any]]:
     """All snapshots, newest first, for the /metadata UI."""
     rows, _total = scene_store.query_entry_rows(limit=-1)
     return [_ui_entry(row) for row in rows]
+
+
+def _provider_sites(provider: str) -> list[str]:
+    tokens = provider_name_tokens(provider)
+    return tokens if tokens or find_site(provider) else [provider]
 
 
 def entries_page(
@@ -414,7 +419,7 @@ def entries_page(
         tagline=tagline,
         collection=collection,
         data18=data18,
-        provider=provider,
+        provider_sites=_provider_sites(provider) if provider else None,
         dup_paths=duplicate_entries() if dups_only else None,
         sort=sort,
         direction=direction,
@@ -431,7 +436,10 @@ def studios() -> list[str]:
 
 def facets() -> dict[str, Any]:
     """Facet dropdown options across all snapshots, for the /metadata UI."""
-    return scene_store.facet_values()
+    values = scene_store.facet_values()
+    sites = values.pop('sites', [])
+    values['providers'] = sorted({provider_name_for(site) or site for site in sites}, key=str.casefold)
+    return values
 
 
 def change_token() -> str:
@@ -506,8 +514,6 @@ def load_for_edit(key: str) -> dict[str, Any] | None:
 
 
 def _apply_data18_edit(md: PlexMetadata, fields: dict[str, Any]) -> None:
-    """A data18 ref the editor changed is flagged manual, so hand-entered mappings can be told
-    apart from scraped ones and exported. Re-saving an unchanged ref keeps whichever it was."""
     if 'data18_id' not in fields:
         return
     edited = str(fields['data18_id'] or '').strip()

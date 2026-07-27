@@ -482,7 +482,6 @@ async def bulk_fetch(request: Request) -> Response:
 
 
 async def _fetch_into_cache(source: PersonSource, filename: str, entry: dict[str, Any] | None) -> tuple[str, str]:
-    """(outcome, display name) for one person of a bulk fetch: 'updated', 'missed' or 'failed'."""
     if entry is None:
         return 'failed', filename
     name = str(entry['name'])
@@ -502,8 +501,6 @@ async def _fetch_into_cache(source: PersonSource, filename: str, entry: dict[str
 
 
 async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[str, dict[str, Any]], truncated: int) -> AsyncIterator[str]:
-    """NDJSON progress for a bulk fetch: a header line, one line per person as they land, then a
-    summary — the page can only show "N of M" while the batch is still running."""
     total = len(filenames)
     sem = asyncio.Semaphore(_BULK_CONCURRENCY)
     tally = {'updated': 0, 'missed': 0, 'failed': 0}

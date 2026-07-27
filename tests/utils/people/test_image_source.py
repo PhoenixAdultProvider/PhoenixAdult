@@ -67,7 +67,6 @@ async def test_an_explicit_source_beats_the_host(tmp_path: Path, monkeypatch: py
 
 
 def _legacy_db(path: Path, rows: list[tuple[str, str]]) -> None:
-    """A pre-source database at schema v4, with crop-log entries that carry only a URL."""
     conn = sqlite3.connect(path)
     for idx, script in enumerate(db._MIGRATIONS[:4], start=1):
         assert isinstance(script, str)
