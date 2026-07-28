@@ -28,6 +28,20 @@ def test_mapping_slug_matches_the_client_formula() -> None:
     assert mapping_slug('', 'Whatever') is None
 
 
+def test_mapping_slug_falls_back_to_the_tagline_then_the_studio() -> None:
+    from phoenixadult.clients.base import SceneDetail
+
+    scene = SceneDetail(title='Some Scene', studio='Hussie Pass', tagline='')
+    assert mapping_slug('Some Scene', '', scene) == 'some-scene-hussiepass'
+
+    subsited = SceneDetail(title='Some Scene', studio='Hussie Pass', tagline='Her Freshman Year')
+    assert mapping_slug('Some Scene', '', subsited) == 'some-scene-herfreshmanyear'
+
+    assert mapping_slug('Some Scene', 'Explicit Sub', scene) == 'some-scene-explicitsub'
+    assert mapping_slug('Some Scene', '', SceneDetail(title='Some Scene')) == 'some-scene'
+    assert mapping_slug('Some Scene', '') == 'some-scene'
+
+
 def test_mapping_slug_strips_apostrophes_to_match_mapping_values() -> None:
     assert mapping_slug("That's Better Than Stealing It", 'Her Freshman Year') == 'thats-better-than-stealing-it-herfreshmanyear'
     assert manual_mapping_url(mapping_slug("That's Better Than Stealing It", 'Her Freshman Year')) == 'https://www.data18.com/scenes/169646'

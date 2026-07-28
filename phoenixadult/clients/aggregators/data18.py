@@ -14,7 +14,7 @@ import httpx2
 from dateutil import parser as date_parser
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
@@ -61,10 +61,13 @@ def _load_manual_mappings(caller_file: str = __file__) -> dict[str, ManualMappin
 DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = _load_manual_mappings()
 
 
-def mapping_slug(title: str, sub_site: str | None) -> str | None:
+def mapping_slug(title: str, sub_site: str | None, metadata: SceneDetail | None = None) -> str | None:
     sid = slugify(title, replacements=[("'", '')])
     if not sid:
         return None
+
+    if not sub_site and metadata:
+        sub_site = metadata.tagline or metadata.studio
 
     return f'{sid}-{re.sub(r"\W", "", sub_site).lower()}' if sub_site else sid
 

@@ -278,7 +278,7 @@ class Project1ServiceClient(Client):
         # Posters from Data18
         search_sub = sub_site or scene.subsite
         providers = [p for p in (site.name, search_sub) if p]
-        await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, search_sub), providers=providers)
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, search_sub, metadata), providers=providers)
 
     async def _fetch_actor(self, actor_id: int, headers: dict[str, str], capture: Any) -> ActorResult | None:
         url = f'{_DEFAULT_API_BASE}/v1/actors?id={actor_id}'

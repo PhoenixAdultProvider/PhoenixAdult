@@ -164,6 +164,6 @@ class FuckYouCashClient(Client):
         await self.enrich_from_data18(
             metadata,
             scene.site,
-            scene_id=mapping_slug(metadata.title, metadata.tagline),
+            scene_id=mapping_slug(metadata.title, metadata.tagline, metadata),
             providers=list(dict.fromkeys(_DATA18_NAMES.get(p, p) for p in (metadata.tagline, metadata.studio, scene.site.name) if p)),
         )
