@@ -366,8 +366,12 @@ def get_client(scraper_type: str) -> Client | None:
     return CLIENT_REGISTRY.get(scraper_type)
 
 
+def is_paced(scraper_type: str) -> bool:
+    client = CLIENT_REGISTRY.get(scraper_type)
+    return client is not None and client.pacer is not None
+
+
 def _assert_registry_consistent() -> None:
-    """Fail at import time on a typo'd selector scraper_type, which otherwise fails only at runtime for that site."""
     from phoenixadult.registry import SITE_DEFINITIONS
 
     missing = sorted({s.scraper_config.type for s in SITE_DEFINITIONS} - CLIENT_REGISTRY.keys())

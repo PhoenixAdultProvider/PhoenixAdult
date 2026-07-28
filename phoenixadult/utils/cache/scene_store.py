@@ -302,8 +302,6 @@ def scrape_target(rel_path: str) -> dict[str, str] | None:
 
 
 def snapshot_state(site: str, cur_id: str) -> dict[str, str] | None:
-    """rel_path moves when a re-scrape changes studio/tagline/title, so the editor polls on the
-    stable identity rather than the path it was opened with."""
     row = db.connect().execute('SELECT rel_path, updated_at FROM scenes WHERE site = ? AND cur_id = ?', (site, cur_id)).fetchone()
     return {'key': str(row['rel_path']), 'updated_at': str(row['updated_at'] or '')} if row else None
 
@@ -386,8 +384,6 @@ def _actors_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int, lis
 
 
 def actor_names(query: str = '', limit: int = 50) -> list[str]:
-    """Distinct cast names for the /metadata actor autocomplete — matched and capped in SQL so
-    the whole library's cast never ships to the browser."""
     conn = db.connect()
     params: list[Any] = []
     narrow = ''

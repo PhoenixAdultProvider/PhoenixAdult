@@ -195,7 +195,7 @@ flowchart TB
 - **`ScraperRouter`** (`phoenixadult/services/scraper_router.py`) is a dispatcher: it resolves a scraper `type` to its single `Client` instance via `get_client` (`phoenixadult/clients/__init__.py`, `CLIENT_REGISTRY`). It owns `search`, `fetch_scene_detail`, and `decode`.
 - **`MetadataMapper`** (`phoenixadult/mappers/metadata_mapper.py`) translates the scraper's `SceneDetail` into Plex's schema and rewrites every image URL through the `/images/proxy` endpoint.
 - **Registry** is static data: providers, sites, and per-site `ScraperConfig` that selects and parameterizes a client.
-- **`scrape_queue`** (`phoenixadult/services/scrape_queue.py`) is a single sequential background worker (dedup by key, 500-job cap). When pacing or the serve budget defers a search/update (§7.6), the services enqueue it here to finish off the request path.
+- **`scrape_queue`** (`phoenixadult/services/scrape_queue.py`) runs background jobs on two lanes (dedup by key, 500-job cap): unpaced sites take three workers, sites behind a `ScenePacer` take exactly one, so a pacer's gate can never occupy every slot. When pacing or the serve budget defers a search/update (§7.6), the services enqueue it here to finish off the request path.
 
 ---
 

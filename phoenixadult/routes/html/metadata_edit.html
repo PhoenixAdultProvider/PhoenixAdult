@@ -46,7 +46,16 @@
     .img .drop { width: 100%; margin-top: 6px; padding: 4px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1e293b; color: #f87171; cursor: pointer; font-size: 11px; }
     .img .drop:hover { background: #7f1d1d; color: #fff; }
 
-    .bar { display: flex; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: #0f1117; padding: 14px 0; border-top: 1px solid #1a2035; }
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: #0f1117; padding: 14px 0; border-top: 1px solid #1a2035; }
+    .progress { flex: 1 1 100%; order: -1; }
+    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+    .progress-track { height: 8px; border-radius: 4px; background: #1a2035; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: #2563eb; transition: width .4s ease; }
+    .progress-fill.working {
+      background: repeating-linear-gradient(90deg, #2563eb 0 12px, #1d4ed8 12px 24px);
+      animation: slide 1s linear infinite;
+    }
+    @keyframes slide { from { background-position: 0 0; } to { background-position: 24px 0; } }
     .save { padding: 9px 22px; border: 0; border-radius: 6px; background: #15803d; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; }
     .save:hover { background: #16a34a; }
     .save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
@@ -142,6 +151,10 @@
   </div>
 
   <div class="bar">
+    <div class="progress" id="progress" style="display:none">
+      <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
     <button class="save" id="saveBtn" onclick="save()">Save</button>
     <button class="refresh" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
     <button class="cancel" onclick="leave()">Cancel</button>
@@ -286,7 +299,43 @@
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-    async function pollSnapshot(site, curId, was) {
+    function showProgress(pct, label, working) {
+      qs('progress').style.display = '';
+      qs('progress-label').textContent = label;
+      qs('progress-pct').textContent = pct + '%';
+      const fill = qs('progress-fill');
+      fill.style.width = pct + '%';
+      fill.classList.toggle('working', !!working);
+    }
+
+    let aheadAtStart = 0;
+
+    async function queuePosition(queueKey) {
+      try {
+        const r = await fetch('/queue/api/state', {headers: hdrs()});
+        if (!r.ok) return null;
+        const entries = (await r.json()).entries || [];
+        const idx = entries.findIndex(e => e.key === queueKey);
+        if (idx < 0) return {state: 'gone'};
+        return {state: entries[idx].running ? 'running' : 'queued', ahead: entries.slice(0, idx).length};
+      } catch { return null; }
+    }
+
+    async function paintProgress(queueKey) {
+      const at = await queuePosition(queueKey);
+      if (!at) return;
+      if (at.state === 'queued') {
+        aheadAtStart = Math.max(aheadAtStart, at.ahead);
+        const drained = aheadAtStart ? (aheadAtStart - at.ahead) / aheadAtStart : 0;
+        showProgress(Math.round(5 + drained * 55), at.ahead ? `Queued — ${at.ahead} job(s) ahead` : 'Queued — next up', false);
+      } else if (at.state === 'running') {
+        showProgress(80, 'Scraping the site…', true);
+      } else {
+        showProgress(95, 'Writing the snapshot…', true);
+      }
+    }
+
+    async function pollSnapshot(site, curId, was, queueKey) {
       const p = new URLSearchParams({site, cur_id: curId});
       const deadline = Date.now() + REFRESH_TIMEOUT_MS;
       while (Date.now() < deadline) {
@@ -298,6 +347,7 @@
             if (j.ok && j.updated_at && j.updated_at !== was) return j;
           }
         } catch {}
+        await paintProgress(queueKey);
       }
       return null;
     }
@@ -322,13 +372,17 @@
         return;
       }
       qs('status').textContent = started.queued ? 'Scraping…' : 'Scraping (already queued)…';
-      const fresh = await pollSnapshot(started.site, started.cur_id, started.updated_at);
+      aheadAtStart = 0;
+      showProgress(5, 'Queued…', false);
+      const fresh = await pollSnapshot(started.site, started.cur_id, started.updated_at, started.queue_key);
       btn.disabled = false;
       qs('saveBtn').disabled = false;
       if (!fresh) {
+        qs('progress').style.display = 'none';
         qs('status').textContent = 'Still scraping — the queue is busy or the site is paced. Reload later to see the result.';
         return;
       }
+      showProgress(100, 'Done', false);
       MD = fresh.metadata;
       KEY = fresh.key;
       const sub = qs('subKey');

@@ -5,7 +5,7 @@ import asyncio
 from phoenixadult.services import scrape_queue
 
 
-async def test_enqueue_runs_jobs_sequentially_and_dedupes() -> None:
+async def test_enqueue_runs_every_job_once_and_dedupes() -> None:
     ran: list[str] = []
     done = asyncio.Event()
 
@@ -22,7 +22,7 @@ async def test_enqueue_runs_jobs_sequentially_and_dedupes() -> None:
     assert scrape_queue.enqueue('b', job('b', last=True)) is True
     assert scrape_queue.is_pending('a') is True
     await asyncio.wait_for(done.wait(), timeout=5)
-    assert ran == ['a', 'b']
+    assert sorted(ran) == ['a', 'b']
     assert scrape_queue.pending_count() == 0
     assert scrape_queue.enqueue('a', job('a2', last=True)) is True
 
@@ -42,35 +42,104 @@ async def test_failed_job_never_kills_the_worker() -> None:
     assert scrape_queue.pending_count() == 0
 
 
-async def test_snapshot_reports_current_and_pending_by_kind() -> None:
-    started = asyncio.Event()
+async def _drain(timeout: float = 5.0) -> None:
+    for _ in range(int(timeout * 100)):
+        if scrape_queue.pending_count() == 0:
+            return
+        await asyncio.sleep(0.01)
+
+
+async def test_snapshot_reports_running_before_pending() -> None:
+    started = [asyncio.Event() for _ in range(4)]
     release = asyncio.Event()
 
-    async def slow() -> None:
-        started.set()
-        await release.wait()
+    def slow(i: int):  # noqa: ANN202
+        async def _run() -> None:
+            started[i].set()
+            await release.wait()
 
-    async def noop() -> None:
-        pass
+        return _run
 
-    scrape_queue.enqueue('s1', slow, kind='search', label='Nubile Films — cool scene')
-    scrape_queue.enqueue('u1', noop, kind='update', label='scene-abc')
-    await asyncio.wait_for(started.wait(), timeout=5)
+    for i in range(4):
+        scrape_queue.enqueue(f'j{i}', slow(i), kind='search', label=f'job {i}')
+    await asyncio.wait_for(asyncio.gather(*(started[i].wait() for i in range(3))), timeout=5)
 
     snap = scrape_queue.snapshot()
-    assert snap['pending'] == 2
+    assert snap['pending'] == 4
+    assert snap['running'] == 3
     entries = snap['entries']
     assert isinstance(entries, list)
-    assert entries[0]['key'] == 's1' and entries[0]['running'] is True and entries[0]['kind'] == 'search'
-    assert entries[1]['key'] == 'u1' and entries[1]['running'] is False and entries[1]['kind'] == 'update'
+    assert [e['running'] for e in entries] == [True, True, True, False]
+    assert entries[3]['key'] == 'j3' and entries[3]['kind'] == 'search'
+    assert not started[3].is_set()
 
     release.set()
-    for _ in range(100):
-        if scrape_queue.pending_count() == 0:
-            break
-        await asyncio.sleep(0.01)
+    await _drain()
     snap = scrape_queue.snapshot()
     assert snap['pending'] == 0 and snap['entries'] == [] and snap['paused'] is False
+
+
+async def test_the_fast_lane_runs_three_at_a_time() -> None:
+    live = 0
+    peak = 0
+    release = asyncio.Event()
+
+    async def job() -> None:
+        nonlocal live, peak
+        live += 1
+        peak = max(peak, live)
+        await release.wait()
+        live -= 1
+
+    for i in range(6):
+        scrape_queue.enqueue(f'f{i}', job)
+    await asyncio.sleep(0.05)
+    assert peak == 3
+
+    release.set()
+    await _drain()
+    assert peak == 3
+
+
+async def test_the_paced_lane_runs_one_at_a_time() -> None:
+    live = 0
+    peak = 0
+    seen = asyncio.Event()
+
+    async def job() -> None:
+        nonlocal live, peak
+        live += 1
+        peak = max(peak, live)
+        seen.set()
+        await asyncio.sleep(0.02)
+        live -= 1
+
+    for i in range(4):
+        scrape_queue.enqueue(f'p{i}', job, paced=True)
+    await asyncio.wait_for(seen.wait(), timeout=5)
+    await _drain()
+    assert peak == 1
+
+
+async def test_a_paced_backlog_never_blocks_unpaced_jobs() -> None:
+    release = asyncio.Event()
+    fast_done = asyncio.Event()
+
+    async def blocked() -> None:
+        await release.wait()
+
+    async def quick() -> None:
+        fast_done.set()
+
+    for i in range(3):
+        scrape_queue.enqueue(f'slowpaced{i}', blocked, paced=True)
+    scrape_queue.enqueue('unpaced', quick)
+
+    await asyncio.wait_for(fast_done.wait(), timeout=5)
+    assert scrape_queue.is_pending('slowpaced1') is True
+
+    release.set()
+    await _drain()
 
 
 async def test_flush_drops_only_the_requested_kind() -> None:
@@ -132,3 +201,41 @@ async def test_replays_persist_and_drain_via_db(monkeypatch, tmp_path) -> None:
         done.set()
     finally:
         db.close()
+
+
+async def test_progress_counts_one_drain_cycle() -> None:
+    release = asyncio.Event()
+
+    async def job() -> None:
+        await release.wait()
+
+    for i in range(4):
+        scrape_queue.enqueue(f'prog{i}', job)
+    snap = scrape_queue.snapshot()
+    assert snap['total'] == 4 and snap['done'] == 0
+
+    release.set()
+    await _drain()
+    snap = scrape_queue.snapshot()
+    assert snap['total'] == 0 and snap['done'] == 0
+
+
+async def test_progress_survives_a_partial_drain() -> None:
+    release = asyncio.Event()
+    started = asyncio.Event()
+
+    async def quick() -> None:
+        started.set()
+
+    async def blocked() -> None:
+        await release.wait()
+
+    scrape_queue.enqueue('held', blocked)
+    scrape_queue.enqueue('quick', quick)
+    await asyncio.wait_for(started.wait(), timeout=5)
+
+    snap = scrape_queue.snapshot()
+    assert snap['total'] == 2 and snap['done'] == 1 and snap['pending'] == 1
+
+    release.set()
+    await _drain()

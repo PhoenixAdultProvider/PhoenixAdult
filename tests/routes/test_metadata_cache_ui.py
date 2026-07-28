@@ -331,7 +331,14 @@ def test_refresh_queues_a_forced_rescrape(monkeypatch: pytest.MonkeyPatch) -> No
 
     r = client.post('/metadata/refresh', json={'key': 'studio/abc'}, headers=hdr)
     assert r.status_code == 200
-    assert r.json() == {'ok': True, 'queued': True, 'site': 'BaDoinkVR', 'cur_id': 'abc', 'updated_at': '100.0'}
+    assert r.json() == {
+        'ok': True,
+        'queued': True,
+        'site': 'BaDoinkVR',
+        'cur_id': 'abc',
+        'queue_key': 'phoenixadult:scene-badoinkvr-abc',
+        'updated_at': '100.0',
+    }
     assert calls == {'dropped': 'scene-badoinkvr-abc', 'rating_key': 'scene-badoinkvr-abc', 'force': True, 'rescrape': True}
 
 

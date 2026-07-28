@@ -89,6 +89,12 @@
     .dup-btn.active:hover { background: #d97706; }
     .empty { color: #94a3b8; margin-top: 24px; }
 
+    /* ── Progress ── */
+    .progress { margin-bottom: 14px; }
+    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+    .progress-track { height: 8px; border-radius: 4px; background: #1a2035; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: #2563eb; transition: width .3s ease; }
+
     /* ── Sort bar ── */
     .sortbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
     .sortbar label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
@@ -152,6 +158,22 @@
       <datalist id="actor-options"></datalist>
     </div>
     <div class="filter-group">
+      <label>Provider</label>
+      <select id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Studio</label>
+      <select id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Tagline</label>
+      <select id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Collection</label>
+      <select id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
       <label>Genres</label>
       <select id="f-genre" onchange="facetChanged()">
         <option value="">All</option>
@@ -160,12 +182,13 @@
       </select>
     </div>
     <div class="filter-group">
-      <label>Provider</label>
-      <select id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Studio</label>
-      <select id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
+      <label>Data18</label>
+      <select id="f-data18" onchange="facetChanged()">
+        <option value="">All</option>
+        <option value="__set__">Filled</option>
+        <option value="__manual__">Manual</option>
+        <option value="__blank__">Blank</option>
+      </select>
     </div>
     <div class="filter-group">
       <label>Year</label>
@@ -178,23 +201,6 @@
     <div class="filter-group">
       <label>Day</label>
       <select id="f-day" onchange="facetChanged()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Tagline</label>
-      <select id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Collection</label>
-      <select id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Data18</label>
-      <select id="f-data18" onchange="facetChanged()">
-        <option value="">All</option>
-        <option value="__set__">Filled</option>
-        <option value="__manual__">Manual</option>
-        <option value="__blank__">Blank</option>
-      </select>
     </div>
   </div>
 
@@ -213,6 +219,11 @@
       <button class="reset-btn" id="nextBtn" onclick="nextPage()">Next</button>
     </span>
   </div>
+  </div>
+
+  <div class="progress" id="progress" style="display:none">
+    <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
 
   <div class="sortbar">
@@ -282,8 +293,6 @@
 
     function facetChanged() { offset = 0; refreshEntries(); }
 
-    // Suggestions are matched and capped server-side, so a library-sized cast never
-    // ships to the browser the way a facet list would.
     let actorTimer = null;
     let actorSuggestedFor = null;
 
@@ -570,9 +579,44 @@
       const j = await r.json().catch(() => ({ok: false}));
       btn.disabled = false;
       if (!j.ok) { alert('Refresh failed'); return; }
-      alert(j.skipped
-        ? `Queued ${j.queued} re-scrape(s); ${j.skipped} skipped (already queued or the queue is full).`
-        : `Queued ${j.queued} re-scrape(s). Watch /queue for progress.`);
+      if (j.skipped) alert(`Queued ${j.queued} re-scrape(s); ${j.skipped} skipped (already queued or the queue is full).`);
+      trackQueue();
+    }
+
+    let queueTimer = null;
+
+    async function queueState() {
+      try {
+        const r = await fetch('/queue/api/state', {headers: authHeaders()});
+        if (r.ok) return await r.json();
+      } catch {}
+      return null;
+    }
+
+    async function pollQueue() {
+      const state = await queueState();
+      const box = document.getElementById('progress');
+      const total = (state && state.total) || 0;
+      if (!total) {
+        box.style.display = 'none';
+        clearInterval(queueTimer);
+        queueTimer = null;
+        refreshNow();
+        return;
+      }
+      const done = Math.min(state.done || 0, total);
+      const pct = Math.round((done / total) * 100);
+      document.getElementById('progress-label').textContent =
+        `Scraping ${done} of ${total} · ${state.running || 0} running · ${state.pending || 0} left`;
+      document.getElementById('progress-pct').textContent = pct + '%';
+      document.getElementById('progress-fill').style.width = pct + '%';
+      box.style.display = '';
+    }
+
+    function trackQueue() {
+      if (queueTimer) return;
+      pollQueue();
+      queueTimer = setInterval(pollQueue, 2000);
     }
 
     async function purgeShown() {
@@ -677,6 +721,7 @@
     if (serverQuery(PAGE_SIZE, true) !== DEFAULT_QUERY) refreshEntries();
     pollState();
     setInterval(pollState, 4000);
+    queueState().then(s => { if (s && s.total) trackQueue(); });
   </script>
 </body>
 </html>

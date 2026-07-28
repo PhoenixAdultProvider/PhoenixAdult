@@ -460,7 +460,6 @@ def studios() -> list[str]:
 
 
 def actor_suggestions(query: str = '', limit: int = 50) -> list[str]:
-    """Cast names matching `query`, for the /metadata actor autocomplete."""
     return scene_store.actor_names(query, limit)
 
 

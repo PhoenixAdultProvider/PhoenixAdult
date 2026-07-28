@@ -4,6 +4,7 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 
+from phoenixadult.clients import is_paced
 from phoenixadult.clients.base import PacingDeferredError, SceneContext, SceneDetail
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper, log_served_images
@@ -189,7 +190,6 @@ class MetadataService:
         return response
 
     def drop_memo(self, rating_key: str, provider: ProviderInfo) -> None:
-        """Evict every language variant so the next Plex hit cannot serve the pre-refresh response."""
         for key in [k for k in self._memo if k[0] == rating_key and k[1] == provider.id]:
             self._memo.pop(key, None)
 
@@ -207,9 +207,17 @@ class MetadataService:
             logger.debug(provider.id, f'snapshot already cached for ratingKey={rating_key} — not queueing')
             return False
 
+        site = find_site(parsed['site_name'] or '') if parsed else None
         label = label or _queue_label(rating_key)
         replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label, 'rescrape': rescrape}
-        return scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=label, replay=replay)
+        return scrape_queue.enqueue(
+            f'{provider.id}:{rating_key}',
+            _job,
+            kind='update',
+            label=label,
+            replay=replay,
+            paced=bool(site and is_paced(site.scraper_config.type)),
+        )
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
         """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""

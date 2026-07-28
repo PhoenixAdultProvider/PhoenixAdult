@@ -38,6 +38,11 @@
                  background: #1f2937; color: #fca5a5; cursor: pointer; vertical-align: 1px; }
     .flush-btn:hover { background: #7f1d1d; color: #fecaca; }
 
+    .progress { margin-bottom: 18px; }
+    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+    .progress-track { height: 8px; border-radius: 4px; background: #1a2035; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: #2563eb; transition: width .3s ease; }
+
     @media (max-width: 720px) {
       body { padding: 14px; }
       h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -53,7 +58,11 @@
 </head>
 <body>
   <h1>Scrape Queue</h1>
-  <div class="sub">background searches and metadata updates deferred by pacing; one sequential worker, oldest first</div>
+  <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites run three at a time, paced sites one, oldest first</div>
+  <div class="progress" id="progress" style="display:none">
+    <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
   <h2>Searches <span class="count-badge" id="search-count"></span>
@@ -86,6 +95,20 @@
         return `<div class="pacer"><span class="tag">${esc(p.tag)}</span>` + status +
           `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
       }).join('') || '<div class="empty">no paced scrapers registered</div>';
+
+      const total = STATE.total || 0;
+      const done = Math.min(STATE.done || 0, total);
+      const box = document.getElementById('progress');
+      if (total > 0) {
+        const pct = Math.round((done / total) * 100);
+        document.getElementById('progress-label').textContent =
+          `${done} of ${total} done · ${STATE.running || 0} running · ${STATE.pending || 0} left`;
+        document.getElementById('progress-pct').textContent = pct + '%';
+        document.getElementById('progress-fill').style.width = pct + '%';
+        box.style.display = '';
+      } else {
+        box.style.display = 'none';
+      }
 
       const banner = document.getElementById('pause-banner');
       if (STATE.paused) {

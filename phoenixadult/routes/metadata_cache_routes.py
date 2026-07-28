@@ -114,7 +114,16 @@ async def refresh(request: Request) -> JSONResponse:
     metadata_service.drop_memo(target['rating_key'], provider)
     queued = metadata_service.queue_snapshot(target['rating_key'], provider, None, force=True, rescrape=True)
     snap = await run_in('store', scene_store.snapshot_state, target['site'], target['cur_id'])
-    return JSONResponse({'ok': True, 'queued': queued, 'site': target['site'], 'cur_id': target['cur_id'], 'updated_at': (snap or {}).get('updated_at', '')})
+    return JSONResponse(
+        {
+            'ok': True,
+            'queued': queued,
+            'site': target['site'],
+            'cur_id': target['cur_id'],
+            'queue_key': f'{provider.id}:{target["rating_key"]}',
+            'updated_at': (snap or {}).get('updated_at', ''),
+        }
+    )
 
 
 @router.post('/refresh-bulk')

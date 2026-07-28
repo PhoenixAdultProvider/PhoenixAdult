@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
-from phoenixadult.clients import get_client
+from phoenixadult.clients import is_paced
 from phoenixadult.clients.base import PacingDeferredError, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
@@ -61,8 +61,7 @@ class MatchService:
         )
 
     def _is_paced(self, search_data: SearchContext) -> bool:
-        client = get_client(search_data.site_info.scraper_config.type)
-        return client is not None and client.pacer is not None
+        return is_paced(search_data.site_info.scraper_config.type)
 
     async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
         """Scraper search behind a memo+coalescer; background searches on paced sites
@@ -164,7 +163,14 @@ class MatchService:
             'scene_id': search_data.scene_id,
             'language': search_data.language,
         }
-        queued = scrape_queue.enqueue(key, _job, kind='search', label=f'{search_data.site_info.name} — {search_data.title}', replay=replay)
+        queued = scrape_queue.enqueue(
+            key,
+            _job,
+            kind='search',
+            label=f'{search_data.site_info.name} — {search_data.title}',
+            replay=replay,
+            paced=self._is_paced(search_data),
+        )
         state = 'queued background search' if queued else 'background search already queued'
         logger.info(
             provider.id,

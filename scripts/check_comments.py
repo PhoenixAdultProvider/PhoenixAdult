@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Fail if a diff adds a disallowed ``#`` comment or an over-long docstring under
-app/ or tests/.
+"""Fail if a diff adds a disallowed ``#`` comment or any docstring under
+phoenixadult/ or tests/.
 
-The zero-comment policy allows only terse docstrings (max _DOCSTRING_MAX_LINES
-lines), tooling pragmas (type:/noqa/…), and section banners; all other rationale
-goes in the commit message. This gate flags newly added violations so they are
-removed before the commit lands.
+The zero-comment policy allows only tooling pragmas (type:/noqa/…) and section
+banners; docstrings are not allowed at all, and every other rationale goes in the
+commit message. This gate flags newly added violations so they are removed before
+the commit lands. Diff mode judges only added lines, so docstrings already in the
+tree are left alone until the code around them is rewritten; --all reports every
+one of them.
 
 Usage:
     check_comments.py                 # check staged changes (pre-commit)
@@ -22,8 +24,6 @@ import sys
 import tokenize
 from io import StringIO
 from pathlib import Path
-
-_DOCSTRING_MAX_LINES = 2
 
 _ALLOWED_PREFIXES = ('type:', 'noqa', 'fmt:', 'ruff:', 'mypy:', 'pylint', 'pragma', 'isort:', 'nosec')
 _BOX_DRAWING = set('─═')
@@ -96,26 +96,21 @@ def _comment_lines(src: str) -> dict[int, str]:
     return out
 
 
-def _long_docstrings(src: str) -> list[tuple[int, int, int]]:
-    """(start, end, line_count) for each docstring longer than _DOCSTRING_MAX_LINES."""
+def _docstrings(src: str) -> list[tuple[int, int, int]]:
     out: list[tuple[int, int, int]] = []
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return out
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+        if not isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         if not (
             node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str)
         ):
             continue
         expr = node.body[0]
-        if isinstance(node, ast.Module):
-            continue
-        lines = (expr.end_lineno or expr.lineno) - expr.lineno + 1
-        if lines > _DOCSTRING_MAX_LINES:
-            out.append((expr.lineno, expr.end_lineno or expr.lineno, lines))
+        out.append((expr.lineno, expr.end_lineno or expr.lineno, (expr.end_lineno or expr.lineno) - expr.lineno + 1))
     return out
 
 
@@ -157,9 +152,9 @@ def main() -> int:
         for lineno, text in _comment_lines(src).items():
             if (added is None or lineno in added) and not _is_allowed(text):
                 violations.append(f'{path}:{lineno}: {text.strip()}')
-        for start, end, lines in _long_docstrings(src):
+        for start, end, lines in _docstrings(src):
             if added is None or added & set(range(start, end + 1)):
-                violations.append(f'{path}:{start}: docstring is {lines} lines (max {_DOCSTRING_MAX_LINES})')
+                violations.append(f'{path}:{start}: docstring ({lines} line(s)) - docstrings are not allowed')
 
     if violations:
         sys.stderr.write('Disallowed comments added (remove them; put rationale in the commit message):\n')
