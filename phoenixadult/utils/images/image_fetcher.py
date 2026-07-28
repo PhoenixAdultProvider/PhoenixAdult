@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import httpx2
-from PIL import Image
+from PIL import Image, ImageFile
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.concurrency.coalescer import Coalescer
@@ -25,7 +25,14 @@ _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 _CACHE_TTL = 60 * 60
 _CACHE_MAX_TOTAL_BYTES = 256 * 1024 * 1024
 
+_PROBE_TIMEOUT = 4.0
+_PROBE_HEAD_BYTES = 64 * 1024
+_DIMS_TTL = 60 * 60
+_DIMS_MISS_TTL = 300.0
+_DIMS_CACHE_MAX = 8192
+
 _shared_image_clients: dict[int, httpx2.AsyncClient] = {}
+_shared_probe_clients: dict[int, httpx2.AsyncClient] = {}
 
 
 def _image_client() -> httpx2.AsyncClient:
@@ -34,6 +41,15 @@ def _image_client() -> httpx2.AsyncClient:
     if client is None:
         client = make_http(timeout=10.0, max_redirects=3)
         _shared_image_clients[loop_id] = client
+    return client
+
+
+def _probe_client() -> httpx2.AsyncClient:
+    loop_id = id(asyncio.get_running_loop())
+    client = _shared_probe_clients.get(loop_id)
+    if client is None:
+        client = make_http(timeout=_PROBE_TIMEOUT, max_redirects=3)
+        _shared_probe_clients[loop_id] = client
     return client
 
 
@@ -48,6 +64,7 @@ class ImageEntry:
 
 _cache: OrderedDict[str, ImageEntry] = OrderedDict()
 _cache_total_bytes = 0
+_dims_cache: OrderedDict[str, tuple[float, tuple[int, int] | None]] = OrderedDict()
 
 
 def _cache_get(url: str) -> ImageEntry | None:
@@ -208,12 +225,88 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
     return entry
 
 
+def _dims_cache_get(url: str) -> tuple[bool, tuple[int, int] | None]:
+    hit = _dims_cache.get(url)
+    if hit is None:
+        return False, None
+    stored_at, dims = hit
+    if time.time() - stored_at >= (_DIMS_TTL if dims else _DIMS_MISS_TTL):
+        del _dims_cache[url]
+        return False, None
+    _dims_cache.move_to_end(url)
+    return True, dims
+
+
+def _dims_cache_put(url: str, dims: tuple[int, int] | None) -> None:
+    _dims_cache.pop(url, None)
+    _dims_cache[url] = (time.time(), dims)
+    while len(_dims_cache) > _DIMS_CACHE_MAX:
+        _dims_cache.popitem(last=False)
+
+
+def _dims_from_head(data: bytes) -> tuple[int, int] | None:
+    parser = ImageFile.Parser()
+    parser.feed(data)
+    if parser.image is None:
+        return None
+    width, height = parser.image.size
+    return (int(width), int(height)) if width > 0 and height > 0 else None
+
+
+async def _probe_dims(url: str, referers: list[str] | None, cookies: list[str] | None) -> tuple[tuple[int, int] | None, bool]:
+    client = _probe_client()
+    cookie_header = '; '.join(cookies) if cookies and not _is_data18_host(url) else None
+    responded = False
+    absent = False
+    for referer in _referers_for(url, referers):
+        headers = {'User-Agent': DEFAULT_UA, 'Range': f'bytes=0-{_PROBE_HEAD_BYTES - 1}'}
+        if referer:
+            headers['Referer'] = sanitize_header(referer)
+        if cookie_header:
+            headers['Cookie'] = sanitize_header(cookie_header)
+        try:
+            resp = await client.get(url, headers=headers)
+            responded = True
+            absent = resp.status_code in (404, 410)
+            for redirect in resp.history:
+                host = urlsplit(redirect.headers.get('location', '')).hostname
+                if host and is_blocked_hostname(host):
+                    raise ValueError(f'blocked redirect to {host}')
+            resp.raise_for_status()
+            if not is_image_content_type(resp.headers.get('content-type', '')):
+                continue
+            if dims := await run_in('image', _dims_from_head, resp.content):
+                return dims, True
+        except Exception as err:  # noqa: BLE001 - `responded` already records whether the host answered at all
+            logger.debug(f'dimension probe failed for {url}: {err!r}')
+    return None, responded and not absent
+
+
 async def fetch_dimensions(url: str, referers: list[str] | None = None, cookies: list[str] | None = None) -> dict[str, int] | None:
+    cached_hit, cached_dims = _dims_cache_get(url)
+    if cached_hit:
+        return {'width': cached_dims[0], 'height': cached_dims[1]} if cached_dims else None
+
+    if (entry := _cache_get(url)) is not None and entry.width > 0 and entry.height > 0:
+        _dims_cache_put(url, (entry.width, entry.height))
+        return {'width': entry.width, 'height': entry.height}
+
+    probed, responded = await _probe_dims(url, referers, cookies)
+    if probed:
+        _dims_cache_put(url, probed)
+        return {'width': probed[0], 'height': probed[1]}
+    if not responded:
+        _dims_cache_put(url, None)
+        return None
+
     try:
         entry = await fetch_image(url, referers, cookies)
     except Exception as err:  # noqa: BLE001
         logger.debug(f'fetchDimensions failed for {url}: {err!r}')
+        _dims_cache_put(url, None)
         return None
     if entry.width <= 0 or entry.height <= 0:
+        _dims_cache_put(url, None)
         return None
+    _dims_cache_put(url, (entry.width, entry.height))
     return {'width': entry.width, 'height': entry.height}
