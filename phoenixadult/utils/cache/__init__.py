@@ -211,7 +211,7 @@ def _rebase(obj: Any, base: str, people_base: str) -> Any:
     return obj
 
 
-async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> bool:
+async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, allow_clear: bool = False) -> bool:
     if not enabled():
         return False
     try:
@@ -233,7 +233,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
     _write_lock_users[scene_hash] = _write_lock_users.get(scene_hash, 0) + 1
     try:
         async with lock:
-            return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir)
+            return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear)
     finally:
         _write_lock_users[scene_hash] -= 1
         if _write_lock_users[scene_hash] == 0:
@@ -241,11 +241,37 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse) -> 
             _write_locks.pop(scene_hash, None)
 
 
-async def _write_locked(response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path) -> bool:
+_CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')
+
+
+def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
+    if not previous:
+        return []
+    try:
+        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
+    except (AttributeError, IndexError):
+        return []
+    carried: list[str] = []
+    for field in _CARRY_FIELDS:
+        if meta.get(field) or not prior.get(field):
+            continue
+        meta[field] = prior[field]
+        carried.append(f'{field}({len(prior[field])})')
+    return carried
+
+
+async def _write_locked(
+    response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path, allow_clear: bool = False
+) -> bool:
     tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
 
     data = response.model_dump(by_alias=True, exclude_none=True)
     meta: dict[str, Any] = data['MediaContainer']['Metadata'][0]
+
+    if not allow_clear:
+        previous = await run_in('store', scene_store.load, scene_hash)
+        if carried := _carry_emptied_fields(meta, previous):
+            logger.warn('meta-cache', f'scrape returned nothing for {", ".join(carried)} on {rel_path} — kept the stored values')
     base = config.base_url.rstrip('/')
     counter = [0]
     image_meta: dict[str, tuple[int, int, int]] = {}
@@ -572,7 +598,7 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     except (AttributeError, IndexError):
         return None
     _apply_edits(md, fields)
-    if not await write(site_name, cur_id, response):
+    if not await write(site_name, cur_id, response, allow_clear=True):
         return None
     moved = f'{_rel_dir(site_name, md.studio or "", md.tagline or "")}/{_hash(site_name, cur_id)}'
     if moved != key and (stale := safe_join(cache_dir(), key)) is not None:
