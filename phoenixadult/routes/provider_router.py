@@ -16,6 +16,14 @@ from phoenixadult.utils.plex.responses import empty_media_container, media_conta
 _SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
 
 
+def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None:
+    """The live per-provider service, so out-of-band callers share its memo and queue."""
+    for provider, _match_service, metadata_service in _SERVICES:
+        if provider.id == provider_id:
+            return provider, metadata_service
+    return None
+
+
 async def restore_queue() -> None:
     """Re-enqueue background jobs persisted before the last shutdown."""
     replays = scrape_queue.take_replays()
@@ -25,7 +33,10 @@ async def restore_queue() -> None:
             if provider.id != replay.get('provider'):
                 continue
             if replay.get('kind') == 'update' and replay.get('rating_key'):
-                metadata_service.queue_snapshot(str(replay['rating_key']), provider, replay.get('language'), label=replay.get('label'))
+                rescrape = bool(replay.get('rescrape'))
+                metadata_service.queue_snapshot(
+                    str(replay['rating_key']), provider, replay.get('language'), label=replay.get('label'), force=rescrape, rescrape=rescrape
+                )
                 restored += 1
             elif replay.get('kind') == 'search':
                 match_service.requeue_search(replay, provider)

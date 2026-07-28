@@ -188,12 +188,19 @@ class MetadataService:
         _log_served(response, provider)
         return response
 
-    def queue_snapshot(self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None, force: bool = False) -> bool:
-        """Enqueue a background scrape of this scene into the snapshot cache; `label` is
-        the human name shown on /queue (the rating key stays the dedup key)."""
+    def drop_memo(self, rating_key: str, provider: ProviderInfo) -> None:
+        """Evict every language variant so the next Plex hit cannot serve the pre-refresh response."""
+        for key in [k for k in self._memo if k[0] == rating_key and k[1] == provider.id]:
+            self._memo.pop(key, None)
+
+    def queue_snapshot(
+        self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None, force: bool = False, rescrape: bool = False
+    ) -> bool:
+        """`label` is the human name shown on /queue (the rating key stays the dedup key);
+        `force` only queues past an existing snapshot — `rescrape` makes the job ignore it too."""
 
         async def _job() -> None:
-            await self._fetch_metadata(rating_key, provider, language, allow_slow=True)
+            await self._fetch_metadata(rating_key, provider, language, force=rescrape, allow_slow=True)
 
         parsed = parse_rating_key(rating_key)
         if not force and parsed and parsed['site_name'] and parsed['cur_id'] and metadata_cache.read(parsed['site_name'], parsed['cur_id']) is not None:
@@ -201,7 +208,7 @@ class MetadataService:
             return False
 
         label = label or _queue_label(rating_key)
-        replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label}
+        replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label, 'rescrape': rescrape}
         return scrape_queue.enqueue(f'{provider.id}:{rating_key}', _job, kind='update', label=label, replay=replay)
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:

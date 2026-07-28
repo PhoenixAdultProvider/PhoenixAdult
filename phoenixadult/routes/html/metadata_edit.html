@@ -50,6 +50,9 @@
     .save { padding: 9px 22px; border: 0; border-radius: 6px; background: #15803d; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; }
     .save:hover { background: #16a34a; }
     .save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .refresh { padding: 9px 18px; border: 1px solid #1d4ed8; border-radius: 6px; background: #1e293b; color: #93c5fd; cursor: pointer; font-size: 14px; }
+    .refresh:hover { background: #1d4ed8; color: #fff; }
+    .refresh:disabled { border-color: #334155; background: #1e2433; color: #64748b; cursor: not-allowed; }
     .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .cancel:hover { color: #e2e8f0; }
     .status { font-size: 12px; color: #64748b; }
@@ -60,7 +63,7 @@
       .addrow { flex-wrap: wrap; }
       .addrow button { width: 100%; padding: 8px 14px; }
       .bar { flex-wrap: wrap; }
-      .save, .cancel { flex: 1 1 auto; }
+      .save, .refresh, .cancel { flex: 1 1 auto; }
     }
   </style>
 </head>
@@ -140,14 +143,17 @@
 
   <div class="bar">
     <button class="save" id="saveBtn" onclick="save()">Save</button>
+    <button class="refresh" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
     <button class="cancel" onclick="leave()">Cancel</button>
     <span class="status" id="status"></span>
   </div>
 
   <script>
     const TOKEN = __TOKEN__;
-    const KEY = __KEY__;
-    const MD = __METADATA__;
+    let KEY = __KEY__;
+    let MD = __METADATA__;
+    const REFRESH_POLL_MS = 2000;
+    const REFRESH_TIMEOUT_MS = 600000;
     const KINDS = ['coverPoster', 'background', 'backgroundSquare'];
     const LISTS = {Genre: [], Collection: [], Role: [], Director: [], Producer: []};
     let images = [];
@@ -276,6 +282,59 @@
       if (payload.ok) { leave(); return; }
       btn.disabled = false;
       qs('status').textContent = 'Save failed: ' + (payload.error || 'unknown error');
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function pollSnapshot(site, curId, was) {
+      const p = new URLSearchParams({site, cur_id: curId});
+      const deadline = Date.now() + REFRESH_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        await sleep(REFRESH_POLL_MS);
+        try {
+          const r = await fetch('/metadata/snapshot?' + p.toString(), {headers: hdrs()});
+          if (r.ok) {
+            const j = await r.json();
+            if (j.ok && j.updated_at && j.updated_at !== was) return j;
+          }
+        } catch {}
+      }
+      return null;
+    }
+
+    async function refreshMeta() {
+      if (!confirm('Re-scrape this scene from the site?\n\nThe stored snapshot is replaced, so manual edits to it are lost.')) return;
+      const btn = qs('refreshBtn');
+      btn.disabled = true;
+      qs('saveBtn').disabled = true;
+      qs('status').textContent = 'Refreshing…';
+      let started = {};
+      try {
+        const r = await fetch('/metadata/refresh', {method: 'POST', headers: hdrs(), body: JSON.stringify({key: KEY})});
+        started = await r.json();
+      } catch (err) {
+        started = {ok: false, error: String(err)};
+      }
+      if (!started.ok) {
+        btn.disabled = false;
+        qs('saveBtn').disabled = false;
+        qs('status').textContent = 'Refresh failed: ' + (started.error || 'unknown error');
+        return;
+      }
+      qs('status').textContent = started.queued ? 'Scraping…' : 'Scraping (already queued)…';
+      const fresh = await pollSnapshot(started.site, started.cur_id, started.updated_at);
+      btn.disabled = false;
+      qs('saveBtn').disabled = false;
+      if (!fresh) {
+        qs('status').textContent = 'Still scraping — the queue is busy or the site is paced. Reload later to see the result.';
+        return;
+      }
+      MD = fresh.metadata;
+      KEY = fresh.key;
+      const sub = qs('subKey');
+      if (sub) sub.textContent = KEY;
+      load();
+      qs('status').textContent = 'Refreshed from the site.';
     }
 
     document.querySelectorAll('[data-add]').forEach(btn => {

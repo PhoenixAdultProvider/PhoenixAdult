@@ -353,7 +353,7 @@ Notes:
 | --- | --- | --- |
 | `PHOENIX_EXTRA_COLLECTIONS` | `false` | Restore the optional extra-collections pass (studio / serie / movie titles) in GammaEntOther. |
 | `SCENE_GAP` | `10` | Base seconds between units of work on rate-limited scrapers (Nubiles, Naughty America) — searches and scene scrapes share one track. A 10–45s random jitter is always added on top, and at most 8 scenes run per 10 minutes regardless. Work that would block a Plex request runs in the background instead (watch it at `/queue`); finished background searches persist to the search store so a later scan consumes them. |
-| `REFRESH_FORCE_COUNT` | `3` | Plex refreshes of one scene within 60 seconds that force a fresh scrape instead of the cached snapshot. Set `1` to refetch on every refresh. |
+| `REFRESH_FORCE_COUNT` | `3` | Plex refreshes of one scene within 60 seconds that force a fresh scrape instead of the cached snapshot. Set `1` to refetch on every refresh. **Refresh Metadata** on the snapshot editor forces the same re-scrape in one click, without the repeated Plex refreshes. |
 | `SEARCH_STORE_TTL_DAYS` | `0` | How long a cached search result stays valid before a later scan re-searches. `0` = perpetual (never expires), so matches survive indefinitely. Empty banned/no-result searches are never stored regardless. |
 
 ### Network

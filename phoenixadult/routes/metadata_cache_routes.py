@@ -9,9 +9,12 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
+from phoenixadult.registry import find_site
 from phoenixadult.routes import read_json_body
+from phoenixadult.routes.provider_router import service_for
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
 
@@ -60,7 +63,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     if loaded is None:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
-    subtitle = f'<code>{html.escape(key)}</code>'
+    subtitle = f'<code id="subKey">{html.escape(key)}</code>'
     body = (
         _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
@@ -88,6 +91,41 @@ async def save(request: Request) -> JSONResponse:
     if moved is None:
         return JSONResponse({'ok': False, 'error': 'snapshot not written — check the title and METADATA_CACHE_ENABLE'}, status_code=400)
     return JSONResponse({'ok': True, 'key': moved})
+
+
+@router.post('/refresh')
+async def refresh(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    key = str(data.get('key', ''))
+    if '/' not in key:
+        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+
+    target = await run_in('store', scene_store.scrape_target, key)
+    if target is None:
+        return JSONResponse({'ok': False, 'error': 'no scene stored for that key'}, status_code=404)
+
+    site = find_site(target['site'])
+    resolved = service_for(site.provider_id) if site else None
+    if resolved is None:
+        return JSONResponse({'ok': False, 'error': f'no provider serving site "{target["site"]}"'}, status_code=400)
+
+    provider, metadata_service = resolved
+    metadata_service.drop_memo(target['rating_key'], provider)
+    queued = metadata_service.queue_snapshot(target['rating_key'], provider, None, force=True, rescrape=True)
+    snap = await run_in('store', scene_store.snapshot_state, target['site'], target['cur_id'])
+    return JSONResponse({'ok': True, 'queued': queued, 'site': target['site'], 'cur_id': target['cur_id'], 'updated_at': (snap or {}).get('updated_at', '')})
+
+
+@router.get('/snapshot')
+async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
+    if not site or not cur_id:
+        return JSONResponse({'ok': False, 'error': 'site and cur_id are required'}, status_code=400)
+    snap = await run_in('store', scene_store.snapshot_state, site, cur_id)
+    if snap is None:
+        return JSONResponse({'ok': False, 'error': 'not snapshotted'}, status_code=404)
+    loaded = await run_in('store', metadata_cache.load_for_edit, snap['key'])
+    md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
+    return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0]})
 
 
 @router.get('/state')

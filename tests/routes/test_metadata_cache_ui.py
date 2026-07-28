@@ -265,3 +265,72 @@ def test_page_has_a_mobile_sort_control(monkeypatch: pytest.MonkeyPatch) -> None
     assert '>Sort By<' in page.text
     assert 'buildSortOptions()' in page.text
     assert 'applySortIndicators()' in page.text
+
+
+def _edit_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: {'MediaContainer': {'Metadata': [{'title': 'Scene ' + key}]}})
+    return TestClient(create_app())
+
+
+def test_edit_page_offers_a_refresh_button(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = _edit_client(monkeypatch).get('/metadata/edit?token=tok&key=studio/abc')
+    assert page.status_code == 200
+    assert '>Refresh Metadata<' in page.text
+    assert 'refreshMeta()' in page.text
+    assert 'id="subKey"' in page.text
+
+
+def test_refresh_queues_a_forced_rescrape(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.models.provider_info import ProviderInfo
+
+    provider = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test', title='P', version='1', media_type='movie')
+    calls: dict[str, object] = {}
+
+    class _Svc:
+        def drop_memo(self, rating_key: str, prov: ProviderInfo) -> None:
+            calls['dropped'] = rating_key
+
+        def queue_snapshot(self, rating_key: str, prov: ProviderInfo, language: str | None, **kw: object) -> bool:
+            calls.update({'rating_key': rating_key, **kw})
+            return True
+
+    monkeypatch.setattr(mcr, 'service_for', lambda provider_id: (provider, _Svc()))
+    monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: {'site': 'BaDoinkVR', 'cur_id': 'abc', 'rating_key': 'scene-badoinkvr-abc'})
+    monkeypatch.setattr(mcr.scene_store, 'snapshot_state', lambda site, cur_id: {'key': 'studio/abc', 'updated_at': '100.0'})
+
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+    assert client.post('/metadata/refresh', json={}, headers=hdr).status_code == 400
+
+    r = client.post('/metadata/refresh', json={'key': 'studio/abc'}, headers=hdr)
+    assert r.status_code == 200
+    assert r.json() == {'ok': True, 'queued': True, 'site': 'BaDoinkVR', 'cur_id': 'abc', 'updated_at': '100.0'}
+    assert calls == {'dropped': 'scene-badoinkvr-abc', 'rating_key': 'scene-badoinkvr-abc', 'force': True, 'rescrape': True}
+
+
+def test_refresh_rejects_a_key_with_no_scene(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: None)
+    r = TestClient(create_app()).post('/metadata/refresh', json={'key': 'studio/gone'}, headers={'x-admin-token': 'tok'})
+    assert r.status_code == 404 and r.json()['ok'] is False
+
+
+def test_snapshot_endpoint_tracks_a_moved_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.scene_store, 'snapshot_state', lambda site, cur_id: {'key': 'NewStudio/abc', 'updated_at': '200.0'})
+    monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: {'MediaContainer': {'Metadata': [{'title': 'Renamed'}]}})
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+    assert client.get('/metadata/snapshot', headers=hdr).status_code == 400
+
+    j = client.get('/metadata/snapshot', headers=hdr, params={'site': 'BaDoinkVR', 'cur_id': 'abc'}).json()
+    assert j == {'ok': True, 'key': 'NewStudio/abc', 'updated_at': '200.0', 'metadata': {'title': 'Renamed'}}

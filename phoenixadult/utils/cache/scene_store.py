@@ -294,6 +294,20 @@ def identity_for(rel_path: str) -> tuple[str, str] | None:
     return (str(row['site']), str(row['cur_id'])) if row else None
 
 
+def scrape_target(rel_path: str) -> dict[str, str] | None:
+    row = db.connect().execute('SELECT site, cur_id, rating_key FROM scenes WHERE rel_path = ?', (rel_path,)).fetchone()
+    if row is None or not row['rating_key']:
+        return None
+    return {'site': str(row['site']), 'cur_id': str(row['cur_id']), 'rating_key': str(row['rating_key'])}
+
+
+def snapshot_state(site: str, cur_id: str) -> dict[str, str] | None:
+    """rel_path moves when a re-scrape changes studio/tagline/title, so the editor polls on the
+    stable identity rather than the path it was opened with."""
+    row = db.connect().execute('SELECT rel_path, updated_at FROM scenes WHERE site = ? AND cur_id = ?', (site, cur_id)).fetchone()
+    return {'key': str(row['rel_path']), 'updated_at': str(row['updated_at'] or '')} if row else None
+
+
 def site_scenes(site: str) -> list[dict[str, str]]:
     rows = db.connect().execute('SELECT cur_id, title, release_date, thumb FROM scenes WHERE site = ? ORDER BY title', (site,)).fetchall()
     return [{'cur_id': str(r['cur_id']), 'title': str(r['title']), 'release_date': str(r['release_date'] or ''), 'thumb': str(r['thumb'] or '')} for r in rows]
