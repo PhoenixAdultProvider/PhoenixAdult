@@ -75,3 +75,45 @@ def test_config_page_has_a_mobile_layout(monkeypatch: pytest.MonkeyPatch) -> Non
     assert 'touch-action: none' in body
     assert 'style="flex:0 0 170px' not in body
     assert 'style="flex:1 1 260px' not in body
+
+
+def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) -> None:
+    from phoenixadult.utils.logging.logger import logger
+
+    assert client.get('/config/api/logs').status_code == 401
+
+    logger.info('log-viewer-test', 'a distinctive line')
+    data = client.get('/config/api/logs', params={'token': TOKEN}).json()
+    assert data['reset'] is True and data['max'] == 200
+    assert any('a distinctive line' in line for line in data['lines'])
+
+    caught_up = client.get('/config/api/logs', params={'token': TOKEN, 'since': data['seq']}).json()
+    assert caught_up['lines'] == [] and caught_up['reset'] is False
+
+    logger.info('log-viewer-test', 'one more line')
+    delta = client.get('/config/api/logs', params={'token': TOKEN, 'since': data['seq']}).json()
+    assert len(delta['lines']) == 1 and 'one more line' in delta['lines'][0]
+
+
+def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
+    body = client.get('/config', params={'token': TOKEN}).text
+    assert "const LOGS_TAB = 'Logs';" in body
+    assert "return [...tabNames().map(tabSlug), 'plex', 'logs'];" in body
+    assert '[...tabNames(), PLEX_TAB, LOGS_TAB]' in body
+    assert 'id="tab-logs"' in body
+    assert 'white-space: pre;' in body
+    assert 'overflow: auto;' in body
+    assert 'touch-action: pan-x pan-y' in body
+    assert 'user-select: text' in body
+
+
+def test_the_log_view_shows_the_same_redaction_the_file_gets(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.logging.logger import logger
+
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
+    logger.info('log-viewer-test', 'fetching ?token=abcdef0123456789 now')
+
+    lines = client.get('/config/api/logs', params={'token': TOKEN}).json()['lines']
+    hit = next(line for line in lines if 'fetching' in line)
+    assert 'abcdef0123456789' not in hit
+    assert 'token=***REDACTED***' in hit

@@ -44,12 +44,15 @@ _base.propagate = False
 
 if not _base.handlers:
     from phoenixadult.utils.logging.redaction import RedactionFilter
+    from phoenixadult.utils.logging.session_log import session_log
 
     _base.addFilter(RedactionFilter())
     _fmt = AlignedFormatter()
     _console = logging.StreamHandler()
     _console.setFormatter(_fmt)
     _base.addHandler(_console)
+    session_log.setFormatter(_fmt)
+    _base.addHandler(session_log)
     try:
         _file = RotatingFileHandler(_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
         _file.setFormatter(_fmt)

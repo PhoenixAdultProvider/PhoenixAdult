@@ -33,6 +33,7 @@ from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.session_log import MAX_LINES, session_log
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
@@ -162,6 +163,12 @@ async def api_restart() -> JSONResponse:
     except OSError:
         pass
     return JSONResponse({'ok': True, 'method': 'shutdown'})
+
+
+@router.get('/api/logs')
+async def api_logs(since: int = 0) -> JSONResponse:
+    seq, lines, reset = session_log.tail(since)
+    return JSONResponse({'seq': seq, 'lines': lines, 'reset': reset, 'max': MAX_LINES})
 
 
 _CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')

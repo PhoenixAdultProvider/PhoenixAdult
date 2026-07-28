@@ -94,6 +94,21 @@
     .tabpane { display: none; }
     .tabpane.active { display: block; }
 
+    /* Logs tab */
+    .log-toolbar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; }
+    .log-follow { display: flex; gap: 0.35rem; align-items: center; font-size: 0.82rem; color: #94a3b8; }
+    .log-follow input { accent-color: #6366f1; }
+    .logview {
+      margin: 0; padding: 0.6rem 0.75rem; height: 60vh;
+      overflow: auto; white-space: pre; overflow-wrap: normal; word-break: normal; tab-size: 4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.76rem; line-height: 1.5;
+      background: #0b0d12; color: #cbd5e1; border: 1px solid #2d3748; border-radius: 6px;
+      -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; overscroll-behavior: contain;
+      -webkit-user-select: text; user-select: text; cursor: text;
+    }
+    .logview:focus-visible { outline: 1px solid #6366f1; outline-offset: -1px; }
+    .logview .empty { color: #475569; }
+
     /* Plex tab */
     .plex-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
     .plex-status { font-size: 0.82rem; color: #94a3b8; }
@@ -155,6 +170,9 @@
                 mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%); }
       .tabbar::-webkit-scrollbar { display: none; }
       .tabbar button { flex: 0 0 auto; padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+
+      .logview { height: 68vh; font-size: 0.7rem; padding: 0.5rem 0.6rem; }
+      .log-toolbar button { width: auto; padding: 0.5rem 0.8rem; font-size: 0.8rem; }
 
       input[type=text], input[type=password], select { flex: 1 1 100%; min-width: 0; font-size: 16px; }
       input.limit-input, select.lib-select { flex: 1 1 100%; min-width: 0; }
@@ -306,6 +324,21 @@
     </div>
   </div>
 
+  <div id="tab-logs" class="tabpane">
+    <h2>Session Log</h2>
+    <div class="card">
+      <div class="var-desc">The last <span id="logMax">200</span> lines this server has logged since it started, newest at the
+        bottom. Secrets and hosts are redacted the same way they are in the log file. Lines are never wrapped — scroll
+        sideways to read long ones. Drag to pan on a touch screen; select and copy as normal.</div>
+      <div class="log-toolbar">
+        <label class="log-follow"><input type="checkbox" id="logFollow" checked onchange="logFollowChanged()"> Follow New Lines</label>
+        <button type="button" class="secondary" onclick="copyLog(this)">Copy</button>
+        <span class="toolbar-status" id="logStatus"></span>
+      </div>
+      <pre id="logView" class="logview" tabindex="0"><span class="empty">Loading…</span></pre>
+    </div>
+  </div>
+
   <script>
     const STATE = __STATE_JSON__;
     let plexLibrariesLoaded = false;
@@ -334,17 +367,18 @@
 
     const PLEX_GROUP = 'Plex Server';
     const PLEX_TAB = 'Plex';
+    const LOGS_TAB = 'Logs';
 
     function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
-    function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB); }
-    function tabIds() { return [...tabNames().map(tabSlug), 'plex']; }
+    function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB); }
+    function tabIds() { return [...tabNames().map(tabSlug), 'plex', 'logs']; }
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
       const current = document.querySelector('.tabbar button.active');
       const currentId = current ? current.id.replace('tabbtn-', '') : null;
-      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB]
-        .map((t) => '<button id="tabbtn-' + (t === PLEX_TAB ? 'plex' : tabSlug(t)) + '" onclick="showTab(\'' + (t === PLEX_TAB ? 'plex' : tabSlug(t)) + '\')">' + esc(t) + '</button>')
+      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB, LOGS_TAB]
+        .map((t) => '<button id="tabbtn-' + tabSlug(t) + '" onclick="showTab(\'' + tabSlug(t) + '\')">' + esc(t) + '</button>')
         .join('');
       document.getElementById('tabpanes').innerHTML = tabNames()
         .map((t) => '<div id="tab-' + tabSlug(t) + '" class="tabpane">'
@@ -372,6 +406,7 @@
         if (btn) btn.classList.toggle('active', t === name);
       }
       if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadPlexLibraries(); }
+      if (name === 'logs') logStart(); else logStop();
       const activeBtn = document.getElementById('tabbtn-' + name);
       if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
       if (history.replaceState) history.replaceState(null, '', '#' + name);
@@ -1219,6 +1254,101 @@
         plexStatus('plex-import-status', esc(err.message), 'err');
       }
     }
+
+    // ── Session Log ───────────────────────────────────────────────────────────
+
+    const LOG_POLL_MS = 3000;
+    const LOG_BOTTOM_SLACK = 24;
+    let logSeq = 0;
+    let logMax = 200;
+    let logTimer = null;
+    let logBusy = false;
+
+    function logView() { return document.getElementById('logView'); }
+
+    function logAtBottom() {
+      const view = logView();
+      return view.scrollHeight - view.clientHeight - view.scrollTop <= LOG_BOTTOM_SLACK;
+    }
+
+    function logToEnd() { logView().scrollTop = logView().scrollHeight; }
+
+    function logFollowChanged() {
+      if (document.getElementById('logFollow').checked) logToEnd();
+    }
+
+    function logStatus(text, cls) {
+      const el = document.getElementById('logStatus');
+      el.textContent = text;
+      el.className = 'toolbar-status' + (cls ? ' ' + cls : '');
+    }
+
+    function logAppend(lines, reset) {
+      const view = logView();
+      const follow = document.getElementById('logFollow').checked;
+      if (reset) view.textContent = '';
+      for (const line of lines) view.appendChild(document.createTextNode(line + '\n'));
+      while (view.childNodes.length > logMax) view.removeChild(view.firstChild);
+      if (!view.childNodes.length) {
+        const empty = document.createElement('span');
+        empty.className = 'empty';
+        empty.textContent = 'Nothing logged yet.';
+        view.appendChild(empty);
+      }
+      if (follow) logToEnd();
+    }
+
+    async function logPoll(initial) {
+      if (logBusy) return;
+      logBusy = true;
+      try {
+        const res = await fetch(api('/config/api/logs?since=' + (initial ? 0 : logSeq)), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        logMax = data.max || logMax;
+        document.getElementById('logMax').textContent = logMax;
+        if (data.lines.length || initial) logAppend(data.lines, initial || data.reset);
+        logSeq = data.seq;
+        logStatus(logSeq ? 'Live · ' + logView().childNodes.length + ' line(s)' : 'Live', 'ok');
+      } catch (err) {
+        logStatus('Log unavailable: ' + err.message, 'err');
+      } finally {
+        logBusy = false;
+      }
+    }
+
+    function logStart() {
+      if (logTimer) return;
+      logPoll(true);
+      logTimer = setInterval(() => { if (!document.hidden) logPoll(false); }, LOG_POLL_MS);
+    }
+
+    function logStop() {
+      if (logTimer) { clearInterval(logTimer); logTimer = null; }
+    }
+
+    async function copyLog(btn) {
+      const text = logView().textContent;
+      const label = btn.textContent;
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents(logView());
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { ok = document.execCommand('copy'); } catch { ok = false; }
+      }
+      btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+      setTimeout(() => { btn.textContent = label; }, 1600);
+    }
+
+    logView().addEventListener('scroll', () => {
+      document.getElementById('logFollow').checked = logAtBottom();
+    }, { passive: true });
 
     render();
     initReconFields();
