@@ -429,16 +429,23 @@ def entries_page(
     return [_ui_entry(row) for row in rows], total
 
 
-def studios() -> list[str]:
-    return scene_store.studio_names()
+def _facet_scope(active: dict[str, Any]) -> dict[str, Any]:
+    scope = {k: v for k, v in active.items() if k != 'provider'}
+    provider = str(active.get('provider') or '')
+    scope['provider_sites'] = _provider_sites(provider) if provider else None
+    return scope
+
+
+def studios(**active: Any) -> list[str]:
+    return scene_store.studio_names(**_facet_scope(active))
 
 
 def actor_suggestions(query: str = '', limit: int = 50) -> list[str]:
     return scene_store.actor_names(query, limit)
 
 
-def facets() -> dict[str, Any]:
-    values = scene_store.facet_values()
+def facets(**active: Any) -> dict[str, Any]:
+    values = scene_store.facet_values(**_facet_scope(active))
     sites = values.pop('sites', [])
     values['providers'] = sorted({provider_name_for(site) or site for site in sites}, key=str.casefold)
     return values

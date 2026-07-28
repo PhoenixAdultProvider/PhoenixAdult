@@ -467,6 +467,32 @@ def _entry_filters(
     return (f' WHERE {" AND ".join(where)}' if where else ''), params
 
 
+def _where_for(values: dict[str, Any], drop: str = '') -> tuple[str, list[Any]]:
+    def text(name: str) -> str:
+        return '' if name == drop else str(values.get(name) or '')
+
+    def listed(name: str) -> list[str] | None:
+        if name == drop:
+            return None
+        got = values.get(name)
+        return list(got) if isinstance(got, list) else None
+
+    return _entry_filters(
+        text('studio'),
+        text('query'),
+        text('year'),
+        text('month'),
+        text('day'),
+        text('tagline'),
+        text('collection'),
+        text('data18'),
+        text('actor'),
+        text('genre'),
+        listed('provider_sites'),
+        listed('dup_paths'),
+    )
+
+
 def query_entry_rows(
     *,
     studio: str = '',
@@ -501,32 +527,47 @@ def query_entry_rows(
     return [_summary_row(r, collections, actors) for r in rows], total
 
 
-def facet_values() -> dict[str, Any]:
+_COLLECTION_JOIN = ' LEFT JOIN scene_collections sc ON sc.scene_id = s.id LEFT JOIN collections c ON c.id = sc.collection_id'
+
+
+def facet_values(**active: Any) -> dict[str, Any]:
     conn = db.connect()
 
-    def names(sql: str) -> list[str]:
-        return [str(r[0]) for r in conn.execute(sql).fetchall()]
+    def distinct(select: str, drop: str, joins: str = '') -> list[Any]:
+        where_sql, params = _where_for(active, drop)
+        return [r[0] for r in conn.execute(f'SELECT DISTINCT {select} {_SUMMARY_TABLES}{joins}{where_sql}', params).fetchall()]
 
-    def exists(sql: str) -> bool:
-        return int(conn.execute(f'SELECT EXISTS ({sql})').fetchone()[0]) == 1
+    def split(raw: list[Any]) -> tuple[list[str], bool]:
+        return [str(v) for v in raw if v], any(not v for v in raw)
+
+    taglines, tagline_blank = split(distinct('tl.name', 'tagline'))
+    collections, collection_blank = split(distinct('c.name', 'collection', _COLLECTION_JOIN))
+    years, year_blank = split(distinct('substr(s.release_date, 1, 4)', 'year'))
+    months, _ = split(distinct('substr(s.release_date, 6, 2)', 'month'))
+    days, _ = split(distinct('substr(s.release_date, 9, 2)', 'day'))
+    sites, _ = split(distinct('s.site', 'provider_sites'))
+
+    where_sql, params = _where_for(active, 'data18')
+    manual = conn.execute(f'SELECT EXISTS (SELECT 1 {_SUMMARY_TABLES}{where_sql}{" AND" if where_sql else " WHERE"} s.data18_manual = 1)', params).fetchone()[0]
 
     return {
-        'taglines': names('SELECT DISTINCT tl.name FROM scenes s JOIN taglines tl ON tl.id = s.tagline_id ORDER BY tl.name'),
-        'tagline_blank': exists('SELECT 1 FROM scenes WHERE tagline_id IS NULL'),
-        'collections': names('SELECT DISTINCT c.name FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id ORDER BY c.name'),
-        'collection_blank': exists('SELECT 1 FROM scenes s WHERE NOT EXISTS (SELECT 1 FROM scene_collections sc WHERE sc.scene_id = s.id)'),
-        'sites': names("SELECT DISTINCT site FROM scenes WHERE COALESCE(site, '') != '' ORDER BY site COLLATE NOCASE"),
-        'data18_manual': exists('SELECT 1 FROM scenes WHERE data18_manual = 1'),
-        'years': names("SELECT DISTINCT substr(release_date, 1, 4) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1 DESC"),
-        'year_blank': exists("SELECT 1 FROM scenes WHERE COALESCE(release_date, '') = ''"),
-        'months': names("SELECT DISTINCT substr(release_date, 6, 2) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1"),
-        'days': names("SELECT DISTINCT substr(release_date, 9, 2) FROM scenes WHERE COALESCE(release_date, '') != '' ORDER BY 1"),
+        'taglines': sorted(set(taglines), key=str.casefold),
+        'tagline_blank': tagline_blank,
+        'collections': sorted(set(collections), key=str.casefold),
+        'collection_blank': collection_blank,
+        'sites': sorted(set(sites), key=str.casefold),
+        'data18_manual': int(manual) == 1,
+        'years': sorted(set(years), reverse=True),
+        'year_blank': year_blank,
+        'months': sorted(set(months)),
+        'days': sorted(set(days)),
     }
 
 
-def studio_names() -> list[str]:
-    rows = db.connect().execute(f'SELECT DISTINCT st.name AS name {_SUMMARY_TABLES} WHERE st.name IS NOT NULL ORDER BY st.name').fetchall()
-    return [str(r['name']) for r in rows]
+def studio_names(**active: Any) -> list[str]:
+    where_sql, params = _where_for(active, 'studio')
+    rows = db.connect().execute(f'SELECT DISTINCT st.name AS name {_SUMMARY_TABLES}{where_sql}', params).fetchall()
+    return sorted({str(r['name']) for r in rows if r['name']}, key=str.casefold)
 
 
 def change_token() -> str:

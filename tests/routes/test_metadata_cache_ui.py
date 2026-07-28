@@ -70,8 +70,8 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
     monkeypatch.setattr(mcr.metadata_cache, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
-    monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda: ['Studio'])
-    monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda: {'taglines': ['T']})
+    monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda **_kw: ['Studio'])
+    monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda **_kw: {'taglines': ['T']})
     client = TestClient(create_app())
     assert client.get('/metadata/state').status_code == 401
     hdr = {'x-admin-token': 'tok'}
@@ -518,3 +518,37 @@ def test_edit_page_stops_waiting_when_the_job_leaves_the_queue(monkeypatch: pyte
     assert 'REFRESH_SETTLE_MS' in page.text
     assert "return 'unchanged'" in page.text
     assert 'The scrape finished without changing this snapshot' in page.text
+
+
+def _seed_faceted(site: str, cur: str, title: str, studio: str, tagline: str, date: str) -> None:
+    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import scene_store
+
+    md = {'type': 'movie', 'ratingKey': f'rk-{cur}', 'guid': 'g', 'title': title, 'studio': studio, 'tagline': tagline, 'originallyAvailableAt': date}
+    scene_store.upsert(
+        site, cur, mc._hash(site, cur), f'{studio}/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
+    )
+
+
+def test_facets_narrow_to_the_other_active_filters(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_faceted('Brazzers', 'f1', 'A', 'Brazzers', 'Real Wife Stories', '2024-01-05')
+    _seed_faceted('Brazzers', 'f2', 'B', 'Brazzers', 'Mom Ok', '2023-06-11')
+    _seed_faceted('Vixen', 'f3', 'C', 'Vixen', 'Blacked', '2022-03-02')
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    wide = client.get('/metadata/entries', headers=hdr).json()
+    assert wide['studios'] == ['Brazzers', 'Vixen']
+    assert wide['facets']['taglines'] == ['Blacked', 'Mom Ok', 'Real Wife Stories']
+    assert wide['facets']['years'] == ['2024', '2023', '2022']
+
+    narrow = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers'}).json()
+    assert narrow['facets']['taglines'] == ['Mom Ok', 'Real Wife Stories']
+    assert narrow['facets']['years'] == ['2024', '2023']
+    assert narrow['studios'] == ['Brazzers', 'Vixen']
+
+    by_year = client.get('/metadata/entries', headers=hdr, params={'year': '2022'}).json()
+    assert by_year['studios'] == ['Vixen']
+    assert by_year['facets']['taglines'] == ['Blacked']
+    assert by_year['facets']['years'] == ['2024', '2023', '2022']

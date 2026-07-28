@@ -83,8 +83,8 @@ async def test_detail_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'BaDoink VR'
-    assert detail.tagline == 'BaDoinkVR'
-    assert detail.collections == ['BaDoinkVR']
+    assert detail.tagline == ''
+    assert detail.collections == ['BaDoink VR']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['VR', '180']
     assert detail.actors[0].name == 'Jane Doe'

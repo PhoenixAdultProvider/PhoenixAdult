@@ -196,6 +196,20 @@ async def entries_json(
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
     dup_keys = await run_in('store', metadata_cache.duplicate_entries)
+    scope: dict[str, Any] = {
+        'studio': studio,
+        'query': query,
+        'year': year,
+        'month': month,
+        'day': day,
+        'tagline': tagline,
+        'collection': collection,
+        'data18': data18,
+        'actor': actor,
+        'genre': genre,
+        'provider': provider,
+        'dup_paths': dup_keys if dups else None,
+    }
     (entries, total), studios, facets = await asyncio.gather(
         run_in(
             'store',
@@ -219,8 +233,8 @@ async def entries_json(
                 offset=offset,
             ),
         ),
-        run_in('store', metadata_cache.studios),
-        run_in('store', metadata_cache.facets),
+        run_in('store', lambda: metadata_cache.studios(**scope)),
+        run_in('store', lambda: metadata_cache.facets(**scope)),
     )
     return JSONResponse({'entries': entries, 'dup_keys': dup_keys, 'total': total, 'studios': studios, 'facets': facets})
 

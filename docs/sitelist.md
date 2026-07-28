@@ -193,10 +193,9 @@ To update the site list run `python -m scripts.generate_sitelist`
   - VR Channel PornPortal
   - We Like Girls
 + #### BaDoink VR | ✅
-  - 18VR
-  - BabeVR
-  - BaDoinkVR
-  - PassthroughVR
+  - 18 VR
+  - Babe VR
+  - Passthrough VR
   - VRCosplayX
 + #### BAMVisions | ✓
 + #### Bang! | ✓ - **Title Only**
