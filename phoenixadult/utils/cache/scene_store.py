@@ -391,6 +391,7 @@ _BLANK = '__blank__'
 _SET = '__set__'
 _MANUAL = '__manual__'
 _ACTOR_EXISTS = "SELECT 1 FROM scene_people sp JOIN people p ON p.id = sp.person_id WHERE sp.scene_id = s.id AND sp.role = 'actor'"
+_ROLE_EXISTS = 'SELECT 1 FROM scene_people sp WHERE sp.scene_id = s.id AND sp.role = ?'
 _GENRE_EXISTS = 'SELECT 1 FROM scene_genres sg WHERE sg.scene_id = s.id'
 
 
@@ -405,6 +406,9 @@ def _entry_filters(
     data18: str,
     actor: str,
     genre: str,
+    cast: str,
+    director: str,
+    producer: str,
     provider_sites: list[str] | None,
     dup_paths: list[str] | None,
 ) -> tuple[str, list[Any]]:
@@ -452,6 +456,13 @@ def _entry_filters(
         where.append(f'NOT EXISTS ({_GENRE_EXISTS})')
     elif genre == _SET:
         where.append(f'EXISTS ({_GENRE_EXISTS})')
+    for role, choice in (('actor', cast), ('director', director), ('producer', producer)):
+        if choice == _BLANK:
+            where.append(f'NOT EXISTS ({_ROLE_EXISTS})')
+            params.append(role)
+        elif choice == _SET:
+            where.append(f'EXISTS ({_ROLE_EXISTS})')
+            params.append(role)
     if data18 == _SET:
         where.append("COALESCE(s.data18_id, '') != ''")
     elif data18 == _MANUAL:
@@ -488,6 +499,9 @@ def _where_for(values: dict[str, Any], drop: str = '') -> tuple[str, list[Any]]:
         text('data18'),
         text('actor'),
         text('genre'),
+        text('cast'),
+        text('director'),
+        text('producer'),
         listed('provider_sites'),
         listed('dup_paths'),
     )
@@ -505,6 +519,9 @@ def query_entry_rows(
     data18: str = '',
     actor: str = '',
     genre: str = '',
+    cast: str = '',
+    director: str = '',
+    producer: str = '',
     provider_sites: list[str] | None = None,
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
@@ -513,7 +530,9 @@ def query_entry_rows(
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
     conn = db.connect()
-    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, actor, genre, provider_sites, dup_paths)
+    where_sql, params = _entry_filters(
+        studio, query, year, month, day, tagline, collection, data18, actor, genre, cast, director, producer, provider_sites, dup_paths
+    )
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'

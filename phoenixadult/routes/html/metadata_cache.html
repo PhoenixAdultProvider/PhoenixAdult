@@ -177,8 +177,32 @@
       <label>Genres</label>
       <select id="f-genre" onchange="facetChanged()">
         <option value="">All</option>
-        <option value="__set__">Tagged</option>
         <option value="__blank__">Untagged</option>
+        <option value="__set__">Tagged</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Cast</label>
+      <select id="f-cast" onchange="facetChanged()">
+        <option value="">All</option>
+        <option value="__blank__">Uncredited</option>
+        <option value="__set__">Credited</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Directors</label>
+      <select id="f-director" onchange="facetChanged()">
+        <option value="">All</option>
+        <option value="__blank__">Uncredited</option>
+        <option value="__set__">Credited</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Producers</label>
+      <select id="f-producer" onchange="facetChanged()">
+        <option value="">All</option>
+        <option value="__blank__">Uncredited</option>
+        <option value="__set__">Credited</option>
       </select>
     </div>
     <div class="filter-group">
@@ -245,7 +269,7 @@
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     const STORE_KEY = 'metadata-cache-filters';
-    const FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    const FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-cast', 'f-director', 'f-producer', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
     const SORT_FIELDS = [
       {key: 'mtime', label: 'Cached'},
       {key: 'date', label: 'Date'},
@@ -260,7 +284,7 @@
     const PAGE_SIZE = 500;
     let offset = 0;
     const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
-    const FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
+    const FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-cast': 'cast', 'f-director': 'director', 'f-producer': 'producer', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
     function filterParams() {
       const p = new URLSearchParams();
@@ -373,12 +397,12 @@
         const sel = document.getElementById(id);
         const prev = sel.value;
         while (sel.options.length > 1) sel.remove(1); // keep "All"
-        spec.values.forEach(v => {
-          const o = document.createElement('option'); o.value = v; o.textContent = spec.label ? spec.label(v) : v; sel.appendChild(o);
-        });
         if (spec.blank) {
           const o = document.createElement('option'); o.value = '__blank__'; o.textContent = '(Blank)'; sel.appendChild(o);
         }
+        spec.values.forEach(v => {
+          const o = document.createElement('option'); o.value = v; o.textContent = spec.label ? spec.label(v) : v; sel.appendChild(o);
+        });
         ensureOption(sel, prev);
       }
     }

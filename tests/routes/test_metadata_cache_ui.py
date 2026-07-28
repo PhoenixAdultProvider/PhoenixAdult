@@ -552,3 +552,49 @@ def test_facets_narrow_to_the_other_active_filters(monkeypatch: pytest.MonkeyPat
     assert by_year['studios'] == ['Vixen']
     assert by_year['facets']['taglines'] == ['Blacked']
     assert by_year['facets']['years'] == ['2024', '2023', '2022']
+
+
+def _seed_people(cur: str, title: str, roles: list[str], directors: list[str], collections: list[str]) -> None:
+    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import scene_store
+
+    md: dict[str, object] = {'type': 'movie', 'ratingKey': f'rk-{cur}', 'guid': 'g', 'title': title, 'studio': 'Brazzers'}
+    if roles:
+        md['Role'] = [{'tag': r} for r in roles]
+    if directors:
+        md['Director'] = [{'tag': d} for d in directors]
+    if collections:
+        md['Collection'] = [{'tag': c} for c in collections]
+    scene_store.upsert(
+        'Brazzers', cur, mc._hash('Brazzers', cur), f'people/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
+    )
+
+
+def test_blank_filters_find_snapshots_missing_people_and_collections(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_people('pp1', 'Full', ['Jane Doe'], ['A Director'], ['RWS'])
+    _seed_people('pp2', 'No Cast', [], ['A Director'], ['RWS'])
+    _seed_people('pp3', 'Bare', [], [], [])
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    def titles(**params: str) -> list[str]:
+        return sorted(e['title'] for e in client.get('/metadata/entries', headers=hdr, params=params).json()['entries'])
+
+    assert titles(cast='__blank__') == ['Bare', 'No Cast']
+    assert titles(cast='__set__') == ['Full']
+    assert titles(director='__blank__') == ['Bare']
+    assert titles(producer='__blank__') == ['Bare', 'Full', 'No Cast']
+    assert titles(collection='__blank__') == ['Bare']
+    assert titles(cast='__blank__', collection='__blank__') == ['Bare']
+
+
+def test_page_offers_blank_options_for_people_and_lists_them_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    for fid in ('f-cast', 'f-director', 'f-producer'):
+        assert f'id="{fid}"' in page.text
+    assert page.text.count('<option value="__blank__">Uncredited</option>') == 3
+    assert "'f-cast': 'cast'" in page.text
+    blank_first = page.text.index("o.value = '__blank__'") < page.text.index('spec.values.forEach')
+    assert blank_first
