@@ -139,3 +139,29 @@ def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.Monke
     assert 'body.filters-open .tabs' in page.text
     assert 'updateFiltersToggle()' in page.text
     assert '@media (max-width:720px)' in page.text
+
+
+def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/people?token=tok')
+    assert 'id="sfwToggle"' in page.text
+    assert 'id="resetBtn"' in page.text
+    assert "const SFW_KEY = 'metadata-sfw';" in page.text
+    assert 'function resetFilters()' in page.text
+    assert 'body.sfw .imgs figure img{display:none}' in page.text
+
+
+def test_people_images_are_not_fetched_until_hydrated(monkeypatch: pytest.MonkeyPatch) -> None:
+    import re
+
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/people?token=tok')
+    assert not re.search(r'<img [^>]*\ssrc=', page.text)
+    assert 'img.dataset.src' in page.text
+
+
+def test_resetting_people_filters_leaves_sfw_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/people?token=tok')
+    body = page.text[page.text.index('function resetFilters()') :]
+    assert 'SFW' not in body[: body.index('showTab(curTab)')]

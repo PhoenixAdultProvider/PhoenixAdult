@@ -62,6 +62,13 @@
     .refresh { padding: 9px 18px; border: 1px solid #1d4ed8; border-radius: 6px; background: #1e293b; color: #93c5fd; cursor: pointer; font-size: 14px; }
     .refresh:hover { background: #1d4ed8; color: #fff; }
     .refresh:disabled { border-color: #334155; background: #1e2433; color: #64748b; cursor: not-allowed; }
+    .sfw-toggle { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
+    .sfw-toggle:hover { color: #e2e8f0; border-color: #475569; }
+    .sfw-toggle.on { background: #15803d; border-color: #15803d; color: #fff; }
+    .img .hidden-shot {
+      width: 100%; height: 150px; border-radius: 4px; background: #0b0d12; display: flex;
+      align-items: center; justify-content: center; color: #334155; font-size: 12px;
+    }
     .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .cancel:hover { color: #e2e8f0; }
     .status { font-size: 12px; color: #64748b; }
@@ -157,6 +164,7 @@
     </div>
     <button class="save" id="saveBtn" onclick="save()">Save</button>
     <button class="refresh" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
+    <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
     <button class="cancel" onclick="leave()">Cancel</button>
     <span class="status" id="status"></span>
   </div>
@@ -165,6 +173,24 @@
     const TOKEN = __TOKEN__;
     let KEY = __KEY__;
     let MD = __METADATA__;
+    const SFW_KEY = 'metadata-sfw';
+    let SFW = false;
+    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+
+    function paintSfwToggle() {
+      const btn = qs('sfwToggle');
+      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
+      btn.classList.toggle('on', SFW);
+      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide every image preview';
+    }
+
+    function toggleSfw() {
+      SFW = !SFW;
+      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      paintSfwToggle();
+      renderImages();
+    }
+
     const REFRESH_POLL_MS = 2000;
     const REFRESH_TIMEOUT_MS = 600000;
     const REFRESH_SETTLE_MS = 6000;
@@ -207,10 +233,17 @@
       images.forEach((img, idx) => {
         const card = document.createElement('div');
         card.className = 'img';
-        const preview = document.createElement('img');
-        preview.src = img.url;
-        preview.loading = 'lazy';
-        card.appendChild(preview);
+        if (SFW) {
+          const masked = document.createElement('div');
+          masked.className = 'hidden-shot';
+          masked.textContent = 'Hidden — SFW';
+          card.appendChild(masked);
+        } else {
+          const preview = document.createElement('img');
+          preview.src = img.url;
+          preview.loading = 'lazy';
+          card.appendChild(preview);
+        }
         const kind = document.createElement('select');
         KINDS.forEach(k => {
           const opt = document.createElement('option');
@@ -422,6 +455,7 @@
     qs('f-data18Id').addEventListener('input', renderData18State);
     qs('f-data18Type').addEventListener('change', renderData18State);
 
+    paintSfwToggle();
     load();
   </script>
 </body>

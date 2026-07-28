@@ -82,6 +82,9 @@
     .refresh-btn { padding: 8px 16px; border: 1px solid #1d4ed8; border-radius: 6px; background: #1e293b; color: #93c5fd; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .refresh-btn:hover { background: #1d4ed8; color: #fff; }
     .refresh-btn:disabled { border-color: #334155; background: #1e293b; color: #64748b; cursor: not-allowed; }
+    .sfw-toggle { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
+    .sfw-toggle:hover { color: #e2e8f0; border-color: #475569; }
+    .sfw-toggle.on { background: #15803d; border-color: #15803d; color: #fff; }
     .dup-toggle { padding: 8px 16px; border: 1px solid #f59e0b; border-radius: 6px; background: #1e293b; color: #f59e0b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
     .dup-toggle.on { background: #b45309; color: #fff; }
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
@@ -230,6 +233,7 @@
 
   <div class="toolbar">
     <button class="reset-btn" onclick="reset()">Reset</button>
+    <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
@@ -269,6 +273,23 @@
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     const STORE_KEY = 'metadata-cache-filters';
+    const SFW_KEY = 'metadata-sfw';
+    let SFW = false;
+    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+
+    function paintSfwToggle() {
+      const btn = document.getElementById('sfwToggle');
+      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
+      btn.classList.toggle('on', SFW);
+      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide every image preview';
+    }
+
+    function toggleSfw() {
+      SFW = !SFW;
+      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      paintSfwToggle();
+      render();
+    }
     const FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-cast', 'f-director', 'f-producer', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
     const SORT_FIELDS = [
       {key: 'mtime', label: 'Cached'},
@@ -515,9 +536,11 @@
       empty.style.display = 'none';
 
       cards.innerHTML = rows.map(e => {
-        const thumb = e.thumb
-          ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">`
-          : `<div class="noimg">No Image</div>`;
+        const thumb = SFW
+          ? `<div class="noimg">Hidden — SFW</div>`
+          : e.thumb
+            ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">`
+            : `<div class="noimg">No Image</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
           ? esc(e.data18_id) + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
@@ -734,6 +757,7 @@
 
     document.getElementById('f-actor').addEventListener('focus', () => loadActorOptions(document.getElementById('f-actor').value.trim()));
 
+    paintSfwToggle();
     decorate();
     buildFacetOptions();
     buildSortOptions();

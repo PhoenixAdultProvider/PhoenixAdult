@@ -151,7 +151,9 @@ def _card(entry: dict[str, Any]) -> str:
     source_badge = f'<span class="badge src">{html.escape(source)}</span>' if source else ''
     filename_attr = html.escape(filename, quote=True)
     if upstream:
-        upstream_fig = f'<figure><figcaption>Upstream Original</figcaption><img src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
+        upstream_fig = (
+            f'<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
+        )
         restore_btn = '<button class="restore">Use Original</button>' if cropped else '<button class="restore" disabled>Original Kept</button>'
     else:
         upstream_fig = ''
@@ -163,7 +165,7 @@ def _card(entry: dict[str, Any]) -> str:
     return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}{source_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img src="{html.escape(local_src)}" loading="lazy"></figure>
+        <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{html.escape(local_src)}" loading="lazy"></figure>
         {upstream_fig}
       </div>
       {_gender_buttons(str(entry.get('gender', '')))}
@@ -210,6 +212,10 @@ async def page(request: Request) -> HTMLResponse:
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
       figcaption{{font-size:11px;color:#94a3b8;margin-bottom:4px}}
       img{{width:100%;height:170px;object-fit:contain;background:#0b0d12;border-radius:6px}}
+      body.sfw .imgs figure img{{display:none}}
+      body.sfw .imgs figure::after{{content:'Hidden 4 SFW';display:flex;align-items:center;justify-content:center;
+        height:170px;background:#0b0d12;border-radius:6px;color:#334155;font-size:12px}}
+      .sfwtoggle.on{{background:#15803d;border-color:#15803d;color:#fff}}
       .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#94a3b8}}
       .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}
       .g.gf.active{{background:#db2777}} .g.gm.active{{background:#2563eb}} .g.gt.active{{background:#9333ea}} .g.gn.active{{background:#64748b}}
@@ -268,6 +274,8 @@ async def page(request: Request) -> HTMLResponse:
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
       <select id="bulkSource">{source_options}</select>
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
+      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
+      <button class="tab" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
       <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span></div>
     <div class="grid">{cards}</div>
@@ -299,6 +307,32 @@ async def page(request: Request) -> HTMLResponse:
         location.href = '/people/edit?' + p.toString();
       }}
       const STORE_KEY = 'people-cache-filters';
+      const SFW_KEY = 'metadata-sfw';
+      let SFW = false;
+      try {{ SFW = localStorage.getItem(SFW_KEY) === '1'; }} catch {{}}
+      function paintImages(){{
+        document.body.classList.toggle('sfw', SFW);
+        document.querySelectorAll('.imgs img').forEach(img => {{
+          if(SFW) img.removeAttribute('src');
+          else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+        }});
+        const btn = document.getElementById('sfwToggle');
+        btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
+        btn.classList.toggle('on', SFW);
+      }}
+      function toggleSfw(){{
+        SFW = !SFW;
+        try {{ localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); }} catch {{}}
+        paintImages();
+      }}
+      function resetFilters(){{
+        croppedOnly = false;
+        noUpstreamOnly = false;
+        document.getElementById('nameSearch').value = '';
+        document.getElementById('cropToggle').classList.remove('on');
+        document.getElementById('upstreamToggle').classList.remove('on');
+        showTab(curTab);
+      }}
       let croppedOnly = false;
       let noUpstreamOnly = false;
       let curTab = '';
@@ -434,6 +468,7 @@ async def page(request: Request) -> HTMLResponse:
       const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
       const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
       restoreFilters();
+      paintImages();
       showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
     </script></body></html>"""
     return HTMLResponse(body)

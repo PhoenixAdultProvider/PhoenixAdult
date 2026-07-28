@@ -598,3 +598,20 @@ def test_page_offers_blank_options_for_people_and_lists_them_first(monkeypatch: 
     assert "'f-cast': 'cast'" in page.text
     blank_first = page.text.index("o.value = '__blank__'") < page.text.index('spec.values.forEach')
     assert blank_first
+
+
+def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    client = _edit_client(monkeypatch)
+
+    listing = client.get('/metadata?token=tok')
+    assert 'id="sfwToggle"' in listing.text
+    assert "const SFW_KEY = 'metadata-sfw';" in listing.text
+    assert 'Hidden — SFW' in listing.text
+    assert 'toggleSfw()' in listing.text
+
+    editor = client.get('/metadata/edit?token=tok&key=studio/abc')
+    assert 'id="sfwToggle"' in editor.text
+    assert "const SFW_KEY = 'metadata-sfw';" in editor.text
+    assert "masked.className = 'hidden-shot'" in editor.text
+    assert 'paintSfwToggle();\n    load();' in editor.text
