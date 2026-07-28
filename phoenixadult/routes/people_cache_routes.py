@@ -53,7 +53,6 @@ _TABS = [
 
 
 def _parse_filename(filename: str) -> tuple[str, str, str] | None:
-    """(role, display_name, gender) from `role.slug[_gender].ext`; None if not a person file."""
     role, slug, gender = parse_person_filename(filename)
     if role not in _ROLES or not slug:
         return None
@@ -82,8 +81,6 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
 
 
 def _list_people(directory: str) -> list[dict[str, Any]]:
-    """Every cached headshot (originals/ excluded) from the people_images index merged with crop-log
-    metadata, newest first; entries carry relpath (served URL) and `type` (tab)."""
     rows = _index_conn().execute('SELECT rel_path, mtime FROM people_images ORDER BY rel_path').fetchall()
     if not rows:
         return _list_people_files(directory)
@@ -95,7 +92,6 @@ def _list_people(directory: str) -> list[dict[str, Any]]:
 
 
 def _list_people_files(directory: str) -> list[dict[str, Any]]:
-    """Filesystem fallback for an empty index: walk the role/gender subfolders directly."""
     root = Path(directory)
     if not root.exists():
         return []

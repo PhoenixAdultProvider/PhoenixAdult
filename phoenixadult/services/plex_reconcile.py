@@ -80,7 +80,6 @@ def _guid_prefixes() -> tuple[str, ...]:
 
 
 def _our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str | None:
-    """The provider-side rating key inside one of our guids, else None."""
     if not guid.startswith(prefixes if prefixes is not None else _guid_prefixes()):
         return None
     _, _, tail = guid.partition('://')
@@ -89,7 +88,6 @@ def _our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str |
 
 
 async def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
-    """The tag values from this scene's cached snapshot, or None when it was never snapshotted."""
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed['site_name'] or not parsed['cur_id'] or not metadata_cache.enabled():
         return None
@@ -105,8 +103,6 @@ def _plex_tags(item: dict[str, Any], provider_field: str) -> list[str]:
 
 
 def _removal_reason(value: str, desired_values: list[str]) -> str:
-    """Why a Plex-held tag no longer matches the snapshot: a casing/spacing drift of a
-    still-emitted value, or a value the scraper simply stopped emitting."""
     fold = ' '.join(value.casefold().split())
     for desired in desired_values:
         if ' '.join(desired.casefold().split()) == fold:
@@ -155,7 +151,6 @@ class PlexClient:
         r.raise_for_status()
 
     async def set_tags(self, section: str, rating_key: str, tag: str, values: list[str]) -> None:
-        """Replace the field with exactly these values — removes stale AND fixes recased in one write."""
         params = {'type': '1', 'id': rating_key, f'{tag}.locked': '0'}
         for i, value in enumerate(values):
             params[f'{tag}[{i}].tag.tag'] = value
@@ -167,7 +162,6 @@ class PlexClient:
         return list(container.get('Metadata') or [])
 
     async def artwork(self, rating_key: str, kind: str) -> list[dict[str, Any]]:
-        """Every poster/art candidate Plex holds for an item, not just the selected one."""
         container = await self._get(f'/library/metadata/{rating_key}/{kind}')
         return list(container.get('Metadata') or [])
 
@@ -176,7 +170,6 @@ class PlexClient:
         return [str(m.get('key') or '') for m in (container.get('Metadata') or [])]
 
     async def set_clear_logo(self, rating_key: str, url: str) -> None:
-        """Add the logo as a candidate then select it (Plex's two-step artwork model)."""
         r = await self.http.post(f'{self.base}/library/metadata/{rating_key}/clearLogos', params={'url': url})
         r.raise_for_status()
         r = await self.http.put(f'{self.base}/library/metadata/{rating_key}/clearLogo', params={'url': url})
@@ -187,8 +180,6 @@ class PlexClient:
 
 
 async def reconcile(apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None) -> ReconcileReport:
-    """Strip tags Plex still holds that the provider no longer returns. Dry-run by default.
-    fields/sites narrow the pass to specific tag types and scraper clients."""
     report = ReconcileReport(applied=apply)
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
     site_filter = {s.casefold() for s in sites} if sites else None
@@ -278,8 +269,6 @@ class CollectionLogoReport:
 
 
 async def push_collection_logos(apply: bool = False, limit: int | None = None) -> CollectionLogoReport:
-    """Set each Plex collection's clearLogo from a matching cached logo file (by name slug); dry-run by
-    default, idempotent. Plex fetches the logo from IMAGE_BASE_URL, so that must reach the Plex server."""
     from phoenixadult.config import image_base_url
     from phoenixadult.utils.images import logo_cache
 

@@ -16,7 +16,6 @@ _COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
 
 
 def _cls(name: str) -> str:
-    """Whole-class-token match (CSS `.name`) — avoids `contains` over-matching."""
     return f'contains(concat(" ",normalize-space(@class)," ")," {name} ")'
 
 
@@ -25,8 +24,6 @@ class Network5KPClient(Client):
         super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """The site search is actor-based: with SEARCH_STRIP_ACTORS on, the filename's
-        leading actor names become the query; otherwise the full title is sent."""
         actor_query = split_actor_prefix(search_data.title)[0] if enabled_for(search_data.site_info) else search_data.title
 
         url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', quote(actor_query))

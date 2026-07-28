@@ -20,9 +20,6 @@ _LOCATION_WIDTH = 28
 
 
 class AlignedFormatter(logging.Formatter):
-    """Provider log format with fixed-width level + location fields so the message colon
-    aligns. Defaults request_id (the record factory isn't installed in the uvicorn reloader)."""
-
     def __init__(self, fmt: str = _LOG_FORMAT, **kwargs: object) -> None:
         super().__init__(fmt, **kwargs)  # type: ignore[arg-type]
 

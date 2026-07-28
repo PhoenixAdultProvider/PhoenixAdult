@@ -17,8 +17,6 @@ TOKEN = 'devtoken'
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    """The /dev UI is only mounted outside production; pin it so an ambient
-    NODE_ENV=production in the developer's .env can't 404 these tests."""
     monkeypatch.setenv('NODE_ENV', 'development')
     monkeypatch.setenv('ADMIN_TOKEN', TOKEN)
     return TestClient(create_app())

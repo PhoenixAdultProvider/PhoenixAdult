@@ -95,7 +95,6 @@ def _version_tuple(version: str) -> tuple[int, ...]:
 
 
 async def update_status(force: bool = False) -> dict[str, Any]:
-    """Local-only Plex update check: current PMS version vs plex.tv downloads, TTL-cached."""
     global _update_cache
     now = time.monotonic()
     if not force and _update_cache and now - _update_cache[0] < _UPDATE_TTL:

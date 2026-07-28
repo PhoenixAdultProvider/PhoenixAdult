@@ -25,8 +25,6 @@ class _Config:
 
 
 def _normalize_base_url(raw: str | None, port: int) -> str:
-    """base_url goes verbatim into image/link URLs, so it must be absolute; an explicit
-    value is never port-injected — a tunnel/proxy FQDN carries its own public address."""
     if not raw or not raw.strip():
         return f'http://localhost:{port}'
     value = raw.strip()
@@ -44,8 +42,6 @@ config = _Config(
 
 
 def base_url_config_warning() -> str | None:
-    """Startup warning when PHOENIX_BASE_URL is set but malformed (no scheme);
-    None when it's unset or well-formed."""
     raw = (_RAW_BASE_URL or '').strip()
     if not raw or _SCHEME_RE.match(raw):
         return None
@@ -61,8 +57,6 @@ _local_ip_cache: dict[tuple[socket.AddressFamily, str], tuple[float, str]] = {}
 
 
 def _local_ip(family: socket.AddressFamily, probe: str) -> str:
-    """No packets are sent — connect() on a UDP socket just picks the local address the OS
-    would route to reach `probe`; TTL'd so a DHCP/VPN change doesn't serve a stale IP."""
     hit = _local_ip_cache.get((family, probe))
     if hit and time.monotonic() - hit[0] < _LOCAL_IP_TTL:
         return hit[1]
@@ -78,8 +72,6 @@ def _local_ip(family: socket.AddressFamily, probe: str) -> str:
 
 
 def image_base_url() -> str:
-    """Base URL for locally-served images (headshots + collection logos), selected by IMAGE_BASE_URL —
-    Plex re-requests these, so a stable local address outlives an ephemeral tunnel FQDN; poster/art keep base_url."""
     from phoenixadult.config.env import env
 
     opt = env.image_base_url_raw

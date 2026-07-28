@@ -10,7 +10,5 @@ def gender_detect_enabled() -> bool:
 
 
 async def iafd_gender_check(actor_name: str) -> Gender:
-    """Resolve a performer's gender via the shared IAFD matcher (same search +
-    anti-bot bypass used for headshot lookup); returns '' on no match / any failure."""
     match = await iafd_best_match(actor_name)
     return match[1] if match else ''

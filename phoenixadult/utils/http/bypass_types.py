@@ -18,8 +18,6 @@ class BypassRequest:
 
 @dataclass
 class BypassResponse:
-    """user_agent is the UA the solver used — it must be reused when replaying with its cookies."""
-
     status: int
     body: str
     headers: dict[str, str] = field(default_factory=dict)

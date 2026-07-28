@@ -30,8 +30,6 @@ def load_data(caller_file: str, name: str, kind: Literal['html']) -> str: ...
 @overload
 def load_data(caller_file: str, name: str, kind: Literal['path']) -> Path: ...
 def load_data(caller_file: str, name: str, kind: Literal['json', 'html', 'path'] = 'json') -> Any:
-    """Load a convention-placed asset relative to the caller's module (pass `__file__`): 'json'
-    parses _data/json/<name>.json (bare name), 'html' reads html/<name>.html, 'path' -> _data/<name>."""
     folder = Path(caller_file).parent
     if kind == 'html':
         return (folder / 'html' / f'{name}.html').read_text(encoding='utf-8')
@@ -60,15 +58,12 @@ _SUBSITE_SEP = '\x1f'
 
 
 def embed_subsite(cur_id: str, subsite: str | None) -> str:
-    """Fold a sub-site into a (b64url) cur_id so it rides inside the opaque cur_id token
-    and survives Plex's guid round-trip (a rating-key suffix does not). No-op when falsy."""
     if not subsite:
         return cur_id
     return b64url_encode(b64url_decode(cur_id) + _SUBSITE_SEP + subsite)
 
 
 def split_subsite(decoded_cur_id: str) -> tuple[str, str | None]:
-    """Inverse of embed_subsite on a decoded cur_id: (scraper payload, sub-site or None)."""
     payload, _, sub = decoded_cur_id.partition(_SUBSITE_SEP)
     return payload, sub or None
 
@@ -90,7 +85,6 @@ def slugify(s: str, **kwargs: Any) -> str:
 
 
 def hash_key(*parts: str, sep: str, length: int | None = None) -> str:
-    """Stable sha1 hex key of the sep-joined parts, truncated to `length` when given."""
     digest = hashlib.sha1(sep.join(parts).encode('utf-8')).hexdigest()  # noqa: S324 - non-crypto key
     return digest[:length] if length else digest
 
@@ -122,15 +116,12 @@ _ISO_PREFIX_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
 
 
 def api_date(raw: str | None) -> str | None:
-    """An already-ISO date (YYYY-MM-DD…) is trimmed to its date prefix; anything else
-    goes through iso_date. Common shape for JSON-API publishedAt/date fields."""
     if not raw:
         return None
     return raw[:10] if _ISO_PREFIX_RE.match(raw) else iso_date(raw)
 
 
 def epoch_date(value: Any) -> str | None:
-    """Unix timestamp (seconds, or milliseconds if > 1e11) → YYYY-MM-DD; None if unparsable."""
     try:
         ts = int(value)
     except (ValueError, TypeError):
@@ -185,26 +176,20 @@ def format_duration(ms: int | None) -> str | None:
 
 
 def to_https(raw: str) -> str:
-    """Upgrade a protocol-relative URL (//host/x) to https; pass anything else through."""
     return f'https:{raw}' if raw.startswith('//') else raw
 
 
 def strip_query(url: str | None) -> str:
-    """Drop the query string (everything from '?' on); '' for falsy input."""
     return (url or '').split('?')[0]
 
 
 def join_url(path: str, base_url: str) -> str:
-    """Prefix base_url when only a path is present; pass already-absolute (http) URLs through.
-    Unlike absolute_url, a protocol-relative //host URL is kept relative to base."""
     if path.startswith('http'):
         return path
     return f'{base_url}{path if path.startswith("/") else f"/{path}"}'
 
 
 def append_unique(items: list[str], raw: str | None, base_url: str | None = None) -> None:
-    """Append a stripped URL to items unless empty or already present; resolve it
-    against base_url when given."""
     value = (raw or '').strip()
     if not value:
         return
@@ -215,8 +200,6 @@ def append_unique(items: list[str], raw: str | None, base_url: str | None = None
 
 
 def pad_jav_id(jav_id: str, ignore_labels: list[str]) -> str:
-    """Zero-pad a JAVID's numeric part to 3 digits (ABC-1 -> ABC-001) unless the
-    label is in ignore_labels."""
     label = jav_id.split('-')[0]
     num = '-'.join(jav_id.split('-')[1:])
     if len(num) >= 3 or any(item.lower() == label.lower() for item in ignore_labels):
@@ -319,7 +302,6 @@ def build_search_result(
 
 
 def dict_values_from_key[T](table: Mapping[Any, T], identifier: str) -> T | None:
-    """Case-insensitive lookup where a key may be a tuple of equivalent identifiers."""
     wanted = str(identifier).casefold()
     for key, values in table.items():
         keys = key if isinstance(key, tuple) else (key,)

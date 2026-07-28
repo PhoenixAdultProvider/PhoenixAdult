@@ -1,6 +1,3 @@
-"""Every catalog env var must appear in .env.example (set or commented), so the
-sample can't silently fall behind new config."""
-
 from __future__ import annotations
 
 import re

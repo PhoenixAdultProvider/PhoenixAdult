@@ -161,8 +161,6 @@ async def test_dry_run_counts_without_writing(monkeypatch: pytest.MonkeyPatch) -
 
 @pytest.mark.asyncio
 async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The staged URL must resolve back through the snapshot writer's own /cache/ lookup, or the
-    bytes are silently dropped and the scene lands imageless."""
     from phoenixadult.utils import cache as metadata_cache
 
     monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
@@ -206,8 +204,6 @@ async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monke
 
 @pytest.mark.asyncio
 async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Plex lists the agent's whole image set as poster/art candidates; the import keeps all of
-    them, drops cross-bucket duplicates, and types each by aspect ratio."""
     import io
 
     from PIL import Image as PILImage
@@ -262,8 +258,6 @@ async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, m
 
 
 def test_odd_portraits_are_kept_but_ranked_last() -> None:
-    """A 480x640 still (aspect 1.33) is a usable cover but not a proper one: it is kept so the
-    bytes are not lost, and sorts behind the correctly shaped 1.5 poster."""
     from phoenixadult.utils.images.image_classifier import classify_image
 
     probed = [

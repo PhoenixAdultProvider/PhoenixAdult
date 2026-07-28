@@ -21,7 +21,6 @@ _SPACED_DOTS_RE = re.compile(r'\.[ \t]*\.[ \t]*\.')
 
 
 def normalize_text(text: str | None) -> str:
-    """Straighten typographic punctuation and collapse horizontal whitespace, preserving newlines."""
     if not text:
         return ''
     text = text.replace('\r\n', '\n').replace('\r', '\n')

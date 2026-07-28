@@ -17,7 +17,6 @@ _SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
 
 
 def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None:
-    """The live per-provider service, so out-of-band callers share its memo and queue."""
     for provider, _match_service, metadata_service in _SERVICES:
         if provider.id == provider_id:
             return provider, metadata_service
@@ -25,7 +24,6 @@ def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None
 
 
 async def restore_queue() -> None:
-    """Re-enqueue background jobs persisted before the last shutdown."""
     replays = scrape_queue.take_replays()
     restored = 0
     for replay in replays.values():

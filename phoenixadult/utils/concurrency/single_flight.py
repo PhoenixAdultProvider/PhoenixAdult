@@ -6,9 +6,6 @@ from collections.abc import Awaitable, Callable
 
 
 class SingleFlight[K, V]:
-    """Coalesce concurrent async misses per key; `factory` returns (value, expires_at_epoch) or None
-    on failure — None reuses the last value even when expired unless serve_stale=False."""
-
     def __init__(self, *, serve_stale: bool = True) -> None:
         self._serve_stale = serve_stale
         self._cache: dict[K, tuple[V, float]] = {}

@@ -38,7 +38,6 @@ class DuckDuckGoClient:
         return True
 
     async def search(self, opts: SearchOptions) -> list[str]:
-        """DDG's HTML interface 403s a default UA (browser headers) and has no site-search param (site: in query)."""
         num = max(1, opts.num or 10)
         query = f'site:{opts.site} {opts.query}'
         url = f'{_ENDPOINT}?q={quote(query)}'

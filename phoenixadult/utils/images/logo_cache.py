@@ -21,15 +21,11 @@ def cache_dir() -> Path:
 
 
 def logo_slug(name: str) -> str:
-    """Filename slug for a site/studio name: lowercase, spaces to hyphens, other special chars
-    removed ('Nubiles.net' -> 'nubilesnet', 'Baby Got Boobs' -> 'baby-got-boobs')."""
     cleaned = re.sub(r'[^a-z0-9 ]', '', name.lower())
     return re.sub(r'\s+', '-', cleaned.strip())
 
 
 def _find_bin(name: str) -> str | None:
-    """`name` on PATH, else the usual install prefixes — daemon(8) often runs with a PATH
-    that omits /usr/local/bin, so shutil.which alone misses an installed binary."""
     found = shutil.which(name)
     if found:
         return found
@@ -52,7 +48,6 @@ def _rsvg(svg: Path, png: Path) -> bool:
 
 
 def _cairosvg(svg: Path, png: Path) -> bool | None:
-    """None = cairosvg not installed (try the next converter); True/False = attempt outcome."""
     try:
         import cairosvg
     except ImportError:
@@ -78,8 +73,6 @@ def _magick(svg: Path, png: Path) -> bool:
 
 
 def convert_svg(svg: Path) -> Path | None:
-    """Rasterize an SVG logo to a sibling PNG (deletes the SVG on success). Prefers rsvg-convert
-    then cairosvg; ImageMagick is last as its built-in renderer mangles masks into white blocks."""
     png = svg.with_suffix('.png')
     ok = _rsvg(svg, png) or _cairosvg(svg, png) or _magick(svg, png)
     if not ok:
@@ -98,7 +91,6 @@ def invalidate() -> None:
 
 
 def reconcile() -> None:
-    """Rebuild the logos table from the files on disk (source of truth)."""
     _index.reconcile()
 
 
@@ -140,7 +132,6 @@ def _rebuild(conn: sqlite3.Connection) -> None:
 
 
 def _scan_folder(conn: sqlite3.Connection, folder_slug: str) -> None:
-    """Bounded scan-on-miss: index any logo files sitting in one candidate studio folder."""
     root = cache_dir()
     folder = root / folder_slug
     if not folder_slug or not folder.is_dir():
@@ -162,8 +153,6 @@ def _scan_folder(conn: sqlite3.Connection, folder_slug: str) -> None:
 
 
 def _lookup(conn: sqlite3.Connection, slug: str) -> Path | None:
-    """Keyed logos lookup that heals stale rows: rows whose file is gone are deleted
-    and the next candidate row tried; None on a miss."""
     root = cache_dir()
     while True:
         row = conn.execute('SELECT rel_path FROM logos WHERE name_slug = ? ORDER BY rel_path LIMIT 1', (slug,)).fetchone()
@@ -177,8 +166,6 @@ def _lookup(conn: sqlite3.Connection, slug: str) -> Path | None:
 
 
 def find_logo(tagline: str | None, studio: str | None) -> Path | None:
-    """First cache hit for the tagline slug then the studio slug (match priority), scanning the two
-    candidate studio folders once on a miss; None when neither name matches a file."""
     conn = _conn()
     scanned = False
     for name in (tagline, studio):
@@ -205,7 +192,6 @@ def local_url(path: Path) -> str | None:
 
 
 def entries() -> list[dict[str, Any]]:
-    """All cached logos for the review UI, straight from the logos table."""
     conn = _conn()
     rows = conn.execute('SELECT name_slug, MIN(rel_path) AS rel_path FROM logos GROUP BY name_slug ORDER BY name_slug').fetchall()
     root = cache_dir()
@@ -250,8 +236,6 @@ def purge_all() -> int:
 
 
 def _adopt_manual_drops() -> int:
-    """Rename manually-dropped logo files (any name) to `logo.<slug>.<ext>` so the reconcile
-    picks them up; the studio folder is the drop target, the file stem becomes the name slug."""
     root = cache_dir()
     if not root.exists():
         return 0
@@ -273,8 +257,6 @@ def _adopt_manual_drops() -> int:
 
 
 def rescan() -> int:
-    """Adopt manual drops then rebuild the index (converting any SVG to PNG), so a
-    hand-placed logo is served without a restart. Returns the number of cached logos."""
     _adopt_manual_drops()
     reconcile()
     return len(entries())

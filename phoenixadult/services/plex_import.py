@@ -89,8 +89,6 @@ def _foreign_cur_id(guid: str) -> str:
 
 
 def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
-    """(site name, cur_id) for a Plex item: our own guid first, then the retired bundle's numeric
-    site id, then the studio field — which is what recovers a scene another agent matched."""
     if rating_key := _our_rating_key(guid):
         parsed = parse_rating_key(rating_key)
         if parsed and parsed['site_name'] and parsed['cur_id']:
@@ -117,7 +115,6 @@ def _tags(item: dict[str, Any], key: str) -> list[dict[str, str]]:
 
 
 def _roles(item: dict[str, Any], key: str) -> list[dict[str, Any]]:
-    """Cast/crew without thumbs — headshots are left to the people pipeline, not imported."""
     out: list[dict[str, Any]] = []
     for order, entry in enumerate(item.get(key) or []):
         if not entry.get('tag'):
@@ -130,15 +127,11 @@ def _roles(item: dict[str, Any], key: str) -> list[dict[str, Any]]:
 
 
 def _candidate_ref(candidate: dict[str, Any]) -> str:
-    """The bytes a candidate points at. Posters and arts list the same agent images under
-    different buckets, so the trailing hash — not the bucket — identifies a duplicate."""
     ref = str(candidate.get('ratingKey') or candidate.get('key') or '')
     return ref.rsplit('/', 1)[-1] if ref else ''
 
 
 def _candidate_url(client: PlexClient, candidate: dict[str, Any]) -> str:
-    """A fetchable URL for one candidate: a server path when Plex gives one, otherwise the photo
-    endpoint, which is the only way to read an agent-supplied `metadata://` image."""
     key = str(candidate.get('key') or '')
     if key.startswith('http'):
         return key
@@ -149,8 +142,6 @@ def _candidate_url(client: PlexClient, candidate: dict[str, Any]) -> str:
 
 
 async def _fetch_candidate(client: PlexClient, url: str) -> tuple[bytes, str, int, int] | None:
-    """Bytes, extension and dimensions for one candidate — measured before anything is written, so
-    the file can be named for what the image actually is rather than the bucket it came from."""
     try:
         r = await client.http.get(url)
         r.raise_for_status()
@@ -167,8 +158,6 @@ async def _fetch_candidate(client: PlexClient, url: str) -> tuple[bytes, str, in
 
 
 def _stage_image(staging: Path, name: str, content: bytes, ext: str) -> str:
-    """Write staged bytes and return the /cache/ URL the snapshot writer will adopt them from, so
-    the Plex token never reaches stored metadata."""
     images = staging / 'images'
     images.mkdir(parents=True, exist_ok=True)
     (images / f'{name}{ext}').write_bytes(content)
@@ -176,8 +165,6 @@ def _stage_image(staging: Path, name: str, content: bytes, ext: str) -> str:
 
 
 async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> list[PlexImage]:
-    """Every poster and art candidate Plex holds, deduplicated across the two buckets and put
-    through the mapper's own artwork pipeline, so shape decides the kind — never the bucket."""
     probed: list[dict[str, Any]] = []
     seen: set[str] = set()
     counts: dict[str, int] = {}
@@ -205,7 +192,6 @@ async def _stage_artwork(client: PlexClient, staging: Path, rating_key: str) -> 
 
 
 def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[PlexImage]) -> PlexMetadataResponse:
-    """Assemble a provider response from one Plex item, keyed so a later serve finds it."""
     title = str(item.get('title') or '')
     date = str(item.get('originallyAvailableAt') or '')
     rating_key = to_rating_key(cur_id, site_name, date or None)
@@ -283,7 +269,6 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
 
 
 async def libraries() -> list[dict[str, str]]:
-    """Movie sections on the configured server, for the import dropdown."""
     client = PlexClient()
     try:
         return await client.movie_libraries()
@@ -292,8 +277,6 @@ async def libraries() -> list[dict[str, str]]:
 
 
 async def import_library(section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False) -> ImportReport:
-    """Snapshot every scene in one Plex library into the metadata cache. Dry-run by default;
-    scenes already cached are left alone so a stored fresh scrape is never overwritten."""
     report = ImportReport(applied=apply, section=section)
     if not metadata_cache.enabled():
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')

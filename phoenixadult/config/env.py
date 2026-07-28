@@ -30,8 +30,6 @@ class _Env:
 
     @property
     def log_redact_token(self) -> bool:
-        """Masks secret query values (?token=…); defaults to the production posture —
-        masked in prod (logs persist/ship), visible in dev so the admin URL stays clickable."""
         raw = os.environ.get('LOG_REDACT_TOKEN')
         if raw is None or raw.strip() == '':
             return self.is_production
@@ -97,7 +95,6 @@ class _Env:
 
     @property
     def search_store_ttl_days(self) -> int:
-        """Days a cached search result stays valid; 0 = perpetual (never expires)."""
         try:
             return max(0, int(os.environ.get('SEARCH_STORE_TTL_DAYS') or 0))
         except ValueError:
@@ -109,7 +106,6 @@ class _Env:
 
     @property
     def db_backup_interval_hours(self) -> int:
-        """Hours between app-triggered VACUUM INTO backups; 0 disables them."""
         try:
             return max(0, int(os.environ.get('DB_BACKUP_INTERVAL_HOURS') or 24))
         except ValueError:

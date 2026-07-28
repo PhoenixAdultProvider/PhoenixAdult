@@ -1,6 +1,3 @@
-"""Base Client fetch_and_load: 202 / empty-body responses are anti-bot soft-blocks
-and must be treated as failures (so the bypass fallback can fire)."""
-
 from __future__ import annotations
 
 import httpx

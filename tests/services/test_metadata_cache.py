@@ -200,8 +200,6 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
 
 @respx.mock
 async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Image URLs are stored host-relative and rebased on every read — metadata images (/cache/)
-    onto base_url, people images (/images/local/) onto IMAGE_BASE_URL's base — so both survive a tunnel change."""
     from types import SimpleNamespace
 
     image_fetcher._cache.clear()
@@ -650,8 +648,6 @@ async def test_read_orders_each_image_kind_high_to_low(tmp_path: pytest.TempPath
 
 @respx.mock
 async def test_rewrite_keeps_snapshot_images_in_place(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """A backfill rewrite must never re-download or renumber already-snapshotted images —
-    renumbering is what scrambled kinds against files across rewrite generations."""
     image_fetcher._cache.clear()
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))

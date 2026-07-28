@@ -43,8 +43,6 @@ def solve_pow(challenge: str, difficulty: int) -> int:
 async def get_verified_cookies(
     base_url: str, challenge_path: str = '/video/gallery', pace: Callable[[], Awaitable[None]] | None = None
 ) -> dict[str, str] | None:
-    """Challenge cookies for `base_url`, solving the PoW turnstile on `challenge_path` (cached per
-    host); `pace` is awaited before each request so a caller's site rate limit covers the warm-ups."""
     host = urlsplit(base_url).hostname or ''
     if not host:
         return None

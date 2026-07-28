@@ -18,8 +18,6 @@ class ActorRules(NamedTuple):
 
 
 def _alias_lookup(table: dict[str, list[str]]) -> dict[str, str]:
-    """Lowercased alias/canonical -> canonical map; first entry wins on duplicates,
-    matching the original sequential-scan resolution order."""
     out: dict[str, str] = {}
     for canonical, aliases in table.items():
         out.setdefault(canonical.lower(), canonical)
@@ -47,8 +45,6 @@ _RULES: MtimeCachedJson[ActorRules] = MtimeCachedJson(_ACTORS_PATH, _build)
 
 
 def actor_rules() -> ActorRules:
-    """Parsed actors.json, reloaded whenever the file's mtime changes — so edits to
-    the replace / replace_studios / studio_indexes tables apply without a restart."""
     return _RULES.get()
 
 

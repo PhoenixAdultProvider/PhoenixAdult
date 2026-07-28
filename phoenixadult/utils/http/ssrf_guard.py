@@ -77,8 +77,6 @@ async def _resolve(host: str) -> list[str]:
 
 
 async def resolve_public_ip(host: str) -> str:
-    """Resolve `host`, require every address to be public, and return the address to
-    pin the connection to (IPv4 preferred). Raises ValueError on blocked/private."""
     h = host.strip('[]')
     if is_blocked_hostname(h):
         raise ValueError(f'blocked host "{h}"')
@@ -97,7 +95,6 @@ async def resolve_public_ip(host: str) -> str:
 
 
 async def assert_fetchable_url(raw_url: str) -> str:
-    """Validate a user-supplied URL for proxying; returns the URL or raises."""
     parts = urlsplit(raw_url)
     if not parts.scheme or not parts.netloc:
         raise ValueError('invalid url')
@@ -119,7 +116,6 @@ async def assert_fetchable_url(raw_url: str) -> str:
 
 
 async def ensure_fetchable_url(target: str) -> None:
-    """No-op when `target` is not an http(s) URL (opaque ids/slugs pass through)."""
     parts = urlsplit(target)
     if parts.scheme in ('http', 'https') and parts.netloc:
         await assert_fetchable_url(target)

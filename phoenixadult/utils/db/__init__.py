@@ -220,8 +220,6 @@ def _epoch() -> tuple[str, int]:
 
 
 def connect() -> sqlite3.Connection:
-    """This thread's connection (WAL, FK-enforced, migrated) — one handle is not safe to share
-    across the to_thread workers. Opening is serialized: a fresh database's WAL switch needs a lock."""
     global _migrated
     key = _epoch()
     cached: sqlite3.Connection | None = getattr(_local, 'conn', None)
@@ -264,9 +262,6 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 
 class ReconciledConn:
-    """Rebuild gate for tables mirroring an on-disk directory: when (dir, phoenixadult.db path)
-    changes, the rebuild callback runs once before the shared connection is handed back."""
-
     def __init__(self, dir_of: Callable[[], str], rebuild: Callable[[], object]) -> None:
         self._dir_of = dir_of
         self._rebuild = rebuild
@@ -282,8 +277,6 @@ class ReconciledConn:
             self._rebuild_locked()
 
     def _rebuild_locked(self) -> None:
-        """The key is stored only after a successful rebuild: a reader that arrives mid-rebuild
-        waits on the lock rather than seeing the half-emptied table, and a failed rebuild retries."""
         key = (self._dir_of(), env.state_db_path)
         self._rebuild()
         self._key = key
@@ -297,7 +290,6 @@ class ReconciledConn:
 
 
 def like_escape(value: str) -> str:
-    """Escape LIKE wildcards for a pattern used with ESCAPE '\\'."""
     return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 
 
@@ -310,7 +302,6 @@ def like_prefix(value: str) -> str:
 
 
 def dim_id(conn: sqlite3.Connection, table: str, name: str, unique_col: str = 'name') -> int | None:
-    """INSERT OR IGNORE + id lookup for a unique dimension row; None for a blank value."""
     if not name:
         return None
     conn.execute(f'INSERT OR IGNORE INTO {table}({unique_col}) VALUES(?)', (name,))

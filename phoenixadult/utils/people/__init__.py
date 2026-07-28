@@ -44,8 +44,6 @@ def _studio_index_for(studio: str, site_name: str) -> str | None:
 
 
 def apply_name_aliases(name: str, studio: str, site_name: str) -> str:
-    """Canonicalize a performer name through the actors.json alias tables (studio-specific
-    first, then global). Used at resolve time and re-applied to cached scenes on serve."""
     rules = actor_rules()
     search = name.lower()
     idx = _studio_index_for(studio, site_name)
@@ -142,8 +140,6 @@ class PeopleManager:
         return await iafd_gender_check(name) or gender
 
     async def _resolve_scene_photo(self, name: str, entry: PersonInput, type: PersonType, gender: Gender, ctx: _ResolveCtx) -> tuple[str, Gender]:
-        """The actor image from the scene page (entry.photo), HEAD-checked and cached with the
-        scene's Referer/Cookie. Returns (photo, gender); ('', gender) when there's nothing usable."""
         if not entry.photo:
             return '', gender
         headers = _image_headers(ctx)
@@ -228,8 +224,6 @@ def _is_male_role(role: PlexRole) -> bool:
 
 
 def filter_male_actors(response: PlexMetadataResponse) -> int:
-    """Drop male actors from the served Role list when GENDER_SKIP_MALE_ENABLE is on — the only place they're
-    hidden; mutates the in-memory response only, so snapshots keep every actor on disk. Returns count removed."""
     if not gender_skip_male_enabled():
         return 0
     removed = 0

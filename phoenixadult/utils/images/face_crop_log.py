@@ -74,13 +74,11 @@ def recent(directory: str) -> list[dict[str, Any]]:
 
 
 def entry_for(directory: str, filename: str) -> dict[str, Any] | None:
-    """The single crop-log entry keyed by directory/filename, None when absent."""
     row = _conn().execute('SELECT entry, source FROM crop_log WHERE rel_path = ?', (f'{_rel_dir(directory)}/{filename}',)).fetchone()
     return None if row is None else _parse_entry(str(row['entry']), str(row['source'] or ''))
 
 
 def entries_by_path() -> dict[str, dict[str, Any]]:
-    """All crop-log entries keyed by their root-relative path."""
     out: dict[str, dict[str, Any]] = {}
     for row in _conn().execute('SELECT rel_path, entry, source FROM crop_log').fetchall():
         entry = _parse_entry(str(row['entry']), str(row['source'] or ''))

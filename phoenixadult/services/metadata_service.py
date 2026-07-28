@@ -27,8 +27,6 @@ from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 
 def _queue_label(rating_key: str) -> str:
-    """Readable /queue label: the stored search title when the cur_id is known to the
-    search store, else site + release date."""
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed.get('site_name'):
         return rating_key
@@ -42,7 +40,6 @@ def _queue_label(rating_key: str) -> str:
 
 
 def _log_abandoned(task: asyncio.Task[PlexMetadataResponse | None]) -> None:
-    """Consume the result/exception of a scrape that outlived its Plex request."""
     if task.cancelled():
         return
     if err := task.exception():
@@ -50,7 +47,6 @@ def _log_abandoned(task: asyncio.Task[PlexMetadataResponse | None]) -> None:
 
 
 def _stamp_keys(response: PlexMetadataResponse, provider: ProviderInfo) -> None:
-    """Serve-time only — never baked into cache snapshots, so the mount path can change."""
     mount = provider_mount_path(provider)
     for md in response.MediaContainer.Metadata:
         md.key = f'{mount}/library/metadata/{md.ratingKey}'
@@ -74,8 +70,6 @@ async def refresh_cached_snapshot(
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
     skip_data18: bool = False,
 ) -> bool:
-    """Apply the serve-time backfills to a cached snapshot in place, rewriting it if anything changed (returned).
-    `skip_data18` avoids a second data18 search when the caller's enrichment pull already searched this serve."""
     changed = metadata_cache.backfill_studio(response, site)
     if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
         changed = True
@@ -107,8 +101,6 @@ class MetadataService:
         self._refresh_log: dict[tuple[str, str, str], list[float]] = {}
 
     def _force_refresh_due(self, key: tuple[str, str, str]) -> bool:
-        """Count refreshes of one scene; True (and reset) once the threshold is hit inside
-        the window. Only the metadata route calls this — never the /images sidecar."""
         now = time.monotonic()
         hits = [t for t in self._refresh_log.get(key, ()) if now - t < _REFRESH_WINDOW_SECONDS]
         hits.append(now)
@@ -119,8 +111,6 @@ class MetadataService:
         return False
 
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, is_refresh: bool = False) -> PlexMetadataResponse | None:
-        """Plex requests /library/metadata/{key} and .../images back to back; the memo
-        serves both from one scrape and coalesces concurrent requests in flight."""
         key = (rating_key, provider.id, language or '')
         force = is_refresh and self._force_refresh_due(key)
         if force:
@@ -163,7 +153,6 @@ class MetadataService:
         language: str | None,
         allow_slow: bool = False,
     ) -> PlexMetadataResponse | None:
-        """Fetch + map a scene into a response (no cache write). None if the sceneURL is blocked or yields no detail."""
         try:
             await ensure_fetchable_url(scene_url)
         except ValueError as err:
@@ -180,7 +169,6 @@ class MetadataService:
         return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': provider.plex_identifier, 'size': 1, 'Metadata': [metadata]}})
 
     def _finalize(self, response: PlexMetadataResponse, provider: ProviderInfo, rating_key: str, *, cached: bool) -> PlexMetadataResponse:
-        """Serve-time only (never mutates the snapshot): male-actor filter, key stamping, and logging."""
         if removed := filter_male_actors(response):
             noun = 'cached actor(s)' if cached else 'actor(s)'
             logger.info(provider.id, f'Male-actor filter: hid {removed} {noun} from ratingKey={rating_key}')
@@ -196,8 +184,6 @@ class MetadataService:
     def queue_snapshot(
         self, rating_key: str, provider: ProviderInfo, language: str | None, label: str | None = None, force: bool = False, rescrape: bool = False
     ) -> bool:
-        """`label` is the human name shown on /queue (the rating key stays the dedup key);
-        `force` only queues past an existing snapshot — `rescrape` makes the job ignore it too."""
 
         async def _job() -> None:
             await self._fetch_metadata(rating_key, provider, language, force=rescrape, allow_slow=True)
@@ -220,7 +206,6 @@ class MetadataService:
         )
 
     def _queue_background(self, rating_key: str, provider: ProviderInfo, language: str | None, wait_seconds: float) -> None:
-        """Fail the request fast; the queued job scrapes on the paced track into the snapshot."""
         queued = self.queue_snapshot(rating_key, provider, language, force=True)
         state = 'queued background scrape' if queued else 'background scrape already queued'
         logger.info(provider.id, f'Pacing defers ratingKey={rating_key} (~{wait_seconds:.0f}s wait) — {state}; a later refresh serves it from the snapshot')
@@ -237,8 +222,6 @@ class MetadataService:
         language: str | None,
         allow_slow: bool,
     ) -> PlexMetadataResponse | None:
-        """Re-scrape a cached scene that lacks a data18 ref: the enriched response (already
-        snapshotted) when the pull found one, None to keep serving the cached snapshot."""
         logger.info(provider.id, f'No data18 ref for ratingKey={rating_key} — attempting enrichment pull')
         try:
             fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
@@ -264,12 +247,8 @@ class MetadataService:
         language: str | None,
         skip_data18: bool,
     ) -> PlexMetadataResponse:
-        """Serve a cached snapshot, applying the serve-time backfills and rewriting the
-        snapshot when anything changed."""
 
         async def _fetch_detail() -> SceneDetail | None:
-            """Re-scrape so backfill can try each person's scene image before the
-            external people sources; only invoked when someone is imageless."""
             if not scene_url:
                 return None
             try:
@@ -296,8 +275,6 @@ class MetadataService:
         language: str | None,
         allow_slow: bool,
     ) -> PlexMetadataResponse | None:
-        """Live-scrape a scene, snapshot it, and serve it; None when the scrape fails
-        (a pacing deferral queues a background scrape instead)."""
         try:
             fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
         except PacingDeferredError as err:

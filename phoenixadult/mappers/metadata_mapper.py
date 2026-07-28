@@ -39,8 +39,6 @@ def _year_of(date: str | None) -> int | None:
 
 
 def _classify_artwork(valid: list[dict[str, Any]]) -> tuple[list[PlexImage], set[str]]:
-    """Keep probed images with a servable class. An off-ratio portrait is still a usable cover, so it
-    is kept and returned in the demoted set to sort behind the properly shaped ones."""
     images: list[PlexImage] = []
     demoted: set[str] = set()
     for p in valid:
@@ -55,8 +53,6 @@ def _classify_artwork(valid: list[dict[str, Any]]) -> tuple[list[PlexImage], set
 
 
 def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]], by_class: dict[str, list[dict[str, Any]]]) -> None:
-    """Backstops for absent kinds: backgrounds (else everything) double as coverPoster,
-    backgroundSquare doubles as background."""
     has_poster = any(img.type == 'coverPoster' for img in images)
     has_background = any(img.type == 'background' for img in images)
 
@@ -73,8 +69,6 @@ def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]],
 
 
 def build_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
-    """Probed images -> the served image list: classify, backfill absent kinds, order. Shared with
-    the Plex import so a recovered scene is typed exactly like a freshly scraped one."""
     by_class: dict[str, list[dict[str, Any]]] = {}
     for probed in valid:
         by_class.setdefault(probed['image_class'], []).append(probed)
@@ -85,8 +79,6 @@ def build_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
 
 
 def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted: set[str] | None = None) -> None:
-    """In-place order: kinds keep first-appearance order, largest area first within a kind, with
-    off-ratio covers held back to the end of their kind."""
     area = {p['url']: p['dims']['width'] * p['dims']['height'] for p in valid}
     held_back = demoted or set()
     first_pos: dict[str, int] = {}
@@ -96,7 +88,6 @@ def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted:
 
 
 def _actor_names(detail: SceneDetail, resolved: list[PlexRole]) -> tuple[str, ...]:
-    """Both spellings a site might tag a genre with: the name as scraped and the aliased form."""
     scraped = [a.name for a in detail.actors or [] if a.name]
     return tuple(dict.fromkeys([*scraped, *(r.tag for r in resolved if r.tag)]))
 
@@ -197,8 +188,6 @@ class MetadataMapper:
         )
 
     async def _probe_artwork(self, art: list[str], referers: list[str], cookies: list[str]) -> list[dict[str, Any]]:
-        """Measure and classify each artwork URL; images whose dimensions can't be
-        fetched drop out."""
 
         sem = asyncio.Semaphore(_PROBE_CONCURRENCY)
 
@@ -259,7 +248,6 @@ class MetadataMapper:
 
 
 def log_served_images(response: PlexMetadataResponse, label: str = 'images') -> None:
-    """Debug-log where each image in the served response points."""
     logger.verbose(label, f'full response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')
     logger.debug(label, f'people image base -> {image_base_url()}')
 

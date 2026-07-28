@@ -20,8 +20,6 @@ async def _log_request(request: httpx2.Request) -> None:
 
 
 def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> httpx2.AsyncClient:
-    """An AsyncClient with the default UA, HTTPS_PROXY support and request logging.
-    Pass overrides (e.g. timeout=, max_redirects=) to tune per call site."""
     opts: dict[str, Any] = {
         'timeout': 15.0,
         'headers': {'User-Agent': DEFAULT_UA, **(extra_headers or {})},

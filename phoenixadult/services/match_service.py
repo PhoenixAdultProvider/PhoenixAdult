@@ -64,8 +64,6 @@ class MatchService:
         return is_paced(search_data.site_info.scraper_config.type)
 
     async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
-        """Scraper search behind a memo+coalescer; background searches on paced sites
-        also persist to the on-disk search store for a later scan."""
         key = self._memo_key(search_data)
         hit = self._search_memo.get(key)
         if hit and time.monotonic() - hit[0] < _SEARCH_MEMO_TTL:
@@ -102,7 +100,6 @@ class MatchService:
         return await self._search_coalesce.run(key, _run)
 
     def requeue_search(self, replay: dict[str, Any], provider: ProviderInfo) -> None:
-        """Rebuild and re-enqueue a persisted background search after a restart."""
         site = find_site(str(replay.get('search_site') or ''))
         if site is None:
             return
@@ -119,8 +116,6 @@ class MatchService:
         self._queue_background_search(ctx, provider, 0.0)
 
     def _chain_perfect_match(self, results: list[SearchResult], search_data: SearchContext, provider: ProviderInfo) -> None:
-        """A background search that lands a unique perfect match chains straight into a
-        snapshot scrape, so the next refresh serves metadata instead of deferring again."""
         if self.metadata_service is None:
             return
         scored = [(r.score if r.score is not None else title_distance_score(search_data.title, r.title), r) for r in results]
@@ -146,7 +141,6 @@ class MatchService:
             logger.info(provider.id, f'Perfect background match "{raw.title}" on {site.name} — chained snapshot scrape {mapped.ratingKey}')
 
     def _queue_background_search(self, search_data: SearchContext, provider: ProviderInfo, wait_seconds: float) -> None:
-        """Fail the match fast; the queued job searches on the paced track and memoizes."""
 
         async def _job() -> None:
             results = await self._search_results(search_data, provider, allow_slow=True)
@@ -179,7 +173,6 @@ class MatchService:
         )
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
-        """Search entry, answered empty at the Plex request budget."""
         try:
             return await asyncio.wait_for(self._match(req, provider, language), PLEX_REQUEST_BUDGET)
         except TimeoutError:

@@ -178,8 +178,6 @@ def test_entries_endpoint_filters_sorts_and_paginates(monkeypatch: pytest.Monkey
 
 
 def test_entries_facet_filters_paginate_consistently(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Facet filters run in SQL, so a filtered page total matches the page contents
-    (the old client-side facets produced 138-of-500-page style mismatches)."""
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_library()
     client = TestClient(create_app())

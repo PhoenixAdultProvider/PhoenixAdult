@@ -109,8 +109,6 @@ class AdultEmpireCashClient(Client):
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
     async def _ensure_age_confirmed(self, base: str) -> None:
-        """The age gate binds ageConfirmed to a server-issued etoken session (a static cookie
-        isn't enough) — run the confirm handshake once per host and let the jar carry it."""
         if base in self._confirmed:
             return
 

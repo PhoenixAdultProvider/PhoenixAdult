@@ -23,7 +23,6 @@ _PACERS: weakref.WeakSet[ScenePacer] = weakref.WeakSet()
 
 
 def pacer_states() -> list[dict[str, object]]:
-    """Live pacer state for the /queue UI, one row per registered pacer."""
     out = []
     for p in sorted(_PACERS, key=lambda p: p.tag):
         now = time.monotonic()
@@ -43,17 +42,12 @@ def pacer_states() -> list[dict[str, object]]:
 
 
 class PacingDeferredError(Exception):
-    """Raised instead of holding a Plex-facing request through a long pacing wait."""
-
     def __init__(self, wait_seconds: float) -> None:
         super().__init__(f'pacing requires waiting ~{wait_seconds:.0f}s')
         self.wait_seconds = wait_seconds
 
 
 class ScenePacer:
-    """Ban-avoidance pacing: jittered request spacing, one shared gap track for
-    searches+scenes, a scenes-per-window cap, and Plex-budget deferral."""
-
     def __init__(self, tag: str, *, pace_seconds: float = 7.0, pace_jitter: float = 3.0, cooldown_seconds: float = 7.0) -> None:
         self.tag = tag
         self.pace_seconds = pace_seconds
@@ -68,18 +62,15 @@ class ScenePacer:
         _PACERS.add(self)
 
     def flag_ban(self, seconds: float = 900.0) -> None:
-        """Ban detected upstream: mark this pacer and pause the shared queue."""
         from phoenixadult.services import scrape_queue
 
         self._ban_until = time.monotonic() + seconds
         scrape_queue.pause(f'{self.tag} ban detected', seconds)
 
     def jitter(self, base: float) -> float:
-        """`base` seconds plus up to pace_jitter of randomness."""
         return base + random.uniform(0.0, self.pace_jitter)
 
     async def pace(self, label: str = 'request') -> None:
-        """Per-request spacing: ~pace_seconds apart with jitter, logged under the tag."""
         async with self._pace_lock:
             wait = self.jitter(self.pace_seconds) - (time.monotonic() - self._last_fetch)
             if wait > 0:
@@ -93,8 +84,6 @@ class ScenePacer:
         await asyncio.sleep(delay)
 
     def pending_wait(self, *, include_window: bool = True) -> float:
-        """Wait before the next unit of work: the gap remainder, and for scenes also
-        the window rest (the gap sleep ages the window, so max is exact)."""
         now = time.monotonic()
         gap = max(0.0, self._gap_until - now)
         if not include_window:
@@ -111,8 +100,6 @@ class ScenePacer:
 
     @asynccontextmanager
     async def _turn(self, allow_slow: bool, *, is_scene: bool) -> AsyncIterator[None]:
-        """One shared track: a search or scene consumes a turn and re-arms the gap;
-        sync requests defer past _SYNC_WAIT_BUDGET, background work sleeps off-lock."""
         kind = 'scene' if is_scene else 'search'
         wait = self.pending_wait(include_window=is_scene)
         if not allow_slow and wait > _SYNC_WAIT_BUDGET:

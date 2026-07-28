@@ -102,8 +102,8 @@ def _docstrings(src: str) -> list[tuple[int, int, int]]:
         tree = ast.parse(src)
     except SyntaxError:
         return out
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+    for node in [tree, *ast.walk(tree)]:
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         if not (
             node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(node.body[0].value.value, str)

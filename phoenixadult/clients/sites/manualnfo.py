@@ -34,8 +34,6 @@ _BAD_CHAR_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
 @dataclass
 class LocatedNfo:
-    """layout is 'folder' | 'flat'."""
-
     layout: str
     basename: str
     nfo_path: Path
@@ -198,7 +196,6 @@ def _parse_xml(raw: bytes, label: str) -> Any:
 
 
 def _parse_data18(movie: Any) -> str | None:
-    """The <data18> ref: nested <id>/<type> (type defaults to scene) or plain flat text."""
     row = movie.find('data18')
     if row is None:
         return None

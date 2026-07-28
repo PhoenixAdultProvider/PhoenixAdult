@@ -21,7 +21,6 @@ def _auth_headers() -> dict[str, str]:
 class MetadataAPIClient(Client):
     @property
     def http(self) -> httpx2.AsyncClient:
-        """Credentialed first-party API — TLS verified (the base client leaves it off for scrapers)."""
         if self._http is None:
             self._http = make_http(self._extra_headers, verify=True)
 

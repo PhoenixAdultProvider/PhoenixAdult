@@ -11,9 +11,6 @@ _IMPERSONATE = 'chrome120'
 
 
 class _ImpersonateBackend:
-    """Presents a Chrome TLS/HTTP2 fingerprint via curl_cffi so Cloudflare lets the request
-    through without a JS challenge; unlike FlareSolverr it forwards our custom headers."""
-
     name = 'Impersonate'
 
     def is_available(self) -> bool:
@@ -55,8 +52,6 @@ impersonate_backend = _ImpersonateBackend()
 
 
 async def impersonate_get_bytes(url: str, headers: dict[str, str] | None = None, timeout_ms: int = 30_000) -> tuple[bytes, str] | None:
-    """Fetch binary content (e.g. a Cloudflare-gated image) via curl_cffi TLS impersonation; returns
-    (bytes, content_type) on a 2xx image response, else None. BypassResponse is text-only, hence this."""
     if not impersonate_backend.is_available():
         return None
     try:

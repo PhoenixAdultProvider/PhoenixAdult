@@ -9,8 +9,6 @@ from phoenixadult.utils.logging.uvicorn_logging import UVICORN_LOG_CONFIG
 
 
 def main() -> None:
-    """Reload (outside production) needs the import string, not the app object; forwarded_allow_ips is
-    explicit because the admin-auth loopback exemption relies on X-Forwarded-For from the same-host proxy."""
     log_level = config.log_level if config.log_level in {'critical', 'error', 'warning', 'info', 'debug', 'trace'} else 'info'
     reload = not env.is_production
     uvicorn.run(

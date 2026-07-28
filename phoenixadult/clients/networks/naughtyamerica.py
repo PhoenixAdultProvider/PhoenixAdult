@@ -36,7 +36,6 @@ class NaughtyAmericaClient(Client):
         self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
 
     async def _paced(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
-        """Paced fetch, always via the bypass fallback (NA's AWS WAF blocks plain fetches)."""
         if ctx is None:
             ctx = FetchCtx()
 
@@ -45,7 +44,6 @@ class NaughtyAmericaClient(Client):
         return await self.fetch_and_load(url, ctx, label)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Searches ride the same gap track as scene updates."""
         async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 
@@ -105,8 +103,6 @@ class NaughtyAmericaClient(Client):
                 page_sel = nxt['sel']
 
     async def _search_by_scene_id(self, results: list[SearchResult], search_data: SearchContext) -> bool:
-        """Direct lookup of ``/scene/0<id>`` (redirects to the slug page); appends one
-        exact-scored result and returns True on a hit, else False to fall back to search."""
         loaded = await self._paced(
             f'{_SCENE_BASE}/scene/0{search_data.scene_id}',
             FetchCtx(capture=search_data.capture),

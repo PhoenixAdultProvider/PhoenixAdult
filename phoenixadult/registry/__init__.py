@@ -31,7 +31,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.203',
+        version='1.0.0-alpha.204',
         media_type='movie',
     ),
 ]
@@ -45,8 +45,6 @@ def normalize_site_key(token: str) -> str:
 
 
 def _with_archive(sites: list[SiteInfo], archived: list[SiteInfo]) -> list[SiteInfo]:
-    """Archive entries only fill gaps: a name a real client already claims keeps its scraper, so
-    porting a retired site later silently retires its archive stand-in."""
     taken = {normalize_site_key(token) for site in sites for token in [site.name, *site.aliases]}
     return [*sites, *(site for site in archived if normalize_site_key(site.name) not in taken)]
 
@@ -106,7 +104,6 @@ def find_site(token: str) -> ResolvedSiteInfo | None:
 
 
 def canonical_site_display(token: str) -> str | None:
-    """The registry-curated display form (site name or alias) for `token`, if known."""
     return display_by_token.get(normalize_site_key(token))
 
 

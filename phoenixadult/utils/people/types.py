@@ -11,8 +11,6 @@ GENDER_SUFFIXES = ('male', 'female', 'trans')
 
 
 def parse_person_filename(filename: str) -> tuple[str, str, Gender]:
-    """(role, slug, gender) from a `role.slug[_gender].ext` cache filename. slug keeps
-    hyphens; gender is '' when absent; role is '' if there's no `role.` prefix."""
     stem = Path(filename).stem
     role, sep, rest = stem.partition('.')
     if not sep:

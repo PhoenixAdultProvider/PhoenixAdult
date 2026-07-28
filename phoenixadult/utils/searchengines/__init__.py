@@ -13,8 +13,6 @@ def _default_chain() -> list[SearchEngineClient]:
 
 
 def web_search_available() -> bool:
-    """True if any engine in the chain can run (DuckDuckGo is zero-config so normally True);
-    lets opt-in callers skip the web-search path entirely when no engine is usable."""
     return any(client.available() for client in _default_chain())
 
 

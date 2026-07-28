@@ -47,19 +47,14 @@ _PACE_TAG = 'Nubiles:pace'
 
 
 def strip_episode_tag(title: str) -> str:
-    """Drop a trailing " - S2:E1"-style episode tag; interior hyphens are untouched."""
     return _EPISODE_TAG_RE.sub('', title).strip()
 
 
 def _jittered(base: float) -> float:
-    """A delay of `base` seconds plus up to _PACE_JITTER of randomness, so the cadence
-    is not a fixed machine-perfect interval."""
     return base + random.uniform(0.0, _PACE_JITTER)
 
 
 def _retry_after_seconds(resp: Any) -> float | None:
-    """The Retry-After header as seconds (numeric or HTTP-date form), capped at
-    _MAX_BACKOFF; None when the header is absent or unparseable."""
     val = (resp.headers.get('retry-after') or '').strip()
     if not val:
         return None
@@ -78,8 +73,6 @@ _SUMMARY_ACTORS: list[str] = load_data(__file__, 'nubiles_summary_actors')
 
 
 def _best_variant(candidates: list[str]) -> str | None:
-    """Largest photo variant among an img's src + srcset candidates, ranked by the parent path
-    segment (full-size has none, /459/ is a width, /tn/ a thumb); srcset widths are unreliable."""
 
     def rank(u: str) -> tuple[int, int]:
         parts = u.split('?')[0].split('/')
@@ -103,8 +96,6 @@ class NubilesClient(Client):
         await self._warm_images(detail)
 
     async def _warm_images(self, detail: SceneDetail) -> None:
-        """Fetch the scene's images now, inside the scene gate and at most _IMAGE_CONCURRENCY at a
-        time, so big galleries never burst the shared CDN; the mapper reads them from the image cache."""
         urls = [u for u in detail.art if u]
         if not urls:
             return
@@ -161,7 +152,6 @@ class NubilesClient(Client):
         return Selector(text=r.text)
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Searches ride the same gap track as scene updates."""
         async with self.pacer.search_gate(bool(search_data.allow_slow)):
             await self._search(results, search_data)
 

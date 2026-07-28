@@ -21,9 +21,6 @@ def _header(headers: dict[bytes, bytes], key: bytes) -> str | None:
 
 
 class RequestContextMiddleware:
-    """One request id per HTTP request; pure-ASGI (not BaseHTTPMiddleware) so it runs the app in the
-    SAME task and the contextvar id reaches every nested log — the access line is emitted here, in-scope."""
-
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 

@@ -45,8 +45,6 @@ def _display_value(spec: EnvVarSpec) -> str:
 
 
 def _options_for(spec: EnvVarSpec) -> list[str]:
-    """Static catalog options, except site-list vars whose options come from the registry:
-    site, sub-group (studio) and provider (network) names, so one network entry covers all its sites."""
     if spec.key == 'SEARCH_STRIP_ACTORS':
         names = {s.name for s in SITE_DEFINITIONS}
         names |= {s.sub_group for s in SITE_DEFINITIONS if s.sub_group}
@@ -120,8 +118,6 @@ async def api_save(request: Request) -> JSONResponse:
 
 @router.post('/api/reveal')
 async def api_reveal(request: Request) -> JSONResponse:
-    """Return a secret's live value on demand for the Show button — secrets stay out of
-    the bulk /api/state payload."""
     body = await read_json_body(request)
     key = str(body.get('key') or '')
     spec = next((s for s in ENV_CATALOG if s.key == key), None)
@@ -132,8 +128,6 @@ async def api_reveal(request: Request) -> JSONResponse:
 
 @router.post('/api/reset')
 async def api_reset(request: Request) -> JSONResponse:
-    """Parses JSON itself (not read_json_body): a malformed body must 400,
-    never fall through to the clear-all branch an explicit empty body means."""
     try:
         body = await request.json()
     except ValueError:
@@ -155,8 +149,6 @@ _MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'
 
 @router.post('/api/restart')
 async def api_restart() -> JSONResponse:
-    """Dev: bump main.py's mtime so the uvicorn reloader restarts the worker (killing it would
-    take the reloader down too); production: SIGTERM and rely on the supervisor to restart."""
     if not env.is_production:
         try:
             _MAIN_PY.touch()
@@ -176,7 +168,6 @@ _CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
 
 
 def _render_ui(state: dict[str, Any]) -> str:
-    """Embeds the state as a JS object literal; `<` escaped so a description can't break out of the <script> block."""
     state_json = json.dumps(state, ensure_ascii=False).replace('<', '\\u003c')
     return _CONFIG_HTML.replace('__STATE_JSON__', state_json)
 

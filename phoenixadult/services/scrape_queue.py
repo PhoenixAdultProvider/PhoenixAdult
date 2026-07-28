@@ -26,7 +26,6 @@ def _persist_remove(key: str) -> None:
 
 
 def take_replays() -> dict[str, dict[str, Any]]:
-    """Drain persisted job descriptors (restart recovery); re-enqueueing re-persists them."""
     conn = db.connect()
     state = {str(r['key']): json.loads(r['replay']) for r in conn.execute('SELECT key, replay FROM queue_replays')}
     conn.execute('DELETE FROM queue_replays')
@@ -59,7 +58,6 @@ _pause_reason: str = ''
 
 
 def pause(reason: str, seconds: float) -> None:
-    """Halt the worker (ban detected); it resumes automatically after `seconds`."""
     global _paused_until, _pause_reason
     _paused_until = time.monotonic() + seconds
     _pause_reason = reason

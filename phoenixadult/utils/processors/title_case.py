@@ -79,12 +79,10 @@ _INITIAL_PAIR_COLLAPSE_RE = re.compile(r'(?<![\w.])([A-Za-z])\.\s+([A-Za-z])\.(?
 
 
 def collapse_initial_pairs(text: str) -> str:
-    """Join a spaced initial pair into dotted form (A. J. -> A.J.), upper-casing both."""
     return _INITIAL_PAIR_COLLAPSE_RE.sub(lambda m: f'{m.group(1).upper()}.{m.group(2).upper()}.', text)
 
 
 def expand_initial_pairs(text: str) -> str:
-    """Dot standalone initial-pair names (aj -> A.J., tj -> T.J.), possessives included."""
     return _INITIAL_PAIR_RE.sub(lambda m: '.'.join(m.group(1).upper()) + '.', text)
 
 
@@ -373,14 +371,12 @@ def _sequence_colon(m: re.Match[str]) -> str:
 
 
 def normalize_sequence_separator(title: str) -> str:
-    """Fold the separator before a numbered sequence marker into ': '"""
     title = _SEQ_PAREN_RE.sub(_sequence_colon, title)
     title = _SEQ_SEP_RE.sub(_sequence_colon, title)
     return _SEQ_SPACE_RE.sub(_sequence_colon, title)
 
 
 def _convert_bounded_numbers(text: str) -> str:
-    """Convert spelled-out numbers to digits only where they touch a sequence marker"""
     out: list[str] = []
     pos = 0
     for m in _SEQ_MARKER_RE.finditer(text):
@@ -420,15 +416,11 @@ def _convert_bounded_numbers(text: str) -> str:
 
 
 def title_sort(title: str) -> str | None:
-    """Sort value with the leading article stripped and bounded spelled-out numbers
-    converted to digits; None when it wouldn't differ."""
     stripped = _ARTICLE_RE.sub('', title).strip()
     converted = _convert_bounded_numbers(stripped).strip()
     return converted if converted and converted != title else None
 
 
 def convert_sequence_numbers(title: str) -> str | None:
-    """Digit form of marker-bounded spelled-out numbers only (no article strip);
-    None when it wouldn't differ."""
     converted = _convert_bounded_numbers(title).strip()
     return converted if converted and converted != title else None

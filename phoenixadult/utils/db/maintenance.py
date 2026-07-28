@@ -22,8 +22,6 @@ def _backup_dir() -> Path:
 
 
 def integrity_ok(path: Path) -> bool:
-    """True when the file opens and passes `PRAGMA quick_check` — a fast structural check that
-    catches the freelist/page damage a torn WAL leaves behind."""
     try:
         conn = sqlite3.connect(str(path))
         try:
@@ -36,7 +34,6 @@ def integrity_ok(path: Path) -> bool:
 
 
 def newest_valid_backup() -> Path | None:
-    """The most recent backup that still passes an integrity check, or None."""
     bdir = _backup_dir()
     if not bdir.is_dir():
         return None
@@ -47,8 +44,6 @@ def newest_valid_backup() -> Path | None:
 
 
 def backup_once() -> Path | None:
-    """Write a consistent snapshot via `VACUUM INTO` (safe while serving; preserves user_version),
-    then prune to DB_BACKUP_KEEP. The app calls this on a timer — no external cron needed."""
     src = Path(env.state_db_path)
     if not src.exists():
         return None
@@ -64,8 +59,6 @@ def backup_once() -> Path | None:
 
 
 def startup_recover_if_corrupt() -> None:
-    """Before any write: if the live DB fails its integrity check, quarantine it and restore the newest
-    good backup; with no backup, leave it for manual repair rather than wiping primary data."""
     path = Path(env.state_db_path)
     if not path.exists() or integrity_ok(path):
         return

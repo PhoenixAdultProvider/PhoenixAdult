@@ -13,8 +13,6 @@ from phoenixadult.utils.people.types import ResolvedPerson
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch: pytest.MonkeyPatch) -> None:
-    """No cache / IAFD / generic and only the offline Local Storage source,
-    so the resolution pipeline never touches disk or the network."""
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
     monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'false')

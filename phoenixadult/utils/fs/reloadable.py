@@ -9,9 +9,6 @@ from typing import Any
 
 
 class MtimeCachedJson[T]:
-    """A JSON file parsed into T and reparsed whenever the file's mtime changes, so edits apply without
-    a restart; the stat is rate-limited (get() can run several times per scene) and the reparse lock-guarded."""
-
     def __init__(self, path: Path, build: Callable[[Any], T], *, stat_interval: float = 5.0) -> None:
         self._path = path
         self._build = build

@@ -6,7 +6,6 @@ from phoenixadult.utils.images.fanart import FansiteAdapter, Gallery, register_f
 
 
 def _cls(token: str) -> str:
-    """Whitespace-bounded class-token match (CSS `.token` equivalent)."""
     return f'contains(concat(" ", normalize-space(@class), " "), " {token} ")'
 
 

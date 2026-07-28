@@ -27,7 +27,6 @@ def _read_multi(request: Request, key: str) -> list[str]:
 
 @router.get('/local/{filepath:path}')
 async def local_image(request: Request, filepath: str) -> Response:
-    """:path so people images can live in role/gender subfolders (actors/female/…)."""
     if Path(filepath).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
 

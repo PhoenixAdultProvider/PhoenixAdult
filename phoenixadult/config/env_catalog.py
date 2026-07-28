@@ -551,7 +551,6 @@ def humanize_bytes(raw: str | None) -> str:
 
 
 def normalize_env_value(spec: EnvVarSpec, raw: str) -> tuple[bool, str]:
-    """Returns (ok, value_or_error)."""
     value = raw.strip()
 
     if spec.kind == 'boolean':

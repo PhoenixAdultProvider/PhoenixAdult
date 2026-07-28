@@ -40,8 +40,6 @@ SCENE_TOKEN = 'Scene'
 
 
 def scene_image_pref() -> tuple[bool, bool]:
-    """(use_scene, scene_first) for the scene page's own actor image, from PEOPLE_SOURCE_ORDER: unset ->
-    (True, True); 'Scene' absent -> (False, False); else scene_first unless a provider precedes 'Scene'."""
     raw = env.people_source_order_raw
     if not raw:
         return True, True

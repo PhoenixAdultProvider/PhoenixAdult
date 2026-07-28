@@ -13,7 +13,6 @@ SearchKey = tuple[str, str, str, str, str]
 
 
 def _ttl_seconds() -> float | None:
-    """Cached-result lifetime in seconds, or None when SEARCH_STORE_TTL_DAYS=0 (perpetual)."""
     days = env.search_store_ttl_days
     return days * 86400.0 if days else None
 
@@ -47,8 +46,6 @@ def _write(key: SearchKey, results: list[SearchResult], saved_at: float) -> None
 
 
 def save(key: SearchKey, results: list[SearchResult]) -> None:
-    """Empty results are never persisted — a ban/soft-failure window returns [] and must
-    retry on the next scan, not poison the store."""
     conn = db.connect()
     if not results:
         with conn:
@@ -77,8 +74,6 @@ def load(key: SearchKey) -> list[SearchResult] | None:
 
 
 def load_similar(key: SearchKey) -> list[SearchResult] | None:
-    """Fallback for renamed files: same site+date+language whose stored title is a
-    substring of the new one (or vice versa) — a longer filename still hits the store."""
     site, title, date, scene_id, language = key
     if not date or not title:
         return None
@@ -100,8 +95,6 @@ def load_similar(key: SearchKey) -> list[SearchResult] | None:
 
 
 def find_title(cur_id: str) -> tuple[str, str] | None:
-    """(title, site/subsite) of any stored result with this cur_id — labels update-queue
-    entries whose Plex request carries only the rating key."""
     if not cur_id:
         return None
     row = (

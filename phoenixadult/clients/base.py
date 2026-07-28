@@ -58,8 +58,6 @@ class SearchContext:
 
 @dataclass
 class SceneContext:
-    """subsite = the sub-site the search selection resolved to (data18 slugging)."""
-
     capture: list[RawCaptureEntry] | None = None
     language: str | None = None
     subsite: str | None = None
@@ -92,8 +90,6 @@ class ActorResult:
 
 @dataclass
 class SceneDetail:
-    """duration is milliseconds; allow_slow contexts may sleep past the Plex budget."""
-
     title: str = ''
     summary: str = ''
     studio: str = ''
@@ -251,8 +247,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return None
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        """Append SearchResults for `ctx` to `results`. The default drives the search-context loader
-        + per-row builder and de-duplicates by scene_url; wholesale clients override and append directly."""
         loaded = await self.load_search_context(search_data)
         if not loaded:
             return
@@ -278,8 +272,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         dedup: bool = True,
         dedup_key: Callable[[SearchResult], str] | None = None,
     ) -> list[SearchResult]:
-        """Drive a paged search: fetch each page's rows, map + dedup them, and stop on
-        a short/empty page, the page cap, fetch_rows returning None, or should_continue."""
         key = dedup_key or (lambda r: r.scene_url or '')
         seen: set[str] = set()
         out: list[SearchResult] = []
@@ -311,8 +303,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
-        """Build one SearchResult from `source` via the fetch_search_* hooks and append it
-        to `results`. Clients with a bespoke row shape override this and append their own."""
         scene_url = await self.fetch_search_scene_url(source, loaded)
         if not scene_url:
             return
@@ -393,8 +383,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return {'push': push, 'list': out}
 
     def group_genre_for(self, cast: int) -> str | None:
-        """The group-sex genre implied by the cast size: 3 → Threesome, 4 → Foursome, 5+ → Orgy.
-        Clients on an offset scale (e.g. a POV performer excluded from the count) adjust `cast`."""
         if cast == 3:
             return 'Threesome'
         if cast == 4:
@@ -412,8 +400,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         label: str = 'actor',
         limit: int = 3,
     ) -> list[ActorResult]:
-        """Turn (name, profile_url) refs into ActorResults, fetching profiles concurrently (≤ `limit`)
-        and de-duplicating by name; a missing URL or failed page yields an empty photo, never an error."""
         seen: set[str] = set()
         unique: list[tuple[str, str]] = []
         for actor_name, href in refs:
@@ -449,8 +435,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         kind: Literal['scene', 'movie'] = 'scene',
         allow_square: bool = True,
     ) -> None:
-        """Resolve the scene's data18 page and merge its images into `images` (default metadata.art),
-        recording metadata.data18_url. No-op unless the site opts in; `scene_date` is an ISO date string."""
         if not (site.scraper_config.data18_enrichment and env.data18_enabled):
             return
         from phoenixadult.clients.aggregators.data18 import Data18Client
@@ -470,7 +454,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         )
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """Public detail entry; with a ScenePacer set the scrape runs inside its gate."""
         if self.pacer is None:
             return await self._scene_detail_flow(payload, site, ctx)
         async with self.pacer.scene(bool(ctx and ctx.allow_slow)):
@@ -481,12 +464,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return detail
 
     async def after_scene_scrape(self, detail: SceneDetail) -> None:
-        """Paced clients' post-scrape hook, still inside the scene gate."""
         return None
 
     async def _scene_detail_flow(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
-        """Load the scene, hand a fresh `metadata` to `update`, then apply the
-        studio/date fallbacks and normalize the required fields."""
         scene = await self.load_scene_context(payload, site, ctx)
         if not scene:
             return None
@@ -509,8 +489,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
-        """Populate `metadata` from the loaded scene. Default runs the field hooks concurrently with
-        per-hook error isolation; wholesale clients override this and set metadata.* directly."""
         hooks: tuple[tuple[str, Any], ...] = (
             ('title', self.fetch_title),
             ('summary', self.fetch_summary),

@@ -75,8 +75,6 @@ def test_index_converts_dropped_svgs(monkeypatch: pytest.MonkeyPatch, tmp_path: 
 
 
 def test_find_bin_falls_back_to_install_prefix(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """daemon(8) can run with a PATH lacking /usr/local/bin; the absolute-path fallback still
-    finds an installed binary that shutil.which misses."""
     monkeypatch.setattr(logo_cache.shutil, 'which', lambda _name: None)
     monkeypatch.setattr(logo_cache.Path, 'is_file', lambda self: self.as_posix() == '/usr/local/bin/rsvg-convert')
     found = logo_cache._find_bin('rsvg-convert')
@@ -85,8 +83,6 @@ def test_find_bin_falls_back_to_install_prefix(monkeypatch: pytest.MonkeyPatch, 
 
 
 def test_convert_svg_prefers_rsvg_over_magick(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """ImageMagick's built-in SVG renderer mangles <mask> into white blocks, so rsvg-convert is
-    tried first and magick is never reached when rsvg succeeds."""
     svg = tmp_path / 'logo.x.svg'
     svg.write_text('<svg/>', encoding='utf-8')
     called = []
@@ -104,8 +100,6 @@ def test_convert_svg_prefers_rsvg_over_magick(monkeypatch: pytest.MonkeyPatch, t
 
 
 def test_rescan_adopts_and_converts_manual_drops(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """A manually-sourced file (any name) is renamed logo.<slug>.<ext>, an SVG is converted,
-    and the logo is served without a restart."""
     _put(tmp_path, 'badoinkvr', 'BadoinkVR Logo.svg', b'<svg/>')
     _put(tmp_path, 'brazzers', 'brazzers.png', b'png')
 

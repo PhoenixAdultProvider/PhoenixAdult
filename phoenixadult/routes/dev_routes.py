@@ -48,7 +48,6 @@ def _serialize_captures(caps: list[RawCaptureEntry]) -> list[dict[str, Any]]:
 
 
 def _lap_timer() -> Callable[[], int]:
-    """Returns a closure that yields elapsed ms since the previous call."""
     last = time.monotonic()
 
     def lap() -> int:
@@ -62,8 +61,6 @@ def _lap_timer() -> Callable[[], int]:
 
 
 def _metadata_field_diff(direct: dict[str, Any], reassembled: dict[str, Any]) -> list[str]:
-    """Top-level Metadata field names whose values differ between the two payloads,
-    treating an absent field and an empty list as equal."""
     md_direct = ((direct.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
     md_re = ((reassembled.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
 
@@ -74,8 +71,6 @@ def _metadata_field_diff(direct: dict[str, Any], reassembled: dict[str, Any]) ->
 
 
 async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any], written: bool, lap: Callable[[], int]) -> dict[str, Any]:
-    """Re-read the just-written snapshot through the DB reassembly path and diff it
-    against the directly-mapped payload."""
     step = '6. DB round-trip'
     if not metadata_cache.enabled():
         return {
@@ -374,8 +369,6 @@ async def _cached_metadata_steps(
     full_pipeline: bool,
     lap: Callable[[], int],
 ) -> list[dict[str, Any]]:
-    """Snapshot-serve branch of /Dev/Metadata: refresh the cached response and report it
-    as step dicts (plus the DB round-trip note when the full pipeline is on)."""
 
     async def _fetch_detail() -> SceneDetail | None:
         return await scraper.fetch_scene_detail(scene_url, site, SceneContext(subsite=subsite)) if scene_url else None
@@ -423,7 +416,6 @@ async def _cached_metadata_steps(
 
 
 def _live_fixture(metadata: PlexMetadata, site: ResolvedSiteInfo, filename: str | None, result_score: Any, roles: list[PlexRole]) -> dict[str, Any]:
-    """The copy-paste test fixture block offered by the /Dev UI for a live scrape."""
     return {
         'site': site.name,
         'filename': filename or '',
@@ -457,8 +449,6 @@ async def _live_metadata_steps(
     full_pipeline: bool,
     lap: Callable[[], int],
 ) -> list[dict[str, Any]]:
-    """Live-scrape branch of /Dev/Metadata: fetch, map, snapshot, and report the scene
-    as step dicts (plus the DB round-trip diff when the full pipeline is on)."""
     steps: list[dict[str, Any]] = []
     lap()
     try:

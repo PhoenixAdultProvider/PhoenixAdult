@@ -30,8 +30,6 @@ def pool(name: PoolName) -> ThreadPoolExecutor:
 
 
 async def run_in[T](name: PoolName, func: Callable[..., T], /, *args: Any, **kwargs: Any) -> T:
-    """asyncio.to_thread against a named pool, so a burst of one workload cannot starve another
-    by filling the single default executor every to_thread call shares."""
     loop = asyncio.get_running_loop()
     ctx = contextvars.copy_context()
     call = functools.partial(ctx.run, func, *args, **kwargs)

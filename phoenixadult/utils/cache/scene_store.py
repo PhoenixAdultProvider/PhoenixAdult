@@ -49,8 +49,6 @@ _UPSERT = (
 
 
 def _person_id(conn: sqlite3.Connection, name: str, studio_id: int | None, gender: str) -> int:
-    """Scoped-identity resolution: the (name, scene's studio) row wins when it exists;
-    otherwise the global row is used, created on first sight."""
     row = None
     if studio_id is not None:
         row = conn.execute('SELECT id, gender FROM people WHERE name = ? AND scope_studio_id = ?', (name, studio_id)).fetchone()
@@ -74,8 +72,6 @@ def upsert(
     image_meta: dict[str, tuple[int, int, int]] | None = None,
     updated_at: float | None = None,
 ) -> None:
-    """Decompose one frozen PlexMetadataResponse dict into the relational scene tables
-    (dimensions via INSERT OR IGNORE + id lookup), one transaction per scene."""
     container = data.get('MediaContainer') or {}
     metadata = container.get('Metadata') or [{}]
     md: dict[str, Any] = metadata[0] if isinstance(metadata[0], dict) else {}
@@ -174,8 +170,6 @@ def _people_lists(conn: sqlite3.Connection, scene_id: int) -> dict[str, list[dic
 
 
 def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, str]]:
-    """Each image kind is emitted highest resolution first (unknown dimensions last),
-    kinds keeping their stored relative order."""
     rows = conn.execute('SELECT kind, rel_path, width, height, pos FROM scene_images WHERE scene_id = ? ORDER BY pos', (scene_id,)).fetchall()
     first_pos: dict[str, int] = {}
     for row in rows:
@@ -185,7 +179,6 @@ def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, str]]
 
 
 def load(scene_hash: str) -> dict[str, Any] | None:
-    """Reassemble the frozen response dict for one scene, or None when it is not stored."""
     conn = db.connect()
     row = conn.execute(
         'SELECT s.*, st.name AS studio_name, tl.name AS tagline_name FROM scenes s '
@@ -236,7 +229,6 @@ def load(scene_hash: str) -> dict[str, Any] | None:
 
 
 def tags_for(site_name: str, cur_id: str) -> dict[str, list[str]] | None:
-    """The reconcile-relevant tag lists for one stored scene, None when it is not stored."""
     from phoenixadult.utils.cache import _hash
 
     conn = db.connect()
@@ -269,8 +261,6 @@ def delete(rel_path: str) -> bool:
 
 
 def flag_people_changed(name: str) -> list[str]:
-    """Mark every scene crediting `name` for a forced re-push, returning their titles. A cached
-    serve freezes the headshot URL, so a re-cached image only reaches Plex once that URL is rebuilt."""
     conn = db.connect()
     with conn:
         rows = conn.execute(
@@ -312,7 +302,6 @@ def site_scenes(site: str) -> list[dict[str, str]]:
 
 
 def scene_keys() -> list[tuple[str, str, str]]:
-    """(hash, rel_path, rating_key) for every stored scene."""
     rows = db.connect().execute('SELECT hash, rel_path, rating_key FROM scenes').fetchall()
     return [(str(r['hash']), str(r['rel_path']), str(r['rating_key'])) for r in rows]
 
@@ -497,8 +486,6 @@ def query_entry_rows(
     limit: int = 500,
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
-    """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
-    total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
     conn = db.connect()
     where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, actor, genre, provider_sites, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
@@ -515,7 +502,6 @@ def query_entry_rows(
 
 
 def facet_values() -> dict[str, Any]:
-    """Distinct facet options across ALL stored scenes, for the /metadata dropdowns."""
     conn = db.connect()
 
     def names(sql: str) -> list[str]:
@@ -539,7 +525,6 @@ def facet_values() -> dict[str, Any]:
 
 
 def studio_names() -> list[str]:
-    """Distinct studio names across stored scenes, alphabetical."""
     rows = db.connect().execute(f'SELECT DISTINCT st.name AS name {_SUMMARY_TABLES} WHERE st.name IS NOT NULL ORDER BY st.name').fetchall()
     return [str(r['name']) for r in rows]
 

@@ -10,14 +10,10 @@ from phoenixadult.utils.logging.redaction import RedactionFilter
 
 
 def uvicorn_level() -> str:
-    """The stdlib level name uvicorn's own loggers run at for the configured LOG_LEVEL;
-    levels below DEBUG (http, verbose, silly) map to DEBUG — uvicorn has nothing quieter."""
     return {'error': 'ERROR', 'warn': 'WARNING', 'info': 'INFO'}.get(config.log_level, 'DEBUG')
 
 
 class StartupAddressFilter(logging.Filter):
-    """Drops uvicorn's 'Uvicorn running on …' bind-address line in production."""
-
     def filter(self, record: logging.LogRecord) -> bool:
         return not (env.is_production and isinstance(record.msg, str) and record.msg.startswith('Uvicorn running on'))
 
@@ -49,8 +45,6 @@ UVICORN_LOG_CONFIG: dict[str, Any] = {
 
 
 def configure_uvicorn_logging() -> None:
-    """Lifespan-time counterpart of UVICORN_LOG_CONFIG (which covers the reloader and pre-startup lines):
-    provider format on uvicorn's loggers; its access log is silenced — RequestContextMiddleware emits it in-scope."""
     for name in ('uvicorn', 'uvicorn.error'):
         lg = logging.getLogger(name)
         lg.setLevel(uvicorn_level())

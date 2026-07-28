@@ -44,8 +44,6 @@ def _own_host() -> str | None:
 
 
 def _redact_ip(match: re.Match[str]) -> str:
-    """Public IPs are ALWAYS masked; private/loopback/link-local ones too
-    unless LOG_REDACT_HOSTS is off (so you can see your own LAN address while debugging)."""
     raw = match.group(0)
     try:
         addr = ipaddress.ip_address(raw)
@@ -69,16 +67,11 @@ def redact(text: str) -> str:
 
 
 def redact_client_addr(addr: str) -> str:
-    """uvicorn's client_addr is "host:port"; the glued :port defeats the IP boundary
-    checks, so split it off, redact the host, and rejoin."""
     host, sep, port = addr.rpartition(':')
     return redact(host) + sep + port if sep else redact(addr)
 
 
 class RedactionFilter(logging.Filter):
-    """Always scrubs public IP literals; private/loopback IPs and the server's own host
-    only when LOG_REDACT_HOSTS is on; secret query values only when LOG_REDACT_TOKEN is on."""
-
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             if record.name.startswith('uvicorn.access') and isinstance(record.args, tuple) and len(record.args) >= 3:

@@ -6,8 +6,6 @@ from typing import Any
 
 
 def read_json(path: Path, default: Any = None, tag: str | None = None) -> Any:
-    """Parse a JSON file, returning `default` when it is missing or malformed
-    (logged under `tag` when given)."""
     try:
         return json.loads(Path(path).read_text(encoding='utf-8'))
     except (OSError, ValueError) as err:
@@ -17,8 +15,6 @@ def read_json(path: Path, default: Any = None, tag: str | None = None) -> Any:
 
 
 def _warn(tag: str, message: str) -> None:
-    """Config-safe warning: falls back to print when the logger (which imports
-    phoenixadult.config) is not importable yet."""
     try:
         from phoenixadult.utils.logging.logger import logger
     except ImportError:

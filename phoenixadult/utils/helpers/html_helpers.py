@@ -46,7 +46,6 @@ _TAG_RE = re.compile(r'<[^>]+>')
 
 
 def strip_tags(html: str | None) -> str:
-    """Remove HTML tags and trim. Does not collapse internal whitespace."""
     return _TAG_RE.sub('', html or '').strip()
 
 
@@ -57,18 +56,13 @@ def script_match(script_text: str, pattern: re.Pattern[str] | str) -> str:
 
 
 def first_text(node: Selector, xpath: str) -> str:
-    """Normalized text of the first element matching the XPath ('' if none)."""
     nodes = node.xpath(xpath)
     return (nodes[0].xpath('normalize-space(.)').get() or '').strip() if nodes else ''
 
 
 def first_attr(node: Node, xpath: str = 'string(.)') -> str:
-    """Raw value of the first XPath match, trimmed ('' if none). Internal whitespace is
-    preserved, unlike first_text's normalize-space. Defaults to string(.) of the node."""
     return (node.xpath(xpath).get() or '').strip()
 
 
 def meta_content(node: Selector, key: str) -> str:
-    """Content of the first <meta property=KEY> or <meta name=KEY> ('' if none).
-    Covers OpenGraph (og:*) and Twitter-card (twitter:*) tags interchangeably."""
     return (node.xpath(f'(//meta[@property="{key}" or @name="{key}"]/@content)[1]').get() or '').strip()

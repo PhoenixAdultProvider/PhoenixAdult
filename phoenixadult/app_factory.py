@@ -40,8 +40,6 @@ def _log_startup_banner() -> None:
 
 
 async def _try_startup(label: str, fn: Callable[[], object]) -> None:
-    """Run a best-effort startup step; log and continue on failure so a bad derived index
-    (e.g. a corrupt state.db freelist) degrades gracefully instead of boot-looping the app."""
     try:
         await asyncio.to_thread(fn)
     except Exception as err:  # noqa: BLE001 - startup must survive a broken derived store
@@ -49,8 +47,6 @@ async def _try_startup(label: str, fn: Callable[[], object]) -> None:
 
 
 async def _backup_task() -> None:
-    """App-driven state-db backups on a timer (no cron): an initial snapshot when none exists, then
-    one every DB_BACKUP_INTERVAL_HOURS. 0 disables."""
     from phoenixadult.utils.db import maintenance
 
     hours = env.db_backup_interval_hours

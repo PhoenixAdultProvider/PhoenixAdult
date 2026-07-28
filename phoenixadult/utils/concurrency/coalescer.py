@@ -6,9 +6,6 @@ from typing import Any
 
 
 class Coalescer[K, V]:
-    """Coalesce concurrent async calls for the same key onto one shared task; the entry is
-    dropped once the task settles — no result caching, pair with a cache when you need one."""
-
     def __init__(self) -> None:
         self._inflight: dict[K, asyncio.Task[V]] = {}
 
@@ -25,8 +22,6 @@ class Coalescer[K, V]:
 
 
 def coalesce_future[V](cache: dict[str, asyncio.Future[V]], key: str, factory: Callable[[], Awaitable[V]]) -> asyncio.Future[V]:
-    """Memoize an in-flight async call in a caller-owned dict: the first call for a key stores
-    its future, later calls return it. The result is kept for the dict's lifetime."""
     if key not in cache:
         cache[key] = asyncio.ensure_future(factory())
     return cache[key]

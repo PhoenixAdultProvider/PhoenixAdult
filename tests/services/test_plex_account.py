@@ -1,5 +1,3 @@
-"""Plex fixture addresses use the RFC 5737 documentation range only — never the host's real address."""
-
 from __future__ import annotations
 
 import httpx

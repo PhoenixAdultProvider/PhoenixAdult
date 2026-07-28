@@ -59,7 +59,6 @@ async def fetch_javbus_images(http: httpx2.AsyncClient, jav_id: str, date_iso: s
 
 
 async def push_javbus_images(http: httpx2.AsyncClient, coll: dict[str, Any], jav_id: str, ignore_list: list[str], date_iso: str | None) -> None:
-    """Pad `jav_id`, fetch its JavBus gallery, and push each image onto the client's image collector."""
     jav_id = pad_jav_id(jav_id, ignore_list)
     for url in await fetch_javbus_images(http, jav_id, date_iso):
         coll['push'](url)

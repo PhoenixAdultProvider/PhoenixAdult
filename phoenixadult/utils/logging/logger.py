@@ -59,9 +59,6 @@ if not _base.handlers:
 
 
 class _Logger:
-    """Thin shim exposing winston-style level methods with tagged-form support; logs with
-    stacklevel=3 (skips _emit + the level method) so module/lineno resolve to the real caller."""
-
     def _emit(self, level: int, a: Any, b: Any = None, **meta: Any) -> None:
         if isinstance(a, str) and isinstance(b, str):
             message = f'[{a}] {b}'

@@ -25,8 +25,6 @@ _libs_lock = threading.Lock()
 
 
 def _libs() -> tuple[Any, Any] | None:
-    """Lazily import cv2/numpy and confirm the model exists. Logs once on failure.
-    Locked so concurrent to_thread workers init exactly once."""
     global _cv2, _np, _unavailable_reason
     with _libs_lock:
         if _cv2 is not None and _np is not None:
@@ -61,8 +59,6 @@ def _rotation_codes(cv2: Any) -> dict[int, Any]:
 
 
 def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], float] | None:
-    """Return (upright_image, (x,y,w,h), score) for the most confident face across
-    four rotations, so laying-down/sideways shots resolve to an upright crop."""
     best: tuple[Any, tuple[int, int, int, int], float] | None = None
     detector = cv2.FaceDetectorYN.create(str(_MODEL_PATH), '', (320, 320), _DETECT_SCORE, 0.3, 5000)
     for code in _rotation_codes(cv2).values():
@@ -83,8 +79,6 @@ def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], floa
 
 
 def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | None:
-    """Square head-and-shoulders crop: headroom above the hair, face in the upper half,
-    shoulders filling the lower. Returns None when degenerate or already ~a close-up."""
     height, width = img.shape[:2]
     x, y, w, h = box
     cx = x + w / 2.0
@@ -106,8 +100,6 @@ def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | N
 
 
 def crop_to_headshot(data: bytes) -> bytes | None:
-    """Crop image bytes to an upright head+shoulders headshot (JPEG). Returns None to
-    signal 'keep the original' (no confident face, decode failure, or cv2 unavailable)."""
     libs = _libs()
     if libs is None:
         return None

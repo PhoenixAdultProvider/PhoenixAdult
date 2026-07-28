@@ -29,8 +29,6 @@ _shared_image_clients: dict[int, httpx2.AsyncClient] = {}
 
 
 def _image_client() -> httpx2.AsyncClient:
-    """One keep-alive client per event loop so CDN pulls reuse pooled TCP connections;
-    keyed by loop id so a per-test loop never reuses a client bound to a closed loop."""
     loop_id = id(asyncio.get_running_loop())
     client = _shared_image_clients.get(loop_id)
     if client is None:
@@ -94,8 +92,6 @@ def _is_data18_host(url: str) -> bool:
 
 
 def _referers_for(url: str, configured: list[str] | None) -> list[str | None]:
-    """Referer candidates for `url`. data18/dt18 CDN hosts require their own
-    Referer, so they ignore the scene-configured referers entirely."""
     if _is_data18_host(url):
         return ['http://i.dt18.com', 'https://www.data18.com']
     if configured:

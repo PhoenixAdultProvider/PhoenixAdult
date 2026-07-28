@@ -95,8 +95,6 @@ class BadoinkVrClient(Client):
 
     @staticmethod
     def _slug_family(scene_url: str, gallery_big: str, count: int) -> list[str]:
-        """Galleries can switch to /content/scenes/{id}/{slug}-{id}[_i].jpg past the teaser;
-        derive that family from the scene URL so the members-only tail is reachable."""
         cdn = re.match(r'^(https?://[^/]+)/content/', gallery_big)
         segments = [s for s in urlsplit(scene_url).path.split('/') if s]
         slug_id = re.match(r'^(.+)-(\d+)$', segments[-1]) if segments else None
@@ -176,8 +174,6 @@ class BadoinkVrClient(Client):
         metadata.actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender='female') for a in resolved]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        """The DOM gallery is a truncated teaser (~5 items); the zip photo count is the real
-        total, so candidates expand past the teaser and only the ones that exist are kept."""
         details_page_elements = scene.require_sel()
         images: list[str] = []
 

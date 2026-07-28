@@ -122,7 +122,6 @@ class ScrewMeTooClient(Client):
         metadata.release_date = self._extra(scene).release_date or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        """Group genre scales off cast+1 — the POV performer is excluded from the count."""
         details_page_elements = scene.require_sel()
 
         genres: list[str] = []

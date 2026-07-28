@@ -26,7 +26,6 @@ class _ReqBinBackend:
         return env.reqbin_enabled
 
     async def request(self, req: BypassRequest) -> BypassResponse | None:
-        """Credentialed third-party API — TLS stays verified."""
         cookie_header = '; '.join(f'{k}={v}' for k, v in req.cookies.items()) if req.cookies else ''
         headers = dict(req.headers)
         if cookie_header and 'Cookie' not in headers:

@@ -26,7 +26,6 @@ def _is_movie_url(url: str) -> bool:
 
 
 def _clean_srcset_image(raw: str) -> str:
-    """Split on '_' keeping the first three fields and take the third."""
     if not raw:
         return ''
 

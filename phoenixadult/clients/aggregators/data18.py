@@ -35,7 +35,6 @@ _TITLE_XP = '(//h1)[1]'
 
 
 def data18_scene_id(raw: str | None) -> str:
-    """The numeric data18 scene/movie id from a client rating-key, or '' when it isn't a usable id."""
     return raw if raw and raw.isdigit() and int(raw) > 100 else ''
 
 
@@ -48,8 +47,6 @@ class ManualMapping(TypedDict):
 
 
 def _load_manual_mappings(caller_file: str = __file__) -> dict[str, ManualMapping]:
-    """Merge data18_manual_mappings.json with every data18_manual_mappings_*.json sibling
-    (sorted by name, later files win on a duplicate id)."""
     folder = Path(caller_file).parent / '_data' / 'data18'
     merged: dict[str, ManualMapping] = {}
     for name in ['data18_manual_mappings', *sorted(p.stem for p in folder.glob('data18_manual_mappings_*.json'))]:
@@ -64,8 +61,6 @@ DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = _load_manual_mappings()
 
 
 def mapping_slug(title: str, sub_site: str | None) -> str | None:
-    """The manual-mapping key a client computes for a scene: slugify(title)[-subsite].
-    Kept here so the cache can reproduce it from a snapshot for change detection."""
     sid = slugify(title, replacements=[("'", '')])
     if not sid:
         return None
@@ -74,8 +69,6 @@ def mapping_slug(title: str, sub_site: str | None) -> str | None:
 
 
 def manual_mapping_url(mapping_key: str | None) -> str | None:
-    """The data18 scene/movie URL forced for `mapping_key` (a mapping_slug value), else None.
-    An entry's slug may be a list when several scenes share one data18 page."""
     if not mapping_key:
         return None
 
@@ -88,12 +81,10 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
 
 
 def xp_ns(sel: Any, xpath: str) -> str:
-    """normalize-space() of an XPath expression, '' when it matches nothing."""
     return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
 
 
 def xp_first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
-    """First non-empty xp_ns() result across xpaths."""
     for xpath in xpaths:
         if value := xp_ns(sel, xpath):
             return value
@@ -102,12 +93,10 @@ def xp_first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
 
 
 def squash(value: str) -> str:
-    """Lower-case with all whitespace removed, for loose display-name comparison."""
     return re.sub(r'\s+', '', value).lower()
 
 
 def url_id(url: str) -> str:
-    """Numeric id from a data18 scene/movie URL, slug tail stripped."""
     return re.sub(r'.*/', '', url).split('-')[0]
 
 
@@ -115,8 +104,6 @@ _DATA18_REF_RE = re.compile(r'/(scenes|movies)/(\d+)')
 
 
 def data18_ref(url: str | None) -> dict[str, str] | None:
-    """The {type, id} a data18 scene/movie URL points to (type 'scene'/'movie', numeric
-    id, slug tail dropped), or None when it isn't a scene/movie URL."""
     if not url:
         return None
 
@@ -131,7 +118,6 @@ _REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
 
 
 def strip_reptyle_suffix(studio: str) -> str:
-    """data18 labels the Reptyle networks "TeamSkeet - Reptyle"; the network is the first part."""
     return _REPTYLE_SUFFIX_RE.sub('', studio).strip()
 
 
@@ -141,8 +127,6 @@ _ID_ONLY_RE = re.compile(r'/(?:scenes|movies)/\d+/?$')
 
 
 def scene_url_from_ref(ref: str | None) -> str | None:
-    """Scene/movie URL from a hand-written reference (numeric id, slug, 'scenes/<x>', 'movies/<x>',
-    or full data18 URL). Bare refs are scenes; None when empty, off-host, or not a plain ref."""
     if not ref:
         return None
 
@@ -261,8 +245,6 @@ class Data18Client(Client):
         extract_detail: Callable[[Selector, str], tuple[str, str, str] | None],
         max_pages: int = 10,
     ) -> None:
-        """Shared scenes/movies search: candidate lookup + web-search url harvest, then per-url detail
-        via `extract_detail(sel, url) -> (title, release_date, subsite) | None`; `clean_ws_url` drops hits."""
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = data18_scene_id(search_data.scene_id)
         text = search_data.title.strip()
@@ -435,8 +417,6 @@ class Data18Client(Client):
         kind: Data18Kind = 'scene',
         allow_square: bool = True,
     ) -> str | None:
-        """Resolve a scene's data18 page (forced URL, manual mapping, or search), append its images to
-        `images` in place, return the resolved URL; best_effort so a failure never breaks the host scrape."""
         with best_effort(scope, 'data18 enrichment'):
             url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
             if url:
@@ -467,8 +447,6 @@ class Data18Client(Client):
         return kept
 
     async def _resolve_id_url(self, url: str) -> str:
-        """data18 301s bare id URLs to their slug form but can 403 clients that follow the
-        redirect; hop it manually so the slug URL can be fetched directly."""
         if not _ID_ONLY_RE.search(url):
             return url
 

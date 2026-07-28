@@ -37,7 +37,6 @@ def cache_replace_enabled() -> bool:
 
 
 def _slug(name: str) -> str:
-    """Filename-safe slug: strips path separators and collapses `..` so a crafted name can't escape the cache dir."""
     return re.sub(r'\s+', '-', re.sub(r'\.{2,}', '.', re.sub(r'[/\\]', '-', name))).lower()
 
 
@@ -49,8 +48,6 @@ def _base_name(name: str, type: PersonType) -> str:
 
 
 def _subdir(type: PersonType, gender: Gender) -> str:
-    """On-disk subfolder for a person: 'directors' / 'producers', or for actors
-    'actors/<male|female|trans|unknown>' (anything but male/female/trans is 'unknown')."""
     if type == 'actor':
         bucket = gender if gender in ('male', 'female', 'trans') else 'unknown'
         return f'actors/{bucket}'
@@ -58,7 +55,6 @@ def _subdir(type: PersonType, gender: Gender) -> str:
 
 
 def _subdir_for(filename: str) -> str:
-    """The subfolder a cached filename belongs in, derived from its type+gender."""
     type, _, gender = parse_person_filename(filename)
     return _subdir(type, gender)  # type: ignore[arg-type]
 
@@ -85,8 +81,6 @@ def _bust_token(relpath: str, data: bytes | None) -> str:
 
 
 def _local_url(relpath: str, data: bytes | None = None) -> str:
-    """Served URL for a cached people image (relpath = '<subdir>/<filename>') with a content-hash
-    cache-buster: Plex caches images by URL, so the token changes only when the bytes do."""
     from urllib.parse import quote
 
     token = _bust_token(relpath, data)
@@ -102,8 +96,6 @@ _index = db.ReconciledConn(people_cache_dir, lambda: _rebuild_index(db.connect()
 
 
 def _served_files(root: Path) -> Iterator[Path]:
-    """Cached served images across the type/gender subfolders — skips the originals/
-    backing store, hidden files, and non-images."""
     for entry in root.rglob('*'):
         if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
             continue
@@ -113,7 +105,6 @@ def _served_files(root: Path) -> Iterator[Path]:
 
 
 def reconcile() -> None:
-    """Rebuild the people_images index from the files on disk."""
     _index.reconcile()
 
 
@@ -141,7 +132,6 @@ def _rebuild_index(conn: sqlite3.Connection) -> None:
 
 
 def _index_file(relpath: str) -> None:
-    """Upsert one served file's people_images row from its on-disk state."""
     target = safe_join(people_cache_dir(), relpath)
     if target is None:
         return
@@ -167,8 +157,6 @@ def _drop_index_row(relpath: str) -> None:
 
 
 def _scan_miss(conn: sqlite3.Connection, type: PersonType, slug: str) -> tuple[str, str] | None:
-    """Manually-dropped files have no row yet: scan the type's subfolders for the
-    person and self-heal the index on a hit."""
     root = Path(people_cache_dir())
     subdirs = [f'actors/{bucket}' for bucket in ('male', 'female', 'trans', 'unknown')] if type == 'actor' else [f'{type}s']
     for subdir in subdirs:
@@ -196,8 +184,6 @@ def _scan_miss(conn: sqlite3.Connection, type: PersonType, slug: str) -> tuple[s
 
 
 def _find_row(type: PersonType, slug: str) -> tuple[str, str] | None:
-    """(rel_path, gender) for a cached person: keyed lookup, stale rows healed
-    against disk, scan-on-miss fallback for manually-dropped files."""
     conn = _index_conn()
     while True:
         row = conn.execute('SELECT rel_path, gender FROM people_images WHERE type = ? AND slug = ? ORDER BY rel_path LIMIT 1', (type, slug)).fetchone()
@@ -225,8 +211,6 @@ def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
 
 
 async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
-    """Image bytes for the cache. Plain client first; fall back to curl_cffi
-    impersonation for Cloudflare-gated hosts (e.g. IAFD headshots 403 a plain GET)."""
     try:
         async with make_http() as client:
             resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
@@ -325,8 +309,6 @@ def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
 
 
 async def restore_original(filename: str) -> bool:
-    """Replace a cropped cache file with its un-cropped original: preserved local copy first
-    (offline-safe), else re-download upstream. Backs the /people 'Use Original' action."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)
@@ -364,8 +346,6 @@ async def restore_original(filename: str) -> bool:
 
 
 def purge(filename: str) -> bool:
-    """Delete a cached image (and its preserved original) and drop its crop-log entry.
-    Backs the /people 'Purge' button."""
     directory = people_cache_dir()
     subdir = _subdir_for(filename)
     target = safe_join(directory, subdir, filename)
@@ -391,8 +371,6 @@ _GENDERS = ('', 'male', 'female', 'trans')
 
 
 def set_gender(filename: str, new_gender: str) -> str | None:
-    """Correct a cached actor's gender: rename the `_<gender>` suffix and MOVE the file (plus
-    original and crop-log entry) to actors/<gender>; directors/producers stay put. Returns the new filename."""
     if new_gender not in _GENDERS:
         return None
     directory = people_cache_dir()

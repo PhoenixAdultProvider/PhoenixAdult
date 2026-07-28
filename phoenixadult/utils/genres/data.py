@@ -27,6 +27,4 @@ _RULES: MtimeCachedJson[GenreRules] = MtimeCachedJson(_DATA, _build)
 
 
 def genre_rules() -> GenreRules:
-    """Parsed genres.json, reloaded whenever the file's mtime changes — so edits to
-    the skip / partial_skip / replace lists apply without a restart."""
     return _RULES.get()
