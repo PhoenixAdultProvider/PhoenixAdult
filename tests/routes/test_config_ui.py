@@ -139,3 +139,12 @@ def test_the_log_view_shows_the_same_redaction_the_file_gets(client: TestClient,
     hit = next(line for line in lines if 'fetching' in line)
     assert 'abcdef0123456789' not in hit
     assert 'token=***REDACTED***' in hit
+
+
+def test_the_logs_tab_breaks_out_of_the_page_width(client: TestClient) -> None:
+    body = client.get('/config', params={'token': TOKEN}).text
+    assert 'body.logs-wide { max-width: none; }' in body
+    assert "document.body.classList.toggle('logs-wide', name === 'logs');" in body
+    assert 'function logFill()' in body
+    assert "window.addEventListener('resize'" in body
+    assert 'max-width: 1092px' in body

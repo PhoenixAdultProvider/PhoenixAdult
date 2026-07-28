@@ -106,6 +106,9 @@
       -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; overscroll-behavior: contain;
       -webkit-user-select: text; user-select: text; cursor: text;
     }
+    body.logs-wide { max-width: none; }
+    body.logs-wide #tab-logs h2 { display: none; }
+    body.logs-wide #tab-logs .card { margin-top: 0.75rem; margin-bottom: 0; }
     .logview:focus-visible { outline: 1px solid #6366f1; outline-offset: -1px; }
     .logview .ln { display: block; width: max-content; min-width: 100%; }
     .logview .ln.hide { display: none; }
@@ -416,6 +419,7 @@
         if (btn) btn.classList.toggle('active', t === name);
       }
       if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadPlexLibraries(); }
+      document.body.classList.toggle('logs-wide', name === 'logs');
       if (name === 'logs') logOpen(); else logStop();
       const activeBtn = document.getElementById('tabbtn-' + name);
       if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -1363,11 +1367,23 @@
       if (logTimer) { clearInterval(logTimer); logTimer = null; }
     }
 
+    const LOG_MIN_HEIGHT = 200;
+
+    function logFill() {
+      const view = logView();
+      view.style.height = LOG_MIN_HEIGHT + 'px';
+      const pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+      const used = view.parentElement.getBoundingClientRect().bottom + window.scrollY + pad;
+      view.style.height = Math.max(LOG_MIN_HEIGHT, LOG_MIN_HEIGHT + window.innerHeight - used) + 'px';
+      if (document.getElementById('logFollow').checked) logToEnd();
+    }
+
     function logOpen() {
       const sel = document.getElementById('logMaxSel');
       if (!sel.options.length) {
         sel.innerHTML = LOG_CHOICES.map((n) => '<option value="' + n + '"' + (n === logMax ? ' selected' : '') + '>' + n + '</option>').join('');
       }
+      logFill();
       if (logPaused) return;
       if (!logLoaded) { logLoaded = true; logPoll({ full: true }); }
       logStart();
@@ -1423,6 +1439,10 @@
 
     logView().addEventListener('scroll', () => {
       document.getElementById('logFollow').checked = logAtBottom();
+    }, { passive: true });
+
+    window.addEventListener('resize', () => {
+      if (document.body.classList.contains('logs-wide')) logFill();
     }, { passive: true });
 
     render();
