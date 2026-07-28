@@ -768,6 +768,14 @@ tests/                       # pytest + respx unit / client / selector / health 
 
 ## Appendix A — Title-Case Parser Model
 
+Genre normalization (`normalize_genres`, `phoenixadult/utils/genres/`) applies `genres.json`'s
+skip/alias rules and then drops any remaining free-form tag that matches one of the scene's own
+actor names — sites routinely tag a scene with its cast. The filter runs after the alias lookup, so
+a value that `genres.json` recognizes is never dropped: a performer named "Latina" cannot remove the
+*genre* Latina. It is applied in `MetadataMapper` (fresh scrapes, matching both the scraped and the
+aliased spelling of each name) and in the cache's `reapply_text_rules` (so an existing snapshot is
+cleaned on its next refresh), which is why no individual client has to implement it.
+
 `title_case()` (`phoenixadult/utils/processors/title_case.py`) normalizes scraped titles and
 actor names for Plex. It is a small pipeline: a stateless transform built from a
 tokenizer, a per-word rule engine driven by lookup tables, and a post-process

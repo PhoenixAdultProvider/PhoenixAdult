@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 
 from phoenixadult.utils.genres.data import GenreRules, genre_rules
 from phoenixadult.utils.processors.title_case import title_case
@@ -10,6 +11,11 @@ from phoenixadult.utils.processors.title_case import title_case
 class NormalizeGenresOptions:
     title: str | None = None
     site_name: str | None = None
+    actors: tuple[str, ...] = field(default_factory=tuple)
+
+
+def _match_key(value: str) -> str:
+    return re.sub(r'\s+', ' ', value).strip().lower()
 
 
 def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None = None) -> list[str]:
@@ -17,10 +23,11 @@ def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None
         return []
     opts = opts or NormalizeGenresOptions()
     rules = genre_rules()
+    actor_keys = {key for key in (_match_key(name) for name in opts.actors) if key}
     seen: set[str] = set()
     out: list[str] = []
     for raw in raws:
-        normalized = _normalize_one(raw, opts, rules)
+        normalized = _normalize_one(raw, opts, rules, actor_keys)
         if not normalized:
             continue
         key = normalized.lower()
@@ -31,7 +38,7 @@ def normalize_genres(raws: list[str] | None, opts: NormalizeGenresOptions | None
     return sorted(out, key=str.casefold)
 
 
-def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRules) -> str | None:
+def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRules, actor_keys: set[str]) -> str | None:
     if raw is None:
         return None
 
@@ -51,6 +58,9 @@ def _normalize_one(raw: str | None, opts: NormalizeGenresOptions, rules: GenreRu
     canonical = rules.replace_lookup.get(lower)
     if canonical:
         return canonical
+
+    if _match_key(cleaned) in actor_keys:
+        return None
 
     cased = title_case(cleaned, site_name=opts.site_name, type='title')
 

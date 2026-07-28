@@ -839,7 +839,8 @@ def _renormalize_genres(md: PlexMetadata, studio: str) -> bool:
     if not md.Genre:
         return False
     old = [g.tag for g in md.Genre]
-    new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio))
+    actors = tuple(r.tag for r in md.Role or [] if r.tag)
+    new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio, actors=actors))
     if new == old:
         return False
     md.Genre = [PlexGenre(tag=t) for t in new]

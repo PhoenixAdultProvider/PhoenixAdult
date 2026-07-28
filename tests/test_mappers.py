@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 import phoenixadult.mappers.metadata_mapper as mapper_mod
-from phoenixadult.clients.base import SceneDetail, SearchResult
+from phoenixadult.clients.base import ActorResult, SceneDetail, SearchResult
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.registry import find_site, normalize_site_key
 from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
@@ -168,3 +168,21 @@ async def test_thumb_prefers_highest_resolution_poster(monkeypatch: pytest.Monke
     detail = SceneDetail(title='A Scene', summary='', studio='X', genres=[], actors=[], art=[POSTER, POSTER_XL])
     md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
     assert md.thumb == POSTER_XL
+
+
+async def test_actor_names_are_dropped_from_genres(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
+    monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'false')
+    monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
+    detail = SceneDetail(
+        title='A Scene',
+        studio='X',
+        genres=['Hardcore', 'Jane Doe', 'Amateur'],
+        actors=[ActorResult(name='Jane Doe'), ActorResult(name='Amateur')],
+    )
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+
+    tags = [g.tag for g in md.Genre or []]
+    assert 'Jane Doe' not in tags
+    assert 'Hardcore' in tags
+    assert 'Amateur' in tags

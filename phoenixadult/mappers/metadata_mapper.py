@@ -95,6 +95,12 @@ def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted:
     images.sort(key=lambda img: (first_pos[img.type], img.url in held_back, -area.get(img.url, 0)))
 
 
+def _actor_names(detail: SceneDetail, resolved: list[PlexRole]) -> tuple[str, ...]:
+    """Both spellings a site might tag a genre with: the name as scraped and the aliased form."""
+    scraped = [a.name for a in detail.actors or [] if a.name]
+    return tuple(dict.fromkeys([*scraped, *(r.tag for r in resolved if r.tag)]))
+
+
 class MetadataMapper:
     def _proxy(self, url: str | None, referers: list[str] | None = None, cookies: list[str] | None = None, *, passthrough_local: bool = False) -> str | None:
         return proxy_url(url, config.base_url, referers, cookies, passthrough_local=passthrough_local)
@@ -175,7 +181,13 @@ class MetadataMapper:
             year=year,
             thumb=thumb,
             art=art,
-            Genre=[PlexGenre(tag=tag) for tag in normalize_genres(detail.genres, NormalizeGenresOptions(title=clean_title, site_name=detail.studio))],
+            Genre=[
+                PlexGenre(tag=tag)
+                for tag in normalize_genres(
+                    detail.genres,
+                    NormalizeGenresOptions(title=clean_title, site_name=detail.studio, actors=_actor_names(detail, plex_actors)),
+                )
+            ],
             Role=plex_actors,
             Director=plex_directors or None,
             Producer=plex_producers or None,
