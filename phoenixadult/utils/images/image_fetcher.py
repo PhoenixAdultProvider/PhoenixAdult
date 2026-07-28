@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import io
 import time
 from collections import OrderedDict
@@ -151,6 +152,45 @@ async def _get_once_pinned(url: str, referer: str | None, cookie: str | None) ->
         headers['Cookie'] = sanitize_header(cookie)
     resp = await fetch_pinned(url, headers)
     return _accept_image_response(resp, url)
+
+
+_byte_digests: dict[str, str] = {}
+_pixel_digests: dict[str, str] = {}
+
+
+def _sha1(data: bytes) -> str:
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
+
+
+def _decode_pixels(data: bytes) -> str:
+    with Image.open(io.BytesIO(data)) as img:
+        return _sha1(img.convert('RGB').tobytes())
+
+
+async def content_digest(url: str) -> str | None:
+    if (hit := _byte_digests.get(url)) is not None:
+        return hit
+    entry = _cache_get(url)
+    if entry is None:
+        return None
+    digest = await run_in('image', _sha1, entry.data)
+    _byte_digests[url] = digest
+    return digest
+
+
+async def pixel_digest(url: str) -> str | None:
+    if (hit := _pixel_digests.get(url)) is not None:
+        return hit
+    entry = _cache_get(url)
+    if entry is None:
+        return None
+    try:
+        digest = await run_in('image', _decode_pixels, entry.data)
+    except Exception as err:  # noqa: BLE001 - an undecodable image simply is not deduped
+        logger.debug(f'pixel digest failed for {url}: {err!r}')
+        return None
+    _pixel_digests[url] = digest
+    return digest
 
 
 def _decode_dims(data: bytes) -> tuple[int, int]:

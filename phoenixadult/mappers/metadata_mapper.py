@@ -21,7 +21,7 @@ from phoenixadult.registry import ResolvedSiteInfo, normalize_site_key
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.helpers import embed_subsite
 from phoenixadult.utils.images.image_classifier import classify_image
-from phoenixadult.utils.images.image_fetcher import fetch_dimensions
+from phoenixadult.utils.images.image_fetcher import content_digest, fetch_dimensions, pixel_digest
 from phoenixadult.utils.images.image_referers import resolve_image_cookies, resolve_image_referers
 from phoenixadult.utils.images.proxy import proxy_url
 from phoenixadult.utils.logging.logger import logger
@@ -85,6 +85,40 @@ def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted:
     for idx, img in enumerate(images):
         first_pos.setdefault(img.type, idx)
     images.sort(key=lambda img: (first_pos[img.type], img.url in held_back, -area.get(img.url, 0)))
+
+
+def _keep_first_by(probed: list[dict[str, Any]], keys: list[str | None]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    kept: list[dict[str, Any]] = []
+    for entry, key in zip(probed, keys, strict=True):
+        if key is not None:
+            if key in seen:
+                continue
+            seen.add(key)
+        kept.append(entry)
+    return kept
+
+
+async def _dedupe_artwork(probed: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    kept = _keep_first_by(probed, list(await asyncio.gather(*(content_digest(p['url']) for p in probed))))
+
+    groups: dict[tuple[int, int], int] = {}
+    for entry in kept:
+        shape = (entry['dims']['width'], entry['dims']['height'])
+        groups[shape] = groups.get(shape, 0) + 1
+
+    async def pixel_key(entry: dict[str, Any]) -> str | None:
+        shape = (entry['dims']['width'], entry['dims']['height'])
+        if groups[shape] < 2:
+            return None
+        digest = await pixel_digest(entry['url'])
+        return f'{shape[0]}x{shape[1]}:{digest}' if digest else None
+
+    kept = _keep_first_by(kept, list(await asyncio.gather(*(pixel_key(p) for p in kept))))
+
+    if dropped := len(probed) - len(kept):
+        logger.info(f'Dropped {dropped} duplicate image(s) of {len(probed)}')
+    return kept
 
 
 def _actor_names(detail: SceneDetail, resolved: list[PlexRole]) -> tuple[str, ...]:
@@ -200,7 +234,7 @@ class MetadataMapper:
             return {'url': raw_url, 'dims': dims, 'image_class': result.image_class}
 
         probed = await asyncio.gather(*(probe(u) for u in art))
-        return [p for p in probed if p is not None]
+        return await _dedupe_artwork([p for p in probed if p is not None])
 
     async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         valid = await self._probe_artwork(detail.art, referers, cookies)
