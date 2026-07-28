@@ -14,7 +14,8 @@ URL = 'https://cdn.example.com/scene/poster.jpg'
 
 
 @pytest.fixture(autouse=True)
-def _clean() -> None:
+def _clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'false')
     fetcher._cache.clear()
     fetcher._cache_total_bytes = 0
     fetcher._dims_cache.clear()
@@ -99,3 +100,15 @@ async def test_an_already_downloaded_image_is_not_probed_again() -> None:
     blocked = respx.get(URL).mock(return_value=httpx.Response(500))
     assert await fetch_dimensions(URL) == {'width': 300, 'height': 300}
     assert blocked.call_count == 0
+
+
+@respx.mock
+async def test_the_probe_is_skipped_when_snapshots_will_download_anyway(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    body = _jpeg(1200, 800)
+    route = respx.get(URL).mock(return_value=httpx.Response(200, content=body, headers={'Content-Type': 'image/jpeg'}))
+
+    assert await fetch_dimensions(URL) == {'width': 1200, 'height': 800}
+    assert route.call_count == 1
+    assert 'Range' not in route.calls[0].request.headers
+    assert fetcher._cache_get(URL) is not None

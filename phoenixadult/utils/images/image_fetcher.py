@@ -291,13 +291,14 @@ async def fetch_dimensions(url: str, referers: list[str] | None = None, cookies:
         _dims_cache_put(url, (entry.width, entry.height))
         return {'width': entry.width, 'height': entry.height}
 
-    probed, responded = await _probe_dims(url, referers, cookies)
-    if probed:
-        _dims_cache_put(url, probed)
-        return {'width': probed[0], 'height': probed[1]}
-    if not responded:
-        _dims_cache_put(url, None)
-        return None
+    if not env.metadata_cache_enabled:
+        probed, responded = await _probe_dims(url, referers, cookies)
+        if probed:
+            _dims_cache_put(url, probed)
+            return {'width': probed[0], 'height': probed[1]}
+        if not responded:
+            _dims_cache_put(url, None)
+            return None
 
     try:
         entry = await fetch_image(url, referers, cookies)

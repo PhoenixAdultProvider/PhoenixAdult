@@ -29,6 +29,7 @@ from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _GALLERY_CONCURRENCY = 3
 _BASE = 'https://www.data18.com'
+_PROBE_CONCURRENCY = 8
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 _TITLE_XP = '(//h1)[1]'
@@ -439,7 +440,13 @@ class Data18Client(Client):
             dims = await fetch_dimensions(u, [_BASE])
             return dims is not None and classify_image(dims['width'], dims['height']).orientation == 'square'
 
-        flags = await asyncio.gather(*(is_square(u) for u in urls))
+        sem = asyncio.Semaphore(_PROBE_CONCURRENCY)
+
+        async def gated(u: str) -> bool:
+            async with sem:
+                return await is_square(u)
+
+        flags = await asyncio.gather(*(gated(u) for u in urls))
         kept = [u for u, square in zip(urls, flags, strict=True) if not square]
         if dropped := len(urls) - len(kept):
             logger.info(scope, f'dropped {dropped} square data18 image(s)')
