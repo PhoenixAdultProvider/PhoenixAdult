@@ -212,9 +212,7 @@ async def page(request: Request) -> HTMLResponse:
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
       figcaption{{font-size:11px;color:#94a3b8;margin-bottom:4px}}
       img{{width:100%;height:170px;object-fit:contain;background:#0b0d12;border-radius:6px}}
-      body.sfw .imgs figure img{{display:none}}
-      body.sfw .imgs figure::after{{content:'Hidden 4 SFW';display:flex;align-items:center;justify-content:center;
-        height:170px;background:#0b0d12;border-radius:6px;color:#334155;font-size:12px}}
+      body.sfw .imgs{{display:none}}
       .sfwtoggle.on{{background:#15803d;border-color:#15803d;color:#fff}}
       .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#94a3b8}}
       .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}

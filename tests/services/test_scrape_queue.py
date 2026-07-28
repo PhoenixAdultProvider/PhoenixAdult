@@ -220,6 +220,37 @@ async def test_progress_counts_one_drain_cycle() -> None:
     assert snap['total'] == 0 and snap['done'] == 0
 
 
+async def test_waiting_wakes_as_soon_as_a_job_finishes() -> None:
+    release = asyncio.Event()
+
+    async def job() -> None:
+        await release.wait()
+
+    scrape_queue.enqueue('watch1', job)
+    await asyncio.sleep(0.02)
+    before = int(scrape_queue.snapshot()['revision'])
+
+    watcher = asyncio.create_task(scrape_queue.wait_for_change(before, 5.0))
+    await asyncio.sleep(0.02)
+    assert not watcher.done()
+
+    release.set()
+    await asyncio.wait_for(watcher, timeout=5)
+    assert int(scrape_queue.snapshot()['revision']) > before
+    await _drain()
+
+
+async def test_waiting_returns_at_once_when_the_revision_already_moved() -> None:
+    stale = int(scrape_queue.snapshot()['revision']) - 1
+    await asyncio.wait_for(scrape_queue.wait_for_change(stale, 5.0), timeout=1)
+
+
+async def test_waiting_gives_up_after_the_timeout() -> None:
+    current = int(scrape_queue.snapshot()['revision'])
+    await asyncio.wait_for(scrape_queue.wait_for_change(current, 0.05), timeout=2)
+    assert int(scrape_queue.snapshot()['revision']) == current
+
+
 async def test_progress_survives_a_partial_drain() -> None:
     release = asyncio.Event()
     started = asyncio.Event()

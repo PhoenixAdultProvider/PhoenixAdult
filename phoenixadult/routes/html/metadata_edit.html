@@ -65,10 +65,6 @@
     .sfw-toggle { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .sfw-toggle:hover { color: #e2e8f0; border-color: #475569; }
     .sfw-toggle.on { background: #15803d; border-color: #15803d; color: #fff; }
-    .img .hidden-shot {
-      width: 100%; height: 150px; border-radius: 4px; background: #0b0d12; display: flex;
-      align-items: center; justify-content: center; color: #334155; font-size: 12px;
-    }
     .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .cancel:hover { color: #e2e8f0; }
     .status { font-size: 12px; color: #64748b; }
@@ -233,12 +229,7 @@
       images.forEach((img, idx) => {
         const card = document.createElement('div');
         card.className = 'img';
-        if (SFW) {
-          const masked = document.createElement('div');
-          masked.className = 'hidden-shot';
-          masked.textContent = 'Hidden — SFW';
-          card.appendChild(masked);
-        } else {
+        if (!SFW) {
           const preview = document.createElement('img');
           preview.src = img.url;
           preview.loading = 'lazy';

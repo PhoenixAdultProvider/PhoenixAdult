@@ -22,3 +22,18 @@ def test_requires_auth_and_serves_page_and_state() -> None:
     assert any(p['tag'] == 'Nubiles:pace' for p in data['pacers'])
     for pacer in data['pacers']:
         assert {'tag', 'wait', 'gap', 'window_used', 'window_max', 'busy'} <= set(pacer)
+
+
+def test_state_returns_at_once_when_the_watched_revision_is_stale() -> None:
+    client = TestClient(create_app())
+    headers = {'x-admin-token': 'tok'}
+    revision = client.get('/queue/api/state', headers=headers).json()['revision']
+    watched = client.get(f'/queue/api/state?wait=1&since={revision - 1}', headers=headers).json()
+    assert watched['revision'] >= revision
+
+
+def test_the_page_watches_instead_of_polling_on_a_timer() -> None:
+    page = TestClient(create_app()).get('/queue?token=tok')
+    assert 'wait=1&since=' in page.text
+    assert 'async function watch()' in page.text
+    assert 'setInterval(() => { if (!document.hidden) refresh(); }, 5000)' not in page.text

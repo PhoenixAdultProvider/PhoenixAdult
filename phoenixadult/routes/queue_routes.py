@@ -14,6 +14,7 @@ from phoenixadult.utils.http.rate_limit_helper import pacer_states
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE: str = load_data(__file__, 'queue_ui', kind='html')
+_WATCH_TIMEOUT = 25.0
 
 
 def _state() -> dict[str, object]:
@@ -27,7 +28,9 @@ async def page(request: Request) -> HTMLResponse:
 
 
 @router.get('/api/state')
-async def state() -> JSONResponse:
+async def state(wait: int = 0, since: int = -1) -> JSONResponse:
+    if wait:
+        await scrape_queue.wait_for_change(since, _WATCH_TIMEOUT)
     return JSONResponse(_state())
 
 

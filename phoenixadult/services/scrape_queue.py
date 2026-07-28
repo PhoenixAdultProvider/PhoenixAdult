@@ -55,12 +55,52 @@ _cycle_total = 0
 _cycle_done = 0
 _paused_until: float = 0.0
 _pause_reason: str = ''
+_revision = 0
+_waiters: list[asyncio.Future[None]] = []
+
+
+def _bump() -> None:
+    global _revision
+    _revision += 1
+    if not _waiters:
+        return
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    for waiter in _waiters:
+        if not waiter.done():
+            waiter.set_result(None)
+    _waiters.clear()
+
+
+def revision() -> int:
+    return _revision
+
+
+async def wait_for_change(since: int, timeout: float) -> None:
+    try:
+        _ensure_loop()
+    except RuntimeError:
+        return
+    if since != _revision:
+        return
+    waiter: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+    _waiters.append(waiter)
+    try:
+        await asyncio.wait_for(waiter, timeout)
+    except TimeoutError:
+        pass
+    finally:
+        if waiter in _waiters:
+            _waiters.remove(waiter)
 
 
 def pause(reason: str, seconds: float) -> None:
     global _paused_until, _pause_reason
     _paused_until = time.monotonic() + seconds
     _pause_reason = reason
+    _bump()
     logger.warn('scrape-queue', f'queue paused {seconds:.0f}s — {reason}')
 
 
@@ -68,6 +108,7 @@ def resume() -> None:
     global _paused_until, _pause_reason
     _paused_until = 0.0
     _pause_reason = ''
+    _bump()
     logger.info('scrape-queue', 'queue resumed')
 
 
@@ -98,12 +139,13 @@ def flush(kind: str) -> int:
         if not _pending:
             _cycle_total = 0
             _cycle_done = 0
+        _bump()
         logger.info('scrape-queue', f'flushed {dropped} pending {kind} job(s)')
     return dropped
 
 
 def _ensure_loop() -> None:
-    global _queues, _pending, _running, _workers, _loop_id, _cycle_total, _cycle_done
+    global _queues, _pending, _running, _workers, _loop_id, _cycle_total, _cycle_done, _waiters, _revision
     loop_id = id(asyncio.get_running_loop())
     if _loop_id != loop_id:
         _loop_id = loop_id
@@ -113,6 +155,8 @@ def _ensure_loop() -> None:
         _workers = {lane: [] for lane in _LANE_WORKERS}
         _cycle_total = 0
         _cycle_done = 0
+        _waiters = []
+        _revision += 1
 
 
 def _spawn_workers(lane: str) -> None:
@@ -145,6 +189,7 @@ def enqueue(
         _persist_add(key, replay)
     _queues[lane].put_nowait((entry, job))
     _spawn_workers(lane)
+    _bump()
     logger.info('scrape-queue', f'queued background scrape {key} on the {lane} lane ({len(_pending)} pending)')
     return True
 
@@ -187,6 +232,7 @@ def snapshot() -> dict[str, object]:
         'paused': paused_for() > 0,
         'pauseReason': _pause_reason,
         'resumeIn': round(paused_for(), 1),
+        'revision': _revision,
     }
 
 
@@ -208,6 +254,7 @@ async def _run(lane: str) -> None:
         except asyncio.QueueEmpty:
             return
         _running[entry.key] = time.monotonic()
+        _bump()
         try:
             await job()
             logger.info('scrape-queue', f'background scrape finished {entry.key} ({len(_pending) - 1} pending)')
@@ -218,3 +265,4 @@ async def _run(lane: str) -> None:
             _pending.pop(entry.key, None)
             _persist_remove(entry.key)
             _mark_done()
+            _bump()

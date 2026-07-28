@@ -148,7 +148,8 @@ def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) 
     assert 'id="resetBtn"' in page.text
     assert "const SFW_KEY = 'metadata-sfw';" in page.text
     assert 'function resetFilters()' in page.text
-    assert 'body.sfw .imgs figure img{display:none}' in page.text
+    assert 'body.sfw .imgs{display:none}' in page.text
+    assert '::after' not in page.text
 
 
 def test_people_images_are_not_fetched_until_hydrated(monkeypatch: pytest.MonkeyPatch) -> None:

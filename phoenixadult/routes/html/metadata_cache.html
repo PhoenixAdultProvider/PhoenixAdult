@@ -537,10 +537,8 @@
 
       cards.innerHTML = rows.map(e => {
         const thumb = SFW
-          ? `<div class="noimg">Hidden — SFW</div>`
-          : e.thumb
-            ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">`
-            : `<div class="noimg">No Image</div>`;
+          ? ''
+          : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">` : '<div class="noimg">No Image</div>'}</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
           ? esc(e.data18_id) + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
@@ -550,7 +548,7 @@
           : '';
         const key = esc(JSON.stringify(e.key));
         return `<div class="card">
-          <div class="c-thumb">${thumb}</div>
+          ${thumb}
           <div class="c-title">${esc(e.title)}</div>
           <div class="c-studio">${esc(heading)}</div>
           <div class="c-row c-date" data-label="Date">${e.date ? esc(e.date) : '<span class="blank">—</span>'}</div>

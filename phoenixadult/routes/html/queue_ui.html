@@ -134,14 +134,28 @@
 
     const TOKEN = new URLSearchParams(location.search).get('token');
 
-    async function refresh() {
+    const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+    async function refresh(since) {
+      let ok = false;
       try {
         const headers = { accept: 'application/json' };
         if (TOKEN) headers['x-admin-token'] = TOKEN;
-        const res = await fetch('/queue/api/state', { headers });
-        if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); }
+        const url = since == null ? '/queue/api/state' : `/queue/api/state?wait=1&since=${since}`;
+        const res = await fetch(url, { headers });
+        if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); ok = true; }
       } catch {}
       render();
+      return ok;
+    }
+
+    async function watch() {
+      for (;;) {
+        if (document.hidden) { await sleep(1000); continue; }
+        const started = Date.now();
+        const ok = await refresh(STATE.revision ?? 0);
+        if (!ok && Date.now() - started < 1000) await sleep(1000);
+      }
     }
 
     async function post(path, body) {
@@ -162,7 +176,7 @@
 
     render();
     setInterval(render, 1000);
-    setInterval(() => { if (!document.hidden) refresh(); }, 5000);
+    watch();
   </script>
 </body>
 </html>

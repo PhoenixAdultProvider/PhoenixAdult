@@ -607,11 +607,13 @@ def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     listing = client.get('/metadata?token=tok')
     assert 'id="sfwToggle"' in listing.text
     assert "const SFW_KEY = 'metadata-sfw';" in listing.text
-    assert 'Hidden — SFW' in listing.text
     assert 'toggleSfw()' in listing.text
+    assert "const thumb = SFW\n          ? ''" in listing.text
+    assert 'Hidden' not in listing.text
 
     editor = client.get('/metadata/edit?token=tok&key=studio/abc')
     assert 'id="sfwToggle"' in editor.text
     assert "const SFW_KEY = 'metadata-sfw';" in editor.text
-    assert "masked.className = 'hidden-shot'" in editor.text
+    assert 'if (!SFW) {\n          const preview' in editor.text
+    assert 'hidden-shot' not in editor.text
     assert 'paintSfwToggle();\n    load();' in editor.text
