@@ -124,7 +124,18 @@ class BadoinkVrClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
-        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"video-description")])[1]').xpath('string(.)').get() or '').strip() or ''
+
+        summary_xpaths = (
+            '(//div[contains(@class,"video-description-container")])[1]',
+            '(//p[contains(@class,"video-description")])[1]',
+        )
+        for xpath in summary_xpaths:
+            summary = (details_page_elements.xpath(xpath).xpath('normalize-space(.)').get() or '').strip()
+            if summary:
+                metadata.summary = summary
+                return
+
+        metadata.summary = ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

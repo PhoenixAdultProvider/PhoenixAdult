@@ -63,7 +63,7 @@ PORN_PLUS_SITES = [
     _site('Bikini Smash', 'pornplus.com', data18=False),
     _site('Boobs4K', 'pornplus.com', data18=False),
     _site('Caged Sex', 'pornplus.com'),
-    _site('Creepy Pa', 'pornplus.com', fallback='creepypa.com', data18=False),
+    _site('Creepy PA', 'pornplus.com', fallback='creepypa.com', data18=False),
     _site('Double Trouble', 'pornplus.com'),
     _site('Exploited Cheerleaders', 'pornplus.com', data18=False),
     _site('Facials Galore', 'pornplus.com'),

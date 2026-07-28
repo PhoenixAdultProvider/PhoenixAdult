@@ -100,6 +100,28 @@ async def test_detail_fields(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @respx.mock
+async def test_summary_reads_the_container_when_the_description_tag_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_dims(monkeypatch, set())
+    url = 'https://vrcosplayx.com/cosplaypornvideo/77'
+    respx.get(url).mock(
+        return_value=httpx.Response(
+            200,
+            text="""<html><body>
+              <h1 class="video-title">Cool Scene</h1>
+              <div class="video-description-container">
+                <p class="video-description" itemprop="description" content="&lt;p&gt;A summary.&lt;/p&gt;"></p>
+                <p>A <a href="/x">summary</a>.</p>
+                <p></p>
+              </div>
+            </body></html>""",
+        )
+    )
+    detail = await BadoinkVrClient().fetch_scene_detail(url, COSPLAY)
+    assert detail is not None
+    assert detail.summary == 'A summary.'
+
+
+@respx.mock
 async def test_detail_at_style_gallery_iterates_middle_index(monkeypatch: pytest.MonkeyPatch) -> None:
     _mock_dims(monkeypatch, {'https://img2.badoink.com/content/scenes/323737/1_2_27@1500-1x.jpg'})
     url = 'https://badoinkvr.com/vrpornvideo/323737'

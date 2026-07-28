@@ -472,7 +472,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - Bikini Smash
     - Boobs4K
     - Caged Sex
-    - Creepy Pa
+    - Creepy PA
     - Double Trouble
     - Exploited Cheerleaders
     - Facials Galore
