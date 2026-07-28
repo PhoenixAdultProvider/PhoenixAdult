@@ -457,3 +457,51 @@ def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPat
     assert 'repeat(auto-fit, minmax(150px, 1fr))' in page.text
     assert '.controls.open { display: block; }' in page.text
     assert "getElementById('controls').classList.toggle('open')" in page.text
+
+
+def test_genre_filter_splits_tagged_from_untagged(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_cast('Brazzers', 'g1', 'Has Genres', ['Jane Doe'], ['Anal', 'MILF'])
+    _seed_cast('Brazzers', 'g2', 'Bare Scene', ['Jane Doe'], [])
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    j = client.get('/metadata/entries', headers=hdr, params={'genre': '__set__'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'Has Genres'
+
+    j = client.get('/metadata/entries', headers=hdr, params={'genre': '__blank__'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'Bare Scene'
+
+    assert client.get('/metadata/entries', headers=hdr).json()['total'] == 2
+
+
+def test_actor_suggestions_match_and_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_cast('Brazzers', 's1', 'One', ['Jane Doe', 'Janet Rowe'], ['Anal'])
+    _seed_cast('Brazzers', 's2', 'Two', ['John Roe', 'Jane Doe'], ['Anal'])
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    assert client.get('/metadata/actors').status_code == 401
+
+    everyone = client.get('/metadata/actors', headers=hdr).json()['actors']
+    assert everyone == ['Jane Doe', 'Janet Rowe', 'John Roe']
+
+    assert client.get('/metadata/actors', headers=hdr, params={'q': 'jan'}).json()['actors'] == ['Jane Doe', 'Janet Rowe']
+    assert client.get('/metadata/actors', headers=hdr, params={'q': 'roe'}).json()['actors'] == ['John Roe']
+    assert client.get('/metadata/actors', headers=hdr, params={'q': 'ow'}).json()['actors'] == ['Janet Rowe']
+    assert client.get('/metadata/actors', headers=hdr, params={'limit': 1}).json()['actors'] == ['Jane Doe']
+    assert client.get('/metadata/actors', headers=hdr, params={'q': 'nobody'}).json()['actors'] == []
+
+
+def test_page_wires_the_actor_autocomplete_and_genre_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'list="actor-options"' in page.text
+    assert '<datalist id="actor-options"></datalist>' in page.text
+    assert 'actorChanged()' in page.text
+    assert "fetch('/metadata/actors?'" in page.text
+    assert 'id="f-genre"' in page.text
+    assert '<option value="__set__">Tagged</option>' in page.text
+    assert '<option value="__blank__">Untagged</option>' in page.text
+    assert "'f-genre': 'genre'" in page.text

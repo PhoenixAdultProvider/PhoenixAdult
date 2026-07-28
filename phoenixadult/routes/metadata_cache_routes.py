@@ -155,6 +155,11 @@ async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
     return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0]})
 
 
+@router.get('/actors')
+async def actors(query: str = Query('', alias='q'), limit: int = Query(50, ge=1, le=200)) -> JSONResponse:
+    return JSONResponse({'actors': await run_in('store', metadata_cache.actor_suggestions, query, limit)})
+
+
 @router.get('/state')
 async def state() -> JSONResponse:
     return JSONResponse({'token': await run_in('store', metadata_cache.change_token)})
@@ -171,6 +176,7 @@ async def entries_json(
     collection: str = '',
     data18: str = '',
     actor: str = '',
+    genre: str = '',
     provider: str = '',
     dups: int = Query(0, ge=0, le=1),
     sort: str = 'updated_at',
@@ -194,6 +200,7 @@ async def entries_json(
                 collection=collection,
                 data18=data18,
                 actor=actor,
+                genre=genre,
                 provider=provider,
                 dups_only=bool(dups),
                 dup_paths=dup_keys,

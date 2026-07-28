@@ -147,8 +147,17 @@
   <div class="controls" id="controls">
   <div class="filters">
     <div class="filter-group">
-      <label>Actor</label>
-      <input type="text" id="f-actor" placeholder="actor name…" oninput="queryChanged()">
+      <label for="f-actor">Actor</label>
+      <input type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="start typing a name…" oninput="actorChanged()">
+      <datalist id="actor-options"></datalist>
+    </div>
+    <div class="filter-group">
+      <label>Genres</label>
+      <select id="f-genre" onchange="facetChanged()">
+        <option value="">All</option>
+        <option value="__set__">Tagged</option>
+        <option value="__blank__">Untagged</option>
+      </select>
     </div>
     <div class="filter-group">
       <label>Provider</label>
@@ -225,7 +234,7 @@
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     const STORE_KEY = 'metadata-cache-filters';
-    const FILTER_IDS = ['q', 'f-actor', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    const FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
     const SORT_FIELDS = [
       {key: 'mtime', label: 'Cached'},
       {key: 'date', label: 'Date'},
@@ -240,7 +249,7 @@
     const PAGE_SIZE = 500;
     let offset = 0;
     const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
-    const FILTER_PARAMS = {'f-actor': 'actor', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
+    const FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
     function filterParams() {
       const p = new URLSearchParams();
@@ -272,6 +281,38 @@
     }
 
     function facetChanged() { offset = 0; refreshEntries(); }
+
+    // Suggestions are matched and capped server-side, so a library-sized cast never
+    // ships to the browser the way a facet list would.
+    let actorTimer = null;
+    let actorSuggestedFor = null;
+
+    async function loadActorOptions(prefix) {
+      if (actorSuggestedFor === prefix) return;
+      actorSuggestedFor = prefix;
+      try {
+        const p = new URLSearchParams({limit: '50'});
+        if (prefix) p.set('q', prefix);
+        const r = await fetch('/metadata/actors?' + p.toString(), {headers: authHeaders()});
+        if (!r.ok) return;
+        const list = document.getElementById('actor-options');
+        list.textContent = '';
+        ((await r.json()).actors || []).forEach(name => {
+          const o = document.createElement('option');
+          o.value = name;
+          list.appendChild(o);
+        });
+      } catch {}
+    }
+
+    function actorChanged() {
+      clearTimeout(actorTimer);
+      actorTimer = setTimeout(() => {
+        loadActorOptions(document.getElementById('f-actor').value.trim());
+        offset = 0;
+        refreshEntries();
+      }, 300);
+    }
 
     function prevPage() { if (offset > 0) { offset = Math.max(0, offset - PAGE_SIZE); refreshEntries(); } }
     function nextPage() { if (offset + PAGE_SIZE < TOTAL) { offset += PAGE_SIZE; refreshEntries(); } }
@@ -622,6 +663,8 @@
         stateToken = token;
       } catch {}
     }
+
+    document.getElementById('f-actor').addEventListener('focus', () => loadActorOptions(document.getElementById('f-actor').value.trim()));
 
     decorate();
     buildFacetOptions();

@@ -423,6 +423,7 @@ def entries_page(
     collection: str = '',
     data18: str = '',
     actor: str = '',
+    genre: str = '',
     provider: str = '',
     dups_only: bool = False,
     dup_paths: list[str] | None = None,
@@ -442,6 +443,7 @@ def entries_page(
         collection=collection,
         data18=data18,
         actor=actor,
+        genre=genre,
         provider_sites=_provider_sites(provider) if provider else None,
         dup_paths=(duplicate_entries() if dup_paths is None else dup_paths) if dups_only else None,
         sort=sort,
@@ -455,6 +457,11 @@ def entries_page(
 def studios() -> list[str]:
     """Distinct studio names across stored snapshots, for the /metadata studio filter."""
     return scene_store.studio_names()
+
+
+def actor_suggestions(query: str = '', limit: int = 50) -> list[str]:
+    """Cast names matching `query`, for the /metadata actor autocomplete."""
+    return scene_store.actor_names(query, limit)
 
 
 def facets() -> dict[str, Any]:

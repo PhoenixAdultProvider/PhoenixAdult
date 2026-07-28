@@ -385,9 +385,28 @@ def _actors_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int, lis
     return out
 
 
+def actor_names(query: str = '', limit: int = 50) -> list[str]:
+    """Distinct cast names for the /metadata actor autocomplete — matched and capped in SQL so
+    the whole library's cast never ships to the browser."""
+    conn = db.connect()
+    params: list[Any] = []
+    narrow = ''
+    if query:
+        narrow = " AND p.name LIKE ? ESCAPE '\\'"
+        params.append(db.like_contains(query))
+    rows = conn.execute(
+        f'SELECT DISTINCT p.name FROM people p JOIN scene_people sp ON sp.person_id = p.id '
+        f"WHERE sp.role = 'actor'{narrow} ORDER BY p.name COLLATE NOCASE LIMIT ?",
+        [*params, limit],
+    ).fetchall()
+    return [str(r['name']) for r in rows]
+
+
 _BLANK = '__blank__'
+_SET = '__set__'
 _MANUAL = '__manual__'
 _ACTOR_EXISTS = "SELECT 1 FROM scene_people sp JOIN people p ON p.id = sp.person_id WHERE sp.scene_id = s.id AND sp.role = 'actor'"
+_GENRE_EXISTS = 'SELECT 1 FROM scene_genres sg WHERE sg.scene_id = s.id'
 
 
 def _entry_filters(
@@ -400,6 +419,7 @@ def _entry_filters(
     collection: str,
     data18: str,
     actor: str,
+    genre: str,
     provider_sites: list[str] | None,
     dup_paths: list[str] | None,
 ) -> tuple[str, list[Any]]:
@@ -443,7 +463,11 @@ def _entry_filters(
     elif actor:
         where.append(f"EXISTS ({_ACTOR_EXISTS} AND p.name LIKE ? ESCAPE '\\')")
         params.append(db.like_contains(actor))
-    if data18 == '__set__':
+    if genre == _BLANK:
+        where.append(f'NOT EXISTS ({_GENRE_EXISTS})')
+    elif genre == _SET:
+        where.append(f'EXISTS ({_GENRE_EXISTS})')
+    if data18 == _SET:
         where.append("COALESCE(s.data18_id, '') != ''")
     elif data18 == _MANUAL:
         where.append("COALESCE(s.data18_id, '') != '' AND s.data18_manual = 1")
@@ -469,6 +493,7 @@ def query_entry_rows(
     collection: str = '',
     data18: str = '',
     actor: str = '',
+    genre: str = '',
     provider_sites: list[str] | None = None,
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
@@ -479,7 +504,7 @@ def query_entry_rows(
     """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
     total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
     conn = db.connect()
-    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, actor, provider_sites, dup_paths)
+    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, actor, genre, provider_sites, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
