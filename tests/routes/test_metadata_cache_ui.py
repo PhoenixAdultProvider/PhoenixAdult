@@ -510,3 +510,11 @@ def test_page_wires_the_actor_autocomplete_and_genre_filter(monkeypatch: pytest.
     assert '<option value="__set__">Tagged</option>' in page.text
     assert '<option value="__blank__">Untagged</option>' in page.text
     assert "'f-genre': 'genre'" in page.text
+
+
+def test_edit_page_stops_waiting_when_the_job_leaves_the_queue(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = _edit_client(monkeypatch).get('/metadata/edit?token=tok&key=studio/abc')
+    assert 'REFRESH_SETTLE_MS' in page.text
+    assert "return 'unchanged'" in page.text
+    assert 'The scrape finished without changing this snapshot' in page.text

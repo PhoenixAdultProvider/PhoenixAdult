@@ -65,7 +65,6 @@ class _CachedIndex:
 
 
 _cached_index: _CachedIndex | None = None
-_last_build_started = 0.0
 _index_lock = threading.Lock()
 
 
@@ -104,18 +103,13 @@ def _build_index(root: str) -> _CachedIndex:
 
 
 def _get_index(root: str, force_refresh: bool = False) -> _CachedIndex:
-    global _cached_index, _last_build_started
+    global _cached_index
     with _index_lock:
         now = time.monotonic()
-        fresh = _cached_index is not None and _cached_index.root == root and now - _cached_index.built_at < _INDEX_TTL_S
-        if fresh and not force_refresh:
-            assert _cached_index is not None
-            return _cached_index
+        current = _cached_index if _cached_index is not None and _cached_index.root == root else None
+        if current is not None and (now - current.built_at < (_MISS_THROTTLE_S if force_refresh else _INDEX_TTL_S)):
+            return current
 
-        if force_refresh and _cached_index is not None and _cached_index.root == root and now - _last_build_started < _MISS_THROTTLE_S:
-            return _cached_index
-
-        _last_build_started = now
         _cached_index = _build_index(root)
         return _cached_index
 
@@ -127,14 +121,16 @@ def _locate_nfo(basename: str) -> LocatedNfo | None:
     if hit:
         return hit
 
+    if time.monotonic() - index.built_at < _MISS_THROTTLE_S:
+        return None
+
     index = _get_index(root, force_refresh=True)
     return index.by_basename.get(basename)
 
 
 def _reset_index_cache() -> None:
-    global _cached_index, _last_build_started
+    global _cached_index
     _cached_index = None
-    _last_build_started = 0.0
 
 
 def _txt(v: str | None) -> str | None:

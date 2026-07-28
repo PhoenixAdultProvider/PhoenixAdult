@@ -369,3 +369,21 @@ async def test_detail_reads_nfo_with_bare_ampersand(tmp_path: Path, monkeypatch:
     detail = await ManualNfoClient().fetch_scene_detail('amp.case', SITE)
     assert detail is not None
     assert detail.title == 'A & B'
+
+
+async def test_a_miss_walks_the_tree_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    _write_folder(tmp_path, BASENAME)
+    builds = 0
+    real_build = mn_module._build_index
+
+    def counted(root: str):  # noqa: ANN202
+        nonlocal builds
+        builds += 1
+        return real_build(root)
+
+    monkeypatch.setattr(mn_module, '_build_index', counted)
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx('absent.basename'))
+    assert results == []
+    assert builds == 1

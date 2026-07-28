@@ -167,6 +167,7 @@
     let MD = __METADATA__;
     const REFRESH_POLL_MS = 2000;
     const REFRESH_TIMEOUT_MS = 600000;
+    const REFRESH_SETTLE_MS = 6000;
     const KINDS = ['coverPoster', 'background', 'backgroundSquare'];
     const LISTS = {Genre: [], Collection: [], Role: [], Director: [], Producer: []};
     let images = [];
@@ -323,7 +324,7 @@
 
     async function paintProgress(queueKey) {
       const at = await queuePosition(queueKey);
-      if (!at) return;
+      if (!at) return null;
       if (at.state === 'queued') {
         aheadAtStart = Math.max(aheadAtStart, at.ahead);
         const drained = aheadAtStart ? (aheadAtStart - at.ahead) / aheadAtStart : 0;
@@ -333,11 +334,13 @@
       } else {
         showProgress(95, 'Writing the snapshot…', true);
       }
+      return at.state;
     }
 
     async function pollSnapshot(site, curId, was, queueKey) {
       const p = new URLSearchParams({site, cur_id: curId});
       const deadline = Date.now() + REFRESH_TIMEOUT_MS;
+      let goneSince = 0;
       while (Date.now() < deadline) {
         await sleep(REFRESH_POLL_MS);
         try {
@@ -347,7 +350,13 @@
             if (j.ok && j.updated_at && j.updated_at !== was) return j;
           }
         } catch {}
-        await paintProgress(queueKey);
+        const state = await paintProgress(queueKey);
+        if (state !== 'gone') {
+          goneSince = 0;
+          continue;
+        }
+        goneSince = goneSince || Date.now();
+        if (Date.now() - goneSince >= REFRESH_SETTLE_MS) return 'unchanged';
       }
       return null;
     }
@@ -377,6 +386,11 @@
       const fresh = await pollSnapshot(started.site, started.cur_id, started.updated_at, started.queue_key);
       btn.disabled = false;
       qs('saveBtn').disabled = false;
+      if (fresh === 'unchanged') {
+        qs('progress').style.display = 'none';
+        qs('status').textContent = 'The scrape finished without changing this snapshot — the site returned nothing new.';
+        return;
+      }
       if (!fresh) {
         qs('progress').style.display = 'none';
         qs('status').textContent = 'Still scraping — the queue is busy or the site is paced. Reload later to see the result.';
