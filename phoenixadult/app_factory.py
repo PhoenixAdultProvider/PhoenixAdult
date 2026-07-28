@@ -52,8 +52,8 @@ async def _backup_task() -> None:
     hours = env.db_backup_interval_hours
     if hours <= 0:
         return
-    if maintenance.newest_valid_backup() is None:
-        await _try_startup('db initial backup', maintenance.backup_once)
+    if maintenance.backup_age_hours() >= hours:
+        await _try_startup('db startup backup', maintenance.backup_once)
     while True:
         await asyncio.sleep(hours * 3600)
         await _try_startup('db backup', maintenance.backup_once)

@@ -75,3 +75,21 @@ def test_startup_leaves_corrupt_db_when_no_backup(_db: Path) -> None:
     maintenance.startup_recover_if_corrupt()
 
     assert live.exists() and not list(_db.glob('phoenixadult.db.corrupt-*'))
+
+
+def test_backup_age_reports_infinity_when_none_exists() -> None:
+    assert maintenance.backup_age_hours() == float('inf')
+
+
+def test_backup_age_tracks_the_newest_backup(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+    import time
+
+    db.connect()
+    made = maintenance.backup_once()
+    assert made is not None
+    assert maintenance.backup_age_hours() < 1
+
+    stale = time.time() - 48 * 3600
+    os.utime(made, (stale, stale))
+    assert maintenance.backup_age_hours() > 47

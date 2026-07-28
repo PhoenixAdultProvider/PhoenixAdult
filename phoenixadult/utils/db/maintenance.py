@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -41,6 +42,16 @@ def newest_valid_backup() -> Path | None:
         if integrity_ok(backup):
             return backup
     return None
+
+
+def backup_age_hours() -> float:
+    newest = newest_valid_backup()
+    if newest is None:
+        return float('inf')
+    try:
+        return max(0.0, (time.time() - newest.stat().st_mtime) / 3600)
+    except OSError:
+        return float('inf')
 
 
 def backup_once() -> Path | None:
