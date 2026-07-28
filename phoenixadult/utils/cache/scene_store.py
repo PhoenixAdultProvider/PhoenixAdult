@@ -51,9 +51,9 @@ _UPSERT = (
 def _person_id(conn: sqlite3.Connection, name: str, studio_id: int | None, gender: str) -> int:
     row = None
     if studio_id is not None:
-        row = conn.execute('SELECT id, gender FROM people WHERE name = ? AND scope_studio_id = ?', (name, studio_id)).fetchone()
+        row = conn.execute('SELECT id, gender FROM people WHERE name = ? COLLATE NOCASE AND scope_studio_id = ?', (name, studio_id)).fetchone()
     if row is None:
-        row = conn.execute('SELECT id, gender FROM people WHERE name = ? AND scope_studio_id IS NULL', (name,)).fetchone()
+        row = conn.execute('SELECT id, gender FROM people WHERE name = ? COLLATE NOCASE AND scope_studio_id IS NULL', (name,)).fetchone()
     if row is None:
         cur = conn.execute('INSERT INTO people(name, gender) VALUES(?, ?)', (name, gender))
         return int(cur.lastrowid or 0)

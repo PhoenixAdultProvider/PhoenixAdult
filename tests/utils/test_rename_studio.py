@@ -42,3 +42,32 @@ def test_rename_merges_dimensions_and_leaves_snapshot_paths_alone(_tmp_db: Path)
     assert conn.execute('SELECT rel_path FROM scene_images').fetchone()['rel_path'] == '/cache/scenes/h1/h1/images/p.jpg'
     assert [r['name'] for r in conn.execute('SELECT name FROM collections')] == ['New Name']
     assert conn.execute('SELECT COUNT(*) c FROM scene_collections').fetchone()['c'] == 1
+
+
+def test_rename_can_recase_a_name_in_place(_tmp_db: Path) -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO people(name) VALUES('Gi Joey')")
+
+    assert migrate('gi joey', 'GI Joey', ['people']) == 1
+
+    assert [r['name'] for r in conn.execute('SELECT name FROM people')] == ['GI Joey']
+
+
+def test_rename_merges_into_an_existing_row_of_another_table(_tmp_db: Path) -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO genres(name) VALUES('Old Genre'), ('New Genre')")
+        conn.execute(
+            'INSERT INTO scenes(hash, site, cur_id, rel_path, identifier, rating_key, guid, title, updated_at)'
+            " VALUES('h2','s','c','scenes/h2/h2','i','rk','g','T',0)"
+        )
+        scene = int(conn.execute('SELECT id FROM scenes').fetchone()['id'])
+        old = int(conn.execute("SELECT id FROM genres WHERE name='Old Genre'").fetchone()['id'])
+        conn.execute('INSERT INTO scene_genres(scene_id, genre_id, pos) VALUES(?,?,0)', (scene, old))
+
+    assert migrate('Old Genre', 'New Genre', ['genres']) == 1
+
+    assert [r['name'] for r in conn.execute('SELECT name FROM genres')] == ['New Genre']
+    new = int(conn.execute("SELECT id FROM genres WHERE name='New Genre'").fetchone()['id'])
+    assert int(conn.execute('SELECT genre_id FROM scene_genres').fetchone()['genre_id']) == new

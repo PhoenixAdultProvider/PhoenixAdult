@@ -348,6 +348,27 @@ tables give each fact exactly one home:
 - Columns on the scene row would be the classic normalization failure: a scene has many
   actors, so actor columns either cap the cast or stuff lists into one cell.
 
+### One Spelling Per Name
+
+Every dimension name is unique **ignoring capitalisation**, enforced by a `COLLATE NOCASE`
+unique index on each of `people`, `studios`, `taglines`, `collections`, `genres` and
+`countries` (`people` keeps separate global and studio-scoped indexes). Lookups match the
+same way, so a scrape that supplies a different capitalisation reuses the existing row.
+
+This matters because `title_case` preserves capitals it did not introduce: a site sending
+`McKenna Lynn` keeps that spelling, while one sending `mckenna lynn` yields `Mckenna Lynn`.
+Under the old case-sensitive `UNIQUE` both became separate rows with the credits split
+between them.
+
+**The stored spelling is sticky.** A later scrape with different capitalisation never
+rewrites it, so casing cannot flip back and forth between two sites. Changing a stored
+spelling is a deliberate act — `scripts/rename_studio.py "old" "new"` recases in place when
+the two differ only by capitalisation, and merges when the target already exists. Use it
+after a `title_case` rule change to bring stored names in line.
+
+Installs from before this rule are folded by the v7 migration, which keeps the row that
+scenes actually reference (lowest id when both are used) and repoints every credit onto it.
+
 Each junction carries `pos`, preserving the emitted order of the original response so a
 reassembled snapshot is byte-for-byte faithful (order is meaningful — the first
 collection and the actor billing order matter to Plex).

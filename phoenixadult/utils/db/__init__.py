@@ -4,6 +4,7 @@ import json
 import sqlite3
 import threading
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from phoenixadult.config.env import env
@@ -27,6 +28,79 @@ def _backfill_image_sources(conn: sqlite3.Connection) -> None:
             derived.append((source_for_url(url) or SCENE_SOURCE, str(row['rel_path'])))
     conn.executemany('UPDATE crop_log SET source = ? WHERE rel_path = ?', derived)
     logger.info('db', f'derived the source of {len(derived)} cached headshot(s) from their URLs')
+
+
+@dataclass(frozen=True)
+class NameDimension:
+    junctions: tuple[tuple[str, str], ...] = ()
+    refs: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def usage(self) -> tuple[str, str]:
+        return (self.junctions or self.refs)[0]
+
+
+NAME_DIMENSIONS: dict[str, NameDimension] = {
+    'people': NameDimension(junctions=(('scene_people', 'person_id'),)),
+    'studios': NameDimension(refs=(('scenes', 'studio_id'), ('people', 'scope_studio_id'))),
+    'taglines': NameDimension(refs=(('scenes', 'tagline_id'),)),
+    'collections': NameDimension(junctions=(('scene_collections', 'collection_id'),)),
+    'genres': NameDimension(junctions=(('scene_genres', 'genre_id'),)),
+    'countries': NameDimension(junctions=(('scene_countries', 'country_id'),)),
+}
+
+_CASE_INDEXES = (
+    'CREATE UNIQUE INDEX IF NOT EXISTS people_ci_global ON people(name COLLATE NOCASE) WHERE scope_studio_id IS NULL',
+    'CREATE UNIQUE INDEX IF NOT EXISTS people_ci_scoped ON people(name COLLATE NOCASE, scope_studio_id) WHERE scope_studio_id IS NOT NULL',
+    'CREATE UNIQUE INDEX IF NOT EXISTS studios_ci ON studios(name COLLATE NOCASE)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS taglines_ci ON taglines(name COLLATE NOCASE)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS collections_ci ON collections(name COLLATE NOCASE)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS genres_ci ON genres(name COLLATE NOCASE)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS countries_ci ON countries(name COLLATE NOCASE)',
+)
+
+
+def merge_name_row(conn: sqlite3.Connection, table: str, keep: int, drop: int) -> None:
+    spec = NAME_DIMENSIONS[table]
+    for child, column in spec.junctions:
+        conn.execute(f'UPDATE OR IGNORE {child} SET {column} = ? WHERE {column} = ?', (keep, drop))  # noqa: S608 - fixed table names
+        conn.execute(f'DELETE FROM {child} WHERE {column} = ?', (drop,))  # noqa: S608
+    for child, column in spec.refs:
+        conn.execute(f'UPDATE {child} SET {column} = ? WHERE {column} = ?', (keep, drop))  # noqa: S608
+    conn.execute(f'DELETE FROM {table} WHERE id = ?', (drop,))  # noqa: S608
+
+
+def _duplicate_name_groups(conn: sqlite3.Connection, table: str) -> list[list[sqlite3.Row]]:
+    scoped = table == 'people'
+    scope = ', scope_studio_id' if scoped else ''
+    rows = conn.execute(f'SELECT id, name{scope} FROM {table} ORDER BY id').fetchall()  # noqa: S608
+    groups: dict[tuple[str, object], list[sqlite3.Row]] = {}
+    for row in rows:
+        key = (str(row['name']).casefold(), row['scope_studio_id'] if scoped else None)
+        groups.setdefault(key, []).append(row)
+    return [members for members in groups.values() if len(members) > 1]
+
+
+def _fold_case_duplicate_names(conn: sqlite3.Connection) -> None:
+    merged = 0
+    for table, spec in NAME_DIMENSIONS.items():
+        child, column = spec.usage
+        for members in _duplicate_name_groups(conn, table):
+            used = {
+                int(r['id']): int(conn.execute(f'SELECT COUNT(*) n FROM {child} WHERE {column} = ?', (int(r['id']),)).fetchone()['n'])  # noqa: S608
+                for r in members
+            }
+            keep = next((r for r in members if used[int(r['id'])]), members[0])
+            for row in members:
+                if int(row['id']) == int(keep['id']):
+                    continue
+                logger.info('db', f'{table}: folding "{row["name"]}" into "{keep["name"]}" — one spelling per name')
+                merge_name_row(conn, table, int(keep['id']), int(row['id']))
+                merged += 1
+    for statement in _CASE_INDEXES:
+        conn.execute(statement)
+    if merged:
+        logger.info('db', f'merged {merged} name(s) that differed only by capitalisation')
 
 
 _Migration = str | Callable[[sqlite3.Connection], None]
@@ -191,6 +265,7 @@ _MIGRATIONS: list[_Migration] = [
     """
     ALTER TABLE scenes ADD COLUMN data18_manual INTEGER NOT NULL DEFAULT 0;
     """,
+    _fold_case_duplicate_names,
 ]
 
 _local = threading.local()
@@ -304,5 +379,8 @@ def like_prefix(value: str) -> str:
 def dim_id(conn: sqlite3.Connection, table: str, name: str, unique_col: str = 'name') -> int | None:
     if not name:
         return None
-    conn.execute(f'INSERT OR IGNORE INTO {table}({unique_col}) VALUES(?)', (name,))
-    return int(conn.execute(f'SELECT id FROM {table} WHERE {unique_col} = ?', (name,)).fetchone()['id'])
+    row = conn.execute(f'SELECT id FROM {table} WHERE {unique_col} = ? COLLATE NOCASE', (name,)).fetchone()  # noqa: S608 - fixed table names
+    if row is not None:
+        return int(row['id'])
+    cur = conn.execute(f'INSERT INTO {table}({unique_col}) VALUES(?)', (name,))  # noqa: S608
+    return int(cur.lastrowid or 0)
