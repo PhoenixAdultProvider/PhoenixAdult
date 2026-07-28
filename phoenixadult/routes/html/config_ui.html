@@ -107,7 +107,13 @@
       -webkit-user-select: text; user-select: text; cursor: text;
     }
     .logview:focus-visible { outline: 1px solid #6366f1; outline-offset: -1px; }
+    .logview .ln { display: block; width: max-content; min-width: 100%; }
+    .logview .ln.hide { display: none; }
     .logview .empty { color: #475569; }
+    .log-filter { flex: 1 1 200px; min-width: 140px; font-size: 0.8rem; padding: 0.35rem 0.5rem; }
+    .log-toolbar select { font-size: 0.8rem; padding: 0.3rem 0.4rem; }
+    .log-toolbar button { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+    .log-toolbar button.on { border-color: #f59e0b; color: #fbbf24; }
 
     /* Plex tab */
     .plex-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem; }
@@ -327,15 +333,19 @@
   <div id="tab-logs" class="tabpane">
     <h2>Session Log</h2>
     <div class="card">
-      <div class="var-desc">The last <span id="logMax">200</span> lines this server has logged since it started, newest at the
-        bottom. Secrets and hosts are redacted the same way they are in the log file. Lines are never wrapped — scroll
-        sideways to read long ones. Drag to pan on a touch screen; select and copy as normal.</div>
       <div class="log-toolbar">
-        <label class="log-follow"><input type="checkbox" id="logFollow" checked onchange="logFollowChanged()"> Follow New Lines</label>
+        <input type="text" id="logFilter" class="log-filter" placeholder="Filter lines…" oninput="logFilterChanged()"
+               autocomplete="off" autocapitalize="off" spellcheck="false">
+        <label class="log-follow">Lines
+          <select id="logMaxSel" onchange="logMaxChanged()"></select>
+        </label>
+        <label class="log-follow"><input type="checkbox" id="logFollow" checked onchange="logFollowChanged()"> Follow</label>
+        <button type="button" class="secondary" id="logPauseBtn" onclick="logTogglePause()">Pause</button>
+        <button type="button" class="secondary" onclick="logClear()">Clear</button>
         <button type="button" class="secondary" onclick="copyLog(this)">Copy</button>
         <span class="toolbar-status" id="logStatus"></span>
       </div>
-      <pre id="logView" class="logview" tabindex="0"><span class="empty">Loading…</span></pre>
+      <pre id="logView" class="logview" tabindex="0"><div class="ln empty">Loading…</div></pre>
     </div>
   </div>
 
@@ -406,7 +416,7 @@
         if (btn) btn.classList.toggle('active', t === name);
       }
       if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadPlexLibraries(); }
-      if (name === 'logs') logStart(); else logStop();
+      if (name === 'logs') logOpen(); else logStop();
       const activeBtn = document.getElementById('tabbtn-' + name);
       if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
       if (history.replaceState) history.replaceState(null, '', '#' + name);
@@ -1259,12 +1269,17 @@
 
     const LOG_POLL_MS = 3000;
     const LOG_BOTTOM_SLACK = 24;
+    const LOG_CHOICES = [50, 100, 200, 500, 1000];
     let logSeq = 0;
     let logMax = 200;
     let logTimer = null;
     let logBusy = false;
+    let logPaused = false;
+    let logLoaded = false;
+    let logNeedle = '';
 
     function logView() { return document.getElementById('logView'); }
+    function logRows() { return logView().querySelectorAll('.ln:not(.empty)'); }
 
     function logAtBottom() {
       const view = logView();
@@ -1283,33 +1298,55 @@
       el.className = 'toolbar-status' + (cls ? ' ' + cls : '');
     }
 
+    function logMatches(text) { return !logNeedle || text.toLowerCase().includes(logNeedle); }
+
+    function logRow(text) {
+      const row = document.createElement('div');
+      row.className = 'ln' + (logMatches(text) ? '' : ' hide');
+      row.textContent = text;
+      return row;
+    }
+
+    function logPlaceholder(text) {
+      const row = document.createElement('div');
+      row.className = 'ln empty';
+      row.textContent = text;
+      logView().replaceChildren(row);
+    }
+
+    function logRefreshStatus() {
+      if (logPaused) { logStatus('Paused — new lines are dropped, not queued'); return; }
+      const total = logRows().length;
+      const shown = logView().querySelectorAll('.ln:not(.empty):not(.hide)').length;
+      const detail = logNeedle ? shown + ' of ' + total + ' line(s) match' : total + ' line(s)';
+      logStatus('Live · ' + detail, 'ok');
+    }
+
     function logAppend(lines, reset) {
       const view = logView();
       const follow = document.getElementById('logFollow').checked;
-      if (reset) view.textContent = '';
-      for (const line of lines) view.appendChild(document.createTextNode(line + '\n'));
-      while (view.childNodes.length > logMax) view.removeChild(view.firstChild);
-      if (!view.childNodes.length) {
-        const empty = document.createElement('span');
-        empty.className = 'empty';
-        empty.textContent = 'Nothing logged yet.';
-        view.appendChild(empty);
-      }
+      if (reset) view.replaceChildren();
+      const placeholder = view.querySelector('.ln.empty');
+      if (placeholder) placeholder.remove();
+      for (const line of lines) view.appendChild(logRow(line));
+      while (view.childElementCount > logMax) view.firstElementChild.remove();
+      if (!view.childElementCount) logPlaceholder('Nothing logged yet.');
       if (follow) logToEnd();
+      logRefreshStatus();
     }
 
-    async function logPoll(initial) {
+    async function logPoll({ full = false, discard = false } = {}) {
       if (logBusy) return;
       logBusy = true;
       try {
-        const res = await fetch(api('/config/api/logs?since=' + (initial ? 0 : logSeq)), { cache: 'no-store' });
+        const since = full ? 0 : logSeq;
+        const res = await fetch(api('/config/api/logs?since=' + since + '&limit=' + logMax), { cache: 'no-store' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        logMax = data.max || logMax;
-        document.getElementById('logMax').textContent = logMax;
-        if (data.lines.length || initial) logAppend(data.lines, initial || data.reset);
         logSeq = data.seq;
-        logStatus(logSeq ? 'Live · ' + logView().childNodes.length + ' line(s)' : 'Live', 'ok');
+        if (discard) { logRefreshStatus(); return; }
+        if (data.lines.length || full) logAppend(data.lines, full || data.reset);
+        else logRefreshStatus();
       } catch (err) {
         logStatus('Log unavailable: ' + err.message, 'err');
       } finally {
@@ -1318,17 +1355,55 @@
     }
 
     function logStart() {
-      if (logTimer) return;
-      logPoll(true);
-      logTimer = setInterval(() => { if (!document.hidden) logPoll(false); }, LOG_POLL_MS);
+      if (logTimer || logPaused) return;
+      logTimer = setInterval(() => { if (!document.hidden) logPoll(); }, LOG_POLL_MS);
     }
 
     function logStop() {
       if (logTimer) { clearInterval(logTimer); logTimer = null; }
     }
 
+    function logOpen() {
+      const sel = document.getElementById('logMaxSel');
+      if (!sel.options.length) {
+        sel.innerHTML = LOG_CHOICES.map((n) => '<option value="' + n + '"' + (n === logMax ? ' selected' : '') + '>' + n + '</option>').join('');
+      }
+      if (logPaused) return;
+      if (!logLoaded) { logLoaded = true; logPoll({ full: true }); }
+      logStart();
+    }
+
+    function logTogglePause() {
+      logPaused = !logPaused;
+      const btn = document.getElementById('logPauseBtn');
+      btn.textContent = logPaused ? 'Resume' : 'Pause';
+      btn.classList.toggle('on', logPaused);
+      if (logPaused) { logStop(); logRefreshStatus(); return; }
+      logPoll({ discard: true }).then(logStart);
+    }
+
+    function logClear() {
+      logPlaceholder('Cleared — new lines appear as they arrive.');
+      logRefreshStatus();
+    }
+
+    function logMaxChanged() {
+      logMax = parseInt(document.getElementById('logMaxSel').value, 10) || 200;
+      const view = logView();
+      while (view.childElementCount > logMax) view.firstElementChild.remove();
+      if (logPaused) { logRefreshStatus(); return; }
+      logPoll({ full: true });
+    }
+
+    function logFilterChanged() {
+      logNeedle = document.getElementById('logFilter').value.trim().toLowerCase();
+      for (const row of logRows()) row.classList.toggle('hide', !logMatches(row.textContent));
+      if (document.getElementById('logFollow').checked) logToEnd();
+      logRefreshStatus();
+    }
+
     async function copyLog(btn) {
-      const text = logView().textContent;
+      const text = [...logView().querySelectorAll('.ln:not(.empty):not(.hide)')].map((row) => row.textContent).join('\n');
       const label = btn.textContent;
       let ok = false;
       try {

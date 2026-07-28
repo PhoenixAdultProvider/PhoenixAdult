@@ -75,3 +75,24 @@ def test_a_formatter_failure_never_raises_into_the_caller() -> None:
     _log(handler, 'ignored')
 
     assert handler.tail() == (0, [], True)
+
+
+def test_the_limit_caps_a_full_replacement_to_the_newest_lines() -> None:
+    handler = _handler(capacity=100)
+    for i in range(40):
+        _log(handler, f'line {i}')
+
+    _seq, lines, reset = handler.tail(limit=5)
+
+    assert reset is True
+    assert lines == ['line 35', 'line 36', 'line 37', 'line 38', 'line 39']
+
+
+def test_the_limit_is_clamped_to_the_buffer_capacity() -> None:
+    handler = _handler(capacity=4)
+    for i in range(20):
+        _log(handler, f'line {i}')
+
+    assert len(handler.tail(limit=10_000)[1]) == 4
+    assert len(handler.tail(limit=0)[1]) == 1
+    assert len(handler.tail(limit=-5)[1]) == 1

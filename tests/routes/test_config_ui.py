@@ -84,7 +84,7 @@ def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) 
 
     logger.info('log-viewer-test', 'a distinctive line')
     data = client.get('/config/api/logs', params={'token': TOKEN}).json()
-    assert data['reset'] is True and data['max'] == 200
+    assert data['reset'] is True and data['choices'] == [50, 100, 200, 500, 1000]
     assert any('a distinctive line' in line for line in data['lines'])
 
     caught_up = client.get('/config/api/logs', params={'token': TOKEN, 'since': data['seq']}).json()
@@ -105,6 +105,28 @@ def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     assert 'overflow: auto;' in body
     assert 'touch-action: pan-x pan-y' in body
     assert 'user-select: text' in body
+
+
+def test_the_log_toolbar_offers_every_control(client: TestClient) -> None:
+    body = client.get('/config', params={'token': TOKEN}).text
+    for marker in ('id="logFilter"', 'id="logMaxSel"', 'id="logPauseBtn"', 'onclick="logClear()"', 'onclick="copyLog(this)"'):
+        assert marker in body
+    assert 'const LOG_CHOICES = [50, 100, 200, 500, 1000];' in body
+    assert 'The last 200 lines this server has logged' not in body
+
+
+def test_the_line_limit_caps_what_the_endpoint_returns(client: TestClient) -> None:
+    from phoenixadult.utils.logging.logger import logger
+
+    for i in range(30):
+        logger.info('log-limit-test', f'limited line {i}')
+
+    data = client.get('/config/api/logs', params={'token': TOKEN, 'limit': 5}).json()
+    assert len(data['lines']) == 5
+    assert 'limited line 29' in data['lines'][-1]
+
+    assert len(client.get('/config/api/logs', params={'token': TOKEN, 'limit': 99999}).json()['lines']) <= 1000
+    assert len(client.get('/config/api/logs', params={'token': TOKEN, 'limit': 0}).json()['lines']) == 1
 
 
 def test_the_log_view_shows_the_same_redaction_the_file_gets(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

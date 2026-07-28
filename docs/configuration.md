@@ -80,7 +80,9 @@ _Read from the environment at startup; not editable in the Config UI._
 | `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `IMAGE_BASE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
 | `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see the admin token in URLs while testing. |
 
-The **Logs** tab in the Config UI tails the last 200 lines this process has logged, polling every three seconds while the tab is open. It reads an in-memory ring buffer fed by the same formatter and redaction filter as `agent.log`, so nothing is exposed there that the file would hide — and a restart starts it empty. Lines are never wrapped; the view scrolls both ways and follows the newest line until you scroll up.
+The **Logs** tab in the Config UI tails what this process has logged, polling every three seconds while the tab is open. It reads an in-memory ring buffer (1000 lines) fed by the same formatter and redaction filter as `agent.log`, so nothing is exposed there that the file would hide — and a restart starts it empty. Lines are never wrapped; the view scrolls both ways and follows the newest line until you scroll up.
+
+The toolbar holds a **line limit** (50/100/200/500/1000, default 200), a **filter** that hides non-matching lines while collection continues behind it, **Pause** (new lines are dropped, never queued — resuming shows only what arrives after), **Clear** (empties the view only; the server buffer is untouched), and **Copy** (copies the visible, filtered lines).
 
 ### Images
 
