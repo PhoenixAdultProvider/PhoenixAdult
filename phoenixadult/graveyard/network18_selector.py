@@ -20,7 +20,6 @@ def _site(name: str, host: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         image_referers=['baseUrl'],
         scraper_type='network18',
-        cache_layout='network',
     )
 
 

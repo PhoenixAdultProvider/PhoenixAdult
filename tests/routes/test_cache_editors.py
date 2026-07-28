@@ -160,7 +160,7 @@ async def test_metadata_save_keeps_kept_images_and_deletes_dropped_ones(monkeypa
         }
     )
     assert await mc.write(SITE, CUR_ID, seeded) is True
-    rel = f'{mc._rel_dir(SITE, "Brazzers", "")}/{mc._hash(SITE, CUR_ID)}'
+    rel = mc.bundle_path(mc._hash(SITE, CUR_ID))
     before = sorted(p.name for p in (tmp_path / rel / 'images').iterdir())
     assert len(before) == 2
 

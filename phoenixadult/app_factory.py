@@ -59,6 +59,14 @@ async def _backup_task() -> None:
         await _try_startup('db backup', maintenance.backup_once)
 
 
+def _warn_on_legacy_snapshots() -> None:
+    from phoenixadult.utils.cache import BUNDLE_ROOT, scene_store
+
+    stale = scene_store.legacy_count(f'{BUNDLE_ROOT}/%')
+    if stale:
+        logger.warn(f'{stale} snapshot(s) still use the pre-{BUNDLE_ROOT} folder layout — run scripts/migrate_snapshot_layout.py --apply')
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
@@ -69,6 +77,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from phoenixadult.utils.people import cache as people_cache
 
     await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
+    await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
     if people_cache.cache_enabled():
         await _try_startup('people-cache reconcile', people_cache.reconcile)
     await _try_startup('logo-cache reconcile', logo_cache.reconcile)

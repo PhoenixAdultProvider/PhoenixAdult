@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.scraper_config import ScraperConfig
-from phoenixadult.registry.site_info import CacheLayout, ContentType, SearchMethod, SiteInfo
+from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 
 def make_site(
@@ -23,7 +23,6 @@ def make_site(
     search_method: SearchMethod | None = None,
     search_notes: str | None = None,
     use_bypass: bool = False,
-    cache_layout: CacheLayout = 'auto',
 ) -> SiteInfo:
     return SiteInfo(
         name=name,
@@ -42,5 +41,4 @@ def make_site(
         search_method=search_method,
         search_notes=search_notes,
         use_bypass=use_bypass,
-        cache_layout=cache_layout,
     )

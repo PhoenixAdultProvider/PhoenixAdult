@@ -92,7 +92,7 @@ erDiagram
     text hash UK "sha1(site + cur_id), the snapshot identity"
     text site
     text cur_id
-    text rel_path "image folder, relative to METADATA_CACHE_DIR"
+    text rel_path "scenes/<xx>/<hash>, relative to METADATA_CACHE_DIR"
     text rating_key
     text guid
     text title
@@ -402,6 +402,30 @@ same performer can later be merged by matching it. Same-name-different-person po
 otherwise unchanged from the file era — the per-studio alias tables (`replace_studios`
 in `actors.json`, applied by `apply_name_aliases` before resolution) disambiguate at
 name level, and distinct `people` rows fall out naturally.
+
+## Snapshot Folder Layout
+
+Each snapshot owns one folder, addressed **only** by its scene hash:
+
+```
+<METADATA_CACHE_DIR>/scenes/<first two hex chars>/<12-char hash>/
+    snapshot.json
+    images/poster-00.jpg …
+```
+
+The hash is `sha1(site-slug \n cur_id)[:12]`, so the path depends on the scene's identity
+and nothing else. Renaming a studio, recasing a tagline or reclassifying a site never
+moves a folder and never invalidates a stored image URL — `scripts/rename_studio.py` is a
+dimension `UPDATE` and nothing more. The two-character bucket keeps directory widths even
+by construction (256 buckets; ~33 folders each at 8k scenes).
+
+`snapshot.json` makes each folder self-describing: the scene's site, `cur_id`, hash, the
+full served response and every image's dimensions. `scripts/rebuild_from_bundles.py`
+restores the `scenes` rows and all their junctions from those files alone, so the tree
+survives a lost database. Installs from before this layout are moved by
+`scripts/migrate_snapshot_layout.py` (dry run by default, `--apply` to migrate,
+`--prune-orphans` to also drop folders and image rows nothing points at); the server logs
+a warning at startup while any snapshot is still on the old layout.
 
 ## Image Handling
 

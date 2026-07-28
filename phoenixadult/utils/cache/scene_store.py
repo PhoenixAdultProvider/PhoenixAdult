@@ -301,6 +301,58 @@ def site_scenes(site: str) -> list[dict[str, str]]:
     return [{'cur_id': str(r['cur_id']), 'title': str(r['title']), 'release_date': str(r['release_date'] or ''), 'thumb': str(r['thumb'] or '')} for r in rows]
 
 
+def legacy_scenes(prefix: str) -> list[dict[str, str]]:
+    rows = db.connect().execute('SELECT hash, rel_path, site, cur_id FROM scenes WHERE rel_path NOT LIKE ? ORDER BY rel_path', (prefix,)).fetchall()
+    return [{'hash': str(r['hash']), 'rel_path': str(r['rel_path']), 'site': str(r['site']), 'cur_id': str(r['cur_id'])} for r in rows]
+
+
+def legacy_count(prefix: str) -> int:
+    return int(db.connect().execute('SELECT COUNT(*) AS n FROM scenes WHERE rel_path NOT LIKE ?', (prefix,)).fetchone()['n'])
+
+
+def all_scenes() -> list[dict[str, str]]:
+    rows = db.connect().execute('SELECT hash, rel_path, site, cur_id FROM scenes ORDER BY rel_path').fetchall()
+    return [{'hash': str(r['hash']), 'rel_path': str(r['rel_path']), 'site': str(r['site']), 'cur_id': str(r['cur_id'])} for r in rows]
+
+
+def image_dims(scene_hash: str) -> dict[str, tuple[int, int, int]]:
+    conn = db.connect()
+    row = conn.execute('SELECT id FROM scenes WHERE hash = ?', (scene_hash,)).fetchone()
+    if row is None:
+        return {}
+    rows = conn.execute('SELECT rel_path, width, height, bytes FROM scene_images WHERE scene_id = ?', (int(row['id']),)).fetchall()
+    return {str(r['rel_path']): (int(r['width'] or 0), int(r['height'] or 0), int(r['bytes'] or 0)) for r in rows if r['width'] and r['height']}
+
+
+_ORPHAN_IMAGES = 'FROM scene_images WHERE NOT EXISTS (SELECT 1 FROM scenes s WHERE s.id = scene_images.scene_id)'
+
+
+def orphan_image_count() -> int:
+    return int(db.connect().execute(f'SELECT COUNT(*) AS n {_ORPHAN_IMAGES}').fetchone()['n'])
+
+
+def drop_orphan_images() -> int:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute(f'DELETE {_ORPHAN_IMAGES}')
+    return int(cur.rowcount)
+
+
+def relocate(scene_hash: str, new_rel: str) -> bool:
+    conn = db.connect()
+    row = conn.execute('SELECT id, rel_path FROM scenes WHERE hash = ?', (scene_hash,)).fetchone()
+    if row is None or str(row['rel_path']) == new_rel:
+        return False
+    scene_id, old_url, new_url = int(row['id']), f'/cache/{row["rel_path"]}/', f'/cache/{new_rel}/'
+    with conn:
+        conn.execute(
+            'UPDATE scenes SET rel_path = ?, thumb = replace(thumb, ?, ?), art = replace(art, ?, ?) WHERE id = ?',
+            (new_rel, old_url, new_url, old_url, new_url, scene_id),
+        )
+        conn.execute('UPDATE scene_images SET rel_path = replace(rel_path, ?, ?) WHERE scene_id = ?', (old_url, new_url, scene_id))
+    return True
+
+
 def scene_keys() -> list[tuple[str, str, str]]:
     rows = db.connect().execute('SELECT hash, rel_path, rating_key FROM scenes').fetchall()
     return [(str(r['hash']), str(r['rel_path']), str(r['rating_key'])) for r in rows]

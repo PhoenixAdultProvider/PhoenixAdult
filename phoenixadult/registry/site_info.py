@@ -7,7 +7,6 @@ from phoenixadult.models.scraper_config import ScraperConfig
 
 ContentType = Literal['sceneName', 'actors', 'sceneId', 'sceneIdName']
 SearchMethod = Literal['enhanced', 'limited', 'exact']
-CacheLayout = Literal['auto', 'studio', 'network', 'aggregator']
 
 
 @dataclass(frozen=True)
@@ -28,7 +27,6 @@ class SiteInfo:
     search_method: SearchMethod | None = None
     search_notes: str | None = None
     use_bypass: bool = False
-    cache_layout: CacheLayout = 'auto'
 
 
 @dataclass(frozen=True)

@@ -19,7 +19,6 @@ ARCHIVE_SITES: list[SiteInfo] = [
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='archive',
-        cache_layout='network',
     )
     for name in load_data(__file__, 'archive_sites')
 ]

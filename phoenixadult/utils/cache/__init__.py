@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import shutil
 import sqlite3
@@ -15,7 +16,7 @@ from PIL import Image as PILImage
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
-from phoenixadult.registry import SITE_DEFINITIONS, ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
+from phoenixadult.registry import ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
@@ -48,17 +49,10 @@ def cache_dir() -> str:
     return env.metadata_cache_dir
 
 
-_scraper_counts: dict[str, int] | None = None
-
-
-def _scraper_site_count(scraper_type: str) -> int:
-    global _scraper_counts
-    if _scraper_counts is None:
-        counts: dict[str, int] = {}
-        for s in SITE_DEFINITIONS:
-            counts[s.scraper_config.type] = counts.get(s.scraper_config.type, 0) + 1
-        _scraper_counts = counts
-    return _scraper_counts.get(scraper_type, 0)
+BUNDLE_ROOT = 'scenes'
+BUNDLE_FILE = 'snapshot.json'
+BUNDLE_VERSION = 1
+_FANOUT = 2
 
 
 def _hash(site_name: str, cur_id: str) -> str:
@@ -67,22 +61,25 @@ def _hash(site_name: str, cur_id: str) -> str:
     return hash_key(slugify(base), cur_id, sep='\n', length=12)
 
 
-def _rel_dir(site_name: str, studio: str, tagline: str) -> str:
-    site = find_site(site_name)
-    studio_slug = slugify(studio) or slugify(site.name if site else site_name) or 'studio'
-    layout = site.cache_layout if site else 'auto'
-    scraper = slugify(site.scraper_config.type) if site else ''
+def bundle_path(scene_hash: str) -> str:
+    return f'{BUNDLE_ROOT}/{scene_hash[:_FANOUT]}/{scene_hash}'
 
-    if layout == 'studio':
-        return studio_slug
-    if layout == 'network':
-        return f'{scraper}/{studio_slug}' if scraper else studio_slug
-    if layout == 'aggregator':
-        sub_slug = slugify(tagline) or studio_slug
-        return f'{scraper}/{studio_slug}/{sub_slug}' if scraper else f'{studio_slug}/{sub_slug}'
-    if site and _scraper_site_count(site.scraper_config.type) >= 2:
-        return f'{studio_slug}/{slugify(tagline) or studio_slug}'
-    return studio_slug
+
+def is_legacy_path(rel_path: str) -> bool:
+    return not rel_path.startswith(f'{BUNDLE_ROOT}/')
+
+
+def bundle_payload(
+    site_name: str, cur_id: str, scene_hash: str, data: dict[str, Any], image_meta: dict[str, tuple[int, int, int]] | None = None
+) -> dict[str, Any]:
+    return {
+        'version': BUNDLE_VERSION,
+        'site': site_name,
+        'cur_id': cur_id,
+        'hash': scene_hash,
+        'images': {url: list(dims) for url, dims in (image_meta or {}).items()},
+        'response': data,
+    }
 
 
 # ── Data18 Manual-Mapping Change Detection ────────────────────────────────────
@@ -224,7 +221,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
         return False
 
     scene_hash = _hash(site_name, cur_id)
-    rel_path = f'{_rel_dir(site_name, (md0.studio or ""), (md0.tagline or ""))}/{scene_hash}'
+    rel_path = bundle_path(scene_hash)
     final_dir = safe_join(cache_dir(), rel_path)
     if final_dir is None:
         return False
@@ -353,6 +350,12 @@ async def _write_locked(
 
         await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
 
+        def _write_bundle() -> None:
+            payload = bundle_payload(site_name, cur_id, scene_hash, data, image_meta)
+            (tmp_dir / BUNDLE_FILE).write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+
+        await run_in('fs', _write_bundle)
+
         def _promote() -> None:
             if final_dir.exists():
                 shutil.rmtree(final_dir, ignore_errors=True)
@@ -380,13 +383,10 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     rel = row['rel_path']
-    segs = rel.split('/')
     return {
         'key': rel,
         'provider': provider_name_for(row['site']) or row['site'],
-        'site_slug': segs[-2] if len(segs) >= 2 else rel,
-        'studio_dir': segs[-3] if len(segs) >= 3 else '',
-        'hash': segs[-1],
+        'hash': rel.rsplit('/', 1)[-1],
         'title': row['title'],
         'studio': row['studio'],
         'tagline': row['tagline'],
@@ -606,11 +606,7 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     _apply_edits(md, fields)
     if not await write(site_name, cur_id, response, allow_clear=True):
         return None
-    moved = f'{_rel_dir(site_name, md.studio or "", md.tagline or "")}/{_hash(site_name, cur_id)}'
-    if moved != key and (stale := safe_join(cache_dir(), key)) is not None:
-        shutil.rmtree(stale, ignore_errors=True)
-        logger.info('meta-cache', f'edited snapshot moved {key} -> {moved}')
-    return moved
+    return bundle_path(_hash(site_name, cur_id))
 
 
 def duplicate_entries() -> list[str]:

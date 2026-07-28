@@ -191,10 +191,10 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
     cached = mc.read('Brazzers', 'curid123')
     assert cached is not None
     md = cached['MediaContainer']['Metadata'][0]
-    assert '/cache/project1service/brazzers/baby-got-boobs/' in md['thumb'] and '/images/cache/' not in md['thumb']
+    assert f'/cache/{mc.bundle_path(mc._hash("Brazzers", "curid123"))}/' in md['thumb'] and '/images/cache/' not in md['thumb']
     assert md['thumb'].endswith('/images/poster-00.jpg')
     assert md['Role'][0]['thumb'].endswith('/images/local/actor.jane_female.jpg')
-    downloaded = list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*/images/poster-00.jpg'))  # type: ignore[attr-defined]
+    downloaded = list(tmp_path.glob('scenes/*/*/images/poster-00.jpg'))  # type: ignore[attr-defined]
     assert downloaded and downloaded[0].read_bytes() == b'POSTER'
 
 
@@ -232,28 +232,49 @@ async def test_image_bases_are_reconfigurable(tmp_path: pytest.TempPathFactory, 
     assert md2['Role'][0]['thumb'] == 'http://localhost:3000/images/local/actor.jane_female.jpg'
 
 
-async def test_layout_per_registry_type(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_every_snapshot_lands_in_a_hash_bucket(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    written = [('Brazzers', 'b1', 'Brazzers', 'Baby Got Boobs'), ('Vixen', 'v1', 'Vixen', ''), ('5Kteens', 't1', '5Kporn', '5Kteens')]
+    for site, cur, studio, tagline in written:
+        assert await mc.write(site, cur, _resp(studio=studio, tagline=tagline or None)) is True
+
+    for site, cur, _studio, _tagline in written:
+        scene_hash = mc._hash(site, cur)
+        assert (tmp_path / 'scenes' / scene_hash[:2] / scene_hash).is_dir()  # type: ignore[operator]
+        assert mc.read(site, cur) is not None
+    assert [p.name for p in sorted(tmp_path.iterdir()) if p.is_dir()] == ['scenes']  # type: ignore[attr-defined]
+
+
+async def test_restudioing_a_scene_never_moves_its_folder(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
     assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
-    assert list(tmp_path.glob('project1service/brazzers/baby-got-boobs/*'))  # type: ignore[attr-defined]
+    scene_hash = mc._hash('Brazzers', 'b1')
+    bundle = tmp_path / 'scenes' / scene_hash[:2] / scene_hash  # type: ignore[operator]
+    assert bundle.is_dir()
 
-    assert await mc.write('Vixen', 'v1', _resp(studio='Vixen')) is True
-    assert list(tmp_path.glob('strike3/vixen/*'))  # type: ignore[attr-defined]
+    assert await mc.write('Brazzers', 'b1', _resp(studio='Renamed Studio', tagline='Renamed Sub')) is True
 
-    assert await mc.write('5Kporn', 'p1', _resp(studio='5Kporn')) is True
-    assert list(tmp_path.glob('5kporn/5kporn/*'))  # type: ignore[attr-defined]
+    assert bundle.is_dir()
+    assert [p for p in tmp_path.glob('scenes/*/*')] == [bundle]  # type: ignore[attr-defined]
+    assert mc.entries()[0]['key'] == mc.bundle_path(scene_hash)
 
-    assert await mc.write('5Kteens', 't1', _resp(studio='5Kporn', tagline='5Kteens')) is True
-    assert list(tmp_path.glob('5kporn/5kteens/*'))  # type: ignore[attr-defined]
 
-    assert await mc.write('DickDrainers', 'd1', _resp(studio='DickDrainers')) is True
-    assert (tmp_path / 'dickdrainers').is_dir()  # type: ignore[operator]
-    assert not (tmp_path / 'dickdrainers' / 'dickdrainers').exists()  # type: ignore[operator]
+async def test_each_snapshot_carries_a_self_contained_bundle(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
 
-    for name, cur in (('Brazzers', 'b1'), ('Vixen', 'v1'), ('5Kporn', 'p1'), ('5Kteens', 't1'), ('DickDrainers', 'd1')):
-        assert mc.read(name, cur) is not None
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
+
+    scene_hash = mc._hash('Brazzers', 'b1')
+    payload = json.loads((tmp_path / mc.bundle_path(scene_hash) / mc.BUNDLE_FILE).read_text(encoding='utf-8'))  # type: ignore[operator]
+    assert payload['version'] == mc.BUNDLE_VERSION
+    assert (payload['site'], payload['cur_id'], payload['hash']) == ('Brazzers', 'b1', scene_hash)
+    assert payload['response']['MediaContainer']['Metadata'][0]['studio'] == 'Brazzers'
 
 
 async def test_error_title_not_frozen(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -664,7 +685,7 @@ async def test_rewrite_keeps_snapshot_images_in_place(tmp_path: Path, monkeypatc
     cached = mc.read('Brazzers', 'rw1')
     assert cached is not None
     before = {img['url'].rsplit('/', 1)[-1]: img['type'] for img in cached['MediaContainer']['Metadata'][0]['Image']}
-    scene_dir = next(tmp_path.glob('project1service/brazzers/brazzers/*'))
+    scene_dir = tmp_path / mc.bundle_path(mc._hash('Brazzers', 'rw1'))
     poster_bytes = (scene_dir / 'images' / 'img-01.jpg').read_bytes()
 
     again = PlexMetadataResponse.model_validate(cached)

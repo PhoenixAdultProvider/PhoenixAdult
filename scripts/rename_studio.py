@@ -1,18 +1,12 @@
-"""Studio/tagline rename tool: one dimension UPDATE in phoenixadult.db, image-folder merge to
-the new slug, and rel_path fixups so DB rows keep pointing at the moved files."""
-
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phoenixadult.config.env import env
 from phoenixadult.utils import db
-from phoenixadult.utils.helpers.helpers import slugify
 
 
 def _rename_dimension(table: str, old: str, new: str) -> int:
@@ -38,59 +32,17 @@ def _rename_dimension(table: str, old: str, new: str) -> int:
     return 1
 
 
-def _fix_rel_paths(old_slug: str, new_slug: str) -> int:
-    conn = db.connect()
-    fixed = 0
-    for table, column in (('scenes', 'rel_path'), ('scene_images', 'rel_path')):
-        for row in conn.execute(f'SELECT rowid AS rid, {column} AS p FROM {table}').fetchall():  # noqa: S608
-            parts = str(row['p']).split('/')
-            if old_slug not in parts:
-                continue
-            new_path = '/'.join(new_slug if seg == old_slug else seg for seg in parts)
-            with conn:
-                conn.execute(f'UPDATE {table} SET {column} = ? WHERE rowid = ?', (new_path, row['rid']))  # noqa: S608
-            fixed += 1
-    return fixed
-
-
-def _merge_dirs(root: Path, old_slug: str, new_slug: str) -> int:
-    merged = 0
-    for old_dir in sorted((p for p in root.rglob(old_slug) if p.is_dir()), key=lambda p: len(p.parts), reverse=True):
-        target = old_dir.parent / new_slug
-        target.mkdir(parents=True, exist_ok=True)
-        for item in old_dir.iterdir():
-            dest = target / item.name
-            if dest.exists():
-                if item.is_dir():
-                    for sub in item.rglob('*'):
-                        sub_dest = dest / sub.relative_to(item)
-                        if sub.is_file() and not sub_dest.exists():
-                            sub_dest.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.move(str(sub), str(sub_dest))
-                    shutil.rmtree(item, ignore_errors=True)
-                continue
-            shutil.move(str(item), str(dest))
-        shutil.rmtree(old_dir, ignore_errors=True)
-        merged += 1
-    return merged
-
-
-def migrate(root: Path, old: str, new: str) -> tuple[int, int, int]:
-    dims = sum(_rename_dimension(t, old, new) for t in ('studios', 'taglines', 'collections'))
-    dirs = _merge_dirs(root, slugify(old), slugify(new))
-    paths = _fix_rel_paths(slugify(old), slugify(new))
-    return dims, dirs, paths
+def migrate(old: str, new: str) -> int:
+    return sum(_rename_dimension(t, old, new) for t in ('studios', 'taglines', 'collections'))
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Rename a studio/tagline across phoenixadult.db and the image cache.')
+    parser = argparse.ArgumentParser(description='Rename a studio/tagline in phoenixadult.db. Snapshot folders are keyed by scene hash and never move.')
     parser.add_argument('old')
     parser.add_argument('new')
-    parser.add_argument('--cache-dir', default=None)
     args = parser.parse_args()
-    root = Path(args.cache_dir or env.metadata_cache_dir)
-    dims, dirs, paths = migrate(root, args.old, args.new)
-    print(f'renamed {dims} dimension row(s), merged {dirs} folder(s), fixed {paths} rel_path(s); restart the server')
+    dims = migrate(args.old, args.new)
+    print(f'renamed {dims} dimension row(s); restart the server')
     return 0
 
 

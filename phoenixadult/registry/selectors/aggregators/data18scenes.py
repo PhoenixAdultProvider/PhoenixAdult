@@ -19,7 +19,6 @@ def _data18_scenes(name: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='data18scenes',
-        cache_layout='aggregator',
     )
 
 

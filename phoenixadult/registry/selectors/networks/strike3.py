@@ -20,7 +20,6 @@ def _site(name: str, host: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='strike3',
         data18_enrichment=True,
-        cache_layout='network',
     )
 
 
