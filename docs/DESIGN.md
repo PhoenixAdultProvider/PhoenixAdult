@@ -106,7 +106,7 @@ flowchart LR
 | Runtime config | `GET\|POST /config/...` | **loopback or `ADMIN_TOKEN`** |
 | Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **loopback or `ADMIN_TOKEN`** |
 | Cache editors | `GET /metadata/edit`, `/people/edit` + `POST …/save` | **loopback or `ADMIN_TOKEN`** |
-| Snapshot re-scrape | `POST /metadata/refresh` + `GET /metadata/snapshot` | **loopback or `ADMIN_TOKEN`** |
+| Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` + `GET /metadata/snapshot` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
 
 > Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`phoenixadult/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.

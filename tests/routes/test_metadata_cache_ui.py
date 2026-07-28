@@ -248,14 +248,36 @@ def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:
     assert '<option value="__manual__">Manual</option>' in page.text
 
 
-def test_page_has_a_mobile_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_page_has_a_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     page = TestClient(create_app()).get('/metadata?token=tok')
     assert '@media (max-width: 720px)' in page.text
     assert 'data-label="Data18"' in page.text
     assert 'class="c-title"' in page.text
     assert 'filtersToggle' in page.text
-    assert 'tbody td:has(> .blank) { display: none; }' in page.text
+    assert '<div class="cards" id="cards"></div>' in page.text
+    assert 'repeat(auto-fill, minmax(320px, 1fr))' in page.text
+    assert '.cards { grid-template-columns: 1fr; }' in page.text
+    assert '<table' not in page.text
+
+
+def test_cards_show_genre_counts_and_actor_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'data-label="Genres"' in page.text
+    assert 'data-label="Actors"' in page.text
+    assert "(e.actors || []).join(', ')" in page.text
+    assert '${e.genres || 0}' in page.text
+
+
+def test_page_offers_an_actor_filter_and_bulk_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert 'id="f-actor"' in page.text
+    assert '>Actor<' in page.text
+    assert "'f-actor': 'actor'" in page.text
+    assert 'refreshShown()' in page.text
+    assert 'Refresh Filtered (${TOTAL})' in page.text
 
 
 def test_page_has_a_mobile_sort_control(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -334,3 +356,104 @@ def test_snapshot_endpoint_tracks_a_moved_key(monkeypatch: pytest.MonkeyPatch) -
 
     j = client.get('/metadata/snapshot', headers=hdr, params={'site': 'BaDoinkVR', 'cur_id': 'abc'}).json()
     assert j == {'ok': True, 'key': 'NewStudio/abc', 'updated_at': '200.0', 'metadata': {'title': 'Renamed'}}
+
+
+def test_refresh_bulk_queues_each_match(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.models.provider_info import ProviderInfo
+
+    provider = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test', title='P', version='1', media_type='movie')
+    queued: list[str] = []
+
+    class _Svc:
+        def drop_memo(self, rating_key: str, prov: ProviderInfo) -> None:
+            pass
+
+        def queue_snapshot(self, rating_key: str, prov: ProviderInfo, language: str | None, **kw: object) -> bool:
+            queued.append(rating_key)
+            return rating_key != 'scene-badoinkvr-full'
+
+    targets = {
+        'studio/a': {'site': 'BaDoinkVR', 'cur_id': 'a', 'rating_key': 'scene-badoinkvr-a'},
+        'studio/b': {'site': 'BaDoinkVR', 'cur_id': 'b', 'rating_key': 'scene-badoinkvr-full'},
+    }
+    monkeypatch.setattr(mcr, 'service_for', lambda provider_id: (provider, _Svc()))
+    monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: targets.get(key))
+
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+    assert client.post('/metadata/refresh-bulk', json={'keys': []}, headers=hdr).status_code == 400
+    assert client.post('/metadata/refresh-bulk', json={'keys': ['noslash']}, headers=hdr).status_code == 400
+
+    r = client.post('/metadata/refresh-bulk', json={'keys': ['studio/a', 'studio/b', 'studio/gone']}, headers=hdr)
+    assert r.status_code == 200
+    assert r.json() == {'ok': True, 'queued': 1, 'skipped': 2}
+    assert queued == ['scene-badoinkvr-a', 'scene-badoinkvr-full']
+
+
+def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    seen: dict[str, object] = {}
+
+    def fake_page(**kw: object) -> tuple[list[dict[str, object]], int]:
+        seen.update(kw)
+        return [], 0
+
+    monkeypatch.setattr(mcr.metadata_cache, 'entries_page', fake_page)
+    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
+    client = TestClient(create_app())
+    client.get('/metadata/entries', headers={'x-admin-token': 'tok'}, params={'actor': 'Jane Doe'})
+    assert seen['actor'] == 'Jane Doe'
+
+
+def _seed_cast(site: str, cur: str, title: str, actors: list[str], genres: list[str]) -> None:
+    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import scene_store
+
+    md = {
+        'type': 'movie',
+        'ratingKey': f'scene-{site.lower()}-{cur}',
+        'guid': 'g',
+        'title': title,
+        'studio': site,
+        'Role': [{'tag': name} for name in actors],
+        'Genre': [{'tag': name} for name in genres],
+    }
+    data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+    scene_store.upsert(site, cur, mc._hash(site, cur), f'{site.lower()}/{cur}', data, updated_at=100.0)
+
+
+def test_entries_carry_actors_and_genre_counts_and_filter_by_actor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    _seed_cast('Brazzers', 'x1', 'With Cast', ['Jane Doe', 'John Roe'], ['Anal', 'Blonde', 'MILF'])
+    _seed_cast('Brazzers', 'x2', 'No Cast', [], ['Anal'])
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+
+    by_title = {e['title']: e for e in client.get('/metadata/entries', headers=hdr).json()['entries']}
+    assert by_title['With Cast']['actors'] == ['Jane Doe', 'John Roe']
+    assert by_title['With Cast']['genres'] == 3
+    assert by_title['No Cast']['actors'] == []
+    assert by_title['No Cast']['genres'] == 1
+
+    j = client.get('/metadata/entries', headers=hdr, params={'actor': 'jane'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'With Cast'
+
+    j = client.get('/metadata/entries', headers=hdr, params={'actor': '__blank__'}).json()
+    assert j['total'] == 1 and j['entries'][0]['title'] == 'No Cast'
+
+    assert client.get('/metadata/entries', headers=hdr, params={'actor': 'nobody'}).json()['total'] == 0
+
+
+def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    page = TestClient(create_app()).get('/metadata?token=tok')
+    assert '<div class="searchbar">' in page.text
+    assert '<div class="controls" id="controls">' in page.text
+    assert '<div class="toolbar">' in page.text
+    assert 'repeat(auto-fit, minmax(150px, 1fr))' in page.text
+    assert '.controls.open { display: block; }' in page.text
+    assert "getElementById('controls').classList.toggle('open')" in page.text

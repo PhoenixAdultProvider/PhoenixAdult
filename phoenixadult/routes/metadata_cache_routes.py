@@ -17,6 +17,7 @@ from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
@@ -116,6 +117,32 @@ async def refresh(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'queued': queued, 'site': target['site'], 'cur_id': target['cur_id'], 'updated_at': (snap or {}).get('updated_at', '')})
 
 
+@router.post('/refresh-bulk')
+async def refresh_bulk(request: Request) -> JSONResponse:
+    data = await read_json_body(request)
+    keys = data.get('keys')
+    if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
+        return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
+
+    targets = await run_in('store', lambda: [scene_store.scrape_target(key) for key in keys])
+    queued = 0
+    skipped = 0
+    for target in targets:
+        site = find_site(target['site']) if target else None
+        resolved = service_for(site.provider_id) if site else None
+        if target is None or resolved is None:
+            skipped += 1
+            continue
+        provider, metadata_service = resolved
+        metadata_service.drop_memo(target['rating_key'], provider)
+        if metadata_service.queue_snapshot(target['rating_key'], provider, None, force=True, rescrape=True):
+            queued += 1
+        else:
+            skipped += 1
+    logger.info('meta-cache', f'Refresh requested for {len(keys)} snapshot(s) — {queued} queued, {skipped} skipped')
+    return JSONResponse({'ok': True, 'queued': queued, 'skipped': skipped})
+
+
 @router.get('/snapshot')
 async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
     if not site or not cur_id:
@@ -143,6 +170,7 @@ async def entries_json(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
+    actor: str = '',
     provider: str = '',
     dups: int = Query(0, ge=0, le=1),
     sort: str = 'updated_at',
@@ -165,6 +193,7 @@ async def entries_json(
                 tagline=tagline,
                 collection=collection,
                 data18=data18,
+                actor=actor,
                 provider=provider,
                 dups_only=bool(dups),
                 dup_paths=dup_keys,

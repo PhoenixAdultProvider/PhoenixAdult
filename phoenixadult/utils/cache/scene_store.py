@@ -321,7 +321,8 @@ def scene_keys() -> list[tuple[str, str, str]]:
 
 _SUMMARY_SELECT = (
     'SELECT s.id, s.rel_path, s.site, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, '
-    'st.name AS studio, tl.name AS tagline, COUNT(si.id) AS images '
+    'st.name AS studio, tl.name AS tagline, COUNT(si.id) AS images, '
+    '(SELECT COUNT(*) FROM scene_genres sg WHERE sg.scene_id = s.id) AS genres '
 )
 _SUMMARY_TABLES = 'FROM scenes s LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id'
 _SUMMARY_IMAGES_JOIN = ' LEFT JOIN scene_images si ON si.scene_id = s.id'
@@ -335,7 +336,7 @@ _SORT_COLUMNS = {
 }
 
 
-def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]]) -> dict[str, Any]:
+def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]], actors: dict[int, list[str]]) -> dict[str, Any]:
     return {
         'rel_path': str(r['rel_path']),
         'site': str(r['site']),
@@ -343,6 +344,8 @@ def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]]) -> dict[str,
         'studio': str(r['studio'] or ''),
         'tagline': str(r['tagline'] or ''),
         'collections': collections.get(int(r['id']), []),
+        'actors': actors.get(int(r['id']), []),
+        'genres': int(r['genres']),
         'release_date': str(r['release_date'] or ''),
         'thumb': str(r['thumb'] or ''),
         'images': int(r['images']),
@@ -367,8 +370,24 @@ def _collections_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int
     return out
 
 
+def _actors_for(conn: sqlite3.Connection, scene_ids: list[int]) -> dict[int, list[str]]:
+    out: dict[int, list[str]] = {}
+    if not scene_ids:
+        return out
+    marks = ','.join('?' * len(scene_ids))
+    rows = conn.execute(
+        f'SELECT sp.scene_id, p.name FROM scene_people sp JOIN people p ON p.id = sp.person_id '
+        f"WHERE sp.scene_id IN ({marks}) AND sp.role = 'actor' ORDER BY sp.pos",
+        scene_ids,
+    ).fetchall()
+    for row in rows:
+        out.setdefault(int(row['scene_id']), []).append(str(row['name']))
+    return out
+
+
 _BLANK = '__blank__'
 _MANUAL = '__manual__'
+_ACTOR_EXISTS = "SELECT 1 FROM scene_people sp JOIN people p ON p.id = sp.person_id WHERE sp.scene_id = s.id AND sp.role = 'actor'"
 
 
 def _entry_filters(
@@ -380,6 +399,7 @@ def _entry_filters(
     tagline: str,
     collection: str,
     data18: str,
+    actor: str,
     provider_sites: list[str] | None,
     dup_paths: list[str] | None,
 ) -> tuple[str, list[Any]]:
@@ -418,6 +438,11 @@ def _entry_filters(
     elif collection:
         where.append('EXISTS (SELECT 1 FROM scene_collections sc JOIN collections c ON c.id = sc.collection_id WHERE sc.scene_id = s.id AND c.name = ?)')
         params.append(collection)
+    if actor == _BLANK:
+        where.append(f'NOT EXISTS ({_ACTOR_EXISTS})')
+    elif actor:
+        where.append(f"EXISTS ({_ACTOR_EXISTS} AND p.name LIKE ? ESCAPE '\\')")
+        params.append(db.like_contains(actor))
     if data18 == '__set__':
         where.append("COALESCE(s.data18_id, '') != ''")
     elif data18 == _MANUAL:
@@ -443,6 +468,7 @@ def query_entry_rows(
     tagline: str = '',
     collection: str = '',
     data18: str = '',
+    actor: str = '',
     provider_sites: list[str] | None = None,
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
@@ -453,7 +479,7 @@ def query_entry_rows(
     """One filtered/sorted/paged set of per-scene summary rows for the /metadata UI plus the
     total match count; every filter runs in SQL so pages and totals agree (limit -1 = all)."""
     conn = db.connect()
-    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, provider_sites, dup_paths)
+    where_sql, params = _entry_filters(studio, query, year, month, day, tagline, collection, data18, actor, provider_sites, dup_paths)
     total = int(conn.execute(f'SELECT COUNT(*) AS count {_SUMMARY_TABLES}{where_sql}', params).fetchone()['count'])
     order_col = _SORT_COLUMNS.get(sort, 's.updated_at')
     order_dir = 'ASC' if direction == 'asc' else 'DESC'
@@ -461,8 +487,10 @@ def query_entry_rows(
         f'{_SUMMARY_SELECT}{_SUMMARY_TABLES}{_SUMMARY_IMAGES_JOIN}{where_sql} GROUP BY s.id ORDER BY {order_col} {order_dir}, s.id LIMIT ? OFFSET ?',
         [*params, limit, offset],
     ).fetchall()
-    collections = _collections_for(conn, [int(r['id']) for r in rows])
-    return [_summary_row(r, collections) for r in rows], total
+    scene_ids = [int(r['id']) for r in rows]
+    collections = _collections_for(conn, scene_ids)
+    actors = _actors_for(conn, scene_ids)
+    return [_summary_row(r, collections, actors) for r in rows], total
 
 
 def facet_values() -> dict[str, Any]:

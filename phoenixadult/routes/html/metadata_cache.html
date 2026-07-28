@@ -12,46 +12,60 @@
     h1 { font-size: 20px; margin: 0 0 4px; }
     .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
 
-    /* ── Filter bar ── */
-    .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
-    .filter-group { display: flex; flex-direction: column; gap: 3px; }
+    /* ── Search row ── */
+    .searchbar { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 12px; }
+    .searchbar .filter-group { flex: 1 1 auto; max-width: 380px; }
+
+    /* ── Filter grid ── */
+    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; margin-bottom: 12px; }
+    .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .filter-group label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
-    .filters input[type=text],
-    .filters select {
-      background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
+    .filter-group input[type=text],
+    .filter-group select {
+      width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
       padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
     }
-    .filters input[type=text] { width: 240px; }
-    .filters select { min-width: 140px; }
-    .filters input[type=text]::placeholder { color: #475569; }
-    .count-badge { font-size: 12px; color: #64748b; align-self: center; padding-bottom: 2px; }
+    .filter-group input[type=text]::placeholder { color: #475569; }
+
+    /* ── Action toolbar ── */
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding-top: 12px; margin-bottom: 18px; border-top: 1px solid #1a2035;
+    }
+    .toolbar .spacer { flex: 1 1 auto; }
+    .count-badge { font-size: 12px; color: #64748b; align-self: center; }
     .reset-btn {
-      align-self: flex-end; padding: 0 12px; height: 32px; border: 1px solid #334155;
+      padding: 0 12px; height: 32px; border: 1px solid #334155;
       border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 12px;
     }
     .reset-btn:hover { color: #e2e8f0; border-color: #475569; }
     .reset-btn:disabled { color: #475569; border-color: #1e2433; cursor: not-allowed; }
-    #pager { display: none; gap: 8px; align-items: center; align-self: flex-end; }
+    #pager { display: none; gap: 8px; align-items: center; }
 
-    /* ── Table ── */
-    .wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 24px; }
-    thead th {
-      background: #1a2035; color: #94a3b8; text-align: left;
-      padding: 9px 12px; border-bottom: 2px solid #334155;
-      white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+    .card {
+      display: flex; flex-direction: column; gap: 6px; padding: 12px;
+      background: #151b29; border: 1px solid #1a2035; border-radius: 8px;
     }
-    thead th.sortable { cursor: pointer; user-select: none; }
-    thead th.sortable:hover { color: #e2e8f0; }
-    thead th.sort-asc::after { content: ' \2191'; color: #60a5fa; }
-    thead th.sort-desc::after { content: ' \2193'; color: #60a5fa; }
-    tbody td { padding: 5px 12px; border-bottom: 1px solid #1a2035; vertical-align: middle; }
-    tbody tr:hover td { background: #1a2035; }
-
-    /* ── Thumb cell ── */
-    .thumb-cell { width: 240px; text-align: center; }
-    .thumb-cell img { height: 160px; width: auto; max-width: 240px; object-fit: contain; border-radius: 4px; background: #0b0d12; display: inline-block; vertical-align: middle; }
-    .noimg { height: 160px; width: 224px; background: #0b0d12; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #334155; font-size: 10px; }
+    .card:hover { border-color: #334155; }
+    .card img, .card .noimg { width: 100%; height: 190px; border-radius: 4px; background: #0b0d12; display: block; }
+    .card img { object-fit: contain; }
+    .noimg { display: flex; align-items: center; justify-content: center; color: #334155; font-size: 12px; }
+    .c-title { font-size: 18px; font-weight: 600; line-height: 1.3; color: #f1f5f9; overflow-wrap: anywhere; }
+    .c-studio { font-size: 13px; color: #94a3b8; overflow-wrap: anywhere; }
+    .c-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; overflow-wrap: anywhere; }
+    .c-row::before {
+      content: attr(data-label); flex: 0 0 auto; align-self: center; color: #64748b;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .c-actors { font-size: 13px; color: #cbd5e1; overflow-wrap: anywhere; }
+    .c-actors::before {
+      content: attr(data-label); display: block; color: #64748b;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
+    }
+    .c-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 4px; }
+    .c-actions button { width: 100%; }
 
     /* ── Misc ── */
     .blank { color: #334155; }
@@ -65,6 +79,9 @@
     .export-btn { padding: 8px 16px; border: 1px solid #2563eb; border-radius: 6px; background: #1e293b; color: #60a5fa; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
     .export-btn:hover { background: #1d4ed8; color: #fff; }
     .export-btn:disabled { border-color: #334155; background: #1e293b; color: #64748b; cursor: not-allowed; }
+    .refresh-btn { padding: 8px 16px; border: 1px solid #1d4ed8; border-radius: 6px; background: #1e293b; color: #93c5fd; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
+    .refresh-btn:hover { background: #1d4ed8; color: #fff; }
+    .refresh-btn:disabled { border-color: #334155; background: #1e293b; color: #64748b; cursor: not-allowed; }
     .dup-toggle { padding: 8px 16px; border: 1px solid #f59e0b; border-radius: 6px; background: #1e293b; color: #f59e0b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
     .dup-toggle.on { background: #b45309; color: #fff; }
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
@@ -72,69 +89,46 @@
     .dup-btn.active:hover { background: #d97706; }
     .empty { color: #94a3b8; margin-top: 24px; }
 
+    /* ── Sort bar ── */
+    .sortbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .sortbar label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+    .sortbar select {
+      min-width: 180px; background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
+      padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
+    }
+    .sortbar button {
+      flex: 0 0 auto; height: 32px; padding: 0 12px; border: 1px solid #334155;
+      border-radius: 6px; background: #1e2433; color: #cbd5e1; font-size: 13px;
+      white-space: nowrap; cursor: pointer;
+    }
+    .sortbar button:hover { color: #e2e8f0; border-color: #475569; }
+
     /* ── Mobile ── */
-    .filters-toggle, .mobile-sort { display: none; }
+    .filters-toggle { display: none; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
 
-      .filters { gap: 8px; }
+      .cards { grid-template-columns: 1fr; }
+      .sortbar select { flex: 1; min-width: 0; }
+
+      .searchbar { flex-wrap: wrap; }
+      .searchbar .filter-group { max-width: none; }
       .filters-toggle {
-        display: block; width: 100%; padding: 8px; border: 1px solid #334155;
+        display: block; width: 100%; height: 32px; padding: 0 8px; border: 1px solid #334155;
         border-radius: 6px; background: #1e2433; color: #cbd5e1; font-size: 13px; cursor: pointer;
       }
       .filters-toggle.on { border-color: #2563eb; color: #e2e8f0; }
-      .filters > .filter-group:not(.always), .filters > button:not(.filters-toggle) { display: none; }
-      .filters.open > .filter-group { display: flex; }
-      .filters.open > button:not(.filters-toggle):not([hidden]) { display: block; }
-      .filters > .filter-group, .filters input[type=text], .filters select, .filters > button { width: 100%; }
+      .controls { display: none; }
+      .controls.open { display: block; }
+      .filters { grid-template-columns: 1fr; }
+      .toolbar > button { width: 100%; }
+      .toolbar .spacer { display: none; }
       #pager { width: 100%; justify-content: space-between; }
 
-      .mobile-sort { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
-      .mobile-sort label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
-      .mobile-sort select {
-        flex: 1; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0;
-        padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
-      }
-      .mobile-sort button {
-        flex: 0 0 auto; height: 32px; padding: 0 12px; border: 1px solid #334155;
-        border-radius: 6px; background: #1e2433; color: #cbd5e1; font-size: 13px;
-        white-space: nowrap; cursor: pointer;
-      }
-
-      table { font-size: 15px; }
-      thead { display: none; }
-      table, tbody { display: block; }
-      tbody tr {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
-        background: #151b29; border: 1px solid #1a2035; border-radius: 8px;
-        padding: 12px; margin-bottom: 12px;
-      }
-      tbody tr:hover td { background: none; }
-      tbody td { display: block; grid-column: 1 / -1; padding: 0; border: 0; }
-      .c-thumb { order: 1; width: auto; }
-      .c-thumb img { width: 100%; height: 190px; max-width: none; }
-      .c-thumb .noimg { width: 100%; height: 190px; font-size: 12px; }
-      .c-title { order: 2; font-size: 20px; font-weight: 600; line-height: 1.3; color: #f1f5f9; overflow-wrap: anywhere; }
-      .c-studio { order: 3; color: #94a3b8; overflow-wrap: anywhere; }
-      .c-year { display: none; }
-      .c-date { order: 4; }
-      .c-tagline { order: 5; }
-      .c-cached { order: 6; }
-      .c-data18 { order: 7; }
-      .c-date, .c-tagline, .c-cached, .c-data18 {
-        display: flex; justify-content: space-between; gap: 12px; overflow-wrap: anywhere;
-      }
-      .c-date::before, .c-tagline::before, .c-cached::before, .c-data18::before {
-        content: attr(data-label); flex: 0 0 auto; color: #64748b; font-size: 11px;
-        text-transform: uppercase; letter-spacing: .04em; align-self: center;
-      }
+      .c-title { font-size: 20px; }
       .c-cached .cached-ts { white-space: normal; }
-      tbody td:empty { display: none; }
-      tbody td:has(> .blank) { display: none; }
-      .c-edit { order: 8; grid-column: 1; }
-      .c-purge { order: 9; grid-column: 2; }
-      .c-edit .edit-btn, .c-purge .purge-btn { width: 100%; font-size: 15px; padding: 11px 12px; }
+      .c-actions button { font-size: 15px; padding: 11px 12px; }
     }
   </style>
 </head>
@@ -142,12 +136,20 @@
   <h1>Snapshot Metadata Cache</h1>
   <div class="sub">Status: __STATE__</div>
 
-  <div class="filters">
-    <div class="filter-group always">
-      <label>Search</label>
+  <div class="searchbar">
+    <div class="filter-group">
+      <label for="q">Search</label>
       <input type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
     </div>
     <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
+  </div>
+
+  <div class="controls" id="controls">
+  <div class="filters">
+    <div class="filter-group">
+      <label>Actor</label>
+      <input type="text" id="f-actor" placeholder="actor name…" oninput="queryChanged()">
+    </div>
     <div class="filter-group">
       <label>Provider</label>
       <select id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
@@ -185,11 +187,16 @@
         <option value="__blank__">Blank</option>
       </select>
     </div>
+  </div>
+
+  <div class="toolbar">
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
+    <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
     <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
+    <span class="spacer"></span>
     <span class="count-badge" id="count"></span>
     <span id="pager">
       <button class="reset-btn" id="prevBtn" onclick="prevPage()">Previous</button>
@@ -197,33 +204,16 @@
       <button class="reset-btn" id="nextBtn" onclick="nextPage()">Next</button>
     </span>
   </div>
+  </div>
 
-  <div class="mobile-sort">
+  <div class="sortbar">
     <label for="mobileSort">Sort By</label>
     <select id="mobileSort" onchange="mobileSortChanged()"></select>
     <button id="sortDirBtn" onclick="toggleSortDir()" title="Reverse Sort Order"></button>
   </div>
 
-  <div class="wrap">
-    <table>
-      <thead>
-        <tr>
-          <th class="thumb-cell">Image</th>
-          <th class="sortable" data-key="mtime" onclick="sort('mtime')">Cached</th>
-          <th class="sortable" data-key="date" onclick="sort('date')">Date</th>
-          <th class="sortable" data-key="studio" onclick="sort('studio')">Studio</th>
-          <th class="sortable" data-key="title" onclick="sort('title')">Scene Title</th>
-          <th class="sortable" data-key="tagline" onclick="sort('tagline')">Tagline</th>
-          <th class="sortable" data-key="year" onclick="sort('year')">Year</th>
-          <th class="sortable" data-key="data18_id" onclick="sort('data18_id')">Data18</th>
-          <th>Edit</th>
-          <th>Purge</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
-  </div>
+  <div class="cards" id="cards"></div>
+  <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
   <script>
     const TOKEN = __TOKEN__;
@@ -235,20 +225,29 @@
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     const STORE_KEY = 'metadata-cache-filters';
-    const FILTER_IDS = ['q', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    const FILTER_IDS = ['q', 'f-actor', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    const SORT_FIELDS = [
+      {key: 'mtime', label: 'Cached'},
+      {key: 'date', label: 'Date'},
+      {key: 'studio', label: 'Studio'},
+      {key: 'title', label: 'Scene Title'},
+      {key: 'tagline', label: 'Tagline'},
+      {key: 'year', label: 'Year'},
+      {key: 'data18_id', label: 'Data18'},
+    ];
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
     const PAGE_SIZE = 500;
     let offset = 0;
     const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
-    const FILTER_PARAMS = {'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
+    const FILTER_PARAMS = {'f-actor': 'actor', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
     function filterParams() {
       const p = new URLSearchParams();
       const q = document.getElementById('q').value.trim();
       if (q) p.set('q', q);
       for (const [id, param] of Object.entries(FILTER_PARAMS)) {
-        const v = document.getElementById(id).value;
+        const v = document.getElementById(id).value.trim();
         if (v) p.set(param, v);
       }
       if (showDupsOnly) p.set('dups', '1');
@@ -361,19 +360,15 @@
 
     function buildSortOptions() {
       const sel = document.getElementById('mobileSort');
-      document.querySelectorAll('thead th[data-key]').forEach(th => {
+      SORT_FIELDS.forEach(field => {
         const o = document.createElement('option');
-        o.value = th.dataset.key;
-        o.textContent = th.textContent.trim();
+        o.value = field.key;
+        o.textContent = field.label;
         sel.appendChild(o);
       });
     }
 
     function applySortIndicators() {
-      document.querySelectorAll('thead th[data-key]').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc');
-        if (th.dataset.key === sortKey) th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
-      });
       const sel = document.getElementById('mobileSort');
       if (sel.value !== sortKey) sel.value = sortKey;
       document.getElementById('sortDirBtn').textContent = sortDir === 1 ? '↑ Ascending' : '↓ Descending';
@@ -394,7 +389,7 @@
     }
 
     function toggleFilters() {
-      const open = document.querySelector('.filters').classList.toggle('open');
+      const open = document.getElementById('controls').classList.toggle('open');
       document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
@@ -436,36 +431,41 @@
       const exportBtn = document.getElementById('exportBtn');
       exportBtn.disabled = !TOTAL;
       exportBtn.textContent = `Export Mappings (${TOTAL})`;
+      const refreshBtn = document.getElementById('refreshAllBtn');
+      refreshBtn.disabled = !TOTAL;
+      refreshBtn.textContent = filtered ? `Refresh Filtered (${TOTAL})` : `Refresh All (${TOTAL})`;
 
-      const tbody = document.getElementById('tbody');
+      const cards = document.getElementById('cards');
       const empty = document.getElementById('empty');
-      if (!rows.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      if (!rows.length) { cards.innerHTML = ''; empty.style.display = ''; return; }
       empty.style.display = 'none';
 
-      tbody.innerHTML = rows.map(e => {
+      cards.innerHTML = rows.map(e => {
         const thumb = e.thumb
           ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">`
-          : `<div class="noimg">—</div>`;
-        const cached = e.cached_display ? `<span class="cached-ts">${esc(e.cached_display)}</span>` : '<span class="blank">—</span>';
-        const date = e.date ? esc(e.date) : '<span class="blank">—</span>';
-        const tagline = e.tagline ? esc(e.tagline) : '<span class="blank">—</span>';
-        const year = e.year ? esc(e.year) : '<span class="blank">—</span>';
+          : `<div class="noimg">No Image</div>`;
+        const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
           ? esc(e.data18_id) + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
           : '<span class="blank">—</span>';
+        const actors = (e.actors || []).length
+          ? `<div class="c-actors" data-label="Actors">${esc((e.actors || []).join(', '))}</div>`
+          : '';
         const key = esc(JSON.stringify(e.key));
-        return `<tr>
-          <td class="thumb-cell c-thumb">${thumb}</td>
-          <td class="c-cached" data-label="Cached">${cached}</td>
-          <td class="c-date" data-label="Date">${date}</td>
-          <td class="c-studio" data-label="Studio">${esc(e.studio)}</td>
-          <td class="c-title" data-label="Scene Title">${esc(e.title)}</td>
-          <td class="c-tagline" data-label="Tagline">${tagline}</td>
-          <td class="c-year" data-label="Year">${year}</td>
-          <td class="c-data18" data-label="Data18">${data18}</td>
-          <td class="c-edit"><button class="edit-btn" onclick="edit(${key})">Edit</button></td>
-          <td class="c-purge"><button class="purge-btn" onclick="purge(${key})">Purge</button></td>
-        </tr>`;
+        return `<div class="card">
+          <div class="c-thumb">${thumb}</div>
+          <div class="c-title">${esc(e.title)}</div>
+          <div class="c-studio">${esc(heading)}</div>
+          <div class="c-row c-date" data-label="Date">${e.date ? esc(e.date) : '<span class="blank">—</span>'}</div>
+          <div class="c-row c-genres" data-label="Genres">${e.genres || 0}</div>
+          ${actors}
+          <div class="c-row c-data18" data-label="Data18">${data18}</div>
+          <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
+          <div class="c-actions">
+            <button class="edit-btn" onclick="edit(${key})">Edit</button>
+            <button class="purge-btn" onclick="purge(${key})">Purge</button>
+          </div>
+        </div>`;
       }).join('');
     }
 
@@ -513,6 +513,25 @@
       a.download = `data18_manual_mappings${suffix}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
+    }
+
+    async function refreshShown() {
+      if (!TOTAL) return;
+      const msg = anyFilterActive()
+        ? `Re-scrape the ${TOTAL} snapshot(s) matching the current filters?\n\nEach stored snapshot is replaced, so manual edits to them are lost. Scrapes run in the background — watch /queue.`
+        : `Re-scrape ALL ${TOTAL} cached snapshot(s)?\n\nEach stored snapshot is replaced, so manual edits to them are lost. Scrapes run in the background — watch /queue.`;
+      if (!confirm(msg)) return;
+      const btn = document.getElementById('refreshAllBtn');
+      btn.disabled = true;
+      const rows = await fetchAllMatching();
+      if (!rows || !rows.length) { btn.disabled = false; return; }
+      const r = await fetch('/metadata/refresh-bulk', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({keys: rows.map(e => e.key)})});
+      const j = await r.json().catch(() => ({ok: false}));
+      btn.disabled = false;
+      if (!j.ok) { alert('Refresh failed'); return; }
+      alert(j.skipped
+        ? `Queued ${j.queued} re-scrape(s); ${j.skipped} skipped (already queued or the queue is full).`
+        : `Queued ${j.queued} re-scrape(s). Watch /queue for progress.`);
     }
 
     async function purgeShown() {
