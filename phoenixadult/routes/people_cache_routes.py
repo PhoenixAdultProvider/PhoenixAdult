@@ -476,6 +476,29 @@ def _find_entry(filename: str) -> dict[str, Any] | None:
     return next((e for e in _list_people(people_cache_dir()) if e['filename'] == filename), None)
 
 
+def _scene_credits(entry: dict[str, Any], token: str) -> str:
+    from phoenixadult.utils import cache as metadata_cache
+
+    if not metadata_cache.enabled():
+        return '<div class="hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>'
+    scenes = scene_store.scenes_for_person(str(entry.get('name', '')), str(entry.get('role', '')))
+    if not scenes:
+        return '<div class="hint">No cached snapshot credits this person.</div>'
+    suffix = f'&token={quote(token)}' if token else ''
+    rows = ''.join(
+        f'<tr><td><a href="/metadata/edit?key={quote(scene["key"], safe="/")}{suffix}">{html.escape(scene["title"])}</a></td>'
+        f'<td class="nowrap">{html.escape(scene["date"]) or "&mdash;"}</td>'
+        f'<td>{html.escape(scene["studio"]) or "&mdash;"}</td>'
+        f'<td>{html.escape(scene["tagline"]) or "&mdash;"}</td></tr>'
+        for scene in scenes
+    )
+    return (
+        '<div class="scenewrap"><table class="scenes">'
+        '<thead><tr><th>Title</th><th>Date</th><th>Studio</th><th>Sub-Site</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div>'
+    )
+
+
 @router.get('/edit', response_class=HTMLResponse)
 async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
     entry = await run_in('store', _find_entry, filename) if filename else None
@@ -485,6 +508,8 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     origin = html.escape(str(entry.get('source', '')) or 'unrecorded')
     subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code> · from {origin}'
+    token = request.query_params.get('token', '')
+    credits = await run_in('store', _scene_credits, entry, token)
     body = (
         _EDIT_TEMPLATE.replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
         .replace('__SUBTITLE__', subtitle)
@@ -494,6 +519,7 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
         .replace('__ENTRY__', _json_attr(entry))
         .replace('__SOURCES__', _json_attr([source.name for source in FETCHABLE_SOURCES]))
         .replace('__CROP_AVAILABLE__', 'true' if face_crop.available() else 'false')
+        .replace('__SCENES__', credits)
     )
     return HTMLResponse(body)
 

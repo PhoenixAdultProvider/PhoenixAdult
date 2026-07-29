@@ -241,6 +241,10 @@ replaces the cached file**, cropping per the checkbox rather than `PEOPLE_CACHE_
 doubles as a way to crop or un-crop one headshot. The checkbox is disabled when
 `opencv-python-headless` is absent.
 
+A **Scenes** section lists every cached snapshot that credits the person in that headshot's role —
+title (linking to the snapshot editor), date, studio and sub-site — newest first. It reads the
+snapshot cache, so it says as much when `METADATA_CACHE_ENABLE` is off.
+
 Saving also **flags every scene crediting that performer to re-push their headshots**. A snapshot
 freezes the served image URL, which carries a content-hash cache-buster; replacing the bytes changes
 the token, but a cached serve would keep handing Plex the old URL and Plex only re-fetches when a URL

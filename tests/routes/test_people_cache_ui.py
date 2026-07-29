@@ -166,3 +166,74 @@ def test_resetting_people_filters_leaves_sfw_alone(monkeypatch: pytest.MonkeyPat
     page = TestClient(create_app()).get('/people?token=tok')
     body = page.text[page.text.index('function resetFilters()') :]
     assert 'SFW' not in body[: body.index('showTab(curTab)')]
+
+
+def _seed_scene(title: str, cur: str, studio: str, tagline: str, date: str, cast: list[str]) -> None:
+    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import scene_store
+
+    md: dict[str, object] = {
+        'type': 'movie',
+        'ratingKey': 'rk',
+        'guid': 'g',
+        'title': title,
+        'studio': studio,
+        'originallyAvailableAt': date,
+        'Role': [{'tag': name} for name in cast],
+    }
+    if tagline:
+        md['tagline'] = tagline
+    scene_store.upsert(
+        studio, cur, mc._hash(studio, cur), mc.bundle_path(mc._hash(studio, cur)), {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+    )
+
+
+@pytest.fixture
+def _person_cache(monkeypatch: pytest.MonkeyPatch, tmp_path):  # type: ignore[no-untyped-def]
+    from pathlib import Path
+
+    from phoenixadult.utils import db
+
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    monkeypatch.setenv('STATE_DB_PATH', str(Path(str(tmp_path)) / 'state.db'))
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(Path(str(tmp_path)) / 'people'))
+    monkeypatch.setenv('IMAGE_DIR', str(Path(str(tmp_path)) / 'images'))
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(Path(str(tmp_path)) / 'cache'))
+    headshot = Path(str(tmp_path)) / 'people' / 'actors' / 'female' / 'actor.jane-doe_female.jpg'
+    headshot.parent.mkdir(parents=True, exist_ok=True)
+    headshot.write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 64)
+    yield
+    db.close()
+
+
+def test_the_edit_page_lists_the_scenes_that_credit_the_person(_person_cache: None) -> None:
+    _seed_scene('Later Scene', 'c1', 'Brazzers', 'Baby Got Boobs', '2024-06-01', ['Jane Doe'])
+    _seed_scene('Earlier Scene', 'c2', 'Vixen', '', '2023-01-05', ['Jane Doe', 'Someone Else'])
+    _seed_scene('Not Hers', 'c3', 'Vixen', '', '2025-01-05', ['Someone Else'])
+
+    page = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'})
+
+    assert page.status_code == 200
+    body = page.text
+    assert '<legend>Scenes</legend>' in body
+    assert body.index('Later Scene') < body.index('Earlier Scene')
+    assert 'Not Hers' not in body
+    assert 'Baby Got Boobs' in body and 'Brazzers' in body and '2024-06-01' in body
+    assert 'href="/metadata/edit?key=scenes/' in body and 'token=tok' in body
+
+
+def test_the_edit_page_says_so_when_no_snapshot_credits_the_person(_person_cache: None) -> None:
+    _seed_scene('Not Hers', 'c9', 'Vixen', '', '2025-01-05', ['Someone Else'])
+
+    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+
+    assert 'No cached snapshot credits this person.' in body
+
+
+def test_the_scene_list_is_skipped_when_the_cache_is_off(_person_cache: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'false')
+
+    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+
+    assert 'The snapshot cache is off' in body

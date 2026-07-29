@@ -301,6 +301,31 @@ def site_scenes(site: str) -> list[dict[str, str]]:
     return [{'cur_id': str(r['cur_id']), 'title': str(r['title']), 'release_date': str(r['release_date'] or ''), 'thumb': str(r['thumb'] or '')} for r in rows]
 
 
+_PERSON_SCENES = (
+    'SELECT s.rel_path, s.title, s.release_date, st.name AS studio, tl.name AS tagline '
+    'FROM scene_people sp JOIN people p ON p.id = sp.person_id JOIN scenes s ON s.id = sp.scene_id '
+    'LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id '
+    'WHERE p.name = ? COLLATE NOCASE AND sp.role = ? '
+    "ORDER BY COALESCE(s.release_date, '') DESC, s.title COLLATE NOCASE"
+)
+
+
+def scenes_for_person(name: str, role: str) -> list[dict[str, str]]:
+    if not name or not role:
+        return []
+    rows = db.connect().execute(_PERSON_SCENES, (name, role)).fetchall()
+    return [
+        {
+            'key': str(r['rel_path']),
+            'title': str(r['title']),
+            'date': str(r['release_date'] or ''),
+            'studio': str(r['studio'] or ''),
+            'tagline': str(r['tagline'] or ''),
+        }
+        for r in rows
+    ]
+
+
 def legacy_scenes(prefix: str) -> list[dict[str, str]]:
     rows = db.connect().execute('SELECT hash, rel_path, site, cur_id FROM scenes WHERE rel_path NOT LIKE ? ORDER BY rel_path', (prefix,)).fetchall()
     return [{'hash': str(r['hash']), 'rel_path': str(r['rel_path']), 'site': str(r['site']), 'cur_id': str(r['cur_id'])} for r in rows]
