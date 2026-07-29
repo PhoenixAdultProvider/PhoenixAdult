@@ -42,7 +42,7 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'didnt': "Didn't", 'isnt': "Isn't", 'senor': 'Señor', 'senorita': 'Señorita', 'thats': "That's",
     'gstring': 'G-String', 'milfs': 'MILFs', 'oreilly': "O'Reilly", 'bangbros': 'BangBros', 'bday': 'B-Day',
     'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
-    'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
+    'lasirena': 'LaSirena', 'espanol': 'Español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
     'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock',
 }

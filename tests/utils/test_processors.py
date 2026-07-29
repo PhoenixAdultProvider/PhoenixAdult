@@ -83,6 +83,9 @@ def test_title_case_manual_correction() -> None:
     assert title_case('bday party') == 'B-Day Party'
     assert title_case('weve got trouble') == "We've Got Trouble"
     assert title_case('What Weve Done') == "What We've Done"
+    assert title_case('espanol') == 'Español'
+    assert title_case('porno espanol') == 'Porno Español'
+    assert title_case('escandalo') == 'Escándalo'
 
 
 def test_title_case_keeps_a_lowercase_brand_initial_anywhere() -> None:
