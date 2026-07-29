@@ -81,6 +81,30 @@ def test_title_case_manual_correction() -> None:
     assert title_case('cant stop') == "Can't Stop"
     assert title_case('her b day surprise') == 'Her B-Day Surprise'
     assert title_case('bday party') == 'B-Day Party'
+    assert title_case('weve got trouble') == "We've Got Trouble"
+    assert title_case('What Weve Done') == "What We've Done"
+
+
+def test_title_case_keeps_a_lowercase_brand_initial_anywhere() -> None:
+    assert title_case('ICock') == 'iCock'
+    assert title_case('icock') == 'iCock'
+    assert title_case('ICock Rides Again') == 'iCock Rides Again'
+    assert title_case('The ICock Story') == 'The iCock Story'
+    assert title_case('A Scene: icock Returns') == 'A Scene: iCock Returns'
+    assert title_case('Ends With icock') == 'Ends with iCock'
+
+
+def test_title_case_capitalises_a_letter_grade_after_straight() -> None:
+    assert title_case('Straight a Student') == 'Straight A Student'
+    assert title_case('straight a slut') == 'Straight A Slut'
+    assert title_case("straight a's") == "Straight A's"
+    assert title_case('My Straight a Sister') == 'My Straight A Sister'
+
+
+def test_title_case_leaves_the_article_a_alone() -> None:
+    assert title_case('Just a Student') == 'Just a Student'
+    assert title_case('a game of chess') == 'A Game of Chess'
+    assert title_case('straightaway home') == 'Straightaway Home'
 
 
 def test_title_case_tld_fragment_only_lowercases_as_domain_suffix() -> None:

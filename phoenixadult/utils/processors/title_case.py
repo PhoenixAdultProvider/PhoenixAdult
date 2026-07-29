@@ -44,7 +44,15 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
     'lasirena': 'LaSirena', 'espanol': 'español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
-    'escandalo': 'Escándalo', 'desilva': 'DeSilva'
+    'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock',
+}
+
+_KEEP_LOWER_FIRST = sorted(v for v in _MANUAL_CORRECTIONS.values() if v[:1].islower() and any(c.isupper() for c in v[1:]))
+_KEEP_LOWER_RE = re.compile(r'\b(' + '|'.join(re.escape(v) for v in _KEEP_LOWER_FIRST) + r')\b', re.IGNORECASE) if _KEEP_LOWER_FIRST else None
+_KEEP_LOWER_BY_KEY = {v.lower(): v for v in _KEEP_LOWER_FIRST}
+
+_PHRASE_CORRECTIONS: dict[str, str] = {
+    'straight a': 'Straight A',
 }
 
 _SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
@@ -125,6 +133,12 @@ def _strip_non_word(s: str) -> str:
 
 def _is_alnum(ch: str) -> bool:
     return bool(_ALNUM_RE.match(ch))
+
+
+def _restore_brand_case(output: str) -> str:
+    if _KEEP_LOWER_RE is None:
+        return output
+    return _KEEP_LOWER_RE.sub(lambda m: _KEEP_LOWER_BY_KEY[m.group(1).lower()], output)
 
 
 def _capitalize(s: str) -> str:
@@ -302,7 +316,7 @@ class _TitleCaseEngine:
         output = self._capitalize_boundaries(output)
         output = self._normalize_initials(output)
         output = self._fix_grammar(output)
-        return self._finish_by_type(output)
+        return _restore_brand_case(self._finish_by_type(output))
 
     def _normalize_quotes_and_articles(self, output: str) -> str:
         output = output.replace('“', '"').replace('”', '"').replace('’', "'")
@@ -344,6 +358,8 @@ class _TitleCaseEngine:
             output = normalize_sequence_separator(output)
         output = expand_initial_pairs(output)
         output = re.sub(r'(?<![A-Za-z])W/', 'w/', output)
+        for phrase, replacement in _PHRASE_CORRECTIONS.items():
+            output = re.sub(rf'\b{re.escape(phrase)}\b', replacement, output, flags=re.IGNORECASE)
         for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
         return output
