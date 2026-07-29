@@ -93,20 +93,20 @@ def remove(directory: str, filename: str) -> None:
         conn.execute('DELETE FROM crop_log WHERE rel_path = ?', (f'{_rel_dir(directory)}/{filename}',))
 
 
-def update(directory: str, match_filename: str, **changes: Any) -> None:
+def update(directory: str, match_filename: str, **changes: Any) -> bool:
     rel_dir = _rel_dir(directory)
     key = f'{rel_dir}/{match_filename}'
     conn = _conn()
     with conn:
         row = conn.execute('SELECT entry, cropped_at, source FROM crop_log WHERE rel_path = ?', (key,)).fetchone()
         if row is None:
-            return
+            return False
         try:
             entry = json.loads(row['entry'])
         except ValueError:
-            return
+            return False
         if not isinstance(entry, dict):
-            return
+            return False
         source = str(changes.pop('source', None) or row['source'] or '')
         entry.update(changes)
         new_key = f'{rel_dir}/{entry.get("filename") or match_filename}'
@@ -116,3 +116,4 @@ def update(directory: str, match_filename: str, **changes: Any) -> None:
             'INSERT OR REPLACE INTO crop_log(rel_path, entry, cropped_at, source) VALUES(?, ?, ?, ?)',
             (new_key, json.dumps(entry), float(row['cropped_at']), source),
         )
+    return True

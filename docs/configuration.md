@@ -241,9 +241,21 @@ replaces the cached file**, cropping per the checkbox rather than `PEOPLE_CACHE_
 doubles as a way to crop or un-crop one headshot. The checkbox is disabled when
 `opencv-python-headless` is absent.
 
+**Recorded Source** relabels where the headshot came from without touching the image — for entries
+that predate source tracking, or one filed under the wrong site. **Fetch From** sets it to whatever
+answered, and because IAFD already returns a framed head-and-shoulders portrait, fetching from there
+also clears Cropped Status so a second crop is not applied to an image that does not need one.
+
 A **Scenes** section lists every cached snapshot that credits the person in that headshot's role —
 title (linking to the snapshot editor), date, studio and sub-site — newest first. It reads the
 snapshot cache, so it says as much when `METADATA_CACHE_ENABLE` is off.
+
+The **SFW Mode** button hides the preview card; like the metadata screens it shares the setting and
+never hands the browser an image URL while it is on.
+
+The `/people` list filters on **source** (a dropdown of the sources actually present, plus
+Unrecorded) and offers **Generic Only** beside Cropped Only and No Upstream, for finding people still
+carrying the placeholder silhouette. Both persist with the other filters and clear with Reset.
 
 Saving also **flags every scene crediting that performer to re-push their headshots**. A snapshot
 freezes the served image URL, which carries a content-hash cache-buster; replacing the bytes changes

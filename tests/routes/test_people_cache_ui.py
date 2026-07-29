@@ -237,3 +237,104 @@ def test_the_scene_list_is_skipped_when_the_cache_is_off(_person_cache: None, mo
     body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
 
     assert 'The snapshot cache is off' in body
+
+
+def test_cards_are_wide_enough_that_names_never_break(_person_cache: None) -> None:
+    body = TestClient(create_app()).get('/people?token=tok').text
+    assert 'minmax(460px,1fr)' in body
+    assert '.hd b{white-space:nowrap}' in body
+    assert 'flex-wrap:wrap' in body
+
+
+def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> None:
+    from pathlib import Path
+
+    from phoenixadult.utils.images import face_crop_log
+    from phoenixadult.utils.people.cache import people_cache_dir
+
+    folder = str(Path(people_cache_dir()) / 'actors' / 'female')
+    face_crop_log.record(
+        folder,
+        name='Jane Doe',
+        filename='actor.jane-doe_female.jpg',
+        base='actor.jane-doe_female',
+        orig_ext='.jpg',
+        upstream_url='https://iafd.com/j.jpg',
+        cropped=True,
+        source='IAFD',
+    )
+
+    body = TestClient(create_app()).get('/people?token=tok').text
+
+    assert 'id="sourceFilter"' in body
+    assert '<option value="IAFD">IAFD</option>' in body
+    assert '<option value="">Any Source</option>' in body
+    assert 'data-source="IAFD"' in body
+    assert "const wanted = document.getElementById('sourceFilter').value;" in body
+
+
+def test_the_list_offers_a_generic_only_toggle(_person_cache: None) -> None:
+    body = TestClient(create_app()).get('/people?token=tok').text
+    assert 'id="genericToggle">Generic Only</button>' in body
+    assert "src === 'Generic'" in body
+    assert 'genericOnly' in body
+
+
+def test_the_edit_page_hides_its_previews_in_sfw_mode(_person_cache: None) -> None:
+    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+    assert 'id="sfwToggle"' in body
+    assert "const SFW_KEY = 'metadata-sfw';" in body
+    assert 'body.sfw #previewCard { display: none; }' in body
+    assert 'id="cachedImg" data-src=' in body
+    assert 'id="cachedImg" src=' not in body
+
+
+def test_the_edit_page_offers_every_known_source(_person_cache: None) -> None:
+    from phoenixadult.utils.people.image_source import KNOWN_SOURCES
+
+    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+
+    assert 'id="f-recorded"' in body
+    assert all(f'"{name}"' in body for name in KNOWN_SOURCES)
+    assert "const UNCROPPED_SOURCES = ['IAFD'];" in body
+    assert "qs('f-cropped').checked = false;" in body
+
+
+def test_saving_relabels_the_recorded_source_without_touching_the_image(_person_cache: None) -> None:
+    from pathlib import Path
+
+    from phoenixadult.routes import people_cache_routes as pcr
+    from phoenixadult.utils.images import face_crop_log
+    from phoenixadult.utils.people.cache import people_cache_dir
+
+    folder = str(Path(people_cache_dir()) / 'actors' / 'female')
+    face_crop_log.record(
+        folder,
+        name='Jane Doe',
+        filename='actor.jane-doe_female.jpg',
+        base='actor.jane-doe_female',
+        orig_ext='.jpg',
+        upstream_url='https://cdn/j.jpg',
+        cropped=False,
+        source='Scene',
+    )
+    client = TestClient(create_app())
+    hdr = {'x-admin-token': 'tok'}
+    body = {'filename': 'actor.jane-doe_female.jpg', 'upstream_url': 'https://cdn/j.jpg', 'cropped': False, 'recorded_source': 'IAFD'}
+
+    r = client.post('/people/save', json=body, headers=hdr)
+
+    assert r.status_code == 200 and r.json() == {'ok': True, 'changed': True}
+    assert pcr._find_entry('actor.jane-doe_female.jpg')['source'] == 'IAFD'
+
+    again = client.post('/people/save', json=body, headers=hdr)
+    assert again.json() == {'ok': True, 'changed': False}
+
+
+def test_saving_rejects_a_source_it_does_not_know(_person_cache: None) -> None:
+    client = TestClient(create_app())
+    body = {'filename': 'actor.jane-doe_female.jpg', 'upstream_url': 'https://cdn/j.jpg', 'cropped': False, 'recorded_source': 'Nowhere'}
+
+    r = client.post('/people/save', json=body, headers={'x-admin-token': 'tok'})
+
+    assert r.status_code == 400 and 'Nowhere' in r.json()['error']

@@ -41,6 +41,10 @@
     .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
     .cancel:hover { color: #e2e8f0; }
     .status { font-size: 12px; color: #64748b; }
+    .recorded { width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .recorded:focus { outline: 0; border-color: #2563eb; }
+    #sfwToggle.on { background: #15803d; border-color: #15803d; color: #fff; }
+    body.sfw #previewCard { display: none; }
     .scenewrap { max-height: 340px; overflow: auto; border-radius: 6px; }
     .scenes { width: 100%; border-collapse: collapse; font-size: 13px; }
     .scenes th {
@@ -64,7 +68,7 @@
   </style>
 </head>
 <body>
-  <h1><span id="actorName">__ACTOR_NAME__</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a></h1>
+  <h1><span id="actorName">__ACTOR_NAME__</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
   <div class="sub">__SUBTITLE__</div>
 
   <div class="wrap">
@@ -80,12 +84,15 @@
       <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
       <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:#cbd5e1">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
+      <label for="f-recorded">Recorded Source</label>
+      <select id="f-recorded" class="recorded"></select>
+      <div class="hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>
     </fieldset>
 
-    <fieldset>
+    <fieldset id="previewCard">
       <legend>Preview</legend>
       <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" src="__CACHED_SRC__" alt=""></figure>
+        <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" data-src="__CACHED_SRC__" alt=""></figure>
         <figure><figcaption>Upstream Original</figcaption><img id="upstreamImg" alt=""></figure>
       </div>
     </fieldset>
@@ -108,6 +115,11 @@
     const ENTRY = __ENTRY__;
     const SOURCES = __SOURCES__;
     const CROP_AVAILABLE = __CROP_AVAILABLE__;
+    const RECORDED_SOURCES = __RECORDED_SOURCES__;
+    const UNCROPPED_SOURCES = ['IAFD'];
+    const SFW_KEY = 'metadata-sfw';
+    let SFW = false;
+    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
 
     function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
     function qs(id) { return document.getElementById(id); }
@@ -120,6 +132,7 @@
     function refreshUpstream() {
       const url = qs('f-upstream').value.trim();
       const img = qs('upstreamImg');
+      if (SFW) { img.removeAttribute('src'); return; }
       img.src = proxied(url);
       img.style.visibility = url ? 'visible' : 'hidden';
     }
@@ -129,7 +142,13 @@
       btn.disabled = true;
       qs('status').textContent = 'Saving…';
       const upstream = qs('f-upstream').value.trim();
-      const body = {filename: FILENAME, upstream_url: upstream, cropped: qs('f-cropped').checked, source: upstream === fetched.url ? fetched.source : ''};
+      const body = {
+        filename: FILENAME,
+        upstream_url: upstream,
+        cropped: qs('f-cropped').checked,
+        source: upstream === fetched.url ? fetched.source : '',
+        recorded_source: qs('f-recorded').value,
+      };
       let payload = {};
       try {
         const r = await fetch('/people/save', {method: 'POST', headers: hdrs(), body: JSON.stringify(body)});
@@ -158,6 +177,14 @@
       qs('f-source').appendChild(opt);
     });
 
+    for (const [value, label] of [['', 'Unrecorded'], ...RECORDED_SOURCES.map(n => [n, n])]) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      if (value === (ENTRY.source || '')) opt.selected = true;
+      qs('f-recorded').appendChild(opt);
+    }
+
     qs('fetchBtn').onclick = async () => {
       const button = qs('fetchBtn');
       const source = qs('f-source').value;
@@ -175,9 +202,39 @@
       qs('f-upstream').value = payload.url;
       fetched.url = payload.url;
       fetched.source = payload.source;
+      qs('f-recorded').value = [...qs('f-recorded').options].some(o => o.value === payload.source) ? payload.source : '';
+      let note = '';
+      if (UNCROPPED_SOURCES.includes(payload.source) && qs('f-cropped').checked) {
+        qs('f-cropped').checked = false;
+        note = ' — cropping turned off';
+      }
       refreshUpstream();
-      qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply';
+      qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply' + note;
     };
+
+    function paintSfw() {
+      document.body.classList.toggle('sfw', SFW);
+      const btn = qs('sfwToggle');
+      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
+      btn.classList.toggle('on', SFW);
+      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide the preview images';
+      const cached = qs('cachedImg');
+      if (SFW) {
+        cached.removeAttribute('src');
+        qs('upstreamImg').removeAttribute('src');
+      } else {
+        if (cached.dataset.src) cached.src = cached.dataset.src;
+        refreshUpstream();
+      }
+    }
+
+    function toggleSfw() {
+      SFW = !SFW;
+      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      paintSfw();
+    }
+
+    paintSfw();
 
     qs('iafdLink').href = 'https://www.iafd.com/results.asp?searchtype=comprehensive&searchstring=' + encodeURIComponent(ENTRY.name || '').replace(/%20/g, '+');
 

@@ -19,6 +19,9 @@ _BY_HOST: dict[str, str] = {
 }
 
 
+KNOWN_SOURCES: tuple[str, ...] = (SCENE_SOURCE, GENERIC_SOURCE, *sorted(set(_BY_HOST.values())))
+
+
 def _registrable(host: str) -> str:
     parts = host.lower().split(':')[0].split('.')
     return '.'.join(parts[-2:]) if len(parts) >= 2 else ''

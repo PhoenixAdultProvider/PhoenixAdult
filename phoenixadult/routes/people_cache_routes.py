@@ -23,6 +23,7 @@ from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
+from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.localStorage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
@@ -161,7 +162,9 @@ def _card(entry: dict[str, Any]) -> str:
     edit_btn = '<button class="edit">Edit</button>'
     purge_btn = '<button class="purge">Purge</button>'
     search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
-    flags = f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}"'
+    flags = (
+        f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}" data-source="{html.escape(source, quote=True)}"'
+    )
     return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}{source_badge}<span class="ts">{timestamp}</span></div>
       <div class="imgs">
@@ -191,6 +194,13 @@ async def page(request: Request) -> HTMLResponse:
     )
     cards = '\n'.join(_card(e) for e in entries)
     source_options = ''.join(f'<option value="{html.escape(s.name, quote=True)}">{html.escape(s.name)}</option>' for s in FETCHABLE_SOURCES)
+    present = sorted({str(e['source']) for e in entries if e['source']}, key=str.casefold)
+    unrecorded = '<option value="__blank__">Unrecorded</option>' if any(not e['source'] for e in entries) else ''
+    source_filter_options = (
+        '<option value="">Any Source</option>'
+        + unrecorded
+        + ''.join(f'<option value="{html.escape(name, quote=True)}">{html.escape(name)}</option>' for name in present)
+    )
     body = f"""<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
     <style>
@@ -198,13 +208,14 @@ async def page(request: Request) -> HTMLResponse:
       h1{{font-size:20px}} .sub{{color:#94a3b8;font-size:13px;margin-bottom:20px}}
       .warn{{background:#3b1d1d;border:1px solid #b91c1c;padding:8px 12px;border-radius:6px}}
       .empty{{color:#94a3b8}}
-      .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}}
+      .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px}}
       .card{{background:#1e2433;border:1px solid #334155;border-left:5px solid #475569;border-radius:8px;padding:12px;display:none}}
       .card.gf{{border-left-color:#db2777;background:#241a20}}
       .card.gm{{border-left-color:#2563eb;background:#1a1f2e}}
       .card.gt{{border-left-color:#9333ea;background:#211a2e}}
       .card.gn{{border-left-color:#64748b}}
-      .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px}} .ts{{margin-left:auto;color:#64748b;font-size:12px}}
+      .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}}
+      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:#64748b;font-size:12px}}
       .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:#1e3a8a}} .badge.orig{{background:#334155}}
       .badge.src{{background:#0f172a;border:1px solid #334155;color:#94a3b8}}
       .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:#475569}}
@@ -268,8 +279,10 @@ async def page(request: Request) -> HTMLResponse:
     {warn}
     <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
-      <button class="tab noupstream" id="upstreamToggle">No Upstream</button></div>
+      <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
+      <button class="tab genericonly" id="genericToggle">Generic Only</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
+      <select id="sourceFilter">{source_filter_options}</select>
       <select id="bulkSource">{source_options}</select>
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
       <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
@@ -326,17 +339,22 @@ async def page(request: Request) -> HTMLResponse:
       function resetFilters(){{
         croppedOnly = false;
         noUpstreamOnly = false;
+        genericOnly = false;
         document.getElementById('nameSearch').value = '';
+        document.getElementById('sourceFilter').value = '';
         document.getElementById('cropToggle').classList.remove('on');
         document.getElementById('upstreamToggle').classList.remove('on');
+        document.getElementById('genericToggle').classList.remove('on');
         showTab(curTab);
       }}
       let croppedOnly = false;
       let noUpstreamOnly = false;
+      let genericOnly = false;
       let curTab = '';
       function saveFilters(){{
         const search = document.getElementById('nameSearch').value;
-        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, search}})); }} catch {{}}
+        const source = document.getElementById('sourceFilter').value;
+        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, genericOnly, search, source}})); }} catch {{}}
       }}
       function restoreFilters(){{
         let saved;
@@ -344,18 +362,26 @@ async def page(request: Request) -> HTMLResponse:
         if(!saved) return;
         croppedOnly = !!saved.croppedOnly;
         noUpstreamOnly = !!saved.noUpstreamOnly;
+        genericOnly = !!saved.genericOnly;
         document.getElementById('nameSearch').value = saved.search || '';
+        const picker = document.getElementById('sourceFilter');
+        if(saved.source && [...picker.options].some(o => o.value === saved.source)) picker.value = saved.source;
         document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
         document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
+        document.getElementById('genericToggle').classList.toggle('on', genericOnly);
       }}
       function showTab(t){{
         curTab = t;
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
         const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
+        const wanted = document.getElementById('sourceFilter').value;
         let n=0;
         document.querySelectorAll('.card').forEach(c=>{{
+          const src = c.dataset.source || '';
+          const sourceOk = !wanted || (wanted === '__blank__' ? !src : src === wanted);
           const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!noUpstreamOnly || c.dataset.upstream==='0')
+            && (!genericOnly || src === 'Generic') && sourceOk
             && (!needle || (c.dataset.name||'').includes(needle));
           c.style.display=m?'block':'none'; if(m)n++;
         }});
@@ -369,7 +395,7 @@ async def page(request: Request) -> HTMLResponse:
         document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
       }}
       function updateFiltersToggle(){{
-        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0);
+        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (document.getElementById('sourceFilter').value?1:0);
         const tab = document.querySelector('.tab.active');
         const label = tab ? tab.dataset.label : 'People';
         const btn = document.getElementById('filtersToggle');
@@ -377,6 +403,7 @@ async def page(request: Request) -> HTMLResponse:
         btn.classList.toggle('on', active > 0);
       }}
       document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
+      document.getElementById('sourceFilter').addEventListener('change', () => showTab(curTab));
       function shownFilenames(){{
         return Array.from(document.querySelectorAll('.card'))
           .filter(c => c.style.display !== 'none')
@@ -453,6 +480,11 @@ async def page(request: Request) -> HTMLResponse:
         document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
         showTab(curTab);
       }});
+      document.getElementById('genericToggle').addEventListener('click', () => {{
+        genericOnly = !genericOnly;
+        document.getElementById('genericToggle').classList.toggle('on', genericOnly);
+        showTab(curTab);
+      }});
       document.addEventListener('click', e => {{
         const b = e.target.closest('button');
         if (!b || b.disabled) return;
@@ -519,6 +551,7 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
         .replace('__ENTRY__', _json_attr(entry))
         .replace('__SOURCES__', _json_attr([source.name for source in FETCHABLE_SOURCES]))
         .replace('__CROP_AVAILABLE__', 'true' if face_crop.available() else 'false')
+        .replace('__RECORDED_SOURCES__', _json_attr(list(KNOWN_SOURCES)))
         .replace('__SCENES__', credits)
     )
     return HTMLResponse(body)
@@ -615,12 +648,24 @@ async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[s
     yield json.dumps({'ok': True, 'source': source.name, **tally, 'truncated': truncated}) + '\n'
 
 
+def _relabel_source(entry: dict[str, Any], source: str) -> bool:
+    if source == str(entry.get('source', '')):
+        return False
+    directory = str(Path(people_cache_dir()) / str(entry['relpath']).rpartition('/')[0])
+    if not face_crop_log.update(directory, str(entry['filename']), source=source):
+        logger.warn('people-cache', f'cannot relabel {entry["filename"]} — it has no crop-log entry to carry the source')
+        return False
+    logger.info('people-cache', f'relabelled {entry["filename"]} source: {entry.get("source") or "unrecorded"} -> {source or "unrecorded"}')
+    return True
+
+
 @router.post('/save')
 async def save(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
     upstream = str(data.get('upstream_url', '')).strip()
     picked = str(data.get('source', ''))
+    relabel = str(data.get('recorded_source', ''))
     wants_crop = bool(data.get('cropped'))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
@@ -629,8 +674,11 @@ async def save(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'unknown filename'}, status_code=404)
     if not upstream:
         return JSONResponse({'ok': False, 'error': 'an upstream URL is required to re-cache the image'}, status_code=400)
+    if relabel and relabel not in KNOWN_SOURCES:
+        return JSONResponse({'ok': False, 'error': f'unknown source "{relabel}"'}, status_code=400)
+    relabelled = await run_in('store', _relabel_source, entry, relabel)
     if upstream == entry['upstream_url'] and wants_crop == entry['cropped']:
-        return JSONResponse({'ok': True, 'changed': False})
+        return JSONResponse({'ok': True, 'changed': relabelled})
     role: Any = entry['role']
     source = picked if any(s.name == picked for s in FETCHABLE_SOURCES) else ''
     cached = await cache_photo(upstream, str(entry['name']), role, _gender_of(str(entry['gender'])), replace=True, crop=wants_crop, source=source)
