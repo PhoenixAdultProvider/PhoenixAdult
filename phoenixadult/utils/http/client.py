@@ -5,6 +5,7 @@ from typing import Any
 import httpx2
 
 from phoenixadult.config.env import env
+from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
 
 DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -16,7 +17,12 @@ def _proxy_url() -> str | None:
 
 
 async def _log_request(request: httpx2.Request) -> None:
-    logger.http(f'Requesting {request.method.upper()} "{request.url}"')
+    line = f'Requesting {request.method.upper()} "{request.url}"'
+    phase = current_scrape_phase()
+    if phase:
+        logger.info(phase, line)
+    else:
+        logger.http(line)
 
 
 def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> httpx2.AsyncClient:

@@ -75,10 +75,12 @@ _Read from the environment at startup; not editable in the Config UI._
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose`. Restart to apply. |
+| `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose` — **except** requests made while scraping, which log at `info` (see below). Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
 | `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `IMAGE_BASE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
 | `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see the admin token in URLs while testing. |
+
+Every request a scraper makes while searching or updating is logged at `info` with its method and full URL, tagged with the phase and site — `[search TeamSkeet] Requesting GET "…"`, `[update TeamSkeet] Requesting GET "…"`. That covers the supporting fetches too: model pages, photo-gallery pages, Data18 enrichment. Requests outside a scrape (image downloads, Plex calls, the UIs) stay at `http`, so turning the level up is not needed to see how a match was reached.
 
 The **Logs** tab in the Config UI tails what this process has logged, polling every three seconds while the tab is open. It reads an in-memory ring buffer (1000 lines) fed by the same formatter and redaction filter as `agent.log`, so nothing is exposed there that the file would hide — and a restart starts it empty. Lines are never wrapped; the view scrolls both ways and follows the newest line until you scroll up.
 

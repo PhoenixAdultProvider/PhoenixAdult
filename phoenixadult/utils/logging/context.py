@@ -56,3 +56,19 @@ def request_id_scope(value: str | None = None) -> Iterator[str]:
         yield rid
     finally:
         _request_id.reset(token)
+
+
+_scrape_phase: contextvars.ContextVar[str] = contextvars.ContextVar('scrape_phase', default='')
+
+
+def current_scrape_phase() -> str:
+    return _scrape_phase.get()
+
+
+@contextlib.contextmanager
+def scrape_phase_scope(phase: str) -> Iterator[None]:
+    token = _scrape_phase.set(phase)
+    try:
+        yield
+    finally:
+        _scrape_phase.reset(token)
