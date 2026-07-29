@@ -61,6 +61,7 @@ class ImageEntry:
     cached_at: float
     width: int
     height: int
+    solid: bool = False
 
 
 _cache: OrderedDict[str, ImageEntry] = OrderedDict()
@@ -193,10 +194,23 @@ async def pixel_digest(url: str) -> str | None:
     return digest
 
 
-def _decode_dims(data: bytes) -> tuple[int, int]:
+SOLID_SPREAD = 4
+_SOLID_DRAFT = 160
+
+
+def is_solid(img: Image.Image) -> bool:
+    extrema = img.getextrema()
+    bands = extrema if isinstance(extrema[0], tuple) else (extrema,)
+    return all(high - low <= SOLID_SPREAD for low, high in bands if low is not None and high is not None)
+
+
+def _decode_dims(data: bytes) -> tuple[int, int, bool]:
     with Image.open(io.BytesIO(data)) as img:
         width, height = img.size
-        return int(width), int(height)
+        img.draft(None, (_SOLID_DRAFT, _SOLID_DRAFT))
+        if img.mode == 'P':
+            img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
+        return int(width), int(height), is_solid(img)
 
 
 _coalesce: Coalescer[str, ImageEntry] = Coalescer()
@@ -256,11 +270,11 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
 
     data, content_type = payload
     try:
-        width, height = await run_in('image', _decode_dims, data)
+        width, height, solid = await run_in('image', _decode_dims, data)
     except Exception:  # noqa: BLE001 - undecodable image still served, just unsized
-        width, height = 0, 0
+        width, height, solid = 0, 0, False
 
-    entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height)
+    entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height, solid=solid)
     _cache_put(url, entry)
     return entry
 

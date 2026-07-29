@@ -185,11 +185,15 @@ def _snapshot_file(url: str, base: str) -> tuple[Path, str] | None:
     return None if target is None else (target, match['name'])
 
 
-def _probe_file(path: Path) -> tuple[int, int, int] | None:
+def _probe_file(path: Path) -> tuple[tuple[int, int, int], bool] | None:
+    from phoenixadult.utils.images.image_fetcher import is_solid
+
     try:
         with PILImage.open(path) as im:
             width, height = im.size
-        return width, height, path.stat().st_size
+            im.draft(None, (160, 160))
+            solid = is_solid(im.convert('RGB') if im.mode == 'P' else im)
+        return (width, height, path.stat().st_size), solid
     except (OSError, ValueError):
         return None
 
@@ -257,6 +261,24 @@ def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None)
     return carried
 
 
+def _drop_unresolved_images(meta: dict[str, Any]) -> None:
+    kept = [img for img in meta.get('Image') or [] if img.get('url')]
+    if kept:
+        meta['Image'] = kept
+    else:
+        meta.pop('Image', None)
+    for key in ('thumb', 'art'):
+        if meta.get(key) is None:
+            meta.pop(key, None)
+    for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+        for role in meta.get(role_key) or []:
+            if role.get('thumb') is None:
+                role.pop('thumb', None)
+    for rating in meta.get('Rating') or []:
+        if rating.get('image') is None:
+            rating.pop('image', None)
+
+
 async def _write_locked(
     response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path, allow_clear: bool = False
 ) -> bool:
@@ -295,13 +317,18 @@ async def _write_locked(
         def _relativize(u: str) -> str:
             return u[len(base) :] if u.startswith(f'{base}/') else u
 
-        def _keep(source: Path, name: str) -> tuple[str, tuple[int, int, int] | None] | None:
+        def _keep(source: Path, name: str) -> tuple[str, tuple[int, int, int] | None, bool] | None:
             if not source.is_file():
                 return None
             img_dir = tmp_dir / 'images'
             img_dir.mkdir(exist_ok=True)
-            shutil.copy2(source, img_dir / name)
-            return f'/cache/{rel_path}/images/{name}', _probe_file(img_dir / name)
+            copied = img_dir / name
+            shutil.copy2(source, copied)
+            probed = _probe_file(copied)
+            if probed is not None and probed[1]:
+                copied.unlink(missing_ok=True)
+                return f'/cache/{rel_path}/images/{name}', None, True
+            return f'/cache/{rel_path}/images/{name}', (probed[0] if probed else None), False
 
         def _store_bytes(name: str, payload: bytes) -> None:
             img_dir = tmp_dir / 'images'
@@ -315,7 +342,10 @@ async def _write_locked(
                 return url[url.index('/images/local/') :]
             if (hit := _snapshot_file(url, base)) is not None:
                 if (kept := await run_in('fs', _keep, *hit)) is not None:
-                    local, probed = kept
+                    local, probed, solid = kept
+                    if solid:
+                        logger.info('meta-cache', f'dropped a solid-colour image from {rel_path}: {hit[1]}')
+                        return None
                     if probed:
                         image_meta[local] = probed
                     return local
@@ -328,6 +358,9 @@ async def _write_locked(
             try:
                 async with sem:
                     entry = await fetch_image(target, referers or None, cookies or None)
+                if entry.solid:
+                    logger.info('meta-cache', f'skipped a solid-colour image for {rel_path}: {target}')
+                    return None
                 await run_in('fs', _store_bytes, name, entry.data)
                 local = f'/cache/{rel_path}/images/{name}'
                 image_meta[local] = (entry.width, entry.height, len(entry.data))
@@ -349,6 +382,7 @@ async def _write_locked(
                 obj[key] = resolved
 
         await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
+        _drop_unresolved_images(meta)
 
         def _write_bundle() -> None:
             payload = bundle_payload(site_name, cur_id, scene_hash, data, image_meta)

@@ -14,15 +14,18 @@ from PIL import Image as PILImage
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.images.image_classifier import classify_image
+from phoenixadult.utils.images.image_fetcher import is_solid
 
 
-def _file_class(path: Path) -> str | None:
+def _inspect(path: Path) -> tuple[str, bool] | None:
     try:
         with PILImage.open(path) as im:
             width, height = im.size
+            im.draft(None, (160, 160))
+            solid = is_solid(im.convert('RGB') if im.mode == 'P' else im)
     except (OSError, ValueError):
         return None
-    return classify_image(width, height).image_class
+    return classify_image(width, height).image_class, solid
 
 
 def scene_mismatches() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
@@ -46,10 +49,14 @@ def scene_mismatches() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
         if not url.startswith('/cache/'):
             scene['unlocalized'] = True
             continue
-        file_class = _file_class(root / url.removeprefix('/cache/'))
-        if file_class is None:
+        inspected = _inspect(root / url.removeprefix('/cache/'))
+        if inspected is None:
             reasons.add('dead local image link (file missing or unreadable)')
-        elif file_class == 'coverPoster':
+            continue
+        file_class, solid = inspected
+        if solid:
+            reasons.add('solid-colour image (blank artwork)')
+        if file_class == 'coverPoster':
             scene['has_portrait'] = True
             if row['kind'] == 'background':
                 reasons.add('portrait poster stored as background')

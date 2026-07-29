@@ -458,6 +458,14 @@ route. `scene_images` records what the folder holds: classified `kind`, stored U
 - **At snapshot write**, dimensions come free from the image fetcher. A rewrite keeps
   images already inside the snapshot tree in place — same names, same bytes, dimensions
   re-probed locally — so backfill rewrites never re-download or renumber artwork.
+- **Solid-colour images are dropped, never stored.** Sites sometimes serve a flat black or
+  white placeholder in place of real artwork. The fetcher measures each image's channel
+  extrema on a drafted decode and flags anything whose spread is ≤ 4 as solid; the snapshot
+  write skips it, and a rewrite deletes one that a previous version had already stored.
+  The reference goes with it — a scene can end up with no poster rather than a blank one.
+  The margin is wide (a genuinely solid image measures 0; the faintest real detail measures
+  in the teens), so a dark-but-real image is not at risk. Every drop is logged with its URL.
+  `scripts/find_artwork_mismatches.py` reports snapshots still holding one.
 - **At serve**, each image kind is emitted highest resolution first (`width × height`
   descending, unknown dimensions last); fresh scrapes apply the same ordering in the
   mapper from the just-probed dimensions, and the highest-resolution poster becomes the

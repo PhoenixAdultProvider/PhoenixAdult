@@ -647,6 +647,12 @@ async def test_scoped_person_wins_for_its_studio(tmp_path: pytest.TempPathFactor
 
 def _jpeg(width: int, height: int) -> bytes:
     buf = io.BytesIO()
+    PILImage.effect_noise((width, height), 90).convert('RGB').save(buf, format='JPEG', quality=95)
+    return buf.getvalue()
+
+
+def _solid_jpeg(width: int, height: int) -> bytes:
+    buf = io.BytesIO()
     PILImage.new('RGB', (width, height)).save(buf, format='JPEG')
     return buf.getvalue()
 
@@ -823,3 +829,57 @@ async def test_rewrite_reuses_a_kept_image_referenced_twice(tmp_path: pytest.Tem
 
     stored = list(tmp_path.glob('**/images/*.jpg'))  # type: ignore[attr-defined]
     assert len(stored) == 1 and stored[0].read_bytes() == b'KEEP'
+
+
+@respx.mock
+async def test_a_solid_colour_image_is_never_stored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/black.jpg').mock(return_value=httpx.Response(200, content=_solid_jpeg(600, 900), headers={'content-type': 'image/jpeg'}))
+    respx.get('https://cdn.example/real.jpg').mock(return_value=httpx.Response(200, content=_jpeg(600, 900), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', thumb='https://cdn.example/black.jpg', images=['https://cdn.example/black.jpg', 'https://cdn.example/real.jpg'])
+    assert await mc.write('Brazzers', 'solid1', resp) is True
+
+    md = mc.read('Brazzers', 'solid1')['MediaContainer']['Metadata'][0]
+    assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
+    assert 'thumb' not in md
+    stored = sorted(p.name for p in (tmp_path / mc.bundle_path(mc._hash('Brazzers', 'solid1')) / 'images').iterdir())
+    assert stored == ['img-01.jpg']
+
+
+@respx.mock
+async def test_a_scene_whose_every_image_is_solid_still_caches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/blank.jpg').mock(return_value=httpx.Response(200, content=_solid_jpeg(600, 900), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', thumb='https://cdn.example/blank.jpg', images=['https://cdn.example/blank.jpg'])
+    assert await mc.write('Brazzers', 'solid2', resp) is True
+
+    md = mc.read('Brazzers', 'solid2')['MediaContainer']['Metadata'][0]
+    assert md['title'] == 'Cool Scene'
+    assert md.get('Image') == []
+    assert 'thumb' not in md
+
+
+async def test_a_solid_image_already_in_a_snapshot_is_dropped_on_rewrite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    scene_dir = tmp_path / mc.bundle_path(mc._hash('Brazzers', 'solid3')) / 'images'
+    scene_dir.mkdir(parents=True)
+    (scene_dir / 'poster-00.jpg').write_bytes(_solid_jpeg(600, 900))
+    (scene_dir / 'img-01.jpg').write_bytes(_jpeg(600, 900))
+    kept = f'/cache/{mc.bundle_path(mc._hash("Brazzers", "solid3"))}/images/img-01.jpg'
+    blank = f'/cache/{mc.bundle_path(mc._hash("Brazzers", "solid3"))}/images/poster-00.jpg'
+
+    resp = _resp(studio='Brazzers', thumb=blank, images=[blank, kept])
+    assert await mc.write('Brazzers', 'solid3', resp) is True
+
+    md = mc.read('Brazzers', 'solid3')['MediaContainer']['Metadata'][0]
+    assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
+    assert 'thumb' not in md
+    assert sorted(p.name for p in scene_dir.iterdir()) == ['img-01.jpg']

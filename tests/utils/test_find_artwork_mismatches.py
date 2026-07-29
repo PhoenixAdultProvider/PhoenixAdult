@@ -10,13 +10,14 @@ from phoenixadult.utils.cache import scene_store
 from scripts.find_artwork_mismatches import scene_mismatches
 
 
-def _seed(root: Path, rel: str, images: list[tuple[str, int, int, str]]) -> None:
+def _seed(root: Path, rel: str, images: list[tuple[str, int, int, str]], *, solid: bool = False) -> None:
     for name, width, height, _kind in images:
         if name.startswith('http'):
             continue
         target = root / rel / 'images' / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        PILImage.new('RGB', (width, height)).save(target, format='JPEG')
+        img = PILImage.new('RGB', (width, height)) if solid else PILImage.effect_noise((width, height), 90).convert('RGB')
+        img.save(target, format='JPEG', quality=95)
     md = {
         'type': 'movie',
         'ratingKey': 'rk',
@@ -37,12 +38,14 @@ def test_flags_swapped_kinds_and_ignores_promoted_and_upstream(tmp_path: Path, m
         _seed(tmp_path, 'gone-scene', [('e.jpg', 400, 600, 'coverPoster')])
         (tmp_path / 'gone-scene' / 'images' / 'e.jpg').unlink()
         _seed(tmp_path, 'upstream-scene', [('https://cdn.example/p.jpg', 0, 0, 'coverPoster')])
+        _seed(tmp_path, 'blank-scene', [('f.jpg', 400, 600, 'coverPoster')], solid=True)
 
         corrupted, unlocalized = scene_mismatches()
         flagged = {m['rel_path']: m['reasons'] for m in corrupted}
         assert 'portrait poster stored as background' in flagged['corrupt-scene']
         assert 'landscape image stored as coverPoster despite a real portrait poster' in flagged['corrupt-scene']
         assert 'dead local image link' in flagged['gone-scene']
+        assert 'solid-colour image (blank artwork)' in flagged['blank-scene']
         assert 'promoted-scene' not in flagged
         assert 'upstream-scene' not in flagged
         assert [m['rel_path'] for m in unlocalized] == ['upstream-scene']

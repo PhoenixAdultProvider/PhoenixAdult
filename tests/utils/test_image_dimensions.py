@@ -112,3 +112,41 @@ async def test_the_probe_is_skipped_when_snapshots_will_download_anyway(monkeypa
     assert route.call_count == 1
     assert 'Range' not in route.calls[0].request.headers
     assert fetcher._cache_get(URL) is not None
+
+
+def test_a_solid_colour_image_is_flagged_and_real_detail_is_not() -> None:
+    import io
+
+    from PIL import Image, ImageDraw
+
+    from phoenixadult.utils.images.image_fetcher import _decode_dims
+
+    def encode(img: Image.Image, quality: int = 88) -> bytes:
+        buf = io.BytesIO()
+        img.convert('RGB').save(buf, format='JPEG', quality=quality)
+        return buf.getvalue()
+
+    solid = encode(Image.new('RGB', (600, 900), (0, 0, 0)), quality=30)
+    assert _decode_dims(solid) == (600, 900, True)
+
+    navy = encode(Image.new('RGB', (600, 900), (12, 20, 60)), quality=20)
+    assert _decode_dims(navy)[2] is True
+
+    marked = Image.new('RGB', (600, 900), (0, 0, 0))
+    ImageDraw.Draw(marked).rectangle([280, 430, 320, 470], fill=(255, 255, 255))
+    assert _decode_dims(encode(marked))[2] is False
+
+    faint = Image.effect_noise((600, 900), 4).convert('RGB').point(lambda v: max(0, v - 122))
+    assert _decode_dims(encode(faint))[2] is False
+
+
+def test_a_fully_transparent_png_counts_as_solid() -> None:
+    import io
+
+    from PIL import Image
+
+    from phoenixadult.utils.images.image_fetcher import _decode_dims
+
+    buf = io.BytesIO()
+    Image.new('RGBA', (400, 600), (0, 0, 0, 0)).save(buf, format='PNG')
+    assert _decode_dims(buf.getvalue())[2] is True
