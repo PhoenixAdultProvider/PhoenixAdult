@@ -338,3 +338,30 @@ def test_saving_rejects_a_source_it_does_not_know(_person_cache: None) -> None:
     r = client.post('/people/save', json=body, headers={'x-admin-token': 'tok'})
 
     assert r.status_code == 400 and 'Nowhere' in r.json()['error']
+
+
+def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from pathlib import Path
+
+    from phoenixadult.utils.images import face_crop_log
+    from phoenixadult.utils.people.cache import people_cache_dir
+
+    folder = Path(people_cache_dir()) / 'actors' / 'female'
+    for slug in ('haley', 'kate-smith', 'la-sirena'):
+        (folder / f'actor.{slug}_female.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 64)
+    face_crop_log.record(
+        str(folder),
+        name='LaSirena69',
+        filename='actor.la-sirena_female.jpg',
+        base='actor.la-sirena_female',
+        orig_ext='.jpg',
+        upstream_url='',
+        cropped=False,
+    )
+
+    body = TestClient(create_app()).get('/people?token=tok').text
+
+    assert 'id="singleToggle">Single Name</button>' in body
+    assert "c.dataset.single === '1'" in body
+    assert body.count('data-single="1"') == 2
+    assert body.count('data-single="0"') == 2

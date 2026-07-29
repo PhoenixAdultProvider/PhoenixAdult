@@ -162,8 +162,10 @@ def _card(entry: dict[str, Any]) -> str:
     edit_btn = '<button class="edit">Edit</button>'
     purge_btn = '<button class="purge">Purge</button>'
     search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
+    single = len(str(entry.get('name', '')).split()) == 1
     flags = (
-        f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}" data-source="{html.escape(source, quote=True)}"'
+        f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}" '
+        f'data-source="{html.escape(source, quote=True)}" data-single="{1 if single else 0}"'
     )
     return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
       <div class="hd">{role_badge}<b>{name}</b> {crop_badge}{source_badge}<span class="ts">{timestamp}</span></div>
@@ -280,7 +282,8 @@ async def page(request: Request) -> HTMLResponse:
     <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
     <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
       <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
-      <button class="tab genericonly" id="genericToggle">Generic Only</button></div>
+      <button class="tab genericonly" id="genericToggle">Generic Only</button>
+      <button class="tab singleonly" id="singleToggle">Single Name</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
       <select id="sourceFilter">{source_filter_options}</select>
       <select id="bulkSource">{source_options}</select>
@@ -340,21 +343,24 @@ async def page(request: Request) -> HTMLResponse:
         croppedOnly = false;
         noUpstreamOnly = false;
         genericOnly = false;
+        singleOnly = false;
         document.getElementById('nameSearch').value = '';
         document.getElementById('sourceFilter').value = '';
         document.getElementById('cropToggle').classList.remove('on');
         document.getElementById('upstreamToggle').classList.remove('on');
         document.getElementById('genericToggle').classList.remove('on');
+        document.getElementById('singleToggle').classList.remove('on');
         showTab(curTab);
       }}
       let croppedOnly = false;
       let noUpstreamOnly = false;
       let genericOnly = false;
+      let singleOnly = false;
       let curTab = '';
       function saveFilters(){{
         const search = document.getElementById('nameSearch').value;
         const source = document.getElementById('sourceFilter').value;
-        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, genericOnly, search, source}})); }} catch {{}}
+        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, genericOnly, singleOnly, search, source}})); }} catch {{}}
       }}
       function restoreFilters(){{
         let saved;
@@ -363,12 +369,14 @@ async def page(request: Request) -> HTMLResponse:
         croppedOnly = !!saved.croppedOnly;
         noUpstreamOnly = !!saved.noUpstreamOnly;
         genericOnly = !!saved.genericOnly;
+        singleOnly = !!saved.singleOnly;
         document.getElementById('nameSearch').value = saved.search || '';
         const picker = document.getElementById('sourceFilter');
         if(saved.source && [...picker.options].some(o => o.value === saved.source)) picker.value = saved.source;
         document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
         document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
         document.getElementById('genericToggle').classList.toggle('on', genericOnly);
+        document.getElementById('singleToggle').classList.toggle('on', singleOnly);
       }}
       function showTab(t){{
         curTab = t;
@@ -381,7 +389,7 @@ async def page(request: Request) -> HTMLResponse:
           const src = c.dataset.source || '';
           const sourceOk = !wanted || (wanted === '__blank__' ? !src : src === wanted);
           const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!noUpstreamOnly || c.dataset.upstream==='0')
-            && (!genericOnly || src === 'Generic') && sourceOk
+            && (!genericOnly || src === 'Generic') && (!singleOnly || c.dataset.single === '1') && sourceOk
             && (!needle || (c.dataset.name||'').includes(needle));
           c.style.display=m?'block':'none'; if(m)n++;
         }});
@@ -395,7 +403,8 @@ async def page(request: Request) -> HTMLResponse:
         document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
       }}
       function updateFiltersToggle(){{
-        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (document.getElementById('sourceFilter').value?1:0);
+        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (singleOnly?1:0)
+          + (document.getElementById('sourceFilter').value?1:0);
         const tab = document.querySelector('.tab.active');
         const label = tab ? tab.dataset.label : 'People';
         const btn = document.getElementById('filtersToggle');
@@ -483,6 +492,11 @@ async def page(request: Request) -> HTMLResponse:
       document.getElementById('genericToggle').addEventListener('click', () => {{
         genericOnly = !genericOnly;
         document.getElementById('genericToggle').classList.toggle('on', genericOnly);
+        showTab(curTab);
+      }});
+      document.getElementById('singleToggle').addEventListener('click', () => {{
+        singleOnly = !singleOnly;
+        document.getElementById('singleToggle').classList.toggle('on', singleOnly);
         showTab(curTab);
       }});
       document.addEventListener('click', e => {{

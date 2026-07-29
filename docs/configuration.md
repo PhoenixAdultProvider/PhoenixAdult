@@ -255,7 +255,10 @@ never hands the browser an image URL while it is on.
 
 The `/people` list filters on **source** (a dropdown of the sources actually present, plus
 Unrecorded) and offers **Generic Only** beside Cropped Only and No Upstream, for finding people still
-carrying the placeholder silhouette. Both persist with the other filters and clear with Reset.
+carrying the placeholder silhouette. **Single Name** narrows to mononyms — one word and nothing
+after it, so `Haley`, `LaSirena69` and `A.J.` match while `Kate Smith` does not — which is how you
+find credits a site published without a surname. All of them persist with the other filters and
+clear with Reset.
 
 Saving also **flags every scene crediting that performer to re-push their headshots**. A snapshot
 freezes the served image URL, which carries a content-hash cache-buster; replacing the bytes changes
