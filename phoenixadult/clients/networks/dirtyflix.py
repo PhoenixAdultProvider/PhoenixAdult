@@ -15,7 +15,7 @@ from phoenixadult.clients.base import (
     SearchResult,
 )
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, date_distance_score, iso_date, load_data, title_distance_score
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
 STUDIO = 'Dirty Flix'
@@ -79,20 +79,15 @@ class DirtyFlixClient(Client):
                 return None
 
             date_iso = date_by_scene_id.get(scene_id, '')
-            if scene_id in actor_scene_ids:
-                score: float = 100
-            elif search_data.search_date and date_iso:
-                score = date_distance_score(search_data.search_date, date_iso)
-            else:
-                score = title_distance_score(search_data.title, title)
-
-            return SearchResult(
+            return build_search_result(
                 title=title,
                 scene_url=page_url,
+                query=search_data.title,
+                site=search_data.site_info,
                 cur_id=self.encode(f'{scene_id}|{date_iso}|{page_url}'),
-                release_date=date_iso or search_data.search_date or None,
+                search_date=search_data.search_date,
                 display_date=date_iso or None,
-                score=score,
+                score=100 if scene_id in actor_scene_ids else None,
             )
 
         results.extend(

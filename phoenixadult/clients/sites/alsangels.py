@@ -5,7 +5,7 @@ from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import iso_date, pack_cur_id
+from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
 _VIDEO_TYPES = ['masturbation', 'photoshoot', 'interview', 'girl-girl action', 'pov lapdance']
@@ -64,11 +64,13 @@ class AlsAngelsClient(Client):
             ).strip()
 
             results.append(
-                SearchResult(
+                build_search_result(
                     title=f'{model} {vtype} {release_date}'.strip(),
                     scene_url=f'{base}/profiles/{scene_id}',
+                    query=search_data.title,
+                    site=search_data.site_info,
                     cur_id=pack_cur_id([scene_id, release_date]),
-                    release_date=release_date or search_data.search_date or None,
+                    search_date=search_data.search_date,
                     display_date=release_date or None,
                     score=100,
                 )

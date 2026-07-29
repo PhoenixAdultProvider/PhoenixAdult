@@ -173,12 +173,14 @@ class NubilesClient(Client):
                 )
                 if title:
                     results.append(
-                        SearchResult(
+                        build_search_result(
                             title=title,
                             scene_url=url,
+                            query=search_data.title,
+                            site=search_data.site_info,
                             cur_id=pack_cur_id([x for x in (scene_id, date) if x]),
                             thumb_url=(search_results.xpath('(//video)[1]/@poster').get() or None),
-                            release_date=date or search_data.search_date or None,
+                            search_date=search_data.search_date,
                             display_date=date,
                             score=100,
                         )

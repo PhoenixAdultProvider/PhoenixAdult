@@ -208,9 +208,8 @@ def _decode_dims(data: bytes) -> tuple[int, int, bool]:
     with Image.open(io.BytesIO(data)) as img:
         width, height = img.size
         img.draft(None, (_SOLID_DRAFT, _SOLID_DRAFT))
-        if img.mode == 'P':
-            img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
-        return int(width), int(height), is_solid(img)
+        probe: Image.Image = img.convert('RGBA' if 'transparency' in img.info else 'RGB') if img.mode == 'P' else img
+        return int(width), int(height), is_solid(probe)
 
 
 _coalesce: Coalescer[str, ImageEntry] = Coalescer()

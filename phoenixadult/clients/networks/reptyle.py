@@ -6,7 +6,7 @@ from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import iso_date, slugify
+from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 from phoenixadult.utils.logging.logger import logger
 
@@ -88,12 +88,14 @@ class ReptyleClient(Client):
         result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None
 
         results.append(
-            SearchResult(
+            build_search_result(
                 title=scene_json.get('title') or '',
                 scene_url=url,
+                query=search_data.title,
+                site=search_data.site_info,
                 cur_id=self.encode(composite),
                 thumb_url=scene_json.get('img'),
-                release_date=release_date or search_data.search_date or None,
+                search_date=search_data.search_date,
                 display_date=release_date,
                 subsite=result_sub,
             )

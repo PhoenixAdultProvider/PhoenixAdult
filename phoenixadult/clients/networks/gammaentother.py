@@ -10,9 +10,9 @@ from phoenixadult.clients.base import ActorResult, Client, LoadedScene, SceneCon
 from phoenixadult.config.env import env
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
-from phoenixadult.utils.helpers.helpers import iso_date, pack_cur_id
+from phoenixadult.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.processors.similarity import compare_string
+from phoenixadult.utils.processors.actor_strip import best_title_score
 from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.title_case import title_case
 
@@ -72,18 +72,20 @@ class GammaEntOtherClient(Client):
                         score -= 1
 
                 if scene_id:
-                    score -= compare_string(scene_id, str(cur)).levenshtein
+                    score -= sceneid_distance_score(scene_id, cur)
                 elif search_data.search_date and release:
-                    score -= compare_string(search_data.search_date, release).levenshtein
+                    score -= date_distance_score(search_data.search_date, release)
                 else:
-                    score -= compare_string(title.lower(), title_nf.lower()).levenshtein
+                    score -= best_title_score(title.lower(), title_nf.lower(), search_data.site_info)
 
                 results.append(
-                    SearchResult(
+                    build_search_result(
                         title=title_nf,
                         scene_url=search_data.site_info.base_url,
+                        query=title,
+                        site=search_data.site_info,
                         cur_id=pack_cur_id([f'{cur}|{scene_type}|{release}']),
-                        release_date=release or search_data.search_date or None,
+                        search_date=search_data.search_date,
                         display_date=release or None,
                         score=score,
                         subsite=sub_site or None,
