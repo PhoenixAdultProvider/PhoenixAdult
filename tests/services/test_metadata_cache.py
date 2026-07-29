@@ -105,25 +105,28 @@ def test_reapply_text_rules_recases_title_and_titlesort() -> None:
     assert md.titleSort == 'Tale of Two: Part 2'
 
 
-def test_reapply_text_rules_strips_nubiles_episode_tag() -> None:
-    def _resp_with_tag() -> PlexMetadataResponse:
-        return PlexMetadataResponse.model_validate(
-            {
-                'MediaContainer': {
-                    'identifier': 'i',
-                    'size': 1,
-                    'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Stepmom Wants to Move In - S2:E1'}],
-                }
-            }
-        )
+def _tagged_response(title: str) -> PlexMetadataResponse:
+    return PlexMetadataResponse.model_validate(
+        {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title}]}}
+    )
 
-    resp = _resp_with_tag()
-    assert mc.reapply_text_rules(resp, 'nubiles') is True
-    md = resp.MediaContainer.Metadata[0]
-    assert md.title == 'Stepmom Wants to Move In'
-    assert mc.reapply_text_rules(resp, 'nubiles') is False
 
-    untouched = _resp_with_tag()
+@pytest.mark.parametrize(
+    ('scraper', 'tagged', 'clean'),
+    [
+        ('nubiles', 'Stepmom Wants to Move In - S2:E1', 'Stepmom Wants to Move In'),
+        ('reptyle', 'S1E3: Sneaky, Bratty Lil Stepsis', 'Sneaky, Bratty Lil Stepsis'),
+    ],
+)
+def test_reapply_text_rules_strips_the_episode_tag(scraper: str, tagged: str, clean: str) -> None:
+    resp = _tagged_response(tagged)
+    assert mc.reapply_text_rules(resp, scraper) is True
+    assert resp.MediaContainer.Metadata[0].title == clean
+    assert mc.reapply_text_rules(resp, scraper) is False
+
+
+def test_reapply_text_rules_leaves_other_scrapers_tags_alone() -> None:
+    untouched = _tagged_response('Stepmom Wants to Move In - S2:E1')
     assert mc.reapply_text_rules(untouched) is False
     assert untouched.MediaContainer.Metadata[0].title == 'Stepmom Wants to Move In - S2:E1'
 

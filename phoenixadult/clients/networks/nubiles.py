@@ -20,6 +20,7 @@ from phoenixadult.utils.images.image_fetcher import fetch_image
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.sources import scene_image_pref
 from phoenixadult.utils.processors.actor_strip import best_title_score
+from phoenixadult.utils.processors.episode_tag import strip_episode_tag
 from phoenixadult.utils.processors.studio_name import normalize_studio
 
 STUDIO = 'Nubiles'
@@ -36,7 +37,6 @@ _SHARED_HEADERS = {
 }
 _POSTER_SAMPLE_RE = re.compile(r'/videos/(.+)/sample')
 _WATCH_ID_RE = re.compile(r'/video/watch/(\d+)')
-_EPISODE_TAG_RE = re.compile(r'\s*-\s*S\d+\s*:?\s*E\d+\s*$', re.IGNORECASE)
 _PACE_SECONDS = 7.0
 _SCENE_COOLDOWN = 7.0
 _PACE_JITTER = 3.0
@@ -44,10 +44,6 @@ _MAX_RETRIES = 3
 _MAX_BACKOFF = 120.0
 _IMAGE_CONCURRENCY = 4
 _PACE_TAG = 'Nubiles:pace'
-
-
-def strip_episode_tag(title: str) -> str:
-    return _EPISODE_TAG_RE.sub('', title).strip()
 
 
 def _jittered(base: float) -> float:

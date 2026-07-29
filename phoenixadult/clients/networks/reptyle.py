@@ -9,6 +9,7 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.processors.episode_tag import strip_episode_tag
 
 _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
 _DATA18_PROVIDERS = ['TeamSkeet', 'MYLF', 'Family Strokes', 'Pervz', 'FreeUse', 'Swappz']
@@ -89,7 +90,7 @@ class ReptyleClient(Client):
 
         results.append(
             build_search_result(
-                title=scene_json.get('title') or '',
+                title=strip_episode_tag(scene_json.get('title') or ''),
                 scene_url=url,
                 query=search_data.title,
                 site=search_data.site_info,
@@ -130,7 +131,7 @@ class ReptyleClient(Client):
         has_sub = bool(sub_site) and sub_site != site.name
 
         # Title
-        metadata.title = (scene_json.get('title') or '').strip()
+        metadata.title = strip_episode_tag(scene_json.get('title') or '')
 
         # Summary
         metadata.summary = _strip_tags(scene_json.get('description') or '')

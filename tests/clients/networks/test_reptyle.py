@@ -99,3 +99,18 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-familystrokes'
     assert 'https://cdn.data18.com/extra.jpg' in detail.art
+
+
+@respx.mock
+async def test_a_leading_episode_tag_is_dropped_from_search_and_detail() -> None:
+    url = 'https://www.teamskeet.com/movies/cool-scene'
+    tagged = {**_SCENE, 'title': 'S1E3: Sneaky, Bratty Lil Stepsis', 'models': []}
+    respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': tagged}})))
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx())
+    assert [r.title for r in results] == ['Sneaky, Bratty Lil Stepsis']
+
+    detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
+    assert detail is not None
+    assert detail.title == 'Sneaky, Bratty Lil Stepsis'

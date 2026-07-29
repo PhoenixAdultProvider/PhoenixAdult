@@ -28,6 +28,7 @@ from phoenixadult.utils.images.proxy import proxy_params
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
 from phoenixadult.utils.plex.rating_key import parse_rating_key
+from phoenixadult.utils.processors.episode_tag import strip_episode_tag
 from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.text_normalize import normalize_text
 from phoenixadult.utils.processors.title_case import title_case, title_sort
@@ -833,12 +834,11 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
     return changed
 
 
-def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bool:
-    title = md.title
-    if scraper_type == 'nubiles':
-        from phoenixadult.clients.networks.nubiles import strip_episode_tag
+_EPISODE_TAGGED = {'nubiles', 'reptyle'}
 
-        title = strip_episode_tag(title)
+
+def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bool:
+    title = strip_episode_tag(md.title) if scraper_type in _EPISODE_TAGGED else md.title
     cased_title = title_case(title, site_name=studio, scraper_type=scraper_type)
     if not cased_title or cased_title == md.title:
         return False
