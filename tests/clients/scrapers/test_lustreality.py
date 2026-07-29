@@ -31,7 +31,7 @@ async def _no_web(*_a: object, **_k: object) -> list[str]:
 
 @respx.mock
 async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(lr_module, 'web_search', _no_web)
+    monkeypatch.setattr(lr_module, 'web_search_urls', _no_web)
     url = 'https://www.lustreality.com/virtualreality/scene/id/vr-lust'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results: list[SearchResult] = []

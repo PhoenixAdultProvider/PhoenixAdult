@@ -1,22 +1,13 @@
 from __future__ import annotations
 
-from urllib.parse import urlsplit
-
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
 
 class MeloneChallengeClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        host = urlsplit(search_data.site_info.base_url).netloc
-        try:
-            found = await web_search(SearchOptions(query=search_data.title, site=host, num=10))
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(self.tag(search_data.site_info), f'webSearch threw: {err}')
-            return
+        found = await web_search_urls(search_data.title, search_data.site_info)
 
         candidates = list(dict.fromkeys(u for u in found if '/video/' in u))
 

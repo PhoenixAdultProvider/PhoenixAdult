@@ -33,7 +33,7 @@ async def test_search_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _web(*_a: object, **_k: object) -> list[str]:
         return [scene_url, 'https://www.putalocura.com/tags/casting']
 
-    monkeypatch.setattr(pl_module, 'web_search', _web)
+    monkeypatch.setattr(pl_module, 'web_search_urls', _web)
     respx.get(scene_url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results: list[SearchResult] = []
     await PutalocuraClient().search(results, SearchContext(title='alika', encoded='alika', search_site=SITE.name, site_info=SITE))

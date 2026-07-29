@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from urllib.parse import urlsplit
-
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_text
+from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _TITLE_XP = '//div[@id="body-player-container"]//div//div[contains(@class,"tour-video-title")]'
 
@@ -23,9 +20,8 @@ class PubaClient(Client):
         if search_data.scene_id:
             candidates.append(f'{stem}show_video.php?galid={search_data.scene_id}')
 
-        host = urlsplit(search_data.site_info.base_url).hostname or ''
         with best_effort(search_data.site_info.name, 'webSearch'):
-            for url in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
+            for url in await web_search_urls(search_data.title, search_data.site_info):
                 if 'show_video' in url and 'index' not in url and url not in candidates:
                     candidates.append(url)
 

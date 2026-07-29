@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 import httpx2
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _SCENE_ID_RE = re.compile(r'(?:(?<=\dpp/)|(?<=\dbbwd/)|(?<=\dhsp/)|(?<=\dbbbj/)|(?<=\dpatp/)|(?<=\dftf/)|(?<=\dbgb/))\d+(?=/)')
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
@@ -52,9 +50,8 @@ class PlumperPassClient(Client):
         if search_data.scene_id:
             ref_urls.append(refstat(search_data.scene_id))
 
-        host = urlsplit(search_data.site_info.base_url).hostname or ''
         with best_effort(search_data.site_info.name, 'webSearch'):
-            for url in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
+            for url in await web_search_urls(search_data.title, search_data.site_info):
                 m = _SCENE_ID_RE.search(url)
                 if m and 'content' in url:
                     ref = refstat(m.group(0))

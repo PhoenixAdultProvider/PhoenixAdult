@@ -32,7 +32,7 @@ async def test_search_web_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _web(*_a: object, **_k: object) -> list[str]:
         return [SCENE_URL, 'http://www.hotwifexxx.com/other/page.html']
 
-    monkeypatch.setattr(hwxxx_module, 'web_search', _web)
+    monkeypatch.setattr(hwxxx_module, 'web_search_urls', _web)
     respx.get(SCENE_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results: list[SearchResult] = []
     await HotwifeXXXClient().search(results, SearchContext(title='wild wife', encoded='wild-wife', search_site=SITE.name, site_info=SITE))

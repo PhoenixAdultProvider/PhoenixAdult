@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 
 _DESCRIPTION_RE = re.compile(r'description:\s*', re.IGNORECASE)
 _RELEASED_XP = '//div[contains(@class,"released2") and contains(@class,"trailerStarr")]'
@@ -23,15 +20,7 @@ def _date_of(raw: str) -> str | None:
 
 class HotwifeXXXClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        host = urlsplit(search_data.site_info.base_url).hostname or ''
-        if not host:
-            return
-
-        try:
-            found = await web_search(SearchOptions(query=search_data.title, site=host, num=10))
-        except Exception as err:  # noqa: BLE001 - search failure is non-fatal
-            logger.warn(search_data.site_info.name, f'webSearch threw: {err}')
-            return
+        found = await web_search_urls(search_data.title, search_data.site_info)
 
         seen: set[str] = set()
         candidates: list[str] = []

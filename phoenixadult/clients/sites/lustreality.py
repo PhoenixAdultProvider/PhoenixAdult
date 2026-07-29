@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from urllib.parse import urlsplit
-
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _DATE_XP = (
     '//span[contains(@class,"date-display-single")]'
@@ -22,9 +19,8 @@ class LustRealityClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         candidates = [f'{base}{search_data.site_info.search_path}{slugify(search_data.title)}']
-        host = urlsplit(search_data.site_info.base_url).hostname or ''
         with best_effort(search_data.site_info.name, 'webSearch'):
-            for url in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
+            for url in await web_search_urls(search_data.title, search_data.site_info):
                 if '/scene/' in url and url not in candidates:
                     candidates.append(url)
 

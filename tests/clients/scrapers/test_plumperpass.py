@@ -32,7 +32,7 @@ async def _no_web(*_a: object, **_k: object) -> list[str]:
 
 @respx.mock
 async def test_search_refstat_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(pp_module, 'web_search', _no_web)
+    monkeypatch.setattr(pp_module, 'web_search_urls', _no_web)
     ref = 'https://plumperpass.com/t1/refstat.php?lid=2222&sid=584'
     respx.get(ref).mock(return_value=httpx.Response(302, headers={'Location': CONTENT_URL}))
     respx.get(CONTENT_URL).mock(return_value=httpx.Response(200, text=DETAIL_HTML))

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from urllib.parse import urlsplit
-
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_text
+from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 
 class JVRPornClient(Client):
@@ -20,9 +17,8 @@ class JVRPornClient(Client):
             candidates.append(f'{base}/video/{scene_id}')
 
         if rest:
-            host = urlsplit(search_data.site_info.base_url).hostname or ''
             with best_effort(search_data.site_info.name, 'webSearch'):
-                for url in await web_search(SearchOptions(query=rest, site=host, num=10)):
+                for url in await web_search_urls(rest, search_data.site_info):
                     if '/video/' in url and url not in candidates:
                         candidates.append(url)
 

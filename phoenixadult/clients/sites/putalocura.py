@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _POSTER_RE = re.compile(r'posterImage:\s*"([^"]*)"')
 _WS_NL_RE = re.compile(r'\s*\n\s*')
@@ -35,10 +33,9 @@ def _parsed_title(sel: Selector) -> str:
 
 class PutalocuraClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        host = urlsplit(search_data.site_info.base_url).hostname or ''
         found: list[str] = []
         with best_effort(search_data.site_info.name, 'webSearch'):
-            found = await web_search(SearchOptions(query=search_data.title, site=host, num=10, language='enes'))
+            found = await web_search_urls(search_data.title, search_data.site_info, language='enes')
 
         candidates: list[str] = []
         for raw in found:
