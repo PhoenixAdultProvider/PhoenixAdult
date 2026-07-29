@@ -118,6 +118,27 @@ def test_title_case_tld_fragment_only_lowercases_as_domain_suffix() -> None:
     assert title_case('visit brazzers.com today') == 'Visit Brazzers.com Today'
     assert title_case('watch on xvideos.co') == 'Watch on Xvideos.co'
     assert title_case('filed under news.org') == 'Filed Under News.org'
+    assert title_case('Nubiles.net') == 'Nubiles.net'
+    assert title_case('Nubiles.tv') == 'Nubiles.tv'
+    assert title_case('tv show') == 'TV Show'
+    assert title_case('reality tv tonight') == 'Reality TV Tonight'
+
+
+def test_title_case_name_keeps_single_letters_as_initials() -> None:
+    assert title_case('Sybil A Kailena', type='name') == 'Sybil A Kailena'
+    assert title_case('Sybil A Alena', type='name') == 'Sybil A Alena'
+    assert title_case('Mary J Blige', type='name') == 'Mary J Blige'
+    assert title_case('Manaje a Star', type='name') == 'Manaje a Star'
+    assert title_case('a game of chess') == 'A Game of Chess'
+    assert title_case('an hour of a elephant') == 'An Hour of an Elephant'
+
+
+def test_title_case_name_keeps_a_trailing_initial_period() -> None:
+    assert title_case('Alex D.', type='name') == 'Alex D.'
+    assert title_case('Kate G.', type='name') == 'Kate G.'
+    assert title_case('Alex Dee.', type='name') == 'Alex Dee'
+    assert title_case('the end.') == 'The End'
+    assert title_case('plan b.') == 'Plan B'
 
 
 def test_title_case_vs_normalizes_to_one_period() -> None:
@@ -154,8 +175,18 @@ def test_title_case_name_takes_a_honorific_period_only_when_leading() -> None:
     assert title_case('ms juicy', type='name') == 'Ms. Juicy'
     assert title_case('dr love', type='name') == 'Dr. Love'
     assert title_case('summer col', type='name') == 'Summer Col'
-    assert title_case('sara st james', type='name') == 'Sara St James'
+    assert title_case('amber lt', type='name') == 'Amber Lt'
+    assert title_case('jenna jr', type='name') == 'Jenna Jr'
     assert title_case('summer col') == 'Summer Col.'
+
+
+def test_title_case_name_saint_takes_a_period_anywhere() -> None:
+    assert title_case('Katie St Ives', type='name') == 'Katie St. Ives'
+    assert title_case('sara st james', type='name') == 'Sara St. James'
+    assert title_case('Katie St. Ives', type='name') == 'Katie St. Ives'
+    assert title_case('st patrick', type='name') == 'St. Patrick'
+    assert title_case('1st place', type='name') == '1st Place'
+    assert title_case('21st century') == '21st Century'
 
 
 def test_title_case_trailing_article_rotation() -> None:

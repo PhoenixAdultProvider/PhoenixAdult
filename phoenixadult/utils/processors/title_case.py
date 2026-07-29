@@ -18,7 +18,7 @@ _LOWER_EXCEPTIONS = frozenset({
     'in', 'on', 'by', 'as',
 })
 
-_TLD_FRAGMENTS = frozenset({'co', 'com', 'org'})
+_TLD_FRAGMENTS = frozenset({'co', 'com', 'org', 'net', 'tv'})
 
 _UPPER_EXCEPTIONS = frozenset({
     'bbc', 'xxx', 'bbw', 'bf', 'bff', 'bts', 'pov', 'dp', 'gf', 'bj', 'wtf', 'cfnm', 'bwc', 'fm', 'tv',
@@ -70,6 +70,8 @@ _HONORIFICS = frozenset({
     'sgt', 'capt', 'lt', 'col', 'gov', 'hon', 'esq', 'maj', 'cmdr', 'adm', 'det',
 })
 
+_NAME_ANYWHERE_HONORIFICS = frozenset({'st'})
+
 _ROMAN_NUMERALS = frozenset({
     'I', 'II', 'III', 'IV', 'VI', 'VII', 'VIII', 'IX', 'X',
     'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
@@ -112,6 +114,7 @@ _A_STAYS_RE = re.compile(r'^(?:uni|use|usu|ubi|ur[ie]|u\.|uk$|ufo|eu|one$|once$|
 _HONORIFIC_ALT = '|'.join(sorted(_HONORIFICS, key=len, reverse=True))
 _HONORIFIC_RE = re.compile(r'\b(' + _HONORIFIC_ALT + r')\b(?!\.)', re.IGNORECASE)
 _LEADING_HONORIFIC_RE = re.compile(r'^(' + _HONORIFIC_ALT + r')\b(?!\.)', re.IGNORECASE)
+_NAME_ANYWHERE_HONORIFIC_RE = re.compile(r'\b(' + '|'.join(sorted(_NAME_ANYWHERE_HONORIFICS, key=len, reverse=True)) + r')\b(?!\.)', re.IGNORECASE)
 _OPEN_QUOTE_RE = re.compile(r"(?<=\S)('(?!(?:" + _CONTRACTION_ALT + r")\b)\S+)(?=.*')")
 _SEQ_MARKER_RE = re.compile(rf'\b{_SEQ_MARKERS}(?=\s|$)', re.IGNORECASE)
 _BEFORE_RUN_RE = re.compile(r'([A-Za-z]+(?:[\s-]+[A-Za-z]+)*)\s+$')
@@ -122,6 +125,10 @@ _SEQ_SPACE_RE = re.compile(rf'(?<=[\w\'"])\s+{_SEQ_COLON_PHRASE}', re.IGNORECASE
 _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A-Za-z])')
 _VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
 _POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
+_TRAILING_INITIAL_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]\.$')
+_TLD_GUARD = '|'.join(sorted((*_TLD_FRAGMENTS, 'porn', 'xxx'), key=len, reverse=True))
+_MARK_SPLIT_RE = re.compile(rf'(?i)([!:?])(?=\w)(?!(?:{_TLD_GUARD})\b|E\d)')
+_DOT_SPLIT_RE = re.compile(rf'(?i)\.(?=[A-Za-z])(?!(?:{_TLD_GUARD})\b|E\d)')
 
 _T2D = text2digits.Text2Digits()
 
@@ -235,8 +242,11 @@ class _TitleCaseEngine:
         if "'" in word:
             return self._manual_word_fix(self._handle_contraction_word(word))
 
-        if clean_lower in _TLD_FRAGMENTS:
-            return self._manual_word_fix(word.lower() if after_dot else _capitalize(word))
+        if after_dot and clean_lower in _TLD_FRAGMENTS:
+            return self._manual_word_fix(word.lower())
+
+        if self.type == 'name' and len(clean_word) == 1 and clean_word.isupper():
+            return self._manual_word_fix(word)
 
         is_special, special_val = self._is_acronym_or_size(clean_lower, clean_word)
         if is_special:
@@ -323,9 +333,10 @@ class _TitleCaseEngine:
         return re.sub(r'(?i)^(.*?),\s*(the|a|an)$', lambda m: f'{_capitalize(m.group(2).lower())} {m.group(1)}', output)
 
     def _fix_spacing(self, output: str) -> str:
-        output = re.sub(r'(?i)([!:?])(?=\w)(?!(?:co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b))', r'\1 ', output)
-        output = re.sub(r'\.(?=[A-Za-z])(?!co\b|net\b|com\b|org\b|porn\b|E\d|xxx\b)', '. ', output)
-        output = re.sub(r'(?<!\.)\.$', '', output)
+        output = _MARK_SPLIT_RE.sub(r'\1 ', output)
+        output = _DOT_SPLIT_RE.sub('. ', output)
+        if not (self.type == 'name' and _TRAILING_INITIAL_RE.search(output)):
+            output = re.sub(r'(?<!\.)\.$', '', output)
         output = re.sub(r"\s+(?=[.,!'):])", '', output)
         output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
         output = _OPEN_QUOTE_RE.sub(lambda m: f' {m.group(1)[0]}{_capitalize(m.group(1)[1:])}', output)
@@ -348,10 +359,14 @@ class _TitleCaseEngine:
 
     def _fix_grammar(self, output: str) -> str:
         output = _POSSESSIVE_S_RE.sub("'", output)
-        output = _A_BEFORE_VOWEL_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else ('An' if m.group(1) == 'A' else 'an'), output)
-        output = _AN_BEFORE_WORD_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else f'{m.group(1)}n', output)
+        if self.type != 'name':
+            output = _A_BEFORE_VOWEL_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else ('An' if m.group(1) == 'A' else 'an'), output)
+            output = _AN_BEFORE_WORD_RE.sub(lambda m: m.group(1) if _A_STAYS_RE.match(m.group(2)) else f'{m.group(1)}n', output)
         honorifics = _LEADING_HONORIFIC_RE if self.type == 'name' else _HONORIFIC_RE
-        return honorifics.sub(lambda m: m.group(1).capitalize() + '.', output)
+        output = honorifics.sub(lambda m: m.group(1).capitalize() + '.', output)
+        if self.type == 'name':
+            output = _NAME_ANYWHERE_HONORIFIC_RE.sub(lambda m: m.group(1).capitalize() + '.', output)
+        return output
 
     def _finish_by_type(self, output: str) -> str:
         if self.type == 'title':
