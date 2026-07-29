@@ -353,3 +353,13 @@ def test_spanish_particles_stay_english_elsewhere() -> None:
 def test_registry_heals_api_cased_aliases() -> None:
     assert normalize_studio('Milf Soup') == 'MILF Soup'
     assert normalize_studio('BIG BUTTS LIKE IT BIG') == 'Big Butts Like It Big'
+
+
+def test_duckduckgo_drops_its_own_ad_and_internal_links() -> None:
+    from phoenixadult.utils.searchengines.duckduckgo import _resolve_ddg_href
+
+    assert _resolve_ddg_href('//duckduckgo.com/l/?uddg=https%3A%2F%2Fx.com%2Fa&rut=z') == 'https://x.com/a'
+    assert _resolve_ddg_href('https://duckduckgo.com/y.js?ad_domain=spam.com&ad_provider=bingv7aa') is None
+    assert _resolve_ddg_href('https://duckduckgo.com/l/?no_uddg=1') is None
+    assert _resolve_ddg_href('https://www.grooby.com/trailers/x') == 'https://www.grooby.com/trailers/x'
+    assert _resolve_ddg_href('/relative') is None

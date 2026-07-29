@@ -15,12 +15,21 @@ if TYPE_CHECKING:
     Node = Selector | SelectorList[Selector]
 
 
-async def web_search_urls(query: str, site: ResolvedSiteInfo, include: list[str] | None = None, exclude: list[str] | None = None) -> list[str]:
-    host = (urlsplit(site.base_url).hostname or '').removeprefix('www.')
-    if not host:
+async def web_search_urls(
+    query: str,
+    site: ResolvedSiteInfo,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
+    *,
+    host: str | None = None,
+    num: int = 10,
+    language: str | None = None,
+) -> list[str]:
+    target = host if host is not None else (urlsplit(site.base_url).hostname or '').removeprefix('www.')
+    if not query or not target:
         return []
     try:
-        urls = await web_search(SearchOptions(query=query, site=host, num=10))
+        urls = await web_search(SearchOptions(query=query, site=target, num=num, language=language))
     except Exception as err:  # noqa: BLE001 - search failure is non-fatal
         logger.debug(site.name, f'webSearch threw: {err}')
         return []

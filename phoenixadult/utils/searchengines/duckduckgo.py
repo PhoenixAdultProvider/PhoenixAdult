@@ -22,7 +22,9 @@ def _resolve_ddg_href(href: str) -> str | None:
     parts = urlsplit(normalized)
     if not parts.scheme or not parts.netloc:
         return None
-    if (parts.hostname or '').endswith('duckduckgo.com') and parts.path == '/l/':
+    if (parts.hostname or '').endswith('duckduckgo.com'):
+        if parts.path != '/l/':
+            return None
         uddg = parse_qs(parts.query).get('uddg', [None])[0]
         if not uddg:
             return None
