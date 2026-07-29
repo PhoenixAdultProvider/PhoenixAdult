@@ -18,12 +18,11 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(grooby_mod, 'web_search_available', lambda: True)
 
-    async def fake_filtered(_opts: object, url_contains: str | None = None, url_ends_with: str | None = None) -> list[str]:
+    async def fake_filtered(*_a: object, **_k: object) -> list[str]:
         return ['https://www.groobygirls.com/tour/trailers/cool.html?x=1']
 
-    monkeypatch.setattr(grooby_mod, 'web_search_filtered', fake_filtered)
+    monkeypatch.setattr(grooby_mod, 'web_search_urls', fake_filtered)
     respx.get('https://www.groobygirls.com/tour/trailers/cool.html').mock(
         return_value=httpx.Response(200, text='<div class="trailer_videoinfo"><h3>Cool Scene</h3></div><div class="setdesc">Added - March 4, 2021</div>')
     )

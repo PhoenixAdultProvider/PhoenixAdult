@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.bang import BangClient, __testing__
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Bang')
 assert SITE is not None
 
@@ -25,7 +30,7 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_grid_only_when_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(bang_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(bang_mod, 'web_search_urls', _no_web_search)
     url = 'https://www.bang.com/videos?term=cool+scene'
     respx.get(url).mock(
         return_value=httpx.Response(
@@ -46,12 +51,11 @@ async def test_search_grid_only_when_no_engine(monkeypatch: pytest.MonkeyPatch) 
 
 @respx.mock
 async def test_search_web_augmentation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(bang_mod, 'web_search_available', lambda: True)
 
-    async def fake_web_search(_opts: object) -> list[str]:
+    async def fake_web_search(*_a: object, **_k: object) -> list[str]:
         return ['https://www.bang.com/video/123/slug?utm=x']
 
-    monkeypatch.setattr(bang_mod, 'web_search', fake_web_search)
+    monkeypatch.setattr(bang_mod, 'web_search_urls', fake_web_search)
     respx.get('https://www.bang.com/video/123/slug').mock(return_value=httpx.Response(200, text=f'<html><body>{_VIDEO_LD}</body></html>'))
     respx.get('https://www.bang.com/videos?term=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []

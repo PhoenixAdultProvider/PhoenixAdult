@@ -3,15 +3,13 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Bang!'
 
@@ -53,44 +51,38 @@ class BangClient(Client):
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
-        if web_search_available():
-            host = urlparse(search_data.site_info.base_url).netloc
-            try:
-                found = await web_search(SearchOptions(query=search_data.title, site=host))
-            except Exception as err:  # noqa: BLE001 - search engines are best-effort
-                found = []
-                logger.warn(search_data.site_info.name, f'web search failed: {err}')
+        found = await web_search_urls(search_data.title, search_data.site_info)
 
-            for raw in found:
-                url = strip_query(raw)
-                if 'com/video/' not in url or 'index.php/' in url or url in seen:
-                    continue
+        for raw in found:
+            url = strip_query(raw)
+            if 'com/video/' not in url or 'index.php/' in url or url in seen:
+                continue
 
-                seen.add(url)
-                search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'GET {url}')
-                if not search_results:
-                    continue
+            seen.add(url)
+            search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'GET {url}')
+            if not search_results:
+                continue
 
-                ld = _find_video_ld(search_results['sel'])
-                if not ld:
-                    continue
+            ld = _find_video_ld(search_results['sel'])
+            if not ld:
+                continue
 
-                title = _strip_html(ld.get('name'))
-                if not title:
-                    continue
+            title = _strip_html(ld.get('name'))
+            if not title:
+                continue
 
-                release = iso_date(ld['datePublished']) if ld.get('datePublished') else None
+            release = iso_date(ld['datePublished']) if ld.get('datePublished') else None
 
-                results.append(
-                    build_search_result(
-                        site=search_data.site_info,
-                        title=_bangify(title),
-                        scene_url=url,
-                        query=search_data.title,
-                        display_date=release,
-                        search_date=search_data.search_date,
-                    )
+            results.append(
+                build_search_result(
+                    site=search_data.site_info,
+                    title=_bangify(title),
+                    scene_url=url,
+                    query=search_data.title,
+                    display_date=release,
+                    search_date=search_data.search_date,
                 )
+            )
 
         enc = quote(search_data.title, safe='').replace('%20', '+')
         search_url = base + search_data.site_info.search_path.replace('{query}', enc)

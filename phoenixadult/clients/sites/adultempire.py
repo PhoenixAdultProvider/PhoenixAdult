@@ -4,18 +4,16 @@ import asyncio
 import json
 import re
 from typing import Any
-from urllib.parse import urlsplit
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import title_case
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _SCENE_ACTORS: dict[str, list[str]] = load_data(__file__, 'adultempire_scene_actors')
 _REFERER = 'http://www.data18.empirestores.co'
@@ -186,8 +184,7 @@ class AdultEmpireClient(Client):
                         movie_urls[url] = _result_type_for(href)
 
             with best_effort(name, 'webSearch', level='debug'):
-                host = urlsplit(search_data.site_info.base_url).hostname or ''
-                web_urls = await web_search(SearchOptions(query=search_data.title, site=host, num=10))
+                web_urls = await web_search_urls(search_data.title, search_data.site_info)
                 added = 0
                 for u in web_urls:
                     if 'movies' in u and '.html' not in u:

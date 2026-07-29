@@ -8,6 +8,11 @@ import phoenixadult.clients.networks.dirtyharddrive as dhd_mod
 from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Dirty Hard Drive')
 assert SITE is not None
 
@@ -18,12 +23,11 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dhd_mod, 'web_search_available', lambda: True)
 
-    async def fake_filtered(_opts: object, url_contains: str | None = None, url_ends_with: str | None = None) -> list[str]:
+    async def fake_filtered(*_a: object, **_k: object) -> list[str]:
         return ['https://dirtyharddrive.com/tour1/cool-scene.html']
 
-    monkeypatch.setattr(dhd_mod, 'web_search_filtered', fake_filtered)
+    monkeypatch.setattr(dhd_mod, 'web_search_urls', fake_filtered)
     respx.get('https://dirtyharddrive.com/tour1/cool-scene.html').mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1>'))
     results: list[SearchResult] = []
     await dhd_mod.DirtyHardDriveClient().search(results, _ctx(search_date='2021-03-04'))
@@ -34,7 +38,7 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @respx.mock
 async def test_search_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dhd_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(dhd_mod, 'web_search_urls', _no_web_search)
     results: list[SearchResult] = []
     await dhd_mod.DirtyHardDriveClient().search(results, _ctx())
     assert results == []

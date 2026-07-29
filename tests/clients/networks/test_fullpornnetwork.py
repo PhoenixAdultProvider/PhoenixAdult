@@ -8,6 +8,11 @@ import phoenixadult.clients.networks.fullpornnetwork as fpn_mod
 from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('James Deen')
 assert SITE is not None
 
@@ -18,7 +23,7 @@ def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_model_crawl(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(fpn_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(fpn_mod, 'web_search_urls', _no_web_search)
     url = 'https://jamesdeen.com/models/janedoe.html'
     respx.get(url).mock(
         return_value=httpx.Response(

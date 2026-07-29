@@ -84,7 +84,7 @@ async def test_search_direct_id_with_split_scene(no_web_search: object) -> None:
 @respx.mock
 async def test_search_onsite_vol_scoring(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
     _mock_age_gate()
-    monkeypatch.setattr(ae_module, 'web_search', no_web_search)
+    monkeypatch.setattr(ae_module, 'web_search_urls', no_web_search)
     vol_movie = '<html><body><h1>Anal Compilation Vol. 3</h1><ul><li>Studio: <a>Empire Studios</a></li></ul></body></html>'
     search_results = (
         '<html><body><div class="product-details__item-title"><a href="/9999-anal-compilation-blu-ray.html">Anal Compilation</a></div></body></html>'

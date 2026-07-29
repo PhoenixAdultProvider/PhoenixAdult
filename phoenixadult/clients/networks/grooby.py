@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlsplit
 
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, strip_query
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Grooby'
 _TITLE_XP = '//div[contains(@class,"trailer_videoinfo")]//h3 | //div[contains(@class,"trailer_toptitle_left")]'
@@ -29,17 +26,7 @@ def _added_date(sel: Any, scope_xp: str) -> str | None:
 
 class GroobyClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        if not web_search_available():
-            return
-
-        host = urlsplit(search_data.site_info.base_url).netloc
-        try:
-            candidates = [
-                strip_query(u) for u in await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains='/trailers/')
-            ]
-        except Exception as err:  # noqa: BLE001 - best-effort
-            logger.debug(search_data.site_info.name, f'webSearch: {err}')
-            return
+        candidates = [strip_query(u) for u in await web_search_urls(search_data.title, search_data.site_info, include=['/trailers/'])]
 
         seen: set[str] = set()
         for scene_url in candidates:

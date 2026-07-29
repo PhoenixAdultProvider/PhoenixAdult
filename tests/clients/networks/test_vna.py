@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.vna import VNAClient
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Sara Jay')
 assert SITE is not None
 
@@ -29,7 +34,7 @@ _SCENE = """<html><body>
 
 @respx.mock
 async def test_search_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(mod, 'web_search_urls', _no_web_search)
     respx.get('https://sarajay.com/videos/12345').mock(return_value=httpx.Response(200, text=_SCENE))
     results: list[SearchResult] = []
     await VNAClient().search(results, _ctx(scene_id='12345'))

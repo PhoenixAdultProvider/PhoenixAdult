@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.processors.actor_strip import enabled_for, strip_actor_prefix
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
 
 STUDIO = 'New Sensations'
 
@@ -24,15 +21,14 @@ class NewSensationsClient(Client):
 
         candidates: list[str] = [f'{stem}updates/{slug}.html', f'{stem}updates/{slug}-.html', f'{stem}updates/{slug}-4k.html', f'{stem}dvds/{slug}.html']
         seen = set(candidates)
-        if web_search_available():
-            with best_effort(search_data.site_info.name, 'webSearch'):
-                found = await web_search(SearchOptions(query=search_data.title, site=urlparse(search_data.site_info.base_url).netloc, num=10))
-                for url in found:
-                    is_scene = '/updates/' in url or '/dvds/' in url or '/scenes/' in url
-                    is_tour = '/tour_ns/' in url or '/tour_famxxx/' in url
-                    if is_scene and is_tour and url not in seen:
-                        seen.add(url)
-                        candidates.append(url)
+        with best_effort(search_data.site_info.name, 'webSearch'):
+            found = await web_search_urls(search_data.title, search_data.site_info)
+            for url in found:
+                is_scene = '/updates/' in url or '/dvds/' in url or '/scenes/' in url
+                is_tour = '/tour_ns/' in url or '/tour_famxxx/' in url
+                if is_scene and is_tour and url not in seen:
+                    seen.add(url)
+                    candidates.append(url)
 
         for scene_url in candidates:
             search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {scene_url}')

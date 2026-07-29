@@ -8,6 +8,11 @@ import phoenixadult.clients.networks.evolvedfights as ef_mod
 from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Evolved Fights')
 assert SITE is not None
 
@@ -18,7 +23,7 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_direct_guess(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ef_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(ef_mod, 'web_search_urls', _no_web_search)
     url = 'https://evolvedfights.com/cool-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene</title><span class="update_date">03/04/2021</span>'))
     results: list[SearchResult] = []

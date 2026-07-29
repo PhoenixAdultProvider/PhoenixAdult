@@ -5,7 +5,6 @@ import re
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
-from phoenixadult.utils.searchengines import web_search_available
 
 STUDIO = 'Caramel Cash'
 
@@ -36,11 +35,10 @@ class CaramelCashClient(Client):
         if search_data.scene_id:
             candidates.append(base + search_data.site_info.search_path.replace('{query}', search_data.scene_id))
 
-        if web_search_available():
-            for u in await web_search_urls(search_data.title, search_data.site_info, include=['video/', 'videos/'], exclude=['/page/']):
-                clean = strip_query(u)
-                if clean not in candidates:
-                    candidates.append(clean)
+        for u in await web_search_urls(search_data.title, search_data.site_info, include=['video/', 'videos/'], exclude=['/page/']):
+            clean = strip_query(u)
+            if clean not in candidates:
+                candidates.append(clean)
 
         for scene_url in candidates:
             details_page_elements = await self.fetch_and_load(

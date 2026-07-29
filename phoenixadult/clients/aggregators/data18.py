@@ -18,14 +18,13 @@ from phoenixadult.clients.base import Client, SceneDetail, SearchContext, Search
 from phoenixadult.config.env import env
 from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import fetch_dimensions
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import convert_sequence_numbers
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _GALLERY_CONCURRENCY = 3
 _BASE = 'https://www.data18.com'
@@ -262,8 +261,7 @@ class Data18Client(Client):
             candidates = await self.find_candidates(text or search_data.title, kind, max_pages=max_pages)
 
         with best_effort(search_data.site_info.name, 'webSearch', level='debug'):
-            host = urlsplit(search_data.site_info.base_url).hostname or ''
-            for u in await web_search(SearchOptions(query=ws_query, site=host, num=10)):
+            for u in await web_search_urls(ws_query, search_data.site_info):
                 if cleaned := clean_ws_url(u):
                     urls.add(cleaned)
 

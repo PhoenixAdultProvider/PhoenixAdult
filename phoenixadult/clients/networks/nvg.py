@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import urlparse
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, title_distance_score
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
 
 _PAGE_DATA_URL = 'https://netvideogirls.com/page-data/home/page-data.json'
 _VIDEO_ID_RE = re.compile(r'(\d+)-')
@@ -44,10 +42,9 @@ class NVGClient(Client):
         page_scene = await self._get_page_data(scene_id, search_data.capture, base) if scene_id is not None else None
 
         urls: list[str] = []
-        if web_search_available():
-            with best_effort('Net Video Girls', 'webSearch', level='debug'):
-                found = await web_search(SearchOptions(query=cast_query or search_data.title, site=urlparse(base).netloc, num=10))
-                urls = [u for u in found if '/tag/' not in u and '/page/' not in u and '/category/' not in u]
+        with best_effort('Net Video Girls', 'webSearch', level='debug'):
+            found = await web_search_urls(cast_query or search_data.title, search_data.site_info)
+            urls = [u for u in found if '/tag/' not in u and '/page/' not in u and '/category/' not in u]
 
         if not urls:
             updates = (page_scene or {}).get('updates') or {}

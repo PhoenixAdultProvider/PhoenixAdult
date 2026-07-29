@@ -6,9 +6,8 @@ import httpx2
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, title_distance_score
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
 
 STUDIO = 'Dirty Hard Drive'
 _URL_CONTAINS = '/tour1/'
@@ -20,16 +19,7 @@ _PLAYLIST_THUMB_RE = re.compile(r"""<media:thumbnail[^>]*\burl=["']([^"']+)["']"
 
 class DirtyHardDriveClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        if not web_search_available():
-            return
-
-        host = httpx2.URL(search_data.site_info.base_url).host
-        try:
-            candidates = await web_search_filtered(
-                SearchOptions(query=search_data.title, site=host, num=10), url_contains=_URL_CONTAINS, url_ends_with=_URL_ENDS_WITH
-            )
-        except Exception:  # noqa: BLE001 - search is best-effort
-            return
+        candidates = [u for u in await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS]) if u.endswith(_URL_ENDS_WITH)]
 
         for url in candidates:
             details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')

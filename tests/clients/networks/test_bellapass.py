@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.bellapass import BellaPassClient, __testing__
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 BELLA = find_site('BellaPass')
 HUSSIE = find_site('Hussie Pass')
 assert BELLA is not None and HUSSIE is not None
@@ -20,7 +25,7 @@ def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext
 
 @respx.mock
 async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(bp_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(bp_mod, 'web_search_urls', _no_web_search)
     respx.get('https://bellapass.com/search.php?query=cool-scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     respx.get('https://bellapass.com/trailers/cool-scene.html').mock(
         return_value=httpx.Response(

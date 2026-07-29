@@ -5,15 +5,11 @@ from phoenixadult.utils.searchengines.duckduckgo import DuckDuckGoClient
 from phoenixadult.utils.searchengines.google_cse import GoogleCseClient
 from phoenixadult.utils.searchengines.types import SearchEngineClient, SearchOptions
 
-__all__ = ['SearchEngineClient', 'SearchOptions', 'web_search', 'web_search_available', 'web_search_filtered']
+__all__ = ['SearchEngineClient', 'SearchOptions', 'web_search']
 
 
 def _default_chain() -> list[SearchEngineClient]:
     return [GoogleCseClient(), DuckDuckGoClient()]
-
-
-def web_search_available() -> bool:
-    return any(client.available() for client in _default_chain())
 
 
 async def web_search(opts: SearchOptions) -> list[str]:
@@ -33,16 +29,3 @@ async def web_search(opts: SearchOptions) -> list[str]:
 
     logger.warn('search', f'no client produced results for site={opts.site} q="{opts.query}"')
     return []
-
-
-async def web_search_filtered(opts: SearchOptions, url_contains: str | None = None, url_ends_with: str | None = None) -> list[str]:
-    found = await web_search(opts)
-    out: list[str] = []
-    for url in found:
-        if url_contains and url_contains not in url:
-            continue
-        if url_ends_with and not url.endswith(url_ends_with):
-            continue
-        if url not in out:
-            out.append(url)
-    return out

@@ -11,9 +11,8 @@ from phoenixadult.clients.aggregators.data18 import data18_scene_id
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
-from phoenixadult.utils.searchengines import SearchOptions, web_search
 
 _SCENE_GRID_XP = '//div[contains(@class,"item-grid") and contains(@class,"item-grid-scene")]'
 _GRID_ITEM_XP = f'{_SCENE_GRID_XP}//div[contains(@class,"grid-item")]'
@@ -83,8 +82,7 @@ class Data18EmpireClient(Client):
                         add_movie(href if href.startswith('http') else base + href)
 
             with best_effort(search_data.site_info.name, 'webSearch', level='debug'):
-                host = urlsplit(search_data.site_info.base_url).hostname or ''
-                for u in await web_search(SearchOptions(query=search_data.title, site=host, num=10)):
+                for u in await web_search_urls(search_data.title, search_data.site_info):
                     if _is_movie_url(u):
                         add_movie(u)
 

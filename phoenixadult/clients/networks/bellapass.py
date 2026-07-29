@@ -2,15 +2,13 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'BellaPass'
 
@@ -63,17 +61,11 @@ class BellaPassClient(Client):
                 if abs_url not in candidates:
                     candidates.append(abs_url)
 
-        if web_search_available():
-            host = urlparse(search_data.site_info.base_url).netloc
-            try:
-                found = await web_search(SearchOptions(query=search_data.title, site=host))
-            except Exception as err:  # noqa: BLE001 - best-effort
-                found = []
-                logger.warn(search_data.site_info.name, f'web search failed: {err}')
+        found = await web_search_urls(search_data.title, search_data.site_info)
 
-            for url in found:
-                if '/trailers/' in url and url not in candidates:
-                    candidates.append(url)
+        for url in found:
+            if '/trailers/' in url and url not in candidates:
+                candidates.append(url)
 
         primary = _title_selector_for(search_data.site_info.name)
         for scene_url in candidates:

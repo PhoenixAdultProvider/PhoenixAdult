@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.caramelcash import CaramelCashClient, __testing__
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Alex Legend')
 assert SITE is not None
 
@@ -19,7 +24,7 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cc_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(cc_mod, 'web_search_urls', _no_web_search)
     url = 'https://alexlegend.com/video/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1><div class="content-date">04.03.2021</div>'))
     results: list[SearchResult] = []

@@ -56,7 +56,7 @@ def _ctx() -> SearchContext:
 
 @respx.mock
 async def test_search_direct_id_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results: list[SearchResult] = []
     await Data18EmpireClient().search(results, _ctx())
@@ -68,7 +68,7 @@ async def test_search_direct_id_split_scene(monkeypatch: pytest.MonkeyPatch, no_
 
 @respx.mock
 async def test_detail_movie(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = Data18EmpireClient()
     results: list[SearchResult] = []
@@ -86,7 +86,7 @@ async def test_detail_movie(monkeypatch: pytest.MonkeyPatch, no_web_search: obje
 
 @respx.mock
 async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     client = Data18EmpireClient()
     results: list[SearchResult] = []
@@ -100,7 +100,7 @@ async def test_detail_split_scene(monkeypatch: pytest.MonkeyPatch, no_web_search
 
 @respx.mock
 async def test_search_sends_age_gate_cookie(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     route = respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     await Data18EmpireClient().search([], _ctx())
     assert 'ageConfirmed=true' in route.calls[0].request.headers['Cookie']
@@ -108,7 +108,7 @@ async def test_search_sends_age_gate_cookie(monkeypatch: pytest.MonkeyPatch, no_
 
 @respx.mock
 async def test_search_direct_id_matches_numeric_path_segment(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     url = 'https://data18.empirestores.co/1234567/big-movie-porn-movies.html'
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(301, headers={'Location': url}))
     respx.get(url).mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
@@ -119,7 +119,7 @@ async def test_search_direct_id_matches_numeric_path_segment(monkeypatch: pytest
 
 @respx.mock
 async def test_detail_legacy_grid_shape_still_parses(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE_LEGACY_GRID))
     client = Data18EmpireClient()
     results: list[SearchResult] = []
@@ -148,7 +148,7 @@ def test_is_movie_url_accepts_real_empire_urls() -> None:
 
 @respx.mock
 async def test_scene_id_scores_via_id_distance(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     respx.get('https://data18.empirestores.co/1234567').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))
     results: list[SearchResult] = []
     await Data18EmpireClient().search(results, _ctx())
@@ -157,7 +157,7 @@ async def test_scene_id_scores_via_id_distance(monkeypatch: pytest.MonkeyPatch, 
 
 @respx.mock
 async def test_without_scene_id_scoring_falls_back_to_title(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(d18e_module, 'web_search', no_web_search)
+    monkeypatch.setattr(d18e_module, 'web_search_urls', no_web_search)
     search_page = '<html><body><a class="boxcover" href="/1234567/big-movie-porn-movies.html"></a></body></html>'
     respx.get(url__regex=r'.*/Search\?q=.*').mock(return_value=httpx.Response(200, text=search_page))
     respx.get('https://data18.empirestores.co/1234567/big-movie-porn-movies.html').mock(return_value=httpx.Response(200, text=MOVIE_PAGE))

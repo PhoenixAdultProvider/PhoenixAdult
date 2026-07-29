@@ -4,7 +4,9 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.utils.searchengines import web_search, web_search_filtered
+from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.html_helpers import web_search_urls
+from phoenixadult.utils.searchengines import web_search
 from phoenixadult.utils.searchengines.duckduckgo import DuckDuckGoClient
 from phoenixadult.utils.searchengines.types import SearchOptions
 
@@ -35,10 +37,32 @@ async def test_web_search_falls_through_to_ddg() -> None:
 
 
 @respx.mock
-async def test_web_search_filtered() -> None:
+async def test_web_search_urls_filters_what_the_engine_returned() -> None:
+    site = find_site('Brazzers')
+    assert site is not None
     respx.route(method='GET', url__regex=r'duckduckgo\.com/html').mock(return_value=httpx.Response(200, text=DDG_HTML))
-    urls = await web_search_filtered(SearchOptions(query='jane', site='example.com'), url_ends_with='.html')
-    assert urls == ['https://example.com/extra.html']
+
+    assert await web_search_urls('jane', site, include=['.html']) == ['https://example.com/extra.html']
+    assert await web_search_urls('jane', site, exclude=['extra']) == ['https://example.com/scene-1']
+    assert await web_search_urls('', site) == []
+
+
+@respx.mock
+async def test_web_search_urls_strips_www_from_the_site_operator() -> None:
+    site = find_site('Brazzers')
+    assert site is not None
+    seen: list[str] = []
+
+    def _capture(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, text=DDG_HTML)
+
+    respx.route(method='GET', url__regex=r'duckduckgo\.com/html').mock(side_effect=_capture)
+    await web_search_urls('jane', site, host='www.example.com')
+    await web_search_urls('jane', site)
+
+    assert 'site%3Awww.example.com' in seen[0]
+    assert 'www.' not in seen[1].split('site%3A')[1].split('%20')[0]
 
 
 @respx.mock

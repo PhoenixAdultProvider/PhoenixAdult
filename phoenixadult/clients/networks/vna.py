@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'VNA Network'
 _SCENE_ACTORS: dict[str, list[str]] = {'36260': ['Sarah Arabic']}
@@ -20,11 +17,9 @@ class VNAClient(Client):
         if search_data.scene_id:
             candidates.append(base + search_data.site_info.search_path + search_data.scene_id)
 
-        if web_search_available():
-            host = urlparse(search_data.site_info.base_url).netloc
-            for u in await web_search(SearchOptions(query=text or search_data.title, site=host, num=10)):
-                if ('videos/' in u or 'galleries/' in u) and '/page/' not in u and u not in candidates:
-                    candidates.append(u)
+        for u in await web_search_urls(text or search_data.title, search_data.site_info):
+            if ('videos/' in u or 'galleries/' in u) and '/page/' not in u and u not in candidates:
+                candidates.append(u)
 
         for scene_url in candidates:
             details_page_elements = await self.fetch_and_load(

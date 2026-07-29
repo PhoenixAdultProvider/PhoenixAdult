@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Scoreland')
 assert SITE is not None
 
@@ -19,7 +24,7 @@ def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
 
 @pytest.fixture(autouse=True)
 def _no_web(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sg_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _no_web_search)
 
 
 @respx.mock

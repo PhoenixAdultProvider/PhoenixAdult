@@ -9,6 +9,11 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.nvg import NVGClient
 from phoenixadult.registry import find_site
 
+
+async def _no_web_search(*_a: object, **_k: object) -> list[str]:
+    return []
+
+
 SITE = find_site('Net Video Girls')
 assert SITE is not None
 
@@ -38,7 +43,7 @@ def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
 
 @respx.mock
 async def test_search_fallback_to_page_data(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(nvg_mod, 'web_search_available', lambda: False)
+    monkeypatch.setattr(nvg_mod, 'web_search_urls', _no_web_search)
     respx.get(nvg_mod._PAGE_DATA_URL).mock(return_value=httpx.Response(200, json=_PAGE_DATA))
     results: list[SearchResult] = []
     await NVGClient().search(results, _ctx(scene_id='123'))

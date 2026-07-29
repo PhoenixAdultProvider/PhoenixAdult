@@ -10,7 +10,6 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
-from phoenixadult.utils.searchengines import web_search_available
 
 STUDIO = 'Score Group'
 _SEARCH_PATH = '/search-es?keywords={query}&s_filters[type]=videos&s_filters[site]=current'
@@ -42,10 +41,9 @@ class ScoreGroupClient(Client):
             if all_digits and actor_slug:
                 candidate_urls.append(f'{base}{video_list_path}{actor_slug}/{all_digits}/')
 
-        if web_search_available():
-            for u in await web_search_urls(search_data.title, search_data.site_info, include=[video_list_path], exclude=['?']):
-                if u not in candidate_urls:
-                    candidate_urls.append(u)
+        for u in await web_search_urls(search_data.title, search_data.site_info, include=[video_list_path], exclude=['?']):
+            if u not in candidate_urls:
+                candidate_urls.append(u)
 
         sources.extend({'_url': u} for u in candidate_urls)
         return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)

@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from urllib.parse import urlsplit
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_data, title_distance_score
+from phoenixadult.utils.helpers.html_helpers import web_search_urls
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available, web_search_filtered
 
 STUDIO = 'First Time Videos'
 
@@ -53,18 +52,13 @@ __testing__ = {'photo_lookup': _photo_lookup, 'parse_title_and_date': _parse_tit
 class FTVClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
-        host = urlsplit(search_data.site_info.base_url).netloc.removeprefix('www.')
         candidates: list[str] = []
         if search_data.scene_id:
             candidates.append(f'{base}{search_data.site_info.search_path}{search_data.scene_id}.html')
 
-        if web_search_available():
-            try:
-                for url in await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains='/update/'):
-                    if url not in candidates:
-                        candidates.append(url)
-            except Exception as err:  # noqa: BLE001 - best-effort
-                logger.debug(search_data.site_info.name, f'webSearch: {err}')
+        for url in await web_search_urls(search_data.title, search_data.site_info, include=['/update/']):
+            if url not in candidates:
+                candidates.append(url)
 
         for scene_url in candidates:
             details_page_elements = await self.fetch_and_load(
@@ -169,10 +163,9 @@ class FTVClient(Client):
         scene_id = int(m.group(1)) if m else 0
         slugs = _photo_lookup(scene_id)
         cast_query = ' '.join(self._cast_base_names(scene)).strip()
-        if cast_query and web_search_available():
-            host = urlsplit(base).netloc.removeprefix('www.')
+        if cast_query:
             try:
-                gallery_results = await web_search(SearchOptions(query=cast_query, site=host, num=10))
+                gallery_results = await web_search_urls(cast_query, scene.site)
             except Exception as err:  # noqa: BLE001 - best-effort
                 logger.debug(scene.site.name, f'webSearch: {err}')
                 gallery_results = []

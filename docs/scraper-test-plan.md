@@ -87,7 +87,7 @@ Conventions that recur:
   what `fetch_scene_detail` / `load_scene_context` consumes (URL, or the packed
   `<url>|<date>|...` tail). This catches pack/unpack drift.
 - **Patch web search** when a client calls it: `monkeypatch.setattr(mod,
-  'web_search_urls', _stub)` (or `web_search_available`) so tests stay deterministic
+  'web_search_urls', _stub)` — returning `[]` disables the search path — so tests stay deterministic
   and offline.
 - **Cover real quirks** the port introduced — date formats, de-censoring, per-site
   genre tables, `bic_`/placeholder fallbacks, scene-ID gating — with a dedicated

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlsplit
 
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.searchengines import SearchOptions, web_search, web_search_available
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Full Porn Network'
 
@@ -21,15 +19,10 @@ def _after_colon(text: str) -> str:
 class FullPornNetworkClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
-        host = urlsplit(search_data.site_info.base_url).netloc.removeprefix('www.')
         q = search_data.title.strip()
 
         google: list[str] = []
-        if web_search_available():
-            try:
-                google = await web_search(SearchOptions(query=q, site=host, num=10))
-            except Exception:  # noqa: BLE001 - best-effort
-                google = []
+        google = await web_search_urls(q, search_data.site_info)
 
         direct_slug = q.replace(' ', '-').lower() if q.count(' ') > 1 else q.replace(' ', '')
         model_urls: list[str] = [f'{base}/models/{direct_slug}.html']

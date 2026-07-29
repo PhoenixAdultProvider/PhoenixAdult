@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
-from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.searchengines import SearchOptions, web_search_available, web_search_filtered
+from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Deranged Dollars'
 _URL_CONTAINS = '/session/'
@@ -18,15 +15,7 @@ _NURSE_RE = re.compile(r'\bNurses?\b')
 
 class DerangedDollarsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        if not web_search_available():
-            return
-
-        host = urlsplit(search_data.site_info.base_url).netloc
-        try:
-            candidates = await web_search_filtered(SearchOptions(query=search_data.title, site=host, num=10), url_contains=_URL_CONTAINS)
-        except Exception as err:  # noqa: BLE001 - search is best-effort
-            logger.debug(search_data.site_info.name, f'webSearch: {err}')
-            return
+        candidates = await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS])
 
         for url in candidates:
             details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')
