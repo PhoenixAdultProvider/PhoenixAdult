@@ -261,13 +261,18 @@ def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None)
     return carried
 
 
-def _drop_unresolved_images(meta: dict[str, Any]) -> None:
+_PROMOTABLE = (('thumb', 'coverPoster'), ('art', 'background'))
+
+
+def _reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[int, int, int]]) -> None:
+    dropped = {key for key, _kind in _PROMOTABLE if key in meta and meta[key] is None}
+
     kept = [img for img in meta.get('Image') or [] if img.get('url')]
     if kept:
         meta['Image'] = kept
     else:
         meta.pop('Image', None)
-    for key in ('thumb', 'art'):
+    for key, _kind in _PROMOTABLE:
         if meta.get(key) is None:
             meta.pop(key, None)
     for role_key in ('Role', 'Director', 'Producer', 'Writer'):
@@ -277,6 +282,18 @@ def _drop_unresolved_images(meta: dict[str, Any]) -> None:
     for rating in meta.get('Rating') or []:
         if rating.get('image') is None:
             rating.pop('image', None)
+
+    def _pixels(img: dict[str, Any]) -> int:
+        dims = image_meta.get(str(img.get('url')))
+        return dims[0] * dims[1] if dims else 0
+
+    for key, kind in _PROMOTABLE:
+        if key not in dropped:
+            continue
+        candidates = [img for img in kept if img.get('type') == kind]
+        if best := max(candidates, key=_pixels, default=None):
+            meta[key] = best['url']
+            logger.info('meta-cache', f'promoted {str(best["url"]).rsplit("/", 1)[-1]} to {key} after the original was dropped')
 
 
 async def _write_locked(
@@ -382,7 +399,7 @@ async def _write_locked(
                 obj[key] = resolved
 
         await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
-        _drop_unresolved_images(meta)
+        _reconcile_dropped_images(meta, image_meta)
 
         def _write_bundle() -> None:
             payload = bundle_payload(site_name, cur_id, scene_hash, data, image_meta)

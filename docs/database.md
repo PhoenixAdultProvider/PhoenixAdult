@@ -462,7 +462,9 @@ route. `scene_images` records what the folder holds: classified `kind`, stored U
   white placeholder in place of real artwork. The fetcher measures each image's channel
   extrema on a drafted decode and flags anything whose spread is ≤ 4 as solid; the snapshot
   write skips it, and a rewrite deletes one that a previous version had already stored.
-  The reference goes with it — a scene can end up with no poster rather than a blank one.
+  When the dropped image was the `thumb` or `art`, the largest surviving image of that same
+  kind takes its place; a scene ends up with no poster only when nothing of that kind is
+  left. A scene that never had a `thumb` does not gain one.
   The margin is wide (a genuinely solid image measures 0; the faintest real detail measures
   in the teens), so a dark-but-real image is not at risk. Every drop is logged with its URL.
   `scripts/find_artwork_mismatches.py` reports snapshots still holding one.

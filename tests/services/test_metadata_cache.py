@@ -844,7 +844,7 @@ async def test_a_solid_colour_image_is_never_stored(tmp_path: Path, monkeypatch:
 
     md = mc.read('Brazzers', 'solid1')['MediaContainer']['Metadata'][0]
     assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
-    assert 'thumb' not in md
+    assert md['thumb'].endswith('/images/img-01.jpg')
     stored = sorted(p.name for p in (tmp_path / mc.bundle_path(mc._hash('Brazzers', 'solid1')) / 'images').iterdir())
     assert stored == ['img-01.jpg']
 
@@ -881,5 +881,58 @@ async def test_a_solid_image_already_in_a_snapshot_is_dropped_on_rewrite(tmp_pat
 
     md = mc.read('Brazzers', 'solid3')['MediaContainer']['Metadata'][0]
     assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
-    assert 'thumb' not in md
+    assert md['thumb'].endswith('/images/img-01.jpg')
     assert sorted(p.name for p in scene_dir.iterdir()) == ['img-01.jpg']
+
+
+@respx.mock
+async def test_the_largest_survivor_of_each_kind_replaces_a_dropped_thumb_and_art(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    for name, content in (
+        ('blank', _solid_jpeg(970, 545)),
+        ('small', _jpeg(475, 268)),
+        ('big', _jpeg(960, 540)),
+    ):
+        respx.get(f'https://cdn.example/{name}.jpg').mock(return_value=httpx.Response(200, content=content, headers={'content-type': 'image/jpeg'}))
+
+    md: dict[str, Any] = {
+        'type': 'movie',
+        'ratingKey': 'rk',
+        'guid': 'g',
+        'title': 'Cool Scene',
+        'studio': 'Brazzers',
+        'thumb': 'https://cdn.example/blank.jpg',
+        'art': 'https://cdn.example/blank.jpg',
+        'Image': [
+            {'url': 'https://cdn.example/blank.jpg', 'type': 'coverPoster'},
+            {'url': 'https://cdn.example/small.jpg', 'type': 'coverPoster'},
+            {'url': 'https://cdn.example/big.jpg', 'type': 'coverPoster'},
+            {'url': 'https://cdn.example/blank.jpg', 'type': 'background'},
+            {'url': 'https://cdn.example/small.jpg', 'type': 'background'},
+        ],
+    }
+    resp = PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}})
+    assert await mc.write('Brazzers', 'promote1', resp) is True
+
+    stored = mc.read('Brazzers', 'promote1')['MediaContainer']['Metadata'][0]
+    by_url = {img['url'].rsplit('/', 1)[-1] for img in stored['Image']}
+    assert 'img-00.jpg' not in by_url
+    assert stored['thumb'].endswith('/images/img-02.jpg')
+    assert stored['art'].endswith('/images/img-01.jpg')
+
+
+@respx.mock
+async def test_a_scene_that_never_had_a_thumb_does_not_gain_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/only.jpg').mock(return_value=httpx.Response(200, content=_jpeg(600, 900), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', images=['https://cdn.example/only.jpg'])
+    assert await mc.write('Brazzers', 'nothumb1', resp) is True
+
+    stored = mc.read('Brazzers', 'nothumb1')['MediaContainer']['Metadata'][0]
+    assert len(stored['Image']) == 1
+    assert 'thumb' not in stored
