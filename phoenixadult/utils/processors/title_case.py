@@ -28,7 +28,9 @@ _UPPER_EXCEPTIONS = frozenset({
 
 _SPANISH_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'con', 'en', 'la', 'el', 'los', 'las', 'mi', 'al', 'por', 'para'})
 
-_SPANISH_SITE_KEYS = frozenset({'fakings', 'putalocura', 'sexmex'})
+_SPANISH_SITE_KEYS = frozenset({'fakings', 'putalocura', 'sexmex', 'oyeloca'})
+
+_TITLE_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'en', 'el', 'los', 'las', 'mi', 'por', 'para'})
 
 _NAME_EXCEPTIONS = frozenset({'ai'})
 
@@ -44,7 +46,8 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
     'lasirena': 'LaSirena', 'espanol': 'Español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
-    'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock',
+    'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock', 'youve': "You've", 'creme': "Crème",
+    'nino': 'Niño'
 }
 
 _KEEP_LOWER_FIRST = sorted(v for v in _MANUAL_CORRECTIONS.values() if v[:1].islower() and any(c.isupper() for c in v[1:]))
@@ -53,7 +56,20 @@ _KEEP_LOWER_BY_KEY = {v.lower(): v for v in _KEEP_LOWER_FIRST}
 
 _PHRASE_CORRECTIONS: dict[str, str] = {
     'straight a': 'Straight A',
+    'strap-on': 'Strap-On',
+    'kill la kill': 'Kill la Kill',
+    'cruella de vil': 'Cruella de Vil',
+    'los angeles': 'Los Angeles',
+    'las vegas': 'Las Vegas',
+    'el dorado': 'El Dorado',
+    'el paso': 'El Paso',
+    'anna de ville': 'Anna de Ville',
 }
+
+_IDIOM_CORRECTIONS: tuple[tuple[str, str], ...] = (
+    (r'\b(cr[eè]me)\s+de\s+la\s+(cr[eè]me)\b', r'\1 de la \2'),
+    (r'\b((?:her|his|your|their|my|our)\s+)a(\s+game\b)', r'\1A\2'),
+)
 
 _SCRAPER_PHRASE_CORRECTIONS: dict[str, dict[str, str]] = {
     'strike3': {'a game': 'A Game'},
@@ -126,6 +142,7 @@ _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A
 _VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
 _POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
 _TRAILING_INITIAL_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]\.$')
+_PARTICLE_LA_RE = re.compile(r'\b(de|en|a)(\s+)La\b')
 _TLD_GUARD = '|'.join(sorted((*_TLD_FRAGMENTS, 'porn', 'xxx'), key=len, reverse=True))
 _MARK_SPLIT_RE = re.compile(rf'(?i)([!:?])(?=\w)(?!(?:{_TLD_GUARD})\b|E\d)')
 _DOT_SPLIT_RE = re.compile(rf'(?i)\.(?=[A-Za-z])(?!(?:{_TLD_GUARD})\b|E\d)')
@@ -170,6 +187,8 @@ class _TitleCaseEngine:
         self.clean_site = _strip_non_word(re.sub(r'\s+', '', self.site_name)).lower()
         self.scraper_type = scraper_type or ''
         self.lower_exceptions = _LOWER_EXCEPTIONS | _SPANISH_LOWER_EXCEPTIONS if self.clean_site in _SPANISH_SITE_KEYS else _LOWER_EXCEPTIONS
+        if self.type == 'title':
+            self.lower_exceptions = self.lower_exceptions | _TITLE_LOWER_EXCEPTIONS
         self._manual_cache: dict[str, str] = {}
 
     def parse(self, text: str) -> str:
@@ -371,10 +390,13 @@ class _TitleCaseEngine:
     def _finish_by_type(self, output: str) -> str:
         if self.type == 'title':
             output = normalize_sequence_separator(output)
+            output = _PARTICLE_LA_RE.sub(r'\1\2la', output)
         output = expand_initial_pairs(output)
         output = re.sub(r'(?<![A-Za-z])W/', 'w/', output)
         for phrase, replacement in _PHRASE_CORRECTIONS.items():
             output = re.sub(rf'\b{re.escape(phrase)}\b', replacement, output, flags=re.IGNORECASE)
+        for pattern, replacement in _IDIOM_CORRECTIONS:
+            output = re.sub(pattern, replacement, output, flags=re.IGNORECASE)
         for phrase, replacement in _SCRAPER_PHRASE_CORRECTIONS.get(self.scraper_type, {}).items():
             output = re.sub(re.escape(phrase), replacement, output, flags=re.IGNORECASE)
         return output

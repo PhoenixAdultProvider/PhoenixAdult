@@ -180,6 +180,66 @@ def test_title_case_name_takes_a_honorific_period_only_when_leading() -> None:
     assert title_case('summer col') == 'Summer Col.'
 
 
+def test_title_case_lowercases_loan_particles_only_in_fixed_idioms() -> None:
+    assert title_case('Vaginal Creme De La Creme') == 'Vaginal Crème de la Crème'
+    assert title_case('CREME DE LA CREME') == 'Crème de la Crème'
+    assert title_case('Ohhhhh La La!') == 'Ohhhhh La La!'
+    assert title_case('Kill La Kill a XXX Parody') == 'Kill la Kill a XXX Parody'
+    assert title_case('Kill La Kill: Satsuki Kiryuin a XXX Parody') == 'Kill la Kill: Satsuki Kiryuin a XXX Parody'
+    assert title_case('Cruella De Vil: A XXX Parody') == 'Cruella de Vil: A XXX Parody'
+    assert title_case('The Road to El Dorado a XXX Parody') == 'The Road to El Dorado a XXX Parody'
+    assert title_case('Mina Von D Initial Fitness Casting') == 'Mina Von D Initial Fitness Casting'
+
+
+def test_title_case_lowercases_spanish_particles_in_titles_only() -> None:
+    assert title_case('Cinco De Mayo') == 'Cinco de Mayo'
+    assert title_case('Mapa Del Amor') == 'Mapa del Amor'
+    assert title_case('Invasión En Casa') == 'Invasión en Casa'
+    assert title_case('Gracias Por Nada') == 'Gracias por Nada'
+    assert title_case('En Mi Culo') == 'En mi Culo'
+    assert title_case('Bunny De La Cruz', type='name') == 'Bunny De La Cruz'
+    assert title_case('Syren De Mer', type='name') == 'Syren De Mer'
+    assert title_case('Liza Del Sierra', type='name') == 'Liza Del Sierra'
+
+
+def test_title_case_con_and_al_stay_capitalised_in_english() -> None:
+    assert title_case('the con artist returns') == 'The Con Artist Returns'
+    assert title_case('pros and con list') == 'Pros and Con List'
+    assert title_case('big al comes over') == 'Big Al Comes Over'
+    assert title_case('weird al parody') == 'Weird Al Parody'
+
+
+def test_title_case_la_lowercases_only_after_a_particle() -> None:
+    assert title_case('El Especial De La Manana') == 'El Especial de la Manana'
+    assert title_case('Amor En La Playa') == 'Amor en la Playa'
+    assert title_case('sings a la carte tune') == 'Sings a la Carte Tune'
+    assert title_case("Delta's Day in LA") == "Delta's Day in LA"
+    assert title_case('Ooh La La') == 'Ooh La La'
+
+
+def test_title_case_protects_place_names_from_particle_lowering() -> None:
+    assert title_case('Back In Los Angeles') == 'Back in Los Angeles'
+    assert title_case('A Trip To Las Vegas') == 'A Trip to Las Vegas'
+    assert title_case('The Road To El Dorado') == 'The Road to El Dorado'
+    assert title_case('Anna De Ville', type='name') == 'Anna de Ville'
+
+
+def test_title_case_strap_on_keeps_both_halves_capitalised() -> None:
+    assert title_case('Strap-on Into a Threesome') == 'Strap-On Into a Threesome'
+    assert title_case("Stuck Slut Gets MILF's Strap-on") == "Stuck Slut Gets MILF's Strap-On"
+    assert title_case('Stacked Sister-in-Law') == 'Stacked Sister-in-Law'
+    assert title_case('Free-for-All Fuck Lessons') == 'Free-for-All Fuck Lessons'
+    assert title_case('Peek-a-Boo and Titties Too') == 'Peek-a-Boo and Titties Too'
+    assert title_case('The Live-in Nanny') == 'The Live-in Nanny'
+
+
+def test_title_case_a_game_is_a_grade_after_a_possessive() -> None:
+    assert title_case('Bringing Her A Game') == 'Bringing Her A Game'
+    assert title_case('bringing his a game') == 'Bringing His A Game'
+    assert title_case('Lets Play a Game Stepdad') == 'Lets Play a Game Stepdad'
+    assert title_case('Valentina and Her Husband Have A Game') == 'Valentina and Her Husband Have a Game'
+
+
 def test_title_case_name_saint_takes_a_period_anywhere() -> None:
     assert title_case('Katie St Ives', type='name') == 'Katie St. Ives'
     assert title_case('sara st james', type='name') == 'Sara St. James'
@@ -200,7 +260,7 @@ def test_title_case_site_name_preserved() -> None:
 def test_title_case_strike3_a_game() -> None:
     assert title_case('bringing her a game', scraper_type='strike3') == 'Bringing Her A Game'
     assert title_case("life's a game", scraper_type='strike3') == "Life's A Game"
-    assert title_case('bringing her a game') == 'Bringing Her a Game'
+    assert title_case("life's a game") == "Life's a Game"
 
 
 def test_title_case_a_to_an() -> None:

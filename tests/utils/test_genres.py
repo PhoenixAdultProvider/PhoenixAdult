@@ -70,7 +70,6 @@ CASING_EXCEPTIONS = {
     'Caucasian (male)',
     'Ebony (female)',
     'Ebony (male)',
-    'Strap-On',
 }
 
 
