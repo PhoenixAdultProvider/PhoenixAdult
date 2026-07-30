@@ -110,9 +110,6 @@ class PutalocuraClient(Client):
 
         metadata.summary = _WS_NL_RE.sub(' ', raw.split(':')[-1].strip())
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 

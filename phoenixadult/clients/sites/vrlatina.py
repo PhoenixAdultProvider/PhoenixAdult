@@ -63,9 +63,6 @@ class VRLatinaClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc")]') or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 

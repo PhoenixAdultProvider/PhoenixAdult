@@ -88,9 +88,6 @@ class ManyvidsClient(Client):
 
         metadata.collections = [name] if name else None
 
-    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = scene.scene_date or None
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         values: list[str | None] = [tag.get('label') for tag in (self._data(scene).get('tagList') or [])]
 

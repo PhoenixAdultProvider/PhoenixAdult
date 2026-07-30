@@ -92,9 +92,6 @@ class ThickCashClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = list(_GENRES.get(scene.site.name, [])) or []
 
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return
-
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')
 

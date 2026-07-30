@@ -168,9 +168,6 @@ class AbbyWintersClient(Client):
 
         metadata.collections = [tagline] if tagline else [STUDIO]
 
-    async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = scene.scene_date or None
-
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

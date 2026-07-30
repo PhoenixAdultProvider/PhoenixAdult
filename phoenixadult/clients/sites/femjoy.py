@@ -107,9 +107,6 @@ class FemjoyClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = strip_tags(self._extra(scene).result.get('long_description')) or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 

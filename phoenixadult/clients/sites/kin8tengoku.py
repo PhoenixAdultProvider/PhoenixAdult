@@ -83,9 +83,6 @@ class Kin8tengokuClient(Client):
 
         metadata.title = _title_of(details_page_elements) or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
