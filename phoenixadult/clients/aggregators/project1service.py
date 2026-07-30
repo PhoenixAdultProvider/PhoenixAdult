@@ -215,7 +215,7 @@ class Project1ServiceClient(Client):
         capture = ctx.capture if ctx else None
 
         url = f'{_DEFAULT_API_BASE}/v2/releases?type={quote(scene_type)}&id={quote(scene_id)}'
-        details_page_elements = await self.fetch_json(url, FetchCtx(capture=capture), headers=headers, label=f'GET {url}')
+        details_page_elements = await self.fetch_json(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), headers=headers, label=f'GET {url}')
         releases = details_page_elements.get('result') or [] if isinstance(details_page_elements, dict) else []
         if not releases or not isinstance(releases[0], dict):
             return None

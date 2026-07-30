@@ -131,4 +131,4 @@ class GroobyClient(Client):
             for image_url in details_page_elements.xpath(xpath).getall():
                 images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

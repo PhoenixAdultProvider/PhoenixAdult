@@ -168,7 +168,7 @@ class RadicalCashOtherClient(Client):
         raw = details_page_elements.xpath('(//meta[@name="keywords"])[1]/@content').get() or ''
         values: list[str | None] = [genre_name.strip() for genre_name in raw.split(',')]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -192,7 +192,7 @@ class RadicalCashOtherClient(Client):
                 photo = (block.xpath(f'(.//{p["actor_photo_inline"]})[1]/@src').get() or '').strip() if p['actor_photo_inline'] else ''
                 actors.append(ActorResult(name=actor_name, photo_url=photo))
 
-            metadata.actors = actors or []
+            metadata.actors = actors
             return
 
         attr = p['actor_photo_page_attr'] or 'src'
@@ -207,7 +207,7 @@ class RadicalCashOtherClient(Client):
             if actor_name:
                 refs.append((actor_name, join_url(href, base) if (href and p['actor_photo_page']) else ''))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None) or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         director = self._profile(scene.site.name)['director']
@@ -228,4 +228,4 @@ class RadicalCashOtherClient(Client):
             for image_url in details_page_elements.xpath(xpath).getall():
                 images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

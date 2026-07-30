@@ -107,7 +107,7 @@ class AllureMediaClient(Client):
         if 'Amateur' not in genres:
             genres.append('Amateur')
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -136,7 +136,7 @@ class AllureMediaClient(Client):
                 seen.add(actor_name)
                 actors.append(ActorResult(name=actor_name))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -198,4 +198,4 @@ class AllureMediaClient(Client):
                 for u in _ptx_srcs(ptx, 'jpg'):
                     images['push'](u)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

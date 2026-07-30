@@ -109,7 +109,7 @@ class RomeroClient(Client):
             ).getall()
         ]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -121,7 +121,7 @@ class RomeroClient(Client):
 
         entries = [ActorResult(name=first_attr(a, 'normalize-space(.)')) for a in links]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -154,4 +154,4 @@ class RomeroClient(Client):
             for image_url in details_page_elements.xpath(xpath).getall():
                 images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

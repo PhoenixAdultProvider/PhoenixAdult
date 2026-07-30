@@ -72,7 +72,7 @@ class Network5KPClient(Client):
         fallback_date = parts[1] if len(parts) > 1 else ''
         capture = ctx.capture if ctx else None
 
-        details_page_elements = await self.fetch_and_load(scene_url, FetchCtx(capture=capture), f'[{site.name}] detail {scene_url}')
+        details_page_elements = await self.fetch_and_load(scene_url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'[{site.name}] detail {scene_url}')
         if not details_page_elements:
             return None
 

@@ -104,7 +104,7 @@ class HighTechVRClient(Client):
         p = _profile(scene.site.name)
         values: list[str | None] = [genre_link.xpath('string(.)').get() or '' for genre_link in details_page_elements.xpath(p['genres'])]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -153,4 +153,4 @@ class HighTechVRClient(Client):
                 if m:
                     push(m.group(1))
 
-        metadata.art = images or []
+        metadata.art = images

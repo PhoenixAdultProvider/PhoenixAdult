@@ -120,7 +120,9 @@ class ScoreGroupClient(Client):
         if not packed.get('url'):
             return None
 
-        details_page_elements = await self.fetch_and_load(packed['url'], FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed["url"]}')
+        details_page_elements = await self.fetch_and_load(
+            packed['url'], FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {packed["url"]}'
+        )
         if not details_page_elements:
             return None
 
@@ -194,7 +196,7 @@ class ScoreGroupClient(Client):
             )
         ]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -210,7 +212,7 @@ class ScoreGroupClient(Client):
                     seen.add(actor_name)
                     actors.append(ActorResult(name=actor_name))
 
-            metadata.actors = actors or []
+            metadata.actors = actors
             return
 
         base = scene.site.base_url
@@ -236,7 +238,7 @@ class ScoreGroupClient(Client):
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):
             actors.append(ActorResult(name='Christy Marks'))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -281,4 +283,4 @@ class ScoreGroupClient(Client):
             for image_url in details_page_elements.xpath(xpath).getall():
                 push(image_url)
 
-        metadata.art = images or []
+        metadata.art = images

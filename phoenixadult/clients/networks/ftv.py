@@ -151,7 +151,7 @@ class FTVClient(Client):
             photo_raw = thumbs[idx] if idx < len(thumbs) else ''
             actors.append(ActorResult(name=actor_name, photo_url=absolute_url(photo_raw, base) if photo_raw else ''))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -184,4 +184,4 @@ class FTVClient(Client):
         for raw in _collect_images(details_page_elements):
             images['push'](raw)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

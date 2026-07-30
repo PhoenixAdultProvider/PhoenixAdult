@@ -62,7 +62,7 @@ class TeenCoreClubClient(Client):
     # ── Context Loader ──────────────────────────────────────────────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
-        details_page_elements = await self.fetch_json(payload, FetchCtx(capture=ctx.capture if ctx else None))
+        details_page_elements = await self.fetch_json(payload, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass))
         v = details_page_elements.get('video') if isinstance(details_page_elements, dict) else None
         if not isinstance(v, dict):
             return None

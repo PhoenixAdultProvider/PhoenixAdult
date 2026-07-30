@@ -100,7 +100,7 @@ class WankzVRClient(Client):
             genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tag-list")]//a')
         ]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -119,7 +119,7 @@ class WankzVRClient(Client):
             if actor_name:
                 refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name) or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

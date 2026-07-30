@@ -94,7 +94,7 @@ class QueenSnakeClient(Client):
             seen.add(actor_name)
             actors.append(ActorResult(name=actor_name))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -103,4 +103,4 @@ class QueenSnakeClient(Client):
         for src in details_page_elements.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
             images['push'](src)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

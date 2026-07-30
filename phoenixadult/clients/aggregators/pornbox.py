@@ -88,7 +88,7 @@ class PornboxClient(Client):
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
-        details_page_elements = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None))
+        details_page_elements = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass))
         if not isinstance(details_page_elements, dict):
             return None
 

@@ -365,7 +365,7 @@ class AdultEmpireClient(Client):
 
         values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//li//a[@label="Category"]')]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -402,7 +402,7 @@ class AdultEmpireClient(Client):
         for extra_name in _SCENE_ACTORS.get(re.sub(r'.*/', '', packed.get('movieURL', '')), []):
             add(extra_name)
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -455,4 +455,4 @@ class AdultEmpireClient(Client):
             if h and h not in images:
                 images.append(h)
 
-        metadata.art = images or []
+        metadata.art = images

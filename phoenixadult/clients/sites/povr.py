@@ -64,7 +64,9 @@ class POVRClient(Client):
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         sub_site = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {url}')
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {url}'
+        )
         if not details_page_elements:
             return None
 
@@ -106,7 +108,7 @@ class POVRClient(Client):
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         date = (self._ld(scene).get('uploadDate') or '').strip()
 
-        metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
+        metadata.release_date = iso_date(date) if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

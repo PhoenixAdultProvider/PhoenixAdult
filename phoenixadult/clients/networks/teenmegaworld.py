@@ -84,7 +84,7 @@ class TeenMegaWorldClient(Client):
             genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"video-tag-link")]')
         ]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -102,7 +102,7 @@ class TeenMegaWorldClient(Client):
             if actor_name:
                 refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None) or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -111,4 +111,4 @@ class TeenMegaWorldClient(Client):
         for image_url in details_page_elements.xpath('//img[@id="video-cover-image"]/@src').getall():
             images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

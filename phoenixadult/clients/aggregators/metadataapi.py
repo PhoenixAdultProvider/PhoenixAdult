@@ -55,7 +55,9 @@ class MetadataAPIClient(Client):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
         fallback_date = tail.strip()
-        details_page_elements = await self.fetch_json(url, FetchCtx(capture=ctx.capture if ctx else None), headers=_auth_headers(), label=f'GET {url}')
+        details_page_elements = await self.fetch_json(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), headers=_auth_headers(), label=f'GET {url}'
+        )
         d = details_page_elements.get('data') if isinstance(details_page_elements, dict) else None
         if not isinstance(d, dict):
             return None

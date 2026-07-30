@@ -44,7 +44,7 @@ class NewSensationsOtherClient(Client):
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
         capture = ctx.capture if ctx else None
 
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture), f'[{site.name}] scene {url}')
+        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=capture, use_bypass=site.use_bypass), f'[{site.name}] scene {url}')
         if not details_page_elements:
             return None
 
@@ -60,7 +60,9 @@ class NewSensationsOtherClient(Client):
             photo = ''
             href = first_attr(row, '@href')
             if href:
-                model_page_elements = await self.fetch_and_load(absolute_url(href, site.base_url), FetchCtx(capture=capture), f'GET {href} (actor)')
+                model_page_elements = await self.fetch_and_load(
+                    absolute_url(href, site.base_url), FetchCtx(capture=capture, use_bypass=site.use_bypass), f'GET {href} (actor)'
+                )
                 if model_page_elements:
                     last_actor_page = model_page_elements['sel']
                     raw = first_attr(model_page_elements['sel'], '(//div[contains(@class,"cell_top") and contains(@class,"cell_thumb")]/img)[1]/@src0_1x')

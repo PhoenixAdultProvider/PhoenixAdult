@@ -132,7 +132,7 @@ class GasmClient(Client):
             if genre_name
         ]
 
-        metadata.genres = out or []
+        metadata.genres = out
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -143,7 +143,7 @@ class GasmClient(Client):
             if n
         ]
 
-        metadata.actors = out or []
+        metadata.actors = out
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -154,4 +154,4 @@ class GasmClient(Client):
 
         images['push'](details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

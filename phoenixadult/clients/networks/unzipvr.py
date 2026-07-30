@@ -37,7 +37,9 @@ class UnzipVRClient(Client):
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         base = site.base_url.rstrip('/')
-        details_page_elements = await self.fetch_json(f'{base}/api/content/v1/videos/{payload}', FetchCtx(capture=ctx.capture if ctx else None))
+        details_page_elements = await self.fetch_json(
+            f'{base}/api/content/v1/videos/{payload}', FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
+        )
         item = (details_page_elements.get('data') or {}).get('item') if isinstance(details_page_elements, dict) else None
         if not isinstance(item, dict):
             return None
@@ -72,7 +74,7 @@ class UnzipVRClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [(c.get('name') or '').strip() for c in (self._item(scene).get('categories') or [])]
 
-        metadata.genres = [genre_name for genre_name in genres if genre_name] or []
+        metadata.genres = [genre_name for genre_name in genres if genre_name]
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url.rstrip('/')
@@ -94,7 +96,7 @@ class UnzipVRClient(Client):
             photo = f'{base}{permalink}' if permalink else ''
             actors.append(ActorResult(name=actor_name, photo_url=photo, gender='female'))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         item = self._item(scene)
@@ -107,7 +109,7 @@ class UnzipVRClient(Client):
         for img in item.get('galleryImages') or []:
             images['push'](img.get('permalink'))
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']
 
         await self.enrich_from_data18(
             metadata,

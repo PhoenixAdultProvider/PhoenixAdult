@@ -62,7 +62,7 @@ class BlurredMediaClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
         details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, headers={'Cookie': cookie}), f'[{site.name}] detail {url}'
+            url, FetchCtx(capture=ctx.capture if ctx else None, headers={'Cookie': cookie}, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
         )
         if not details_page_elements:
             return None

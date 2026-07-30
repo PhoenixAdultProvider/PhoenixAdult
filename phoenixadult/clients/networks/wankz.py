@@ -75,7 +75,7 @@ class WankzClient(Client):
             genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"cat")] | //p[@style]//a')
         ]
 
-        metadata.genres = self.dedup_strings(values) or []
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -88,7 +88,7 @@ class WankzClient(Client):
             for actor_link in details_page_elements.xpath('//div[contains(@class,"actors")]//a[contains(@class,"model")]')
         ]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -97,4 +97,4 @@ class WankzClient(Client):
         for image_url in details_page_elements.xpath('//a[contains(@class,"noplayer")]//img/@src').getall():
             images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

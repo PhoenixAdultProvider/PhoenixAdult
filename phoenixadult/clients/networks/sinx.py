@@ -75,7 +75,7 @@ class SinXClient(Client):
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -88,7 +88,7 @@ class SinXClient(Client):
             photo = first_attr(fig, '(.//img)[1]/@src') if single else ''
             entries.append(ActorResult(name=actor_name, photo_url=photo))
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -97,4 +97,4 @@ class SinXClient(Client):
         for src in details_page_elements.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
             images['push'](src)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

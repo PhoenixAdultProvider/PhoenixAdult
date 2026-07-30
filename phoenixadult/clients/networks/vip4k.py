@@ -116,7 +116,7 @@ class VIP4KClient(Client):
             if genre_name and genre_name not in genres:
                 genres.append(genre_name)
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -128,7 +128,7 @@ class VIP4KClient(Client):
             )
         ]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -137,4 +137,4 @@ class VIP4KClient(Client):
         for row in details_page_elements.xpath('//div[contains(@class,"player-item__block")]//img'):
             images['push']((row.xpath('@data-src').get() or row.xpath('@src').get() or '').strip())
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

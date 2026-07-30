@@ -90,7 +90,7 @@ class ThickCashClient(Client):
         metadata.release_date = (iso_date(d) or d) if d else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.genres = list(_GENRES.get(scene.site.name, [])) or []
+        metadata.genres = list(_GENRES.get(scene.site.name, []))
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')

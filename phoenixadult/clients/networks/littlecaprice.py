@@ -44,7 +44,9 @@ class LittleCapriceClient(Client):
         url = payload[:pipe] if pipe >= 0 else payload
         fallback = payload[pipe + 1 :].strip() if pipe >= 0 else None
 
-        gallery_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] gallery {url}')
+        gallery_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] gallery {url}'
+        )
         if not gallery_page_elements:
             return None
 
@@ -52,7 +54,7 @@ class LittleCapriceClient(Client):
         video_href = first_attr(gallery_page_elements['sel'], '(//a[contains(@class,"et_pb_button")])[2]/@href')
         if video_href:
             video_page_elements = await self.fetch_and_load(
-                absolute_url(video_href, site.base_url), FetchCtx(capture=ctx.capture if ctx else None), f'GET {video_href}'
+                absolute_url(video_href, site.base_url), FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'GET {video_href}'
             )
             if video_page_elements:
                 detail = video_page_elements

@@ -140,7 +140,7 @@ class Data18EmpireClient(Client):
 
         movie_url = packed.get('movieURL', '')
         movie_page_elements = await self.fetch_and_load(
-            movie_url, FetchCtx(capture=ctx.capture if ctx else None, headers=_AGE_HEADERS), f'[{site.name}] detail {movie_url}'
+            movie_url, FetchCtx(capture=ctx.capture if ctx else None, headers=_AGE_HEADERS, use_bypass=site.use_bypass), f'[{site.name}] detail {movie_url}'
         )
         if not movie_page_elements:
             return None

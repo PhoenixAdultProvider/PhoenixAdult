@@ -146,7 +146,7 @@ class SpizooClient(Client):
                     if genre_name and genre_name not in genres:
                         genres.append(genre_name)
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -168,7 +168,7 @@ class SpizooClient(Client):
             if actor_name:
                 refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor') or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor')
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -186,4 +186,4 @@ class SpizooClient(Client):
             for image_url in details_page_elements.xpath(xpath).getall():
                 images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

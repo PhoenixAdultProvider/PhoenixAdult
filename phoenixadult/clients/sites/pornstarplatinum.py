@@ -56,7 +56,7 @@ class PornstarPlatinumClient(Client):
             return None
 
         details_page_elements = await self.fetch_and_load(
-            packed.get('url', ''), FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] scene {packed.get("url", "")}'
+            packed.get('url', ''), FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {packed.get("url", "")}'
         )
         if not details_page_elements:
             return None
@@ -95,7 +95,7 @@ class PornstarPlatinumClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = (self._data(scene).get('releaseDate') or '') or scene.scene_date or None
+        metadata.release_date = self._data(scene).get('releaseDate') or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

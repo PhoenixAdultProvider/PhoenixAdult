@@ -87,7 +87,7 @@ class ThickCashOtherClient(Client):
             for actor_link in details_page_elements.xpath('//a[contains(@class,"tag") and contains(@href,"models")]')
         ]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -96,4 +96,4 @@ class ThickCashOtherClient(Client):
         for image_url in details_page_elements.xpath('//video/@poster').getall():
             images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

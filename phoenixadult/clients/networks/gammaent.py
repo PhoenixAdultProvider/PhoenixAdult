@@ -245,12 +245,12 @@ class GammaEntClient(Client):
             if genre_name
         ]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = await self._resolve_actors_cached(scene)
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -300,4 +300,4 @@ class GammaEntClient(Client):
                 for image_url in details_page_elements.xpath(xpath).getall():
                     images['push'](image_url)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

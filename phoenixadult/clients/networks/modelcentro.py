@@ -113,14 +113,14 @@ class ModelCentroClient(Client):
 
         quoted = self._quote_token(token)
 
-        details_page_elements = await self.fetch_json(f'{api_base}{quoted}{_detail_query(sid)}', FetchCtx(capture=capture))
+        details_page_elements = await self.fetch_json(f'{api_base}{quoted}{_detail_query(sid)}', FetchCtx(capture=capture, use_bypass=site.use_bypass))
         scenes = _collection_items(details_page_elements.get('response', {}).get('collection') if isinstance(details_page_elements, dict) else None)
         if not scenes:
             return None
 
         scene = scenes[0]
 
-        model_page_elements = await self.fetch_json(f'{api_base}{quoted}{_MODEL_QUERY}{sid}', FetchCtx(capture=capture))
+        model_page_elements = await self.fetch_json(f'{api_base}{quoted}{_MODEL_QUERY}{sid}', FetchCtx(capture=capture, use_bypass=site.use_bypass))
         return LoadedScene(
             url=f'{base}/scene/{sid}/',
             site=site,

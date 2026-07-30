@@ -131,7 +131,7 @@ class BellesaClient(Client):
         tags = raw.split(',') if isinstance(raw, str) else (raw or [])
         genres = [str(t).strip() for t in tags if str(t).strip()]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = [
@@ -140,10 +140,10 @@ class BellesaClient(Client):
             if str(p.get('name') or '').strip()
         ]
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         images = self.image_collector()
         images['push'](self._v(scene).get('image'))
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

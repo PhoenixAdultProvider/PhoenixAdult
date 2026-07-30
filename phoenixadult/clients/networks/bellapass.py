@@ -139,7 +139,7 @@ class BellaPassClient(Client):
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -157,7 +157,7 @@ class BellaPassClient(Client):
             if actor_name:
                 refs.append((actor_name, absolute_url(href, scene.site.base_url)))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -198,4 +198,4 @@ class BellaPassClient(Client):
                 for src in preview_page_elements['sel'].xpath(f'//img[@id="{set_id}"]/@src0_3x').getall():
                     images['push'](src)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

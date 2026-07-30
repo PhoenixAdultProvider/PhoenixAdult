@@ -48,7 +48,9 @@ class StasyQClient(Client):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         url, _, tail = payload.partition('|')
         scene_date = tail.strip() or None
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None, headers=_COOKIE), f'[{site.name}] detail {url}')
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, headers=_COOKIE, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
+        )
         if not details_page_elements:
             return None
 

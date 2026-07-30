@@ -154,7 +154,7 @@ class BadoinkVrClient(Client):
         details_page_elements = scene.require_sel()
 
         genres = [genre for genre in (first_attr(a, 'normalize-space(.)') for a in details_page_elements.xpath('//a[contains(@class,"video-tag")]')) if genre]
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -204,7 +204,7 @@ class BadoinkVrClient(Client):
         images.extend(await self._existing(fresh))
 
         deduped = list(dict.fromkeys(u for u in images if u))
-        metadata.art = deduped or []
+        metadata.art = deduped
 
         # Posters from Data18
         await self.enrich_from_data18(

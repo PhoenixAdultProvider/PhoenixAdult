@@ -55,7 +55,9 @@ class VividClient(Client):
         date = (parts[1] if len(parts) > 1 else '').strip()
         sub_site = (parts[2] if len(parts) > 2 else '').strip() or site.name
         poster_url = (parts[3] if len(parts) > 3 else '').strip()
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
+        )
         if not details_page_elements:
             return None
 

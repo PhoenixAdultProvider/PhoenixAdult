@@ -43,7 +43,9 @@ class PlayboyPlusClient(Client):
         pipe = payload.find('|')
         url = payload[:pipe] if pipe >= 0 else payload
         poster = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
+        )
         if not details_page_elements:
             return None
 
@@ -82,7 +84,7 @@ class PlayboyPlusClient(Client):
 
         date = first_text(details_page_elements, '//p[contains(@class,"date")]')
 
-        metadata.release_date = (iso_date(date, '%B %d, %Y') if date else None) or scene.scene_date or None
+        metadata.release_date = iso_date(date, '%B %d, %Y') if date else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['Glamour']

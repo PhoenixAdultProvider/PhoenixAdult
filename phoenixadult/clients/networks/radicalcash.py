@@ -46,7 +46,9 @@ class RadicalCashClient(Client):
     # ── Context Loader — Fetch Page, Pull the Embedded Next.js Content Blob ─────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
-        details_page_elements = await self.fetch_and_load(payload, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {payload}')
+        details_page_elements = await self.fetch_and_load(
+            payload, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {payload}'
+        )
         if not details_page_elements:
             return None
 
@@ -103,7 +105,7 @@ class RadicalCashClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [t.strip() for t in (self._content(scene).get('tags') or []) if t and t.strip()]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = [
@@ -112,7 +114,7 @@ class RadicalCashClient(Client):
             if (a.get('name') or '').strip()
         ]
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         content = self._content(scene)
@@ -128,4 +130,4 @@ class RadicalCashClient(Client):
             for img in content.get('thumbs') or []:
                 images['push'](img)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

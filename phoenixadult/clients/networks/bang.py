@@ -216,7 +216,7 @@ class BangClient(Client):
             if genre_name
         ]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -231,7 +231,7 @@ class BangClient(Client):
                 if actor_name:
                     actors.append(ActorResult(name=actor_name, photo_url=photo))
 
-            metadata.actors = actors or []
+            metadata.actors = actors
             return
 
         def extract_photo(sel: Selector) -> str:
@@ -255,7 +255,7 @@ class BangClient(Client):
             if actor_name and href:
                 refs.append((actor_name, absolute_url(href, scene.site.base_url)))
 
-        metadata.actors = await self.resolve_actor_photos(refs, extract_photo) or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -303,4 +303,4 @@ class BangClient(Client):
         for u in out:
             images['push'](u)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

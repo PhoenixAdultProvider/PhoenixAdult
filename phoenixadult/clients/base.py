@@ -483,9 +483,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.summary = metadata.summary or ''
         metadata.studio = metadata.studio or site.name
         metadata.release_date = metadata.release_date or scene.scene_date or None
-        metadata.genres = metadata.genres or []
-        metadata.actors = metadata.actors or []
-        metadata.art = metadata.art or []
+        metadata.genres = metadata.genres
+        metadata.actors = metadata.actors
+        metadata.art = metadata.art
         return metadata
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:

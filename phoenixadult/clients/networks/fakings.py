@@ -134,7 +134,7 @@ class FAKingsClient(Client):
             if genre_name
         ]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url
@@ -144,7 +144,7 @@ class FAKingsClient(Client):
             raw = first_attr(page['sel'], '(//div[@class="zona-imagen"]//img[@class])[1]/@src') if page else ''
             actors.append(ActorResult(name=actor_name, photo_url=absolute_url(raw, base) if raw else ''))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url

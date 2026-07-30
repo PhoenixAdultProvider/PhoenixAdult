@@ -82,7 +82,7 @@ class EvolvedFightsClient(Client):
             if genre_name
         ]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

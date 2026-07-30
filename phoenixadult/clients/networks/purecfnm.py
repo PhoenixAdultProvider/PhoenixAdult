@@ -100,12 +100,12 @@ class PureCFNMClient(Client):
         elif count > 3:
             genres.append('Group')
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         entries = [ActorResult(name=n) for n in (self._packed(scene).get('actors') or [])]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         poster = self._packed(scene).get('poster')

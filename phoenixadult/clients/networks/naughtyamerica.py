@@ -139,7 +139,7 @@ class NaughtyAmericaClient(Client):
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         path = payload.split('|')[0].lstrip('/')
         url = f'{_SCENE_BASE}/{path}'
-        loaded = await self._paced(url, FetchCtx(capture=ctx.capture if ctx else None), f'[{site.name}] detail {url}')
+        loaded = await self._paced(url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}')
         if not loaded:
             return None
 
@@ -184,7 +184,7 @@ class NaughtyAmericaClient(Client):
             details_page_elements.xpath('(//div[contains(@class,"date-tags")]//span[contains(@class,"entry-date")])[1]').xpath('string(.)').get() or ''
         ).strip()
 
-        metadata.release_date = iso_date(date) or scene.scene_date or None
+        metadata.release_date = iso_date(date) or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -86,14 +86,14 @@ class WowNetworkClient(Client):
             ]
         )
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
         entries = [ActorResult(name=first_attr(actor_link, 'normalize-space(.)')) for actor_link in details_page_elements.xpath('//div[@id="video-actors"]//a')]
 
-        metadata.actors = self.dedup_people(entries) or []
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -109,4 +109,4 @@ class WowNetworkClient(Client):
 
         images['push'](first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

@@ -72,7 +72,9 @@ class SteppedUpClient(Client):
         if not build_id:
             return None
 
-        details_page_elements = await self.fetch_json(f'{base}/_next/data/{build_id}/scenes/{slug}.json', FetchCtx(capture=ctx.capture if ctx else None))
+        details_page_elements = await self.fetch_json(
+            f'{base}/_next/data/{build_id}/scenes/{slug}.json', FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
+        )
         content = (details_page_elements.get('pageProps') or {}).get('content') if isinstance(details_page_elements, dict) else None
         if not isinstance(content, dict):
             return None
@@ -116,7 +118,7 @@ class SteppedUpClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [t.strip() for t in (self._c(scene).get('tags') or []) if t and t.strip()]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors = [
@@ -125,7 +127,7 @@ class SteppedUpClient(Client):
             if (a.get('name') or '').strip()
         ]
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         content = self._c(scene)
@@ -135,4 +137,4 @@ class SteppedUpClient(Client):
             for img in content.get(key) or []:
                 images['push'](img)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']

@@ -96,7 +96,7 @@ class VNAClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = [genre_name.strip() for genre_name in self._genres_text(scene).split(',') if genre_name.strip()]
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors_text = self._actors_text(scene)
@@ -122,7 +122,7 @@ class VNAClient(Client):
         for actor_name in _SCENE_ACTORS.get(scene_id, []):
             actors.append(ActorResult(name=actor_name, gender='female'))
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

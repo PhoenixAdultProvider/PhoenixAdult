@@ -93,7 +93,7 @@ class FuelVirtualClient(Client):
         if (group := self.group_genre_for(cast)) and group not in genres:
             genres.append(group)
 
-        metadata.genres = genres or []
+        metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -110,7 +110,7 @@ class FuelVirtualClient(Client):
 
         actors = [ActorResult(name=actor_name) for actor_name in (first_attr(a, 'normalize-space(.)') for a in actor_els) if actor_name]
 
-        metadata.actors = actors or []
+        metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -137,4 +137,4 @@ class FuelVirtualClient(Client):
             if src:
                 images['push'](base + src)
 
-        metadata.art = images['list'] or []
+        metadata.art = images['list']
