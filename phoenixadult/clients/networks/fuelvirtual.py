@@ -4,7 +4,7 @@ import re
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, script_match
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
@@ -136,8 +136,8 @@ class FuelVirtualClient(Client):
                         images['push'](base + src)
 
         for script in details_page_elements.xpath('//div[@id="mediabox"]//script'):
-            m = _IMG_SCRIPT_RE.search(script.xpath('string(.)').get() or '')
-            if m:
-                images['push'](base + m.group(1))
+            src = script_match(script.xpath('string(.)').get() or '', _IMG_SCRIPT_RE)
+            if src:
+                images['push'](base + src)
 
         metadata.art = images['list'] or []

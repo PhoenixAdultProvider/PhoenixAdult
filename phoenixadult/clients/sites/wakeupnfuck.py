@@ -5,7 +5,7 @@ from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match
 
 _CARD_XP = '//a[contains(@class,"scene") and contains(@class,"item") and contains(@class,"light_background")]'
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
@@ -104,8 +104,6 @@ class WakeUpNFuckClient(Client):
 
         if not images:
             for script in details_page_elements.xpath('//script/text()').getall():
-                m = _IMAGE_RE.search(script)
-                if m:
-                    push(m.group(1).strip())
+                push(script_match(script, _IMAGE_RE).strip())
 
         metadata.art = images

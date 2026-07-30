@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _POSTER_RE = re.compile(r'posterImage:\s*"([^"]*)"')
@@ -174,6 +174,6 @@ class PutalocuraClient(Client):
         details_page_elements = scene.require_sel()
 
         script = details_page_elements.xpath('string((//div[contains(@class,"top-area-content")]//script)[1])').get() or ''
-        m = _POSTER_RE.search(script)
+        poster = script_match(script, _POSTER_RE)
 
-        metadata.art = [m.group(1)] if m and m.group(1) else []
+        metadata.art = [poster] if poster else []

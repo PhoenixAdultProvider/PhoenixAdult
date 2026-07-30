@@ -6,7 +6,7 @@ from typing import Any
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match
 
 STUDIO = 'Woodman Casting X'
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
@@ -153,8 +153,6 @@ class WoodmanCastingXClient(Client):
             if 'var player' not in script:
                 continue
 
-            m = _IMAGE_RE.search(script)
-            if m:
-                images['push'](m.group(1).strip())
+            images['push'](script_match(script, _IMAGE_RE).strip())
 
         metadata.art = images['list']

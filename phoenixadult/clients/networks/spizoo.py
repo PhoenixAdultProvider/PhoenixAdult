@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from parsel import Selector
+
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
@@ -151,28 +153,22 @@ class SpizooClient(Client):
 
         p = self._profile(scene.site.name)
         base = scene.site.base_url
-        actors: list[ActorResult] = []
-        seen: set[str] = set()
+
+        def extract_photo(sel: Selector) -> str:
+            for xp, attr in p['model_photo']:
+                raw = (sel.xpath(f'(//{xp})[1]/@{attr}').get() or '').strip()
+                if raw:
+                    return absolute_url(raw, base)
+            return ''
+
+        refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(f'//{p["actor_container"]}'):
             actor_name = (actor_link.xpath('string(.)').get() or '').replace('.', '').strip()
             href = first_attr(actor_link, '@href')
-            if not actor_name or actor_name in seen:
-                continue
+            if actor_name:
+                refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-            seen.add(actor_name)
-            photo = ''
-            if href:
-                model_page_elements = await self.fetch_and_load(absolute_url(href, base), None, f'[{scene.site.name}] actor {actor_name}')
-                if model_page_elements:
-                    for xp, attr in p['model_photo']:
-                        raw = (model_page_elements['sel'].xpath(f'(//{xp})[1]/@{attr}').get() or '').strip()
-                        if raw:
-                            photo = absolute_url(raw, base)
-                            break
-
-            actors.append(ActorResult(name=actor_name, photo_url=photo))
-
-        metadata.actors = actors or []
+        metadata.actors = await self.resolve_actor_photos(refs, extract_photo, label='actor') or []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

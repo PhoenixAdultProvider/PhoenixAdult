@@ -6,11 +6,10 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, strip_tags
 
 _VIEWING_COOKIE = 'viewing-preferences=straight%2Cgay'
 _BR_RE = re.compile(r'<br\s*/?>', re.IGNORECASE)
-_TAG_RE = re.compile(r'<[^>]+>')
 _WS_RE = re.compile(r'\s+')
 
 _CHANNELS = load_data(__file__, 'kink_channels')
@@ -127,7 +126,7 @@ class KinkClient(Client):
         if not span_html:
             return
 
-        text = _TAG_RE.sub('', _BR_RE.sub(' ', span_html))
+        text = strip_tags(_BR_RE.sub(' ', span_html))
 
         metadata.summary = _WS_RE.sub(' ', text).strip() or ''
 

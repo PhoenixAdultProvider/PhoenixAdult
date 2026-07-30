@@ -9,7 +9,7 @@ from parsel import Selector
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, decensor, iso_date, join_url, load_data, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, script_match
 
 STUDIO = 'Allure Media'
 _TABLES: dict[str, Any] = load_data(__file__, 'alluremedia_tables')
@@ -146,17 +146,15 @@ class AllureMediaClient(Client):
         title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
 
         df_script = details_page_elements.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
-        use_image = _USEIMAGE_RE.search(df_script)
-        if use_image:
-            images['push'](use_image.group(1))
+        images['push'](script_match(df_script, _USEIMAGE_RE))
 
-        set_id = _SETID_RE.search(df_script)
+        set_id = script_match(df_script, _SETID_RE)
         if set_id:
             search_results = await self.fetch_and_load(
                 _search_url_for(scene.site, title), FetchCtx(capture=scene.capture), f'[{scene.site.name}] set-target lookup'
             )
             if search_results:
-                node = search_results['sel'].xpath(f'(//*[@id="set-target-{set_id.group(1)}"])[1]')
+                node = search_results['sel'].xpath(f'(//*[@id="set-target-{set_id}"])[1]')
                 images['push'](node.xpath('@src').get() or '')
                 for i in range(7):
                     images['push'](node.xpath(f'@src{i}_1x').get() or '')

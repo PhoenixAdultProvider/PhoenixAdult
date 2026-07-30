@@ -7,7 +7,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _SCENE_ID_RE = re.compile(r'(?:(?<=\dpp/)|(?<=\dbbwd/)|(?<=\dhsp/)|(?<=\dbbbj/)|(?<=\dpatp/)|(?<=\dftf/)|(?<=\dbgb/))\d+(?=/)')
@@ -163,9 +163,7 @@ class PlumperPassClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: image if 'http' in image else f'{base}/t1/{image}')
         script = details_page_elements.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
-        m = _IMAGE_RE.search(script)
-        if m:
-            images['push']((m.group(1) or '').strip())
+        images['push'](script_match(script, _IMAGE_RE).strip())
 
         for image_url in details_page_elements.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
             images['push']((image_url or '').strip())

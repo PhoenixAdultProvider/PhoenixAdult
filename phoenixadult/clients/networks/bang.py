@@ -9,12 +9,11 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, strip_query, title_distance_score
-from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, strip_tags, web_search_urls
 
 STUDIO = 'Bang!'
 
 _BANG_RE = re.compile(r'\bbang(?=(?:\s|$))(?!!)', re.IGNORECASE)
-_TAG_RE = re.compile(r'<[^>]+>')
 _WS_RE = re.compile(r'\s+')
 
 
@@ -26,7 +25,7 @@ def _strip_html(s: str | None) -> str:
     if not s:
         return ''
 
-    return _WS_RE.sub(' ', _TAG_RE.sub('', s)).strip()
+    return _WS_RE.sub(' ', strip_tags(s)).strip()
 
 
 def _find_video_ld(sel: Any) -> dict[str, Any] | None:

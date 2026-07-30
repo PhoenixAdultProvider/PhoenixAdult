@@ -8,6 +8,7 @@ from urllib.parse import quote
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
+from phoenixadult.utils.helpers.html_helpers import strip_tags
 
 STUDIO = 'Clips4Sale'
 _STUDIOS: list[dict[str, Any]] = load_data(__file__, 'clips4sale_studios')
@@ -221,7 +222,7 @@ class Clips4SaleClient(Client):
 
         user_id = payload.split('/studio/')[1].split('/')[0] if '/studio/' in payload else ''
 
-        summary = re.sub(r'<[^>]+>', '', clip.get('description') or '').split('--SCREEN SIZE')[0].split('--SREEN SIZE')[0].strip()
+        summary = strip_tags(clip.get('description')).split('--SCREEN SIZE')[0].split('--SREEN SIZE')[0].strip()
         summary = summary.split('window.NREUM')[0].replace('**TOP 50 CLIP**', '').replace('1920x1080 (HD1080)', '').strip()
 
         genre_list: list[str] = []
