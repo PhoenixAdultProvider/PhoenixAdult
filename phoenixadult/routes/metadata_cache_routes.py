@@ -271,3 +271,9 @@ async def purge_bulk(request: Request) -> JSONResponse:
 @router.post('/purge-duplicates')
 async def purge_duplicates() -> JSONResponse:
     return JSONResponse({'ok': True, 'purged': await run_in('store', metadata_cache.purge_duplicates)})
+
+
+@router.post('/prune-names')
+async def prune_names() -> JSONResponse:
+    pruned = await run_in('store', scene_store.prune_orphan_names)
+    return JSONResponse({'ok': True, 'pruned': pruned, 'total': sum(pruned.values())})

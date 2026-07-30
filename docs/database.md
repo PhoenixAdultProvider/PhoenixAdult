@@ -369,6 +369,24 @@ after a `title_case` rule change to bring stored names in line.
 Installs from before this rule are folded by the v7 migration, which keeps the row that
 scenes actually reference (lowest id when both are used) and repoints every credit onto it.
 
+A `title_case` rule change can also strand a spelling: once honorifics gained a period,
+`Mz Dani` and `Mz. Dani` were two rows. The v8 migration folds any pair whose names collapse
+to the same string once `title_case` is applied, keeping the canonical spelling, carrying
+`gender` and `iafd_id` onto it when the survivor has neither, and repointing every credit.
+It deliberately will not touch genuine variants — `Glory Hole` and `Gloryhole` both survive
+`title_case` unchanged, so choosing between them stays an editorial decision.
+
+### Pruning Unreferenced Names
+
+Dimension rows outlive the scenes that created them: a tag that `genres.json` later filters
+out, a tagline from a purged snapshot, a performer whose only scene was deleted. **Prune
+Unused Names** in the metadata UI (`POST /metadata/prune-names`) deletes every row in the six
+dimension tables that no scene references, and reports the count per table. Nothing is lost
+permanently — a name reappears the moment a scene credits it again — but curated
+per-person data (gender, `iafd_id`, a cached headshot) goes with the row, so an orphaned
+person is worth reviewing in the people UI first. The single-name filter there exists for
+exactly that: short names collide easily and are usually better replaced with a fuller one.
+
 Each junction carries `pos`, preserving the emitted order of the original response so a
 reassembled snapshot is byte-for-byte faithful (order is meaningful — the first
 collection and the actor billing order matter to Plex).

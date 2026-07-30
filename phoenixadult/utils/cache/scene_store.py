@@ -666,6 +666,12 @@ def studio_names(**active: Any) -> list[str]:
     return sorted({str(r['name']) for r in rows if r['name']}, key=str.casefold)
 
 
+def prune_orphan_names() -> dict[str, int]:
+    conn = db.connect()
+    with conn:
+        return db.prune_orphan_names(conn)
+
+
 def change_token() -> str:
     row = db.connect().execute('SELECT COUNT(*) AS count, COALESCE(MAX(updated_at), 0) AS newest FROM scenes').fetchone()
     return f'{int(row["count"])}:{float(row["newest"])}'

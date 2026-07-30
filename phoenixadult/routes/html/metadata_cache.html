@@ -90,6 +90,8 @@
     .dup-btn { padding: 8px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #64748b; font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
     .dup-btn.active { background: #b45309; border-color: #f59e0b; color: #fff; cursor: pointer; }
     .dup-btn.active:hover { background: #d97706; }
+    .prune-btn { padding: 8px 16px; border: 1px solid #475569; border-radius: 6px; background: #1e293b; color: #94a3b8; cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
+    .prune-btn:hover { background: #334155; color: #e2e8f0; }
     .empty { color: #94a3b8; margin-top: 24px; }
 
     /* ── Progress ── */
@@ -236,6 +238,7 @@
     <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+    <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
     <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
     <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
     <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
@@ -684,6 +687,22 @@
       const r = await fetch('/metadata/purge-duplicates', {method: 'POST', headers: authHeaders()});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
+    }
+
+    async function pruneNames() {
+      if (!confirm('Delete every person, studio, tagline, collection, genre and country that no scene references?\n\nThey come back automatically the next time a scene credits them.')) return;
+      const btn = document.getElementById('pruneBtn');
+      btn.disabled = true;
+      try {
+        const r = await fetch('/metadata/prune-names', {method: 'POST', headers: authHeaders()});
+        const j = await r.json().catch(() => ({ok: false}));
+        if (!j.ok) { alert('Prune failed'); return; }
+        const detail = Object.entries(j.pruned || {}).map(([t, n]) => `${n} ${t}`).join(', ');
+        alert(j.total ? `Pruned ${j.total} unused name(s): ${detail}` : 'Nothing to prune.');
+        refreshNow();
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function setDupsOnly(on) {

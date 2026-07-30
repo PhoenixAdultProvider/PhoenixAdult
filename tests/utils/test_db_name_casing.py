@@ -131,3 +131,61 @@ def test_merging_a_studio_never_deletes_its_scenes() -> None:
     row = conn.execute('SELECT studio_id FROM scenes').fetchone()
     assert row is not None and int(row['studio_id']) == keep
     assert [r['name'] for r in conn.execute('SELECT name FROM studios')] == ['Keeper']
+
+
+def test_a_recased_honorific_folds_into_the_canonical_row_and_keeps_its_gender() -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO people(name, gender) VALUES('Mz Dani', 'female'), ('Mz. Dani', '')")
+        stale, canonical = (int(r['id']) for r in conn.execute('SELECT id FROM people ORDER BY id'))
+        conn.execute(
+            'INSERT INTO scenes(hash, site, cur_id, rel_path, identifier, rating_key, guid, title, updated_at)'
+            " VALUES('h','s','c','scenes/h/h','i','rk','g','T',0)"
+        )
+        scene = int(conn.execute('SELECT id FROM scenes').fetchone()['id'])
+        conn.execute('INSERT INTO scene_people(scene_id, person_id, role, pos) VALUES(?,?,?,0)', (scene, stale, 'actor'))
+
+    with conn:
+        db._fold_recased_duplicate_names(conn)
+
+    rows = conn.execute('SELECT id, name, gender FROM people').fetchall()
+    assert [(str(r['name']), str(r['gender'])) for r in rows] == [('Mz. Dani', 'female')]
+    assert int(rows[0]['id']) == canonical
+    assert int(conn.execute('SELECT person_id FROM scene_people').fetchone()['person_id']) == canonical
+
+
+def test_genuine_spelling_variants_are_never_folded() -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO genres(name) VALUES('Glory Hole'), ('Gloryhole'), ('New Years'), ('BBC Pie'), ('Bbcpie')")
+
+    with conn:
+        db._fold_recased_duplicate_names(conn)
+
+    names = sorted(str(r['name']) for r in conn.execute('SELECT name FROM genres'))
+    assert names == ['BBC Pie', 'Bbcpie', 'Glory Hole', 'Gloryhole', 'New Years']
+
+
+def test_pruning_drops_unreferenced_names_and_keeps_credited_ones() -> None:
+    conn = db.connect()
+    with conn:
+        kept = db.dim_id(conn, 'genres', 'Anal')
+        db.dim_id(conn, 'genres', 'Orphaned Tag')
+        db.dim_id(conn, 'collections', 'Nobody Uses This')
+        studio = db.dim_id(conn, 'studios', 'Brazzers')
+        conn.execute(
+            'INSERT INTO scenes(hash, site, cur_id, rel_path, identifier, rating_key, guid, title, studio_id, updated_at)'
+            " VALUES('h','s','c','scenes/h/h','i','rk','g','T',?,0)",
+            (studio,),
+        )
+        scene = int(conn.execute('SELECT id FROM scenes').fetchone()['id'])
+        conn.execute('INSERT INTO scene_genres(scene_id, genre_id, pos) VALUES(?,?,0)', (scene, kept))
+
+    with conn:
+        pruned = db.prune_orphan_names(conn)
+
+    assert pruned == {'genres': 1, 'collections': 1}
+    assert [str(r['name']) for r in conn.execute('SELECT name FROM genres')] == ['Anal']
+    assert conn.execute('SELECT COUNT(*) c FROM collections').fetchone()['c'] == 0
+    assert [str(r['name']) for r in conn.execute('SELECT name FROM studios')] == ['Brazzers']
+    assert conn.execute('SELECT COUNT(*) c FROM scenes').fetchone()['c'] == 1

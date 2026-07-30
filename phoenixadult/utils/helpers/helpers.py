@@ -276,6 +276,8 @@ def build_search_result(
     from phoenixadult.clients.base import SearchResult
     from phoenixadult.utils.processors.actor_strip import best_title_score
 
+    title = re.sub(r'\s+', ' ', title).strip()
+
     if score is not None:
         computed = score
     elif search_date and display_date:
