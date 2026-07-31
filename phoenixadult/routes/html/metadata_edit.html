@@ -48,6 +48,10 @@
     .img select { width: 100%; margin-top: 6px; background: #0f1117; border: 1px solid #334155; color: #e2e8f0; border-radius: 5px; padding: 4px; font-size: 11px; }
     .img .drop { width: 100%; margin-top: 6px; padding: 4px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1e293b; color: #f87171; cursor: pointer; font-size: 11px; }
     .img .drop:hover { background: #7f1d1d; color: #fff; }
+    .img .spin { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+    .img .spin button { flex: 1 1 auto; padding: 4px; border: 1px solid #334155; border-radius: 5px; background: #0f1117; color: #cbd5e1; cursor: pointer; font-size: 13px; }
+    .img .spin button:hover { border-color: #6366f1; color: #fff; }
+    .img .spin span { flex: 0 0 auto; min-width: 28px; text-align: center; font-size: 11px; color: #fbbf24; }
 
     .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; position: sticky; bottom: 0; background: #0f1117; padding: 14px 0; border-top: 1px solid #1a2035; }
     .progress { flex: 1 1 100%; order: -1; }
@@ -239,6 +243,7 @@
           const preview = document.createElement('img');
           preview.src = img.url;
           preview.loading = 'lazy';
+          if (img.rotate) preview.style.transform = `rotate(${img.rotate}deg)`;
           card.appendChild(preview);
         }
         const kind = document.createElement('select');
@@ -251,6 +256,20 @@
         });
         kind.onchange = () => { images[idx].type = kind.value; };
         card.appendChild(kind);
+        const spin = document.createElement('div');
+        spin.className = 'spin';
+        [['↺', 270, 'Rotate 90° counter-clockwise'], ['↻', 90, 'Rotate 90° clockwise']].forEach(([glyph, delta, label]) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = glyph;
+          b.title = label;
+          b.onclick = () => { images[idx].rotate = ((images[idx].rotate || 0) + delta) % 360; renderImages(); };
+          spin.appendChild(b);
+        });
+        const badge = document.createElement('span');
+        badge.textContent = img.rotate ? img.rotate + '°' : '';
+        spin.appendChild(badge);
+        card.appendChild(spin);
         const drop = document.createElement('button');
         drop.className = 'drop';
         drop.textContent = 'Remove';
@@ -318,7 +337,7 @@
       LISTS.Director = (MD.Director || []).map(r => r.tag);
       LISTS.Producer = (MD.Producer || []).map(r => r.tag);
       Object.keys(LISTS).forEach(renderChips);
-      images = (MD.Image || []).map(i => ({url: i.url, type: i.type}));
+      images = (MD.Image || []).map(i => ({url: i.url, type: i.type, ...(i.priority ? {priority: true} : {}), rotate: 0}));
       renderImages();
     }
 

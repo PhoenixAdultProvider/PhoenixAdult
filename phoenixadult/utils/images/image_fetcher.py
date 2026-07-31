@@ -198,6 +198,25 @@ SOLID_SPREAD = 4
 _SOLID_DRAFT = 160
 
 
+_ROTATE_TRANSPOSE = {90: Image.Transpose.ROTATE_270, 180: Image.Transpose.ROTATE_180, 270: Image.Transpose.ROTATE_90}
+
+
+def rotate_image_bytes(data: bytes, degrees: int) -> bytes:
+    transpose = _ROTATE_TRANSPOSE.get(degrees % 360)
+    if transpose is None:
+        return data
+    with Image.open(io.BytesIO(data)) as img:
+        fmt = img.format or 'JPEG'
+        rotated = img.transpose(transpose)
+    buf = io.BytesIO()
+    if fmt == 'JPEG':
+        rotated = rotated.convert('RGB') if rotated.mode not in ('RGB', 'L') else rotated
+        rotated.save(buf, format='JPEG', quality=95)
+    else:
+        rotated.save(buf, format=fmt)
+    return buf.getvalue()
+
+
 def is_solid(img: Image.Image) -> bool:
     extrema = img.getextrema()
     bands = extrema if isinstance(extrema[0], tuple) else (extrema,)

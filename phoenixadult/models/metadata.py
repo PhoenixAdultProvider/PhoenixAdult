@@ -13,6 +13,7 @@ class PlexImage(_Model):
     url: str
     type: str
     priority: bool | None = None
+    rotate: int | None = None
 
 
 class PlexRole(_Model):

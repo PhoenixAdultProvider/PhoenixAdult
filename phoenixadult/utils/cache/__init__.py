@@ -23,7 +23,7 @@ from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.helpers import hash_key, slugify
 from phoenixadult.utils.images.ext import ext_from
-from phoenixadult.utils.images.image_fetcher import fetch_image
+from phoenixadult.utils.images.image_fetcher import fetch_image, rotate_image_bytes
 from phoenixadult.utils.images.proxy import proxy_params
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
@@ -317,6 +317,11 @@ async def _write_locked(
     base = config.base_url.rstrip('/')
     counter = [0]
     image_meta: dict[str, tuple[int, int, int]] = {}
+    rotations: dict[str, int] = {}
+    for img in meta.get('Image') or []:
+        turn = int(img.pop('rotate', 0) or 0) % 360
+        if turn and img.get('url'):
+            rotations[str(img['url'])] = turn
 
     def _reset_tmp() -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -340,13 +345,15 @@ async def _write_locked(
         def _relativize(u: str) -> str:
             return u[len(base) :] if u.startswith(f'{base}/') else u
 
-        def _keep(source: Path, name: str) -> tuple[str, tuple[int, int, int] | None, bool] | None:
+        def _keep(source: Path, name: str, turn: int = 0) -> tuple[str, tuple[int, int, int] | None, bool] | None:
             if not source.is_file():
                 return None
             img_dir = tmp_dir / 'images'
             img_dir.mkdir(exist_ok=True)
             copied = img_dir / name
             shutil.copy2(source, copied)
+            if turn:
+                copied.write_bytes(rotate_image_bytes(copied.read_bytes(), turn))
             probed = _probe_file(copied)
             if probed is not None and probed[1]:
                 copied.unlink(missing_ok=True)
@@ -364,7 +371,7 @@ async def _write_locked(
             if '/images/local/' in url:
                 return url[url.index('/images/local/') :]
             if (hit := _snapshot_file(url, base)) is not None:
-                if (kept := await run_in('fs', _keep, *hit)) is not None:
+                if (kept := await run_in('fs', _keep, *hit, rotations.get(url, 0))) is not None:
                     local, probed, solid = kept
                     if solid:
                         logger.info('meta-cache', f'dropped a solid-colour image from {rel_path}: {hit[1]}')
@@ -384,9 +391,14 @@ async def _write_locked(
                 if entry.solid:
                     logger.info('meta-cache', f'skipped a solid-colour image for {rel_path}: {target}')
                     return None
-                await run_in('fs', _store_bytes, name, entry.data)
+                payload, width, height = entry.data, entry.width, entry.height
+                if turn := rotations.get(url, 0):
+                    payload = rotate_image_bytes(payload, turn)
+                    if turn in (90, 270):
+                        width, height = height, width
+                await run_in('fs', _store_bytes, name, payload)
                 local = f'/cache/{rel_path}/images/{name}'
-                image_meta[local] = (entry.width, entry.height, len(entry.data))
+                image_meta[local] = (width, height, len(payload))
                 return local
             except (httpx2.HTTPError, ValueError, OSError) as err:
                 logger.debug('meta-cache', f'image download failed {target}: {err!r}')
@@ -645,7 +657,15 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
         setattr(md, attr, kept or None)
     _apply_data18_edit(md, fields)
     if 'Image' in fields:
-        images = [PlexImage(url=str(i.get('url', '')).strip(), type=str(i.get('type', '')).strip() or 'coverPoster') for i in fields['Image'] or []]
+        images = [
+            PlexImage(
+                url=str(i.get('url', '')).strip(),
+                type=str(i.get('type', '')).strip() or 'coverPoster',
+                priority=True if i.get('priority') else None,
+                rotate=r if (r := int(i.get('rotate') or 0) % 360) in (90, 180, 270) else None,
+            )
+            for i in fields['Image'] or []
+        ]
         md.Image = [i for i in images if i.url] or None
         md.thumb = next((i.url for i in md.Image or [] if i.type == 'coverPoster'), None)
         md.art = next((i.url for i in md.Image or [] if i.type == 'background'), None)

@@ -1053,3 +1053,39 @@ async def test_stale_duplicates_keep_the_newest_copy(tmp_path: pytest.TempPathFa
 
     assert mc.purge_duplicates() == 1
     assert {e['provider'] for e in mc.entries()} == {'BaDoink VR'}
+
+
+@respx.mock
+async def test_saving_a_rotation_rewrites_the_cached_image(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/p.jpg').mock(return_value=httpx.Response(200, content=_jpeg(30, 45), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='Brazzers', title='Sideways Scene')
+    resp.MediaContainer.Metadata[0].Image = [PlexImage(url='https://cdn.example/p.jpg', type='coverPoster')]
+    assert await mc.write('Brazzers', 'rot1', resp) is True
+
+    key = mc.entries()[0]['key']
+    loaded = mc.read('Brazzers', 'rot1')
+    entry = loaded['MediaContainer']['Metadata'][0]['Image'][0]
+    rows = db.connect().execute('SELECT width, height FROM scene_images').fetchall()
+    assert (rows[0]['width'], rows[0]['height']) == (30, 45)
+
+    respx.reset()
+    fields = {'title': 'Sideways Scene', 'Image': [{'url': entry['url'], 'type': entry['type'], 'rotate': 90}]}
+    assert await mc.save_edits(key, fields) == key
+
+    rows = db.connect().execute('SELECT width, height FROM scene_images').fetchall()
+    assert (rows[0]['width'], rows[0]['height']) == (45, 30)
+    after = mc.read('Brazzers', 'rot1')['MediaContainer']['Metadata'][0]['Image'][0]
+    assert 'rotate' not in after
+
+
+def test_an_edit_save_keeps_the_image_priority_flag() -> None:
+    md = _resp(studio='MYLF').MediaContainer.Metadata[0]
+    mc._apply_edits(md, {'title': 'Cool Scene', 'Image': [{'url': '/cache/x/images/a.jpg', 'type': 'coverPoster', 'priority': True}]})
+    assert md.Image is not None
+    assert md.Image[0].priority is True
+    mc._apply_edits(md, {'title': 'Cool Scene', 'Image': [{'url': '/cache/x/images/a.jpg', 'type': 'coverPoster'}]})
+    assert md.Image[0].priority is None
