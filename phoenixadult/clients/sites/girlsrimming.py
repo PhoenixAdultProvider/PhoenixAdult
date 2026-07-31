@@ -54,7 +54,7 @@ class GirlsRimmingClient(Client):
     def _keywords(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
-        return details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
+        return meta_content(details_page_elements, 'keywords', 'name')
 
     async def _resolve_actor_photo(self, actor_name: str, scene: LoadedScene) -> str:
         base = scene.site.base_url.rstrip('/')

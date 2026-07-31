@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 
 def _holder_date(scope: Selector) -> str | None:
@@ -59,11 +59,7 @@ class MomPOVClient(Client):
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.title = (
-            first_text(details_page_elements, '//a[contains(@class,"title")]')
-            or first_attr(details_page_elements, '//meta[@property="og:title"]/@content')
-            or ''
-        )
+        metadata.title = first_text(details_page_elements, '//a[contains(@class,"title")]') or meta_content(details_page_elements, 'og:title', 'property') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 STUDIO = 'Xev Unleashed'
 _XEV_PHOTO = 'https://xevunleashed.com/content//contentthumbs/00/01/1-set-2x.jpg'
@@ -114,7 +114,7 @@ class XevUnleashedClient(Client):
         details_page_elements = scene.require_sel()
 
         actors = [ActorResult(name='Xev Bellringer', photo_url=_XEV_PHOTO)]
-        keywords = (details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').lower()
+        keywords = meta_content(details_page_elements, 'keywords', 'name').lower()
         if 'princess leia' in keywords:
             actors.append(ActorResult(name='Princess Leia'))
 

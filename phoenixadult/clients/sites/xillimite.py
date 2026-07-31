@@ -7,7 +7,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, join_url
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 
@@ -46,7 +46,7 @@ class XillimiteClient(Client):
         details_page_elements = scene.require_sel()
 
         nodes = details_page_elements.xpath('//div[@id="synopsis"]/node()').getall()
-        raw_html = ''.join(nodes) if nodes else (details_page_elements.xpath('(//meta[@name="twitter:description"]/@content)[1]').get() or '')
+        raw_html = ''.join(nodes) if nodes else meta_content(details_page_elements, 'twitter:description', 'name')
         if not raw_html:
             return
 

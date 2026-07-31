@@ -48,3 +48,21 @@ def test_dict_values_from_key_matches_case_insensitively() -> None:
 def test_dict_values_from_key_accepts_a_tuple_of_equivalent_keys() -> None:
     table = {('one-title', 'other-title'): ('Vanessa', 'Vanessa Monet')}
     assert dict_values_from_key(table, 'other-title') == ('Vanessa', 'Vanessa Monet')
+
+
+def test_meta_content_pins_one_attribute_when_asked() -> None:
+    from parsel import Selector
+
+    from phoenixadult.utils.helpers.html_helpers import meta_content
+
+    both = Selector(text='<meta property="twitter:title" content="OG"><meta name="twitter:title" content="CARD">')
+    assert meta_content(both, 'twitter:title') == 'OG'
+    assert meta_content(both, 'twitter:title', 'name') == 'CARD'
+    assert meta_content(both, 'twitter:title', 'property') == 'OG'
+
+    only_property = Selector(text='<meta property="description" content="FROM PROPERTY">')
+    assert meta_content(only_property, 'description') == 'FROM PROPERTY'
+    assert meta_content(only_property, 'description', 'name') == ''
+
+    assert meta_content(Selector(text='<meta name="k" content="  padded  ">'), 'k', 'name') == 'padded'
+    assert meta_content(Selector(text='<meta name="k">'), 'k', 'name') == ''

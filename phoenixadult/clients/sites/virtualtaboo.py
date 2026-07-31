@@ -5,7 +5,7 @@ from typing import Any
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 _CARD_XP = '//a[contains(@class,"video-card__title")]'
 _MODEL_MATCH_SCORE = 90.0
@@ -106,7 +106,7 @@ class VirtualTabooClient(Client):
 
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url((image or '').strip().split('?')[0], base))
-        images['push'](details_page_elements.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        images['push'](meta_content(details_page_elements, 'og:image', 'property'))
         for href in details_page_elements.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
             images['push'](href)
 

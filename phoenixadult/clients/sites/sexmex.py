@@ -7,7 +7,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 _TITLE_FIXES: dict[str, str] = {' Analìa ': ' Analia ', ' Kary ': ' Kari '}
 _TITLE_KEYWORDS: list[str] = ['casting', 'debut', 'mesmerized', 'porn casting', 'pov']
@@ -103,7 +103,7 @@ class SexMexClient(Client):
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        raw = details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or ''
+        raw = meta_content(details_page_elements, 'keywords', 'name')
         actor_lower = {n.lower() for n in self._actor_names(scene)}
         genres: list[str] = []
         for raw_g in raw.split(','):

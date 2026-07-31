@@ -4,7 +4,7 @@ import re
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_text, meta_content
 
 _TITLE_SUFFIX = ' - Sex Movies Featuring Melena Maria Rya'
 
@@ -56,7 +56,7 @@ class MelenaMariaRyaClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.summary = first_attr(details_page_elements, '//meta[@name="description"]/@content') or ''
+        metadata.summary = meta_content(details_page_elements, 'description', 'name')
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Melena Maria Rya'

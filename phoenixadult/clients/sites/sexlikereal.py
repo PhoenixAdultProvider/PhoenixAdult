@@ -4,7 +4,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, web_search_urls
 
 _STUDIO_CLASS = '_euacs6n160'
 _SUMMARY_CLASS = '_s1jg1wcd75'
@@ -122,7 +122,7 @@ class SexLikeRealClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: (image or '').strip().replace('.webp', '.jpg'))
-        images['push'](details_page_elements.xpath('(//meta[@property="og:image"]/@content)[1]').get() or '')
+        images['push'](meta_content(details_page_elements, 'og:image', 'property'))
         for image_url in details_page_elements.xpath(f'//img[contains(@class,"{_COVER_CLASS}")]/@src').getall():
             images['push'](image_url)
 

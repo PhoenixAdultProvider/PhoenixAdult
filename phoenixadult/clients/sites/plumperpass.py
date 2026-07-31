@@ -7,7 +7,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, script_match, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _SCENE_ID_RE = re.compile(r'(?:(?<=\dpp/)|(?<=\dbbwd/)|(?<=\dhsp/)|(?<=\dbbbj/)|(?<=\dpatp/)|(?<=\dftf/)|(?<=\dbgb/))\d+(?=/)')
@@ -123,7 +123,7 @@ class PlumperPassClient(Client):
                 if genre_name and genre_name not in genres:
                     genres.append(genre_name)
         else:
-            for genre_name in (details_page_elements.xpath('(//meta[@name="keywords"]/@content)[1]').get() or '').split(','):
+            for genre_name in meta_content(details_page_elements, 'keywords', 'name').split(','):
                 t = genre_name.strip()
                 if t and t not in genres:
                     genres.append(t)

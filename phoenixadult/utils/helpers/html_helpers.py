@@ -73,5 +73,6 @@ def first_attr(node: Node, xpath: str = 'string(.)') -> str:
     return (node.xpath(xpath).get() or '').strip()
 
 
-def meta_content(node: Selector, key: str) -> str:
-    return (node.xpath(f'(//meta[@property="{key}" or @name="{key}"]/@content)[1]').get() or '').strip()
+def meta_content(node: Selector, key: str, attr: str | None = None) -> str:
+    match = f'@{attr}="{key}"' if attr else f'@property="{key}" or @name="{key}"'
+    return (node.xpath(f'(//meta[{match}]/@content)[1]').get() or '').strip()

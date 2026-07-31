@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
 STUDIO = 'Romero Multimedia'
 _FULLSTORY_ONLY = {'Freeze', 'Plants vs Cunts'}
@@ -92,7 +92,7 @@ class RomeroClient(Client):
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        date = (details_page_elements.xpath('(//meta[@property="article:published_time"]/@content)[1]').get() or '').split('T')[0].strip()
+        date = meta_content(details_page_elements, 'article:published_time', 'property').split('T')[0].strip()
         if date:
             metadata.release_date = iso_date(date, '%Y-%m-%d') or iso_date(date)
             return
