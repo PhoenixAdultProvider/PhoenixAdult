@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -617,3 +619,28 @@ def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     assert 'if (!SFW) {\n          const preview' in editor.text
     assert 'hidden-shot' not in editor.text
     assert 'paintSfwToggle();\n    load();' in editor.text
+
+
+async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('ADMIN_TOKEN', '')
+    from phoenixadult.models.metadata import PlexMetadataResponse
+    from phoenixadult.utils import cache as mc
+
+    resp = PlexMetadataResponse.model_validate(
+        {
+            'MediaContainer': {
+                'identifier': 'i',
+                'size': 1,
+                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Cool Scene', 'studio': 'MYLF', 'tagline': 'MYLF Features'}],
+            }
+        }
+    )
+    assert await mc.write('MYLF', 'slug1', resp) is True
+    key = mc.entries()[0]['key']
+
+    body = TestClient(create_app()).get(f'/metadata/edit?key={key}').text
+    assert '"cool-scene-mylffeatures"' in body
+    assert 'id="d18slug"' in body
+    assert 'id="d18slugCopy"' in body

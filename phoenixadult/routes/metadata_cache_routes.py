@@ -65,10 +65,14 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
     subtitle = f'<code id="subKey">{html.escape(key)}</code>'
+    from phoenixadult.clients.aggregators.data18 import mapping_slug
+
+    slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     body = (
         _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__KEY__', _json_attr(key))
+        .replace('__MAPPING_SLUG__', _json_attr(slug))
         .replace('__METADATA__', _json_attr(md[0]))
     )
     return HTMLResponse(body)

@@ -316,6 +316,9 @@ _MIGRATIONS: list[_Migration] = [
     """
     ALTER TABLE scenes ADD COLUMN data18_also TEXT NOT NULL DEFAULT '';
     """,
+    """
+    ALTER TABLE scene_images ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 _local = threading.local()

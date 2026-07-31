@@ -186,3 +186,27 @@ async def test_actor_names_are_dropped_from_genres(monkeypatch: pytest.MonkeyPat
     assert 'Jane Doe' not in tags
     assert 'Hardcore' in tags
     assert 'Amateur' in tags
+
+
+def test_priority_artwork_outranks_larger_images_within_a_kind() -> None:
+    from phoenixadult.mappers.metadata_mapper import build_artwork
+
+    def probed(url: str, w: int, h: int, cls: str) -> dict[str, object]:
+        return {'url': url, 'dims': {'width': w, 'height': h}, 'image_class': cls}
+
+    valid = [
+        probed('https://d18/cover-front.jpg', 530, 759, 'coverPoster'),
+        probed('https://d18/still-huge.jpg', 1200, 1800, 'coverPoster'),
+        probed('https://d18/back-cover.jpg', 1000, 1500, 'background'),
+        probed('https://d18/wide-huge.jpg', 1920, 1080, 'background'),
+    ]
+    images = build_artwork(valid, priority={'https://d18/cover-front.jpg'})
+
+    posters = [img.url for img in images if img.type == 'coverPoster']
+    assert posters[0] == 'https://d18/cover-front.jpg'
+    assert posters[1] == 'https://d18/still-huge.jpg'
+    assert [img.url for img in images if img.type == 'background'][0] == 'https://d18/wide-huge.jpg'
+    assert next(img for img in images if img.url == 'https://d18/cover-front.jpg').priority is True
+
+    unranked = build_artwork(valid)
+    assert [img.url for img in unranked if img.type == 'coverPoster'][0] == 'https://d18/still-huge.jpg'

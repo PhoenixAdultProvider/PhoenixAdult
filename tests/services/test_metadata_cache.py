@@ -979,3 +979,31 @@ def test_data18_edit_accepts_multiple_ids(monkeypatch: pytest.MonkeyPatch) -> No
 
     mc._apply_data18_edit(md, {'data18_id': ''})
     assert md.data18 is None
+
+
+@respx.mock
+async def test_image_priority_survives_the_store_and_outranks_size(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    image_fetcher._cache.clear()
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    respx.get('https://cdn.example/cover.jpg').mock(return_value=httpx.Response(200, content=_jpeg(30, 45), headers={'content-type': 'image/jpeg'}))
+    respx.get('https://cdn.example/still.jpg').mock(return_value=httpx.Response(200, content=_jpeg(60, 90), headers={'content-type': 'image/jpeg'}))
+
+    resp = _resp(studio='MYLF')
+    resp.MediaContainer.Metadata[0].Image = [
+        PlexImage(url='https://cdn.example/cover.jpg', type='coverPoster', priority=True),
+        PlexImage(url='https://cdn.example/still.jpg', type='coverPoster'),
+    ]
+    assert await mc.write('MYLF', 'p1', resp) is True
+
+    loaded = mc.read('MYLF', 'p1')
+    assert loaded is not None
+    stored = loaded['MediaContainer']['Metadata'][0]['Image']
+    assert [i.get('priority') for i in stored] == [True, None]
+    assert stored[0]['url'].endswith('img-00.jpg')
+
+    again = PlexMetadataResponse.model_validate(loaded)
+    respx.reset()
+    assert await mc.write('MYLF', 'p1', again) is True
+    rewritten = mc.read('MYLF', 'p1')['MediaContainer']['Metadata'][0]['Image']
+    assert [i.get('priority') for i in rewritten] == [True, None]

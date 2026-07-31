@@ -445,7 +445,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'STATE_DB_PATH',
-        'State Database Path',
+        'Database Path',
         'SQLite database (WAL) holding queue replays, the search store, and — since the relational scene '
         'store — PRIMARY scene metadata. Do NOT delete. Keep it on storage only this process touches: '
         'a network mount or an SMB-exported path that another machine can open will corrupt WAL. The app '

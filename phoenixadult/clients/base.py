@@ -97,6 +97,7 @@ class SceneDetail:
     genres: list[str] = field(default_factory=list)
     actors: list[ActorResult] = field(default_factory=list)
     art: list[str] = field(default_factory=list)
+    art_priority: list[str] = field(default_factory=list)
     art_referer: str | None = None
     art_cookie: str | None = None
     release_date: str | None = None
@@ -444,6 +445,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         metadata.data18_url = await self._data18_enricher.enrich_images(
             scope=site.name,
             images=metadata.art if images is None else images,
+            priority=metadata.art_priority,
             scene_id=scene_id,
             title=metadata.title if title is None else title,
             providers=providers,

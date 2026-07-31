@@ -225,7 +225,8 @@ with its kind and a Remove button; a pasted URL is downloaded on save). Notes:
   of three states: *blank* (none recorded), *filled* (the scrape resolved it) or *manual* (typed
   here). Clearing the ID drops the reference. Extra page IDs may follow the first, space or comma
   separated — images are pulled from every page in the order given, which covers a feature split
-  across several Data18 pages. The state is a real column, so `/metadata` can filter
+  across several Data18 pages. The section also shows the scene's computed **mapping slug** with a
+  Copy button, ready to paste into a `data18_manual_mappings*.json` entry. The state is a real column, so `/metadata` can filter
   on it — set **Data18** to *Manual* and **Export Mappings** writes just the hand-made ones to a
   `data18_manual_mappings*.json` you can drop in next to the base mappings file. A later scrape that
   resolves the same ID on its own records it as *filled*.

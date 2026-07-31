@@ -38,14 +38,15 @@ def _year_of(date: str | None) -> int | None:
     return int(date[0:4]) if date and date[0:4].isdigit() else None
 
 
-def _classify_artwork(valid: list[dict[str, Any]]) -> tuple[list[PlexImage], set[str]]:
+def _classify_artwork(valid: list[dict[str, Any]], priority: set[str]) -> tuple[list[PlexImage], set[str]]:
     images: list[PlexImage] = []
     demoted: set[str] = set()
     for p in valid:
+        flag = True if p['url'] in priority else None
         if p['image_class'] in ('coverPoster', 'background', 'backgroundSquare'):
-            images.append(PlexImage(url=p['url'], type=p['image_class']))
+            images.append(PlexImage(url=p['url'], type=p['image_class'], priority=flag))
         elif p['dims']['height'] > p['dims']['width']:
-            images.append(PlexImage(url=p['url'], type='coverPoster'))
+            images.append(PlexImage(url=p['url'], type='coverPoster', priority=flag))
             demoted.add(p['url'])
         else:
             logger.debug(f'Image {p["dims"]["width"]}x{p["dims"]["height"]} unknown: {p["url"]}')
@@ -68,11 +69,11 @@ def _promote_missing_kinds(images: list[PlexImage], valid: list[dict[str, Any]],
             images.append(PlexImage(url=p['url'], type='background'))
 
 
-def build_artwork(valid: list[dict[str, Any]]) -> list[PlexImage]:
+def build_artwork(valid: list[dict[str, Any]], priority: set[str] | None = None) -> list[PlexImage]:
     by_class: dict[str, list[dict[str, Any]]] = {}
     for probed in valid:
         by_class.setdefault(probed['image_class'], []).append(probed)
-    images, demoted = _classify_artwork(valid)
+    images, demoted = _classify_artwork(valid, priority or set())
     _promote_missing_kinds(images, valid, by_class)
     _sort_artwork(images, valid, demoted)
     return images
@@ -84,7 +85,7 @@ def _sort_artwork(images: list[PlexImage], valid: list[dict[str, Any]], demoted:
     first_pos: dict[str, int] = {}
     for idx, img in enumerate(images):
         first_pos.setdefault(img.type, idx)
-    images.sort(key=lambda img: (first_pos[img.type], img.url in held_back, -area.get(img.url, 0)))
+    images.sort(key=lambda img: (first_pos[img.type], not img.priority, img.url in held_back, -area.get(img.url, 0)))
 
 
 def _keep_first_by(probed: list[dict[str, Any]], keys: list[str | None]) -> list[dict[str, Any]]:
@@ -238,11 +239,11 @@ class MetadataMapper:
 
     async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         valid = await self._probe_artwork(detail.art, referers, cookies)
-        images = build_artwork(valid)
+        images = build_artwork(valid, set(detail.art_priority))
 
         thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
         art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)
-        images_proxied = [PlexImage(url=self._proxy(img.url, referers, cookies) or img.url, type=img.type) for img in images]
+        images_proxied = [PlexImage(url=self._proxy(img.url, referers, cookies) or img.url, type=img.type, priority=img.priority) for img in images]
         return self._proxy(thumb_raw, referers, cookies), self._proxy(art_raw, referers, cookies), images_proxied
 
     async def _resolve_people(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[list[PlexRole], list[PlexRole], list[PlexRole]]:

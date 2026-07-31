@@ -440,6 +440,7 @@ class Data18Client(Client):
         forced_url: str | None = None,
         kind: Data18Kind = 'scene',
         allow_square: bool = True,
+        priority: list[str] | None = None,
     ) -> str | None:
         with best_effort(scope, 'data18 enrichment'):
             url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
@@ -447,7 +448,7 @@ class Data18Client(Client):
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
                 ref = data18_ref(url)
                 for page_url in [url, *manual_mapping_extras(url)]:
-                    fetched = await (self.fetch_movie_images(page_url) if ref and ref['type'] == 'movie' else self.fetch_images(page_url))
+                    fetched = await (self.fetch_movie_images(page_url, covers=priority) if ref and ref['type'] == 'movie' else self.fetch_images(page_url))
                     if not allow_square:
                         fetched = await self._drop_square(scope, fetched)
 
@@ -639,7 +640,7 @@ class Data18Client(Client):
 
         return out
 
-    async def fetch_movie_images(self, movie_url: str, page_sel: Selector | None = None) -> list[str]:
+    async def fetch_movie_images(self, movie_url: str, page_sel: Selector | None = None, covers: list[str] | None = None) -> list[str]:
         out: list[str] = []
         sel = page_sel
         if sel is None:
@@ -650,9 +651,14 @@ class Data18Client(Client):
         def add(u: str | None) -> None:
             append_unique(out, u)
 
-        add(sel.xpath('//a[@id="enlargecover"][1]/@data-featherlight').get())
-        add(sel.xpath('//img[@id="backcoverzone"][1]/@src').get())
-        add(sel.xpath('//img[@id="imgposter"][1]/@src').get())
+        def add_cover(u: str | None) -> None:
+            add(u)
+            if covers is not None:
+                append_unique(covers, u)
+
+        add_cover(sel.xpath('//a[@id="enlargecover"][1]/@data-featherlight').get())
+        add_cover(sel.xpath('//img[@id="backcoverzone"][1]/@src').get())
+        add_cover(sel.xpath('//img[@id="imgposter"][1]/@src').get())
         for u in sel.xpath('//img[contains(@src,"th8")]/@src').getall():
             add(_clean_thumb(u))
 

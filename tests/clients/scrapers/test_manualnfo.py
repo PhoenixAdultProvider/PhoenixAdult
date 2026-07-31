@@ -259,7 +259,7 @@ async def test_detail_nested_data18_movie_fetches_movie_images(tmp_path: Path, m
         async def fetch_images(self, scene_url: str) -> list[str]:
             raise AssertionError('a movie ref must use fetch_movie_images')
 
-        async def fetch_movie_images(self, movie_url: str, page_sel: object = None) -> list[str]:
+        async def fetch_movie_images(self, movie_url: str, page_sel: object = None, covers: list[str] | None = None) -> list[str]:
             fetched.append(movie_url)
             return ['https://cdn.data18.com/movie.jpg']
 

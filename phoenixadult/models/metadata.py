@@ -12,6 +12,7 @@ class _Model(BaseModel):
 class PlexImage(_Model):
     url: str
     type: str
+    priority: bool | None = None
 
 
 class PlexRole(_Model):

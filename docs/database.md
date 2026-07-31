@@ -229,7 +229,8 @@ CREATE TABLE scene_images (
   width    INTEGER,
   height   INTEGER,
   bytes    INTEGER,
-  pos      INTEGER NOT NULL
+  pos      INTEGER NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX scene_images_scene ON scene_images(scene_id);
 ```
@@ -331,6 +332,11 @@ rather than a SQL script — `_MIGRATIONS` accepts either.
 `scenes.data18_also` holds any extra Data18 page IDs, comma-joined; a manual mapping's `"also"`
 list lands here and round-trips through the snapshot as `data18.also`, so image enrichment can walk
 a feature split across several pages, primary first.
+
+`scene_images.priority` marks artwork that outranks resolution when the snapshot is reassembled —
+each kind serves flagged rows first, then largest-first as before. Data18 movie covers (front, back,
+poster) are flagged at scrape time, so a real DVD cover beats a bigger gallery still and becomes the
+thumb. It round-trips through the snapshot as `priority` on the image entry, set only when true.
 
 `scenes.data18_manual` marks a Data18 reference typed into the snapshot editor rather than resolved
 by a scrape, giving the reference three states: blank (no id), filled (scraped) and manual. The

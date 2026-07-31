@@ -220,7 +220,7 @@ async def test_enrich_images_routes_by_resolved_url_type(monkeypatch: pytest.Mon
         calls.append(f'scene:{url}')
         return ['https://cdn.example/s.jpg']
 
-    async def fake_movie(url: str, page_sel: object = None) -> list[str]:
+    async def fake_movie(url: str, page_sel: object = None, covers: list[str] | None = None) -> list[str]:
         calls.append(f'movie:{url}')
         return ['https://cdn.example/m.jpg']
 
@@ -322,3 +322,19 @@ async def test_enrich_images_walks_every_mapped_page_in_order(monkeypatch: pytes
         'https://www.data18.com/scenes/1377300',
     ]
     assert images == [f'{u}/img.jpg' for u in fetched]
+
+
+async def test_movie_enrichment_reports_cover_urls_as_priority(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = Data18Client()
+
+    async def fake_movie(url: str, page_sel: object = None, covers: list[str] | None = None) -> list[str]:
+        if covers is not None:
+            covers.append('https://cdn.example/front-cover.jpg')
+        return ['https://cdn.example/front-cover.jpg', 'https://cdn.example/still.jpg']
+
+    monkeypatch.setattr(client, 'fetch_movie_images', fake_movie)
+    images: list[str] = []
+    priority: list[str] = []
+    await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/movies/1227431', priority=priority)
+    assert priority == ['https://cdn.example/front-cover.jpg']
+    assert images[0] == 'https://cdn.example/front-cover.jpg'

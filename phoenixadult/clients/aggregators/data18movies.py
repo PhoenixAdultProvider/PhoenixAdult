@@ -193,4 +193,4 @@ class Data18MoviesClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.data18_url = scene.url
 
-        metadata.art = await self._data18.fetch_movie_images(scene.url, scene.sel)
+        metadata.art = await self._data18.fetch_movie_images(scene.url, scene.sel, covers=metadata.art_priority)

@@ -29,6 +29,9 @@
     textarea { min-height: 110px; resize: vertical; }
     input:focus, textarea:focus { outline: 0; border-color: #2563eb; }
     .hint { font-size: 11px; color: #475569; margin-top: 3px; }
+    .slugrow { display: flex; align-items: center; gap: 8px; }
+    .slugrow code { flex: 1 1 auto; font-size: 12px; color: #93c5fd; background: #0b0d12; border: 1px solid #2d3748; border-radius: 4px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
+    .slugrow button { flex: 0 0 auto; padding: 5px 12px; font-size: 12px; }
 
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
     .chip { display: inline-flex; align-items: center; gap: 6px; background: #1e2433; border: 1px solid #334155; border-radius: 20px; padding: 3px 6px 3px 11px; font-size: 12px; }
@@ -110,6 +113,8 @@
           <option value="scene">scene</option>
           <option value="movie">movie</option>
         </select>
+        <label>Mapping Slug</label>
+        <div class="slugrow"><code id="d18slug"></code><button type="button" id="d18slugCopy">Copy</button></div>
         <div class="hint">State: <span id="d18state"></span>. Typing an ID here marks it <b>manual</b>, which
           the cache list can filter on so hand-made mappings export on their own. Clearing it drops the ref.</div>
       </fieldset>
@@ -169,6 +174,7 @@
     const TOKEN = __TOKEN__;
     let KEY = __KEY__;
     let MD = __METADATA__;
+    const MAPPING_SLUG = __MAPPING_SLUG__;
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
     try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
@@ -267,6 +273,27 @@
       return 'manual';
     }
 
+    function initMappingSlug() {
+      const el = qs('d18slug');
+      el.textContent = MAPPING_SLUG || '(no slug — title empty)';
+      qs('d18slugCopy').addEventListener('click', async () => {
+        const btn = qs('d18slugCopy');
+        try {
+          await navigator.clipboard.writeText(MAPPING_SLUG);
+          btn.textContent = 'Copied';
+        } catch {
+          const r = document.createRange();
+          r.selectNodeContents(el);
+          const s = getSelection();
+          s.removeAllRanges();
+          s.addRange(r);
+          btn.textContent = document.execCommand('copy') ? 'Copied' : 'Copy failed';
+          s.removeAllRanges();
+        }
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+      });
+    }
+
     function renderData18State() {
       const state = data18State();
       const box = qs('d18state');
@@ -284,6 +311,7 @@
       qs('f-data18Id').value = [(MD.data18 || {}).id, ...((MD.data18 || {}).also || [])].filter(Boolean).join(' ');
       qs('f-data18Type').value = (MD.data18 || {}).type || 'scene';
       renderData18State();
+      initMappingSlug();
       LISTS.Genre = (MD.Genre || []).map(g => g.tag);
       LISTS.Collection = (MD.Collection || []).map(c => c.tag);
       LISTS.Role = (MD.Role || []).map(r => r.tag);

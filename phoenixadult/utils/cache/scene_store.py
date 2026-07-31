@@ -140,8 +140,8 @@ def upsert(
                 continue
             width, height, size = dims.get(url, (None, None, None))
             conn.execute(
-                'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos) VALUES(?, ?, ?, ?, ?, ?, ?)',
-                (scene_id, str(img.get('type') or ''), url, width, height, size, pos),
+                'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
+                (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority')))),
             )
 
 
@@ -171,13 +171,19 @@ def _people_lists(conn: sqlite3.Connection, scene_id: int) -> dict[str, list[dic
     return out
 
 
-def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, str]]:
-    rows = conn.execute('SELECT kind, rel_path, width, height, pos FROM scene_images WHERE scene_id = ? ORDER BY pos', (scene_id,)).fetchall()
+def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, Any]]:
+    rows = conn.execute('SELECT kind, rel_path, width, height, pos, priority FROM scene_images WHERE scene_id = ? ORDER BY pos', (scene_id,)).fetchall()
     first_pos: dict[str, int] = {}
     for row in rows:
         first_pos.setdefault(str(row['kind']), int(row['pos']))
-    ordered = sorted(rows, key=lambda r: (first_pos[str(r['kind'])], -(int(r['width'] or 0) * int(r['height'] or 0)), int(r['pos'])))
-    return [{'url': str(r['rel_path']), 'type': str(r['kind'])} for r in ordered]
+    ordered = sorted(rows, key=lambda r: (first_pos[str(r['kind'])], -int(r['priority']), -(int(r['width'] or 0) * int(r['height'] or 0)), int(r['pos'])))
+    out: list[dict[str, Any]] = []
+    for r in ordered:
+        img: dict[str, Any] = {'url': str(r['rel_path']), 'type': str(r['kind'])}
+        if r['priority']:
+            img['priority'] = True
+        out.append(img)
+    return out
 
 
 def load(scene_hash: str) -> dict[str, Any] | None:
