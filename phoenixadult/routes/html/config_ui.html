@@ -112,6 +112,8 @@
     .logview:focus-visible { outline: 1px solid #6366f1; outline-offset: -1px; }
     .logview .ln { display: block; width: max-content; min-width: 100%; }
     .logview .ln.hide { display: none; }
+    .logview a { color: #7dd3fc; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+    .logview a:hover, .logview a:focus-visible { color: #bae6fd; }
     .logview .empty { color: #475569; }
     .log-filter { flex: 1 1 200px; min-width: 140px; font-size: 0.8rem; padding: 0.35rem 0.5rem; }
     .log-toolbar select { font-size: 0.8rem; padding: 0.3rem 0.4rem; }
@@ -1273,6 +1275,8 @@
 
     const LOG_POLL_MS = 3000;
     const LOG_BOTTOM_SLACK = 24;
+    const LOG_URL_RE = /https?:\/\/[^\s<>"']+/g;
+    const LOG_URL_TRAIL = /[.,;:!?)\]}>'"]+$/;
     const LOG_CHOICES = [50, 100, 200, 500, 1000];
     let logSeq = 0;
     let logMax = 200;
@@ -1307,7 +1311,22 @@
     function logRow(text) {
       const row = document.createElement('div');
       row.className = 'ln' + (logMatches(text) ? '' : ' hide');
-      row.textContent = text;
+      let last = 0;
+      LOG_URL_RE.lastIndex = 0;
+      for (let m; (m = LOG_URL_RE.exec(text)); ) {
+        const url = m[0].replace(LOG_URL_TRAIL, '');
+        if (!url) continue;
+        if (m.index > last) row.appendChild(document.createTextNode(text.slice(last, m.index)));
+        const link = document.createElement('a');
+        link.href = url;
+        link.textContent = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        row.appendChild(link);
+        last = m.index + url.length;
+      }
+      if (last < text.length) row.appendChild(document.createTextNode(text.slice(last)));
+      if (!row.firstChild) row.textContent = text;
       return row;
     }
 
