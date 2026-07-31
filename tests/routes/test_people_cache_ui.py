@@ -365,3 +365,22 @@ def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> 
     assert "c.dataset.single === '1'" in body
     assert body.count('data-single="1"') == 2
     assert body.count('data-single="0"') == 2
+
+
+def test_every_filter_toggle_has_an_active_style(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', '')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    body = TestClient(create_app()).get('/people').text
+
+    for css in ('.croptoggle.on', '.noupstream.on', '.genericonly.on', '.singleonly.on'):
+        assert css in body, f'{css} has no active style'
+
+
+def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', '')
+    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    body = TestClient(create_app()).get('/people').text
+
+    assert 'function refreshSourceOptions(t)' in body
+    assert 'refreshSourceOptions(t);' in body
+    assert "if(cur && cur.hidden) picker.value = '';" in body

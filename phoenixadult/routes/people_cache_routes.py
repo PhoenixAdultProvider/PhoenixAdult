@@ -254,6 +254,8 @@ async def page(request: Request) -> HTMLResponse:
       .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
       .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
       .noupstream.on{{background:#7c2d12;color:#fff;border-color:#ea580c}}
+      .genericonly.on{{background:#4c1d95;color:#fff;border-color:#8b5cf6}}
+      .singleonly.on{{background:#134e4a;color:#fff;border-color:#14b8a6}}
       .tab .cnt{{opacity:.65;font-size:11px}}
       @media (max-width:720px){{
         body{{padding:14px}}
@@ -378,10 +380,27 @@ async def page(request: Request) -> HTMLResponse:
         document.getElementById('genericToggle').classList.toggle('on', genericOnly);
         document.getElementById('singleToggle').classList.toggle('on', singleOnly);
       }}
+      function refreshSourceOptions(t){{
+        const picker = document.getElementById('sourceFilter');
+        const present = new Set();
+        let blank = false;
+        document.querySelectorAll('.card').forEach(c=>{{
+          if(c.dataset.type!==t) return;
+          const s = c.dataset.source || '';
+          if(s) present.add(s); else blank = true;
+        }});
+        for(const o of picker.options){{
+          if(!o.value) continue;
+          o.hidden = o.value==='__blank__' ? !blank : !present.has(o.value);
+        }}
+        const cur = picker.selectedOptions[0];
+        if(cur && cur.hidden) picker.value = '';
+      }}
       function showTab(t){{
         curTab = t;
         history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
         document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+        refreshSourceOptions(t);
         const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
         const wanted = document.getElementById('sourceFilter').value;
         let n=0;
