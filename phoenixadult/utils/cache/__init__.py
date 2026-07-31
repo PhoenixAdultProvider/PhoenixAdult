@@ -96,23 +96,28 @@ def _data18_fingerprint(response: PlexMetadataResponse) -> str:
     return manual_mapping_url(mapping_slug(md.title or '', md.tagline or md.studio)) or ''
 
 
-def _stored_data18(response: PlexMetadataResponse) -> dict[str, str] | None:
+def _stored_data18(response: PlexMetadataResponse) -> dict[str, Any] | None:
     try:
         d = response.MediaContainer.Metadata[0].data18
     except (AttributeError, IndexError):
         return None
-    return {'type': d.type, 'id': d.id} if d else None
+    if not d:
+        return None
+    stored: dict[str, Any] = {'type': d.type, 'id': d.id}
+    if d.also:
+        stored['also'] = list(d.also)
+    return stored
 
 
 def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
-    from phoenixadult.clients.aggregators.data18 import data18_ref
+    from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras
 
     if not env.data18_enabled:
         return False
     site = find_site(site_name)
     if not site or not site.scraper_config.data18_enrichment:
         return False
-    manual = data18_ref(_data18_fingerprint(response))
+    manual = data18_ref_with_extras(_data18_fingerprint(response))
     return manual is not None and manual != _stored_data18(response)
 
 
@@ -128,7 +133,7 @@ def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bo
 async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
     from datetime import datetime
 
-    from phoenixadult.clients.aggregators.data18 import Data18Client, data18_ref, mapping_slug
+    from phoenixadult.clients.aggregators.data18 import Data18Client, data18_ref_with_extras, mapping_slug
     from phoenixadult.models.metadata import PlexData18
 
     if not env.data18_enabled:
@@ -153,7 +158,7 @@ async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> boo
         except Exception as err:  # noqa: BLE001 — backfill must never break the serve
             logger.warn('meta-cache', f'data18 backfill resolve failed for "{md.title}": {err}')
             continue
-        if ref := data18_ref(url):
+        if ref := data18_ref_with_extras(url):
             md.data18 = PlexData18.model_validate(ref)
             changed = True
     return changed
@@ -452,6 +457,7 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
         'data18_id': row['data18_id'],
         'data18_type': row['data18_type'],
         'data18_manual': row['data18_manual'],
+        'data18_also': row['data18_also'],
         'mapping_slug': mapping_slug(row['title'], row['tagline'] or row['studio'] or None) or '',
     }
 
@@ -601,15 +607,16 @@ def load_for_edit(key: str) -> dict[str, Any] | None:
 def _apply_data18_edit(md: PlexMetadata, fields: dict[str, Any]) -> None:
     if 'data18_id' not in fields:
         return
-    edited = str(fields['data18_id'] or '').strip()
-    if not edited:
+    ids = [p for p in re.split(r'[\s,]+', str(fields['data18_id'] or '').strip()) if p]
+    if not ids:
         md.data18 = None
         return
+    primary, extras = ids[0], ids[1:]
     raw_type = str(fields.get('data18_type') or '').strip() or (md.data18.type if md.data18 else '')
     kind: Literal['scene', 'movie'] = 'movie' if raw_type == 'movie' else 'scene'
-    if md.data18 and md.data18.id == edited and md.data18.type == kind:
+    if md.data18 and md.data18.id == primary and md.data18.type == kind and (md.data18.also or []) == extras:
         return
-    md.data18 = PlexData18(type=kind, id=edited, manual=True)
+    md.data18 = PlexData18(type=kind, id=primary, manual=True, also=extras or None)
 
 
 def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:

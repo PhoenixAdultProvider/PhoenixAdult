@@ -36,6 +36,7 @@ _SCENE_COLUMNS = (
     'data18_type',
     'data18_id',
     'data18_manual',
+    'data18_also',
     'thumb',
     'art',
     'studio_id',
@@ -106,6 +107,7 @@ def upsert(
                 d18.get('type'),
                 d18.get('id'),
                 int(bool(d18.get('manual'))),
+                ','.join(d18.get('also') or []),
                 md.get('thumb'),
                 md.get('art'),
                 studio_id,
@@ -196,6 +198,8 @@ def load(scene_hash: str) -> dict[str, Any] | None:
         md['tagline'] = row['tagline_name']
     if row['data18_type']:
         md['data18'] = {'type': row['data18_type'], 'id': row['data18_id']}
+        if row['data18_also']:
+            md['data18']['also'] = str(row['data18_also']).split(',')
         if row['data18_manual']:
             md['data18']['manual'] = True
     if row['content_rating'] is not None:
@@ -384,7 +388,7 @@ def scene_keys() -> list[tuple[str, str, str]]:
 
 
 _SUMMARY_SELECT = (
-    'SELECT s.id, s.rel_path, s.site, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, '
+    'SELECT s.id, s.rel_path, s.site, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, s.data18_also, '
     'st.name AS studio, tl.name AS tagline, COUNT(si.id) AS images, '
     '(SELECT COUNT(*) FROM scene_genres sg WHERE sg.scene_id = s.id) AS genres '
 )
@@ -416,6 +420,7 @@ def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]], actors: dict
         'updated_at': float(r['updated_at']),
         'data18_id': str(r['data18_id'] or ''),
         'data18_type': str(r['data18_type'] or ''),
+        'data18_also': str(r['data18_also'] or ''),
         'data18_manual': bool(r['data18_manual']),
     }
 

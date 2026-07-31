@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import data18_ref
+from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras
 from phoenixadult.clients.base import SceneDetail, SearchResult
 from phoenixadult.config import config, image_base_url
 from phoenixadult.models.metadata import (
@@ -195,7 +195,7 @@ class MetadataMapper:
             originalTitle=detail.original_title,
             summary=normalize_text(detail.summary) or None,
             tagline=tagline,
-            data18=PlexData18.model_validate(ref) if (ref := data18_ref(detail.data18_url)) else None,
+            data18=PlexData18.model_validate(ref) if (ref := data18_ref_with_extras(detail.data18_url)) else None,
             studio=studio,
             contentRating='XXX',
             isAdult=True,

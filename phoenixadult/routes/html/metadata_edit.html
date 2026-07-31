@@ -104,7 +104,7 @@
       <fieldset>
         <legend>Data18</legend>
         <label for="f-data18Id">Data18 ID</label>
-        <input type="text" id="f-data18Id" placeholder="e.g. 123456">
+        <input type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated">
         <label for="f-data18Type">Data18 Type</label>
         <select id="f-data18Type">
           <option value="scene">scene</option>
@@ -254,11 +254,16 @@
       });
     }
 
+    function data18Ids() {
+      return qs('f-data18Id').value.trim().split(/[\s,]+/).filter(Boolean);
+    }
+
     function data18State() {
-      const id = qs('f-data18Id').value.trim();
-      if (!id) return 'blank';
+      const ids = data18Ids();
+      if (!ids.length) return 'blank';
       const stored = MD.data18 || {};
-      if (id === (stored.id || '') && qs('f-data18Type').value === (stored.type || 'scene')) return stored.manual ? 'manual' : 'filled';
+      const storedIds = [stored.id, ...(stored.also || [])].filter(Boolean);
+      if (ids.join(',') === storedIds.join(',') && qs('f-data18Type').value === (stored.type || 'scene')) return stored.manual ? 'manual' : 'filled';
       return 'manual';
     }
 
@@ -276,7 +281,7 @@
       qs('f-studio').value = MD.studio || '';
       qs('f-tagline').value = MD.tagline || '';
       qs('f-summary').value = MD.summary || '';
-      qs('f-data18Id').value = (MD.data18 || {}).id || '';
+      qs('f-data18Id').value = [(MD.data18 || {}).id, ...((MD.data18 || {}).also || [])].filter(Boolean).join(' ');
       qs('f-data18Type').value = (MD.data18 || {}).type || 'scene';
       renderData18State();
       LISTS.Genre = (MD.Genre || []).map(g => g.tag);

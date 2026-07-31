@@ -288,3 +288,37 @@ def test_manual_mappings_merge_sibling_files(tmp_path: pytest.TempPathFactory) -
         '2': {'slug': 'brazzers-wins', 'type': 'movie'},
         '3': {'slug': 'cosplay-scene', 'type': 'scene'},
     }
+
+
+def test_multi_page_mapping_resolves_primary_and_extras() -> None:
+    from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras, manual_mapping_extras
+
+    url = manual_mapping_url('everyone-cums-everywhere-all-at-once-mylffeatures')
+    assert url == 'https://www.data18.com/scenes/1341861'
+    assert manual_mapping_extras(url) == ['https://www.data18.com/scenes/1341863', 'https://www.data18.com/scenes/1377300']
+    assert manual_mapping_extras('https://www.data18.com/scenes/169646') == []
+    assert manual_mapping_extras(None) == []
+
+    ref = data18_ref_with_extras(url)
+    assert ref == {'type': 'scene', 'id': '1341861', 'also': ['1341863', '1377300']}
+    assert data18_ref_with_extras('https://www.data18.com/scenes/169646') == {'type': 'scene', 'id': '169646'}
+
+
+async def test_enrich_images_walks_every_mapped_page_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    fetched: list[str] = []
+
+    class Probe(Data18Client):
+        async def fetch_images(self, scene_url: str) -> list[str]:
+            fetched.append(scene_url)
+            return [f'{scene_url}/img.jpg']
+
+    images: list[str] = []
+    url = await Probe().enrich_images(scope='t', images=images, scene_id='everyone-cums-everywhere-all-at-once-mylffeatures')
+    assert url == 'https://www.data18.com/scenes/1341861'
+    assert fetched == [
+        'https://www.data18.com/scenes/1341861',
+        'https://www.data18.com/scenes/1341863',
+        'https://www.data18.com/scenes/1377300',
+    ]
+    assert images == [f'{u}/img.jpg' for u in fetched]

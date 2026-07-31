@@ -174,6 +174,7 @@ CREATE TABLE scenes (
   data18_type     TEXT,
   data18_id       TEXT,
   data18_manual   INTEGER NOT NULL DEFAULT 0,
+  data18_also     TEXT NOT NULL DEFAULT '',
   thumb           TEXT,
   art             TEXT,
   studio_id       INTEGER REFERENCES studios(id),
@@ -326,6 +327,10 @@ a scene image by elimination. This is the first migration step that is a Python 
 rather than a SQL script — `_MIGRATIONS` accepts either.
 
 ## Schema Version 6 — Manual Data18 References
+
+`scenes.data18_also` holds any extra Data18 page IDs, comma-joined; a manual mapping's `"also"`
+list lands here and round-trips through the snapshot as `data18.also`, so image enrichment can walk
+a feature split across several pages, primary first.
 
 `scenes.data18_manual` marks a Data18 reference typed into the snapshot editor rather than resolved
 by a scrape, giving the reference three states: blank (no id), filled (scraped) and manual. The

@@ -939,3 +939,43 @@ async def test_a_scene_that_never_had_a_thumb_does_not_gain_one(tmp_path: Path, 
     stored = mc.read('Brazzers', 'nothumb1')['MediaContainer']['Metadata'][0]
     assert len(stored['Image']) == 1
     assert 'thumb' not in stored
+
+
+async def test_data18_also_survives_the_store_roundtrip(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    d18 = {'type': 'movie', 'id': '1341861', 'also': ['1341863', '1377300']}
+    assert await mc.write('MYLF', 'm1', _resp(studio='MYLF', tagline='MYLF Features', data18=d18)) is True
+
+    loaded = mc.read('MYLF', 'm1')
+    assert loaded is not None
+    stored = loaded['MediaContainer']['Metadata'][0]['data18']
+    assert stored['id'] == '1341861'
+    assert stored['also'] == ['1341863', '1377300']
+
+    entry = next(e for e in mc.entries() if e['studio'] == 'MYLF')
+    assert entry['data18_also'] == '1341863,1377300'
+
+
+def test_data18_remap_needed_sees_added_extra_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    resp = _md_resp('Everyone Cums Everywhere All at Once', 'MYLF Features')
+
+    resp.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='1341861')
+    assert mc.data18_remap_needed(resp, 'MYLF') is True
+
+    resp.MediaContainer.Metadata[0].data18 = PlexData18(type='scene', id='1341861', also=['1341863', '1377300'])
+    assert mc.data18_remap_needed(resp, 'MYLF') is False
+
+
+def test_data18_edit_accepts_multiple_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    md = _resp(studio='MYLF').MediaContainer.Metadata[0]
+    mc._apply_data18_edit(md, {'data18_id': '1341861 1341863, 1377300', 'data18_type': 'movie'})
+    assert md.data18 is not None
+    assert (md.data18.id, md.data18.also, md.data18.manual) == ('1341861', ['1341863', '1377300'], True)
+
+    mc._apply_data18_edit(md, {'data18_id': '1341861', 'data18_type': 'movie'})
+    assert md.data18 is not None and md.data18.also is None
+
+    mc._apply_data18_edit(md, {'data18_id': ''})
+    assert md.data18 is None

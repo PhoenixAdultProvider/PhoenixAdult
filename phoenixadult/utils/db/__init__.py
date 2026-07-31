@@ -313,6 +313,9 @@ _MIGRATIONS: list[_Migration] = [
     """,
     _fold_case_duplicate_names,
     _fold_recased_duplicate_names,
+    """
+    ALTER TABLE scenes ADD COLUMN data18_also TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 _local = threading.local()

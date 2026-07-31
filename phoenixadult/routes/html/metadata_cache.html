@@ -544,7 +544,7 @@
           : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb)}" loading="lazy" alt="">` : '<div class="noimg">No Image</div>'}</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
-          ? esc(e.data18_id) + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
+          ? esc(e.data18_id) + (e.data18_also ? ' <span class="manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="manual">manual</span>' : '')
           : '<span class="blank">—</span>';
         const actors = (e.actors || []).length
           ? `<div class="c-actors" data-label="Actors">${esc((e.actors || []).join(', '))}</div>`
@@ -596,9 +596,10 @@
     async function exportShown() {
       const rows = await fetchAllMatching();
       if (!rows || !rows.length) return;
-      const lines = rows.map(e =>
-        `  ${JSON.stringify(e.data18_id || '')}: { "slug": ${JSON.stringify(e.mapping_slug || '')}, "type": ${JSON.stringify(e.data18_type || 'scene')} }`
-      );
+      const lines = rows.map(e => {
+        const also = e.data18_also ? `, "also": ${JSON.stringify(e.data18_also.split(','))}` : '';
+        return `  ${JSON.stringify(e.data18_id || '')}: { "slug": ${JSON.stringify(e.mapping_slug || '')}, "type": ${JSON.stringify(e.data18_type || 'scene')}${also} }`;
+      });
       const blob = new Blob(['{\n' + lines.join(',\n') + '\n}\n'], {type: 'application/json'});
       // Name per the active filter (tagline > collection > studio) so the file drops
       // straight in next to the base mappings file.

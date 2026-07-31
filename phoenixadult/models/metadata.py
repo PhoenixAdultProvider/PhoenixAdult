@@ -40,6 +40,7 @@ class PlexData18(_Model):
     type: Literal['scene', 'movie']
     id: str
     manual: bool | None = None
+    also: list[str] | None = None
 
 
 class PlexCollection(_Model):

@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 from urllib.parse import urljoin, urlsplit
 
 import httpx2
@@ -44,6 +44,7 @@ Data18Kind = Literal['scene', 'movie']
 class ManualMapping(TypedDict):
     slug: str | list[str]
     type: Data18Kind
+    also: NotRequired[list[str]]
 
 
 def _load_manual_mappings(caller_file: str = __file__) -> dict[str, ManualMapping]:
@@ -81,6 +82,27 @@ def manual_mapping_url(mapping_key: str | None) -> str | None:
             return f'{_BASE}/{"movies" if entry["type"] == "movie" else "scenes"}/{d18}'
 
     return None
+
+
+def manual_mapping_extras(url: str | None) -> list[str]:
+    ref = data18_ref(url)
+    if not ref:
+        return []
+    entry = DATA18_MANUAL_MAPPINGS.get(ref['id'])
+    if not entry:
+        return []
+    segment = 'movies' if entry['type'] == 'movie' else 'scenes'
+    return [f'{_BASE}/{segment}/{extra}' for extra in entry.get('also', [])]
+
+
+def data18_ref_with_extras(url: str | None) -> dict[str, Any] | None:
+    ref: dict[str, Any] | None = data18_ref(url)
+    if not ref:
+        return None
+    entry = DATA18_MANUAL_MAPPINGS.get(str(ref['id']))
+    if entry and entry.get('also'):
+        ref['also'] = list(entry['also'])
+    return ref
 
 
 def xp_ns(sel: Any, xpath: str) -> str:
@@ -424,12 +446,13 @@ class Data18Client(Client):
             if url:
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
                 ref = data18_ref(url)
-                fetched = await (self.fetch_movie_images(url) if ref and ref['type'] == 'movie' else self.fetch_images(url))
-                if not allow_square:
-                    fetched = await self._drop_square(scope, fetched)
+                for page_url in [url, *manual_mapping_extras(url)]:
+                    fetched = await (self.fetch_movie_images(page_url) if ref and ref['type'] == 'movie' else self.fetch_images(page_url))
+                    if not allow_square:
+                        fetched = await self._drop_square(scope, fetched)
 
-                for u in fetched:
-                    append_unique(images, u)
+                    for u in fetched:
+                        append_unique(images, u)
 
                 return url
 
