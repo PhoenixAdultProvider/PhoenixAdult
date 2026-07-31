@@ -194,7 +194,7 @@ async def entries_json(
     director: str = '',
     producer: str = '',
     provider: str = '',
-    dups: int = Query(0, ge=0, le=1),
+    dups: int = Query(0, ge=0, le=2),
     sort: str = 'updated_at',
     direction: str = Query('desc', alias='dir'),
     limit: int = Query(500, ge=0, le=1000),
@@ -203,6 +203,7 @@ async def entries_json(
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
     dup_keys = await run_in('store', metadata_cache.duplicate_entries)
+    show_paths = await run_in('store', metadata_cache.content_duplicate_entries) if dups == 2 else dup_keys
     scope: dict[str, Any] = {
         'studio': studio,
         'query': query,
@@ -218,7 +219,7 @@ async def entries_json(
         'director': director,
         'producer': producer,
         'provider': provider,
-        'dup_paths': dup_keys if dups else None,
+        'dup_paths': show_paths if dups else None,
     }
     (entries, total), studios, facets = await asyncio.gather(
         run_in(
@@ -239,7 +240,7 @@ async def entries_json(
                 producer=producer,
                 provider=provider,
                 dups_only=bool(dups),
-                dup_paths=dup_keys,
+                dup_paths=show_paths,
                 sort=sort,
                 direction=direction,
                 limit=limit if limit > 0 else -1,

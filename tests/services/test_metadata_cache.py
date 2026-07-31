@@ -1007,3 +1007,27 @@ async def test_image_priority_survives_the_store_and_outranks_size(tmp_path: Pat
     assert await mc.write('MYLF', 'p1', again) is True
     rewritten = mc.read('MYLF', 'p1')['MediaContainer']['Metadata'][0]['Image']
     assert [i.get('priority') for i in rewritten] == [True, None]
+
+
+async def test_content_duplicates_match_on_normalized_quad(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    a = _resp(title="Mother's Day!", studio='Team Skeet', tagline='Mom Swap')
+    a.MediaContainer.Metadata[0].originallyAvailableAt = '2024-05-12'
+    b = _resp(title='mothers day', studio='TeamSkeet', tagline='MomSwap')
+    b.MediaContainer.Metadata[0].originallyAvailableAt = '2024-05-12'
+    c = _resp(title='mothers day', studio='TeamSkeet', tagline='Sis Swap')
+    c.MediaContainer.Metadata[0].originallyAvailableAt = '2024-05-12'
+    d = _resp(title='mothers day', studio='TeamSkeet', tagline='MomSwap')
+    d.MediaContainer.Metadata[0].originallyAvailableAt = '2024-06-01'
+
+    for cur, resp in (('d1', a), ('d2', b), ('d3', c), ('d4', d)):
+        assert await mc.write('TeamSkeet', cur, resp) is True
+
+    dupes = mc.content_duplicate_entries()
+    by_cur = {e['key']: e for e in mc.entries()}
+    flagged = {k for k in by_cur if by_cur[k]['key'] in dupes}
+    assert len(dupes) == 2
+    titles = {by_cur[k]['tagline'] for k in flagged}
+    assert titles == {'Mom Swap', 'MomSwap'}

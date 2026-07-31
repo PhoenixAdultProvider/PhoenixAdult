@@ -644,3 +644,43 @@ async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pyt
     assert '"cool-scene-mylffeatures"' in body
     assert 'id="d18slug"' in body
     assert 'id="d18slugCopy"' in body
+
+
+async def test_entries_endpoint_filters_potential_duplicates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('ADMIN_TOKEN', '')
+    from phoenixadult.models.metadata import PlexMetadataResponse
+    from phoenixadult.utils import cache as mc
+
+    def resp(title: str, tagline: str) -> PlexMetadataResponse:
+        return PlexMetadataResponse.model_validate(
+            {
+                'MediaContainer': {
+                    'identifier': 'i',
+                    'size': 1,
+                    'Metadata': [
+                        {
+                            'type': 'movie',
+                            'ratingKey': 'rk',
+                            'guid': 'g',
+                            'title': title,
+                            'studio': 'MYLF',
+                            'tagline': tagline,
+                            'originallyAvailableAt': '2024-01-05',
+                        }
+                    ],
+                }
+            }
+        )
+
+    assert await mc.write('MYLF', 'q1', resp('Twin Peaks!', 'Mylf Wood')) is True
+    assert await mc.write('MYLF', 'q2', resp('twin peaks', 'MylfWood')) is True
+    assert await mc.write('MYLF', 'q3', resp('Unrelated Scene', 'Mylf Wood')) is True
+
+    client = TestClient(create_app())
+    everything = client.get('/metadata/entries').json()
+    assert everything['total'] == 3
+    dups = client.get('/metadata/entries?dups=2').json()
+    assert dups['total'] == 2
+    assert {e['title'] for e in dups['entries']} == {'Twin Peaks!', 'twin peaks'}

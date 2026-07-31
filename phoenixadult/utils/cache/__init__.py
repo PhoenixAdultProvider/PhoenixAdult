@@ -690,6 +690,25 @@ def duplicate_entries() -> list[str]:
     return sorted(stale)
 
 
+_CONTENT_NORM_RE = re.compile(r'[^a-z0-9]+')
+
+
+def _content_norm(value: object) -> str:
+    return _CONTENT_NORM_RE.sub('', str(value or '').lower())
+
+
+def content_duplicate_entries() -> list[str]:
+    groups: dict[str, list[str]] = {}
+    for row in scene_store.dup_candidate_rows():
+        title = _content_norm(row['title'])
+        if not title:
+            continue
+        key = '|'.join((title, _content_norm(row['release_date']), _content_norm(row['studio_name']), _content_norm(row['tagline_name'])))
+        groups.setdefault(key, []).append(str(row['rel_path']))
+    matched = {rel for members in groups.values() if len(members) > 1 for rel in members}
+    return sorted(matched | set(duplicate_entries()))
+
+
 def purge_duplicates() -> int:
     return sum(1 for rel in duplicate_entries() if purge(rel))
 

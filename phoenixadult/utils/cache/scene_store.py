@@ -677,6 +677,14 @@ def studio_names(**active: Any) -> list[str]:
     return sorted({str(r['name']) for r in rows if r['name']}, key=str.casefold)
 
 
+def dup_candidate_rows() -> list[sqlite3.Row]:
+    conn = db.connect()
+    return conn.execute(
+        'SELECT s.rel_path, s.title, s.release_date, st.name AS studio_name, tl.name AS tagline_name FROM scenes s '
+        'LEFT JOIN studios st ON st.id = s.studio_id LEFT JOIN taglines tl ON tl.id = s.tagline_id'
+    ).fetchall()
+
+
 def prune_orphan_names() -> dict[str, int]:
     conn = db.connect()
     with conn:

@@ -236,7 +236,8 @@
   <div class="toolbar">
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Duplicates</button>
+    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Superseded</button>
+    <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
     <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
@@ -275,6 +276,7 @@
     let FACET_VALUES = __FACETS__;
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
+    let showPotential = false;
     const STORE_KEY = 'metadata-cache-filters';
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
@@ -318,7 +320,8 @@
         const v = document.getElementById(id).value.trim();
         if (v) p.set(param, v);
       }
-      if (showDupsOnly) p.set('dups', '1');
+      if (showPotential) p.set('dups', '2');
+      else if (showDupsOnly) p.set('dups', '1');
       return p;
     }
 
@@ -440,7 +443,7 @@
     function saveFilters() {
       const facets = {};
       FILTER_IDS.forEach(id => { facets[id] = document.getElementById(id).value; });
-      try { localStorage.setItem(STORE_KEY, JSON.stringify({facets, sortKey, sortDir, showDupsOnly})); } catch {}
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({facets, sortKey, sortDir, showDupsOnly, showPotential})); } catch {}
     }
 
     function restoreFilters() {
@@ -454,6 +457,7 @@
       });
       if (saved.sortKey && SERVER_SORTS[saved.sortKey]) { sortKey = saved.sortKey; sortDir = saved.sortDir === 1 ? 1 : -1; }
       if (saved.showDupsOnly && DUP_SET.size) setDupsOnly(true);
+      if (saved.showPotential) setPotential(true);
     }
 
     function buildSortOptions() {
@@ -492,7 +496,7 @@
     }
 
     function updateFilterToggle() {
-      const active = Object.keys(FILTER_PARAMS).filter(id => document.getElementById(id).value).length + (showDupsOnly ? 1 : 0);
+      const active = Object.keys(FILTER_PARAMS).filter(id => document.getElementById(id).value).length + (showDupsOnly ? 1 : 0) + (showPotential ? 1 : 0);
       const btn = document.getElementById('filtersToggle');
       btn.textContent = active ? `Filters (${active} Active)` : 'Filters';
       btn.classList.toggle('on', active > 0);
@@ -501,6 +505,7 @@
     function reset() {
       FILTER_IDS.forEach(id => { document.getElementById(id).value = ''; });
       if (showDupsOnly) setDupsOnly(false);
+      if (showPotential) setPotential(false);
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applySortIndicators();
@@ -708,9 +713,24 @@
 
     function setDupsOnly(on) {
       showDupsOnly = on;
+      if (on && showPotential) setPotential(false);
       const t = document.getElementById('dupToggle');
       t.classList.toggle('on', on);
+      t.textContent = on ? 'Showing Superseded Only' : 'Show Superseded';
+    }
+
+    function setPotential(on) {
+      showPotential = on;
+      if (on && showDupsOnly) setDupsOnly(false);
+      const t = document.getElementById('potToggle');
+      t.classList.toggle('on', on);
       t.textContent = on ? 'Showing Duplicates Only' : 'Show Duplicates';
+    }
+
+    function togglePotential() {
+      setPotential(!showPotential);
+      offset = 0;
+      refreshEntries();
     }
 
     function toggleDuplicates() {
