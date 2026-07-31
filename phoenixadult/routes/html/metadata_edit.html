@@ -203,6 +203,12 @@
     const KINDS = ['coverPoster', 'background', 'backgroundSquare'];
     const LISTS = {Genre: [], Collection: [], Role: [], Director: [], Producer: []};
     let images = [];
+    let imgRev = Date.now();
+
+    function bust(url) {
+      if (!url || !url.includes('/cache/')) return url;
+      return url + (url.includes('?') ? '&' : '?') + 'v=' + imgRev;
+    }
 
     function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
     function qs(id) { return document.getElementById(id); }
@@ -241,7 +247,7 @@
         card.className = 'img';
         if (!SFW) {
           const preview = document.createElement('img');
-          preview.src = img.url;
+          preview.src = bust(img.url);
           preview.loading = 'lazy';
           if (img.rotate) preview.style.transform = `rotate(${img.rotate}deg)`;
           card.appendChild(preview);
@@ -475,6 +481,7 @@
       showProgress(100, 'Done', false);
       MD = fresh.metadata;
       KEY = fresh.key;
+      imgRev = Date.now();
       const sub = qs('subKey');
       if (sub) sub.textContent = KEY;
       load();
