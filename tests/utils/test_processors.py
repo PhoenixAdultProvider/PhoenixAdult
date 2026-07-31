@@ -465,3 +465,12 @@ def test_title_case_keeps_a_trailing_initialism_period() -> None:
     assert title_case('The End.') == 'The End'
     assert title_case('Plan B.') == 'Plan B'
     assert title_case('a night out.') == 'A Night Out'
+
+
+def test_search_title_trash_only_strips_real_resolution_tags() -> None:
+    assert clean_search_title('scene 4k edition') == 'scene edition'
+    assert clean_search_title('movie 2k rip') == 'movie rip'
+    assert clean_search_title('clip 8k hdr') == 'clip'
+    assert clean_search_title('teenslovemoney 1k pussy') == 'teenslovemoney 1k pussy'
+    assert clean_search_title('5k run') == '5k run'
+    assert clean_search_title('worth 3k dollars') == 'worth 3k dollars'
