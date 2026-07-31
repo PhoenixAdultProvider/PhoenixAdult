@@ -177,6 +177,7 @@ class ReptyleClient(Client):
         # Posters from Data18
         sid = scene_json.get('id')
         search_sub = (sub_site if sub_site != site.name else None) or scene.subsite
-        mapping_id = (f'{sid}-{_normalize(search_sub)}' if search_sub else str(sid)) if sid is not None else None
+        mapping_sub = sub_site or scene.subsite or site.name
+        mapping_id = (f'{sid}-{_normalize(mapping_sub)}' if mapping_sub else str(sid)) if sid is not None else None
         providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
         await self.enrich_from_data18(metadata, site, scene_id=mapping_id, providers=providers)

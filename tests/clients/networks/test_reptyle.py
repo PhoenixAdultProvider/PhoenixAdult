@@ -114,3 +114,26 @@ async def test_a_leading_episode_tag_is_dropped_from_search_and_detail() -> None
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
     assert detail is not None
     assert detail.title == 'Sneaky, Bratty Lil Stepsis'
+
+
+@respx.mock
+async def test_data18_slug_keeps_the_site_when_it_is_also_the_sub_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    site = find_site('Family Strokes')
+    assert site is not None
+
+    url = 'https://www.familystrokes.com/movies/cool-scene'
+    respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': _SCENE}})))
+    respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
+    captured: dict[str, object] = {}
+
+    class FakeData18(data18_module.Data18Client):
+        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> str | None:
+            captured['mapping_id'] = scene_id
+            return None
+
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
+    detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', site)
+
+    assert detail is not None
+    assert captured['mapping_id'] == 'cool-scene-familystrokes'
