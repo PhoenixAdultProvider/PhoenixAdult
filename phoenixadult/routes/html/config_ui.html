@@ -1031,7 +1031,7 @@
       for (const item of data.items) {
         for (const f of Object.keys(item.removals || {})) {
           for (const val of item.removals[f]) {
-            const key = f + ' ' + val;
+            const key = f + '\u0000' + val;
             if (!agg[key]) agg[key] = { field: f, val: val, reason: (item.reasons && item.reasons[f] && item.reasons[f][val]) || '', n: 0 };
             agg[key].n++;
           }
