@@ -454,3 +454,14 @@ def test_duckduckgo_drops_its_own_ad_and_internal_links() -> None:
     assert _resolve_ddg_href('https://duckduckgo.com/l/?no_uddg=1') is None
     assert _resolve_ddg_href('https://www.grooby.com/trailers/x') == 'https://www.grooby.com/trailers/x'
     assert _resolve_ddg_href('/relative') is None
+
+
+def test_title_case_keeps_a_trailing_initialism_period() -> None:
+    assert title_case('Fuck P.E.') == 'Fuck P.E.'
+    assert title_case('fuck p.e.') == 'Fuck P.E.'
+    assert title_case('P.E. Teacher') == 'P.E. Teacher'
+    assert title_case('S.W.A.T. Team') == 'S.W.A.T. Team'
+    assert title_case('J.R.', type='name') == 'J.R.'
+    assert title_case('The End.') == 'The End'
+    assert title_case('Plan B.') == 'Plan B'
+    assert title_case('a night out.') == 'A Night Out'

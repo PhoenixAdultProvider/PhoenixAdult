@@ -142,6 +142,7 @@ _INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s+){2,}[A-Za-z]\.?(?![A
 _VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
 _POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
 _TRAILING_INITIAL_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]\.$')
+_TRAILING_INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s*){2,}$')
 _PARTICLE_LA_RE = re.compile(r'\b(de|en|a)(\s+)La\b')
 _TLD_GUARD = '|'.join(sorted((*_TLD_FRAGMENTS, 'porn', 'xxx'), key=len, reverse=True))
 _MARK_SPLIT_RE = re.compile(rf'(?i)([!:?])(?=\w)(?!(?:{_TLD_GUARD})\b|E\d)')
@@ -354,7 +355,8 @@ class _TitleCaseEngine:
     def _fix_spacing(self, output: str) -> str:
         output = _MARK_SPLIT_RE.sub(r'\1 ', output)
         output = _DOT_SPLIT_RE.sub('. ', output)
-        if not (self.type == 'name' and _TRAILING_INITIAL_RE.search(output)):
+        keeps_period = _TRAILING_INITIALISM_RE.search(output) or (self.type == 'name' and _TRAILING_INITIAL_RE.search(output))
+        if not keeps_period:
             output = re.sub(r'(?<!\.)\.$', '', output)
         output = re.sub(r"\s+(?=[.,!'):])", '', output)
         output = re.sub(r'(?<=\S)(\"\S+)', r' \1', output)
