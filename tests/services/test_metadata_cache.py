@@ -1031,3 +1031,25 @@ async def test_content_duplicates_match_on_normalized_quad(tmp_path: pytest.Temp
     assert len(dupes) == 2
     titles = {by_cur[k]['tagline'] for k in flagged}
     assert titles == {'Mom Swap', 'MomSwap'}
+
+
+async def test_stale_duplicates_keep_the_newest_copy(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    older = _resp(title='Same Scene', studio='Bad Oink VR', tagline='')
+    newer = _resp(title='same scene!', studio='BadOinkVR', tagline='')
+    assert await mc.write('BadOinkVR Old', 's1', older) is True
+    assert await mc.write('BadOinkVR', 's2', newer) is True
+
+    conn = db.connect()
+    with conn:
+        conn.execute('UPDATE scenes SET updated_at = ? WHERE site = ?', (100.0, 'BadOinkVR Old'))
+        conn.execute('UPDATE scenes SET updated_at = ? WHERE site = ?', (200.0, 'BadOinkVR'))
+
+    by_site = {e['provider']: e['key'] for e in mc.entries()}
+    assert mc.content_duplicate_entries() == sorted(by_site.values())
+    assert mc.stale_duplicate_entries() == [by_site['BadOinkVR Old']]
+
+    assert mc.purge_duplicates() == 1
+    assert {e['provider'] for e in mc.entries()} == {'BaDoink VR'}

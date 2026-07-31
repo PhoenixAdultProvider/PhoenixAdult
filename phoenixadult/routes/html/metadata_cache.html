@@ -236,7 +236,7 @@
   <div class="toolbar">
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Superseded</button>
+    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
     <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
     <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
@@ -689,7 +689,7 @@
     async function purgeDuplicates() {
       const n = DUP_SET.size;
       if (!n) return;
-      if (!confirm(`Purge ${n} superseded duplicate snapshot(s)? The newer sub-site entry is kept.`)) return;
+      if (!confirm(`Purge ${n} stale duplicate snapshot(s)? The newest copy of each scene is kept.`)) return;
       const r = await fetch('/metadata/purge-duplicates', {method: 'POST', headers: authHeaders()});
       const j = await r.json().catch(() => ({ok: false}));
       if (j.ok) refreshNow(); else alert('Purge failed');
@@ -716,7 +716,7 @@
       if (on && showPotential) setPotential(false);
       const t = document.getElementById('dupToggle');
       t.classList.toggle('on', on);
-      t.textContent = on ? 'Showing Superseded Only' : 'Show Superseded';
+      t.textContent = on ? 'Showing Stale Only' : 'Show Stale';
     }
 
     function setPotential(on) {

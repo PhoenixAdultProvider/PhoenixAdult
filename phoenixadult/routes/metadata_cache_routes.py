@@ -38,7 +38,7 @@ def _json_attr(value: object) -> str:
 async def page(request: Request) -> HTMLResponse:
     (entries, total), dup_keys, studios, facets = await asyncio.gather(
         run_in('store', metadata_cache.entries_page),
-        run_in('store', metadata_cache.duplicate_entries),
+        run_in('store', metadata_cache.stale_duplicate_entries),
         run_in('store', metadata_cache.studios),
         run_in('store', metadata_cache.facets),
     )
@@ -202,7 +202,7 @@ async def entries_json(
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
-    dup_keys = await run_in('store', metadata_cache.duplicate_entries)
+    dup_keys = await run_in('store', metadata_cache.stale_duplicate_entries)
     show_paths = await run_in('store', metadata_cache.content_duplicate_entries) if dups == 2 else dup_keys
     scope: dict[str, Any] = {
         'studio': studio,

@@ -697,20 +697,32 @@ def _content_norm(value: object) -> str:
     return _CONTENT_NORM_RE.sub('', str(value or '').lower())
 
 
-def content_duplicate_entries() -> list[str]:
-    groups: dict[str, list[str]] = {}
+def _content_duplicate_groups() -> list[list[tuple[str, float]]]:
+    groups: dict[str, list[tuple[str, float]]] = {}
     for row in scene_store.dup_candidate_rows():
         title = _content_norm(row['title'])
         if not title:
             continue
         key = '|'.join((title, _content_norm(row['release_date']), _content_norm(row['studio_name']), _content_norm(row['tagline_name'])))
-        groups.setdefault(key, []).append(str(row['rel_path']))
-    matched = {rel for members in groups.values() if len(members) > 1 for rel in members}
+        groups.setdefault(key, []).append((str(row['rel_path']), float(row['updated_at'] or 0)))
+    return [members for members in groups.values() if len(members) > 1]
+
+
+def content_duplicate_entries() -> list[str]:
+    matched = {rel for members in _content_duplicate_groups() for rel, _ in members}
     return sorted(matched | set(duplicate_entries()))
 
 
+def stale_duplicate_entries() -> list[str]:
+    stale = set(duplicate_entries())
+    for members in _content_duplicate_groups():
+        keep = max(members, key=lambda m: (m[1], m[0]))[0]
+        stale.update(rel for rel, _ in members if rel != keep)
+    return sorted(stale)
+
+
 def purge_duplicates() -> int:
-    return sum(1 for rel in duplicate_entries() if purge(rel))
+    return sum(1 for rel in stale_duplicate_entries() if purge(rel))
 
 
 # ── People-Image Backfill ─────────────────────────────────────────────────────
