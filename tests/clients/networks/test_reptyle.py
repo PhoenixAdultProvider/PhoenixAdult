@@ -137,3 +137,18 @@ async def test_data18_slug_keeps_the_site_when_it_is_also_the_sub_site(monkeypat
 
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-familystrokes'
+
+
+@respx.mock
+async def test_search_canonicalizes_an_alias_slug() -> None:
+    alias = 'chloe-rose-cool-scene'
+    aliased = dict(_SCENE, id='cool-scene')
+    respx.get(f'https://www.teamskeet.com/movies/{alias}').mock(return_value=httpx.Response(200, text=_state_html({'videosContent': {alias: aliased}})))
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx('Chloe Rose Cool Scene'))
+
+    assert len(results) == 1
+    composite = ReptyleClient().decode(results[0].cur_id)
+    assert composite == 'cool-scene|videosContent|https://www.teamskeet.com/movies/cool-scene'
+    assert results[0].scene_url == 'https://www.teamskeet.com/movies/cool-scene'

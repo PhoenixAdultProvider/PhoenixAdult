@@ -83,7 +83,10 @@ class ReptyleClient(Client):
             return
 
         cur, scene_type, scene_json = picked
-        composite = f'{cur}|{scene_type}|{url}'
+        canonical = str(scene_json.get('id') or cur)
+        if canonical != cur:
+            url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', canonical)
+        composite = f'{canonical}|{scene_type}|{url}'
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
         result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None
