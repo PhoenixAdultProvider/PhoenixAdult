@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.registry import canonical_site_display
-from phoenixadult.routes import read_json_body
+from phoenixadult.routes import read_json_body, render_nav
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
@@ -27,7 +27,8 @@ def _state() -> dict[str, object]:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    return HTMLResponse(_TEMPLATE.replace('__STATE_JSON__', json.dumps(await run_in('store', _state))))
+    body = _TEMPLATE.replace('__NAV__', render_nav('logos'))
+    return HTMLResponse(body.replace('__STATE_JSON__', json.dumps(await run_in('store', _state))))
 
 
 @router.get('/api/list')

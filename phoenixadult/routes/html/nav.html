@@ -1,0 +1,21 @@
+<style>
+  :root { --app-nav-h: 46px; }
+  .app-nav, .app-nav *, .app-nav-spacer { box-sizing: border-box; }
+  .app-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: var(--app-nav-h); display: flex; align-items: stretch;
+             background: #151b29; border-bottom: 1px solid #1f2937; padding: 0 14px; overflow-x: auto; scrollbar-width: none; }
+  .app-nav::-webkit-scrollbar { display: none; }
+  .app-nav a { display: flex; align-items: center; padding: 0 14px; border-bottom: 2px solid transparent; color: #94a3b8; text-decoration: none;
+               font: 500 14px/1 system-ui, sans-serif; white-space: nowrap; }
+  .app-nav a:hover { background: #1a2233; color: #e2e8f0; }
+  .app-nav a.active { border-bottom-color: #2563eb; color: #60a5fa; }
+  .app-nav-spacer { height: var(--app-nav-h); }
+</style>
+<nav class="app-nav">__NAV_LINKS__</nav>
+<div class="app-nav-spacer" aria-hidden="true"></div>
+<script>
+  (function () {
+    const token = new URLSearchParams(location.search).get('token');
+    if (!token) return;
+    for (const a of document.querySelectorAll('.app-nav a')) a.href += (a.href.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+  })();
+</script>

@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
-from phoenixadult.routes import read_json_body
+from phoenixadult.routes import read_json_body, render_nav
 from phoenixadult.routes.provider_router import service_for
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
@@ -47,7 +47,8 @@ async def page(request: Request) -> HTMLResponse:
     token_json = json.dumps(token).replace('<', '\\u003c')
     entries_json = json.dumps(entries).replace('<', '\\u003c')
     body = (
-        _TEMPLATE.replace('__STATE__', state)
+        _TEMPLATE.replace('__NAV__', render_nav('metadata'))
+        .replace('__STATE__', state)
         .replace('__TOKEN__', token_json)
         .replace('__ENTRIES_JSON__', entries_json)
         .replace('__TOTAL__', json.dumps(total))
@@ -69,7 +70,8 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     body = (
-        _EDIT_TEMPLATE.replace('__SUBTITLE__', subtitle)
+        _EDIT_TEMPLATE.replace('__NAV__', render_nav('metadata'))
+        .replace('__SUBTITLE__', subtitle)
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__KEY__', _json_attr(key))
         .replace('__MAPPING_SLUG__', _json_attr(slug))

@@ -6,6 +6,28 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from phoenixadult.config.env import env
+from phoenixadult.utils.helpers.helpers import load_data
+
+_NAV_TEMPLATE: str = load_data(__file__, 'nav', kind='html')
+_NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
+    ('metadata', 'Metadata', '/metadata'),
+    ('people', 'People', '/people'),
+    ('config', 'Config', '/config'),
+    ('logos', 'Logos', '/logos'),
+    ('queue', 'Queue', '/queue'),
+)
+_NAV_DEV_ITEM = ('dev', 'Dev', '/dev')
+
+
+def render_nav(active: str) -> str:
+    items = list(_NAV_ITEMS) if env.is_production else [*_NAV_ITEMS, _NAV_DEV_ITEM]
+    links = ''
+    for key, label, href in items:
+        attrs = ' class="active" aria-current="page"' if key == active else ''
+        links += f'<a href="{href}"{attrs}>{label}</a>'
+    return _NAV_TEMPLATE.replace('__NAV_LINKS__', links)
+
 
 def plex_json(model: BaseModel, status_code: int = 200) -> JSONResponse:
     return JSONResponse(model.model_dump(by_alias=True, exclude_none=True), status_code=status_code)

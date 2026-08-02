@@ -28,6 +28,7 @@ def test_requires_auth_and_lists_with_site_names(_cache: Path) -> None:
     data = client.get('/logos/api/list', headers={'x-admin-token': 'tok'}).json()
     assert data['logos'][0]['slug'] == 'baby-got-boobs'
     assert data['logos'][0]['site'] == 'Baby Got Boobs'
+    assert data['logos'][0]['url'].startswith('/images/local/logos/brazzers/logo.baby-got-boobs.png?v=')
 
 
 def test_purge_endpoints(_cache: Path) -> None:

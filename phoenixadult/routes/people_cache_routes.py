@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.routes import read_json_body
+from phoenixadult.routes import read_json_body, render_nav
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -276,6 +276,7 @@ async def page(request: Request) -> HTMLResponse:
         body.filters-open .search>.progress[hidden]{{display:none}}
       }}
     </style></head><body>
+    {render_nav('people')}
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
@@ -576,7 +577,8 @@ async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
     token = request.query_params.get('token', '')
     credits = await run_in('store', _scene_credits, entry, token)
     body = (
-        _EDIT_TEMPLATE.replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
+        _EDIT_TEMPLATE.replace('__NAV__', render_nav('people'))
+        .replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
         .replace('__SUBTITLE__', subtitle)
         .replace('__CACHED_SRC__', html.escape(cached_src, quote=True))
         .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))

@@ -6,8 +6,8 @@ import sqlite3
 import subprocess
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
-from phoenixadult.config import config
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import rel_to
@@ -184,11 +184,13 @@ def find_logo(tagline: str | None, studio: str | None) -> Path | None:
     return None
 
 
-def local_url(path: Path) -> str | None:
+def local_url(path: Path, mtime: float | None = None) -> str | None:
     rel = rel_to(path, cache_dir())
     if rel is None:
         return None
-    return f'{config.base_url.rstrip("/")}/images/local/logos/{rel}'
+    quoted = '/'.join(quote(part) for part in rel.split('/'))
+    bust = f'?v={int(mtime)}' if mtime else ''
+    return f'/images/local/logos/{quoted}{bust}'
 
 
 def entries() -> list[dict[str, Any]]:
@@ -200,10 +202,18 @@ def entries() -> list[dict[str, Any]]:
         rel = str(row['rel_path'])
         path = root / rel
         try:
-            size = path.stat().st_size
+            stat = path.stat()
         except OSError:
             continue
-        out.append({'slug': str(row['name_slug']), 'rel': rel, 'url': local_url(path), 'sizeBytes': size, 'folder': rel.split('/')[0] if '/' in rel else ''})
+        out.append(
+            {
+                'slug': str(row['name_slug']),
+                'rel': rel,
+                'url': local_url(path, stat.st_mtime),
+                'sizeBytes': stat.st_size,
+                'folder': rel.split('/')[0] if '/' in rel else '',
+            }
+        )
     return out
 
 

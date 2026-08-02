@@ -29,7 +29,7 @@ from phoenixadult.config.env_overrides import (
     set_override,
 )
 from phoenixadult.registry import SITE_DEFINITIONS
-from phoenixadult.routes import read_json_body
+from phoenixadult.routes import read_json_body, render_nav
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
@@ -176,7 +176,7 @@ _CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
 
 def _render_ui(state: dict[str, Any]) -> str:
     state_json = json.dumps(state, ensure_ascii=False).replace('<', '\\u003c')
-    return _CONFIG_HTML.replace('__STATE_JSON__', state_json)
+    return _CONFIG_HTML.replace('__NAV__', render_nav('config')).replace('__STATE_JSON__', state_json)
 
 
 @router.get('')

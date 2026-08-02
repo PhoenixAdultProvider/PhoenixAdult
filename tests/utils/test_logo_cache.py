@@ -51,12 +51,10 @@ def test_replaced_file_visible_after_invalidate(tmp_path: Path) -> None:
     assert logo_cache.find_logo(None, 'Brazzers') is None
 
 
-def test_local_url_shape(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from types import SimpleNamespace
-
-    monkeypatch.setattr(logo_cache, 'config', SimpleNamespace(base_url='http://prov:3000'))
+def test_local_url_shape(tmp_path: Path) -> None:
     f = _put(tmp_path, 'brazzers', 'logo.baby-got-boobs.png')
-    assert logo_cache.local_url(f) == 'http://prov:3000/images/local/logos/brazzers/logo.baby-got-boobs.png'
+    assert logo_cache.local_url(f) == '/images/local/logos/brazzers/logo.baby-got-boobs.png'
+    assert logo_cache.local_url(f, 1785269272.5) == '/images/local/logos/brazzers/logo.baby-got-boobs.png?v=1785269272'
 
 
 def test_index_converts_dropped_svgs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

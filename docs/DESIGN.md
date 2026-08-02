@@ -110,6 +110,8 @@ flowchart LR
 | Cast autocomplete | `GET /metadata/actors?q=` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
 
+Every admin page shares one fixed top nav — Metadata, People, Config, Logos, Queue, Dev — rendered by `render_nav(active)` (`phoenixadult/routes/__init__.py`) from `phoenixadult/routes/html/nav.html` and injected at each template's `__NAV__` placeholder, including the `/metadata/edit` and `/people/edit` sub-pages (which highlight their parent). The Dev link appears only when the `/dev` routes are mounted (non-production `NODE_ENV`), and an inline script carries the current `?token=` onto every link so admin auth survives navigation.
+
 > Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`phoenixadult/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
 
 ---
