@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a264"
+version = "1.0.0a265"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -54,7 +54,7 @@ impersonate = [
 include = ["phoenixadult*"]
 
 [tool.setuptools.package-data]
-phoenixadult = ["**/*.html", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.LICENSE"]
+phoenixadult = ["**/*.html", "**/*.css", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.LICENSE"]
 
 [tool.ruff]
 line-length = 160
