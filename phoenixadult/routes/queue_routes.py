@@ -9,7 +9,7 @@ from phoenixadult.routes import read_json_body, render_nav
 from phoenixadult.services import scrape_queue
 from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
 from phoenixadult.utils.helpers.helpers import load_data
-from phoenixadult.utils.http.rate_limit_helper import pacer_states
+from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, pacer_states
 
 router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
 
@@ -18,7 +18,7 @@ _WATCH_TIMEOUT = 25.0
 
 
 def _state() -> dict[str, object]:
-    return {'pacers': pacer_states(), **scrape_queue.snapshot()}
+    return {'pacers': pacer_states(), 'fastLane': FAST_GATE.state(), **scrape_queue.snapshot()}
 
 
 @router.get('', response_class=HTMLResponse)

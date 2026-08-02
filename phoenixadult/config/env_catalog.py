@@ -10,7 +10,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
     'Data18 Enrichment', 'MetadataAPI', 'Manual NFO', 'People Cache & Sources',
-    'Gender Handling', 'Images', 'Metadata Cache', 'Logging', 'Plex Server',
+    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Plex Server',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
@@ -19,7 +19,7 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('Enrichment', ['Data18 Enrichment', 'MetadataAPI', 'Manual NFO']),
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
-    ('System', ['Metadata Cache', 'Logging']),
+    ('System', ['Logging', 'Metadata Cache']),
     ('Plex', ['Plex Server']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}

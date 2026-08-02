@@ -16,10 +16,10 @@ from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64u
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.http.bypass import bypass_get
 from phoenixadult.utils.http.client import make_http
+from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, ScenePacer
 from phoenixadult.utils.http.rate_limit_helper import (
     PacingDeferredError as PacingDeferredError,  # noqa: PLC0414 - explicit re-export for client/service imports
 )
-from phoenixadult.utils.http.rate_limit_helper import ScenePacer
 from phoenixadult.utils.logging.logger import logger
 
 if TYPE_CHECKING:
@@ -477,7 +477,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:
         if self.pacer is None:
-            return await self._scene_detail_flow(payload, site, ctx)
+            async with FAST_GATE.turn(bool(ctx and ctx.allow_slow)):
+                return await self._scene_detail_flow(payload, site, ctx)
         async with self.pacer.scene(bool(ctx and ctx.allow_slow)):
             detail = await self._scene_detail_flow(payload, site, ctx)
             await self.pacer.cooldown('post-update')

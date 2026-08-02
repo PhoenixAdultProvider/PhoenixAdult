@@ -7,7 +7,7 @@ from phoenixadult.app_factory import create_app
 from phoenixadult.routes import render_nav
 
 TOKEN = 'navtoken'
-PAGES = (('/metadata', 'Metadata'), ('/people', 'People'), ('/config', 'Config'), ('/logos', 'Logos'), ('/queue', 'Queue'), ('/dev', 'Dev'))
+PAGES = (('/metadata', 'Metadata'), ('/people', 'People'), ('/logos', 'Logos'), ('/queue', 'Queue'), ('/dev', 'Dev'), ('/config', 'Config'))
 
 
 @pytest.fixture
@@ -33,6 +33,15 @@ def test_edit_subpages_highlight_their_parent(client: TestClient) -> None:
     assert people.status_code == 404
     assert '<a href="/people" class="active"' in render_nav('people')
     assert '<a href="/metadata" class="active"' in render_nav('metadata')
+
+
+def test_config_sits_at_the_end_of_the_nav(monkeypatch: pytest.MonkeyPatch) -> None:
+    import re
+
+    monkeypatch.setenv('NODE_ENV', 'development')
+    assert re.findall(r'>([^<]+)</a>', render_nav('metadata')) == ['Metadata', 'People', 'Logos', 'Queue', 'Dev', 'Config']
+    monkeypatch.setenv('NODE_ENV', 'production')
+    assert re.findall(r'>([^<]+)</a>', render_nav('metadata')) == ['Metadata', 'People', 'Logos', 'Queue', 'Config']
 
 
 def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:

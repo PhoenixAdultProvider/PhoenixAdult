@@ -13,15 +13,15 @@ _NAV_TEMPLATE: str = load_data(__file__, 'nav', kind='html')
 _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
     ('metadata', 'Metadata', '/metadata'),
     ('people', 'People', '/people'),
-    ('config', 'Config', '/config'),
     ('logos', 'Logos', '/logos'),
     ('queue', 'Queue', '/queue'),
 )
 _NAV_DEV_ITEM = ('dev', 'Dev', '/dev')
+_NAV_CONFIG_ITEM = ('config', 'Config', '/config')
 
 
 def render_nav(active: str) -> str:
-    items = list(_NAV_ITEMS) if env.is_production else [*_NAV_ITEMS, _NAV_DEV_ITEM]
+    items = [*_NAV_ITEMS, *(() if env.is_production else (_NAV_DEV_ITEM,)), _NAV_CONFIG_ITEM]
     links = ''
     for key, label, href in items:
         attrs = ' class="active" aria-current="page"' if key == active else ''

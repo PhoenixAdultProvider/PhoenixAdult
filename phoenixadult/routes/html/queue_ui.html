@@ -59,7 +59,7 @@
 <body>
   __NAV__
   <h1>Scrape Queue</h1>
-  <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites run three at a time, paced sites one, oldest first</div>
+  <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
   <div class="progress" id="progress" style="display:none">
     <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
@@ -87,7 +87,11 @@
 
     function render() {
       const drift = (Date.now() - fetchedAt) / 1000;
-      document.getElementById('pacers').innerHTML = (STATE.pacers || []).map((p) => {
+      const fl = STATE.fastLane;
+      const flTile = !fl ? '' : `<div class="pacer"><span class="tag">unpaced sites</span>` +
+        `<span class="cd ${fl.busy < fl.slots ? 'ready' : ''}">${fl.busy}/${fl.slots} slots busy</span>` +
+        (fl.waiting ? `<span class="win">${fl.waiting} waiting for a slot</span>` : '') + '</div>';
+      document.getElementById('pacers').innerHTML = flTile + (STATE.pacers || []).map((p) => {
         const wait = Math.max(0, p.wait - drift);
         const ban = Math.max(0, (p.ban || 0) - drift);
         const ready = wait <= 0 && !p.busy;
