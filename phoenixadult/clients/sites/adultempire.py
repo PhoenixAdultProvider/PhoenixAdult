@@ -394,7 +394,7 @@ class AdultEmpireClient(Client):
             actor_name = a.xpath('normalize-space(.)').get() or ''
             photo = (
                 (details_page_elements.xpath(f'(//div[contains(.,"Starring")]//img[contains(@title,"{actor_name.strip()}")]/@src)[1]').get() or '')
-                if actor_name.strip()
+                if actor_name.strip() and '"' not in actor_name
                 else ''
             )
             add(actor_name, photo)

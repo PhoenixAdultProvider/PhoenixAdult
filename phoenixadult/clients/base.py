@@ -531,6 +531,25 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             language=ctx.language if ctx else None,
         )
 
+    async def load_scene_with_extra_tail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None, extra_key: str) -> LoadedScene | None:
+        pipe = payload.find('|')
+        url = payload[:pipe] if pipe >= 0 else payload
+        tail = payload[pipe + 1 :].strip() if pipe >= 0 else ''
+        details_page_elements = await self.fetch_and_load(
+            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
+        )
+        if not details_page_elements:
+            return None
+
+        return LoadedScene(
+            url=url,
+            site=site,
+            capture=ctx.capture if ctx else None,
+            sel=details_page_elements['sel'],
+            html=details_page_elements['html'],
+            extra={extra_key: tail},
+        )
+
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
 

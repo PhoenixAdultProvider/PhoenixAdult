@@ -97,7 +97,7 @@ class SwallowBayClient(Client):
         for actor_link in details_page_elements.xpath(_MODELS_XP):
             actor_name = first_attr(actor_link, '@title')
             photo = ''
-            if actor_name:
+            if actor_name and '"' not in actor_name:
                 photo = (
                     details_page_elements.xpath(f'(//div[contains(@class,"content-models-photos")]//a[@title="{actor_name}"]//span//img/@src)[1]').get() or ''
                 ).strip()

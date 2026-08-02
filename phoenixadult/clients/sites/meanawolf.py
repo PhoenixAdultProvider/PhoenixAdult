@@ -42,23 +42,7 @@ class MeanaWolfClient(Client):
     # ── Context Loader (curID packs the search-card poster) ───────────────────
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
-        pipe = payload.find('|')
-        url = payload[:pipe] if pipe >= 0 else payload
-        poster = payload[pipe + 1 :].strip() if pipe >= 0 else ''
-        details_page_elements = await self.fetch_and_load(
-            url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
-        )
-        if not details_page_elements:
-            return None
-
-        return LoadedScene(
-            url=url,
-            site=site,
-            capture=ctx.capture if ctx else None,
-            sel=details_page_elements['sel'],
-            html=details_page_elements['html'],
-            extra={'poster': poster},
-        )
+        return await self.load_scene_with_extra_tail(payload, site, ctx, 'poster')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
