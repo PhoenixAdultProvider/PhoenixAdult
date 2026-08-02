@@ -12,7 +12,8 @@ import httpx2
 from parsel import Selector
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode, build_search_result, pack_cur_id
+from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id
+from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.http.bypass import bypass_get
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.rate_limit_helper import (
@@ -332,8 +333,16 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return ''
 
+    search_url_xpath: str | None = None
+
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        return ''
+        if not self.search_url_xpath:
+            return ''
+        href = first_attr(source, self.search_url_xpath)
+        if not href:
+            return ''
+
+        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return None

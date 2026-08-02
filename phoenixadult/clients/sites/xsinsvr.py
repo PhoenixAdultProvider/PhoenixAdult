@@ -12,6 +12,7 @@ _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling:
 
 
 class XSinsVRClient(Client):
+    search_url_xpath = '(.//a[contains(@class,"tn-video-media")]/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -26,13 +27,6 @@ class XSinsVRClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/a[contains(@class,"tn-video-name")]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a[contains(@class,"tn-video-media")]/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

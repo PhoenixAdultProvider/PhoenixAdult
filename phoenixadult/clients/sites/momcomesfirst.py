@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, load_data
+from phoenixadult.utils.helpers.helpers import iso_date, load_data
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 from phoenixadult.utils.processors.title_case import title_case
@@ -13,6 +13,7 @@ _ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
 
 
 class MomComesFirstClient(Client):
+    search_url_xpath = '(.//h2//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -29,13 +30,6 @@ class MomComesFirstClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h2')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//h2//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date(first_text(source, './/p//span'), '%b %d, %Y')

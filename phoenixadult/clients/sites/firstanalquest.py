@@ -13,6 +13,7 @@ _MODELS_XP = '//ul[contains(.,"Models:")]//li//a'
 
 
 class FirstAnalQuestClient(Client):
+    search_url_xpath = '(.//a[contains(@class,"thumb-img")]/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -27,13 +28,6 @@ class FirstAnalQuestClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/span[contains(@class,"thumb-title")]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a[contains(@class,"thumb-img")]/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/span[contains(@class,"thumb-added")]')

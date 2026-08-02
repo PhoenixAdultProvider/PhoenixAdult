@@ -29,6 +29,7 @@ def _holder_date(scope: Selector) -> str | None:
 
 
 class MomPOVClient(Client):
+    search_url_xpath = '(.//div[contains(@class,"title_holder")]//h1//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -43,13 +44,6 @@ class MomPOVClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/div[contains(@class,"title_holder")]//h1//a')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//div[contains(@class,"title_holder")]//h1//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return _holder_date(source)

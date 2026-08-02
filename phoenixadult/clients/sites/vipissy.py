@@ -21,6 +21,7 @@ _POSTERS_XP = '//div[contains(@id,"pics2")]//div//ul//li//div//div//img/@src'
 
 
 class VIPissyClient(Client):
+    search_url_xpath = '(.//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -35,13 +36,6 @@ class VIPissyClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a/@title)[1]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/span[contains(@class,"date")]')

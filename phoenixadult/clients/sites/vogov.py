@@ -12,6 +12,7 @@ _HARDCODED_DIRECTOR = 'Markus Dupree'
 
 
 class VogoVClient(Client):
+    search_url_xpath = '(.//a[contains(@class,"video-post-main")]/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -26,13 +27,6 @@ class VogoVClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a[contains(@class,"video-post-main")]//img/@alt)[1]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a[contains(@class,"video-post-main")]/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/span[contains(@class,"video-data") and contains(@class,"float-right")]//em')

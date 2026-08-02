@@ -6,13 +6,14 @@ from typing import Any
 from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, join_url
+from phoenixadult.utils.helpers.helpers import iso_date, join_url
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 
 
 class XillimiteClient(Client):
+    search_url_xpath = '@href'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -27,13 +28,6 @@ class XillimiteClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//img/@alt)[1]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '@href')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

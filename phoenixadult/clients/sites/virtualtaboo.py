@@ -12,6 +12,7 @@ _MODEL_MATCH_SCORE = 90.0
 
 
 class VirtualTabooClient(Client):
+    search_url_xpath = '@href'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -32,13 +33,6 @@ class VirtualTabooClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, '.')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '@href')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         model_hrefs = loaded.extra if isinstance(loaded.extra, set) else set()

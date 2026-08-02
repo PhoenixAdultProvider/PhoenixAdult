@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, to_https
+from phoenixadult.utils.helpers.helpers import iso_date, to_https
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'We Are Hairy'
@@ -11,6 +11,7 @@ _FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 
 
 class WeAreHairyClient(Client):
+    search_url_xpath = '(.//div[contains(@class,"top")]//p//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -25,13 +26,6 @@ class WeAreHairyClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/p[contains(@class,"title")]//a')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//div[contains(@class,"top")]//p//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = first_text(source, './/p[contains(@class,"short")]').replace('Added:', '').strip()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.helpers import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 STUDIO = 'SinsLife'
@@ -16,6 +16,7 @@ _SEARCH_CARD_XP = '//div[4]/div/div[3]/div/div'
 
 
 class SinsLifeClient(Client):
+    search_url_xpath = '(.//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -30,13 +31,6 @@ class SinsLifeClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a/@title)[1]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

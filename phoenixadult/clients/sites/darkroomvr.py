@@ -13,6 +13,7 @@ _READ_LESS_RE = re.compile(r'\s*Read less\s*$', re.IGNORECASE)
 
 
 class DarkRoomVRClient(Client):
+    search_url_xpath = '@href'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -27,13 +28,6 @@ class DarkRoomVRClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/div[contains(@class,"video-card__title")]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '@href')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

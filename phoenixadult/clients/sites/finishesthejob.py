@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, title_distance_score
+from phoenixadult.utils.helpers.helpers import append_unique, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 _NON_ALNUM_RE = re.compile(r'[^a-z0-9]', re.IGNORECASE)
@@ -16,6 +16,7 @@ def _norm(s: str) -> str:
 
 
 class FinishesTheJobClient(Client):
+    search_url_xpath = '(.//a/@href)[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -30,13 +31,6 @@ class FinishesTheJobClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h3[@itemprop="name"]')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a/@href)[1]')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return loaded.ctx.search_date

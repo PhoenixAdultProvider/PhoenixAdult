@@ -45,7 +45,7 @@ class DuckDuckGoClient:
         url = f'{_ENDPOINT}?q={quote(query)}'
         logger.debug('search:ddg', f'GET {url}')
         try:
-            async with httpx2.AsyncClient(timeout=10.0, verify=False) as client:
+            async with httpx2.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, headers=_HEADERS)
                 resp.raise_for_status()
         except httpx2.HTTPError as err:

@@ -12,6 +12,7 @@ _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
 
 
 class WakeUpNFuckClient(Client):
+    search_url_xpath = '@href'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -31,13 +32,6 @@ class WakeUpNFuckClient(Client):
 
         actors = first_text(source, './/p[contains(@class,"sub")]')
         return f'{title} [{actors}]' if actors else title
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '@href')
-        if not href:
-            return ''
-
-        return absolute_url(href, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
