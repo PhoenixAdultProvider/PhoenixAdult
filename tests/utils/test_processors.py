@@ -325,8 +325,8 @@ def test_title_case_sequence_marker_requires_number() -> None:
 
 
 def test_title_case_initialism_collapse() -> None:
-    assert title_case('The Notorious B. O. O. T. Y') == 'The Notorious B.O.O.T.Y'
-    assert title_case('The Notorious B.O.O.T.Y') == 'The Notorious B.O.O.T.Y'
+    assert title_case('The Notorious B. O. O. T. Y') == 'The Notorious B.O.O.T.Y.'
+    assert title_case('The Notorious B.O.O.T.Y') == 'The Notorious B.O.O.T.Y.'
     assert title_case('S. W. A. T. Team') == 'S.W.A.T. Team'
     assert title_case('Two Girls C. D') == 'Two Girls C. D'
 

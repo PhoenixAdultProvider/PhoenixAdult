@@ -376,6 +376,7 @@ class _TitleCaseEngine:
     def _normalize_initials(self, output: str) -> str:
         output = re.sub(r'^\w\.\s\w$', lambda m: f'{m.group(0)}.', output)
         output = _INITIALISM_RE.sub(lambda m: re.sub(r'\s+', '', m.group(0)), output)
+        output = _UNDOTTED_INITIALISM_RE.sub(r'\1.', output)
         output = collapse_initial_pairs(output)
         return _VS_RE.sub(lambda m: f'{m.group(1)}.', output)
 
