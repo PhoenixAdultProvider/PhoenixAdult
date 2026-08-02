@@ -6,6 +6,7 @@ import re
 import httpx2
 
 from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.headers import image_request_headers
 from phoenixadult.utils.images.proxy import proxy_url
@@ -160,7 +161,7 @@ class PeopleManager:
         use_scene, scene_first = scene_image_pref()
 
         if cache_enabled() and not cache_replace_enabled():
-            cached = lookup_cached(name, type)
+            cached = await run_in('store', lookup_cached, name, type)
             if cached:
                 photo = cached['served_url']
                 gender = gender or cached['gender']  # type: ignore[assignment]

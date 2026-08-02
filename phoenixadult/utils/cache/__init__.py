@@ -733,12 +733,22 @@ def content_duplicate_entries() -> list[str]:
     return sorted(matched | set(duplicate_entries()))
 
 
+_STALE_DUP_CACHE: tuple[str, list[str] | None] = ('', None)
+
+
 def stale_duplicate_entries() -> list[str]:
+    global _STALE_DUP_CACHE
+    token = f'{env.state_db_path}|{scene_store.change_token()}'
+    cached_token, cached_value = _STALE_DUP_CACHE
+    if cached_token == token and cached_value is not None:
+        return list(cached_value)
     stale = set(duplicate_entries())
     for members in _content_duplicate_groups():
         keep = max(members, key=lambda m: (m[1], m[0]))[0]
         stale.update(rel for rel, _ in members if rel != keep)
-    return sorted(stale)
+    result = sorted(stale)
+    _STALE_DUP_CACHE = (token, result)
+    return list(result)
 
 
 def purge_duplicates() -> int:
