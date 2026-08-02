@@ -55,14 +55,22 @@ def test_nav_carries_the_admin_token_to_the_other_pages(client: TestClient) -> N
     assert "URLSearchParams(location.search).get('token')" in body
 
 
-def test_every_page_carries_the_theme_palette_and_toggle(client: TestClient) -> None:
+def test_every_page_carries_the_theme_loader_and_toggle(client: TestClient) -> None:
     body = client.get('/queue', headers={'x-admin-token': TOKEN}).text
-    assert '--bg: #0f1117' in body
-    assert ':root[data-theme="light"]' in body
+    assert '<link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">' in body
     assert 'prefers-color-scheme: light' in body
     assert 'localStorage.getItem' in body and 'pa-theme' in body
+    assert "dark: ['midnight', 'forest'], light: ['day', 'meadow']" in body
     for mode in ('light', 'auto', 'dark'):
         assert f'data-set="{mode}"' in body
+
+
+def test_theme_stylesheets_are_served_and_unknown_names_404(client: TestClient) -> None:
+    for name in ('midnight', 'day', 'forest', 'meadow'):
+        r = client.get(f'/themes/{name}.css')
+        assert r.status_code == 200 and r.headers['content-type'].startswith('text/css')
+        assert f'data-theme-name="{name}"' in r.text
+    assert client.get('/themes/nope.css').status_code == 404
 
 
 def test_pages_reference_theme_variables_never_raw_colors() -> None:
@@ -72,7 +80,26 @@ def test_pages_reference_theme_variables_never_raw_colors() -> None:
     import phoenixadult.routes as routes
 
     html_dir = Path(routes.__file__).parent / 'html'
-    sources = [f for f in html_dir.glob('*.html') if f.name != 'theme.html'] + [Path(routes.__file__).parent / 'people_cache_routes.py']
+    sources = [*html_dir.glob('*.html'), Path(routes.__file__).parent / 'people_cache_routes.py']
     for f in sources:
         hexes = set(re.findall(r'#[0-9a-fA-F]{3,8}\b', f.read_text(encoding='utf-8'))) - {'#000'}
         assert not hexes, f'{f.name} has raw colors: {sorted(hexes)}'
+
+
+def test_every_template_variable_is_defined_in_every_theme() -> None:
+    import re
+    from pathlib import Path
+
+    import phoenixadult.routes as routes
+
+    html_dir = Path(routes.__file__).parent / 'html'
+    refs: set[str] = set()
+    for f in [*html_dir.glob('*.html'), Path(routes.__file__).parent / 'people_cache_routes.py']:
+        refs.update(re.findall(r'var\((--[a-z0-9-]+)\)', f.read_text(encoding='utf-8')))
+    refs.discard('--app-nav-h')
+    themes = list((html_dir / 'themes').glob('*.css'))
+    assert len(themes) == 4
+    for theme in themes:
+        defined = set(re.findall(r'^\s*(--[a-z0-9-]+):', theme.read_text(encoding='utf-8'), re.M))
+        missing = sorted(refs - defined)
+        assert not missing, f'{theme.name} is missing: {missing}'

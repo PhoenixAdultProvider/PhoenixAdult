@@ -8,40 +8,40 @@
   <title>Scrape Queue</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+    body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
     h1 { font-size: 20px; margin: 0 0 4px; }
-    h2 { font-size: 15px; margin: 22px 0 10px; color: var(--text-2); }
+    h2 { font-size: 15px; margin: 22px 0 10px; color: var(--soft-text); }
     h2 .count-badge { margin-left: 8px; }
-    .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+    .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
     .pacers { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-    .pacer { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; gap: 14px; align-items: baseline; }
+    .pacer { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; gap: 14px; align-items: baseline; }
     .pacer .tag { font-weight: 600; }
-    .pacer .cd { font-variant-numeric: tabular-nums; color: var(--warn); }
-    .pacer .cd.ready { color: var(--ok); }
-    .pacer .win { color: var(--text-dim); font-size: 12px; }
-    .count-badge { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+    .pacer .cd { font-variant-numeric: tabular-nums; color: var(--status-warn-text); }
+    .pacer .cd.ready { color: var(--status-ok-text); }
+    .pacer .win { color: var(--label-text); font-size: 12px; }
+    .count-badge { font-size: 12px; color: var(--label-text); font-weight: 400; }
     .list { display: flex; flex-direction: column; gap: 6px; }
-    .item { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
-    .item.running { border-color: var(--accent-soft); background: var(--info-wash); }
+    .item { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
     .item .label { flex: 1; word-break: break-all; }
-    .item .age { color: var(--text-dim); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .spinner { width: 14px; height: 14px; border: 2px solid var(--accent-deep); border-top-color: var(--accent-text); border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
+    .item .age { color: var(--label-text); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .spinner { width: 14px; height: 14px; border: 2px solid var(--spinner-track); border-top-color: var(--spinner-head); border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .pos { color: var(--text-faint); font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
-    .empty { color: var(--text-faint); font-size: 13px; padding: 14px; }
-    .cd.banned { color: var(--danger-text); font-weight: 700; }
-    .pause-banner { background: var(--danger-deep); color: var(--danger-soft-2); border-radius: 6px; padding: 8px 14px; font-size: 13px;
+    .pos { color: var(--empty-text); font-size: 12px; width: 26px; text-align: right; flex: none; font-variant-numeric: tabular-nums; }
+    .empty { color: var(--empty-text); font-size: 13px; padding: 14px; }
+    .cd.banned { color: var(--status-danger-text); font-weight: 700; }
+    .pause-banner { background: var(--banner-danger-bg); color: var(--banner-danger-text); border-radius: 6px; padding: 8px 14px; font-size: 13px;
                     margin-bottom: 12px; display: flex; gap: 12px; align-items: center; }
-    .pause-banner button { padding: 3px 10px; font-size: 12px; border: 1px solid var(--danger-soft); border-radius: 5px;
-                           background: transparent; color: var(--danger-soft-2); cursor: pointer; }
-    .flush-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--danger-deep); border-radius: 5px;
-                 background: var(--border); color: var(--danger-soft); cursor: pointer; vertical-align: 1px; }
-    .flush-btn:hover { background: var(--danger-deep); color: var(--danger-soft-2); }
+    .pause-banner button { padding: 3px 10px; font-size: 12px; border: 1px solid var(--banner-danger-border); border-radius: 5px;
+                           background: transparent; color: var(--banner-danger-text); cursor: pointer; }
+    .flush-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px;
+                 background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; vertical-align: 1px; }
+    .flush-btn:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
 
     .progress { margin-bottom: 18px; }
-    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
-    .progress-track { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
-    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--accent); transition: width .3s ease; }
+    .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
+    .progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
+    .progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--progress-fill); transition: width .3s ease; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -56,7 +56,7 @@
     }
   </style>
 </head>
-<body>
+<body data-page="queue">
   __NAV__
   <h1>Scrape Queue</h1>
   <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>

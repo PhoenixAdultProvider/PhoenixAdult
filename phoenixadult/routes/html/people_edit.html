@@ -8,53 +8,53 @@
   <title>Edit Headshot</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+    body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
     h1 { font-size: 30px; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .copy { padding: 5px 14px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); cursor: pointer; font-size: 12px; font-family: inherit; }
-    .copy:hover { color: var(--text); border-color: var(--text-faint); }
-    .copy.done { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--on-solid); }
+    .copy { padding: 5px 14px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--muted-text); cursor: pointer; font-size: 12px; font-family: inherit; }
+    .copy:hover { color: var(--page-text); border-color: var(--hint-text); }
+    .copy.done { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
     a.iafd { text-decoration: none; line-height: normal; }
-    .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
-    .sub code { color: var(--text-2); }
+    .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: var(--soft-text); }
     h1, .sub, .wrap { max-width: 900px; margin-inline: auto; }
-    fieldset { border: 1px solid var(--border-3); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--surface); }
-    legend { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
-    label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    input[type=text]:focus { outline: 0; border-color: var(--accent); }
-    .hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+    fieldset { border: 1px solid var(--button-secondary-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); }
+    legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
+    label { display: block; font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
+    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    input[type=text]:focus { outline: 0; border-color: var(--button-primary-bg); }
+    .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
     .fetchrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-    .fetchrow select { flex: 1 1 180px; min-width: 0; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-2); cursor: pointer; font-size: 13px; font-family: inherit; }
-    .fetch:hover { background: var(--accent); border-color: var(--accent); color: var(--on-solid); }
-    .fetch:disabled { color: var(--text-dim); cursor: not-allowed; background: var(--surface-2); }
-    .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--text-2); }
-    .toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
+    .fetchrow select { flex: 1 1 180px; min-width: 0; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--soft-text); cursor: pointer; font-size: 13px; font-family: inherit; }
+    .fetch:hover { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
+    .fetch:disabled { color: var(--label-text); cursor: not-allowed; background: var(--button-secondary-bg); }
+    .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--soft-text); }
+    .toggle input { width: 16px; height: 16px; accent-color: var(--button-primary-bg); }
     .imgs { display: flex; gap: 12px; }
     figure { margin: 0; flex: 1; text-align: center; }
-    figcaption { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
-    figure img { width: 100%; height: 240px; object-fit: contain; background: var(--well); border-radius: 6px; }
+    figcaption { font-size: 11px; color: var(--muted-text); margin-bottom: 4px; }
+    figure img { width: 100%; height: 240px; object-fit: contain; background: var(--image-well-bg); border-radius: 6px; }
     .bar { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
-    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: var(--ok-solid); color: var(--on-solid); cursor: pointer; font-size: 14px; font-weight: 500; }
-    .save:hover { background: var(--ok-solid-2); }
-    .save:disabled { background: var(--border-3); color: var(--text-dim); cursor: not-allowed; }
-    .cancel { padding: 9px 18px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); cursor: pointer; font-size: 14px; }
-    .cancel:hover { color: var(--text); }
-    .status { font-size: 12px; color: var(--text-dim); }
-    .recorded { width: 100%; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .recorded:focus { outline: 0; border-color: var(--accent); }
-    #sfwToggle.on { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--on-solid); }
+    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: var(--button-success-bg); color: var(--button-text); cursor: pointer; font-size: 14px; font-weight: 500; }
+    .save:hover { background: var(--button-success-hover-bg); }
+    .save:disabled { background: var(--button-secondary-border); color: var(--label-text); cursor: not-allowed; }
+    .cancel { padding: 9px 18px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; }
+    .cancel:hover { color: var(--page-text); }
+    .status { font-size: 12px; color: var(--label-text); }
+    .recorded { width: 100%; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .recorded:focus { outline: 0; border-color: var(--button-primary-bg); }
+    #sfwToggle.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
     body.sfw #previewCard { display: none; }
     .scenewrap { max-height: 340px; overflow: auto; border-radius: 6px; }
     .scenes { width: 100%; border-collapse: collapse; font-size: 13px; }
     .scenes th {
-      position: sticky; top: 0; background: var(--surface); text-align: left; font-weight: 500; color: var(--text-dim);
-      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px 6px; border-bottom: 1px solid var(--border-3);
+      position: sticky; top: 0; background: var(--card-bg); text-align: left; font-weight: 500; color: var(--label-text);
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px 6px; border-bottom: 1px solid var(--button-secondary-border);
     }
-    .scenes td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+    .scenes td { padding: 6px 10px; border-bottom: 1px solid var(--card-border); color: var(--soft-text); vertical-align: top; }
     .scenes tr:last-child td { border-bottom: 0; }
     .scenes td.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .scenes a { color: var(--accent-text-2); text-decoration: none; }
+    .scenes a { color: var(--link-text); text-decoration: none; }
     .scenes a:hover { text-decoration: underline; }
 
     @media (max-width: 720px) {
@@ -67,7 +67,7 @@
     }
   </style>
 </head>
-<body>
+<body data-page="people-edit">
   __NAV__
   <h1><span id="actorName">__ACTOR_NAME__</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
   <div class="sub">__SUBTITLE__</div>
@@ -83,7 +83,7 @@
         <span class="status" id="fetchStatus"></span>
       </div>
       <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
-      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text-2)">Cropped Status — face-crop the image</label></div>
+      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--soft-text)">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
       <label for="f-recorded">Recorded Source</label>
       <select id="f-recorded" class="recorded"></select>

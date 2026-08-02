@@ -1,0 +1,237 @@
+/* Day — light theme.
+ * Shared element colors first, then per-page overrides: set a variable inside a
+ * page block to restyle that element on that page only. */
+:root[data-theme-name="day"], [data-theme-preview="day"] {
+  color-scheme: light;
+
+  /* ── Page ── */
+  --page-bg: #f3f5f9;
+  --page-text: #24303f;
+  --heading-text: #101827;
+  --subtitle-text: #5d6d83;
+  --section-heading-text: #64748b;
+  --muted-text: #5d6d83;
+  --soft-text: #3d4c60;
+  --label-text: #64748b;
+  --hint-text: #93a3b7;
+  --empty-text: #93a3b7;
+  --blank-text: #c0cad8;
+  --divider: #e3e8f0;
+  --toolbar-bg: #f3f5f9;
+  --inset-bg: #f3f5f9;
+  --invert-icon: none;
+
+  /* ── Links & Code ── */
+  --link-text: #1d4ed8;
+  --link-hover-text: #1e40af;
+  --highlight-text: #4f46e5;
+  --code-text: #0369a1;
+  --code-bg: #e7ebf2;
+
+  /* ── Nav Bar ── */
+  --nav-bg: #ffffff;
+  --nav-border: #dde3ec;
+  --nav-link-text: #5d6d83;
+  --nav-link-hover-bg: #eef2f8;
+  --nav-link-hover-text: #24303f;
+  --nav-active-text: #2563eb;
+  --nav-active-underline: #2563eb;
+  --nav-toggle-active-bg: #eef1f6;
+  --nav-toggle-active-border: #c0cad8;
+
+  /* ── Cards & Panels ── */
+  --card-bg: #ffffff;
+  --card-border: #dde3ec;
+  --card-title-text: #17202e;
+  --card-stripe: #93a3b7;
+  --panel-bg: #eef1f6;
+  --panel-border: #cfd7e2;
+  --strip-bg: #e3e8f0;
+  --strip-hover-bg: #e6ebf4;
+  --strip-alt-bg: #f4f6fa;
+  --strip-alt-hover-bg: #eef1f7;
+  --focus-ring: #6366f1;
+  --focus-glow: #6366f140;
+
+  /* ── Inputs ── */
+  --input-bg: #eef1f6;
+  --input-border: #c0cad8;
+  --input-text: #24303f;
+  --input-placeholder-text: #93a3b7;
+  --input-focus-border: #2563eb;
+  --input-changed-border: #b45309;
+
+  /* ── Buttons ── */
+  --button-text: #fff;
+  --button-primary-bg: #2563eb;
+  --button-primary-hover-bg: #1d4ed8;
+  --button-secondary-bg: #eef1f6;
+  --button-secondary-border: #c0cad8;
+  --button-secondary-text: #5d6d83;
+  --button-muted-bg: #dde3ec;
+  --button-muted-border: #cfd7e2;
+  --button-muted-text: #3d4c60;
+  --button-muted-hover-bg: #cfd7e2;
+  --button-outline-bg: #e7ebf2;
+  --button-outline-border: #2563eb;
+  --button-outline-text: #2563eb;
+  --button-outline-hover-bg: #1d4ed8;
+  --button-danger-bg: #b91c1c;
+  --button-danger-hover-bg: #dc2626;
+  --button-danger-deep-bg: #fee2e2;
+  --button-success-bg: #15803d;
+  --button-success-hover-bg: #16a34a;
+  --button-disabled-bg: #c8d0dc;
+  --button-disabled-text: #9dabbc;
+
+  /* ── Chips ── */
+  --chip-bg: #eef1f6;
+  --chip-border: #c0cad8;
+  --chip-text: #3d4c60;
+  --chip-remove-hover-text: #dc2626;
+
+  /* ── Badges ── */
+  --badge-neutral-bg: #c0cad8;
+  --badge-neutral-text: #3d4c60;
+  --badge-muted-bg: #e2e8f0;
+  --badge-muted-border: #c0cad8;
+  --badge-muted-text: #5d6d83;
+  --badge-info-bg: #dbeafe;
+  --badge-info-border: #2563eb;
+  --badge-info-text: #1e40af;
+  --badge-success-bg: #d1fae5;
+  --badge-success-border: #86efac;
+  --badge-success-text: #047857;
+  --badge-warning-bg: #ffedd5;
+  --badge-warning-border: #ea580c;
+  --badge-warning-text: #9a3412;
+  --badge-danger-bg: #fee2e2;
+  --badge-danger-border: #fca5a5;
+  --badge-danger-text: #991b1b;
+  --badge-danger-soft-text: #b91c1c;
+  --badge-violet-bg: #ede9fe;
+  --badge-violet-border: #8b5cf6;
+  --badge-violet-text: #5b21b6;
+  --badge-violet-deep-bg: #ede9fe;
+  --badge-violet-deep-text: #6d28d9;
+  --badge-violet-solid-bg: #7c3aed;
+  --badge-indigo-bg: #e0e7ff;
+  --badge-indigo-text: #3730a3;
+  --badge-teal-bg: #ccfbf1;
+  --badge-teal-border: #14b8a6;
+  --badge-teal-text: #0f766e;
+
+  /* ── Status Text ── */
+  --status-ok-text: #16a34a;
+  --status-warn-text: #b45309;
+  --soft-warn-text: #92400e;
+  --status-danger-text: #dc2626;
+  --soft-danger-text: #b91c1c;
+
+  /* ── Banners ── */
+  --banner-warning-bg: #ffedd5;
+  --banner-warning-text: #9a3412;
+  --banner-danger-bg: #fee2e2;
+  --banner-danger-border: #b91c1c;
+  --banner-danger-text: #991b1b;
+  --warn-solid-bg: #b45309;
+  --warn-solid-hover-bg: #d97706;
+  --warn-solid-border: #f59e0b;
+
+  /* ── Progress & Spinners ── */
+  --progress-track: #e3e8f0;
+  --progress-fill: #2563eb;
+  --progress-fill-alt: #1d4ed8;
+  --spinner-track: #dbeafe;
+  --spinner-head: #2563eb;
+  --running-item-bg: #dbeafe;
+  --running-item-border: #3b82f6;
+
+  /* ── Images & Placeholders ── */
+  --image-well-bg: #e5eaf1;
+  --checkerboard-a: #d9dfe9;
+  --checkerboard-b: #e5eaf1;
+  --placeholder-bg: #e3e8f0;
+  --placeholder-icon-text: #9dabbc;
+
+  /* ── Logs ── */
+  --log-bg: #e9edf3;
+  --log-text: #155e75;
+  --log-divider: #f4f6fa;
+  --log-info-text: #047857;
+  --log-warn-text: #78350f;
+  --log-warn-level-text: #92400e;
+  --log-error-text: #991b1b;
+  --log-error-level-text: #b91c1c;
+  --log-link-text: #0369a1;
+  --log-link-hover-text: #075985;
+
+  /* ── Tables & Tabs ── */
+  --table-header-text: #64748b;
+  --table-border: #cfd7e2;
+  --table-row-border: #e3e8f0;
+  --table-key-text: #4f46e5;
+  --table-group-text: #6d28d9;
+  --tab-active-underline: #2563eb;
+
+  /* ── Gender ── */
+  --female: #db2777;
+  --male: #2563eb;
+  --trans: #9333ea;
+  --gender-none: #64748b;
+  --female-card-bg: #fdf2f8;
+  --male-card-bg: #eff6ff;
+  --trans-card-bg: #faf5ff;
+  --female-ring: #fbcfe8;
+  --male-ring: #bfdbfe;
+  --trans-ring: #e9d5ff;
+  --unknown-ring: #c8d0dc;
+
+  /* ── Roles ── */
+  --role-badge-bg: #93a3b7;
+  --role-actor-bg: #0e7490;
+  --role-director-bg: #7c3aed;
+  --role-producer-bg: #b45309;
+}
+
+/* ── Metadata Page ── */
+[data-theme-name="day"] [data-page="metadata"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="metadata"] {
+}
+
+/* ── Metadata Edit Page ── */
+[data-theme-name="day"] [data-page="metadata-edit"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="metadata-edit"] {
+}
+
+/* ── People Page ── */
+[data-theme-name="day"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="people"] {
+  --banner-danger-border: #b91c1c;
+}
+
+/* ── People Edit Page ── */
+[data-theme-name="day"] [data-page="people-edit"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="people-edit"] {
+}
+
+/* ── Config Page ── */
+[data-theme-name="day"] [data-page="config"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="config"] {
+  --button-primary-bg: #6366f1;
+  --button-primary-hover-bg: #4f46e5;
+  --input-focus-border: #6366f1;
+  --tab-active-underline: #6366f1;
+  --subtitle-text: #64748b;
+}
+
+/* ── Logos Page ── */
+[data-theme-name="day"] [data-page="logos"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="logos"] {
+}
+
+/* ── Queue Page ── */
+[data-theme-name="day"] [data-page="queue"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="queue"] {
+}
+
+/* ── Dev Page ── */
+[data-theme-name="day"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="dev"] {
+  --button-primary-bg: #6366f1;
+  --button-primary-hover-bg: #4f46e5;
+  --input-focus-border: #6366f1;
+  --spinner-head: #6366f1;
+}

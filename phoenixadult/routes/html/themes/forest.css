@@ -1,0 +1,260 @@
+/* Forest — dark theme.
+ * Shared element colors first, then per-page overrides: set a variable inside a
+ * page block to restyle that element on that page only. */
+:root[data-theme-name="forest"], [data-theme-preview="forest"] {
+  color-scheme: dark;
+
+  /* ── Page ── */
+  --page-bg: #0c120e;
+  --page-text: #e2e8f0;
+  --heading-text: #f8fafc;
+  --subtitle-text: #94a3b8;
+  --section-heading-text: #64748b;
+  --muted-text: #94a3b8;
+  --soft-text: #cbd5e1;
+  --label-text: #64748b;
+  --hint-text: #475569;
+  --empty-text: #475569;
+  --blank-text: #334155;
+  --divider: #182319;
+  --toolbar-bg: #0c120e;
+  --inset-bg: #0c120e;
+  --invert-icon: invert(0.7);
+
+  /* ── Links & Code ── */
+  --link-text: #86efac;
+  --link-hover-text: #bbf7d0;
+  --highlight-text: #6ee7b7;
+  --code-text: #5eead4;
+  --code-bg: #0c120e;
+
+  /* ── Nav Bar ── */
+  --nav-bg: #121a15;
+  --nav-border: #1c291f;
+  --nav-link-text: #94a3b8;
+  --nav-link-hover-bg: #182419;
+  --nav-link-hover-text: #e2e8f0;
+  --nav-active-text: #4ade80;
+  --nav-active-underline: #16a34a;
+  --nav-toggle-active-bg: #1a2a1e;
+  --nav-toggle-active-border: #2f4636;
+
+  /* ── Cards & Panels ── */
+  --card-bg: #121a15;
+  --card-border: #1c291f;
+  --card-title-text: #f1f5f9;
+  --card-stripe: #475569;
+  --panel-bg: #1a2a1e;
+  --panel-border: #2f4636;
+  --strip-bg: #16231b;
+  --strip-hover-bg: #1c2c22;
+  --strip-alt-bg: #141f18;
+  --strip-alt-hover-bg: #18261d;
+  --focus-ring: #22c55e;
+  --focus-glow: #22c55e40;
+
+  /* ── Inputs ── */
+  --input-bg: #1a2a1e;
+  --input-border: #2f4636;
+  --input-text: #e2e8f0;
+  --input-placeholder-text: #475569;
+  --input-focus-border: #16a34a;
+  --input-changed-border: #fcd34d;
+
+  /* ── Buttons ── */
+  --button-text: #fff;
+  --button-primary-bg: #16a34a;
+  --button-primary-hover-bg: #15803d;
+  --button-secondary-bg: #1a2a1e;
+  --button-secondary-border: #2f4636;
+  --button-secondary-text: #94a3b8;
+  --button-muted-bg: #1c291f;
+  --button-muted-border: #2f4636;
+  --button-muted-text: #cbd5e1;
+  --button-muted-hover-bg: #2f4636;
+  --button-outline-bg: #132a1c;
+  --button-outline-border: #16a34a;
+  --button-outline-text: #4ade80;
+  --button-outline-hover-bg: #15803d;
+  --button-danger-bg: #b91c1c;
+  --button-danger-hover-bg: #dc2626;
+  --button-danger-deep-bg: #7f1d1d;
+  --button-success-bg: #15803d;
+  --button-success-hover-bg: #16a34a;
+  --button-disabled-bg: #374151;
+  --button-disabled-text: #6b7280;
+
+  /* ── Chips ── */
+  --chip-bg: #1a2a1e;
+  --chip-border: #2f4636;
+  --chip-text: #cbd5e1;
+  --chip-remove-hover-text: #f87171;
+
+  /* ── Badges ── */
+  --badge-neutral-bg: #334155;
+  --badge-neutral-text: #cbd5e1;
+  --badge-muted-bg: #0f172a;
+  --badge-muted-border: #334155;
+  --badge-muted-text: #94a3b8;
+  --badge-info-bg: #14532d;
+  --badge-info-border: #22c55e;
+  --badge-info-text: #bbf7d0;
+  --badge-success-bg: #064e3b;
+  --badge-success-border: #065f46;
+  --badge-success-text: #6ee7b7;
+  --badge-warning-bg: #7c2d12;
+  --badge-warning-border: #ea580c;
+  --badge-warning-text: #fed7aa;
+  --badge-danger-bg: #7f1d1d;
+  --badge-danger-border: #991b1b;
+  --badge-danger-text: #fecaca;
+  --badge-danger-soft-text: #fca5a5;
+  --badge-violet-bg: #5b21b6;
+  --badge-violet-border: #8b5cf6;
+  --badge-violet-text: #ddd6fe;
+  --badge-violet-deep-bg: #4c1d95;
+  --badge-violet-deep-text: #c4b5fd;
+  --badge-violet-solid-bg: #7c3aed;
+  --badge-indigo-bg: #312e81;
+  --badge-indigo-text: #c7d2fe;
+  --badge-teal-bg: #134e4a;
+  --badge-teal-border: #14b8a6;
+  --badge-teal-text: #99f6e4;
+
+  /* ── Status Text ── */
+  --status-ok-text: #4ade80;
+  --status-warn-text: #fbbf24;
+  --soft-warn-text: #fcd34d;
+  --status-danger-text: #f87171;
+  --soft-danger-text: #fca5a5;
+
+  /* ── Banners ── */
+  --banner-warning-bg: #7c2d12;
+  --banner-warning-text: #fed7aa;
+  --banner-danger-bg: #7f1d1d;
+  --banner-danger-border: #fca5a5;
+  --banner-danger-text: #fecaca;
+  --warn-solid-bg: #b45309;
+  --warn-solid-hover-bg: #d97706;
+  --warn-solid-border: #f59e0b;
+
+  /* ── Progress & Spinners ── */
+  --progress-track: #16231b;
+  --progress-fill: #16a34a;
+  --progress-fill-alt: #15803d;
+  --spinner-track: #14532d;
+  --spinner-head: #4ade80;
+  --running-item-bg: #122b1c;
+  --running-item-border: #22c55e;
+
+  /* ── Images & Placeholders ── */
+  --image-well-bg: #0a0f0c;
+  --checkerboard-a: #121b14;
+  --checkerboard-b: #0a0f0c;
+  --placeholder-bg: #16231b;
+  --placeholder-icon-text: #4b5563;
+
+  /* ── Logs ── */
+  --log-bg: #080d0a;
+  --log-text: #a5f3fc;
+  --log-divider: #141f18;
+  --log-info-text: #6ee7b7;
+  --log-warn-text: #fde68a;
+  --log-warn-level-text: #fcd34d;
+  --log-error-text: #fecaca;
+  --log-error-level-text: #fca5a5;
+  --log-link-text: #7dd3fc;
+  --log-link-hover-text: #bae6fd;
+
+  /* ── Tables & Tabs ── */
+  --table-header-text: #64748b;
+  --table-border: #2f4636;
+  --table-row-border: #16231b;
+  --table-key-text: #86efac;
+  --table-group-text: #c4b5fd;
+  --tab-active-underline: #16a34a;
+
+  /* ── Gender ── */
+  --female: #db2777;
+  --male: #2563eb;
+  --trans: #9333ea;
+  --gender-none: #64748b;
+  --female-card-bg: #241a20;
+  --male-card-bg: #1a1f2e;
+  --trans-card-bg: #211a2e;
+  --female-ring: #831843;
+  --male-ring: #1e3a8a;
+  --trans-ring: #581c87;
+  --unknown-ring: #374151;
+
+  /* ── Roles ── */
+  --role-badge-bg: #475569;
+  --role-actor-bg: #0e7490;
+  --role-director-bg: #7c3aed;
+  --role-producer-bg: #b45309;
+}
+
+/* ── Metadata Page ── */
+[data-theme-name="forest"] [data-page="metadata"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="metadata"] {
+}
+
+/* ── Metadata Edit Page ── */
+[data-theme-name="forest"] [data-page="metadata-edit"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="metadata-edit"] {
+}
+
+/* ── People Page ── */
+[data-theme-name="forest"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="people"] {
+  --card-bg: #1e2433;
+  --card-border: #334155;
+  --panel-border: #334155;
+  --progress-track: #1e2433;
+  --banner-danger-bg: #3b1d1d;
+  --banner-danger-border: #b91c1c;
+  --button-disabled-bg: #334155;
+  --button-disabled-text: #94a3b8;
+}
+
+/* ── People Edit Page ── */
+[data-theme-name="forest"] [data-page="people-edit"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="people-edit"] {
+}
+
+/* ── Config Page ── */
+[data-theme-name="forest"] [data-page="config"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="config"] {
+  --button-primary-bg: #16a34a;
+  --button-primary-hover-bg: #15803d;
+  --button-danger-bg: #7f1d1d;
+  --button-danger-hover-bg: #991b1b;
+  --card-bg: #1e2433;
+  --card-border: #2d3748;
+  --input-bg: #0f1117;
+  --input-focus-border: #16a34a;
+  --tab-active-underline: #16a34a;
+  --subtitle-text: #64748b;
+  --status-ok-text: #6ee7b7;
+  --status-danger-text: #fca5a5;
+  --log-bg: #0b0d12;
+  --log-text: #cbd5e1;
+}
+
+/* ── Logos Page ── */
+[data-theme-name="forest"] [data-page="logos"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="logos"] {
+}
+
+/* ── Queue Page ── */
+[data-theme-name="forest"] [data-page="queue"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="queue"] {
+}
+
+/* ── Dev Page ── */
+[data-theme-name="forest"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="dev"] {
+  --button-primary-bg: #16a34a;
+  --button-primary-hover-bg: #15803d;
+  --card-bg: #1e2433;
+  --card-border: #2d3748;
+  --chip-border: #374151;
+  --input-bg: #0f1117;
+  --input-focus-border: #16a34a;
+  --spinner-track: #4b5563;
+  --spinner-head: #16a34a;
+  --status-ok-text: #6ee7b7;
+  --badge-info-bg: #1e3a5f;
+}

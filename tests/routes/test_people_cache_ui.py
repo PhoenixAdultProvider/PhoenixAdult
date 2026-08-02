@@ -59,7 +59,7 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
     (d / 'actor.voodoo-child_male.jpg').write_bytes(b'x')
 
     page = TestClient(create_app()).get('/people?token=tok')
-    assert 'display:none}' in page.text.split('.card{')[1].split('\n')[0]
+    assert 'display:none}' in page.text.split('.card{')[1].split('.card.gf')[0]
 
 
 def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:

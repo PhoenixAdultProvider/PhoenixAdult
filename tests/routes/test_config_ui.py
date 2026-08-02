@@ -98,13 +98,25 @@ def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) 
 def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     body = client.get('/config', params={'token': TOKEN}).text
     assert "const LOGS_TAB = 'Logs';" in body
-    assert "return [...tabNames().map(tabSlug), 'plex', 'logs'];" in body
-    assert '[...tabNames(), PLEX_TAB, LOGS_TAB]' in body
+    assert "return [...tabNames().map(tabSlug), 'plex', 'logs', 'theme'];" in body
+    assert '[...tabNames(), PLEX_TAB, LOGS_TAB, THEME_TAB]' in body
     assert 'id="tab-logs"' in body
     assert 'white-space: pre;' in body
     assert 'overflow: auto;' in body
     assert 'touch-action: pan-x pan-y' in body
     assert 'user-select: text' in body
+
+
+def test_the_theme_tab_sits_last_with_pickers_and_a_preview(client: TestClient) -> None:
+    body = client.get('/config', params={'token': TOKEN}).text
+    assert "const THEME_TAB = 'Theme';" in body
+    assert 'id="tab-theme"' in body
+    assert 'id="themeDark"' in body and 'id="themeLight"' in body
+    assert 'Element Preview' in body
+    assert 'data-theme-preview=' in body
+    assert 'previewSamples' in body
+    for var in ('--female', '--male', '--trans', '--gender-none'):
+        assert f'var({var})' in body
 
 
 def test_the_log_toolbar_offers_every_control(client: TestClient) -> None:

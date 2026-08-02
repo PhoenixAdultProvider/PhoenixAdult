@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from starlette.middleware.gzip import GZipMiddleware
 
@@ -146,6 +146,15 @@ def create_app() -> FastAPI:
     @app.get('/favicon.svg', include_in_schema=False)
     async def favicon_svg() -> FileResponse:
         return FileResponse(_html_dir / 'favicon.svg', media_type='image/svg+xml')
+
+    # ── Theme Stylesheets (public — colors only, needed before any auth) ─────
+    from phoenixadult.routes import THEME_NAMES
+
+    @app.get('/themes/{name}.css', include_in_schema=False)
+    async def theme_css(name: str) -> FileResponse:
+        if name not in THEME_NAMES:
+            raise HTTPException(status_code=404, detail='unknown theme')
+        return FileResponse(_html_dir / 'themes' / f'{name}.css', media_type='text/css')
 
     return app
 

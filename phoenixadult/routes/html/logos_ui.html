@@ -8,31 +8,31 @@
   <title>Logo Cache</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+    body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
     h1 { font-size: 20px; margin: 0 0 4px; }
-    .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
-    .sub code { color: var(--text-2); }
-    .off-banner { background: var(--warn-deep); color: var(--warn-text); border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
+    .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: var(--soft-text); }
+    .off-banner { background: var(--banner-warning-bg); color: var(--banner-warning-text); border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
     .bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
-    .bar input[type=text] { background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
-    .bar input[type=text]::placeholder { color: var(--text-faint); }
-    .count-badge { font-size: 12px; color: var(--text-dim); }
-    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface-3); color: var(--accent-text); cursor: pointer; font-size: 13px; font-weight: 500; }
-    .rescan-btn:hover { background: var(--accent-hover); color: var(--on-solid); }
-    .rescan-btn:disabled { border-color: var(--border-3); color: var(--text-dim); cursor: default; }
-    .rescan-status { font-size: 12px; color: var(--text-dim); }
-    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--danger); color: var(--on-solid); cursor: pointer; font-size: 13px; font-weight: 500; }
-    .purge-all-btn:hover { background: var(--danger-hover); }
+    .bar input[type=text] { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text); padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
+    .bar input[type=text]::placeholder { color: var(--input-placeholder-text); }
+    .count-badge { font-size: 12px; color: var(--label-text); }
+    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid var(--button-outline-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--button-outline-text); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .rescan-btn:hover { background: var(--button-outline-hover-bg); color: var(--button-text); }
+    .rescan-btn:disabled { border-color: var(--button-disabled-bg); color: var(--button-disabled-text); cursor: default; }
+    .rescan-status { font-size: 12px; color: var(--label-text); }
+    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--button-danger-bg); color: var(--button-text); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .purge-all-btn:hover { background: var(--button-danger-hover-bg); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .logo-box { background: repeating-conic-gradient(var(--checker) 0% 25%, var(--well) 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .logo-box { background: repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
     .site { font-size: 14px; font-weight: 600; }
-    .site .unknown { color: var(--text-dim); font-weight: 400; font-style: italic; }
-    .meta { font-size: 11px; color: var(--text-dim); word-break: break-all; }
-    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid var(--danger-deep); border-radius: 5px; background: var(--border); color: var(--danger-soft); cursor: pointer; font-size: 12px; }
-    .purge-btn:hover { background: var(--danger-deep); color: var(--danger-soft-2); }
-    .empty { color: var(--text-faint); font-size: 14px; padding: 40px; text-align: center; }
+    .site .unknown { color: var(--label-text); font-weight: 400; font-style: italic; }
+    .meta { font-size: 11px; color: var(--label-text); word-break: break-all; }
+    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px; background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; font-size: 12px; }
+    .purge-btn:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
+    .empty { color: var(--empty-text); font-size: 14px; padding: 40px; text-align: center; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -46,14 +46,14 @@
     }
   </style>
 </head>
-<body>
+<body data-page="logos">
   __NAV__
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.
     Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.</div>
   <div class="bar">
     <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
-    <label style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+    <label style="font-size:13px;color:var(--muted-text);display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
     </label>
     <span class="count-badge" id="count"></span>
@@ -91,7 +91,7 @@
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="card">
           <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
-          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--text-faint);font-weight:400">· ${esc(l.slug)}</span></div>
+          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--empty-text);font-weight:400">· ${esc(l.slug)}</span></div>
           <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
           <button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>
         </div>`).join('');

@@ -206,66 +206,73 @@ async def page(request: Request) -> HTMLResponse:
     body = f"""<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
     <style>
-      body{{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px}}
-      h1{{font-size:20px}} .sub{{color:var(--text-muted);font-size:13px;margin-bottom:20px}}
-      .warn{{background:var(--danger-wash);border:1px solid var(--danger);padding:8px 12px;border-radius:6px}}
-      .empty{{color:var(--text-muted)}}
+      body{{font-family:system-ui,sans-serif;background:var(--page-bg);color:var(--page-text);margin:0;padding:24px}}
+      h1{{font-size:20px}} .sub{{color:var(--muted-text);font-size:13px;margin-bottom:20px}}
+      .warn{{background:var(--banner-danger-bg);border:1px solid var(--banner-danger-border);padding:8px 12px;border-radius:6px}}
+      .empty{{color:var(--muted-text)}}
       .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px}}
-      .card{{background:var(--surface-2);border:1px solid var(--border-3);border-left:5px solid var(--text-faint);border-radius:8px;padding:12px;display:none}}
-      .card.gf{{border-left-color:var(--gf);background:var(--gf-wash)}}
-      .card.gm{{border-left-color:var(--accent);background:var(--gm-wash)}}
-      .card.gt{{border-left-color:var(--gt);background:var(--gt-wash)}}
-      .card.gn{{border-left-color:var(--text-dim)}}
+      .card{{background:var(--card-bg);border:1px solid var(--card-border);border-left:5px solid var(--card-stripe);
+        border-radius:8px;padding:12px;display:none}}
+      .card.gf{{border-left-color:var(--female);background:var(--female-card-bg)}}
+      .card.gm{{border-left-color:var(--button-primary-bg);background:var(--male-card-bg)}}
+      .card.gt{{border-left-color:var(--trans);background:var(--trans-card-bg)}}
+      .card.gn{{border-left-color:var(--gender-none)}}
       .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}}
-      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:var(--text-dim);font-size:12px}}
-      .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:var(--accent-deep)}} .badge.orig{{background:var(--border-3)}}
-      .badge.src{{background:var(--badge-bg);border:1px solid var(--border-3);color:var(--text-muted)}}
-      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--text-faint)}}
-      .role.r-actor{{background:var(--cyan-solid)}} .role.r-director{{background:var(--violet)}} .role.r-producer{{background:var(--amber-solid)}}
+      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:var(--label-text);font-size:12px}}
+      .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:var(--badge-info-bg)}}
+      .badge.orig{{background:var(--badge-neutral-bg)}}
+      .badge.src{{background:var(--badge-muted-bg);border:1px solid var(--badge-muted-border);color:var(--badge-muted-text)}}
+      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--role-badge-bg)}}
+      .role.r-actor{{background:var(--role-actor-bg)}} .role.r-director{{background:var(--role-director-bg)}}
+      .role.r-producer{{background:var(--role-producer-bg)}}
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
-      figcaption{{font-size:11px;color:var(--text-muted);margin-bottom:4px}}
-      img{{width:100%;height:170px;object-fit:contain;background:var(--well);border-radius:6px}}
+      figcaption{{font-size:11px;color:var(--muted-text);margin-bottom:4px}}
+      img{{width:100%;height:170px;object-fit:contain;background:var(--image-well-bg);border-radius:6px}}
       body.sfw .imgs{{display:none}}
-      .sfwtoggle.on{{background:var(--ok-solid);border-color:var(--ok-solid);color:var(--on-solid)}}
-      .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text-muted)}}
+      .sfwtoggle.on{{background:var(--button-success-bg);border-color:var(--button-success-bg);color:var(--button-text)}}
+      .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted-text)}}
       .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}
-      .g.gf.active{{background:var(--gf)}} .g.gm.active{{background:var(--accent)}}
-      .g.gt.active{{background:var(--gt)}} .g.gn.active{{background:var(--text-dim)}}
-      button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--accent);color:var(--on-solid);cursor:pointer}}
+      .g.gf.active{{background:var(--female)}} .g.gm.active{{background:var(--button-primary-bg)}}
+      .g.gt.active{{background:var(--trans)}} .g.gn.active{{background:var(--gender-none)}}
+      button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--button-primary-bg);color:var(--button-text);cursor:pointer}}
       button:disabled{{cursor:default;opacity:.7}}
       .actions{{display:flex;gap:8px}}
-      button.restore{{background:var(--accent);flex:1}} button.restore:disabled{{background:var(--border-3);color:var(--text-muted);opacity:1}}
-      button.edit{{background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-2);flex:0 0 80px}}
-      button.edit:hover{{background:var(--accent);border-color:var(--accent);color:var(--on-solid)}}
-      button.purge{{background:var(--danger);flex:0 0 90px}}
+      button.restore{{background:var(--button-primary-bg);flex:1}}
+      button.restore:disabled{{background:var(--button-disabled-bg);color:var(--button-disabled-text);opacity:1}}
+      button.edit{{background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--soft-text);flex:0 0 80px}}
+      button.edit:hover{{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}}
+      button.purge{{background:var(--button-danger-bg);flex:0 0 90px}}
       .search{{margin-bottom:16px}}
-      .search input{{width:320px;max-width:100%;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text);
+      .search input{{width:320px;max-width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
         padding:7px 10px;border-radius:6px;font-size:13px}}
-      .search input:focus{{outline:0;border-color:var(--accent)}}
-      .search .cnt{{color:var(--text-dim);font-size:12px;margin-left:10px}}
+      .search input:focus{{outline:0;border-color:var(--input-focus-border)}}
+      .search .cnt{{color:var(--label-text);font-size:12px;margin-left:10px}}
       .search{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}}
-      .search select{{background:var(--surface-2);border:1px solid var(--border-3);color:var(--text);padding:7px 10px;border-radius:6px;font-size:13px}}
-      button.bulk{{width:auto;margin:0;padding:7px 16px;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-2)}}
-      button.bulk:hover{{background:var(--accent);border-color:var(--accent);color:var(--on-solid)}}
-      button.bulk:disabled{{background:var(--surface-2);color:var(--text-dim)}}
-      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:var(--surface-2);border:1px solid var(--border-3);border-radius:6px;overflow:hidden}}
-      .progress .fill{{height:100%;width:0;background:var(--accent);transition:width .15s linear}}
+      .search select{{background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
+        padding:7px 10px;border-radius:6px;font-size:13px}}
+      button.bulk{{width:auto;margin:0;padding:7px 16px;background:var(--button-secondary-bg);
+        border:1px solid var(--button-secondary-border);color:var(--soft-text)}}
+      button.bulk:hover{{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}}
+      button.bulk:disabled{{background:var(--button-secondary-bg);color:var(--label-text)}}
+      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:var(--progress-track);border:1px solid var(--panel-border);
+        border-radius:6px;overflow:hidden}}
+      .progress .fill{{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}}
       .filters-toggle{{display:none}}
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
-      .tab{{width:auto;margin:0;padding:6px 12px;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-muted)}}
-      .tab.active{{background:var(--accent);color:var(--on-solid);border-color:var(--accent)}}
-      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:var(--accent-deep);color:var(--accent-text-3);border-color:var(--accent-soft)}}
-      .noupstream.on{{background:var(--warn-deep);color:var(--warn-text);border-color:var(--orange)}}
-      .genericonly.on{{background:var(--violet-deep);color:var(--violet-text);border-color:var(--violet-2)}}
-      .singleonly.on{{background:var(--teal-deep);color:var(--teal-text);border-color:var(--teal)}}
+      .tab{{width:auto;margin:0;padding:6px 12px;background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--muted-text)}}
+      .tab.active{{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}}
+      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}}
+      .noupstream.on{{background:var(--badge-warning-bg);color:var(--badge-warning-text);border-color:var(--badge-warning-border)}}
+      .genericonly.on{{background:var(--badge-violet-deep-bg);color:var(--badge-violet-deep-text);border-color:var(--badge-violet-border)}}
+      .singleonly.on{{background:var(--badge-teal-bg);color:var(--badge-teal-text);border-color:var(--badge-teal-border)}}
       .tab .cnt{{opacity:.65;font-size:11px}}
       @media (max-width:720px){{
         body{{padding:14px}}
         .grid{{grid-template-columns:1fr}}
         .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
-        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid var(--border-3);
-          border-radius:6px;background:var(--surface-2);color:var(--text-2);font-size:13px;cursor:pointer}}
-        .filters-toggle.on{{border-color:var(--accent);color:var(--text)}}
+        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid var(--button-secondary-border);
+          border-radius:6px;background:var(--button-secondary-bg);color:var(--soft-text);font-size:13px;cursor:pointer}}
+        .filters-toggle.on{{border-color:var(--button-primary-bg);color:var(--page-text)}}
         .tabs{{display:none;flex-direction:column;gap:6px}}
         body.filters-open .tabs{{display:flex}}
         .tab{{width:100%}} .croptoggle{{margin-left:0}}
@@ -277,7 +284,7 @@ async def page(request: Request) -> HTMLResponse:
         body.filters-open .search>#bulkStatus{{display:block}}
         body.filters-open .search>.progress[hidden]{{display:none}}
       }}
-    </style></head><body>
+    </style></head><body data-page="people">
     {render_nav('people')}
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
@@ -582,7 +589,9 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     else:
         entry = None
     if entry is None:
-        return HTMLResponse('<p style="font-family:system-ui;color:var(--text);background:var(--bg)">No cached headshot for that person.</p>', status_code=404)
+        return HTMLResponse(
+            '<p style="font-family:system-ui;color:var(--page-text);background:var(--page-bg)">No cached headshot for that person.</p>', status_code=404
+        )
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'

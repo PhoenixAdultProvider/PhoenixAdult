@@ -1,0 +1,237 @@
+/* Meadow — light theme.
+ * Shared element colors first, then per-page overrides: set a variable inside a
+ * page block to restyle that element on that page only. */
+:root[data-theme-name="meadow"], [data-theme-preview="meadow"] {
+  color-scheme: light;
+
+  /* ── Page ── */
+  --page-bg: #f0f7f2;
+  --page-text: #24303f;
+  --heading-text: #101827;
+  --subtitle-text: #5d6d83;
+  --section-heading-text: #64748b;
+  --muted-text: #5d6d83;
+  --soft-text: #3d4c60;
+  --label-text: #64748b;
+  --hint-text: #93a3b7;
+  --empty-text: #93a3b7;
+  --blank-text: #c0cad8;
+  --divider: #dfece3;
+  --toolbar-bg: #f0f7f2;
+  --inset-bg: #f0f7f2;
+  --invert-icon: none;
+
+  /* ── Links & Code ── */
+  --link-text: #047857;
+  --link-hover-text: #065f46;
+  --highlight-text: #0f766e;
+  --code-text: #0f766e;
+  --code-bg: #e3efe6;
+
+  /* ── Nav Bar ── */
+  --nav-bg: #ffffff;
+  --nav-border: #d5e5d9;
+  --nav-link-text: #5d6d83;
+  --nav-link-hover-bg: #ecf5ee;
+  --nav-link-hover-text: #24303f;
+  --nav-active-text: #15803d;
+  --nav-active-underline: #15803d;
+  --nav-toggle-active-bg: #e8f2ea;
+  --nav-toggle-active-border: #c3d8c9;
+
+  /* ── Cards & Panels ── */
+  --card-bg: #ffffff;
+  --card-border: #d5e5d9;
+  --card-title-text: #17202e;
+  --card-stripe: #93a3b7;
+  --panel-bg: #e8f2ea;
+  --panel-border: #c3d8c9;
+  --strip-bg: #dfece3;
+  --strip-hover-bg: #d7e7dc;
+  --strip-alt-bg: #f3f9f4;
+  --strip-alt-hover-bg: #e9f3ec;
+  --focus-ring: #16a34a;
+  --focus-glow: #16a34a40;
+
+  /* ── Inputs ── */
+  --input-bg: #e8f2ea;
+  --input-border: #c3d8c9;
+  --input-text: #24303f;
+  --input-placeholder-text: #93a3b7;
+  --input-focus-border: #15803d;
+  --input-changed-border: #b45309;
+
+  /* ── Buttons ── */
+  --button-text: #fff;
+  --button-primary-bg: #15803d;
+  --button-primary-hover-bg: #166534;
+  --button-secondary-bg: #e8f2ea;
+  --button-secondary-border: #c3d8c9;
+  --button-secondary-text: #5d6d83;
+  --button-muted-bg: #d5e5d9;
+  --button-muted-border: #c3d8c9;
+  --button-muted-text: #3d4c60;
+  --button-muted-hover-bg: #c3d8c9;
+  --button-outline-bg: #dcfce7;
+  --button-outline-border: #15803d;
+  --button-outline-text: #15803d;
+  --button-outline-hover-bg: #166534;
+  --button-danger-bg: #b91c1c;
+  --button-danger-hover-bg: #dc2626;
+  --button-danger-deep-bg: #fee2e2;
+  --button-success-bg: #15803d;
+  --button-success-hover-bg: #16a34a;
+  --button-disabled-bg: #c8d0dc;
+  --button-disabled-text: #9dabbc;
+
+  /* ── Chips ── */
+  --chip-bg: #e8f2ea;
+  --chip-border: #c3d8c9;
+  --chip-text: #3d4c60;
+  --chip-remove-hover-text: #dc2626;
+
+  /* ── Badges ── */
+  --badge-neutral-bg: #c0cad8;
+  --badge-neutral-text: #3d4c60;
+  --badge-muted-bg: #e2e8f0;
+  --badge-muted-border: #c0cad8;
+  --badge-muted-text: #5d6d83;
+  --badge-info-bg: #dcfce7;
+  --badge-info-border: #16a34a;
+  --badge-info-text: #166534;
+  --badge-success-bg: #d1fae5;
+  --badge-success-border: #86efac;
+  --badge-success-text: #047857;
+  --badge-warning-bg: #ffedd5;
+  --badge-warning-border: #ea580c;
+  --badge-warning-text: #9a3412;
+  --badge-danger-bg: #fee2e2;
+  --badge-danger-border: #fca5a5;
+  --badge-danger-text: #991b1b;
+  --badge-danger-soft-text: #b91c1c;
+  --badge-violet-bg: #ede9fe;
+  --badge-violet-border: #8b5cf6;
+  --badge-violet-text: #5b21b6;
+  --badge-violet-deep-bg: #ede9fe;
+  --badge-violet-deep-text: #6d28d9;
+  --badge-violet-solid-bg: #7c3aed;
+  --badge-indigo-bg: #e0e7ff;
+  --badge-indigo-text: #3730a3;
+  --badge-teal-bg: #ccfbf1;
+  --badge-teal-border: #14b8a6;
+  --badge-teal-text: #0f766e;
+
+  /* ── Status Text ── */
+  --status-ok-text: #16a34a;
+  --status-warn-text: #b45309;
+  --soft-warn-text: #92400e;
+  --status-danger-text: #dc2626;
+  --soft-danger-text: #b91c1c;
+
+  /* ── Banners ── */
+  --banner-warning-bg: #ffedd5;
+  --banner-warning-text: #9a3412;
+  --banner-danger-bg: #fee2e2;
+  --banner-danger-border: #b91c1c;
+  --banner-danger-text: #991b1b;
+  --warn-solid-bg: #b45309;
+  --warn-solid-hover-bg: #d97706;
+  --warn-solid-border: #f59e0b;
+
+  /* ── Progress & Spinners ── */
+  --progress-track: #dfece3;
+  --progress-fill: #15803d;
+  --progress-fill-alt: #166534;
+  --spinner-track: #dcfce7;
+  --spinner-head: #15803d;
+  --running-item-bg: #dcfce7;
+  --running-item-border: #22c55e;
+
+  /* ── Images & Placeholders ── */
+  --image-well-bg: #e2ede5;
+  --checkerboard-a: #d7e3da;
+  --checkerboard-b: #e2ede5;
+  --placeholder-bg: #dfece3;
+  --placeholder-icon-text: #9dabbc;
+
+  /* ── Logs ── */
+  --log-bg: #e3efe6;
+  --log-text: #155e75;
+  --log-divider: #f3f9f4;
+  --log-info-text: #047857;
+  --log-warn-text: #78350f;
+  --log-warn-level-text: #92400e;
+  --log-error-text: #991b1b;
+  --log-error-level-text: #b91c1c;
+  --log-link-text: #0369a1;
+  --log-link-hover-text: #075985;
+
+  /* ── Tables & Tabs ── */
+  --table-header-text: #64748b;
+  --table-border: #c3d8c9;
+  --table-row-border: #dfece3;
+  --table-key-text: #047857;
+  --table-group-text: #6d28d9;
+  --tab-active-underline: #15803d;
+
+  /* ── Gender ── */
+  --female: #db2777;
+  --male: #2563eb;
+  --trans: #9333ea;
+  --gender-none: #64748b;
+  --female-card-bg: #fdf2f8;
+  --male-card-bg: #eff6ff;
+  --trans-card-bg: #faf5ff;
+  --female-ring: #fbcfe8;
+  --male-ring: #bfdbfe;
+  --trans-ring: #e9d5ff;
+  --unknown-ring: #c8d0dc;
+
+  /* ── Roles ── */
+  --role-badge-bg: #93a3b7;
+  --role-actor-bg: #0e7490;
+  --role-director-bg: #7c3aed;
+  --role-producer-bg: #b45309;
+}
+
+/* ── Metadata Page ── */
+[data-theme-name="meadow"] [data-page="metadata"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="metadata"] {
+}
+
+/* ── Metadata Edit Page ── */
+[data-theme-name="meadow"] [data-page="metadata-edit"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="metadata-edit"] {
+}
+
+/* ── People Page ── */
+[data-theme-name="meadow"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="people"] {
+  --banner-danger-border: #b91c1c;
+}
+
+/* ── People Edit Page ── */
+[data-theme-name="meadow"] [data-page="people-edit"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="people-edit"] {
+}
+
+/* ── Config Page ── */
+[data-theme-name="meadow"] [data-page="config"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="config"] {
+  --button-primary-bg: #15803d;
+  --button-primary-hover-bg: #166534;
+  --input-focus-border: #15803d;
+  --tab-active-underline: #15803d;
+  --subtitle-text: #64748b;
+}
+
+/* ── Logos Page ── */
+[data-theme-name="meadow"] [data-page="logos"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="logos"] {
+}
+
+/* ── Queue Page ── */
+[data-theme-name="meadow"] [data-page="queue"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="queue"] {
+}
+
+/* ── Dev Page ── */
+[data-theme-name="meadow"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="meadow"][data-page="dev"] {
+  --button-primary-bg: #15803d;
+  --button-primary-hover-bg: #166534;
+  --input-focus-border: #15803d;
+  --spinner-head: #15803d;
+}
