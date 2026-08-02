@@ -41,10 +41,11 @@ class ExpliciteArtClient(Client):
                 )
 
         if not results:
-            for scene_url in await web_search_urls(search_data.title, search_data.site_info):
-                details_page_elements = await self.fetch_and_load(
-                    scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] web-search {scene_url}'
-                )
+            for scene_url, details_page_elements in await self.fetch_candidate_pages(
+                await web_search_urls(search_data.title, search_data.site_info),
+                FetchCtx(capture=search_data.capture),
+                lambda scene_url: f'[{search_data.site_info.name}] web-search {scene_url}',
+            ):
                 if not details_page_elements:
                     continue
 

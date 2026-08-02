@@ -87,10 +87,11 @@ class JavLibraryClient(Client):
 
         try:
             query = ' '.join(tokens[:2]) or search_data.title
-            for candidate_url in await self._web_search_vjav(query, search_data.site_info.base_url):
-                details_page_elements = await self.fetch_and_load(
-                    candidate_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {candidate_url}'
-                )
+            for candidate_url, details_page_elements in await self.fetch_candidate_pages(
+                await self._web_search_vjav(query, search_data.site_info.base_url),
+                FetchCtx(capture=search_data.capture),
+                lambda candidate_url: f'[{search_data.site_info.name}] {candidate_url}',
+            ):
                 if not details_page_elements:
                     continue
 

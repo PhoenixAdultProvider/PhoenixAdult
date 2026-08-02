@@ -22,8 +22,9 @@ class JVRPornClient(Client):
                     if '/video/' in url and url not in candidates:
                         candidates.append(url)
 
-        for scene_url in candidates:
-            search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] {scene_url}')
+        for scene_url, search_results in await self.fetch_candidate_pages(
+            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] {scene_url}'
+        ):
             if not search_results:
                 continue
 

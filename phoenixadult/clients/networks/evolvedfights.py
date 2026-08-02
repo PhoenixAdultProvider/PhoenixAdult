@@ -23,8 +23,9 @@ class EvolvedFightsClient(Client):
             if url not in candidates:
                 candidates.append(url)
 
-        for url in candidates:
-            details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {url}')
+        for url, details_page_elements in await self.fetch_candidate_pages(
+            candidates, FetchCtx(capture=search_data.capture), lambda url: f'[{search_data.site_info.name}] candidate {url}'
+        ):
             if not details_page_elements:
                 continue
 

@@ -29,10 +29,9 @@ class VRLatinaClient(Client):
                 seen.add(raw)
                 candidates.append(raw)
 
-        for scene_url in candidates:
-            details_page_elements = await self.fetch_and_load(
-                scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] candidate {scene_url}'
-            )
+        for scene_url, details_page_elements in await self.fetch_candidate_pages(
+            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
+        ):
             if not details_page_elements:
                 continue
 

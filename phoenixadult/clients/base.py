@@ -301,6 +301,17 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                 break
         return out
 
+    async def fetch_candidate_pages(
+        self, urls: list[str], ctx: FetchCtx | None = None, label: Callable[[str], str] | None = None, limit: int = 3
+    ) -> list[tuple[str, dict[str, Any] | None]]:
+        sem = asyncio.Semaphore(limit)
+
+        async def one(url: str) -> tuple[str, dict[str, Any] | None]:
+            async with sem:
+                return url, await self.fetch_and_load(url, ctx, label(url) if label else None)
+
+        return list(await asyncio.gather(*(one(url) for url in urls)))
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         return None
 

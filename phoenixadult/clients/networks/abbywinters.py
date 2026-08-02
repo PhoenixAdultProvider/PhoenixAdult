@@ -61,8 +61,9 @@ class AbbyWintersClient(Client):
                     model_hrefs.append(abs_url)
 
         scene_urls: list[str] = []
-        for model_url in model_hrefs:
-            model_page_elements = await self.fetch_and_load(model_url, FetchCtx(capture=search_data.capture), f'GET {model_url}')
+        for _model_url, model_page_elements in await self.fetch_candidate_pages(
+            model_hrefs, FetchCtx(capture=search_data.capture), lambda model_url: f'GET {model_url}'
+        ):
             if not model_page_elements:
                 continue
 

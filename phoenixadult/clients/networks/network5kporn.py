@@ -5,7 +5,7 @@ from urllib.parse import quote
 from parsel import Selector
 
 from phoenixadult.clients.aggregators.data18 import mapping_slug
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
@@ -116,15 +116,18 @@ class Network5KPClient(Client):
         metadata.genres = []
 
         # Actor(s)
+        refs: list[tuple[str, str]] = []
         for a in sel.xpath('//h5[contains(.,"Starring")]//a'):
             name = first_attr(a, 'normalize-space(.)')
             href = first_attr(a, '@href')
-            if not name or not href:
-                continue
+            if name and href:
+                refs.append((name, href))
 
-            model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture), f'GET {href} (actor)')
-            photo = first_attr(model_page_elements['sel'], '(//img[contains(@class,"model-image")])[1]/@src') if model_page_elements else ''
-            metadata.actors.append(ActorResult(name=name, photo_url=photo))
+        metadata.actors.extend(
+            await self.resolve_actor_photos(
+                refs, lambda model: first_attr(model, '(//img[contains(@class,"model-image")])[1]/@src'), capture=capture, label='actor'
+            )
+        )
 
         # Posters
         for src in sel.xpath('//div[contains(@class,"gal")]//img/@src').getall():

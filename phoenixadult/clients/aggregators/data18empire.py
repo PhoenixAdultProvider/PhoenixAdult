@@ -86,10 +86,9 @@ class Data18EmpireClient(Client):
                     if _is_movie_url(u):
                         add_movie(u)
 
-        for movie_url in movie_urls:
-            movie_page_elements = await self.fetch_and_load(
-                movie_url, FetchCtx(capture=search_data.capture, headers=_AGE_HEADERS), f'[{search_data.site_info.name}] movie {movie_url}'
-            )
+        for movie_url, movie_page_elements in await self.fetch_candidate_pages(
+            movie_urls, FetchCtx(capture=search_data.capture, headers=_AGE_HEADERS), lambda movie_url: f'[{search_data.site_info.name}] movie {movie_url}'
+        ):
             if not movie_page_elements:
                 continue
 

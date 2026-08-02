@@ -29,8 +29,9 @@ class FAKingsClient(Client):
         search_urls = [base + en_path, base + es_path]
 
         seen: set[str] = set()
-        for search_url in search_urls:
-            search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
+        for _search_url, search_results in await self.fetch_candidate_pages(
+            search_urls, FetchCtx(capture=search_data.capture), lambda search_url: f'[{search_data.site_info.name}] search {search_url}'
+        ):
             if not search_results:
                 continue
 
