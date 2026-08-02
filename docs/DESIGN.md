@@ -112,6 +112,8 @@ flowchart LR
 
 Every admin page shares one fixed top nav — Metadata, People, Logos, Queue, Dev, Config — rendered by `render_nav(active)` (`phoenixadult/routes/__init__.py`) from `phoenixadult/routes/html/nav.html` and injected at each template's `__NAV__` placeholder, including the `/metadata/edit` and `/people/edit` sub-pages (which highlight their parent). The Dev link appears only when the `/dev` routes are mounted (non-production `NODE_ENV`), and an inline script carries the current `?token=` onto every link so admin auth survives navigation.
 
+The nav injection also carries the shared theme: `phoenixadult/routes/html/theme.html` is the **single theme file** — every color on every page is a CSS custom property defined there (dark values on `:root`, light overrides on `:root[data-theme="light"]`; a new theme is one more attribute block). Pages follow the system theme by default; the sun/moon/Auto toggle on the right of the nav overrides it (persisted in `localStorage` under `pa-theme`, `Auto` returns to the system theme, and a `matchMedia` listener tracks live system-theme changes while in Auto). Templates never use raw hex colors — `tests/routes/test_nav.py` enforces this.
+
 > Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`phoenixadult/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
 
 ---

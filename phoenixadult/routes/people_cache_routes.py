@@ -206,64 +206,66 @@ async def page(request: Request) -> HTMLResponse:
     body = f"""<!doctype html><html><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
     <style>
-      body{{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}}
-      h1{{font-size:20px}} .sub{{color:#94a3b8;font-size:13px;margin-bottom:20px}}
-      .warn{{background:#3b1d1d;border:1px solid #b91c1c;padding:8px 12px;border-radius:6px}}
-      .empty{{color:#94a3b8}}
+      body{{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px}}
+      h1{{font-size:20px}} .sub{{color:var(--text-muted);font-size:13px;margin-bottom:20px}}
+      .warn{{background:var(--danger-wash);border:1px solid var(--danger);padding:8px 12px;border-radius:6px}}
+      .empty{{color:var(--text-muted)}}
       .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px}}
-      .card{{background:#1e2433;border:1px solid #334155;border-left:5px solid #475569;border-radius:8px;padding:12px;display:none}}
-      .card.gf{{border-left-color:#db2777;background:#241a20}}
-      .card.gm{{border-left-color:#2563eb;background:#1a1f2e}}
-      .card.gt{{border-left-color:#9333ea;background:#211a2e}}
-      .card.gn{{border-left-color:#64748b}}
+      .card{{background:var(--surface-2);border:1px solid var(--border-3);border-left:5px solid var(--text-faint);border-radius:8px;padding:12px;display:none}}
+      .card.gf{{border-left-color:var(--gf);background:var(--gf-wash)}}
+      .card.gm{{border-left-color:var(--accent);background:var(--gm-wash)}}
+      .card.gt{{border-left-color:var(--gt);background:var(--gt-wash)}}
+      .card.gn{{border-left-color:var(--text-dim)}}
       .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}}
-      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:#64748b;font-size:12px}}
-      .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:#1e3a8a}} .badge.orig{{background:#334155}}
-      .badge.src{{background:#0f172a;border:1px solid #334155;color:#94a3b8}}
-      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:#475569}}
-      .role.r-actor{{background:#0e7490}} .role.r-director{{background:#7c3aed}} .role.r-producer{{background:#b45309}}
+      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:var(--text-dim);font-size:12px}}
+      .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:var(--accent-deep)}} .badge.orig{{background:var(--border-3)}}
+      .badge.src{{background:var(--badge-bg);border:1px solid var(--border-3);color:var(--text-muted)}}
+      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--text-faint)}}
+      .role.r-actor{{background:var(--cyan-solid)}} .role.r-director{{background:var(--violet)}} .role.r-producer{{background:var(--amber-solid)}}
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
-      figcaption{{font-size:11px;color:#94a3b8;margin-bottom:4px}}
-      img{{width:100%;height:170px;object-fit:contain;background:#0b0d12;border-radius:6px}}
+      figcaption{{font-size:11px;color:var(--text-muted);margin-bottom:4px}}
+      img{{width:100%;height:170px;object-fit:contain;background:var(--well);border-radius:6px}}
       body.sfw .imgs{{display:none}}
-      .sfwtoggle.on{{background:#15803d;border-color:#15803d;color:#fff}}
-      .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#94a3b8}}
+      .sfwtoggle.on{{background:var(--ok-solid);border-color:var(--ok-solid);color:var(--on-solid)}}
+      .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text-muted)}}
       .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}
-      .g.gf.active{{background:#db2777}} .g.gm.active{{background:#2563eb}} .g.gt.active{{background:#9333ea}} .g.gn.active{{background:#64748b}}
-      button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}}
+      .g.gf.active{{background:var(--gf)}} .g.gm.active{{background:var(--accent)}}
+      .g.gt.active{{background:var(--gt)}} .g.gn.active{{background:var(--text-dim)}}
+      button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--accent);color:var(--on-solid);cursor:pointer}}
       button:disabled{{cursor:default;opacity:.7}}
       .actions{{display:flex;gap:8px}}
-      button.restore{{background:#2563eb;flex:1}} button.restore:disabled{{background:#334155;color:#94a3b8;opacity:1}}
-      button.edit{{background:#1e2433;border:1px solid #334155;color:#cbd5e1;flex:0 0 80px}}
-      button.edit:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
-      button.purge{{background:#b91c1c;flex:0 0 90px}}
+      button.restore{{background:var(--accent);flex:1}} button.restore:disabled{{background:var(--border-3);color:var(--text-muted);opacity:1}}
+      button.edit{{background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-2);flex:0 0 80px}}
+      button.edit:hover{{background:var(--accent);border-color:var(--accent);color:var(--on-solid)}}
+      button.purge{{background:var(--danger);flex:0 0 90px}}
       .search{{margin-bottom:16px}}
-      .search input{{width:320px;max-width:100%;background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
-      .search input:focus{{outline:0;border-color:#2563eb}}
-      .search .cnt{{color:#64748b;font-size:12px;margin-left:10px}}
+      .search input{{width:320px;max-width:100%;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text);
+        padding:7px 10px;border-radius:6px;font-size:13px}}
+      .search input:focus{{outline:0;border-color:var(--accent)}}
+      .search .cnt{{color:var(--text-dim);font-size:12px;margin-left:10px}}
       .search{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}}
-      .search select{{background:#1e2433;border:1px solid #334155;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:13px}}
-      button.bulk{{width:auto;margin:0;padding:7px 16px;background:#1e2433;border:1px solid #334155;color:#cbd5e1}}
-      button.bulk:hover{{background:#2563eb;border-color:#2563eb;color:#fff}}
-      button.bulk:disabled{{background:#1e2433;color:#64748b}}
-      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:#1e2433;border:1px solid #334155;border-radius:6px;overflow:hidden}}
-      .progress .fill{{height:100%;width:0;background:#2563eb;transition:width .15s linear}}
+      .search select{{background:var(--surface-2);border:1px solid var(--border-3);color:var(--text);padding:7px 10px;border-radius:6px;font-size:13px}}
+      button.bulk{{width:auto;margin:0;padding:7px 16px;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-2)}}
+      button.bulk:hover{{background:var(--accent);border-color:var(--accent);color:var(--on-solid)}}
+      button.bulk:disabled{{background:var(--surface-2);color:var(--text-dim)}}
+      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:var(--surface-2);border:1px solid var(--border-3);border-radius:6px;overflow:hidden}}
+      .progress .fill{{height:100%;width:0;background:var(--accent);transition:width .15s linear}}
       .filters-toggle{{display:none}}
       .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
-      .tab{{width:auto;margin:0;padding:6px 12px;background:#1e2433;border:1px solid #334155;color:#94a3b8}}
-      .tab.active{{background:#2563eb;color:#fff;border-color:#2563eb}}
-      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:#1e3a8a;color:#fff;border-color:#3b82f6}}
-      .noupstream.on{{background:#7c2d12;color:#fff;border-color:#ea580c}}
-      .genericonly.on{{background:#4c1d95;color:#fff;border-color:#8b5cf6}}
-      .singleonly.on{{background:#134e4a;color:#fff;border-color:#14b8a6}}
+      .tab{{width:auto;margin:0;padding:6px 12px;background:var(--surface-2);border:1px solid var(--border-3);color:var(--text-muted)}}
+      .tab.active{{background:var(--accent);color:var(--on-solid);border-color:var(--accent)}}
+      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:var(--accent-deep);color:var(--accent-text-3);border-color:var(--accent-soft)}}
+      .noupstream.on{{background:var(--warn-deep);color:var(--warn-text);border-color:var(--orange)}}
+      .genericonly.on{{background:var(--violet-deep);color:var(--violet-text);border-color:var(--violet-2)}}
+      .singleonly.on{{background:var(--teal-deep);color:var(--teal-text);border-color:var(--teal)}}
       .tab .cnt{{opacity:.65;font-size:11px}}
       @media (max-width:720px){{
         body{{padding:14px}}
         .grid{{grid-template-columns:1fr}}
         .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
-        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid #334155;
-          border-radius:6px;background:#1e2433;color:#cbd5e1;font-size:13px;cursor:pointer}}
-        .filters-toggle.on{{border-color:#2563eb;color:#e2e8f0}}
+        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid var(--border-3);
+          border-radius:6px;background:var(--surface-2);color:var(--text-2);font-size:13px;cursor:pointer}}
+        .filters-toggle.on{{border-color:var(--accent);color:var(--text)}}
         .tabs{{display:none;flex-direction:column;gap:6px}}
         body.filters-open .tabs{{display:flex}}
         .tab{{width:100%}} .croptoggle{{margin-left:0}}
@@ -580,7 +582,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     else:
         entry = None
     if entry is None:
-        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot for that person.</p>', status_code=404)
+        return HTMLResponse('<p style="font-family:system-ui;color:var(--text);background:var(--bg)">No cached headshot for that person.</p>', status_code=404)
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'

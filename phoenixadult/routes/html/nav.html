@@ -2,20 +2,46 @@
   :root { --app-nav-h: 46px; }
   .app-nav, .app-nav *, .app-nav-spacer { box-sizing: border-box; }
   .app-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: var(--app-nav-h); display: flex; align-items: stretch;
-             background: #151b29; border-bottom: 1px solid #1f2937; padding: 0 14px; overflow-x: auto; scrollbar-width: none; }
+             background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 14px; overflow-x: auto; scrollbar-width: none; }
   .app-nav::-webkit-scrollbar { display: none; }
-  .app-nav a { display: flex; align-items: center; padding: 0 14px; border-bottom: 2px solid transparent; color: #94a3b8; text-decoration: none;
+  .app-nav a { display: flex; align-items: center; padding: 0 14px; border-bottom: 2px solid transparent; color: var(--text-muted); text-decoration: none;
                font: 500 14px/1 system-ui, sans-serif; white-space: nowrap; }
-  .app-nav a:hover { background: #1a2233; color: #e2e8f0; }
-  .app-nav a.active { border-bottom-color: #2563eb; color: #60a5fa; }
+  .app-nav a:hover { background: var(--nav-hover); color: var(--text); }
+  .app-nav a.active { border-bottom-color: var(--accent); color: var(--accent-text); }
   .app-nav-spacer { height: var(--app-nav-h); }
+  .theme-ctl { margin-left: auto; display: flex; align-items: center; gap: 4px; padding-left: 14px; flex: none; }
+  .theme-ctl button { display: flex; align-items: center; justify-content: center; height: 28px; min-width: 30px; padding: 0 7px;
+                      background: none; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted);
+                      cursor: pointer; font: 500 12px/1 system-ui, sans-serif; }
+  .theme-ctl button:hover { background: var(--nav-hover); color: var(--text); }
+  .theme-ctl button.active { background: var(--surface-2); border-color: var(--border-3); color: var(--accent-text); }
+  .theme-ctl svg { display: block; }
 </style>
-<nav class="app-nav">__NAV_LINKS__</nav>
+<nav class="app-nav">__NAV_LINKS__
+  <div class="theme-ctl" role="group" aria-label="Theme">
+    <button type="button" data-set="light" title="Light theme" aria-label="Light theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <button type="button" data-set="auto" title="Follow system theme" aria-label="Follow system theme">Auto</button>
+    <button type="button" data-set="dark" title="Dark theme" aria-label="Dark theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </div>
+</nav>
 <div class="app-nav-spacer" aria-hidden="true"></div>
 <script>
   (function () {
     const token = new URLSearchParams(location.search).get('token');
-    if (!token) return;
-    for (const a of document.querySelectorAll('.app-nav a')) a.href += (a.href.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    if (token) {
+      for (const a of document.querySelectorAll('.app-nav a')) a.href += (a.href.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    }
+    const buttons = document.querySelectorAll('.theme-ctl button');
+    function paint() {
+      const mode = window.paTheme ? window.paTheme.mode() : 'auto';
+      for (const b of buttons) b.classList.toggle('active', b.dataset.set === mode);
+    }
+    for (const b of buttons) b.addEventListener('click', () => window.paTheme.set(b.dataset.set));
+    document.addEventListener('pa-theme-change', paint);
+    paint();
   })();
 </script>

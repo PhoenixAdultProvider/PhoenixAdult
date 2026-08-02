@@ -8,53 +8,53 @@
   <title>Edit Headshot</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
     h1 { font-size: 30px; margin: 0 0 6px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .copy { padding: 5px 14px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 12px; font-family: inherit; }
-    .copy:hover { color: #e2e8f0; border-color: #475569; }
-    .copy.done { background: #15803d; border-color: #15803d; color: #fff; }
+    .copy { padding: 5px 14px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); cursor: pointer; font-size: 12px; font-family: inherit; }
+    .copy:hover { color: var(--text); border-color: var(--text-faint); }
+    .copy.done { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--on-solid); }
     a.iafd { text-decoration: none; line-height: normal; }
-    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
-    .sub code { color: #cbd5e1; }
+    .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: var(--text-2); }
     h1, .sub, .wrap { max-width: 900px; margin-inline: auto; }
-    fieldset { border: 1px solid #334155; border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: #151b29; }
-    legend { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
-    label { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    input[type=text]:focus { outline: 0; border-color: #2563eb; }
-    .hint { font-size: 11px; color: #475569; margin-top: 4px; }
+    fieldset { border: 1px solid var(--border-3); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--surface); }
+    legend { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
+    label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
+    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    input[type=text]:focus { outline: 0; border-color: var(--accent); }
+    .hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
     .fetchrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-    .fetchrow select { flex: 1 1 180px; min-width: 0; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #cbd5e1; cursor: pointer; font-size: 13px; font-family: inherit; }
-    .fetch:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
-    .fetch:disabled { color: #64748b; cursor: not-allowed; background: #1e2433; }
-    .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: #cbd5e1; }
-    .toggle input { width: 16px; height: 16px; accent-color: #2563eb; }
+    .fetchrow select { flex: 1 1 180px; min-width: 0; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-2); cursor: pointer; font-size: 13px; font-family: inherit; }
+    .fetch:hover { background: var(--accent); border-color: var(--accent); color: var(--on-solid); }
+    .fetch:disabled { color: var(--text-dim); cursor: not-allowed; background: var(--surface-2); }
+    .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--text-2); }
+    .toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
     .imgs { display: flex; gap: 12px; }
     figure { margin: 0; flex: 1; text-align: center; }
-    figcaption { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
-    figure img { width: 100%; height: 240px; object-fit: contain; background: #0b0d12; border-radius: 6px; }
+    figcaption { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    figure img { width: 100%; height: 240px; object-fit: contain; background: var(--well); border-radius: 6px; }
     .bar { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
-    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: #15803d; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; }
-    .save:hover { background: #16a34a; }
-    .save:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
-    .cancel { padding: 9px 18px; border: 1px solid #334155; border-radius: 6px; background: #1e2433; color: #94a3b8; cursor: pointer; font-size: 14px; }
-    .cancel:hover { color: #e2e8f0; }
-    .status { font-size: 12px; color: #64748b; }
-    .recorded { width: 100%; background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .recorded:focus { outline: 0; border-color: #2563eb; }
-    #sfwToggle.on { background: #15803d; border-color: #15803d; color: #fff; }
+    .save { padding: 9px 22px; border: 0; border-radius: 6px; background: var(--ok-solid); color: var(--on-solid); cursor: pointer; font-size: 14px; font-weight: 500; }
+    .save:hover { background: var(--ok-solid-2); }
+    .save:disabled { background: var(--border-3); color: var(--text-dim); cursor: not-allowed; }
+    .cancel { padding: 9px 18px; border: 1px solid var(--border-3); border-radius: 6px; background: var(--surface-2); color: var(--text-muted); cursor: pointer; font-size: 14px; }
+    .cancel:hover { color: var(--text); }
+    .status { font-size: 12px; color: var(--text-dim); }
+    .recorded { width: 100%; background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+    .recorded:focus { outline: 0; border-color: var(--accent); }
+    #sfwToggle.on { background: var(--ok-solid); border-color: var(--ok-solid); color: var(--on-solid); }
     body.sfw #previewCard { display: none; }
     .scenewrap { max-height: 340px; overflow: auto; border-radius: 6px; }
     .scenes { width: 100%; border-collapse: collapse; font-size: 13px; }
     .scenes th {
-      position: sticky; top: 0; background: #151b29; text-align: left; font-weight: 500; color: #64748b;
-      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px 6px; border-bottom: 1px solid #334155;
+      position: sticky; top: 0; background: var(--surface); text-align: left; font-weight: 500; color: var(--text-dim);
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 4px 10px 6px; border-bottom: 1px solid var(--border-3);
     }
-    .scenes td { padding: 6px 10px; border-bottom: 1px solid #1f2937; color: #cbd5e1; vertical-align: top; }
+    .scenes td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
     .scenes tr:last-child td { border-bottom: 0; }
     .scenes td.nowrap { white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .scenes a { color: #93c5fd; text-decoration: none; }
+    .scenes a { color: var(--accent-text-2); text-decoration: none; }
     .scenes a:hover { text-decoration: underline; }
 
     @media (max-width: 720px) {
@@ -83,7 +83,7 @@
         <span class="status" id="fetchStatus"></span>
       </div>
       <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
-      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:#cbd5e1">Cropped Status — face-crop the image</label></div>
+      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text-2)">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
       <label for="f-recorded">Recorded Source</label>
       <select id="f-recorded" class="recorded"></select>

@@ -8,31 +8,31 @@
   <title>Logo Cache</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e2e8f0; margin: 0; padding: 24px; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
     h1 { font-size: 20px; margin: 0 0 4px; }
-    .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
-    .sub code { color: #cbd5e1; }
-    .off-banner { background: #7c2d12; color: #fed7aa; border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
+    .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+    .sub code { color: var(--text-2); }
+    .off-banner { background: var(--warn-deep); color: var(--warn-text); border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
     .bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
-    .bar input[type=text] { background: #1e2433; border: 1px solid #334155; color: #e2e8f0; padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
-    .bar input[type=text]::placeholder { color: #475569; }
-    .count-badge { font-size: 12px; color: #64748b; }
-    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid #2563eb; border-radius: 6px; background: #1e293b; color: #60a5fa; cursor: pointer; font-size: 13px; font-weight: 500; }
-    .rescan-btn:hover { background: #1d4ed8; color: #fff; }
-    .rescan-btn:disabled { border-color: #334155; color: #64748b; cursor: default; }
-    .rescan-status { font-size: 12px; color: #64748b; }
-    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: #b91c1c; color: #fff; cursor: pointer; font-size: 13px; font-weight: 500; }
-    .purge-all-btn:hover { background: #dc2626; }
+    .bar input[type=text] { background: var(--surface-2); border: 1px solid var(--border-3); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
+    .bar input[type=text]::placeholder { color: var(--text-faint); }
+    .count-badge { font-size: 12px; color: var(--text-dim); }
+    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface-3); color: var(--accent-text); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .rescan-btn:hover { background: var(--accent-hover); color: var(--on-solid); }
+    .rescan-btn:disabled { border-color: var(--border-3); color: var(--text-dim); cursor: default; }
+    .rescan-status { font-size: 12px; color: var(--text-dim); }
+    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--danger); color: var(--on-solid); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .purge-all-btn:hover { background: var(--danger-hover); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .card { background: #151b29; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-    .logo-box { background: repeating-conic-gradient(#141824 0% 25%, #0b0d12 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .logo-box { background: repeating-conic-gradient(var(--checker) 0% 25%, var(--well) 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
     .site { font-size: 14px; font-weight: 600; }
-    .site .unknown { color: #64748b; font-weight: 400; font-style: italic; }
-    .meta { font-size: 11px; color: #64748b; word-break: break-all; }
-    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid #7f1d1d; border-radius: 5px; background: #1f2937; color: #fca5a5; cursor: pointer; font-size: 12px; }
-    .purge-btn:hover { background: #7f1d1d; color: #fecaca; }
-    .empty { color: #475569; font-size: 14px; padding: 40px; text-align: center; }
+    .site .unknown { color: var(--text-dim); font-weight: 400; font-style: italic; }
+    .meta { font-size: 11px; color: var(--text-dim); word-break: break-all; }
+    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid var(--danger-deep); border-radius: 5px; background: var(--border); color: var(--danger-soft); cursor: pointer; font-size: 12px; }
+    .purge-btn:hover { background: var(--danger-deep); color: var(--danger-soft-2); }
+    .empty { color: var(--text-faint); font-size: 14px; padding: 40px; text-align: center; }
 
     @media (max-width: 720px) {
       body { padding: 14px; }
@@ -53,7 +53,7 @@
     Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.</div>
   <div class="bar">
     <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
-    <label style="font-size:13px;color:#94a3b8;display:flex;align-items:center;gap:6px;cursor:pointer">
+    <label style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
     </label>
     <span class="count-badge" id="count"></span>
@@ -91,7 +91,7 @@
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="card">
           <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
-          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:#475569;font-weight:400">· ${esc(l.slug)}</span></div>
+          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--text-faint);font-weight:400">· ${esc(l.slug)}</span></div>
           <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
           <button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>
         </div>`).join('');

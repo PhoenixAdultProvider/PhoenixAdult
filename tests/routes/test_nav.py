@@ -53,3 +53,26 @@ def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_nav_carries_the_admin_token_to_the_other_pages(client: TestClient) -> None:
     body = client.get('/queue', headers={'x-admin-token': TOKEN}).text
     assert "URLSearchParams(location.search).get('token')" in body
+
+
+def test_every_page_carries_the_theme_palette_and_toggle(client: TestClient) -> None:
+    body = client.get('/queue', headers={'x-admin-token': TOKEN}).text
+    assert '--bg: #0f1117' in body
+    assert ':root[data-theme="light"]' in body
+    assert 'prefers-color-scheme: light' in body
+    assert 'localStorage.getItem' in body and 'pa-theme' in body
+    for mode in ('light', 'auto', 'dark'):
+        assert f'data-set="{mode}"' in body
+
+
+def test_pages_reference_theme_variables_never_raw_colors() -> None:
+    import re
+    from pathlib import Path
+
+    import phoenixadult.routes as routes
+
+    html_dir = Path(routes.__file__).parent / 'html'
+    sources = [f for f in html_dir.glob('*.html') if f.name != 'theme.html'] + [Path(routes.__file__).parent / 'people_cache_routes.py']
+    for f in sources:
+        hexes = set(re.findall(r'#[0-9a-fA-F]{3,8}\b', f.read_text(encoding='utf-8'))) - {'#000'}
+        assert not hexes, f'{f.name} has raw colors: {sorted(hexes)}'
