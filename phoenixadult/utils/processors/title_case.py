@@ -143,6 +143,7 @@ _VS_RE = re.compile(r'(?i)(?<![A-Za-z])(vs)\.*(?=\s|$)')
 _POSSESSIVE_S_RE = re.compile(r"(?i)(?<=s)'s\b")
 _TRAILING_INITIAL_RE = re.compile(r'(?<![A-Za-z])[A-Za-z]\.$')
 _TRAILING_INITIALISM_RE = re.compile(r'(?<![A-Za-z])(?:[A-Za-z]\.\s*){2,}$')
+_UNDOTTED_INITIALISM_RE = re.compile(r'(?<![\w.])((?:[A-Za-z]\.)+[A-Za-z])$')
 _PARTICLE_LA_RE = re.compile(r'\b(de|en|a)(\s+)La\b')
 _TLD_GUARD = '|'.join(sorted((*_TLD_FRAGMENTS, 'porn', 'xxx'), key=len, reverse=True))
 _MARK_SPLIT_RE = re.compile(rf'(?i)([!:?])(?=\w)(?!(?:{_TLD_GUARD})\b|E\d)')
@@ -207,7 +208,7 @@ class _TitleCaseEngine:
         s = re.sub(r'(?i)\bb day\b', 'bday', s)
         s = re.sub(r',(?![\s\d])', ', ', s)
         s = s.replace('\xa0', ' ')
-        return s
+        return _UNDOTTED_INITIALISM_RE.sub(r'\1.', s)
 
     # ── Tokenize ─────────────────────────────────────────────────────────────
     def _tokenize(self, s: str) -> list[_Token]:

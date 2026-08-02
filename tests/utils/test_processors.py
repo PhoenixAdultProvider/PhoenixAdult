@@ -474,3 +474,15 @@ def test_search_title_trash_only_strips_real_resolution_tags() -> None:
     assert clean_search_title('teenslovemoney 1k pussy') == 'teenslovemoney 1k pussy'
     assert clean_search_title('5k run') == '5k run'
     assert clean_search_title('worth 3k dollars') == 'worth 3k dollars'
+
+
+def test_title_case_completes_an_undotted_trailing_initialism() -> None:
+    assert title_case('J.I.S.M') == 'J.I.S.M.'
+    assert title_case('F.B.I') == 'F.B.I.'
+    assert title_case('Fuck P.E') == 'Fuck P.E.'
+    assert title_case('S.W.A.T') == 'S.W.A.T.'
+    assert title_case('J.R', type='name') == 'J.R.'
+    assert title_case('Plan B') == 'Plan B'
+    assert title_case('Alex D', type='name') == 'Alex D'
+    assert title_case('Nubiles.net') == 'Nubiles.net'
+    assert title_case('Mr. T') == 'Mr. T'
