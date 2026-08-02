@@ -13,10 +13,29 @@ from phoenixadult.utils.processors.episode_tag import strip_episode_tag
 
 _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
 _DATA18_PROVIDERS = ['TeamSkeet', 'MYLF', 'Family Strokes', 'Pervz', 'FreeUse', 'Swappz']
+_MODEL_SLUG_TRIES = 8
 
 
 def _normalize(s: str) -> str:
     return re.sub(r'\W', '', s).lower()
+
+
+def _model_name_candidates(title: str) -> list[str]:
+    segments: list[list[str]] = [[]]
+    for word in title.split():
+        if word.lower() == 'and':
+            segments.append([])
+        else:
+            segments[-1].append(word)
+    out: list[str] = []
+    for seg in segments:
+        if len(seg) <= 4:
+            out.append(' '.join(seg))
+        for n in (2, 3, 4):
+            if len(seg) > n:
+                out.append(' '.join(seg[:n]))
+                out.append(' '.join(seg[n:]))
+    return list(dict.fromkeys(c for c in out if c))
 
 
 def _strip_tags(html: str) -> str:
@@ -73,20 +92,48 @@ class ReptyleClient(Client):
         if not slug:
             return
 
-        url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', slug)
-        state = await self._fetch_initial_state(url, search_data.capture)
-        if not state:
-            return
-
-        picked = self._pick_scene(state)
+        site = search_data.site_info
+        search_page_url = site.base_url.rstrip('/') + site.search_path.replace('{query}', slug)
+        state = await self._fetch_initial_state(search_page_url, search_data.capture)
+        picked = self._pick_scene(state) if state else None
         if not picked:
+            await self._search_model_page(results, search_data)
             return
 
         cur, scene_type, scene_json = picked
         canonical = str(scene_json.get('id') or cur)
-        if canonical != cur:
-            url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', canonical)
-        composite = f'{canonical}|{scene_type}|{url}'
+        result_url = site.base_url.rstrip('/') + site.search_path.replace('{query}', canonical) if canonical != cur else search_page_url
+        self._add_result(results, search_data, scene_json, scene_type, canonical, result_url)
+
+    async def _search_model_page(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        site = search_data.site_info
+        base = site.base_url.rstrip('/')
+        tried: set[str] = set()
+        for candidate in _model_name_candidates(search_data.title):
+            model_slug = slugify(candidate.replace("'", ''))
+            if not model_slug or model_slug in tried or len(tried) >= _MODEL_SLUG_TRIES:
+                continue
+
+            tried.add(model_slug)
+            state = await self._fetch_initial_state(f'{base}/models/{model_slug}', search_data.capture)
+            models = (state or {}).get('modelsContent')
+            entry = next((v for v in models.values() if isinstance(v, dict) and v.get('movies')), None) if isinstance(models, dict) else None
+            if entry is None:
+                continue
+
+            for movie in entry['movies']:
+                if not isinstance(movie, dict) or not movie.get('id'):
+                    continue
+
+                movie_id = str(movie['id'])
+                scene_type = 'videosContent' if movie.get('type') == 'video' else 'moviesContent'
+                self._add_result(results, search_data, movie, scene_type, movie_id, base + site.search_path.replace('{query}', movie_id))
+
+            return
+
+    def _add_result(
+        self, results: list[SearchResult], search_data: SearchContext, scene_json: dict[str, Any], scene_type: str, canonical: str, result_url: str
+    ) -> None:
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
         result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None
@@ -94,10 +141,10 @@ class ReptyleClient(Client):
         results.append(
             build_search_result(
                 title=strip_episode_tag(scene_json.get('title') or ''),
-                scene_url=url,
+                scene_url=result_url,
                 query=search_data.title,
                 site=search_data.site_info,
-                cur_id=self.encode(composite),
+                cur_id=self.encode(f'{canonical}|{scene_type}|{result_url}'),
                 thumb_url=scene_json.get('img'),
                 search_date=search_data.search_date,
                 display_date=release_date,

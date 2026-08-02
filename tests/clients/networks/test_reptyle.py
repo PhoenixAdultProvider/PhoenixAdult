@@ -139,6 +139,75 @@ async def test_data18_slug_keeps_the_site_when_it_is_also_the_sub_site(monkeypat
     assert captured['mapping_id'] == 'cool-scene-familystrokes'
 
 
+def test_model_name_candidates_split_like_the_filename_examples() -> None:
+    from phoenixadult.clients.networks.reptyle import _model_name_candidates
+
+    assert _model_name_candidates('Gia Ohmy') == ['Gia Ohmy']
+    assert _model_name_candidates('Gia Ohmy And Lolly Dames') == ['Gia Ohmy', 'Lolly Dames']
+    assert _model_name_candidates('Brina Scarlet Fun Sized Megan And Lilibet Saunders') == [
+        'Brina Scarlet',
+        'Fun Sized Megan',
+        'Brina Scarlet Fun',
+        'Sized Megan',
+        'Brina Scarlet Fun Sized',
+        'Megan',
+        'Lilibet Saunders',
+    ]
+
+
+_MOVIE = {
+    'id': 'cool-scene',
+    'title': 'Cool Scene',
+    'img': 'https://cdn/p.jpg',
+    'type': 'video',
+    'site': {'name': 'Family Strokes'},
+    'publishedDate': '2021-03-04T00:00:00',
+}
+_EMPTY_STATE = {'modelsContent': {}, 'videosContent': {}, 'seriesContent': {}}
+
+
+@respx.mock
+async def test_search_falls_back_to_the_model_page_when_the_movie_slug_misses() -> None:
+    respx.get('https://www.teamskeet.com/movies/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html(_EMPTY_STATE)))
+    model = {'name': 'Gia OhMy', 'movies': [_MOVIE, {'id': 'other-scene', 'title': 'Other Scene', 'type': 'movie', 'site': {'name': 'BFFS'}}]}
+    respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+
+    assert [r.title for r in results] == ['Cool Scene', 'Other Scene']
+    assert results[0].scene_url == 'https://www.teamskeet.com/movies/cool-scene'
+    assert results[0].subsite == 'Family Strokes'
+    assert ReptyleClient().decode(results[0].cur_id) == 'cool-scene|videosContent|https://www.teamskeet.com/movies/cool-scene'
+    assert ReptyleClient().decode(results[1].cur_id) == 'other-scene|moviesContent|https://www.teamskeet.com/movies/other-scene'
+
+
+@respx.mock
+async def test_model_fallback_tries_split_names_and_survives_a_404_page() -> None:
+    title = 'Brina Scarlet Fun Sized Megan And Lilibet Saunders'
+    respx.get('https://www.teamskeet.com/movies/brina-scarlet-fun-sized-megan-and-lilibet-saunders').mock(
+        return_value=httpx.Response(200, text=_state_html(_EMPTY_STATE))
+    )
+    respx.get('https://www.teamskeet.com/models/brina-scarlet').mock(return_value=httpx.Response(404, text=_state_html(_EMPTY_STATE)))
+    model = {'name': 'Fun Sized Megan', 'movies': [_MOVIE]}
+    respx.get('https://www.teamskeet.com/models/fun-sized-megan').mock(
+        return_value=httpx.Response(200, text=_state_html({'modelsContent': {'fun-sized-megan': model}}))
+    )
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx(title))
+
+    assert [r.title for r in results] == ['Cool Scene']
+
+
+@respx.mock
+async def test_model_fallback_gives_up_when_no_candidate_matches() -> None:
+    respx.get(url__regex=r'.*').mock(return_value=httpx.Response(200, text=_state_html(_EMPTY_STATE)))
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx('Gia Ohmy And Lolly Dames'))
+    assert results == []
+
+
 @respx.mock
 async def test_search_canonicalizes_an_alias_slug() -> None:
     alias = 'chloe-rose-cool-scene'
