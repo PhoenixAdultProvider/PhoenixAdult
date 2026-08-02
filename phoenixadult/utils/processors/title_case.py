@@ -47,7 +47,7 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'lasirena': 'LaSirena', 'espanol': 'Español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
     'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
     'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock', 'youve': "You've", 'creme': "Crème",
-    'nino': 'Niño', 'que': 'Qué'
+    'nino': 'Niño', 'que': 'Qué', 'mccoy': 'McCoy'
 }
 
 _KEEP_LOWER_FIRST = sorted(v for v in _MANUAL_CORRECTIONS.values() if v[:1].islower() and any(c.isupper() for c in v[1:]))

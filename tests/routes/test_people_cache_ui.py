@@ -223,6 +223,15 @@ def test_the_edit_page_lists_the_scenes_that_credit_the_person(_person_cache: No
     assert 'href="/metadata/edit?key=scenes/' in body and 'token=tok' in body
 
 
+def test_the_edit_page_resolves_a_person_by_name(_person_cache: None) -> None:
+    page = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'name': 'jane doe'})
+    assert page.status_code == 200
+    assert 'Jane Doe' in page.text
+
+    missing = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'name': 'Nobody Here'})
+    assert missing.status_code == 404
+
+
 def test_the_edit_page_says_so_when_no_snapshot_credits_the_person(_person_cache: None) -> None:
     _seed_scene('Not Hers', 'c9', 'Vixen', '', '2025-01-05', ['Someone Else'])
 

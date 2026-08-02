@@ -387,6 +387,13 @@ to the same string once `title_case` is applied, keeping the canonical spelling,
 It deliberately will not touch genuine variants — `Glory Hole` and `Gloryhole` both survive
 `title_case` unchanged, so choosing between them stays an editorial decision.
 
+A stranded spelling with no canonical twin used to stay wrong forever: a `Whitney Oc` row
+stored before `title_case` learned the `Whitney OC` correction had nothing to fold into.
+The v11 migration re-runs the v8 fold and then recases the surviving single rows in place
+wherever `title_case` now disagrees with what is stored. Because `title_case` preserves
+capitals it did not introduce, names it has no opinion on are untouched — the sticky-spelling
+rule above still holds for everything else.
+
 ### Pruning Unreferenced Names
 
 Dimension rows outlive the scenes that created them: a tag that `genres.json` later filters

@@ -542,6 +542,12 @@ def _find_entry(filename: str) -> dict[str, Any] | None:
     return next((e for e in _list_people(people_cache_dir()) if e['filename'] == filename), None)
 
 
+def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
+    wanted = name.casefold()
+    matches = [e for e in _list_people(people_cache_dir()) if str(e['name']).casefold() == wanted]
+    return next((e for e in matches if str(e['role']) == role), None) or (matches[0] if matches else None)
+
+
 def _scene_credits(entry: dict[str, Any], token: str) -> str:
     from phoenixadult.utils import cache as metadata_cache
 
@@ -566,10 +572,16 @@ def _scene_credits(entry: dict[str, Any], token: str) -> str:
 
 
 @router.get('/edit', response_class=HTMLResponse)
-async def edit_page(request: Request, filename: str = '') -> HTMLResponse:
-    entry = await run_in('store', _find_entry, filename) if filename else None
+async def edit_page(request: Request, filename: str = '', name: str = '', role: str = '') -> HTMLResponse:
+    if filename:
+        entry = await run_in('store', _find_entry, filename)
+    elif name:
+        entry = await run_in('store', _find_entry_by_name, name, role or 'actor')
+    else:
+        entry = None
     if entry is None:
-        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot with that filename.</p>', status_code=404)
+        return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No cached headshot for that person.</p>', status_code=404)
+    filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     origin = html.escape(str(entry.get('source', '')) or 'unrecorded')

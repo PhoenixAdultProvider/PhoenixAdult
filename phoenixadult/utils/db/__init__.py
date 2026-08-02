@@ -137,6 +137,23 @@ def _fold_recased_duplicate_names(conn: sqlite3.Connection) -> None:
         logger.info('db', f'merged {merged} name(s) that title_case recased into an existing spelling')
 
 
+def _recase_noncanonical_names(conn: sqlite3.Connection) -> None:
+    from phoenixadult.utils.processors.title_case import title_case
+
+    _fold_recased_duplicate_names(conn)
+    recased = 0
+    for table in NAME_DIMENSIONS:
+        kind = 'name' if table == 'people' else 'title'
+        for row in conn.execute(f'SELECT id, name FROM {table}').fetchall():  # noqa: S608 - fixed table names
+            cased = title_case(str(row['name']), type=kind)
+            if cased and cased != str(row['name']):
+                logger.info('db', f'{table}: recased "{row["name"]}" to "{cased}"')
+                conn.execute(f'UPDATE OR IGNORE {table} SET name = ? WHERE id = ?', (cased, int(row['id'])))  # noqa: S608
+                recased += 1
+    if recased:
+        logger.info('db', f'recased {recased} stored name(s) to their canonical spelling')
+
+
 def prune_orphan_names(conn: sqlite3.Connection) -> dict[str, int]:
     pruned: dict[str, int] = {}
     for table, spec in NAME_DIMENSIONS.items():
@@ -319,6 +336,7 @@ _MIGRATIONS: list[_Migration] = [
     """
     ALTER TABLE scene_images ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
     """,
+    _recase_noncanonical_names,
 ]
 
 _local = threading.local()

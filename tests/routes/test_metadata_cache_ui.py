@@ -266,7 +266,9 @@ def test_cards_show_genre_counts_and_actor_names(monkeypatch: pytest.MonkeyPatch
     page = TestClient(create_app()).get('/metadata?token=tok')
     assert 'data-label="Genres"' in page.text
     assert 'data-label="Actors"' in page.text
-    assert "(e.actors || []).join(', ')" in page.text
+    assert 'personLink(a)' in page.text
+    assert 'function personLink(' in page.text
+    assert "'/people/edit?' + p.toString()" in page.text
     assert '${e.genres || 0}' in page.text
 
 

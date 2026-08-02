@@ -154,6 +154,30 @@ def test_a_recased_honorific_folds_into_the_canonical_row_and_keeps_its_gender()
     assert int(conn.execute('SELECT person_id FROM scene_people').fetchone()['person_id']) == canonical
 
 
+def test_a_lone_noncanonical_name_is_recased_in_place() -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO people(name) VALUES('Whitney Oc'), ('Mackenzie Mace')")
+
+    with conn:
+        db._recase_noncanonical_names(conn)
+
+    assert sorted(str(r['name']) for r in conn.execute('SELECT name FROM people')) == ['Mackenzie Mace', 'Whitney OC']
+
+
+def test_recasing_folds_a_duplicate_before_touching_the_stale_row() -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute('DROP INDEX people_ci_global')
+        conn.execute("INSERT INTO people(name, gender) VALUES('Whitney Oc', 'female'), ('Whitney OC', '')")
+
+    with conn:
+        db._recase_noncanonical_names(conn)
+
+    rows = conn.execute('SELECT name, gender FROM people').fetchall()
+    assert [(str(r['name']), str(r['gender'])) for r in rows] == [('Whitney OC', 'female')]
+
+
 def test_genuine_spelling_variants_are_never_folded() -> None:
     conn = db.connect()
     with conn:
