@@ -110,7 +110,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'IMAGE_GUARD_ENABLE',
         'Block Direct Image Browsing',
-        'Serve images only to Plex, loopback, admin-token requests, and the admin UIs — a typed-in image URL gets a 403.',
+        'Serve images only to signed URLs, Plex, image fetchers, loopback, admin token, and the admin UIs — a typed-in URL gets a 403.',
         'Images',
         'boolean',
         default_value='false',

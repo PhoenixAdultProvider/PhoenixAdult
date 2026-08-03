@@ -17,6 +17,7 @@ from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.registry import ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
+from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
@@ -183,7 +184,7 @@ _SNAPSHOT_IMG_RE = re.compile(r'^/cache/(?P<rel>.+)/images/(?P<name>[^/?#]+)$')
 
 
 def _snapshot_file(url: str, base: str) -> tuple[Path, str] | None:
-    path = url[len(base) :] if url.startswith(f'{base}/') else url
+    path = strip_sig(url[len(base) :] if url.startswith(f'{base}/') else url)
     match = _SNAPSHOT_IMG_RE.match(path)
     if match is None:
         return None
@@ -212,9 +213,9 @@ def _rebase(obj: Any, base: str, people_base: str) -> Any:
     if isinstance(obj, str):
         marker = '/images/local/'
         if marker in obj:
-            return f'{people_base}{obj[obj.index(marker) :]}'
+            return sign_url(f'{people_base}{obj[obj.index(marker) :]}')
         if obj.startswith('/cache/') or obj.startswith('/images/'):
-            return f'{base}{obj}'
+            return sign_url(f'{base}{obj}')
     return obj
 
 
@@ -343,6 +344,7 @@ async def _write_locked(
         kept_names = {hit[1] for obj, key, _hint in targets if (hit := _snapshot_file(str(obj[key]), base)) is not None}
 
         def _relativize(u: str) -> str:
+            u = strip_sig(u)
             return u[len(base) :] if u.startswith(f'{base}/') else u
 
         def _keep(source: Path, name: str, turn: int = 0) -> tuple[str, tuple[int, int, int] | None, bool] | None:
@@ -369,7 +371,7 @@ async def _write_locked(
             if not url:
                 return url
             if '/images/local/' in url:
-                return url[url.index('/images/local/') :]
+                return strip_sig(url[url.index('/images/local/') :])
             if (hit := _snapshot_file(url, base)) is not None:
                 if (kept := await run_in('fs', _keep, *hit, rotations.get(url, 0))) is not None:
                     local, probed, solid = kept

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
+from phoenixadult.utils.auth.url_signing import sign_url
+
 
 def proxy_url(
     url: str | None,
@@ -15,15 +17,15 @@ def proxy_url(
         return url
     base = base_url.rstrip('/')
     if url.startswith(f'{base}/images/proxy'):
-        return url
+        return sign_url(url)
     if passthrough_local and url.startswith(f'{base}/images/local/'):
-        return url
+        return sign_url(url)
     out = f'{base}/images/proxy?url={quote(url, safe="")}'
     for r in referers or []:
         out += f'&referer={quote(r, safe="")}'
     for c in cookies or []:
         out += f'&cookie={quote(c, safe="")}'
-    return out
+    return sign_url(out)
 
 
 def proxy_target(url: str) -> str:

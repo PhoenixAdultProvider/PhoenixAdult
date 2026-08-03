@@ -17,6 +17,22 @@ from phoenixadult.utils.images import image_fetcher
 from phoenixadult.utils.plex.rating_key import to_rating_key
 
 
+@pytest.fixture(autouse=True)
+def _unsigned_urls(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+
+
+def test_rebased_urls_are_signed_when_admin_token_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+    out = mc._rebase(
+        {'thumb': '/cache/ab/bundle/images/img-00.jpg', 'role': '/images/local/people/actor.jane_female.jpg?v=1'},
+        'http://b',
+        'http://p',
+    )
+    assert out['thumb'].startswith('http://b/cache/') and '?sig=' in out['thumb']
+    assert out['role'].startswith('http://p/images/local/') and '&sig=' in out['role']
+
+
 def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: [t.upper() for t in tags if t != 'Drop Me'])
     monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Canonical' if name in ('Alias A', 'Alias B') else name)

@@ -10,6 +10,7 @@ import httpx2
 from phoenixadult.config.env import env
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
@@ -352,7 +353,7 @@ async def push_collection_logos(apply: bool = False, limit: int | None = None) -
                 report.pushed += 1
                 report.items.append({'title': title, 'ratingKey': plex_key, 'logo': marker.rsplit('/', 1)[-1]})
                 if apply:
-                    await client.set_clear_logo(plex_key, f'{base}{marker}')
+                    await client.set_clear_logo(plex_key, sign_url(f'{base}{marker}') or f'{base}{marker}')
                     logger.info(_TAG, f'collection "{title}" ({plex_key}): logo {marker}')
     finally:
         await client.aclose()

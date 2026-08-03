@@ -17,6 +17,7 @@ from phoenixadult.clients.aggregators.data18 import scene_url_from_ref
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config import config
 from phoenixadult.config.env import env
+from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from phoenixadult.utils.logging.logger import logger
 
@@ -275,7 +276,8 @@ def _image_url_for(located: LocatedNfo, filename: str) -> str:
     rel_dir = located.sibling_dir.relative_to(root)
     segments = [filename] if str(rel_dir) == '.' else [*rel_dir.parts, filename]
     encoded = '/'.join(quote(s) for s in segments)
-    return f'{config.base_url}/images/manual-nfo/{encoded}'
+    url = f'{config.base_url}/images/manual-nfo/{encoded}'
+    return sign_url(url) or url
 
 
 def _find_sibling_image(located: LocatedNfo, suffix: str) -> str | None:

@@ -41,6 +41,22 @@ def test_non_browser_denial_stays_json(client: TestClient) -> None:
     assert r.json() == {'error': 'Direct image access is not allowed'}
 
 
+def test_signed_url_is_served_to_anyone(client: TestClient) -> None:
+    from phoenixadult.utils.auth.url_signing import sign_url
+
+    signed = sign_url('/images/local/pic.jpg')
+    assert signed is not None and '?sig=' in signed
+    assert client.get(signed, headers={'User-Agent': 'curl/8.0', 'Accept': '*/*'}).status_code == 200
+    tampered = signed[:-1] + ('0' if signed[-1] != '0' else '1')
+    assert client.get(tampered, headers={'User-Agent': 'curl/8.0', 'Accept': '*/*'}).status_code == 403
+
+
+def test_image_accept_fetcher_is_served(client: TestClient) -> None:
+    cloud = {'User-Agent': 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36', 'Accept': 'image/*'}
+    assert client.get('/cache/shot.jpg', headers=cloud).status_code == 200
+    assert client.get('/images/local/pic.jpg', headers=cloud).status_code == 200
+
+
 def test_plex_user_agent_is_served(client: TestClient) -> None:
     assert client.get('/images/local/pic.jpg', headers=PLEX_UA).status_code == 200
     assert client.get('/cache/shot.jpg', headers=PLEX_UA).status_code == 200

@@ -83,10 +83,12 @@ def _bust_token(relpath: str, data: bytes | None) -> str:
 def _local_url(relpath: str, data: bytes | None = None) -> str:
     from urllib.parse import quote
 
+    from phoenixadult.utils.auth.url_signing import sign_url
+
     token = _bust_token(relpath, data)
     bust = f'?v={token}' if token else ''
     quoted = '/'.join(quote(part) for part in relpath.split('/'))
-    return f'{image_base_url()}/images/local/{quoted}{bust}'
+    return sign_url(f'{image_base_url()}/images/local/{quoted}{bust}') or ''
 
 
 # ── Index (people_images table; files are the source of truth) ────────────────

@@ -19,6 +19,7 @@ def _plex_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PLEX_URL', BASE)
     monkeypatch.setenv('PLEX_TOKEN', 'test-token')
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
 
 
 def _snapshot(**tags: list[str]) -> dict[str, list[str]]:
