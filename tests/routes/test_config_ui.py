@@ -107,6 +107,14 @@ def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     assert 'user-select: text' in body
 
 
+def test_reconcile_shows_a_scene_progress_bar(client: TestClient) -> None:
+    body = client.get('/config', params={'token': TOKEN}).text
+    assert 'id="plex-reconcile-progress"' in body
+    assert "fetch(api('/plex/reconcile/progress'))" in body
+    assert "' of ' + p.total + ' scenes inspected'" in body
+    assert 'startReconcileProgress();' in body and 'stopReconcileProgress();' in body
+
+
 def test_the_theme_tab_sits_before_logs_with_pickers_and_a_preview(client: TestClient) -> None:
     body = client.get('/config', params={'token': TOKEN}).text
     assert "const THEME_TAB = 'Theme';" in body

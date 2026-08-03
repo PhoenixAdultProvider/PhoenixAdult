@@ -134,6 +134,10 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     pre.report { background: var(--inset-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.7rem;
                  font-size: 0.75rem; margin-top: 0.6rem; max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
+    .recon-progress { margin-top: 0.7rem; }
+    .recon-progress-head { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted-text); margin-bottom: 0.3rem; }
+    .recon-progress-track { height: 8px; border-radius: 4px; background: var(--progress-track); overflow: hidden; }
+    .recon-progress-fill { height: 100%; width: 0; border-radius: 4px; background: var(--progress-fill); transition: width .4s ease; }
     .recon-counts { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.82rem; color: var(--muted-text); }
     .recon-counts b { color: var(--heading-text); font-size: 1rem; margin-right: 0.3rem; }
     .recon-summary { margin-top: 0.7rem; border: 1px solid var(--panel-border); border-radius: 6px; background: var(--inset-bg); padding: 0.7rem; }
@@ -315,6 +319,10 @@
         <span class="plex-status" id="plex-reconcile-status"></span>
       </div>
       <div class="hint">Limit stops after N changed items — handy to sample a large library before a full pass.</div>
+      <div class="recon-progress" id="plex-reconcile-progress" style="display:none">
+        <div class="recon-progress-head"><span id="plex-reconcile-progress-label"></span><span id="plex-reconcile-progress-pct"></span></div>
+        <div class="recon-progress-track"><div class="recon-progress-fill" id="plex-reconcile-progress-fill"></div></div>
+      </div>
       <div class="plex-row" id="plex-reconcile-fields"></div>
       <div class="plex-row" id="plex-reconcile-sites"><span class="hint">Run a dry run to list scraper clients for partial removal.</span></div>
       <div id="plex-reconcile-view" style="display:none">
@@ -1344,6 +1352,32 @@
       clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
+    let reconcileProgressTimer = null;
+
+    function stopReconcileProgress() {
+      if (reconcileProgressTimer) { clearInterval(reconcileProgressTimer); reconcileProgressTimer = null; }
+      document.getElementById('plex-reconcile-progress').style.display = 'none';
+    }
+
+    function startReconcileProgress() {
+      document.getElementById('plex-reconcile-progress').style.display = 'block';
+      document.getElementById('plex-reconcile-progress-fill').style.width = '0%';
+      document.getElementById('plex-reconcile-progress-label').textContent = 'Collecting library…';
+      document.getElementById('plex-reconcile-progress-pct').textContent = '';
+      reconcileProgressTimer = setInterval(async () => {
+        try {
+          const r = await fetch(api('/plex/reconcile/progress'));
+          if (!r.ok) return;
+          const p = await r.json();
+          if (!p.total) return;
+          const pct = Math.min(100, Math.round((p.inspected / p.total) * 100));
+          document.getElementById('plex-reconcile-progress-label').textContent = p.inspected + ' of ' + p.total + ' scenes inspected';
+          document.getElementById('plex-reconcile-progress-pct').textContent = pct + '%';
+          document.getElementById('plex-reconcile-progress-fill').style.width = pct + '%';
+        } catch {}
+      }, 600);
+    }
+
     async function runReconcile(apply) {
       if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
@@ -1351,12 +1385,15 @@
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
       plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
+      startReconcileProgress();
       try {
         const data = await postJSON(api('/plex/reconcile' + (params.length ? '?' + params.join('&') : '')), {});
         renderReconcile(data);
         plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
       } catch (err) {
         plexStatus('plex-reconcile-status', esc(err.message), 'err');
+      } finally {
+        stopReconcileProgress();
       }
     }
 

@@ -30,6 +30,13 @@ def test_status_reports_disabled_until_both_vars_are_set(monkeypatch: pytest.Mon
     assert client.get('/plex/status', headers=hdr).json() == {'enabled': True}
 
 
+def test_reconcile_progress_reports_the_run_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(monkeypatch)
+    body = client.get('/plex/reconcile/progress', headers={'x-admin-token': 'tok'}).json()
+    assert set(body) == {'active', 'total', 'inspected'}
+    assert body['active'] is False
+
+
 def test_reconcile_409s_when_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('PLEX_URL', raising=False)
     monkeypatch.delenv('PLEX_TOKEN', raising=False)

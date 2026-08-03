@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import itertools
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -183,6 +182,12 @@ class PlexClient:
 
 _INSPECT_CONCURRENCY = 8
 
+_progress: dict[str, Any] = {'active': False, 'total': 0, 'inspected': 0}
+
+
+def progress() -> dict[str, Any]:
+    return dict(_progress)
+
 
 async def _inspect_item(
     client: PlexClient, section: str, stub: dict[str, Any], rating_key: str, site_name: str, field_filter: set[str]
@@ -233,11 +238,25 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                     continue
                 work.append((section, stub, rating_key, site_name))
 
-        for chunk in itertools.batched(work, _INSPECT_CONCURRENCY, strict=False):
-            if limit is not None and report.changed >= limit:
-                break
-            inspected = await asyncio.gather(*(_inspect_item(client, *w, field_filter) for w in chunk))
-            for entry, desired, section in inspected:
+        _progress.update(active=True, total=len(work), inspected=0)
+        sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
+        done = False
+
+        async def _guarded(w: tuple[str, dict[str, Any], str, str]) -> tuple[ItemReport, dict[str, list[str]] | None, str] | None:
+            async with sem:
+                if done:
+                    return None
+                inspected = await _inspect_item(client, *w, field_filter)
+                _progress['inspected'] += 1
+                return inspected
+
+        tasks = [asyncio.create_task(_guarded(w)) for w in work]
+        try:
+            for task in tasks:
+                inspected = await task
+                if inspected is None:
+                    continue
+                entry, desired, section = inspected
                 if desired is None:
                     report.skipped_no_snapshot += 1
                     report.items.append(entry)
@@ -249,6 +268,7 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                         report.items.append(entry)
                     continue
                 if limit is not None and report.changed >= limit:
+                    done = True
                     continue
 
                 report.changed += 1
@@ -260,7 +280,13 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                         else:
                             await client.remove_tags(section, entry.rating_key, _FIELDS[provider_field], stale)
                     logger.info(_TAG, f'{entry.rating_key} "{entry.title}": reconciled {entry.removals}')
+        finally:
+            done = True
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
     finally:
+        _progress['active'] = False
         await client.aclose()
 
     verb = 'removed from' if apply else 'would be removed from'

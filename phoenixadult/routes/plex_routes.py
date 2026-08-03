@@ -76,6 +76,11 @@ async def update(request: Request) -> JSONResponse:
         return JSONResponse({'error': 'Update check failed'}, status_code=502)
 
 
+@router.get('/reconcile/progress')
+async def reconcile_progress() -> JSONResponse:
+    return JSONResponse(plex_reconcile.progress())
+
+
 @router.post('/reconcile')
 async def reconcile(request: Request) -> JSONResponse:
     if not plex_reconcile.enabled():

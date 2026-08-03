@@ -92,6 +92,7 @@ async def test_items_are_inspected_concurrently(monkeypatch: pytest.MonkeyPatch)
     assert report.matched == 8 and report.scanned == 8
     assert [i.rating_key for i in report.items] == []
     assert peak > 1
+    assert pr.progress() == {'active': False, 'total': 8, 'inspected': 8}
 
 
 @respx.mock
