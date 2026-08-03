@@ -69,6 +69,7 @@ def _build_state() -> dict[str, Any]:
             'min': spec.min,
             'max': spec.max,
             'preview': spec.preview,
+            'secretItems': spec.secret_items,
             'value': _display_value(spec),
             'overridden': is_overridden(spec.key),
             'isSet': bool(os.environ.get(spec.key, '')),

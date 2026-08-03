@@ -37,14 +37,14 @@ def test_provider_capability_declaration(client: TestClient) -> None:
     assert body['MediaProvider']['Types'][0]['type'] == 1
 
 
-def test_match_400_when_no_site(client: TestClient) -> None:
+def test_match_empty_when_no_site(client: TestClient) -> None:
     mount = provider_mount_path(get_all_providers()[0])
     r = client.post(
         f'{mount}/library/metadata/matches',
         json={'type': 1, 'filename': 'Unknown.Site.2024.01.02.mp4', 'manual': 1, 'includeAdult': 1},
     )
-    assert r.status_code == 400
-    assert 'no registry site' in r.json()['error']
+    assert r.status_code == 200
+    assert r.json()['MediaContainer']['totalSize'] == 0
 
 
 def test_match_400_when_no_parse_source(client: TestClient) -> None:

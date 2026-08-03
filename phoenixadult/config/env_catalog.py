@@ -10,7 +10,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
     'Data18 Enrichment', 'MetadataAPI', 'Manual NFO', 'People Cache & Sources',
-    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Plex Server',
+    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Plex Server', 'Plex Access',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
@@ -20,7 +20,7 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
     ('System', ['Logging', 'Metadata Cache']),
-    ('Plex', ['Plex Server']),
+    ('Plex', ['Plex Server', 'Plex Access']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
@@ -50,6 +50,7 @@ class EnvVarSpec:
     min: int | None = None
     max: int | None = None
     preview: Literal['image'] | None = None
+    secret_items: bool = False
 
 
 ENV_CATALOG: list[EnvVarSpec] = [
@@ -284,6 +285,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Device identifier the fetched token is bound to; clear it with the token to unlink this device.',
         'Plex Server',
         'secret',
+    ),
+    EnvVarSpec(
+        'PLEX_CLIENT_ALLOWLIST',
+        'Approved Plex Clients',
+        'X-Plex-Client-Identifier values allowed to call the provider (empty = no restriction); loopback and admin-token requests always pass.',
+        'Plex Access',
+        'list',
+        default_value='',
+        secret_items=True,
     ),
     EnvVarSpec(
         'BYPASS_ORDER',

@@ -272,6 +272,11 @@ class _Env:
         return (os.environ.get('PLEX_CLIENT_ID') or '').strip() or None
 
     @property
+    def plex_client_allowlist(self) -> tuple[str, ...]:
+        raw = os.environ.get('PLEX_CLIENT_ALLOWLIST') or ''
+        return tuple(s.strip() for s in raw.split(',') if s.strip())
+
+    @property
     def admin_token(self) -> str | None:
         token = (os.environ.get('ADMIN_TOKEN') or '').strip()
         return token or None

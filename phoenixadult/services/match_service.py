@@ -44,8 +44,6 @@ class MatchRequest:
 _SEARCH_MEMO_TTL = 900.0
 _SEARCH_MEMO_MAX = 512
 
-_UNKNOWN_SITE_RETURNS_400 = True
-
 
 class MatchService:
     def __init__(self) -> None:
@@ -206,8 +204,6 @@ class MatchService:
         parsed = get_site_name_from_registry(parse_source, lambda token: find_site(token) is not None)
         if not parsed:
             logger.warn(provider.id, f'Could not parse: "{parse_source}"')
-            if _UNKNOWN_SITE_RETURNS_400:
-                raise MalformedRequestError(f'no registry site found in "{parse_source}"')
             return self._empty(provider)
 
         site = find_site(parsed.site_token)

@@ -12,7 +12,7 @@ Receive = Callable[[], Awaitable[Message]]
 Send = Callable[[Message], Awaitable[None]]
 ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
-_QUIET_PATHS = frozenset({'/queue/api/state'})
+_QUIET_PATHS = frozenset({'/queue/api/state', '/config/api/logs'})
 
 
 def _header(headers: dict[bytes, bytes], key: bytes) -> str | None:

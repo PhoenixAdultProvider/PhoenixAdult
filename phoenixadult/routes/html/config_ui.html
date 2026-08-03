@@ -297,6 +297,11 @@
       <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
     </div>
 
+    <h2>Allowed Plex Clients</h2>
+    <div class="card">
+      <div id="plex-access-vars"></div>
+    </div>
+
     <h2>Server</h2>
     <div class="card">
       <div class="plex-row">
@@ -464,6 +469,8 @@
         .join('');
       const plexGroup = STATE.groups.find((g) => g.name === PLEX_GROUP);
       document.getElementById('plex-vars').innerHTML = plexGroup ? plexGroup.vars.map(renderVar).join('') : '';
+      const accessGroup = STATE.groups.find((g) => g.name === 'Plex Access');
+      document.getElementById('plex-access-vars').innerHTML = accessGroup ? accessGroup.vars.map(renderVar).join('') : '';
       for (const v of allVars()) {
         if (v.kind === 'list') initList(v);
         if (v.preview === 'image') {
@@ -650,10 +657,12 @@
       const v = specOf(key);
       const arr = LISTS[key];
       const list = document.getElementById('srclist-' + key);
+      const mask = !!v.secretItems;
       list.innerHTML = arr.map((item, i) =>
         '<div class="srcitem" draggable="true" data-idx="' + i + '">'
         + '<span class="drag-grip">⠿</span>'
-        + '<span class="srcitem-name">' + esc(item) + '</span>'
+        + '<span class="srcitem-name" data-real="' + esc(item) + '">' + (mask ? '●●●●●●●●' : esc(item)) + '</span>'
+        + (mask ? '<button type="button" class="copy-btn" data-list-show="' + esc(key) + '">Show</button>' : '')
         + '<button type="button" class="srcitem-x" data-list-remove="' + esc(key) + '" data-idx="' + i + '"'
         + ' title="Remove">×</button>'
         + '</div>').join('') || '<span class="hint">empty — add a source below</span>';
@@ -686,7 +695,7 @@
     function commitOrder(key, list, item) {
       if (!item.classList.contains('dragging')) return;
       item.classList.remove('dragging');
-      LISTS[key] = [...list.querySelectorAll('.srcitem-name')].map((n) => n.textContent);
+      LISTS[key] = [...list.querySelectorAll('.srcitem-name')].map((n) => n.dataset.real || n.textContent);
       rebuildList(key);
       refreshDirty();
     }
@@ -736,6 +745,13 @@
         if (y < box.top || (y <= box.bottom && x < box.left + box.width / 2)) return el;
       }
       return null;
+    }
+
+    function listShowToggle(btn) {
+      const name = btn.closest('.srcitem').querySelector('.srcitem-name');
+      const hidden = name.textContent.startsWith('●');
+      name.textContent = hidden ? name.dataset.real : '●●●●●●●●';
+      btn.textContent = hidden ? 'Hide' : 'Show';
     }
 
     function listRemove(key, idx) {
@@ -1003,6 +1019,8 @@
     document.addEventListener('click', (e) => {
       const resetEl = e.target.closest('[data-reset]');
       if (resetEl && !resetEl.disabled) { resetOne(resetEl.dataset.reset); return; }
+      const showEl = e.target.closest('[data-list-show]');
+      if (showEl) { listShowToggle(showEl); return; }
       const removeEl = e.target.closest('[data-list-remove]');
       if (removeEl) { listRemove(removeEl.dataset.listRemove, Number(removeEl.dataset.idx)); return; }
       const addEl = e.target.closest('[data-list-add]');

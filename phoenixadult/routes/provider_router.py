@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from phoenixadult.models.media_provider import MediaProviderResponse
@@ -13,6 +13,7 @@ from phoenixadult.services import scrape_queue
 from phoenixadult.services.match_service import MatchRequest, MatchService
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
+from phoenixadult.utils.auth.plex_client_guard import plex_client_guard
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.media_type import plex_media_type_id
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
@@ -56,7 +57,7 @@ async def restore_queue() -> None:
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
-    router = APIRouter()
+    router = APIRouter(dependencies=[Depends(plex_client_guard)])
     match_service = MatchService()
     metadata_service = MetadataService()
     match_service.metadata_service = metadata_service
