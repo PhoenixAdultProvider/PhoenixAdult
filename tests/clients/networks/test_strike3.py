@@ -33,6 +33,7 @@ async def test_search_text() -> None:
     assert results[0].title == 'Cool Scene'
     assert Strike3Client().decode(results[0].cur_id) == 'cool-scene'
     assert results[0].display_date == '2021-03-04'
+    assert b'query getSearchResults($query: String!, $site: Site!' in respx.calls.last.request.content
 
 
 @respx.mock

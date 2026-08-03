@@ -13,16 +13,18 @@ from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pa
 _PACE_SECONDS = 1.0
 
 _SEARCH_QUERY = (
-    'query getSearchResults($query:String!,$site:Site!,$first:Int,$skip:Int)'
-    '{searchVideos(input:{query:$query,site:$site,first:$first,skip:$skip})'
-    '{edges{node{videoId title releaseDate slug images{listing{src}}}}}}'
+    'query getSearchResults($query: String!, $site: Site!, $first: Int, $skip: Int) '
+    '{ searchVideos(input: {query: $query, site: $site, first: $first, skip: $skip}) '
+    '{ edges { node { videoId title releaseDate slug images { listing { src } } } } } }'
 )
-_SEARCH_ID_QUERY = 'query getSearchResults($videoId:ID!,$site:Site!){findOneVideo(input:{videoId:$videoId,site:$site}){videoId title releaseDate slug}}'
+_SEARCH_ID_QUERY = (
+    'query getSearchResults($videoId: ID!, $site: Site!) { findOneVideo(input: {videoId: $videoId, site: $site}) { videoId title releaseDate slug } }'
+)
 _UPDATE_QUERY = (
-    'query getSearchResults($slug:String!,$site:Site!)'
-    '{findOneVideo(input:{slug:$slug,site:$site}){videoId title description releaseDate '
-    'models{name slug images{listing{highdpi{double}}}}directors{name}categories{name}'
-    'carousel{listing{highdpi{triple}}}}}'
+    'query getSearchResults($slug: String!, $site: Site!) '
+    '{ findOneVideo(input: {slug: $slug, site: $site}) { videoId title description releaseDate '
+    'models { name slug images { listing { highdpi { double } } } } directors { name } categories { name } '
+    'carousel { listing { highdpi { triple } } } } }'
 )
 
 
