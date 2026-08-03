@@ -13,7 +13,7 @@ PROVIDER_SEARCH_PATH = '/movies/{query}'
 _ALIASES: dict[str, list[str]] = load_data(__file__, 'reptyle_aliases')
 
 
-def _site(name: str, base_url: str) -> SiteInfo:
+def _site(name: str, base_url: str, token_prefixes: tuple[str, ...] = ()) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
@@ -25,12 +25,13 @@ def _site(name: str, base_url: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='reptyle',
         data18_enrichment=True,
+        token_prefixes=token_prefixes,
     )
 
 
 REPTYLE_SITES: list[SiteInfo] = [
     _site('MYLF', 'https://www.mylf.com'),
-    _site('TeamSkeet', 'https://www.teamskeet.com'),
+    _site('TeamSkeet', 'https://www.teamskeet.com', token_prefixes=('mylfx', 'teamskeetx')),
     _site('Swappz', 'https://www.swappz.com'),
     _site('FreeUse', 'https://www.freeuse.com'),
     _site('Pervz', 'https://www.pervz.com'),

@@ -29,7 +29,7 @@ async def test_gate_runs_at_most_three_concurrently() -> None:
 
 
 async def test_sync_turn_defers_when_slots_stay_full(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rate_limit_helper, '_SYNC_WAIT_BUDGET', 0.05)
+    monkeypatch.setattr(rate_limit_helper, '_FAST_SYNC_WAIT_BUDGET', 0.05)
     gate = FastGate()
     release = asyncio.Event()
 
@@ -79,7 +79,7 @@ class _StubClient(Client):
 
 
 async def test_unpaced_scene_detail_defers_through_the_shared_gate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rate_limit_helper, '_SYNC_WAIT_BUDGET', 0.05)
+    monkeypatch.setattr(rate_limit_helper, '_FAST_SYNC_WAIT_BUDGET', 0.05)
     monkeypatch.setattr('phoenixadult.clients.base.FAST_GATE', FastGate())
     client = _StubClient()
     site: Any = None

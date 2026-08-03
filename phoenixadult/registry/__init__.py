@@ -31,7 +31,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.269',
+        version='1.0.0-alpha.270',
         media_type='movie',
     ),
 ]
@@ -54,7 +54,14 @@ SITE_DEFINITIONS: list[SiteInfo] = _with_archive(list(_SELECTOR_SITES), _ARCHIVE
 
 def _build_tables(
     providers: list[ProviderInfo], sites: list[SiteInfo]
-) -> tuple[dict[str, ProviderInfo], dict[str, ResolvedSiteInfo], dict[str, list[ResolvedSiteInfo]], dict[str, str], dict[str, list[str]]]:
+) -> tuple[
+    dict[str, ProviderInfo],
+    dict[str, ResolvedSiteInfo],
+    dict[str, list[ResolvedSiteInfo]],
+    dict[str, str],
+    dict[str, list[str]],
+    list[tuple[str, ResolvedSiteInfo]],
+]:
     provider_by_id = {p.id: p for p in providers}
 
     resolved: list[ResolvedSiteInfo] = []
@@ -85,10 +92,23 @@ def _build_tables(
     for site in resolved:
         tokens_by_provider_name.setdefault(site.provider_name or site.name, []).extend([site.name, *site.aliases])
 
-    return provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name
+    prefix_table: list[tuple[str, ResolvedSiteInfo]] = []
+    for site in resolved:
+        for prefix in site.token_prefixes:
+            key = normalize_site_key(prefix)
+            if not key:
+                raise ValueError(f'Site "{site.name}" declares an empty token prefix.')
+            if any(key == existing for existing, _ in prefix_table):
+                raise ValueError(f'Registry conflict: token prefix "{key}" declared twice.')
+            prefix_table.append((key, site))
+    prefix_table.sort(key=lambda entry: -len(entry[0]))
+
+    return provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name, prefix_table
 
 
-provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name = _build_tables(PROVIDER_DEFINITIONS, SITE_DEFINITIONS)
+provider_by_id, site_by_token, sites_by_provider, display_by_token, tokens_by_provider_name, site_by_token_prefix = _build_tables(
+    PROVIDER_DEFINITIONS, SITE_DEFINITIONS
+)
 
 
 def get_all_providers() -> list[ProviderInfo]:
@@ -99,12 +119,24 @@ def get_provider(provider_id: str) -> ProviderInfo | None:
     return provider_by_id.get(provider_id)
 
 
+def _prefix_site(token: str) -> ResolvedSiteInfo | None:
+    if any(ch.isspace() for ch in token.strip()):
+        return None
+    key = normalize_site_key(token)
+    return next((site for prefix, site in site_by_token_prefix if key.startswith(prefix)), None)
+
+
 def find_site(token: str) -> ResolvedSiteInfo | None:
-    return site_by_token.get(normalize_site_key(token))
+    exact = site_by_token.get(normalize_site_key(token))
+    return exact if exact is not None else _prefix_site(token)
 
 
 def canonical_site_display(token: str) -> str | None:
-    return display_by_token.get(normalize_site_key(token))
+    exact = display_by_token.get(normalize_site_key(token))
+    if exact is not None:
+        return exact
+    site = _prefix_site(token)
+    return site.name if site is not None else None
 
 
 def provider_name_for(token: str) -> str:

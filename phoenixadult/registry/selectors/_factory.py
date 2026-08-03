@@ -23,6 +23,7 @@ def make_site(
     search_method: SearchMethod | None = None,
     search_notes: str | None = None,
     use_bypass: bool = False,
+    token_prefixes: tuple[str, ...] = (),
 ) -> SiteInfo:
     return SiteInfo(
         name=name,
@@ -41,4 +42,5 @@ def make_site(
         search_method=search_method,
         search_notes=search_notes,
         use_bypass=use_bypass,
+        token_prefixes=token_prefixes,
     )

@@ -27,6 +27,7 @@ class SiteInfo:
     search_method: SearchMethod | None = None
     search_notes: str | None = None
     use_bypass: bool = False
+    token_prefixes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

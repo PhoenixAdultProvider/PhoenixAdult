@@ -1577,6 +1577,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - MYLF X Owen Gray
     - MYLF X Paytons Place
     - MYLF X PurgatoryX
+    - MYLF X Series
     - MYLF X SinfulXXX
     - MYLF X SpankMonster
     - MYLF X Steve Holmes
@@ -1644,6 +1645,7 @@ To update the site list run `python -m scripts.generate_sitelist`
     - TeamSkeet X Reislin
     - TeamSkeet X Riley Cyriis
     - TeamSkeet X Screampies
+    - TeamSkeet X Series
     - TeamSkeet X Slut Inspection
     - TeamSkeet X SpankMonster
     - TeamSkeet X Sweetie Fox

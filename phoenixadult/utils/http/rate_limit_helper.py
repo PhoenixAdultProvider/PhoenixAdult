@@ -49,6 +49,7 @@ class PacingDeferredError(Exception):
 
 
 _FAST_SLOTS = 3
+_FAST_SYNC_WAIT_BUDGET = 60.0
 _fast_slot_held: ContextVar[bool] = ContextVar('fast_slot_held', default=False)
 
 
@@ -94,9 +95,9 @@ class FastGate:
             await self._acquire()
         else:
             try:
-                await asyncio.wait_for(self._acquire(), _SYNC_WAIT_BUDGET)
+                await asyncio.wait_for(self._acquire(), _FAST_SYNC_WAIT_BUDGET)
             except TimeoutError:
-                raise PacingDeferredError(_SYNC_WAIT_BUDGET * (len(self._waiters) + 1)) from None
+                raise PacingDeferredError(_FAST_SYNC_WAIT_BUDGET * (len(self._waiters) + 1)) from None
         token = _fast_slot_held.set(True)
         try:
             yield
