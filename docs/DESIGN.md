@@ -109,6 +109,7 @@ flowchart LR
 | Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` + `GET /metadata/snapshot` | **loopback or `ADMIN_TOKEN`** |
 | Cast autocomplete | `GET /metadata/actors?q=` | **loopback or `ADMIN_TOKEN`** |
 | Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
+| Image serving | `GET /images/*`, `GET /cache/*` | public by default; with `IMAGE_GUARD_ENABLE` only Plex (`PlexMediaServer` UA), loopback, `ADMIN_TOKEN`, or same-origin admin-UI subresources — direct browsing gets 403 (`phoenixadult/utils/auth/image_guard.py`) |
 
 Every admin page shares one fixed top nav — Metadata, People, Logos, Queue, Dev, Config — rendered by `render_nav(active)` (`phoenixadult/routes/__init__.py`) from `phoenixadult/routes/html/nav.html` and injected at each template's `__NAV__` placeholder, including the `/metadata/edit` and `/people/edit` sub-pages (which highlight their parent). The Dev link appears only when the `/dev` routes are mounted (non-production `NODE_ENV`), and an inline script carries the current `?token=` onto every link so admin auth survives navigation.
 

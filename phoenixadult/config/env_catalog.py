@@ -115,6 +115,16 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='true',
     ),
     EnvVarSpec(
+        'IMAGE_GUARD_ENABLE',
+        'Block Direct Image Browsing',
+        'Serve logos, snapshot images, and people images only to Plex (PlexMediaServer user agent), loopback, '
+        'admin-token requests, and the admin UIs (same-origin subresource checks) — a typed-in image URL gets a 403. '
+        'The Plex user-agent check is best-effort, not authentication.',
+        'Images',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
         'MANUAL_NFO_PATH', 'Manual NFO Folder', 'Root folder served by the "Manual NFO" scraper.', 'Manual NFO', 'string', default_value='./local/manual'
     ),
     EnvVarSpec(

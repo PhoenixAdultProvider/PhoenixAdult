@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
 from phoenixadult.config.env import env
+from phoenixadult.utils.auth.image_guard import image_guard
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.http.ssrf_guard import assert_fetchable_url
 from phoenixadult.utils.images.ext import IMAGE_EXTS
@@ -13,8 +14,8 @@ from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import fetch_image
 from phoenixadult.utils.logging.logger import logger
 
-router = APIRouter()
-cache_router = APIRouter()
+router = APIRouter(dependencies=[Depends(image_guard)])
+cache_router = APIRouter(dependencies=[Depends(image_guard)])
 
 _PROXY_CACHE_CONTROL = 'public, max-age=3600'
 _VERSIONED_CACHE_CONTROL = 'public, max-age=31536000, immutable'
