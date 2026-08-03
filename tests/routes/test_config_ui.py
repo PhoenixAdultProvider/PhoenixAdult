@@ -153,9 +153,11 @@ def test_the_log_view_shows_the_same_redaction_the_file_gets(client: TestClient,
     assert 'token=***REDACTED***' in hit
 
 
-def test_the_logs_tab_breaks_out_of_the_page_width(client: TestClient) -> None:
+def test_the_logs_tab_breaks_out_of_the_page_width_but_the_header_stays_put(client: TestClient) -> None:
     body = client.get('/config', params={'token': TOKEN}).text
-    assert 'body.logs-wide { max-width: none; }' in body
+    assert 'body.logs-wide #tab-logs { max-width: none; }' in body
+    assert 'scrollbar-gutter: stable;' in body
+    assert 'h1, .sub, .toolbar, .tabbar, #tabpanes, #tab-plex, #tab-logs, #tab-theme { max-width: 1092px; margin-inline: auto; }' in body
     assert "document.body.classList.toggle('logs-wide', name === 'logs');" in body
     assert 'function logFill()' in body
     assert "window.addEventListener('resize'" in body
