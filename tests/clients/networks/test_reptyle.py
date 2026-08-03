@@ -88,7 +88,9 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     captured: dict[str, object] = {}
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> str:
+        async def find_scene_url(
+            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+        ) -> str:
             captured['mapping_id'] = scene_id
             return 'https://www.data18.com/scenes/999'
 
@@ -100,6 +102,42 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
     assert detail is not None
     assert captured['mapping_id'] == 'cool-scene-familystrokes'
     assert 'https://cdn.data18.com/extra.jpg' in detail.art
+
+
+def test_data18_disable_list_matches_exact_names_and_wildcards() -> None:
+    from phoenixadult.clients.networks.reptyle import _data18_search_disabled
+
+    assert _data18_search_disabled('Rub A Teen')
+    assert _data18_search_disabled('Lust HD')
+    assert _data18_search_disabled('MYLF X Series')
+    assert _data18_search_disabled('TeamSkeet X Eva Elfie')
+    assert _data18_search_disabled('MYLF X Dante Colle')
+    assert not _data18_search_disabled('Family Strokes')
+    assert not _data18_search_disabled('Shoplyfter')
+
+
+@respx.mock
+async def test_data18_search_is_disabled_for_listed_sub_sites_but_mappings_still_force(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DATA18_ENABLE', 'true')
+    url = 'https://www.teamskeet.com/movies/cool-scene'
+    scene = dict(_SCENE, site={'name': 'Rub A Teen'}, models=[])
+    respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': scene}})))
+    captured: dict[str, object] = {}
+
+    class FakeData18(data18_module.Data18Client):
+        async def find_scene_url(
+            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+        ) -> str | None:
+            captured['search'] = search
+            captured['scene_id'] = scene_id
+            return data18_module.manual_mapping_url(scene_id) if not search else 'https://www.data18.com/scenes/999'
+
+    monkeypatch.setattr(data18_module, 'Data18Client', FakeData18)
+    detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
+    assert detail is not None
+    assert captured['search'] is False
+    assert captured['scene_id'] == 'cool-scene-rubateen'
+    assert detail.data18_url is None
 
 
 @respx.mock
@@ -130,7 +168,9 @@ async def test_data18_slug_keeps_the_site_when_it_is_also_the_sub_site(monkeypat
     captured: dict[str, object] = {}
 
     class FakeData18(data18_module.Data18Client):
-        async def find_scene_url(self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene') -> str | None:
+        async def find_scene_url(
+            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+        ) -> str | None:
             captured['mapping_id'] = scene_id
             return None
 

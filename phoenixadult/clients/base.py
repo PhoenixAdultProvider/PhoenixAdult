@@ -455,6 +455,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         forced_url: str | None = None,
         kind: Literal['scene', 'movie'] = 'scene',
         allow_square: bool = True,
+        search: bool = True,
     ) -> None:
         if not (site.scraper_config.data18_enrichment and env.data18_enabled):
             return
@@ -473,6 +474,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             forced_url=forced_url,
             kind=kind,
             allow_square=allow_square,
+            search=search,
         )
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:

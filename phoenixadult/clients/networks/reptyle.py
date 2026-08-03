@@ -6,7 +6,7 @@ from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, slugify
+from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, slugify
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.episode_tag import strip_episode_tag
@@ -15,9 +15,22 @@ _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
 _DATA18_PROVIDERS = ['TeamSkeet', 'MYLF', 'Family Strokes', 'Pervz', 'FreeUse', 'Swappz']
 _MODEL_SLUG_TRIES = 8
 
+_DATA18_DISABLED: list[str] = load_data(__file__, 'reptyle_data18_disabled')
+
 
 def _normalize(s: str) -> str:
     return re.sub(r'\W', '', s).lower()
+
+
+def _data18_search_disabled(sub_site: str) -> bool:
+    norm = _normalize(sub_site)
+    for entry in _DATA18_DISABLED:
+        if entry.endswith('*'):
+            if norm.startswith(_normalize(entry[:-1])):
+                return True
+        elif norm == _normalize(entry):
+            return True
+    return False
 
 
 def _model_name_candidates(title: str) -> list[str]:
@@ -234,4 +247,4 @@ class ReptyleClient(Client):
         mapping_sub = sub_site or scene.subsite or site.name
         mapping_id = (f'{sid}-{_normalize(mapping_sub)}' if mapping_sub else str(sid)) if sid is not None else None
         providers = [*_DATA18_PROVIDERS, *([search_sub] if search_sub else [])]
-        await self.enrich_from_data18(metadata, site, scene_id=mapping_id, providers=providers)
+        await self.enrich_from_data18(metadata, site, scene_id=mapping_id, providers=providers, search=not _data18_search_disabled(mapping_sub))

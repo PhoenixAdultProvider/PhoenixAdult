@@ -22,6 +22,13 @@ async def test_manual_mapping_shortcut() -> None:
     assert url == 'https://www.data18.com/scenes/169646'
 
 
+async def test_search_disabled_still_honors_manual_mappings() -> None:
+    forced = await Data18Client().find_scene_url('thats-better-than-stealing-it-herfreshmanyear', 'whatever', [], None, search=False)
+    assert forced == 'https://www.data18.com/scenes/169646'
+    unmapped = await Data18Client().find_scene_url('not-a-mapped-slug', 'whatever', [], None, search=False)
+    assert unmapped is None
+
+
 def test_mapping_slug_matches_the_client_formula() -> None:
     assert mapping_slug('Delicious Firsts', 'Hussie Pass') == 'delicious-firsts-hussiepass'
     assert mapping_slug('Solo Scene', None) == 'solo-scene'

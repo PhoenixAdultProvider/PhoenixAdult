@@ -358,11 +358,15 @@ class Data18Client(Client):
         return search_results['html'], search_results['sel']
 
     async def find_scene_url(
-        self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene'
+        self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene', search: bool = True
     ) -> str | None:
         logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date} kind={kind}')
         if forced := manual_mapping_url(scene_id):
             return forced
+
+        if not search:
+            logger.debug('data18', f'search disabled for scene_id={scene_id} — manual mappings only')
+            return None
 
         url = await self._search_scene_url(query, providers, scene_date, kind)
         if not url and (alt := convert_sequence_numbers(query)):
@@ -441,9 +445,10 @@ class Data18Client(Client):
         kind: Data18Kind = 'scene',
         allow_square: bool = True,
         priority: list[str] | None = None,
+        search: bool = True,
     ) -> str | None:
         with best_effort(scope, 'data18 enrichment'):
-            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind)
+            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind, search=search)
             if url:
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
                 ref = data18_ref(url)
