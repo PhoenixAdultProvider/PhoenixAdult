@@ -24,10 +24,20 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     return TestClient(create_app(), client=('203.0.113.9', 51234))
 
 
-def test_direct_browsing_is_403(client: TestClient) -> None:
-    assert client.get('/images/local/pic.jpg', headers=BROWSER_NAV).status_code == 403
-    assert client.get('/cache/shot.jpg', headers=BROWSER_NAV).status_code == 403
-    assert client.get('/images/proxy?url=https://x/p.jpg', headers=BROWSER_NAV).status_code == 403
+def test_direct_browsing_gets_a_403_page(client: TestClient) -> None:
+    browser = {**BROWSER_NAV, 'Accept': 'text/html,application/xhtml+xml,*/*'}
+    r = client.get('/images/local/pic.jpg', headers=browser)
+    assert r.status_code == 403
+    assert r.headers['content-type'].startswith('text/html')
+    assert '<h1>403</h1>' in r.text
+    assert client.get('/cache/shot.jpg', headers=browser).status_code == 403
+    assert client.get('/images/proxy?url=https://x/p.jpg', headers=browser).status_code == 403
+
+
+def test_non_browser_denial_stays_json(client: TestClient) -> None:
+    r = client.get('/images/local/pic.jpg', headers={'User-Agent': 'curl/8.0', 'Accept': '*/*'})
+    assert r.status_code == 403
+    assert r.json() == {'error': 'Direct image access is not allowed'}
 
 
 def test_plex_user_agent_is_served(client: TestClient) -> None:

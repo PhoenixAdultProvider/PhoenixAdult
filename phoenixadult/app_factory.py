@@ -5,8 +5,8 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
 from phoenixadult.config import base_url_config_warning, config
@@ -130,6 +130,15 @@ def create_app() -> FastAPI:
     # ── Dev / Test UI (non-production only, admin-guarded) ───────────────────
     if not env.is_production:
         app.include_router(dev_routes.router, prefix='/dev')
+
+    # ── Image Guard 403 (HTML page for browsers, JSON for API callers) ───────
+    from phoenixadult.utils.auth.image_guard import FORBIDDEN_PAGE, ImageAccessDenied
+
+    @app.exception_handler(ImageAccessDenied)
+    async def image_access_denied(request: Request, exc: ImageAccessDenied) -> Response:
+        if 'text/html' in (request.headers.get('accept') or ''):
+            return HTMLResponse(FORBIDDEN_PAGE, status_code=403)
+        return JSONResponse({'error': 'Direct image access is not allowed'}, status_code=403)
 
     # ── Health ───────────────────────────────────────────────────────────────
     @app.get('/health')
