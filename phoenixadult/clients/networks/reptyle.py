@@ -96,8 +96,8 @@ class ReptyleClient(Client):
         search_page_url = site.base_url.rstrip('/') + site.search_path.replace('{query}', slug)
         state = await self._fetch_initial_state(search_page_url, search_data.capture)
         picked = self._pick_scene(state) if state else None
+        await self._search_model_page(results, search_data)
         if not picked:
-            await self._search_model_page(results, search_data)
             return
 
         cur, scene_type, scene_json = picked

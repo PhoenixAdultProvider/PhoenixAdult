@@ -39,6 +39,7 @@ _SCENE = {
 async def test_search() -> None:
     url = 'https://www.teamskeet.com/movies/cool-scene'
     respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': _SCENE}})))
+    respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
     results: list[SearchResult] = []
     await ReptyleClient().search(results, _ctx())
     assert len(results) == 1
@@ -106,6 +107,7 @@ async def test_a_leading_episode_tag_is_dropped_from_search_and_detail() -> None
     url = 'https://www.teamskeet.com/movies/cool-scene'
     tagged = {**_SCENE, 'title': 'S1E3: Sneaky, Bratty Lil Stepsis', 'models': []}
     respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': tagged}})))
+    respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
 
     results: list[SearchResult] = []
     await ReptyleClient().search(results, _ctx())
@@ -167,6 +169,20 @@ _EMPTY_STATE = {'modelsContent': {}, 'videosContent': {}, 'seriesContent': {}}
 
 
 @respx.mock
+async def test_a_direct_hit_is_supplemented_with_the_model_page_movies() -> None:
+    hit_url = 'https://www.teamskeet.com/movies/gia-ohmy'
+    respx.get(hit_url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'gia-ohmy': dict(_SCENE, id='gia-ohmy')}})))
+    model = {'name': 'Gia OhMy', 'movies': [{'id': 'other-scene', 'title': 'Other Scene', 'type': 'movie', 'site': {'name': 'BFFS'}}]}
+    respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+
+    assert [r.title for r in results] == ['Other Scene', 'Cool Scene']
+    assert ReptyleClient().decode(results[1].cur_id) == f'gia-ohmy|moviesContent|{hit_url}'
+
+
+@respx.mock
 async def test_search_falls_back_to_the_model_page_when_the_movie_slug_misses() -> None:
     respx.get('https://www.teamskeet.com/movies/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html(_EMPTY_STATE)))
     model = {'name': 'Gia OhMy', 'movies': [_MOVIE, {'id': 'other-scene', 'title': 'Other Scene', 'type': 'movie', 'site': {'name': 'BFFS'}}]}
@@ -213,6 +229,7 @@ async def test_search_canonicalizes_an_alias_slug() -> None:
     alias = 'chloe-rose-cool-scene'
     aliased = dict(_SCENE, id='cool-scene')
     respx.get(f'https://www.teamskeet.com/movies/{alias}').mock(return_value=httpx.Response(200, text=_state_html({'videosContent': {alias: aliased}})))
+    respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
 
     results: list[SearchResult] = []
     await ReptyleClient().search(results, _ctx('Chloe Rose Cool Scene'))
