@@ -107,6 +107,7 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
 def test_data18_disable_list_matches_exact_names_and_wildcards() -> None:
     from phoenixadult.clients.networks.reptyle import _data18_search_disabled
 
+    assert _data18_search_disabled('Rub a Teen')
     assert _data18_search_disabled('Rub A Teen')
     assert _data18_search_disabled('Lust HD')
     assert _data18_search_disabled('MYLF X Series')

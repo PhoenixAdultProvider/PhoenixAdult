@@ -6,7 +6,7 @@ from typing import Any
 
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, slugify
+from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.episode_tag import strip_episode_tag
@@ -15,7 +15,7 @@ _STATE_RE = re.compile(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', re.DOTALL)
 _DATA18_PROVIDERS = ['TeamSkeet', 'MYLF', 'Family Strokes', 'Pervz', 'FreeUse', 'Swappz']
 _MODEL_SLUG_TRIES = 8
 
-_DATA18_DISABLED: list[str] = load_data(__file__, 'reptyle_data18_disabled')
+_DATA18_SEARCH_DISABLED = ('Lust HD', 'MYLF X *', 'Rub a Teen', 'TeamSkeet X *')
 
 
 def _normalize(s: str) -> str:
@@ -24,7 +24,7 @@ def _normalize(s: str) -> str:
 
 def _data18_search_disabled(sub_site: str) -> bool:
     norm = _normalize(sub_site)
-    for entry in _DATA18_DISABLED:
+    for entry in _DATA18_SEARCH_DISABLED:
         if entry.endswith('*'):
             if norm.startswith(_normalize(entry[:-1])):
                 return True
