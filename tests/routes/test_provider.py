@@ -37,11 +37,39 @@ def test_provider_capability_declaration(client: TestClient) -> None:
     assert body['MediaProvider']['Types'][0]['type'] == 1
 
 
-def test_match_empty_when_no_site(client: TestClient) -> None:
+def test_match_400_when_no_site(client: TestClient) -> None:
     mount = provider_mount_path(get_all_providers()[0])
     r = client.post(
         f'{mount}/library/metadata/matches',
         json={'type': 1, 'filename': 'Unknown.Site.2024.01.02.mp4', 'manual': 1, 'includeAdult': 1},
     )
+    assert r.status_code == 400
+    assert 'no registry site' in r.json()['error']
+
+
+def test_match_400_when_no_parse_source(client: TestClient) -> None:
+    mount = provider_mount_path(get_all_providers()[0])
+    r = client.post(f'{mount}/library/metadata/matches', json={'type': 1, 'manual': 1, 'includeAdult': 1})
+    assert r.status_code == 400
+    assert 'no title or filename' in r.json()['error']
+
+
+def test_match_suppressed_stays_empty_200(client: TestClient) -> None:
+    mount = provider_mount_path(get_all_providers()[0])
+    r = client.post(f'{mount}/library/metadata/matches', json={'type': 1, 'filename': 'Whatever.mp4'})
     assert r.status_code == 200
     assert r.json()['MediaContainer']['totalSize'] == 0
+
+
+def test_metadata_400_on_malformed_rating_key(client: TestClient) -> None:
+    mount = provider_mount_path(get_all_providers()[0])
+    r = client.get(f'{mount}/library/metadata/not-a-real-key-format!!')
+    assert r.status_code == 400
+    assert 'Bad request' in r.json()['error']
+
+
+def test_metadata_400_on_unknown_site_in_rating_key(client: TestClient) -> None:
+    mount = provider_mount_path(get_all_providers()[0])
+    r = client.get(f'{mount}/library/metadata/scene-notarealsite123-YWJj')
+    assert r.status_code == 400
+    assert 'no registry site' in r.json()['error']

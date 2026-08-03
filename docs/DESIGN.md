@@ -446,6 +446,19 @@ sequenceDiagram
   end
 ```
 
+### 7.2.1 Provider Status Codes
+
+Both features answer with the four codes Plex defines for metadata providers:
+
+| Code | Match | Metadata |
+|------|-------|----------|
+| 200 | Results, or an empty MediaContainer (suppressed request, no perfect auto match, site down while the internet is up) | Scraped or cached scene |
+| 400 | No title/filename to parse; no registry site in the filename (experimental — `_UNKNOWN_SITE_RETURNS_400` in `match_service.py`) | Malformed ratingKey: bad format, missing parts, unknown site, undecodable curID |
+| 404 | Never | Valid ratingKey whose scene yields nothing while online |
+| 500 | Pacing deferral, Plex-budget timeout, no network connectivity, unexpected exception | Same |
+
+Never-succeeds requests raise `MalformedRequestError` and transient failures raise `ProviderUnavailableError` (`services/provider_errors.py`); the router maps them to 400/500. Connectivity is judged only when a scrape came up empty *and* a transport-level failure (DNS/connect) was recorded by the shared HTTP transport: a TCP probe of 1.1.1.1/8.8.8.8 (15s cached) then decides between "site down" (200/404) and "offline" (500). At `LOG_LEVEL=verbose` every match/metadata request is dumped with full headers and JSON body.
+
 ### 7.3 Scraper Fetch with Anti-Bot Bypass Fallback
 
 ```mermaid

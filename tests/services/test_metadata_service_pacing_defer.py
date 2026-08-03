@@ -7,6 +7,7 @@ from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.services import scrape_queue
 from phoenixadult.services.metadata_service import MetadataService
+from phoenixadult.services.provider_errors import ProviderUnavailableError
 from phoenixadult.utils import cache as metadata_cache
 
 PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
@@ -41,7 +42,8 @@ async def test_deferred_scrape_fails_fast_and_queues(monkeypatch: pytest.MonkeyP
     real_enqueue = scrape_queue.enqueue
     monkeypatch.setattr(scrape_queue, 'enqueue', lambda key, job, **kw: queued.append(key) or real_enqueue(key, job, **kw))
 
-    assert await svc._fetch_metadata(RATING_KEY, PROVIDER) is None
+    with pytest.raises(ProviderUnavailableError, match='pacing'):
+        await svc._fetch_metadata(RATING_KEY, PROVIDER)
     assert queued == [f'p:{RATING_KEY}']
 
     import asyncio

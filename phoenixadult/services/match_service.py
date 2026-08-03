@@ -14,11 +14,13 @@ from phoenixadult.models.metadata import PlexMatchResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry import canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
+from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score
+from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
@@ -41,6 +43,8 @@ class MatchRequest:
 
 _SEARCH_MEMO_TTL = 900.0
 _SEARCH_MEMO_MAX = 512
+
+_UNKNOWN_SITE_RETURNS_400 = True
 
 
 class MatchService:
@@ -174,13 +178,12 @@ class MatchService:
         )
 
     async def match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
+        begin_transport_watch()
         try:
             return await asyncio.wait_for(self._match(req, provider, language), PLEX_REQUEST_BUDGET)
         except TimeoutError:
-            logger.warn(
-                provider.id, f'Search exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget (title={req.title!r} filename={req.filename!r}) — returning empty'
-            )
-            return self._empty(provider)
+            logger.warn(provider.id, f'Search exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget (title={req.title!r} filename={req.filename!r})')
+            raise ProviderUnavailableError('search exceeded the Plex request budget — retry later') from None
 
     async def _match(self, req: MatchRequest, provider: ProviderInfo, language: str | None = None) -> PlexMatchResponse:
         is_manual = req.manual == 1
@@ -190,17 +193,21 @@ class MatchService:
 
         parse_source = req.filename or req.title
 
-        if not include_adult or not parse_source or (env.disable_auto_match and not is_manual):
+        if not include_adult or (env.disable_auto_match and not is_manual):
             logger.info(
                 provider.id,
-                f'match suppressed (DISABLE_AUTO_MATCH={env.disable_auto_match_raw}, manual={is_manual}, '
-                f'includeAdult={include_adult}, parseSource={bool(parse_source)})',
+                f'match suppressed (DISABLE_AUTO_MATCH={env.disable_auto_match_raw}, manual={is_manual}, includeAdult={include_adult})',
             )
             return self._empty(provider)
+
+        if not parse_source:
+            raise MalformedRequestError('no title or filename to parse')
 
         parsed = get_site_name_from_registry(parse_source, lambda token: find_site(token) is not None)
         if not parsed:
             logger.warn(provider.id, f'Could not parse: "{parse_source}"')
+            if _UNKNOWN_SITE_RETURNS_400:
+                raise MalformedRequestError(f'no registry site found in "{parse_source}"')
             return self._empty(provider)
 
         site = find_site(parsed.site_token)
@@ -231,10 +238,12 @@ class MatchService:
             raw_results = await self._search_results(search_data, provider)
         except PacingDeferredError as err:
             self._queue_background_search(search_data, provider, err.wait_seconds)
-            return self._empty(provider)
+            raise ProviderUnavailableError('search deferred by pacing — a later scan serves it from the search store') from None
         if raw_results is None:
             logger.warn(provider.id, f'No scraper registered for type "{site.scraper_config.type}"')
             return self._empty(provider)
+        if not raw_results and transport_failures() and not await internet_reachable():
+            raise ProviderUnavailableError('no network connectivity')
 
         logger.info(provider.id, f'Search "{pieces.query}" on {site.name} → {len(raw_results)} result(s)')
 

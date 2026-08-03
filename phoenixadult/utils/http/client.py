@@ -5,6 +5,7 @@ from typing import Any
 import httpx2
 
 from phoenixadult.config.env import env
+from phoenixadult.utils.http.connectivity import note_transport_failure
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
 
@@ -25,6 +26,15 @@ async def _log_request(request: httpx2.Request) -> None:
         logger.http(line)
 
 
+class _WatchedTransport(httpx2.AsyncHTTPTransport):
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        try:
+            return await super().handle_async_request(request)
+        except httpx2.TransportError as err:
+            note_transport_failure(f'{request.url.host}: {type(err).__name__}')
+            raise
+
+
 def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> httpx2.AsyncClient:
     opts: dict[str, Any] = {
         'timeout': 15.0,
@@ -35,4 +45,9 @@ def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> 
         'event_hooks': {'request': [_log_request]},
     }
     opts.update(overrides)
+    if 'transport' not in opts:
+        transport_opts = {'verify': opts.pop('verify'), 'proxy': opts.pop('proxy')}
+        if 'limits' in opts:
+            transport_opts['limits'] = opts.pop('limits')
+        opts['transport'] = _WatchedTransport(**transport_opts)
     return httpx2.AsyncClient(**opts)

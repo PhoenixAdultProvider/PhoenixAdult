@@ -12,12 +12,14 @@ from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
+from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import split_subsite
+from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.logger import logger
@@ -111,6 +113,7 @@ class MetadataService:
         return False
 
     async def get_metadata(self, rating_key: str, provider: ProviderInfo, language: str | None = None, is_refresh: bool = False) -> PlexMetadataResponse | None:
+        begin_transport_watch()
         key = (rating_key, provider.id, language or '')
         force = is_refresh and self._force_refresh_due(key)
         if force:
@@ -137,10 +140,10 @@ class MetadataService:
         except TimeoutError:
             logger.warn(
                 provider.id,
-                f'Update exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget for ratingKey={rating_key} — returning empty; scrape continues in background',
+                f'Update exceeded the {PLEX_REQUEST_BUDGET:.0f}s Plex budget for ratingKey={rating_key} — scrape continues in background',
             )
             task.add_done_callback(_log_abandoned)
-            return None
+            raise ProviderUnavailableError('scrape exceeded the Plex request budget — retry later') from None
 
     async def _scrape(
         self,
@@ -279,8 +282,12 @@ class MetadataService:
             fresh = await self._scrape(rating_key, provider, site, scene_url, subsite, release_date, language, allow_slow=allow_slow)
         except PacingDeferredError as err:
             self._queue_background(rating_key, provider, language, err.wait_seconds)
-            return None
+            if allow_slow:
+                return None
+            raise ProviderUnavailableError('scrape deferred by pacing — a later refresh serves it from the snapshot') from None
         if fresh is None:
+            if not allow_slow and transport_failures() and not await internet_reachable():
+                raise ProviderUnavailableError('no network connectivity')
             return None
         await metadata_cache.write(site.name, cur_id, fresh)
         return self._finalize(fresh, provider, rating_key, cached=False)
@@ -293,18 +300,18 @@ class MetadataService:
         parsed = parse_rating_key(rating_key)
         if not parsed:
             logger.warn(provider.id, f'Unrecognised ratingKey format: {rating_key}')
-            return None
+            raise MalformedRequestError(f'unrecognised ratingKey format: {rating_key}')
 
         site_name = parsed['site_name']
         cur_id = parsed['cur_id']
         if not (site_name and cur_id):
             logger.warn(provider.id, f'Incomplete ratingKey (missing siteName/curID): {rating_key}')
-            return None
+            raise MalformedRequestError(f'incomplete ratingKey: {rating_key}')
 
         site = find_site(site_name)
         if not site:
             logger.warn(provider.id, f'No site found for siteName "{site_name}" from ratingKey')
-            return None
+            raise MalformedRequestError(f'no registry site for siteName "{site_name}"')
 
         scene_url, subsite = split_subsite(self._scraper.decode(cur_id))
 
@@ -326,6 +333,6 @@ class MetadataService:
 
         if not scene_url:
             logger.warn(provider.id, f'Could not decode curID from ratingKey={rating_key}')
-            return None
+            raise MalformedRequestError(f'undecodable curID in ratingKey={rating_key}')
 
         return await self._scrape_and_store(rating_key, provider, site, cur_id, scene_url, subsite, parsed['release_date'], language, allow_slow)
