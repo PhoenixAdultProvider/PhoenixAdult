@@ -169,6 +169,21 @@ _EMPTY_STATE = {'modelsContent': {}, 'videosContent': {}, 'seriesContent': {}}
 
 
 @respx.mock
+async def test_the_direct_hit_is_not_duplicated_when_the_model_page_lists_the_same_scene() -> None:
+    hit_url = 'https://www.teamskeet.com/movies/gia-ohmy'
+    scene = dict(_SCENE, id='cool-scene', type='video')
+    respx.get(hit_url).mock(return_value=httpx.Response(200, text=_state_html({'videosContent': {'gia-ohmy': scene}})))
+    model = {'name': 'Gia OhMy', 'movies': [_MOVIE]}
+    respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
+
+    results: list[SearchResult] = []
+    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+
+    assert [r.title for r in results] == ['Cool Scene']
+    assert ReptyleClient().decode(results[0].cur_id) == 'cool-scene|videosContent|https://www.teamskeet.com/movies/cool-scene'
+
+
+@respx.mock
 async def test_a_direct_hit_is_supplemented_with_the_model_page_movies() -> None:
     hit_url = 'https://www.teamskeet.com/movies/gia-ohmy'
     respx.get(hit_url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'gia-ohmy': dict(_SCENE, id='gia-ohmy')}})))

@@ -55,6 +55,13 @@ async def test_auto_empty_on_tied_perfect_matches() -> None:
     assert resp.MediaContainer.totalSize == 0
 
 
+async def test_a_duplicated_result_is_one_match_not_an_ambiguous_tie() -> None:
+    svc = _service([_result('a', 100), _result('a', 100)])
+    resp = await svc.match(_request(manual=0), PROVIDER)
+    assert resp.MediaContainer.totalSize == 1
+    assert resp.MediaContainer.Metadata[0].score == 100
+
+
 async def test_auto_curated_101_beats_tie() -> None:
     svc = _service([_result('a', 101), _result('b', 100)])
     resp = await svc.match(_request(manual=0), PROVIDER)

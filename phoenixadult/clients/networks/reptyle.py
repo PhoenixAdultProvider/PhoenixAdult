@@ -134,6 +134,10 @@ class ReptyleClient(Client):
     def _add_result(
         self, results: list[SearchResult], search_data: SearchContext, scene_json: dict[str, Any], scene_type: str, canonical: str, result_url: str
     ) -> None:
+        cur_id = self.encode(f'{canonical}|{scene_type}|{result_url}')
+        if any(r.cur_id == cur_id for r in results):
+            return
+
         release_date = iso_date(scene_json['publishedDate']) if scene_json.get('publishedDate') else None
         sub_site = ((scene_json.get('site') or {}).get('name') or '').strip()
         result_sub = sub_site if sub_site and _normalize(sub_site) != _normalize(search_data.site_info.name) else None
@@ -144,7 +148,7 @@ class ReptyleClient(Client):
                 scene_url=result_url,
                 query=search_data.title,
                 site=search_data.site_info,
-                cur_id=self.encode(f'{canonical}|{scene_type}|{result_url}'),
+                cur_id=cur_id,
                 thumb_url=scene_json.get('img'),
                 search_date=search_data.search_date,
                 display_date=release_date,

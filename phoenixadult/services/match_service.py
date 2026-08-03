@@ -118,6 +118,7 @@ class MatchService:
     def _chain_perfect_match(self, results: list[SearchResult], search_data: SearchContext, provider: ProviderInfo) -> None:
         if self.metadata_service is None:
             return
+        results = list({r.cur_id: r for r in results}.values())
         scored = [(r.score if r.score is not None else title_distance_score(search_data.title, r.title), r) for r in results]
         perfect = [(s, r) for s, r in scored if s >= 100]
         if not perfect:
@@ -253,6 +254,10 @@ class MatchService:
                 )
             )
         results.sort(key=lambda r: r.score or 0, reverse=True)
+        deduped = list({r.ratingKey: r for r in results}.values())
+        if len(deduped) != len(results):
+            logger.info(provider.id, f'dropped {len(results) - len(deduped)} duplicate result(s) sharing a ratingKey')
+            results = deduped
         for r in results:
             logger.debug(provider.id, f'result score={r.score} ratingKey={r.ratingKey} "{r.title}"')
 
