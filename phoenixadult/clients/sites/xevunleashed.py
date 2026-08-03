@@ -4,7 +4,6 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, slugify
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
-STUDIO = 'Xev Unleashed'
 _XEV_PHOTO = 'https://xevunleashed.com/content//contentthumbs/00/01/1-set-2x.jpg'
 _AVAILDATE_XP = '(//span[contains(@class,"availdate")]/text())[1]'
 
@@ -83,10 +82,10 @@ class XevUnleashedClient(Client):
         metadata.summary = first_text(details_page_elements, '//span[contains(@class,"latest_update_description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

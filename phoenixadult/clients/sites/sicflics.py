@@ -9,7 +9,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
-STUDIO = 'Sicflics'
 _ACTOR_SPLIT_RE = re.compile(r"['?]")
 
 
@@ -103,7 +102,7 @@ class SicflicsClient(Client):
         metadata.summary = (self._packed(scene).get('description') or '').replace('\n', '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

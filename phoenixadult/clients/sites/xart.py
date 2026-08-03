@@ -12,7 +12,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides
 from phoenixadult.utils.searchengines import SearchOptions, web_search
 
-STUDIO = 'X-Art'
 _MANUAL_MATCHES: dict[str, dict[str, str]] = load_data(__file__, 'xart_manual_matches')
 _FANART_SITES = ['XartFan.com', 'HQSluts.com', 'ImagePost.com', 'CoedCherry.com', 'Nude-Gals.com']
 _HARVEST_XPATHS = (
@@ -97,10 +96,10 @@ class XartClient(Client):
         metadata.summary = '\n\n'.join(parts) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

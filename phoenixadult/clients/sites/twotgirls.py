@@ -7,8 +7,6 @@ from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'TwoTGirls'
-
 
 class TwoTGirlsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -84,7 +82,7 @@ class TwoTGirlsClient(Client):
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"shadow") and contains(@class,"video-details")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

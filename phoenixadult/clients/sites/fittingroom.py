@@ -10,7 +10,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta
 
 _COLLECTIONS: dict[str, str] = load_data(__file__, 'fittingroom_collections')
 
-STUDIO = 'Fitting-Room'
 _SCENE_ID_RE = re.compile(r'/(\d+)/1$')
 
 
@@ -70,7 +69,7 @@ class FittingRoomClient(Client):
         metadata.summary = first_text(details_page_elements, '//div/div[contains(.,"Description")]/em') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -79,7 +78,7 @@ class FittingRoomClient(Client):
         if not collection:
             collection = _COLLECTIONS.get(_extract_title(details_page_elements), '')
 
-        metadata.collections = [STUDIO, collection] if collection else [STUDIO]
+        metadata.collections = [scene.site.name, collection] if collection else [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

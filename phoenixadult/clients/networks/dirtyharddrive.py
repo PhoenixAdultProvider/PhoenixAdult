@@ -9,7 +9,6 @@ from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'Dirty Hard Drive'
 _URL_CONTAINS = '/tour1/'
 _URL_ENDS_WITH = '.html'
 _PLAYLIST_RE = re.compile(r"""['"]playlistfile['"]\s*:\s*['"]([^'"]+playlist\.xml)['"]""", re.IGNORECASE)
@@ -55,10 +54,10 @@ class DirtyHardDriveClient(Client):
         metadata.summary = (details_page_elements.xpath('(//div[@id="video-page-desc"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name if scene.site.name != STUDIO else ''
+        metadata.tagline = scene.site.name if scene.site.name != scene.site.name else ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

@@ -9,7 +9,6 @@ from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'Abby Winters'
 _SCENE_URL_BLOCKLIST = ['/nude_girl/', '/shoots/', '/fetish/', '/updates/']
 _LOCALE_PREFIXES = ['/cn/', '/de/', '/jp/', '/ja/', '/en/']
 
@@ -159,7 +158,7 @@ class AbbyWintersClient(Client):
         metadata.summary = raw or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._subsite(scene) or ''
@@ -167,7 +166,7 @@ class AbbyWintersClient(Client):
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         tagline = self._subsite(scene)
 
-        metadata.collections = [tagline] if tagline else [STUDIO]
+        metadata.collections = [tagline] if tagline else [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

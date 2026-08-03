@@ -8,7 +8,6 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearc
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
-STUDIO = 'VIPissy'
 _SEARCH_ROW_XP = '//div[contains(@style,"position:relative") and contains(@style,"background:black")]'
 _TITLE_XP = '//section[contains(@class,"downloads")]//strong'
 _SUMMARY_BLOCK_XP = '//section[4]/div'
@@ -61,7 +60,7 @@ class VIPissyClient(Client):
         metadata.summary = summary.split('Show more...')[0].strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

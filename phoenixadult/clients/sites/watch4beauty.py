@@ -8,7 +8,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'Watch4Beauty'
 TAGLINE = 'Watch4Beauty'
 DIRECTOR = 'Mark'
 ART_BASE = 'https://mh-c75c2d6726.watch4beauty.com/production/'
@@ -147,7 +146,7 @@ class Watch4BeautyClient(Client):
         metadata.summary = (scene_json.get('issue_text') or '').strip()
 
         # Studio
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
         # Collection(s)
         metadata.collections = [TAGLINE]

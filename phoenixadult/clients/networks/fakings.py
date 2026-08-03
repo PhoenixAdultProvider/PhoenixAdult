@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.processors.title_case import title_case
 
-STUDIO = 'FAKings'
 _WS_RE = re.compile(r'\s+')
 _DATE_P_XP = '(.//p[contains(@class,"txtmininfo") and contains(@class,"calen") and contains(@class,"sinlimite")])[1]'
 
@@ -113,7 +112,7 @@ class FAKingsClient(Client):
         metadata.summary = (details_page_elements.xpath('(//span[@class="grisoscuro"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''

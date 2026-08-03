@@ -6,7 +6,6 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.utils.helpers.helpers import iso_date, to_https
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
-STUDIO = 'We Are Hairy'
 _FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 
 
@@ -44,7 +43,7 @@ class WeAreHairyClient(Client):
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"desc")]/div[1]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

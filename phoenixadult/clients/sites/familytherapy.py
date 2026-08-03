@@ -11,7 +11,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, unpack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
-STUDIO = 'Family Therapy'
 _C4S_STUDIO_ID = '81593'
 _C4S_BASE = 'https://clips4sale.com'
 _STARRING_RE = re.compile(r"(?:Starring|starring)\s+(\w[\w'-]*\s\w[\w'-]*(?:\s&\s\w[\w'-]*\s\w[\w'-]*)*)")
@@ -126,8 +125,8 @@ class FamilyTherapyClient(Client):
             for f in dataclasses.fields(c4s):
                 setattr(metadata, f.name, getattr(c4s, f.name))
 
-            metadata.studio = STUDIO
-            metadata.collections = [STUDIO]
+            metadata.studio = scene.site.name
+            metadata.collections = [scene.site.name]
             return
 
         details_page_elements = scene.require_sel()
@@ -143,10 +142,10 @@ class FamilyTherapyClient(Client):
         metadata.summary = summary.strip()
 
         # Studio
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
         # Collection(s)
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
         # Release Date
         date_raw = (details_page_elements.xpath('(//p[contains(@class,"post-meta")]//span)[1]').xpath('string(.)').get() or '').strip()

@@ -10,7 +10,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 
-STUDIO = 'Clips4Sale'
 _STUDIOS: list[dict[str, Any]] = load_data(__file__, 'clips4sale_studios')
 _REMIX_RE = re.compile(r'window\.__remixContext\s*=\s*(\{.*?\});', re.DOTALL)
 
@@ -254,7 +253,7 @@ class Clips4SaleClient(Client):
         metadata.summary = summary
 
         # Studio
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
         # Tagline and Collection(s)
         tagline_override = ruled['tagline_override']

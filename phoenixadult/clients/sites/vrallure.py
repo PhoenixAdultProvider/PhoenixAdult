@@ -7,7 +7,6 @@ from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, buil
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'VRAllure'
 _TITLE_XP = '//h1[contains(@class,"latest-scene-title")]'
 _DATE_XP = '//p[contains(@class,"publish-date")]'
 _ACTOR_LINK_XP = '//p[contains(@class,"model-name")]//a[contains(@href,"/models/")]'
@@ -61,7 +60,7 @@ class VRAllureClient(Client):
         metadata.summary = first_text(details_page_elements, '//p[contains(@class,"desc")]//span') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

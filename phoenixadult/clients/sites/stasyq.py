@@ -7,7 +7,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
-STUDIO = 'StasyQ'
 _COOKIE = {'Cookie': 'lang=en'}
 _DIGITS_RE = re.compile(r'^\d+$')
 
@@ -76,10 +75,10 @@ class StasyQClient(Client):
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"about-section__text")]/p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -6,8 +6,6 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.utils.helpers.helpers import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
-STUDIO = 'SinsLife'
-
 _SUMMARY_XP = '//div[4]/div/div[2]/div/div/div[2]/div[2]/p'
 _DATE_XP = '//div[4]/div/div[2]/div/div/div[2]/div[1]/div/div[1]'
 _ACTORS_XP = '//div[4]/div/div[2]/div/div/div[2]/div[3]/ul/li'
@@ -45,7 +43,7 @@ class SinsLifeClient(Client):
         metadata.summary = first_text(details_page_elements, _SUMMARY_XP) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

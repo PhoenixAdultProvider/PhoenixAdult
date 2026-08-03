@@ -7,7 +7,6 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 
-STUDIO = 'Swallow Bay'
 _SLUG_RE = re.compile(r"[\s']")
 _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)')
 _DATE_PREFIX_RE = re.compile(r'^Date:\s*', re.IGNORECASE)
@@ -69,10 +68,10 @@ class SwallowBayClient(Client):
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc") and contains(@class,"more-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

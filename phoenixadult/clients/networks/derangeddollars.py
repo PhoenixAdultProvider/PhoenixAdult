@@ -6,7 +6,6 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
-STUDIO = 'Deranged Dollars'
 _URL_CONTAINS = '/session/'
 _QUOTED_URL_RE = re.compile(r"""['"]([^'"]+\.(?:jpg|jpeg|png|webp))['"]""", re.IGNORECASE)
 _NAME_SPLIT_RE = re.compile(r',|&|/| And ', re.IGNORECASE)
@@ -82,7 +81,7 @@ class DerangedDollarsClient(Client):
         metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''
