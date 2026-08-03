@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import quote
 
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, join_url, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr
-
-STUDIO = 'Jules Jordan'
 
 
 def _desc_row(sel: Any, label: str) -> str:
@@ -43,10 +40,11 @@ class JulesJordanClient(Client):
         search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if search_results:
-            for search_result in search_results['sel'].xpath('//div[contains(@class,"grid-item")]'):
-                a = search_result.xpath('(.//a)[1]')
-                href = first_attr(a, '@href')
-                title = first_attr(a, '(.//img)[1]/@alt')
+            for search_result in search_results['sel'].xpath('//div[contains(@class,"search-scene-card")] | //div[contains(@class,"grid-item")]'):
+                href = first_attr(search_result, '(.//a[contains(@class,"jj-card-thumb")])[1]/@href') or first_attr(search_result, '(.//a)[1]/@href')
+                title = (search_result.xpath('(.//h2[contains(@class,"jj-card-title")])[1]/text()').get() or '').strip() or first_attr(
+                    search_result, '(.//a//img | .//img)[1]/@alt'
+                )
                 if not href or not title:
                     continue
 
@@ -56,6 +54,9 @@ class JulesJordanClient(Client):
 
                 seen.add(scene_url)
 
+                date_raw = (search_result.xpath('(.//div[contains(@class,"jj-card-date")])[1]/text()').get() or '').replace('Released:', '').strip()
+                release_date = iso_date(date_raw) if date_raw else None
+
                 results.append(
                     build_search_result(
                         site=search_data.site_info,
@@ -63,7 +64,8 @@ class JulesJordanClient(Client):
                         scene_url=scene_url,
                         query=search_data.title,
                         search_date=search_data.search_date,
-                        cur_id=pack_cur_id([x for x in (scene_url, search_data.search_date) if x]),
+                        display_date=release_date,
+                        cur_id=pack_cur_id([x for x in (scene_url, release_date or search_data.search_date) if x]),
                     )
                 )
 
@@ -72,23 +74,30 @@ class JulesJordanClient(Client):
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip() or ''
+        title = (details_page_elements.xpath('(//h1[contains(@class,"scene-title")])[1]/text()').get() or '').strip()
+        metadata.title = title or (details_page_elements.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.summary = _desc_row(details_page_elements, 'Description:').replace('Description:', '').strip() or ''
+        summary = (
+            details_page_elements.xpath('(//div[contains(concat(" ",normalize-space(@class)," ")," scene-desc ")])[1]').xpath('string(.)').get() or ''
+        ).strip()
+        metadata.summary = summary or _desc_row(details_page_elements, 'Description:').replace('Description:', '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
+        metadata.studio = scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.tagline = _desc_row(details_page_elements, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or ''
+        dvd_name = (
+            details_page_elements.xpath('(//div[contains(@class,"meta-item")]/div[text()="Movie"]/following-sibling::div)[1]/text()').get() or ''
+        ).strip()
+        metadata.tagline = dvd_name or _desc_row(details_page_elements, 'Movie:').replace('Movie:', '').replace('Feature: ', '').strip() or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [STUDIO]
+        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -97,7 +106,9 @@ class JulesJordanClient(Client):
             metadata.release_date = scene.scene_date
             return
 
-        date = _desc_row(details_page_elements, 'Date:').replace('Date:', '').strip()
+        date = (
+            details_page_elements.xpath('(//div[contains(@class,"meta-item")]/div[text()="Released"]/following-sibling::div)[1]/text()').get() or ''
+        ).strip() or _desc_row(details_page_elements, 'Date:').replace('Date:', '').strip()
 
         metadata.release_date = iso_date(date) if date else None
 
@@ -105,7 +116,7 @@ class JulesJordanClient(Client):
         details_page_elements = scene.require_sel()
 
         genres: list[str] = []
-        for genre_link in details_page_elements.xpath('//span[contains(text(),"Categories")]//a'):
+        for genre_link in details_page_elements.xpath('//div[contains(@class,"scene-cats")]/a | //span[contains(text(),"Categories")]//a'):
             genre_name = first_attr(genre_link, 'normalize-space(.)').lower()
             if genre_name and genre_name not in genres:
                 genres.append(genre_name)
@@ -116,13 +127,15 @@ class JulesJordanClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url
-        if scene.site.name == 'GirlGirl':
-            anchors = details_page_elements.xpath('//div[contains(@class,"item")]//span//div//a')
-        else:
-            anchors = details_page_elements.xpath('//div[contains(@class,"player-scene-description")]//span[contains(text(),"Starring:")]/..//a')
+        anchors = details_page_elements.xpath(
+            '//div[contains(@class,"scene-info")]//span[contains(@class,"update_models")]/a'
+            ' | //div[contains(@class,"player-scene-description")]//span[contains(text(),"Starring:")]/..//a'
+        )
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x')
+            raw = first_attr(sel, '(//img[contains(@src,"contentthumbs")])[1]/@src') or first_attr(
+                sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x'
+            )
             return absolute_url(raw, base) if raw else ''
 
         refs: list[tuple[str, str]] = []
@@ -140,15 +153,9 @@ class JulesJordanClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: join_url(image, base))
 
-        images['push'](first_attr(details_page_elements, '(//video[@id="video-player"])[1]/@poster'))
+        for photo in details_page_elements.xpath('//a[contains(@class,"tp-photo-thumb")]//img/@src | //div[contains(@class,"tp-photos-strip")]//img/@src'):
+            images['push']((photo.get() or '').strip())
 
-        title = (details_page_elements.xpath('(//div[contains(@class,"movie_title")])[1]').xpath('string(.)').get() or '').strip()
-        if title:
-            search_url = base + scene.site.search_path.replace('{query}', quote(title))
-            search_page_elements = await self.fetch_and_load(search_url, None, f'GET {search_url} (slideshow)')
-            if search_page_elements:
-                img = search_page_elements['sel'].xpath('(//img[contains(@id,"set-target")])[1]')
-                for i in range(7):
-                    images['push']((img.xpath(f'@src{i}_1x').get() or '').strip())
+        images['push'](first_attr(details_page_elements, '(//video[@id="video-player"])[1]/@poster'))
 
         metadata.art = images['list']
