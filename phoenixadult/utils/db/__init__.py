@@ -81,10 +81,20 @@ def _duplicate_name_groups(conn: sqlite3.Connection, table: str, key: Callable[[
     return [members for members in groups.values() if len(members) > 1]
 
 
-def _is_canonical(table: str, name: str) -> bool:
+def _canonical_dimension_name(table: str, name: str) -> str:
     from phoenixadult.utils.processors.title_case import title_case
 
-    return name == title_case(name, type='name' if table == 'people' else 'title')
+    if table == 'genres':
+        from phoenixadult.utils.genres.data import genre_rules
+
+        mapped = genre_rules().replace_lookup.get(name.lower())
+        if mapped:
+            return mapped
+    return title_case(name, type='name' if table == 'people' else 'title')
+
+
+def _is_canonical(table: str, name: str) -> bool:
+    return name == _canonical_dimension_name(table, name)
 
 
 def _fold_duplicate_names(conn: sqlite3.Connection, key_for: Callable[[str], Callable[[str], str]], reason: str) -> int:
@@ -125,10 +135,7 @@ def _fold_case_duplicate_names(conn: sqlite3.Connection) -> None:
 
 
 def _recased_key(table: str) -> Callable[[str], str]:
-    from phoenixadult.utils.processors.title_case import title_case
-
-    kind = 'name' if table == 'people' else 'title'
-    return lambda name: title_case(name, type=kind).casefold()
+    return lambda name: _canonical_dimension_name(table, name).casefold()
 
 
 def _fold_recased_duplicate_names(conn: sqlite3.Connection) -> None:
@@ -138,14 +145,11 @@ def _fold_recased_duplicate_names(conn: sqlite3.Connection) -> None:
 
 
 def _recase_noncanonical_names(conn: sqlite3.Connection) -> None:
-    from phoenixadult.utils.processors.title_case import title_case
-
     _fold_recased_duplicate_names(conn)
     recased = 0
     for table in NAME_DIMENSIONS:
-        kind = 'name' if table == 'people' else 'title'
         for row in conn.execute(f'SELECT id, name FROM {table}').fetchall():  # noqa: S608 - fixed table names
-            cased = title_case(str(row['name']), type=kind)
+            cased = _canonical_dimension_name(table, str(row['name']))
             if cased and cased != str(row['name']):
                 logger.info('db', f'{table}: recased "{row["name"]}" to "{cased}"')
                 conn.execute(f'UPDATE OR IGNORE {table} SET name = ? WHERE id = ?', (cased, int(row['id'])))  # noqa: S608
@@ -336,6 +340,7 @@ _MIGRATIONS: list[_Migration] = [
     """
     ALTER TABLE scene_images ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
     """,
+    _recase_noncanonical_names,
     _recase_noncanonical_names,
 ]
 

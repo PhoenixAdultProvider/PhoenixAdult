@@ -178,6 +178,18 @@ def test_recasing_folds_a_duplicate_before_touching_the_stale_row() -> None:
     assert [(str(r['name']), str(r['gender'])) for r in rows] == [('Whitney OC', 'female')]
 
 
+def test_genre_casing_follows_the_genre_map_not_title_case() -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute("INSERT INTO genres(name) VALUES('Caucasian (Female)'), ('Ebony (male)'), ('bbw tag')")
+
+    with conn:
+        db._recase_noncanonical_names(conn)
+
+    names = sorted(str(r['name']) for r in conn.execute('SELECT name FROM genres'))
+    assert names == ['BBW Tag', 'Caucasian (female)', 'Ebony (male)']
+
+
 def test_genuine_spelling_variants_are_never_folded() -> None:
     conn = db.connect()
     with conn:

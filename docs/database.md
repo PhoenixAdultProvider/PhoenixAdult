@@ -394,6 +394,14 @@ wherever `title_case` now disagrees with what is stored. Because `title_case` pr
 capitals it did not introduce, names it has no opinion on are untouched — the sticky-spelling
 rule above still holds for everything else.
 
+For **genres** the canonical authority is `genres.json`'s replace map, not `title_case` —
+its values deliberately keep lowercase gender qualifiers (`Caucasian (female)`), which
+`title_case` would capitalize. v11 got that wrong and recased the gender-qualified genre
+rows away from what the scraper actually emits, so the Plex reconciler reported thousands
+of false "recased" removals. The recase pass now resolves a genre through the replace map
+first (falling back to `title_case` only for free-form tags), and the v12 migration re-runs
+it to restore the mangled rows.
+
 ### Pruning Unreferenced Names
 
 Dimension rows outlive the scenes that created them: a tag that `genres.json` later filters
