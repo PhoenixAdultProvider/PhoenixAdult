@@ -26,11 +26,11 @@ _UPPER_EXCEPTIONS = frozenset({
     'avn', 'xtc', 'atv', 'joi', 'rpg', 'wunf', 'uk', 'asap', 'sss', 'nf', 'pawg', 'ama', 'bdsm', 'oc'
 })
 
-_SPANISH_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'con', 'en', 'la', 'el', 'los', 'las', 'mi', 'al', 'por', 'para'})
+_SPANISH_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'con', 'en', 'la', 'el', 'los', 'las', 'mi', 'al', 'por', 'para', 'un', 'una', 'unos', 'unas'})
 
 _SPANISH_SITE_KEYS = frozenset({'fakings', 'putalocura', 'sexmex', 'oyeloca'})
 
-_TITLE_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'en', 'el', 'los', 'las', 'mi', 'por', 'para'})
+_TITLE_LOWER_EXCEPTIONS = frozenset({'de', 'del', 'en', 'el', 'los', 'las', 'mi', 'por', 'para', 'un', 'una', 'unos', 'unas'})
 
 _NAME_EXCEPTIONS = frozenset({'ai'})
 
@@ -63,6 +63,7 @@ _PHRASE_CORRECTIONS: dict[str, str] = {
     'las vegas': 'Las Vegas',
     'el dorado': 'El Dorado',
     'el paso': 'El Paso',
+    'en garde': 'En Garde',
     'anna de ville': 'Anna de Ville',
 }
 

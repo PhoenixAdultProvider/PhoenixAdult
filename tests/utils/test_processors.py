@@ -298,6 +298,14 @@ def test_title_case_segment_final_small_word_capitalized() -> None:
     assert title_case('girl next door in law') == 'Girl Next Door in Law'
 
 
+def test_title_case_en_garde_and_spanish_articles() -> None:
+    assert title_case('Hard & En Garde') == 'Hard & En Garde'
+    assert title_case('hard & en garde') == 'Hard & En Garde'
+    assert title_case('Trabajando Por Un Culito De Yoga') == 'Trabajando por un Culito de Yoga'
+    assert title_case('Una Noche Loca') == 'Una Noche Loca'
+    assert title_case('The Un-Break Up') == 'The Un-Break Up'
+
+
 def test_title_case_hyphen_compound_first_element_capitalized() -> None:
     assert title_case('the in-her view') == 'The In-Her View'
     assert title_case('The In-Her View') == 'The In-Her View'
