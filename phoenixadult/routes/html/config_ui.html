@@ -305,6 +305,18 @@
     <h2>Server</h2>
     <div class="card">
       <div class="plex-row">
+        <label class="log-follow">Update Channel
+          <select class="ctl" id="plex-update-channel" data-key="PLEX_UPDATE_CHANNEL" data-initial="plex" onchange="refreshDirty()">
+            <option value="plex">Server Preference</option>
+            <option value="public">Public</option>
+            <option value="beta">Beta (Plex Pass)</option>
+          </select>
+        </label>
+        <label class="log-follow" id="plex-update-release-row" style="display:none">Release
+          <select class="ctl" id="plex-update-release" data-key="PLEX_UPDATE_RELEASE" data-initial="" onchange="refreshDirty()"></select>
+        </label>
+      </div>
+      <div class="plex-row">
         <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for Update</button>
         <span class="plex-status" id="plex-update-status"></span>
       </div>
@@ -471,6 +483,7 @@
       document.getElementById('plex-vars').innerHTML = plexGroup ? plexGroup.vars.map(renderVar).join('') : '';
       const accessGroup = STATE.groups.find((g) => g.name === 'Plex Access');
       document.getElementById('plex-access-vars').innerHTML = accessGroup ? accessGroup.vars.map(renderVar).join('') : '';
+      syncPlexUpdateControls();
       for (const v of allVars()) {
         if (v.kind === 'list') initList(v);
         if (v.preview === 'image') {
@@ -1131,6 +1144,57 @@
       }
     }
 
+    function syncPlexUpdateControls() {
+      const channel = specOf('PLEX_UPDATE_CHANNEL');
+      const channelSel = document.getElementById('plex-update-channel');
+      if (channel && channelSel) {
+        const val = channel.value || channel.defaultValue || 'plex';
+        channelSel.value = val;
+        channelSel.dataset.initial = val;
+      }
+      const release = specOf('PLEX_UPDATE_RELEASE');
+      const releaseSel = document.getElementById('plex-update-release');
+      if (release && releaseSel) {
+        const val = release.value || '';
+        if (val && ![...releaseSel.options].some((o) => o.value === val)) {
+          releaseSel.insertAdjacentHTML('beforeend', '<option value="' + esc(val) + '">' + esc(val) + '</option>');
+        }
+        releaseSel.value = val;
+        releaseSel.dataset.initial = val;
+      }
+    }
+
+    function populateReleaseOptions(data) {
+      const row = document.getElementById('plex-update-release-row');
+      const sel = document.getElementById('plex-update-release');
+      const releases = data.releases || [];
+      if (data.serverPlatform !== 'Linux' || !releases.length) { row.style.display = 'none'; return; }
+      const prev = sel.value;
+      const wasDirty = prev && prev !== sel.dataset.initial;
+      sel.innerHTML = releases.map((r) => {
+        const v = r.distro + '|' + r.build;
+        return '<option value="' + esc(v) + '">' + esc(r.label || v) + '</option>';
+      }).join('');
+      const exists = (v) => [...sel.options].some((o) => o.value === v);
+      if (wasDirty && exists(prev)) {
+        sel.value = prev;
+      } else {
+        const saved = sel.dataset.initial;
+        const chosen = (data.distro && data.build) ? data.distro + '|' + data.build : '';
+        const target = (saved && exists(saved)) ? saved : chosen;
+        sel.value = target;
+        sel.dataset.initial = target;
+      }
+      row.style.display = '';
+      refreshDirty();
+    }
+
+    function fmtReleaseDate(raw) {
+      const n = Number(raw);
+      if (!raw || !isFinite(n) || n <= 0) return '';
+      return new Date(n * 1000).toLocaleDateString();
+    }
+
     async function plexUpdateStatus(force) {
       const out = document.getElementById('plex-update-out');
       if (force) plexStatus('plex-update-status', '<span class="spin"></span> Checking…');
@@ -1138,8 +1202,14 @@
         const res = await fetch(api('/plex/update' + (force ? '?force=1' : '')));
         const data = await res.json();
         if (data.error) { plexStatus('plex-update-status', esc(data.error), force ? 'err' : ''); return; }
+        populateReleaseOptions(data);
+        const date = fmtReleaseDate(data.releaseDate);
         out.innerHTML = '<b>Installed</b><span>' + esc(data.current) + ' (' + esc(data.platform) + ')</span>'
-          + '<b>Latest</b><span>' + esc(data.latest) + '</span>';
+          + '<b>Latest</b><span>' + esc(data.latest) + (date ? ' — ' + esc(date) : '') + '</span>'
+          + '<b>Channel</b><span>' + esc(data.channel || '') + '</span>'
+          + (data.label ? '<b>Release</b><span>' + esc(data.label) + '</span>' : '')
+          + (data.downloadUrl
+            ? '<b>Download</b><span><a href="' + esc(data.downloadUrl) + '" target="_blank" rel="noopener">' + esc(data.downloadUrl) + '</a></span>' : '');
         out.style.display = 'grid';
         plexStatus('plex-update-status',
           data.updateAvailable ? 'Update available.' : 'Up to date.', data.updateAvailable ? 'err' : 'ok');

@@ -77,11 +77,18 @@ async def test_verify_server_flags_bad_token() -> None:
     assert result['auth']['ok'] is False
 
 
+def _mock_prefs(channel_value: str = '0') -> None:
+    respx.get(f'{BASE}/:/prefs').mock(
+        return_value=httpx.Response(200, json={'MediaContainer': {'Setting': [{'id': 'ButlerUpdateChannel', 'value': channel_value}]}})
+    )
+
+
 @respx.mock
 async def test_update_status_compares_platform_versions(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PLEX_URL', BASE)
     monkeypatch.setenv('PLEX_TOKEN', 'tok')
     respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.41.0.100-abc', 'platform': 'FreeBSD'}}))
+    _mock_prefs()
     respx.get('https://plex.tv/api/downloads/5.json').mock(
         return_value=httpx.Response(
             200,
@@ -94,8 +101,72 @@ async def test_update_status_compares_platform_versions(monkeypatch: pytest.Monk
     result = await plex_account.update_status(force=True)
     assert result['current'] == '1.41.0.100-abc'
     assert result['latest'] == '1.41.5.150-fbd'
+    assert result['channel'] == 'public'
     assert result['updateAvailable'] is True
 
     respx.get(f'{BASE}/').mock(return_value=httpx.Response(500))
     cached = await plex_account.update_status()
     assert cached == result
+
+
+@respx.mock
+async def test_update_status_server_beta_pref_uses_plexpass_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PLEX_URL', BASE)
+    monkeypatch.setenv('PLEX_TOKEN', 'tok')
+    respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.41.0', 'platform': 'Windows'}}))
+    _mock_prefs('8')
+    beta = respx.get('https://plex.tv/api/downloads/5.json', params={'channel': 'plexpass'}).mock(
+        return_value=httpx.Response(200, json={'computer': {'Windows': {'version': '1.42.0', 'releases': [{'label': 'x64', 'url': 'https://d/x64.exe'}]}}})
+    )
+    result = await plex_account.update_status(force=True)
+    assert beta.called
+    assert result['channel'] == 'beta'
+    assert result['downloadUrl'] == 'https://d/x64.exe'
+
+
+@respx.mock
+async def test_update_status_explicit_channel_skips_server_pref(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PLEX_URL', BASE)
+    monkeypatch.setenv('PLEX_TOKEN', 'tok')
+    monkeypatch.setenv('PLEX_UPDATE_CHANNEL', 'public')
+    respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.41.0', 'platform': 'MacOSX'}}))
+    respx.get('https://plex.tv/api/downloads/5.json').mock(return_value=httpx.Response(200, json={'computer': {'Mac': {'version': '1.40.0'}}}))
+    result = await plex_account.update_status(force=True)
+    assert result['channel'] == 'public'
+    assert result['platform'] == 'MacOSX'
+    assert result['updateAvailable'] is False
+
+
+@respx.mock
+async def test_update_status_picks_the_configured_linux_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PLEX_URL', BASE)
+    monkeypatch.setenv('PLEX_TOKEN', 'tok')
+    monkeypatch.setenv('PLEX_UPDATE_RELEASE', 'redhat|linux-x86_64')
+    respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.41.0', 'platform': 'Linux'}}))
+    _mock_prefs()
+    releases = [
+        {'label': 'Ubuntu (x86_64)', 'distro': 'debian', 'build': 'linux-x86_64', 'url': 'https://d/deb.deb'},
+        {'label': 'Fedora (x86_64)', 'distro': 'redhat', 'build': 'linux-x86_64', 'url': 'https://d/rpm.rpm'},
+    ]
+    respx.get('https://plex.tv/api/downloads/5.json').mock(
+        return_value=httpx.Response(200, json={'computer': {'Linux': {'version': '1.42.0', 'releases': releases}}})
+    )
+    result = await plex_account.update_status(force=True)
+    assert result['label'] == 'Fedora (x86_64)'
+    assert result['downloadUrl'] == 'https://d/rpm.rpm'
+    assert [r['label'] for r in result['releases']] == ['Ubuntu (x86_64)', 'Fedora (x86_64)']
+
+    monkeypatch.delenv('PLEX_UPDATE_RELEASE')
+    fallback = await plex_account.update_status(force=True)
+    assert fallback['downloadUrl'] == 'https://d/deb.deb'
+
+
+@respx.mock
+async def test_update_status_reports_unmatched_platform(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PLEX_URL', BASE)
+    monkeypatch.setenv('PLEX_TOKEN', 'tok')
+    respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.41.0', 'platform': 'BeOS'}}))
+    _mock_prefs()
+    respx.get('https://plex.tv/api/downloads/5.json').mock(return_value=httpx.Response(200, json={'computer': {'Windows': {'version': '1.42.0'}}}))
+    result = await plex_account.update_status(force=True)
+    assert result['error'] == 'Could not match server platform: BeOS'

@@ -14,8 +14,9 @@ from phoenixadult.utils.logging.logger import logger
 _PLEX_TV = 'https://plex.tv'
 _PRODUCT = 'PhoenixAdult'
 _UPDATE_TTL = 6 * 3600.0
+_PLATFORM_NAME_OVERRIDES = {'MacOSX': 'Mac'}
 
-_update_cache: tuple[float, dict[str, Any]] | None = None
+_update_cache: tuple[float, tuple[str, str], dict[str, Any]] | None = None
 
 
 def _headers(client_id: str, token: str | None = None) -> dict[str, str]:
@@ -87,56 +88,88 @@ async def verify_server(url: str, token: str) -> dict[str, Any]:
 
 
 def _version_tuple(version: str) -> tuple[int, ...]:
-    head = version.split('-')[0]
+    def to_int(part: str) -> int:
+        try:
+            return int(part)
+        except ValueError:
+            return 0
+
+    return tuple(to_int(p) for p in version.replace('-', '.').split('.'))
+
+
+async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str) -> str:
+    channel = env.plex_update_channel
+    if channel != 'plex':
+        return channel
     try:
-        return tuple(int(p) for p in head.split('.'))
-    except ValueError:
-        return (0,)
+        res = await http.get(f'{base}/:/prefs', headers={'X-Plex-Token': token})
+        res.raise_for_status()
+        settings = (res.json().get('MediaContainer') or {}).get('Setting') or []
+        value = next((str(s.get('value')) for s in settings if s.get('id') == 'ButlerUpdateChannel'), '')
+    except (httpx2.HTTPError, ValueError):
+        value = ''
+    return 'beta' if value == '8' else 'public'
 
 
 async def update_status(force: bool = False) -> dict[str, Any]:
     global _update_cache
     now = time.monotonic()
-    if not force and _update_cache and now - _update_cache[0] < _UPDATE_TTL:
-        return _update_cache[1]
+    config = (env.plex_update_channel, '|'.join(env.plex_update_release or ()))
+    if not force and _update_cache and _update_cache[1] == config and now - _update_cache[0] < _UPDATE_TTL:
+        return _update_cache[2]
 
     if not (env.plex_url and env.plex_token):
         return {'error': 'Set PLEX_URL and PLEX_TOKEN first'}
 
     base = env.plex_url.rstrip('/')
+    token = env.plex_token
     async with make_http({'Accept': 'application/json'}, timeout=20.0) as http:
-        res = await http.get(f'{base}/', headers={'X-Plex-Token': env.plex_token})
+        res = await http.get(f'{base}/', headers={'X-Plex-Token': token})
         res.raise_for_status()
         container = res.json().get('MediaContainer') or {}
         current = container.get('version') or ''
         platform = container.get('platform') or ''
 
-        res = await http.get(f'{_PLEX_TV}/api/downloads/5.json')
+        channel = await _server_update_channel(http, base, token)
+        params = {'channel': 'plexpass'} if channel == 'beta' else {}
+        res = await http.get(f'{_PLEX_TV}/api/downloads/5.json', params=params, headers={'X-Plex-Token': token})
         res.raise_for_status()
         downloads = res.json()
 
-    latest = ''
-    for section in ('computer', 'nas'):
-        for name, info in (downloads.get(section) or {}).items():
-            if platform and name.lower() != platform.lower():
-                continue
-            candidate = str(info.get('version') or '')
-            if _version_tuple(candidate) > _version_tuple(latest):
-                latest = candidate
-    if not latest:
-        for section in ('computer', 'nas'):
-            for info in (downloads.get(section) or {}).values():
-                candidate = str(info.get('version') or '')
-                if _version_tuple(candidate) > _version_tuple(latest):
-                    latest = candidate
+    available = {**(downloads.get('computer') or {}), **(downloads.get('nas') or {})}
+    platform_name = _PLATFORM_NAME_OVERRIDES.get(platform, platform)
+    info = next((v for k, v in available.items() if k.lower() == platform_name.lower()), None)
+    if not info:
+        logger.warn('plex-update', f'Could not match server platform: {platform_name}')
+        return {'error': f'Could not match server platform: {platform_name}', 'current': current, 'platform': platform, 'channel': channel}
 
+    releases = [r for r in (info.get('releases') or []) if isinstance(r, dict)]
+    wanted = env.plex_update_release
+    release = next(
+        (r for r in releases if wanted and r.get('distro') == wanted[0] and r.get('build') == wanted[1]),
+        releases[0] if releases else {},
+    )
+
+    latest = str(info.get('version') or '')
     result = {
         'current': current,
         'latest': latest,
-        'platform': platform,
+        'platform': str(info.get('name') or platform),
+        'serverPlatform': platform,
+        'channel': channel,
         'updateAvailable': bool(latest and _version_tuple(latest) > _version_tuple(current)),
+        'releaseDate': info.get('release_date'),
+        'requirements': info.get('requirements'),
+        'extraInfo': info.get('extra_info'),
+        'changelogAdded': info.get('items_added'),
+        'changelogFixed': info.get('items_fixed'),
+        'label': release.get('label'),
+        'distro': release.get('distro'),
+        'build': release.get('build'),
+        'downloadUrl': release.get('url'),
+        'releases': [{'label': r.get('label'), 'distro': r.get('distro'), 'build': r.get('build')} for r in releases],
         'checkedAt': time.time(),
     }
-    _update_cache = (now, result)
-    logger.info('plex-update', f'PMS {current} ({platform}) vs latest {latest}')
+    _update_cache = (now, config, result)
+    logger.info('plex-update', f'PMS {current} ({platform}, {channel}) vs latest {latest}')
     return result
