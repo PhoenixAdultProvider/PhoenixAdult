@@ -29,7 +29,8 @@ def test_direct_browsing_gets_a_403_page(client: TestClient) -> None:
     r = client.get('/images/local/pic.jpg', headers=browser)
     assert r.status_code == 403
     assert r.headers['content-type'].startswith('text/html')
-    assert '<h1>403</h1>' in r.text
+    assert '<h1>403 Forbidden</h1>' in r.text
+    assert 'You don’t have permission to access this resource.' in r.text
     assert client.get('/cache/shot.jpg', headers=browser).status_code == 403
     assert client.get('/images/proxy?url=https://x/p.jpg', headers=browser).status_code == 403
 

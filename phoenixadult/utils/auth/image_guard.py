@@ -16,17 +16,16 @@ FORBIDDEN_PAGE = """<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>403 Forbidden</title>
   <style>
-    :root { color-scheme: light dark; }
     body { font-family: system-ui, sans-serif; display: flex; min-height: 100vh; margin: 0;
-           align-items: center; justify-content: center; text-align: center; }
-    h1 { font-size: 64px; margin: 0; opacity: 0.85; }
-    p { font-size: 15px; opacity: 0.6; margin: 8px 0 0; }
+           align-items: center; justify-content: center; text-align: center; background: #fff; color: #000; }
+    h1 { font-size: 64px; margin: 0; }
+    p { font-size: 15px; margin: 8px 0 0; }
   </style>
 </head>
 <body>
   <div>
-    <h1>403</h1>
-    <p>Direct image access is not allowed.</p>
+    <h1>403 Forbidden</h1>
+    <p>You don’t have permission to access this resource.</p>
   </div>
 </body>
 </html>
