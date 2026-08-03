@@ -245,13 +245,20 @@ class _TitleCaseEngine:
 
     # ── Word Rules ───────────────────────────────────────────────────────────
     def _apply_word_rules(self, tokens: list[_Token]) -> None:
-        prev: _Token | None = None
-        for token in tokens:
-            if token.kind == 'word':
-                after_dot = prev is not None and prev.kind == 'punct' and prev.text == '.'
-                token.normalized = self._normalize_word(token.text, after_dot=after_dot)
-            prev = token
+        for idx, token in enumerate(tokens):
+            if token.kind != 'word':
+                continue
+            prev = tokens[idx - 1] if idx else None
+            after_dot = prev is not None and prev.kind == 'punct' and prev.text == '.'
+            token.normalized = self._normalize_word(token.text, after_dot=after_dot)
+            if self._starts_hyphen_compound(tokens, idx) and token.normalized == token.normalized.lower():
+                token.normalized = _capitalize(token.normalized)
         self._capitalize_first_word(tokens)
+
+    def _starts_hyphen_compound(self, tokens: list[_Token], idx: int) -> bool:
+        if idx and tokens[idx - 1].kind == 'punct' and tokens[idx - 1].text == '-':
+            return False
+        return idx + 2 < len(tokens) and tokens[idx + 1].kind == 'punct' and tokens[idx + 1].text == '-' and tokens[idx + 2].kind == 'word'
 
     def _normalize_word(self, word: str, *, after_dot: bool = False) -> str:
         clean_word = _strip_non_word(word)

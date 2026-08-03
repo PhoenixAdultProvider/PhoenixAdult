@@ -298,6 +298,14 @@ def test_title_case_segment_final_small_word_capitalized() -> None:
     assert title_case('girl next door in law') == 'Girl Next Door in Law'
 
 
+def test_title_case_hyphen_compound_first_element_capitalized() -> None:
+    assert title_case('the in-her view') == 'The In-Her View'
+    assert title_case('The In-Her View') == 'The In-Her View'
+    assert title_case('Over-The-Top Anal') == 'Over-the-Top Anal'
+    assert title_case('A Run-Of-The-Mill Day') == 'A Run-of-the-Mill Day'
+    assert title_case('On-Off Relationship') == 'On-Off Relationship'
+
+
 def test_title_case_small_word_before_terminal_punctuation_capitalized() -> None:
     assert title_case('who else are we gonna do it with? (family strokes dark)') == 'Who Else Are We Gonna Do It With? (Family Strokes Dark)'
     assert title_case('Who Else Are We Gonna Do It With? (Family Strokes Dark)') == 'Who Else Are We Gonna Do It With? (Family Strokes Dark)'
