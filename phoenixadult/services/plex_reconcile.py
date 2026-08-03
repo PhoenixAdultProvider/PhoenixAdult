@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import itertools
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -179,6 +181,37 @@ class PlexClient:
         await self.http.aclose()
 
 
+_INSPECT_CONCURRENCY = 8
+
+
+async def _inspect_item(
+    client: PlexClient, section: str, stub: dict[str, Any], rating_key: str, site_name: str, field_filter: set[str]
+) -> tuple[ItemReport, dict[str, list[str]] | None, str]:
+    plex_key = str(stub.get('ratingKey') or '')
+    entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '', site=site_name)
+
+    desired = await _snapshot_tags(rating_key)
+    if desired is None:
+        entry.skipped = 'no snapshot'
+        return entry, None, section
+
+    item = await client.item(plex_key)
+    locked = _locked_fields(item)
+    for provider_field, plex_tag in _FIELDS.items():
+        if provider_field not in field_filter:
+            continue
+        stale = [t for t in _plex_tags(item, provider_field) if t not in desired[provider_field]]
+        if not stale:
+            continue
+        if plex_tag in locked:
+            entry.locked.append(provider_field)
+            continue
+        entry.removals[provider_field] = stale
+        entry.reasons[provider_field] = {value: _removal_reason(value, desired[provider_field]) for value in stale}
+
+    return entry, desired, section
+
+
 async def reconcile(apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None) -> ReconcileReport:
     report = ReconcileReport(applied=apply)
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
@@ -186,6 +219,7 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
     client = PlexClient()
     prefixes = _guid_prefixes()
     try:
+        work: list[tuple[str, dict[str, Any], str, str]] = []
         for section in await client.movie_sections():
             for stub in await client.section_items(section):
                 report.scanned += 1
@@ -197,38 +231,24 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                 site_name = (parsed or {}).get('site_name') or ''
                 if site_filter is not None and site_name.casefold() not in site_filter:
                     continue
-                if limit is not None and report.changed >= limit:
-                    continue
+                work.append((section, stub, rating_key, site_name))
 
-                plex_key = str(stub.get('ratingKey') or '')
-                entry = ItemReport(rating_key=plex_key, title=stub.get('title') or '', guid=stub.get('guid') or '', site=site_name)
-
-                desired = await _snapshot_tags(rating_key)
+        for chunk in itertools.batched(work, _INSPECT_CONCURRENCY, strict=False):
+            if limit is not None and report.changed >= limit:
+                break
+            inspected = await asyncio.gather(*(_inspect_item(client, *w, field_filter) for w in chunk))
+            for entry, desired, section in inspected:
                 if desired is None:
-                    entry.skipped = 'no snapshot'
                     report.skipped_no_snapshot += 1
                     report.items.append(entry)
                     continue
-
-                item = await client.item(plex_key)
-                locked = _locked_fields(item)
-                for provider_field, plex_tag in _FIELDS.items():
-                    if provider_field not in field_filter:
-                        continue
-                    stale = [t for t in _plex_tags(item, provider_field) if t not in desired[provider_field]]
-                    if not stale:
-                        continue
-                    if plex_tag in locked:
-                        entry.locked.append(provider_field)
-                        continue
-                    entry.removals[provider_field] = stale
-                    entry.reasons[provider_field] = {value: _removal_reason(value, desired[provider_field]) for value in stale}
-
                 if entry.locked:
                     report.skipped_locked += 1
                 if not entry.removals:
                     if entry.locked:
                         report.items.append(entry)
+                    continue
+                if limit is not None and report.changed >= limit:
                     continue
 
                 report.changed += 1
@@ -236,10 +256,10 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                 if apply:
                     for provider_field, stale in entry.removals.items():
                         if provider_field in ('Collection', 'Genre'):
-                            await client.set_tags(section, plex_key, _FIELDS[provider_field], desired[provider_field])
+                            await client.set_tags(section, entry.rating_key, _FIELDS[provider_field], desired[provider_field])
                         else:
-                            await client.remove_tags(section, plex_key, _FIELDS[provider_field], stale)
-                    logger.info(_TAG, f'{plex_key} "{entry.title}": reconciled {entry.removals}')
+                            await client.remove_tags(section, entry.rating_key, _FIELDS[provider_field], stale)
+                    logger.info(_TAG, f'{entry.rating_key} "{entry.title}": reconciled {entry.removals}')
     finally:
         await client.aclose()
 

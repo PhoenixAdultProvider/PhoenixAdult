@@ -64,6 +64,37 @@ async def test_dry_run_reports_but_does_not_write(monkeypatch: pytest.MonkeyPatc
 
 
 @respx.mock
+async def test_items_are_inspected_concurrently(monkeypatch: pytest.MonkeyPatch) -> None:
+    import asyncio
+
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Genre=['Anal']))
+    stubs = [{'ratingKey': str(100 + i), 'guid': f'{GUID[:-1]}{i}', 'title': f'Scene {i}'} for i in range(8)]
+    respx.get(f'{BASE}/library/sections').mock(return_value=httpx.Response(200, json={'MediaContainer': {'Directory': [{'key': '1', 'type': 'movie'}]}}))
+    respx.get(url__startswith=f'{BASE}/library/sections/1/all').mock(return_value=httpx.Response(200, json={'MediaContainer': {'Metadata': stubs}}))
+    respx.get(url__regex=rf'{BASE}/library/metadata/\d+').mock(return_value=httpx.Response(200, json={'MediaContainer': {'Metadata': [{}]}}))
+
+    in_flight = 0
+    peak = 0
+    original = pr.PlexClient.item
+
+    async def tracked(self: pr.PlexClient, rating_key: str) -> dict[str, Any]:
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0.01)
+        try:
+            return await original(self, rating_key)
+        finally:
+            in_flight -= 1
+
+    monkeypatch.setattr(pr.PlexClient, 'item', tracked)
+    report = await pr.reconcile(apply=False)
+    assert report.matched == 8 and report.scanned == 8
+    assert [i.rating_key for i in report.items] == []
+    assert peak > 1
+
+
+@respx.mock
 async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Collection=['Teens Like It Big']))
     put = _mock_plex({'Collection': [{'tag': 'Brazzers'}, {'tag': 'Teens Like It Big'}]})
