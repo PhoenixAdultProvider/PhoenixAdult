@@ -298,6 +298,13 @@ def test_title_case_segment_final_small_word_capitalized() -> None:
     assert title_case('girl next door in law') == 'Girl Next Door in Law'
 
 
+def test_title_case_small_word_before_terminal_punctuation_capitalized() -> None:
+    assert title_case('who else are we gonna do it with? (family strokes dark)') == 'Who Else Are We Gonna Do It With? (Family Strokes Dark)'
+    assert title_case('Who Else Are We Gonna Do It With? (Family Strokes Dark)') == 'Who Else Are We Gonna Do It With? (Family Strokes Dark)'
+    assert title_case('come with! right now') == 'Come With! Right Now'
+    assert title_case('what is it for? a test') == 'What Is It For? A Test'
+
+
 def test_title_case_sequence_marker_colon() -> None:
     assert title_case('Becoming Johnny Sins: Part One') == 'Becoming Johnny Sins: Part One'
     assert title_case('Becoming Johnny Sins - Part Two') == 'Becoming Johnny Sins: Part Two'
