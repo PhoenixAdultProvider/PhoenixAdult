@@ -265,8 +265,7 @@
 <body data-page="config">
   __NAV__
   <h1>⚙️ PhoenixAdult Config</h1>
-  <p class="sub">Change runtime configuration without restarting. Overrides apply immediately and persist to
-    <code id="ovPath"></code>.</p>
+  <p class="sub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
   <div class="toolbar" id="toolbar">
     <button id="saveBtn" onclick="save()" disabled>Save Changes</button>
@@ -309,8 +308,7 @@
 
     <h2>Reconcile Stale Tags</h2>
     <div class="card">
-      <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit
-        (Collection, Genre, Role, Director, Producer). Dry run reports without writing.</div>
+      <div class="var-desc">Removes tags Plex still holds that the current snapshots no longer emit; dry run reports without writing.</div>
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runReconcile(false)">Dry Run</button>
         <button type="button" class="danger" onclick="runReconcile(true)">Apply Removals</button>
@@ -318,7 +316,7 @@
                title="Stop after this many changed items">
         <span class="plex-status" id="plex-reconcile-status"></span>
       </div>
-      <div class="hint">Limit stops after N changed items — handy to sample a large library before a full pass.</div>
+      <div class="hint">Limit stops after N changed items.</div>
       <div class="recon-progress" id="plex-reconcile-progress" style="display:none">
         <div class="recon-progress-head"><span id="plex-reconcile-progress-label"></span><span id="plex-reconcile-progress-pct"></span></div>
         <div class="recon-progress-track"><div class="recon-progress-fill" id="plex-reconcile-progress-fill"></div></div>
@@ -344,10 +342,8 @@
 
     <h2>Push Logos to Collections</h2>
     <div class="card">
-      <div class="var-desc">Sets each Plex collection's clearLogo from a matching cached logo (by name) — the logo
-        belongs on the sub-site collection, not every scene. Idempotent: collections already carrying our logo are
-        skipped. Plex fetches the image from <b>Local Image Base Address</b> (Images tab), so that must be reachable
-        from the Plex server. Manage the logo files at <a href="/logos" target="_blank">/logos</a>.</div>
+      <div class="var-desc">Sets each Plex collection's clearLogo from a matching cached logo; manage the files at
+        <a href="/logos" target="_blank">/logos</a>.</div>
       <div class="plex-row">
         <button type="button" class="secondary" onclick="runCollectionLogos(false)">Dry Run</button>
         <button type="button" onclick="runCollectionLogos(true)">Apply Logos</button>
@@ -359,10 +355,7 @@
 
     <h2>Import a Library Into the Cache</h2>
     <div class="card">
-      <div class="var-desc">Reads every scene in one Plex movie library and stores it as a provider snapshot (metadata
-        plus poster and background art), so content whose site is gone stays servable. Scenes already cached are left
-        alone — a stored fresh scrape is never overwritten. Actor headshots are not imported; the people pipeline
-        resolves those. Scenes whose site is not in the registry are reported as unresolved and skipped.</div>
+      <div class="var-desc">Stores every scene in one Plex movie library as a provider snapshot; already-cached scenes are left alone.</div>
       <div class="plex-row">
         <select id="plex-import-section" class="lib-select"><option value="">Loading libraries…</option></select>
         <button type="button" class="secondary" onclick="loadPlexLibraries()">Refresh</button>
@@ -381,10 +374,7 @@
 
     <h2>Purge clearLogos from Plex</h2>
     <div class="card">
-      <div class="var-desc">Removes provider-supplied clearLogo art from Plex — the applied logo on each item and its
-        candidate entry — leaving the logo files on the server untouched. Use this to clear per-scene logos left by
-        earlier versions (scenes no longer receive logos). Plex has no API to unset a logo, so this edits the Plex
-        database directly. Collection logos set above are left intact.</div>
+      <div class="var-desc">Removes per-scene clearLogo art by editing the Plex database directly; collection logos and server files stay.</div>
       <div class="plex-row">
         <button type="button" class="icon-btn" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
         <span class="hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
@@ -418,10 +408,8 @@
         <label>Dark Theme <select id="themeDark"></select></label>
         <label>Light Theme <select id="themeLight"></select></label>
       </div>
-      <p class="hint">Pages follow the system light/dark mode by default (override with the sun/moon toggle in the nav bar).
-        The selected theme for each mode applies immediately and is remembered per browser. Theme colors live in
-        <code>phoenixadult/routes/html/themes/&lt;name&gt;.css</code> — one variable per themeable element, with per-page
-        override blocks at the bottom of each file.</p>
+      <p class="hint">Pages follow the system light/dark mode (override with the nav sun/moon toggle); choices apply immediately
+        and are remembered per browser.</p>
     </div>
     <h2>Element Preview</h2>
     <div id="themePreview"></div>
