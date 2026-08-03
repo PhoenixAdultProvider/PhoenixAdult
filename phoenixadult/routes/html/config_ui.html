@@ -451,13 +451,13 @@
 
     function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
     function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB); }
-    function tabIds() { return [...tabNames().map(tabSlug), 'plex', 'logs', 'theme']; }
+    function tabIds() { return [...tabNames().map(tabSlug), 'plex', 'theme', 'logs']; }
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
       const current = document.querySelector('.tabbar button.active');
       const currentId = current ? current.id.replace('tabbtn-', '') : null;
-      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB, LOGS_TAB, THEME_TAB]
+      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB, THEME_TAB, LOGS_TAB]
         .map((t) => '<button id="tabbtn-' + tabSlug(t) + '" onclick="showTab(\'' + tabSlug(t) + '\')">' + esc(t) + '</button>')
         .join('');
       document.getElementById('tabpanes').innerHTML = tabNames()

@@ -188,6 +188,7 @@
   --unknown-ring: #c8d0dc;
 
   /* ── Roles ── */
+  --role-badge-text: #fff;
   --role-badge-bg: #93a3b7;
   --role-actor-bg: #0e7490;
   --role-director-bg: #7c3aed;

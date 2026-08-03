@@ -13,7 +13,7 @@
   --muted-text: #94a3b8;
   --soft-text: #cbd5e1;
   --label-text: #64748b;
-  --hint-text: #475569;
+  --hint-text: #d7dde5;
   --empty-text: #475569;
   --blank-text: #334155;
   --divider: #1a2035;
@@ -188,6 +188,7 @@
   --unknown-ring: #374151;
 
   /* ── Roles ── */
+  --role-badge-text: #fff;
   --role-badge-bg: #475569;
   --role-actor-bg: #0e7490;
   --role-director-bg: #7c3aed;

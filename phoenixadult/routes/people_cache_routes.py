@@ -222,7 +222,7 @@ async def page(request: Request) -> HTMLResponse:
       .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:var(--badge-info-bg)}}
       .badge.orig{{background:var(--badge-neutral-bg)}}
       .badge.src{{background:var(--badge-muted-bg);border:1px solid var(--badge-muted-border);color:var(--badge-muted-text)}}
-      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--role-badge-bg)}}
+      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--role-badge-bg);color:var(--role-badge-text)}}
       .role.r-actor{{background:var(--role-actor-bg)}} .role.r-director{{background:var(--role-director-bg)}}
       .role.r-producer{{background:var(--role-producer-bg)}}
       .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
