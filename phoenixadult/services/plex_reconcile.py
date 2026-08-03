@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -116,10 +117,18 @@ class PlexClient:
         if not enabled():
             raise RuntimeError('PLEX_URL and PLEX_TOKEN must both be set')
         self.base = (env.plex_url or '').rstrip('/')
-        self.http: httpx2.AsyncClient = make_http({'X-Plex-Token': env.plex_token or '', 'Accept': 'application/json'}, timeout=30.0)
+        self.http: httpx2.AsyncClient = make_http(
+            {'X-Plex-Token': env.plex_token or '', 'Accept': 'application/json'},
+            timeout=30.0,
+            limits=httpx2.Limits(max_connections=32, max_keepalive_connections=16, keepalive_expiry=120.0),
+        )
 
     async def _get(self, path: str, **params: str) -> dict[str, Any]:
+        started = time.monotonic()
         r = await self.http.get(f'{self.base}{path}', params=params)
+        elapsed = time.monotonic() - started
+        if elapsed > 5.0:
+            logger.warn(_TAG, f'slow Plex response: {elapsed:.1f}s for GET {path}')
         r.raise_for_status()
         data = r.json()
         container = data.get('MediaContainer') if isinstance(data, dict) else None
