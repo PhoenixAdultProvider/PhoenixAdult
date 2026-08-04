@@ -7,9 +7,17 @@ __NAV__
   .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px 18px; margin: 0 auto 18px; }
   h2 { font-size: 15px; margin: 0 0 12px; }
   label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 10px 0 4px; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .field-head label { margin-bottom: 4px; }
   input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
           padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+  /* Room at the right edge for password-manager icons, which overlay the field itself. */
+  input[type=password], input.revealed { padding-right: 40px; }
   input:focus { outline: 0; border-color: var(--input-focus-border); }
+  input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
+  .reveal { width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--link-text); font-size: 11px;
+            text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+  .reveal:hover { background: none; text-decoration: underline; }
   button { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--button-primary-bg); color: var(--button-text); font-size: 13px; cursor: pointer; }
   button:hover { background: var(--button-primary-hover-bg); }
   button.secondary { background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--button-muted-text); }
@@ -31,11 +39,12 @@ __NAV__
 
   <div class="card">
     <h2>Password</h2>
-    <label for="curPw">Current Password</label>
+    <div class="field-head"><label for="curPw">Current Password</label><button type="button" class="reveal" data-for="curPw">Show</button></div>
     <input id="curPw" type="password" autocomplete="current-password">
-    <label for="newPw">New Password</label>
+    <div class="field-head"><label for="newPw">New Password</label><button type="button" class="reveal" data-for="newPw">Show</button></div>
     <input id="newPw" type="password" autocomplete="new-password">
-    <label for="confPw">Confirm New Password</label>
+    <div class="hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="field-head"><label for="confPw">Confirm New Password</label><button type="button" class="reveal" data-for="confPw">Show</button></div>
     <input id="confPw" type="password" autocomplete="new-password">
     <div class="row"><button onclick="changePassword()">Change Password</button><span class="status" id="pwStatus"></span></div>
     <div class="hint">Changing your password signs out every other session.</div>
@@ -59,10 +68,28 @@ __NAV__
     function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
     function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
 
+    const RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+
+    document.querySelectorAll('.reveal').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const field = document.getElementById(toggle.dataset.for);
+        const show = field.type === 'password';
+        field.type = show ? 'text' : 'password';
+        field.classList.toggle('revealed', show);
+        toggle.textContent = show ? 'Hide' : 'Show';
+      });
+    });
+
+    function policyError(pw) {
+      const ok = pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+      return ok ? '' : RULE;
+    }
+
     async function changePassword() {
       const cur = document.getElementById('curPw').value, nw = document.getElementById('newPw').value, cf = document.getElementById('confPw').value;
+      const problem = policyError(nw);
+      if (problem) { setStatus('pwStatus', problem, 'err'); return; }
       if (nw !== cf) { setStatus('pwStatus', 'Passwords do not match.', 'err'); return; }
-      if (nw.length < 8) { setStatus('pwStatus', 'At least 8 characters.', 'err'); return; }
       const res = await fetch('/account/api/password', { method: 'POST', headers: hdr, body: JSON.stringify({ current: cur, new: nw }) });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setStatus('pwStatus', 'Password changed. Other sessions signed out.', 'ok'); ['curPw', 'newPw', 'confPw'].forEach((i) => document.getElementById(i).value = ''); loadSessions(); }

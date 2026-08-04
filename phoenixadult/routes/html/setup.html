@@ -7,9 +7,17 @@ __THEME__
   h1 { font-size: 20px; margin: 0 0 4px; color: var(--heading-text); }
   .sub { color: var(--muted-text); font-size: 13px; margin: 0 0 20px; }
   label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 12px 0 4px; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .field-head label { margin-bottom: 4px; }
   input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
           padding: 9px 11px; border-radius: 7px; font-size: 14px; }
+  /* Room at the right edge for password-manager icons, which overlay the field itself. */
+  input[type=password], input.revealed { padding-right: 40px; }
   input:focus { outline: 0; border-color: var(--input-focus-border); }
+  input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
+  .reveal { width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--link-text); font-size: 11px;
+            text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+  .reveal:hover { background: none; text-decoration: underline; }
   .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
   button { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
            font-size: 14px; font-weight: 500; cursor: pointer; }
@@ -23,9 +31,16 @@ __THEME__
     <div class="sub">First run — this account manages users and Plex connections.</div>
     <label for="username">Username</label>
     <input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" autofocus>
-    <label for="password">Password</label>
+    <div class="field-head">
+      <label for="password">Password</label>
+      <button type="button" class="reveal" data-for="password">Show</button>
+    </div>
     <input id="password" name="password" type="password" autocomplete="new-password">
-    <label for="confirm">Confirm Password</label>
+    <div class="hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="field-head">
+      <label for="confirm">Confirm Password</label>
+      <button type="button" class="reveal" data-for="confirm">Show</button>
+    </div>
     <input id="confirm" name="confirm" type="password" autocomplete="new-password">
     <div class="hint">Store this somewhere safe — recovery requires shell access to the server.</div>
     <button type="submit" id="submitBtn">Create Account</button>
@@ -35,17 +50,38 @@ __THEME__
     const form = document.getElementById('setupForm');
     const err = document.getElementById('err');
     const btn = document.getElementById('submitBtn');
+    const nameField = document.getElementById('username');
+    const pwField = document.getElementById('password');
+    const confirmField = document.getElementById('confirm');
+    const RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+
+    document.querySelectorAll('.reveal').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const field = document.getElementById(toggle.dataset.for);
+        const show = field.type === 'password';
+        field.type = show ? 'text' : 'password';
+        field.classList.toggle('revealed', show);
+        toggle.textContent = show ? 'Hide' : 'Show';
+      });
+    });
+
+    function policyError(pw) {
+      const ok = pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+      return ok ? '' : RULE;
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       err.textContent = '';
-      if (password.value !== confirm.value) { err.textContent = 'Passwords do not match.'; return; }
-      if (password.value.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
+      const problem = policyError(pwField.value);
+      if (problem) { err.textContent = problem; return; }
+      if (pwField.value !== confirmField.value) { err.textContent = 'Passwords do not match.'; return; }
       btn.disabled = true;
       try {
         const res = await fetch('/setup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.value, password: password.value }),
+          body: JSON.stringify({ username: nameField.value, password: pwField.value }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.redirect) { location.href = data.redirect; return; }

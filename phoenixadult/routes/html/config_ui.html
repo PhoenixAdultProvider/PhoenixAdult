@@ -459,7 +459,7 @@
     <div class="card">
       <div class="plex-row">
         <input type="text" id="new-username" placeholder="username" autocomplete="off" spellcheck="false">
-        <input type="password" id="new-password" placeholder="password (8+ characters)" autocomplete="new-password">
+        <input type="password" id="new-password" placeholder="password (8+, upper, number, special)" autocomplete="new-password">
         <label class="hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
         <button type="button" onclick="createUser()">Add User</button>
         <span class="plex-status" id="users-status"></span>
@@ -595,10 +595,19 @@
       }
     }
 
+    const PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+
+    function passwordOk(pw) {
+      if (pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) return true;
+      usersStatus(PASSWORD_RULE, 'err');
+      return false;
+    }
+
     async function createUser() {
       const username = document.getElementById('new-username').value.trim();
       const password = document.getElementById('new-password').value;
       const isAdmin = document.getElementById('new-is-admin').checked;
+      if (!passwordOk(password)) return;
       await usersPost('create', { username, password, isAdmin });
       document.getElementById('new-username').value = '';
       document.getElementById('new-password').value = '';
@@ -611,8 +620,8 @@
     }
 
     async function resetUserPassword(id) {
-      const password = prompt('New password (8+ characters):');
-      if (!password) return;
+      const password = prompt('New password — 8+ characters with an uppercase letter, a number, and a special character:');
+      if (!password || !passwordOk(password)) return;
       await usersPost('password', { id, password });
     }
 

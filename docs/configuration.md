@@ -81,6 +81,10 @@ the only way in, including from loopback.
 - **Lost every password?** Run `python scripts/reset_password.py <username>` on the
   server (add `--create-admin` when no usable admin remains).
 
+Every password — at setup, on `/account`, from the Users tab, and in the recovery
+script — must be at least 8 characters and contain an uppercase letter, a number, and a
+special character.
+
 Passwords are hashed with argon2id; API keys and session tokens are stored as SHA-256
 digests. A `secret.key` file is generated beside the database on first start and is used
 to sign image URLs and encrypt stored Plex tokens — **back it up with the database**, and

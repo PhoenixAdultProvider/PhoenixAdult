@@ -7,9 +7,17 @@ __THEME__
   h1 { font-size: 20px; margin: 0 0 4px; color: var(--heading-text); }
   .sub { color: var(--muted-text); font-size: 13px; margin: 0 0 20px; }
   label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 12px 0 4px; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .field-head label { margin-bottom: 4px; }
   input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
           padding: 9px 11px; border-radius: 7px; font-size: 14px; }
+  /* Room at the right edge for password-manager icons, which overlay the field itself. */
+  input[type=password], input.revealed { padding-right: 40px; }
   input:focus { outline: 0; border-color: var(--input-focus-border); }
+  input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
+  .reveal { width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--link-text); font-size: 11px;
+            text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
+  .reveal:hover { background: none; text-decoration: underline; }
   button { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
            font-size: 14px; font-weight: 500; cursor: pointer; }
   button:hover { background: var(--button-primary-hover-bg); }
@@ -22,7 +30,10 @@ __THEME__
     <div class="sub">__SUBTITLE__</div>
     <label for="username">Username</label>
     <input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" autofocus>
-    <label for="password">Password</label>
+    <div class="field-head">
+      <label for="password">Password</label>
+      <button type="button" class="reveal" data-for="password">Show</button>
+    </div>
     <input id="password" name="password" type="password" autocomplete="current-password">
     <button type="submit" id="submitBtn">Sign In</button>
     <div class="err" id="err"></div>
@@ -32,6 +43,19 @@ __THEME__
     const form = document.getElementById('loginForm');
     const err = document.getElementById('err');
     const btn = document.getElementById('submitBtn');
+    const nameField = document.getElementById('username');
+    const pwField = document.getElementById('password');
+
+    document.querySelectorAll('.reveal').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const field = document.getElementById(toggle.dataset.for);
+        const show = field.type === 'password';
+        field.type = show ? 'text' : 'password';
+        field.classList.toggle('revealed', show);
+        toggle.textContent = show ? 'Hide' : 'Show';
+      });
+    });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       err.textContent = '';
@@ -40,7 +64,7 @@ __THEME__
         const res = await fetch('/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username.value, password: password.value, next: NEXT }),
+          body: JSON.stringify({ username: nameField.value, password: pwField.value, next: NEXT }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.redirect) { location.href = data.redirect; return; }

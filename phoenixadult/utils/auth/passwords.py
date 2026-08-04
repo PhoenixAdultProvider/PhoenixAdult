@@ -9,6 +9,19 @@ from argon2.exceptions import InvalidHashError, VerifyMismatchError
 _API_KEY_PREFIX = 'pa_'
 _hasher = PasswordHasher()
 
+MIN_PASSWORD_LENGTH = 8
+PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.'
+
+
+def password_error(password: str) -> str | None:
+    ok = (
+        len(password) >= MIN_PASSWORD_LENGTH
+        and any(c.isupper() for c in password)
+        and any(c.isdigit() for c in password)
+        and any(not c.isalnum() for c in password)
+    )
+    return None if ok else PASSWORD_RULE
+
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)

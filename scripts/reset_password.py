@@ -9,12 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import phoenixadult.config  # noqa: E402, F401 — loads .env so STATE_DB_PATH resolves
 from phoenixadult.utils.auth import user_store  # noqa: E402
+from phoenixadult.utils.auth.passwords import password_error  # noqa: E402
 
 
 def _prompt() -> str:
     first = getpass.getpass('New password: ')
-    if len(first) < 8:
-        raise SystemExit('Password must be at least 8 characters.')
+    if (problem := password_error(first)) is not None:
+        raise SystemExit(problem)
     if first != getpass.getpass('Confirm password: '):
         raise SystemExit('Passwords do not match.')
     return first

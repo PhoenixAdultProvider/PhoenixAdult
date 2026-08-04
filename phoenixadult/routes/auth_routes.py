@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.routes import nav_username, read_json_body, render_nav
 from phoenixadult.utils.auth import rate_limit, user_store
-from phoenixadult.utils.auth.passwords import hash_token
+from phoenixadult.utils.auth.passwords import hash_token, password_error
 from phoenixadult.utils.auth.user_auth import SESSION_COOKIE, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
@@ -90,8 +90,10 @@ async def setup(request: Request) -> JSONResponse:
     wait = rate_limit.retry_after('setup', _client_ip(request))
     if wait > 0:
         return JSONResponse({'error': f'Too many attempts — wait {int(wait) + 1}s.'}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
-    if len(username) < 3 or len(password) < 8:
-        return JSONResponse({'error': 'Username (3+) and password (8+) required.'}, status_code=400)
+    if len(username) < 3:
+        return JSONResponse({'error': 'Username must be at least 3 characters.'}, status_code=400)
+    if (problem := password_error(password)) is not None:
+        return JSONResponse({'error': problem}, status_code=400)
 
     def _create() -> int | None:
         if user_store.user_count() > 0:
@@ -140,8 +142,8 @@ async def change_password(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     current = str(body.get('current') or '')
     new = str(body.get('new') or '')
-    if len(new) < 8:
-        return JSONResponse({'error': 'New password must be at least 8 characters.'}, status_code=400)
+    if (problem := password_error(new)) is not None:
+        return JSONResponse({'error': problem}, status_code=400)
     verified = await run_in('store', user_store.verify_login, user.username, current)
     if verified is None:
         return JSONResponse({'error': 'Current password is incorrect.'}, status_code=403)

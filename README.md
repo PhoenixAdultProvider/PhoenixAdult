@@ -97,7 +97,8 @@ tunnel with `cloudflared` and point `PHOENIX_BASE_URL` at its hostname.
 Every admin page requires a signed-in user, from a tunnel or from loopback alike:
 
 1. Start the server and open `https://<sub>.trycloudflare.com/setup` on first run to
-   create the admin account; afterwards sign in at `/login`.
+   create the admin account; afterwards sign in at `/login`. Passwords need 8+ characters
+   with an uppercase letter, a number, and a special character.
 2. The session cookie carries auth across pages, so links and API calls work with no
    token threading. It is `HttpOnly` and `SameSite=Lax`, and marked `Secure` automatically
    when the tunnel terminates TLS.

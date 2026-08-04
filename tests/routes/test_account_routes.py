@@ -15,9 +15,9 @@ def test_account_page_shows_the_username() -> None:
 
 def test_change_password_requires_the_current_one() -> None:
     client = authed_client()
-    wrong = client.post('/account/api/password', json={'current': 'nope', 'new': 'newpassword1'})
+    wrong = client.post('/account/api/password', json={'current': 'nope', 'new': 'Newpassword1!'})
     assert wrong.status_code == 403
-    ok = client.post('/account/api/password', json={'current': 'pytest-pw', 'new': 'newpassword1'})
+    ok = client.post('/account/api/password', json={'current': 'pytest-pw', 'new': 'Newpassword1!'})
     assert ok.status_code == 200
 
 
@@ -28,7 +28,7 @@ def test_change_password_revokes_other_sessions() -> None:
     other = user_store.create_session(uid, 'other')
     client = TestClient(app)
     client.cookies.set('pa_session', keep)
-    r = client.post('/account/api/password', json={'current': 'pytest-pw', 'new': 'newpassword1'})
+    r = client.post('/account/api/password', json={'current': 'pytest-pw', 'new': 'Newpassword1!'})
     assert r.status_code == 200
     import time
 

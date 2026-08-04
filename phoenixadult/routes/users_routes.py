@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from phoenixadult.routes import read_json_body
 from phoenixadult.utils.auth import user_store
+from phoenixadult.utils.auth.passwords import password_error
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
@@ -22,8 +23,10 @@ async def create_user(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     username = str(body.get('username') or '').strip()
     password = str(body.get('password') or '')
-    if len(username) < 3 or len(password) < 8:
-        return JSONResponse({'error': 'Username (3+) and password (8+) required.'}, status_code=400)
+    if len(username) < 3:
+        return JSONResponse({'error': 'Username must be at least 3 characters.'}, status_code=400)
+    if (problem := password_error(password)) is not None:
+        return JSONResponse({'error': problem}, status_code=400)
     try:
         user_id = await run_in('store', user_store.create_user, username, password, bool(body.get('isAdmin')))
     except Exception:  # noqa: BLE001 - unique username collision
@@ -51,8 +54,8 @@ async def reset_password(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     user_id = int(body.get('id') or 0)
     password = str(body.get('password') or '')
-    if len(password) < 8:
-        return JSONResponse({'error': 'Password must be at least 8 characters.'}, status_code=400)
+    if (problem := password_error(password)) is not None:
+        return JSONResponse({'error': problem}, status_code=400)
     target = await run_in('store', user_store.get_by_id, user_id)
     if target is None:
         return JSONResponse({'error': 'No such user'}, status_code=404)

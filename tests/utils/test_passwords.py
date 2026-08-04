@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+import pytest
+
 from phoenixadult.utils.auth import passwords
+
+
+@pytest.mark.parametrize('good', ['Hunter2hunter!', 'aB3$efgh', 'Sp@ce Bar1', 'Ünïcode1!'])
+def test_the_policy_accepts_a_complete_password(good: str) -> None:
+    assert passwords.password_error(good) is None
+
+
+@pytest.mark.parametrize('bad', ['Sh0rt!', 'hunter2hunter!', 'Hunterhunter!', 'Hunter2hunter', '', 'A1!'])
+def test_the_policy_rejects_a_missing_class_or_length(bad: str) -> None:
+    assert passwords.password_error(bad) == passwords.PASSWORD_RULE
 
 
 def test_hash_and_verify_roundtrip() -> None:
