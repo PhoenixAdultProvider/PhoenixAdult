@@ -12,11 +12,12 @@ from phoenixadult.utils.images import logo_cache
 @pytest.fixture()
 def _cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
-    (tmp_path / 'brazzers').mkdir()
-    (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    root = tmp_path / 'logos'
+    (root / 'brazzers').mkdir(parents=True)
+    (root / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
     logo_cache.invalidate()
-    return tmp_path
+    return root
 
 
 def test_requires_auth_and_lists_with_site_names(_cache: Path) -> None:
@@ -41,10 +42,9 @@ def test_purge_endpoints(_cache: Path) -> None:
 
 
 def test_local_route_serves_logo_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    outside = tmp_path / 'elsewhere'
-    (outside / 'brazzers').mkdir(parents=True)
-    (outside / 'brazzers' / 'logo.brazzers.png').write_bytes(b'pngbytes')
-    monkeypatch.setenv('LOGO_CACHE_DIR', str(outside))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    (tmp_path / 'logos' / 'brazzers').mkdir(parents=True)
+    (tmp_path / 'logos' / 'brazzers' / 'logo.brazzers.png').write_bytes(b'pngbytes')
     client = TestClient(create_app())
     r = client.get('/images/local/logos/brazzers/logo.brazzers.png')
     assert r.status_code == 200 and r.content == b'pngbytes'

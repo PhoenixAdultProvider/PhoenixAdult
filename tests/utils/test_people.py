@@ -121,7 +121,7 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
 
     monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'true')
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('GENERIC_MALE_URL', 'https://cdn.example/silhouette-m.jpg')
     monkeypatch.setattr(sources, '_configured_order', lambda: [_GenderOnly()])
     respx.get('https://cdn.example/silhouette-m.jpg').mock(return_value=httpx.Response(200, content=b'SILHOUETTE', headers={'content-type': 'image/jpeg'}))
@@ -131,7 +131,7 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     res = await pm.resolve_all(studio='', site_name='')
 
     assert '/images/local/directors/director.ken-shiro_male.jpg?v=' in res['directors'][0].photo
-    assert (tmp_path / 'directors' / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
+    assert (tmp_path / 'people' / 'directors' / 'director.ken-shiro_male.jpg').read_bytes() == b'SILHOUETTE'  # type: ignore[operator]
 
 
 @pytest.mark.parametrize(

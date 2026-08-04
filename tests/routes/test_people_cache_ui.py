@@ -36,8 +36,8 @@ def test_apostrophe_filename_renders_safe_buttons(monkeypatch: pytest.MonkeyPatc
     from pathlib import Path
 
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    d = Path(str(tmp_path)) / 'actors' / 'female'
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'people' / 'actors' / 'female'
     d.mkdir(parents=True)
     (d / "actor.april-o'neil_female.jpg").write_bytes(b'x')
 
@@ -53,8 +53,8 @@ def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPa
     from pathlib import Path
 
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    d = Path(str(tmp_path)) / 'actors' / 'male'
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'people' / 'actors' / 'male'
     d.mkdir(parents=True)
     (d / 'actor.voodoo-child_male.jpg').write_bytes(b'x')
 
@@ -68,8 +68,8 @@ def test_listing_is_built_from_the_index_tables(monkeypatch: pytest.MonkeyPatch,
     from phoenixadult.routes import people_cache_routes as pcr
     from phoenixadult.utils.images import face_crop_log
 
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    root = Path(str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    root = Path(str(tmp_path)) / 'people'
     d = root / 'actors' / 'female'
     d.mkdir(parents=True)
     (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
@@ -106,14 +106,14 @@ def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest
     from phoenixadult.utils import db
     from phoenixadult.utils.people import cache as pcache
 
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    d = Path(str(tmp_path)) / 'actors' / 'male'
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'people' / 'actors' / 'male'
     d.mkdir(parents=True)
     (d / 'actor.bob_male.jpg').write_bytes(b'x')
 
     db.connect()
     monkeypatch.setattr(pcache._index, '_key', (pcache.people_cache_dir(), pcache.env.state_db_path))
-    entries = pcr._list_people(str(tmp_path))
+    entries = pcr._list_people(str(Path(str(tmp_path)) / 'people'))
     assert [e['relpath'] for e in entries] == ['actors/male/actor.bob_male.jpg']
     assert entries[0]['type'] == 'actors-male'
 
@@ -122,8 +122,8 @@ def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPa
     from pathlib import Path
 
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    d = Path(str(tmp_path)) / 'actors' / 'female'
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    d = Path(str(tmp_path)) / 'people' / 'actors' / 'female'
     d.mkdir(parents=True)
     (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
 
@@ -196,8 +196,7 @@ def _person_cache(monkeypatch: pytest.MonkeyPatch, tmp_path):  # type: ignore[no
 
     monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('STATE_DB_PATH', str(Path(str(tmp_path)) / 'state.db'))
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(Path(str(tmp_path)) / 'people'))
-    monkeypatch.setenv('IMAGE_DIR', str(Path(str(tmp_path)) / 'images'))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(Path(str(tmp_path)) / 'cache'))
     headshot = Path(str(tmp_path)) / 'people' / 'actors' / 'female' / 'actor.jane-doe_female.jpg'
@@ -378,7 +377,7 @@ def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> 
 
 def test_every_filter_toggle_has_an_active_style(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', '')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     body = TestClient(create_app()).get('/people').text
 
     for css in ('.croptoggle.on', '.noupstream.on', '.genericonly.on', '.singleonly.on'):
@@ -387,7 +386,7 @@ def test_every_filter_toggle_has_an_active_style(monkeypatch: pytest.MonkeyPatch
 
 def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     monkeypatch.setenv('ADMIN_TOKEN', '')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     body = TestClient(create_app()).get('/people').text
 
     assert 'function refreshSourceOptions(t)' in body

@@ -81,15 +81,12 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='false',
     ),
     EnvVarSpec(
-        'IMAGE_DIR', 'Local Image Directory', 'Directory served back to Plex for local image files.', 'Images', 'string', default_value='./local/images'
-    ),
-    EnvVarSpec(
-        'LOGO_CACHE_DIR',
-        'Logo Cache Directory',
-        'Folder holding clearLogo files (per-studio subfolders); manage them at /logos.',
+        'IMAGE_DIR',
+        'Local Image Directory',
+        'Directory served back to Plex for local people and logo image files (people/ and logos/ subfolders).',
         'Images',
         'string',
-        default_value='./local/images/logos',
+        default_value='./local/images',
     ),
     EnvVarSpec(
         'IMAGE_MAX_BYTES',
@@ -125,14 +122,6 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Manual NFO',
         'string',
         default_value='manual',
-    ),
-    EnvVarSpec(
-        'PEOPLE_CACHE_DIR',
-        'People Cache Directory',
-        'On-disk cache for downloaded actor / director / producer headshots.',
-        'People Cache & Sources',
-        'string',
-        default_value='./local/images/people',
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_ENABLE',

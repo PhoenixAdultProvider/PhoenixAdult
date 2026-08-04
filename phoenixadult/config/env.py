@@ -77,7 +77,7 @@ class _Env:
 
     @property
     def logo_cache_dir(self) -> str:
-        return os.environ.get('LOGO_CACHE_DIR') or str(Path(self.image_dir) / 'logos')
+        return str(Path(self.image_dir) / 'logos')
 
     @property
     def scene_gap(self) -> float:
@@ -173,7 +173,7 @@ class _Env:
 
     @property
     def people_cache_dir(self) -> str:
-        return os.environ.get('PEOPLE_CACHE_DIR') or str(_cwd() / 'local' / 'images' / 'people')
+        return str(Path(self.image_dir) / 'people')
 
     @property
     def people_cache_enabled(self) -> bool:

@@ -77,7 +77,7 @@ def test_log_keeps_all_and_orders(tmp_path: pytest.TempPathFactory) -> None:
 def test_recent_filters_by_exact_folder_with_wildcard_chars(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory) -> None:
     from pathlib import Path
 
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     root = Path(str(tmp_path))
     for sub, fn in (('a%b', 'f1.jpg'), ('axb', 'f2.jpg'), ('a_b', 'f3.jpg'), ('avb', 'f4.jpg'), ('a', 'f5.jpg'), ('a/b', 'f6.jpg')):
         face_crop_log.record(str(root / sub), name=sub, filename=fn, base='b', orig_ext='.jpg', upstream_url='u', cropped=False)
@@ -90,7 +90,7 @@ def test_recent_filters_by_exact_folder_with_wildcard_chars(monkeypatch: pytest.
 def test_entry_for_is_a_keyed_lookup(monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPathFactory) -> None:
     from pathlib import Path
 
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     d = str(Path(str(tmp_path)) / 'actors' / 'female')
     face_crop_log.record(
         d, name='Jane Doe', filename='actor.jane-doe_female.jpg', base='actor.jane-doe_female', orig_ext='.webp', upstream_url='u', cropped=True

@@ -204,9 +204,9 @@ def _mock_collections(candidates: list[str]) -> tuple[respx.Route, respx.Route]:
 
 @respx.mock
 async def test_collection_logos_pushes_matching_logo(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
-    (tmp_path / 'brazzers').mkdir()
-    (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
-    monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
+    (tmp_path / 'logos' / 'brazzers').mkdir(parents=True)
+    (tmp_path / 'logos' / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     from phoenixadult.utils.images import logo_cache
 
     logo_cache.invalidate()
@@ -221,9 +221,9 @@ async def test_collection_logos_pushes_matching_logo(monkeypatch: pytest.MonkeyP
 
 @respx.mock
 async def test_collection_logos_skips_already_pushed(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
-    (tmp_path / 'brazzers').mkdir()
-    (tmp_path / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
-    monkeypatch.setenv('LOGO_CACHE_DIR', str(tmp_path))
+    (tmp_path / 'logos' / 'brazzers').mkdir(parents=True)
+    (tmp_path / 'logos' / 'brazzers' / 'logo.baby-got-boobs.png').write_bytes(b'png')
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     from phoenixadult.utils.images import logo_cache
 
     logo_cache.invalidate()

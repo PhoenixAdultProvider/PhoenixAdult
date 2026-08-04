@@ -90,12 +90,11 @@ The toolbar holds a **line limit** (50/100/200/500/1000, default 200), a **filte
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `IMAGE_DIR` | `./local/images` | Directory of local image files served back to Plex. |
+| `IMAGE_DIR` | `./local/images` | Directory served back to Plex for local people and logo image files. Headshots live in `IMAGE_DIR/people`; `logo.<site-slug>.<ext>` clearLogo files (per-studio subfolders) live in `IMAGE_DIR/logos` — manage them at `/logos` and push them to Plex **collections** from the Plex tab of `/config`. |
 | `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch; larger images are rejected. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
 | `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
 | `IMAGE_GUARD_ENABLE` | `false` | Serve logos, snapshot images, and people images only to: signed URLs (with `ADMIN_TOKEN` set, every emitted image URL carries a permanent `sig=` HMAC — no expiry, so Plex-held URLs never break), Plex (`PlexMediaServer` user agent), image fetchers (`Accept: image/*` non-navigation requests, e.g. Plex's cloud image proxy), loopback, admin-token requests, and the admin UIs (same-origin subresource checks). A browser typing an image URL directly gets a 403. The UA/Accept checks are best-effort, not authentication; signatures require the exact URL the provider emitted. A Plex metadata refresh picks up the signed URLs — snapshots store unsigned paths and are signed at serve time. |
 | `IMAGE_BASE_URL` | `baseurl` | Base URL Plex uses to fetch our locally-served images — actor/director/producer headshots and the clearLogos pushed to collections. Plex re-requests these and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable (see the option table below). Poster/art images always use `PHOENIX_BASE_URL`. |
-| `LOGO_CACHE_DIR` | `./local/images/logos` | Folder holding `logo.<site-slug>.<ext>` clearLogo files (per-studio subfolders). Scenes are never given logos; instead, manage the files at `/logos` and push them to Plex **collections** from the Plex tab of `/config` ("Push Logos to Collections"). |
 
 `IMAGE_BASE_URL` options:
 
@@ -135,7 +134,6 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `PEOPLE_CACHE_ENABLE` | `true` | Cache downloaded cast/crew headshots. When off, photo URLs are re-resolved on every scene refresh. |
-| `PEOPLE_CACHE_DIR` | `./local/images/people` | On-disk cache for actor / director / producer headshots. |
 | `PEOPLE_CACHE_REPLACE_ENABLE` | `false` | Ignore existing cached photos and re-fetch every time. |
 | `PEOPLE_CACHE_FACE_ENABLE` | `false` | Face-detect and crop cached headshots to head + shoulders for Plex's circular card. Requires `opencv-python-headless` (`pip install "opencv-python-headless"`); no-ops if absent. Placeholder images are never cropped. Review/undo at `/people`. |
 | `PEOPLE_SOURCE_ORDER` | built-in order | Priority order of headshot lookup sources, comma-separated. `Scene` is the actor image from the scene page itself — **remove it to skip the scene image** and use only the external providers, or move it lower to prefer a provider over it. IAFD needs a bypass backend (Impersonate). Default order: Local Storage, Scene, IAFD, AdultDVDEmpire, Indexxx, Boobpedia, Babes and Stars, Babepedia — JAVDatabase is selectable but off by default, being JAV-only. Freeones and JAVBus are retired (they sit in `phoenixadult/graveyard/`); naming either here is ignored. Setting this variable replaces the default outright, so sources you leave out are never consulted automatically; they remain available per-person from the editor's Fetch From. |

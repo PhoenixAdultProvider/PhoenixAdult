@@ -356,8 +356,9 @@ async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPa
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    (Path(str(tmp_path)) / 'actor.kira-noir_female.jpg').write_bytes(b'x')
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    (Path(str(tmp_path)) / 'people').mkdir()
+    (Path(str(tmp_path)) / 'people' / 'actor.kira-noir_female.jpg').write_bytes(b'x')
 
     photos = {
         'Mandingo': PhotoHit(url='https://cdn.example/mandingo.jpg', gender='male'),
@@ -403,8 +404,9 @@ async def test_backfill_actor_images_fills_missing_thumb(tmp_path: pytest.TempPa
 
 
 async def test_backfill_noop_when_all_thumbs_present(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
-    (Path(str(tmp_path)) / 'a.jpg').write_bytes(b'x')
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    (Path(str(tmp_path)) / 'people').mkdir()
+    (Path(str(tmp_path)) / 'people' / 'a.jpg').write_bytes(b'x')
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -425,7 +427,7 @@ async def test_backfill_re_resolves_purged_local_thumb(tmp_path: pytest.TempPath
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'false')
     monkeypatch.setenv('GENDER_DETECT_ENABLE', 'false')
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'false')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
 
     async def fake_find_photo(name: str, ctx: PersonLookupContext) -> PhotoHit:
         return PhotoHit(url='https://cdn.example/greg-new.jpg', gender='male') if name == 'Greg Lansky' else PhotoHit(url='')

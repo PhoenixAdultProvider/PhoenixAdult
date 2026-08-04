@@ -47,7 +47,7 @@ def _snapshot(tmp_path: Path, **overrides: Any) -> str:
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'meta'))
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path / 'people'))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.delenv('ADMIN_TOKEN', raising=False)
     return TestClient(create_app())
 

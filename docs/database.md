@@ -241,13 +241,13 @@ Derived state over files that remain the source of truth. These three tables rep
 last of the throttled directory rescans:
 
 - `people_images` — one row per served headshot in the people cache
-  (`PEOPLE_CACHE_DIR`), keyed `(type, slug, gender)` from the `role.slug[_gender].ext`
+  (`IMAGE_DIR/people`), keyed `(type, slug, gender)` from the `role.slug[_gender].ext`
   filename convention. Replaces the 30-second full-tree rescan behind `lookup_cached`
   with a keyed SELECT; rows are maintained inline by every write, gender move, restore,
   and purge. A lookup miss falls back to a bounded scan of the type's subfolders, so a
   manually-dropped file is found immediately and its row self-heals.
 - `logos` — one row per cached clearLogo file (`<studio_slug>/logo.<name_slug>.<ext>`
-  under `LOGO_CACHE_DIR`), keyed `(studio_slug, name_slug)`. `find_logo` tries the
+  under `IMAGE_DIR/logos`), keyed `(studio_slug, name_slug)`. `find_logo` tries the
   tagline slug then the studio slug as two keyed SELECTs (lowest `rel_path` wins on
   duplicates, matching the old first-file-wins scan order); downloads insert their row.
 - `crop_log` — the per-headshot record. `rel_path` is the served file's path relative
@@ -266,17 +266,17 @@ erDiagram
     text slug PK "filename slug of the person's name"
     text gender PK "male | female | trans | ''"
     text ext
-    text rel_path "relative to PEOPLE_CACHE_DIR"
+    text rel_path "relative to IMAGE_DIR/people"
     real mtime
   }
   logos {
     text studio_slug PK "folder, '' at cache root"
     text name_slug PK "slug between 'logo.' and the extension"
-    text rel_path "relative to LOGO_CACHE_DIR"
+    text rel_path "relative to IMAGE_DIR/logos"
     real mtime
   }
   crop_log {
-    text rel_path PK "served file, relative to PEOPLE_CACHE_DIR"
+    text rel_path PK "served file, relative to IMAGE_DIR/people"
     text entry "JSON crop-log payload"
     real cropped_at
     text source "headshot source the image came from"

@@ -42,27 +42,27 @@ def test_the_silhouette_is_its_own_source() -> None:
 
 @respx.mock
 async def test_caching_records_the_source_it_came_from(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('PEOPLE_CACHE_REPLACE_ENABLE', 'true')
     url = 'https://img.indexxx.com/images/thumbs/jane.jpg'
     respx.get(url).mock(return_value=httpx.Response(200, content=b'BYTES', headers={'content-type': 'image/jpeg'}))
 
     assert await cache.cache_photo(url, 'Jane Doe', 'actor', 'female') is not None
 
-    entry = face_crop_log.entry_for(str(tmp_path / 'actors' / 'female'), 'actor.jane-doe_female.jpg')
+    entry = face_crop_log.entry_for(str(tmp_path / 'people' / 'actors' / 'female'), 'actor.jane-doe_female.jpg')
     assert entry is not None and entry['source'] == 'Indexxx'
 
 
 @respx.mock
 async def test_an_explicit_source_beats_the_host(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('PEOPLE_CACHE_REPLACE_ENABLE', 'true')
     url = 'https://cdn.somestudio.com/scenes/jane.jpg'
     respx.get(url).mock(return_value=httpx.Response(200, content=b'BYTES', headers={'content-type': 'image/jpeg'}))
 
     assert await cache.cache_photo(url, 'Jane Doe', 'actor', 'female', source='Scene') is not None
 
-    entry = face_crop_log.entry_for(str(tmp_path / 'actors' / 'female'), 'actor.jane-doe_female.jpg')
+    entry = face_crop_log.entry_for(str(tmp_path / 'people' / 'actors' / 'female'), 'actor.jane-doe_female.jpg')
     assert entry is not None and entry['source'] == 'Scene'
 
 

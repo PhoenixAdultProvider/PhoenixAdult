@@ -12,7 +12,7 @@ from phoenixadult.utils.people import cache
 @pytest.fixture(autouse=True)
 def _cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     monkeypatch.setenv('PEOPLE_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('PEOPLE_CACHE_DIR', str(tmp_path / 'people'))
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     return tmp_path / 'people'
 
 
