@@ -109,7 +109,7 @@ def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
 def test_reconcile_shows_a_scene_progress_bar(client: TestClient) -> None:
     body = client.get('/config').text
     assert 'id="plex-reconcile-progress"' in body
-    assert "fetch(api('/plex/reconcile/progress'))" in body
+    assert "fetch(api(connPath('/reconcile/progress')))" in body
     assert "' of ' + p.total + ' scenes inspected'" in body
     assert 'startReconcileProgress();' in body and 'stopReconcileProgress();' in body
 

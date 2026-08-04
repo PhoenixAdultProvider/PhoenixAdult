@@ -15,6 +15,7 @@ from PIL import Image as PILImage
 from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
+from phoenixadult.services.plex_connections import Connection
 from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import _hash, scene_store
@@ -268,19 +269,21 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
             shutil.rmtree(staging, ignore_errors=True)
 
 
-async def libraries() -> list[dict[str, str]]:
-    client = PlexClient()
+async def libraries(connection: Connection, token: str) -> list[dict[str, str]]:
+    client = PlexClient(connection.server_url, token)
     try:
         return await client.movie_libraries()
     finally:
         await client.aclose()
 
 
-async def import_library(section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False) -> ImportReport:
+async def import_library(
+    connection: Connection, token: str, section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False
+) -> ImportReport:
     report = ImportReport(applied=apply, section=section)
     if not metadata_cache.enabled():
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
-    client = PlexClient()
+    client = PlexClient(connection.server_url, token)
     try:
         for lib in await client.movie_libraries():
             if lib['key'] == section:

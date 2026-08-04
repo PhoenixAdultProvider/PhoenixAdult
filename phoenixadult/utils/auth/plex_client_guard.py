@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from fastapi import HTTPException, Request
 
-from phoenixadult.config.env import env
+from phoenixadult.services.plex_connections import allowed_client_union
 from phoenixadult.utils.auth.user_auth import _is_loopback, resolve_user
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 
 
 async def plex_client_guard(request: Request) -> None:
-    allowed = env.plex_client_allowlist
+    allowed = await run_in('store', allowed_client_union)
     if not allowed:
         return
     client_id = (request.headers.get('x-plex-client-identifier') or '').strip()

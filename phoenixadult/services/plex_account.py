@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import httpx2
 
-from phoenixadult.config.env import env
+from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.logging.logger import logger
 
@@ -16,7 +16,7 @@ _PRODUCT = 'PhoenixAdult'
 _UPDATE_TTL = 6 * 3600.0
 _PLATFORM_NAME_OVERRIDES = {'MacOSX': 'Mac'}
 
-_update_cache: tuple[float, tuple[str, str], dict[str, Any]] | None = None
+_update_cache: dict[int, tuple[float, tuple[str, str], dict[str, Any]]] = {}
 
 
 def _headers(client_id: str, token: str | None = None) -> dict[str, str]:
@@ -26,8 +26,8 @@ def _headers(client_id: str, token: str | None = None) -> dict[str, str]:
     return headers
 
 
-def client_id_or_new() -> str:
-    return env.plex_client_id or uuid.uuid4().hex
+def client_id_or_new(existing: str = '') -> str:
+    return existing or uuid.uuid4().hex
 
 
 async def create_pin(client_id: str) -> dict[str, Any]:
@@ -97,8 +97,7 @@ def _version_tuple(version: str) -> tuple[int, ...]:
     return tuple(to_int(p) for p in version.replace('-', '.').split('.'))
 
 
-async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str) -> str:
-    channel = env.plex_update_channel
+async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str, channel: str) -> str:
     if channel != 'plex':
         return channel
     try:
@@ -111,18 +110,17 @@ async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str
     return 'beta' if value == '8' else 'public'
 
 
-async def update_status(force: bool = False) -> dict[str, Any]:
-    global _update_cache
+async def update_status(connection: Connection, token: str, force: bool = False) -> dict[str, Any]:
     now = time.monotonic()
-    config = (env.plex_update_channel, '|'.join(env.plex_update_release or ()))
-    if not force and _update_cache and _update_cache[1] == config and now - _update_cache[0] < _UPDATE_TTL:
-        return _update_cache[2]
+    config = (connection.update_channel, connection.update_release)
+    cached = _update_cache.get(connection.id)
+    if not force and cached and cached[1] == config and now - cached[0] < _UPDATE_TTL:
+        return cached[2]
 
-    if not (env.plex_url and env.plex_token):
-        return {'error': 'Set PLEX_URL and PLEX_TOKEN first'}
+    if not (connection.server_url and token):
+        return {'error': 'This connection needs a server URL and a token first'}
 
-    base = env.plex_url.rstrip('/')
-    token = env.plex_token
+    base = connection.server_url.rstrip('/')
     async with make_http({'Accept': 'application/json'}, timeout=20.0) as http:
         res = await http.get(f'{base}/', headers={'X-Plex-Token': token})
         res.raise_for_status()
@@ -130,7 +128,7 @@ async def update_status(force: bool = False) -> dict[str, Any]:
         current = container.get('version') or ''
         platform = container.get('platform') or ''
 
-        channel = await _server_update_channel(http, base, token)
+        channel = await _server_update_channel(http, base, token, connection.update_channel)
         params = {'channel': 'plexpass'} if channel == 'beta' else {}
         res = await http.get(f'{_PLEX_TV}/api/downloads/5.json', params=params, headers={'X-Plex-Token': token})
         res.raise_for_status()
@@ -145,7 +143,7 @@ async def update_status(force: bool = False) -> dict[str, Any]:
 
     releases = [r for r in (info.get('releases') or []) if isinstance(r, dict)]
     latest = str(info.get('version') or '')
-    wanted = env.plex_update_release
+    wanted = tuple(connection.update_release.split('|', 1)) if '|' in connection.update_release else None
     current_builds = [r for r in releases if latest and latest in str(r.get('url') or '')]
     release = next(
         (r for r in releases if wanted and r.get('distro') == wanted[0] and r.get('build') == wanted[1]),
@@ -170,6 +168,6 @@ async def update_status(force: bool = False) -> dict[str, Any]:
         'releases': [{'label': r.get('label'), 'distro': r.get('distro'), 'build': r.get('build')} for r in releases],
         'checkedAt': time.time(),
     }
-    _update_cache = (now, config, result)
+    _update_cache[connection.id] = (now, config, result)
     logger.info('plex-update', f'PMS {current} ({platform}, {channel}) vs latest {latest}')
     return result

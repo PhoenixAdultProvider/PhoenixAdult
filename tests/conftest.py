@@ -77,6 +77,20 @@ def authed_cookies() -> dict[str, str]:
     return {'pa_session': _seed_session()}
 
 
+def seed_connection(name: str = 'Test Server', url: str = 'http://192.0.2.10:32400', token: str = 'test-token', **fields: Any) -> Any:
+    from phoenixadult.services import plex_connections
+    from phoenixadult.utils.auth import user_store
+
+    owner = user_store.oldest_admin_id() or user_store.create_user('tester', 'pytest-pw', is_admin=True)
+    connection_id = plex_connections.create(owner, name)
+    plex_connections.update_fields(connection_id, {'serverUrl': url, **fields})
+    if token:
+        plex_connections.save_token(connection_id, token)
+    connection = plex_connections.get(connection_id)
+    assert connection is not None
+    return connection
+
+
 def authed_client(app: Any = None, is_admin: bool = True) -> Any:
     from starlette.testclient import TestClient
 

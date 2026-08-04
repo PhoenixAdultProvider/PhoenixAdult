@@ -281,47 +281,73 @@
   <div id="tabpanes"></div>
 
   <div id="tab-plex" class="tabpane">
-    <h2>Connection</h2>
+    <h2>Plex Connections</h2>
     <div class="card">
-      <div id="plex-vars"></div>
       <div class="plex-row">
-        <button type="button" onclick="fetchPlexToken()">Fetch New Token</button>
-        <button type="button" class="secondary" onclick="loadPlexServers()">Discover Servers</button>
-        <button type="button" class="secondary" onclick="verifyPlexServer()">Verify Server</button>
-        <span class="plex-status" id="plex-auth-status"></span>
+        <select id="plex-conn-select" onchange="selectConnection(this.value)"></select>
+        <button type="button" class="secondary" onclick="addConnection()">Add Connection</button>
+        <button type="button" class="danger" onclick="deleteConnection()">Delete</button>
+        <span class="plex-status" id="plex-conn-status"></span>
       </div>
-      <div class="plex-row" id="plex-server-pick" style="display:none">
-        <select id="plex-server-select"></select>
-        <button type="button" class="icon-btn" onclick="usePlexServer()">Use This Address</button>
-      </div>
-      <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
+      <div class="hint">Each connection pairs this provider with one Plex server. Tokens are encrypted and never shown again.</div>
     </div>
 
-    <h2>Allowed Plex Clients</h2>
-    <div class="card">
-      <div id="plex-access-vars"></div>
-    </div>
+    <div id="plex-conn-detail" style="display:none">
+      <h2>Server</h2>
+      <div class="card">
+        <label for="conn-name">Connection Name</label>
+        <input type="text" id="conn-name" onchange="saveConnection()">
+        <label for="conn-url">Server URL</label>
+        <input type="text" id="conn-url" placeholder="http://plex.lan:32400" onchange="saveConnection()">
+        <div class="plex-row">
+          <button type="button" onclick="fetchPlexToken()">Fetch New Token</button>
+          <button type="button" class="secondary" onclick="loadPlexServers()">Discover Servers</button>
+          <button type="button" class="secondary" onclick="verifyPlexServer()">Verify Server</button>
+          <span class="plex-status" id="plex-auth-status"></span>
+        </div>
+        <div class="plex-row" id="plex-server-pick" style="display:none">
+          <select id="plex-server-select"></select>
+          <button type="button" class="icon-btn" onclick="usePlexServer()">Use This Address</button>
+        </div>
+        <div class="plex-kv" id="plex-verify-out" style="display:none"></div>
+      </div>
 
-    <h2>Server</h2>
-    <div class="card">
-      <div class="plex-row">
-        <label class="log-follow">Update Channel
-          <select class="ctl" id="plex-update-channel" data-key="PLEX_UPDATE_CHANNEL" data-initial="plex" onchange="refreshDirty()">
-            <option value="plex">Server Preference</option>
-            <option value="public">Public</option>
-            <option value="beta">Beta (Plex Pass)</option>
-          </select>
-        </label>
-        <label class="log-follow" id="plex-update-release-row" style="display:none">Release
-          <select class="ctl" id="plex-update-release" data-key="PLEX_UPDATE_RELEASE" data-initial="" onchange="refreshDirty()"></select>
-        </label>
+      <h2>Allowed Plex Clients</h2>
+      <div class="card">
+        <div class="srclist" id="conn-clients"></div>
+        <div class="srcadd">
+          <input type="text" id="conn-client-add" class="src-add-select src-add-input" placeholder="X-Plex-Client-Identifier…" autocomplete="off" spellcheck="false">
+          <button type="button" class="icon-btn" onclick="addAllowedClient()">Add</button>
+        </div>
+        <div class="hint">Empty on every connection means any Plex server may call the provider.</div>
       </div>
-      <div class="plex-row">
-        <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for Update</button>
-        <span class="plex-status" id="plex-update-status"></span>
+
+      <h2>Image Base URL Override</h2>
+      <div class="card">
+        <input type="text" id="conn-image-base" placeholder="blank uses the global Local Image Base Address" onchange="saveConnection()">
+        <div class="hint">Set this when a server reaches the provider at a different address than the global setting.</div>
       </div>
-      <div class="plex-kv" id="plex-update-out" style="display:none"></div>
-    </div>
+
+      <h2>Server Updates</h2>
+      <div class="card">
+        <div class="plex-row">
+          <label class="log-follow">Update Channel
+            <select id="plex-update-channel" onchange="saveConnection()">
+              <option value="plex">Server Preference</option>
+              <option value="public">Public</option>
+              <option value="beta">Beta (Plex Pass)</option>
+            </select>
+          </label>
+          <label class="log-follow" id="plex-update-release-row" style="display:none">Release
+            <select id="plex-update-release" onchange="saveConnection()"></select>
+          </label>
+        </div>
+        <div class="plex-row">
+          <button type="button" class="secondary" onclick="plexUpdateStatus(true)">Check for Update</button>
+          <span class="plex-status" id="plex-update-status"></span>
+        </div>
+        <div class="plex-kv" id="plex-update-out" style="display:none"></div>
+      </div>
 
     <h2>Reconcile Stale Tags</h2>
     <div class="card">
@@ -396,6 +422,7 @@
         <button type="button" class="icon-btn" onclick="copyLogoPurgeScript(this)">Copy Logo Purge Script (PowerShell)</button>
         <span class="hint">edits the Plex DB in place — set the two paths at the top, STOP Plex first</span>
       </div>
+    </div>
     </div>
   </div>
 
@@ -473,11 +500,6 @@
           + STATE.groups.filter((g) => g.tab === t && g.name !== PLEX_GROUP).map(renderGroup).join('')
           + '</div>')
         .join('');
-      const plexGroup = STATE.groups.find((g) => g.name === PLEX_GROUP);
-      document.getElementById('plex-vars').innerHTML = plexGroup ? plexGroup.vars.map(renderVar).join('') : '';
-      const accessGroup = STATE.groups.find((g) => g.name === 'Plex Access');
-      document.getElementById('plex-access-vars').innerHTML = accessGroup ? accessGroup.vars.map(renderVar).join('') : '';
-      syncPlexUpdateControls();
       for (const v of allVars()) {
         if (v.kind === 'list') initList(v);
         if (v.preview === 'image') {
@@ -496,7 +518,7 @@
         if (pane) pane.classList.toggle('active', t === name);
         if (btn) btn.classList.toggle('active', t === name);
       }
-      if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadPlexLibraries(); }
+      if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadConnections().then(loadPlexLibraries); }
       if (name === 'theme') initThemeTab();
       document.body.classList.toggle('logs-wide', name === 'logs');
       if (name === 'logs') logOpen(); else logStop();
@@ -1052,11 +1074,121 @@
       return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
 
+    let CONNECTIONS = [];
+    let CONN_ID = null;
+
+    function currentConnection() {
+      return CONNECTIONS.find((c) => c.id === CONN_ID) || null;
+    }
+
+    function connPath(suffix) {
+      return '/plex/connections/' + CONN_ID + (suffix || '');
+    }
+
+    async function loadConnections(preferId) {
+      const res = await fetch(api('/plex/connections'));
+      const data = await res.json().catch(() => ({ connections: [] }));
+      CONNECTIONS = data.connections || [];
+      const sel = document.getElementById('plex-conn-select');
+      sel.innerHTML = CONNECTIONS.map((c) => '<option value="' + c.id + '">' + esc(c.name) + (c.hasToken ? '' : ' (no token)') + '</option>').join('')
+        || '<option value="">No connections yet</option>';
+      const target = preferId ?? (CONNECTIONS.some((c) => c.id === CONN_ID) ? CONN_ID : (CONNECTIONS[0] || {}).id);
+      selectConnection(target);
+      if (target != null) sel.value = String(target);
+    }
+
+    function selectConnection(id) {
+      CONN_ID = id == null || id === '' ? null : Number(id);
+      const conn = currentConnection();
+      document.getElementById('plex-conn-detail').style.display = conn ? '' : 'none';
+      if (!conn) { plexStatus('plex-conn-status', 'Add a connection to pair a Plex server.', ''); return; }
+      document.getElementById('conn-name').value = conn.name;
+      document.getElementById('conn-url').value = conn.serverUrl;
+      document.getElementById('conn-image-base').value = conn.imageBaseUrl;
+      document.getElementById('plex-update-channel').value = conn.updateChannel || 'plex';
+      renderAllowedClients();
+      plexStatus('plex-conn-status', conn.hasToken ? 'Token saved.' : 'No token yet — fetch or paste one.', conn.hasToken ? 'ok' : '');
+      const releaseSel = document.getElementById('plex-update-release');
+      if (conn.updateRelease && ![...releaseSel.options].some((o) => o.value === conn.updateRelease)) {
+        releaseSel.insertAdjacentHTML('beforeend', '<option value="' + esc(conn.updateRelease) + '">' + esc(conn.updateRelease) + '</option>');
+      }
+      releaseSel.value = conn.updateRelease || '';
+      document.getElementById('plex-update-out').style.display = 'none';
+      document.getElementById('plex-verify-out').style.display = 'none';
+      document.getElementById('plex-server-pick').style.display = 'none';
+    }
+
+    function renderAllowedClients() {
+      const conn = currentConnection();
+      const box = document.getElementById('conn-clients');
+      const ids = conn ? conn.allowedClients : [];
+      box.innerHTML = ids.map((cid) =>
+        '<div class="srcitem"><span class="srcitem-name" data-real="' + esc(cid) + '">●●●●●●●●</span>'
+        + '<button type="button" class="copy-btn" data-list-show="conn">Show</button>'
+        + '<button type="button" class="srcitem-x" onclick="removeAllowedClient(\'' + esc(cid) + '\')" title="Remove">×</button></div>'
+      ).join('') || '<span class="hint">empty — any Plex server may call the provider</span>';
+    }
+
+    async function addConnection() {
+      const name = prompt('Name this connection (e.g. Home Server):');
+      if (!name) return;
+      try {
+        const created = await postJSON(api('/plex/connections'), { name });
+        await loadConnections(created.id);
+      } catch (err) {
+        plexStatus('plex-conn-status', esc(err.message), 'err');
+      }
+    }
+
+    async function deleteConnection() {
+      const conn = currentConnection();
+      if (!conn || !confirm('Delete the "' + conn.name + '" connection? Its stored token is erased.')) return;
+      await postJSON(api(connPath('/delete')), {});
+      CONN_ID = null;
+      await loadConnections();
+    }
+
+    async function saveConnection() {
+      if (!CONN_ID) return;
+      const body = {
+        name: document.getElementById('conn-name').value.trim(),
+        serverUrl: document.getElementById('conn-url').value.trim(),
+        imageBaseUrl: document.getElementById('conn-image-base').value.trim(),
+        updateChannel: document.getElementById('plex-update-channel').value,
+        updateRelease: document.getElementById('plex-update-release').value,
+      };
+      try {
+        await postJSON(api(connPath()), body);
+        await loadConnections(CONN_ID);
+        plexStatus('plex-conn-status', 'Saved.', 'ok');
+      } catch (err) {
+        plexStatus('plex-conn-status', esc(err.message), 'err');
+      }
+    }
+
+    async function addAllowedClient() {
+      const input = document.getElementById('conn-client-add');
+      const value = input.value.trim();
+      const conn = currentConnection();
+      if (!value || !conn || conn.allowedClients.includes(value)) return;
+      await postJSON(api(connPath()), { allowedClients: [...conn.allowedClients, value] });
+      input.value = '';
+      await loadConnections(CONN_ID);
+    }
+
+    async function removeAllowedClient(cid) {
+      const conn = currentConnection();
+      if (!conn) return;
+      await postJSON(api(connPath()), { allowedClients: conn.allowedClients.filter((c) => c !== cid) });
+      await loadConnections(CONN_ID);
+    }
+
     async function fetchPlexToken() {
+      if (!CONN_ID) return;
       plexStatus('plex-auth-status', '<span class="spin"></span> Contacting plex.tv…');
       let pin;
       try {
-        pin = await postJSON(api('/plex/pin'), {});
+        pin = await postJSON(api(connPath('/pin')), {});
       } catch (err) {
         plexStatus('plex-auth-status', 'Could not reach plex.tv: ' + esc(err.message), 'err');
         return;
@@ -1074,14 +1206,13 @@
           return;
         }
         try {
-          const res = await fetch(api('/plex/pin/' + pin.id + '?client_id=' + encodeURIComponent(pin.clientId)));
+          const res = await fetch(api(connPath('/pin/' + pin.id)));
           const data = await res.json();
-          if (data.token) {
+          if (data.saved) {
             clearInterval(poll);
             try { popup.close(); } catch (e) {}
-            const saved = await postJSON(api('/config/api/save'), { updates: { PLEX_TOKEN: data.token, PLEX_CLIENT_ID: pin.clientId } });
             plexStatus('plex-auth-status', 'Authentication successful — token saved.', 'ok');
-            applyState(saved);
+            await loadConnections(CONN_ID);
             loadPlexServers();
           }
         } catch (e) { /* keep polling */ }
@@ -1089,9 +1220,10 @@
     }
 
     async function loadPlexServers() {
+      if (!CONN_ID) return;
       plexStatus('plex-auth-status', '<span class="spin"></span> Listing servers…');
       try {
-        const data = await postJSON(api('/plex/servers'), {});
+        const data = await postJSON(api(connPath('/servers')), {});
         const sel = document.getElementById('plex-server-select');
         const opts = [];
         for (const s of data.servers) {
@@ -1103,7 +1235,7 @@
         if (!opts.length) { plexStatus('plex-auth-status', 'No servers found on this account.', 'err'); return; }
         sel.innerHTML = opts.join('');
         document.getElementById('plex-server-pick').style.display = 'flex';
-        plexStatus('plex-auth-status', 'Found ' + opts.length + ' address(es) — pick one to fill PLEX_URL.', 'ok');
+        plexStatus('plex-auth-status', 'Found ' + opts.length + ' address(es) — pick one to use.', 'ok');
       } catch (err) {
         plexStatus('plex-auth-status', esc(err.message), 'err');
       }
@@ -1111,19 +1243,18 @@
 
     function usePlexServer() {
       const sel = document.getElementById('plex-server-select');
-      const inp = inputFor('PLEX_URL');
-      if (sel.value && inp) { inp.value = sel.value; refreshDirty(); }
+      if (!sel.value) return;
+      document.getElementById('conn-url').value = sel.value;
+      saveConnection();
     }
 
     async function verifyPlexServer() {
-      const urlInp = inputFor('PLEX_URL');
-      const tokInp = inputFor('PLEX_TOKEN');
+      if (!CONN_ID) return;
       plexStatus('plex-auth-status', '<span class="spin"></span> Verifying…');
       const out = document.getElementById('plex-verify-out');
       out.style.display = 'none';
       try {
-        const data = await postJSON(api('/plex/verify'),
-          { url: urlInp ? urlInp.value.trim() : '', token: tokInp ? tokInp.value.trim() : '' });
+        const data = await postJSON(api(connPath('/verify')), { url: document.getElementById('conn-url').value.trim() });
         const idn = data.identity, auth = data.auth;
         out.innerHTML =
           '<b>Server reachable</b><span>' + (idn.ok ? 'yes — v' + esc(idn.version) : 'NO — ' + esc(idn.error || '')) + '</span>'
@@ -1138,49 +1269,21 @@
       }
     }
 
-    function syncPlexUpdateControls() {
-      const channel = specOf('PLEX_UPDATE_CHANNEL');
-      const channelSel = document.getElementById('plex-update-channel');
-      if (channel && channelSel) {
-        const val = channel.value || channel.defaultValue || 'plex';
-        channelSel.value = val;
-        channelSel.dataset.initial = val;
-      }
-      const release = specOf('PLEX_UPDATE_RELEASE');
-      const releaseSel = document.getElementById('plex-update-release');
-      if (release && releaseSel) {
-        const val = release.value || '';
-        if (val && ![...releaseSel.options].some((o) => o.value === val)) {
-          releaseSel.insertAdjacentHTML('beforeend', '<option value="' + esc(val) + '">' + esc(val) + '</option>');
-        }
-        releaseSel.value = val;
-        releaseSel.dataset.initial = val;
-      }
-    }
-
     function populateReleaseOptions(data) {
       const row = document.getElementById('plex-update-release-row');
       const sel = document.getElementById('plex-update-release');
       const releases = data.releases || [];
       if (releases.length < 2) { row.style.display = 'none'; return; }
-      const prev = sel.value;
-      const wasDirty = prev && prev !== sel.dataset.initial;
+      const conn = currentConnection();
+      const saved = conn ? conn.updateRelease : '';
       sel.innerHTML = releases.map((r) => {
         const v = r.distro + '|' + r.build;
         return '<option value="' + esc(v) + '">' + esc(r.label || v) + '</option>';
       }).join('');
       const exists = (v) => [...sel.options].some((o) => o.value === v);
-      if (wasDirty && exists(prev)) {
-        sel.value = prev;
-      } else {
-        const saved = sel.dataset.initial;
-        const chosen = (data.distro && data.build) ? data.distro + '|' + data.build : '';
-        const target = (saved && exists(saved)) ? saved : chosen;
-        sel.value = target;
-        sel.dataset.initial = target;
-      }
+      const chosen = (data.distro && data.build) ? data.distro + '|' + data.build : '';
+      sel.value = (saved && exists(saved)) ? saved : chosen;
       row.style.display = '';
-      refreshDirty();
     }
 
     function fmtReleaseDate(raw) {
@@ -1190,10 +1293,11 @@
     }
 
     async function plexUpdateStatus(force) {
+      if (!CONN_ID) return;
       const out = document.getElementById('plex-update-out');
       if (force) plexStatus('plex-update-status', '<span class="spin"></span> Checking…');
       try {
-        const res = await fetch(api('/plex/update' + (force ? '?force=1' : '')));
+        const res = await fetch(api(connPath('/update' + (force ? '?force=1' : ''))));
         const data = await res.json();
         if (data.error) { plexStatus('plex-update-status', esc(data.error), force ? 'err' : ''); return; }
         populateReleaseOptions(data);
@@ -1436,7 +1540,7 @@
       document.getElementById('plex-reconcile-progress-pct').textContent = '';
       reconcileProgressTimer = setInterval(async () => {
         try {
-          const r = await fetch(api('/plex/reconcile/progress'));
+          const r = await fetch(api(connPath('/reconcile/progress')));
           if (!r.ok) return;
           const p = await r.json();
           if (!p.total) return;
@@ -1449,6 +1553,7 @@
     }
 
     async function runReconcile(apply) {
+      if (!CONN_ID) { plexStatus('plex-reconcile-status', 'Pick a connection first.', 'err'); return; }
       if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
       const params = reconFilters();
@@ -1457,7 +1562,7 @@
       plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
       startReconcileProgress();
       try {
-        const data = await postJSON(api('/plex/reconcile' + (params.length ? '?' + params.join('&') : '')), {});
+        const data = await postJSON(api(connPath('/reconcile' + (params.length ? '?' + params.join('&') : ''))), {});
         renderReconcile(data);
         plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
       } catch (err) {
@@ -1468,6 +1573,7 @@
     }
 
     async function runCollectionLogos(apply) {
+      if (!CONN_ID) { plexStatus('plex-collogo-status', 'Pick a connection first.', 'err'); return; }
       if (apply && !confirm('Set clearLogos on matching Plex collections?')) return;
       const limit = document.getElementById('plex-collogo-limit').value.trim();
       const params = [];
@@ -1476,7 +1582,7 @@
       plexStatus('plex-collogo-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
       const out = document.getElementById('plex-collogo-out');
       try {
-        const d = await postJSON(api('/plex/collection-logos' + (params.length ? '?' + params.join('&') : '')), {});
+        const d = await postJSON(api(connPath('/collection-logos' + (params.length ? '?' + params.join('&') : ''))), {});
         const noun = apply ? 'set on' : 'would be set on';
         out.style.display = 'block';
         out.innerHTML = `<div>${d.collections} collection(s) · ${d.matched} with a logo · <b>${d.pushed}</b> ${noun} · ${d.already} already done</div>`
@@ -1488,9 +1594,10 @@
     }
 
     async function loadPlexLibraries() {
+      if (!CONN_ID) return;
       const sel = document.getElementById('plex-import-section');
       try {
-        const res = await fetch(api('/plex/libraries'));
+        const res = await fetch(api(connPath('/libraries')));
         const d = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(d.error || ('HTTP ' + res.status));
         const libs = d.libraries || [];
@@ -1503,6 +1610,7 @@
     }
 
     async function runPlexImport(apply) {
+      if (!CONN_ID) { plexStatus('plex-import-status', 'Pick a connection first.', 'err'); return; }
       const section = document.getElementById('plex-import-section').value;
       if (!section) { plexStatus('plex-import-status', 'Pick a library first', 'err'); return; }
       const overwrite = document.getElementById('plex-import-overwrite').checked;
@@ -1518,7 +1626,7 @@
       plexStatus('plex-import-status', '<span class="spin"></span> ' + (apply ? 'Importing…' : 'Dry run…'));
       const out = document.getElementById('plex-import-out');
       try {
-        const d = await postJSON(api('/plex/import?' + params.join('&')), {});
+        const d = await postJSON(api(connPath('/import?' + params.join('&'))), {});
         const headline = apply ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
         out.style.display = 'block';
         out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`

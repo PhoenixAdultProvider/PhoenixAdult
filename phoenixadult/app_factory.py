@@ -41,6 +41,14 @@ def _log_startup_banner() -> None:
         logger.warn(base_url_warning)
 
 
+def _migrate_plex_env() -> None:
+    from phoenixadult.services import plex_connections
+
+    migrated = plex_connections.migrate_env_connection()
+    if migrated:
+        logger.info('plex-connections', f'migrated the PLEX_* settings into the "{migrated}" connection')
+
+
 async def _try_startup(label: str, fn: Callable[[], object]) -> None:
     try:
         await asyncio.to_thread(fn)
@@ -80,6 +88,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
+    await _try_startup('plex connection migration', _migrate_plex_env)
     if people_cache.cache_enabled():
         await _try_startup('people-cache reconcile', people_cache.reconcile)
     await _try_startup('logo-cache reconcile', logo_cache.reconcile)

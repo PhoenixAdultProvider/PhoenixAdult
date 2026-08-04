@@ -7,9 +7,10 @@ from typing import Any
 
 import httpx2
 
-from phoenixadult.config.env import env
 from phoenixadult.registry import PROVIDER_DEFINITIONS
+from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils import db
 from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -29,7 +30,7 @@ _FIELDS: dict[str, str] = {
 
 
 def enabled() -> bool:
-    return bool(env.plex_url and env.plex_token)
+    return bool(db.connect().execute('SELECT COUNT(*) FROM plex_connections WHERE server_url != "" AND token_encrypted != ""').fetchone()[0])
 
 
 @dataclass
@@ -114,12 +115,12 @@ def _removal_reason(value: str, desired_values: list[str]) -> str:
 
 
 class PlexClient:
-    def __init__(self) -> None:
-        if not enabled():
-            raise RuntimeError('PLEX_URL and PLEX_TOKEN must both be set')
-        self.base = (env.plex_url or '').rstrip('/')
+    def __init__(self, base: str, token: str) -> None:
+        if not base or not token:
+            raise RuntimeError('a Plex connection needs both a server URL and a token')
+        self.base = base.rstrip('/')
         self.http: httpx2.AsyncClient = make_http(
-            {'X-Plex-Token': env.plex_token or '', 'Accept': 'application/json'},
+            {'X-Plex-Token': token, 'Accept': 'application/json'},
             timeout=30.0,
             limits=httpx2.Limits(max_connections=32, max_keepalive_connections=16, keepalive_expiry=120.0),
         )
@@ -192,11 +193,15 @@ class PlexClient:
 
 _INSPECT_CONCURRENCY = 8
 
-_progress: dict[str, Any] = {'active': False, 'total': 0, 'inspected': 0}
+_progress: dict[int, dict[str, Any]] = {}
 
 
-def progress() -> dict[str, Any]:
-    return dict(_progress)
+def progress(connection_id: int) -> dict[str, Any]:
+    return dict(_progress.get(connection_id) or {'active': False, 'total': 0, 'inspected': 0})
+
+
+def is_running(connection_id: int) -> bool:
+    return bool((_progress.get(connection_id) or {}).get('active'))
 
 
 async def _inspect_item(
@@ -227,11 +232,15 @@ async def _inspect_item(
     return entry, desired, section
 
 
-async def reconcile(apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None) -> ReconcileReport:
+async def reconcile(
+    connection: Connection, token: str, apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None
+) -> ReconcileReport:
     report = ReconcileReport(applied=apply)
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
     site_filter = {s.casefold() for s in sites} if sites else None
-    client = PlexClient()
+    client = PlexClient(connection.server_url, token)
+    run_progress: dict[str, Any] = {'active': False, 'total': 0, 'inspected': 0}
+    _progress[connection.id] = run_progress
     prefixes = _guid_prefixes()
     try:
         work: list[tuple[str, dict[str, Any], str, str]] = []
@@ -248,7 +257,7 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                     continue
                 work.append((section, stub, rating_key, site_name))
 
-        _progress.update(active=True, total=len(work), inspected=0)
+        run_progress.update(active=True, total=len(work), inspected=0)
         sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
         done = False
 
@@ -257,7 +266,7 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                 if done:
                     return None
                 inspected = await _inspect_item(client, *w, field_filter)
-                _progress['inspected'] += 1
+                run_progress['inspected'] += 1
                 return inspected
 
         tasks = [asyncio.create_task(_guarded(w)) for w in work]
@@ -296,7 +305,7 @@ async def reconcile(apply: bool = False, limit: int | None = None, fields: set[s
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        _progress['active'] = False
+        run_progress['active'] = False
         await client.aclose()
 
     verb = 'removed from' if apply else 'would be removed from'
@@ -324,14 +333,14 @@ class CollectionLogoReport:
         }
 
 
-async def push_collection_logos(apply: bool = False, limit: int | None = None) -> CollectionLogoReport:
+async def push_collection_logos(connection: Connection, token: str, apply: bool = False, limit: int | None = None) -> CollectionLogoReport:
     from phoenixadult.config import image_base_url
     from phoenixadult.utils.images import logo_cache
 
     report = CollectionLogoReport(applied=apply)
-    base = image_base_url().rstrip('/')
+    base = (connection.image_base_url or image_base_url()).rstrip('/')
     cache_root = logo_cache.cache_dir()
-    client = PlexClient()
+    client = PlexClient(connection.server_url, token)
     try:
         for section in await client.movie_sections():
             for col in await client.collections(section):
