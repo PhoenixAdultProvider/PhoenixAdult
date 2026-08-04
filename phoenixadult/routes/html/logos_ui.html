@@ -66,10 +66,8 @@
 
   <script>
     let STATE = __STATE_JSON__;
-    const TOKEN = new URLSearchParams(location.search).get('token');
 
     function api(path, opts = {}) {
-      opts.headers = Object.assign({}, opts.headers, TOKEN ? { 'x-admin-token': TOKEN } : {});
       return fetch(path, opts);
     }
 

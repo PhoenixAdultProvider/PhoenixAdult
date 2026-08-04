@@ -7,10 +7,10 @@ from fastapi.responses import JSONResponse
 from phoenixadult.config.env import env
 from phoenixadult.routes import read_json_body
 from phoenixadult.services import plex_account, plex_import, plex_reconcile
-from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.logging.logger import logger
 
-router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
 
 def _truthy(value: str | None) -> bool:

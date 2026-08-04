@@ -111,7 +111,6 @@
   </div>
 
   <script>
-    const TOKEN = __TOKEN__;
     const FILENAME = __FILENAME__;
     const ENTRY = __ENTRY__;
     const SOURCES = __SOURCES__;
@@ -122,9 +121,9 @@
     let SFW = false;
     try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
 
-    function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
+    function hdrs() { return {'Content-Type': 'application/json'}; }
     function qs(id) { return document.getElementById(id); }
-    function leave() { location.href = '/people' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '') + '#' + ENTRY.type; }
+    function leave() { location.href = '/people#' + ENTRY.type; }
 
     const fetched = {url: '', source: ''};
 

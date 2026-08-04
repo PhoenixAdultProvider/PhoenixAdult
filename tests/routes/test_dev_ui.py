@@ -11,6 +11,7 @@ from phoenixadult.clients.base import SceneDetail
 from phoenixadult.models.metadata import PlexMetadata
 from phoenixadult.utils.helpers.helpers import b64url_encode
 from phoenixadult.utils.plex.rating_key import to_rating_key
+from tests.conftest import authed_client
 
 TOKEN = 'devtoken'
 
@@ -18,31 +19,23 @@ TOKEN = 'devtoken'
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv('NODE_ENV', 'development')
-    monkeypatch.setenv('ADMIN_TOKEN', TOKEN)
-    return TestClient(create_app())
+    return authed_client()
 
 
-def test_dev_requires_auth(client: TestClient) -> None:
-    assert client.get('/dev').status_code == 401
-
-
-def test_dev_open_when_token_blank(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dev_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('NODE_ENV', 'development')
-    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
-    open_client = TestClient(create_app())
-    assert open_client.get('/dev').status_code == 200
-    assert open_client.get('/config').status_code == 200
+    assert TestClient(create_app()).get('/dev', headers={'accept': 'application/json'}).status_code == 401
 
 
 def test_dev_page_renders(client: TestClient) -> None:
-    r = client.get('/dev', params={'token': TOKEN})
+    r = client.get('/dev')
     assert r.status_code == 200
     assert 'Provider Dev UI' in r.text
     assert 'Registered Sites' in r.text
 
 
 def test_dev_test_pipeline(client: TestClient) -> None:
-    r = client.post('/dev/test', params={'token': TOKEN}, json={'filename': 'Unknown.Site.2024.01.02.scene.mp4'})
+    r = client.post('/dev/test', json={'filename': 'Unknown.Site.2024.01.02.scene.mp4'})
     assert r.status_code == 200
     data = r.json()
     assert 'steps' in data and 'logs' in data
@@ -52,14 +45,13 @@ def test_dev_test_pipeline(client: TestClient) -> None:
 
 
 def test_dev_test_requires_filename(client: TestClient) -> None:
-    r = client.post('/dev/test', params={'token': TOKEN}, json={})
+    r = client.post('/dev/test', json={})
     assert r.status_code == 400
 
 
 def test_dev_metadata_pipeline(client: TestClient) -> None:
     r = client.post(
         '/dev/metadata',
-        params={'token': TOKEN},
         json={'ratingKey': 'scene-somesite-YWJj', 'providerId': 'phoenixadult'},
     )
     assert r.status_code == 200
@@ -71,7 +63,7 @@ def test_dev_metadata_pipeline(client: TestClient) -> None:
 
 
 def test_dev_metadata_requires_fields(client: TestClient) -> None:
-    r = client.post('/dev/metadata', params={'token': TOKEN}, json={'ratingKey': 'x'})
+    r = client.post('/dev/metadata', json={'ratingKey': 'x'})
     assert r.status_code == 400
 
 
@@ -97,7 +89,6 @@ def _rating_key() -> str:
 def _post_metadata(client: TestClient, *, full_pipeline: bool) -> list[dict[str, Any]]:
     r = client.post(
         '/dev/metadata',
-        params={'token': TOKEN},
         json={'ratingKey': _rating_key(), 'providerId': 'phoenixadult', 'fullPipeline': full_pipeline},
     )
     assert r.status_code == 200
@@ -151,13 +142,13 @@ def test_dev_metadata_no_roundtrip_step_when_toggle_off(client: TestClient, monk
 
 
 def test_dev_page_has_full_pipeline_toggle(client: TestClient) -> None:
-    r = client.get('/dev', params={'token': TOKEN})
+    r = client.get('/dev')
     assert 'Full Pipeline (DB Round-Trip)' in r.text
     assert 'roundtrip-section' in r.text
 
 
 def test_dev_page_has_a_mobile_layout(client: TestClient) -> None:
-    r = client.get('/dev', params={'token': TOKEN})
+    r = client.get('/dev')
     assert r.status_code == 200
     assert '@media (max-width: 720px)' in r.text
     assert 'data-label="Content Type"' in r.text

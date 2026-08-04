@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 from fastapi import Request
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.auth.env_auth import _is_loopback, _presented_token, _token_matches
 from phoenixadult.utils.auth.url_signing import signed_request_ok
+from phoenixadult.utils.auth.user_auth import _is_loopback, resolve_user
 from phoenixadult.utils.logging.logger import logger
 
 _PLEX_UA = 'plexmediaserver'
@@ -67,8 +67,7 @@ async def image_guard(request: Request) -> None:
         return
     if _is_loopback(request.client.host if request.client else None):
         return
-    token = env.admin_token
-    if token and _token_matches(_presented_token(request), token):
+    if await resolve_user(request) is not None:
         return
     if _same_origin_subresource(request):
         return

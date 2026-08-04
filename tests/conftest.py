@@ -65,6 +65,29 @@ def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(impersonate_backend, 'is_available', lambda: False)
 
 
+def _seed_session(is_admin: bool = True) -> str:
+    from phoenixadult.utils.auth import user_store
+
+    uid = user_store.oldest_admin_id() if user_store.user_count() else user_store.create_user('tester', 'pytest-pw', is_admin=is_admin)
+    assert uid is not None
+    return user_store.create_session(uid, 'pytest')
+
+
+def authed_cookies() -> dict[str, str]:
+    return {'pa_session': _seed_session()}
+
+
+def authed_client(app: Any = None, is_admin: bool = True) -> Any:
+    from starlette.testclient import TestClient
+
+    from phoenixadult.app_factory import create_app
+
+    token = _seed_session(is_admin)
+    client = TestClient(app or create_app())
+    client.cookies.set('pa_session', token)
+    return client
+
+
 @pytest.fixture
 def no_web_search() -> object:
 

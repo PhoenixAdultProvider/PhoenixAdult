@@ -302,14 +302,8 @@
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // Forward the admin token (from the page URL ?token=) onto the API calls so
-    // the dev UI works behind a tunnel where requests aren't loopback.
-    const AUTH_TOKEN = new URLSearchParams(location.search).get('token') || '';
     const NARROW = window.matchMedia('(max-width: 720px)');
-    function apiUrl(path) {
-      if (!AUTH_TOKEN) return path;
-      return path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(AUTH_TOKEN);
-    }
+    function apiUrl(path) { return path; }
 
     function setExample(val) {
       document.getElementById('filename').value = val;

@@ -14,8 +14,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.routes import read_json_body, render_nav
-from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
@@ -28,7 +28,7 @@ from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.localStorage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
 
-router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
 _EDIT_TEMPLATE: str = load_data(__file__, 'people_edit', kind='html')
 FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_storage_source.name]
@@ -184,7 +184,6 @@ async def page(request: Request) -> HTMLResponse:
     entries = await run_in('store', _list_people, people_cache_dir())
     type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
     default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
-    token = html.escape(request.query_params.get('token', ''), quote=True)
     warn = '' if face_crop.available() else '<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>'
     empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>' if not entries else ''
     summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
@@ -285,7 +284,7 @@ async def page(request: Request) -> HTMLResponse:
         body.filters-open .search>.progress[hidden]{{display:none}}
       }}
     </style></head><body data-page="people">
-    {render_nav('people')}
+    {render_nav('people', nav_username(request))}
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
@@ -308,8 +307,7 @@ async def page(request: Request) -> HTMLResponse:
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {empty}
     <script>
-      const TOKEN = {token!r};
-      function hdrs(){{ return {{'Content-Type':'application/json', ...(TOKEN?{{'x-admin-token':TOKEN}}:{{}})}}; }}
+      function hdrs(){{ return {{'Content-Type':'application/json'}}; }}
       async function post(url, body){{
         const r = await fetch(url, {{method:'POST', headers:hdrs(), body:JSON.stringify(body)}});
         return r.json().catch(()=>({{ok:false}}));
@@ -328,9 +326,7 @@ async def page(request: Request) -> HTMLResponse:
         if(j.ok) location.reload(); else alert('Purge failed');
       }}
       function edit(filename){{
-        const p = new URLSearchParams({{filename}});
-        if (TOKEN) p.set('token', TOKEN);
-        location.href = '/people/edit?' + p.toString();
+        location.href = '/people/edit?' + new URLSearchParams({{filename}}).toString();
       }}
       const STORE_KEY = 'people-cache-filters';
       const SFW_KEY = 'metadata-sfw';
@@ -557,7 +553,7 @@ def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
     return next((e for e in matches if str(e['role']) == role), None) or (matches[0] if matches else None)
 
 
-def _scene_credits(entry: dict[str, Any], token: str) -> str:
+def _scene_credits(entry: dict[str, Any]) -> str:
     from phoenixadult.utils import cache as metadata_cache
 
     if not metadata_cache.enabled():
@@ -565,9 +561,8 @@ def _scene_credits(entry: dict[str, Any], token: str) -> str:
     scenes = scene_store.scenes_for_person(str(entry.get('name', '')), str(entry.get('role', '')))
     if not scenes:
         return '<div class="hint">No cached snapshot credits this person.</div>'
-    suffix = f'&token={quote(token)}' if token else ''
     rows = ''.join(
-        f'<tr><td><a href="/metadata/edit?key={quote(scene["key"], safe="/")}{suffix}">{html.escape(scene["title"])}</a></td>'
+        f'<tr><td><a href="/metadata/edit?key={quote(scene["key"], safe="/")}">{html.escape(scene["title"])}</a></td>'
         f'<td class="nowrap">{html.escape(scene["date"]) or "&mdash;"}</td>'
         f'<td>{html.escape(scene["studio"]) or "&mdash;"}</td>'
         f'<td>{html.escape(scene["tagline"]) or "&mdash;"}</td></tr>'
@@ -597,14 +592,12 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     origin = html.escape(str(entry.get('source', '')) or 'unrecorded')
     subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code> · from {origin}'
-    token = request.query_params.get('token', '')
-    credits = await run_in('store', _scene_credits, entry, token)
+    credits = await run_in('store', _scene_credits, entry)
     body = (
-        _EDIT_TEMPLATE.replace('__NAV__', render_nav('people'))
+        _EDIT_TEMPLATE.replace('__NAV__', render_nav('people', nav_username(request)))
         .replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
         .replace('__SUBTITLE__', subtitle)
         .replace('__CACHED_SRC__', html.escape(cached_src, quote=True))
-        .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__FILENAME__', _json_attr(filename))
         .replace('__ENTRY__', _json_attr(entry))
         .replace('__SOURCES__', _json_attr([source.name for source in FETCHABLE_SOURCES]))

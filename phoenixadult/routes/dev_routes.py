@@ -14,11 +14,11 @@ from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
-from phoenixadult.routes import read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_nav
 from phoenixadult.services.metadata_service import refresh_cached_snapshot
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import embed_subsite, load_data, split_subsite, title_distance_score
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
@@ -37,7 +37,7 @@ from phoenixadult.utils.processors.filename_parser import get_site_name_from_reg
 from phoenixadult.utils.processors.search_query import build_search_pieces
 from phoenixadult.utils.processors.title_case import title_case
 
-router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
 scraper = ScraperRouter()
 mapper = MetadataMapper()
@@ -519,7 +519,7 @@ async def _live_metadata_steps(
 
 @router.get('')
 @router.get('/')
-async def page() -> HTMLResponse:
+async def page(request: Request) -> HTMLResponse:
     sites = [
         {
             'name': s.name,
@@ -532,10 +532,10 @@ async def page() -> HTMLResponse:
         for p in get_all_providers()
         for s in get_sites_for_provider(p.id)
     ]
-    return HTMLResponse(_render_ui(sites))
+    return HTMLResponse(_render_ui(sites, nav_username(request)))
 
 
-def _render_ui(sites: list[dict[str, Any]]) -> str:
+def _render_ui(sites: list[dict[str, Any]], username: str) -> str:
     own: list[dict[str, Any]] = []
     grouped: dict[str, list[dict[str, Any]]] = {}
     for s in sites:
@@ -583,7 +583,7 @@ def _render_ui(sites: list[dict[str, Any]]) -> str:
             f'    </tr>'
         )
 
-    return _DEV_HTML.replace('__NAV__', render_nav('dev')).replace('__SITE_ROWS__', ''.join(rows))
+    return _DEV_HTML.replace('__NAV__', render_nav('dev', username)).replace('__SITE_ROWS__', ''.join(rows))
 
 
 _DEV_HTML: str = load_data(__file__, 'dev_ui', kind='html')

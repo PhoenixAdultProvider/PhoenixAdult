@@ -216,7 +216,8 @@ async def test_collection_logos_pushes_matching_logo(monkeypatch: pytest.MonkeyP
     report = await pr.push_collection_logos(apply=True)
     assert report.collections == 1 and report.matched == 1 and report.pushed == 1 and report.already == 0
     assert post.called and put.called
-    assert put.calls[0].request.url.params['url'] == 'http://192.0.2.20:3000/images/local/logos/brazzers/logo.baby-got-boobs.png'
+    pushed = put.calls[0].request.url.params['url']
+    assert pushed.startswith('http://192.0.2.20:3000/images/local/logos/brazzers/logo.baby-got-boobs.png?sig=')
 
 
 @respx.mock

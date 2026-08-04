@@ -19,11 +19,13 @@ from phoenixadult.utils.plex.rating_key import to_rating_key
 
 @pytest.fixture(autouse=True)
 def _unsigned_urls(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
+    monkeypatch.setattr(mc, 'sign_url', lambda url: url)
 
 
-def test_rebased_urls_are_signed_when_admin_token_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
+def test_rebased_urls_are_signed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.auth.url_signing import sign_url
+
+    monkeypatch.setattr(mc, 'sign_url', sign_url)
     out = mc._rebase(
         {'thumb': '/cache/ab/bundle/images/img-00.jpg', 'role': '/images/local/people/actor.jane_female.jpg?v=1'},
         'http://b',

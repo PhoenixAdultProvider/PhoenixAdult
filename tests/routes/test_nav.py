@@ -3,23 +3,21 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from phoenixadult.app_factory import create_app
 from phoenixadult.routes import render_nav
+from tests.conftest import authed_client
 
-TOKEN = 'navtoken'
 PAGES = (('/metadata', 'Metadata'), ('/people', 'People'), ('/logos', 'Logos'), ('/queue', 'Queue'), ('/dev', 'Dev'), ('/config', 'Config'))
 
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv('NODE_ENV', 'development')
-    monkeypatch.setenv('ADMIN_TOKEN', TOKEN)
-    return TestClient(create_app())
+    return authed_client()
 
 
 @pytest.mark.parametrize(('path', 'label'), PAGES)
 def test_every_page_carries_the_nav_with_its_own_tab_active(client: TestClient, path: str, label: str) -> None:
-    body = client.get(path, headers={'x-admin-token': TOKEN}).text
+    body = client.get(path).text
     assert '__NAV__' not in body
     assert body.count('class="app-nav"') == 1
     for _, other in PAGES:
@@ -29,7 +27,7 @@ def test_every_page_carries_the_nav_with_its_own_tab_active(client: TestClient, 
 
 
 def test_edit_subpages_highlight_their_parent(client: TestClient) -> None:
-    people = client.get('/people/edit?filename=nobody.jpg', headers={'x-admin-token': TOKEN})
+    people = client.get('/people/edit?filename=nobody.jpg')
     assert people.status_code == 404
     assert '<a href="/people" class="active"' in render_nav('people')
     assert '<a href="/metadata" class="active"' in render_nav('metadata')
@@ -39,9 +37,11 @@ def test_config_sits_at_the_end_of_the_nav(monkeypatch: pytest.MonkeyPatch) -> N
     import re
 
     monkeypatch.setenv('NODE_ENV', 'development')
-    assert re.findall(r'>([^<]+)</a>', render_nav('metadata')) == ['Metadata', 'People', 'Logos', 'Queue', 'Dev', 'Config']
+    labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
+    assert [x for x in labels if x != 'Log Out'][:6] == ['Metadata', 'People', 'Logos', 'Queue', 'Dev', 'Config']
     monkeypatch.setenv('NODE_ENV', 'production')
-    assert re.findall(r'>([^<]+)</a>', render_nav('metadata')) == ['Metadata', 'People', 'Logos', 'Queue', 'Config']
+    labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
+    assert [x for x in labels if x != 'Log Out'][:5] == ['Metadata', 'People', 'Logos', 'Queue', 'Config']
 
 
 def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -50,13 +50,20 @@ def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
     assert '>Dev</a>' not in nav and '>Config</a>' in nav
 
 
-def test_nav_carries_the_admin_token_to_the_other_pages(client: TestClient) -> None:
-    body = client.get('/queue', headers={'x-admin-token': TOKEN}).text
-    assert "URLSearchParams(location.search).get('token')" in body
+def test_nav_shows_the_user_menu_and_logout(client: TestClient) -> None:
+    body = client.get('/queue').text
+    assert 'class="nav-user"' in body and 'href="/account"' in body
+    assert 'nav-logout' in body and 'Log Out' in body
+    assert "URLSearchParams(location.search).get('token')" not in body
+
+
+def test_nav_without_a_username_has_no_user_menu() -> None:
+    nav = render_nav('config')
+    assert 'class="nav-user"' not in nav and '<button type="button" class="nav-logout"' not in nav
 
 
 def test_every_page_carries_the_theme_loader_and_toggle(client: TestClient) -> None:
-    body = client.get('/queue', headers={'x-admin-token': TOKEN}).text
+    body = client.get('/queue').text
     assert '<link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">' in body
     assert 'prefers-color-scheme: light' in body
     assert 'localStorage.getItem' in body and 'pa-theme' in body

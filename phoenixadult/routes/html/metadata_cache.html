@@ -271,7 +271,6 @@
   <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
   <script>
-    const TOKEN = __TOKEN__;
     const DUP_KEYS = __DUP_KEYS__;
     let ALL = __ENTRIES_JSON__;
     let TOTAL = __TOTAL__;
@@ -576,21 +575,15 @@
     }
 
     function authHeaders(extra) {
-      const h = Object.assign({}, extra || {});
-      if (TOKEN) h['x-admin-token'] = TOKEN;
-      return h;
+      return Object.assign({}, extra || {});
     }
 
     function edit(key) {
-      const p = new URLSearchParams({key});
-      if (TOKEN) p.set('token', TOKEN);
-      location.href = '/metadata/edit?' + p.toString();
+      location.href = '/metadata/edit?' + new URLSearchParams({key}).toString();
     }
 
     function personLink(name) {
-      const p = new URLSearchParams({name});
-      if (TOKEN) p.set('token', TOKEN);
-      return '/people/edit?' + p.toString();
+      return '/people/edit?' + new URLSearchParams({name}).toString();
     }
 
     async function purge(key) {

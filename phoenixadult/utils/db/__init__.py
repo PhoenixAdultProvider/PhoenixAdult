@@ -342,6 +342,46 @@ _MIGRATIONS: list[_Migration] = [
     """,
     _recase_noncanonical_names,
     _recase_noncanonical_names,
+    """
+    CREATE TABLE users (
+      id                  INTEGER PRIMARY KEY,
+      username            TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash       TEXT NOT NULL,
+      is_admin            INTEGER NOT NULL DEFAULT 0,
+      api_key_hash        TEXT UNIQUE,
+      api_key_hint        TEXT NOT NULL DEFAULT '',
+      created_at          REAL NOT NULL,
+      password_changed_at REAL NOT NULL
+    );
+    CREATE TABLE sessions (
+      token_hash   TEXT PRIMARY KEY,
+      user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at   REAL NOT NULL,
+      last_seen_at REAL NOT NULL,
+      user_agent   TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX sessions_user ON sessions(user_id);
+    CREATE TABLE plex_connections (
+      id              INTEGER PRIMARY KEY,
+      user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name            TEXT NOT NULL,
+      server_url      TEXT NOT NULL DEFAULT '',
+      token_encrypted TEXT NOT NULL DEFAULT '',
+      client_id       TEXT NOT NULL DEFAULT '',
+      update_channel  TEXT NOT NULL DEFAULT 'plex',
+      update_release  TEXT NOT NULL DEFAULT '',
+      image_base_url  TEXT NOT NULL DEFAULT '',
+      created_at      REAL NOT NULL,
+      UNIQUE (user_id, name)
+    );
+    CREATE INDEX plex_connections_user ON plex_connections(user_id);
+    CREATE TABLE plex_connection_clients (
+      connection_id INTEGER NOT NULL REFERENCES plex_connections(id) ON DELETE CASCADE,
+      client_id     TEXT NOT NULL,
+      PRIMARY KEY (connection_id, client_id)
+    );
+    CREATE INDEX plex_connection_clients_client ON plex_connection_clients(client_id);
+    """,
 ]
 
 _local = threading.local()

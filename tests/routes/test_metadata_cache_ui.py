@@ -6,28 +6,24 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from tests.conftest import authed_client
 
 
-def test_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    client = TestClient(create_app())
-    assert client.get('/metadata').status_code == 401
-    page = client.get('/metadata?token=tok')
+def test_requires_auth() -> None:
+    assert TestClient(create_app()).get('/metadata', headers={'accept': 'application/json'}).status_code == 401
+    page = authed_client().get('/metadata')
     assert page.status_code == 200
     assert 'Snapshot Metadata Cache' in page.text
 
 
 def test_purge_validates(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.post('/metadata/purge', json={}, headers=hdr).status_code == 400
-    r = client.post('/metadata/purge', json={'key': 'nope/abc'}, headers=hdr)
+    client = authed_client()
+    assert client.post('/metadata/purge', json={}).status_code == 400
+    r = client.post('/metadata/purge', json={'key': 'nope/abc'})
     assert r.status_code == 200 and r.json()['ok'] is False
 
 
 def test_purge_bulk_validates_and_counts(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     purged: list[str] = []
@@ -37,27 +33,25 @@ def test_purge_bulk_validates_and_counts(monkeypatch: pytest.MonkeyPatch) -> Non
         return key != 'studio/missing'
 
     monkeypatch.setattr(mcr.metadata_cache, 'purge', fake_purge)
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.post('/metadata/purge-bulk', json={}, headers=hdr).status_code == 400
-    assert client.post('/metadata/purge-bulk', json={'keys': []}, headers=hdr).status_code == 400
-    assert client.post('/metadata/purge-bulk', json={'keys': 'studio/abc'}, headers=hdr).status_code == 400
-    assert client.post('/metadata/purge-bulk', json={'keys': ['noslash']}, headers=hdr).status_code == 400
-    assert client.post('/metadata/purge-bulk', json={'keys': ['studio/abc', 5]}, headers=hdr).status_code == 400
+    client = authed_client()
+    assert client.post('/metadata/purge-bulk', json={}).status_code == 400
+    assert client.post('/metadata/purge-bulk', json={'keys': []}).status_code == 400
+    assert client.post('/metadata/purge-bulk', json={'keys': 'studio/abc'}).status_code == 400
+    assert client.post('/metadata/purge-bulk', json={'keys': ['noslash']}).status_code == 400
+    assert client.post('/metadata/purge-bulk', json={'keys': ['studio/abc', 5]}).status_code == 400
     assert purged == []
 
-    r = client.post('/metadata/purge-bulk', json={'keys': ['studio/abc', 'studio/missing', 'studio/sub/def']}, headers=hdr)
+    r = client.post('/metadata/purge-bulk', json={'keys': ['studio/abc', 'studio/missing', 'studio/sub/def']})
     assert r.status_code == 200 and r.json() == {'ok': True, 'purged': 2}
     assert purged == ['studio/abc', 'studio/missing', 'studio/sub/def']
 
 
 def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'purgeShown()' in page.text
     assert 'This cannot be undone.' in page.text
     assert 'exportShown()' in page.text
@@ -66,7 +60,6 @@ def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
@@ -74,11 +67,10 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
     monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda **_kw: ['Studio'])
     monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda **_kw: {'taglines': ['T']})
-    client = TestClient(create_app())
-    assert client.get('/metadata/state').status_code == 401
-    hdr = {'x-admin-token': 'tok'}
-    assert client.get('/metadata/state', headers=hdr).json() == {'token': '3:123.0'}
-    assert client.get('/metadata/entries', headers=hdr).json() == {
+    assert TestClient(create_app()).get('/metadata/state', headers={'accept': 'application/json'}).status_code == 401
+    client = authed_client()
+    assert client.get('/metadata/state').json() == {'token': '3:123.0'}
+    assert client.get('/metadata/entries').json() == {
         'entries': [{'key': 'studio/abc'}],
         'dup_keys': ['studio/abc'],
         'total': 1,
@@ -88,12 +80,11 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'metadata-cache-filters' in page.text
     assert 'restoreFilters()' in page.text
     assert "fetch('/metadata/state'" in page.text
@@ -101,19 +92,17 @@ def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'const DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
     assert 'Show Duplicates' in page.text
 
 
 def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'let TOTAL = 0;' in page.text
     assert 'let STUDIOS = [];' in page.text
     assert 'serverQuery(PAGE_SIZE, true)' in page.text
@@ -143,61 +132,57 @@ def _seed_library() -> None:
 
 
 def test_entries_endpoint_filters_sorts_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_library()
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    j = client.get('/metadata/entries', headers=hdr).json()
+    j = client.get('/metadata/entries').json()
     assert j['total'] == 5 and len(j['entries']) == 5
     assert [e['title'] for e in j['entries']] == ['Echo Scene', 'Delta Night', 'Charlie Night', 'Bravo Scene', 'Alpha Scene']
     assert j['studios'] == ['Brazzers', 'Vixen']
     assert j['dup_keys'] == []
 
-    j = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers'}).json()
+    j = client.get('/metadata/entries', params={'studio': 'Brazzers'}).json()
     assert j['total'] == 2
     assert {e['studio'] for e in j['entries']} == {'Brazzers'}
 
-    j = client.get('/metadata/entries', headers=hdr, params={'q': 'night'}).json()
+    j = client.get('/metadata/entries', params={'q': 'night'}).json()
     assert j['total'] == 2
     assert sorted(e['title'] for e in j['entries']) == ['Charlie Night', 'Delta Night']
 
-    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'title', 'dir': 'asc'}).json()
+    j = client.get('/metadata/entries', params={'sort': 'title', 'dir': 'asc'}).json()
     assert [e['title'] for e in j['entries']] == ['Alpha Scene', 'Bravo Scene', 'Charlie Night', 'Delta Night', 'Echo Scene']
 
-    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'release_date', 'dir': 'desc'}).json()
+    j = client.get('/metadata/entries', params={'sort': 'release_date', 'dir': 'desc'}).json()
     assert [e['date'] for e in j['entries']] == ['2024-05-01', '2024-04-01', '2024-03-01', '2024-02-01', '2024-01-01']
 
-    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'title', 'dir': 'asc', 'limit': 2, 'offset': 2}).json()
+    j = client.get('/metadata/entries', params={'sort': 'title', 'dir': 'asc', 'limit': 2, 'offset': 2}).json()
     assert j['total'] == 5
     assert [e['title'] for e in j['entries']] == ['Charlie Night', 'Delta Night']
 
-    j = client.get('/metadata/entries', headers=hdr, params={'sort': 'bogus', 'dir': 'sideways'}).json()
+    j = client.get('/metadata/entries', params={'sort': 'bogus', 'dir': 'sideways'}).json()
     assert [e['title'] for e in j['entries']][0] == 'Echo Scene'
 
-    j = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers', 'q': 'alpha'}).json()
+    j = client.get('/metadata/entries', params={'studio': 'Brazzers', 'q': 'alpha'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Alpha Scene'
 
 
 def test_entries_facet_filters_paginate_consistently(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_library()
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    j = client.get('/metadata/entries', headers=hdr, params={'year': '2024', 'month': '03'}).json()
+    j = client.get('/metadata/entries', params={'year': '2024', 'month': '03'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Charlie Night'
 
-    j = client.get('/metadata/entries', headers=hdr, params={'year': '2024', 'limit': 2, 'offset': 2}).json()
+    j = client.get('/metadata/entries', params={'year': '2024', 'limit': 2, 'offset': 2}).json()
     assert j['total'] == 5 and len(j['entries']) == 2
 
-    j = client.get('/metadata/entries', headers=hdr, params={'tagline': '__blank__'}).json()
+    j = client.get('/metadata/entries', params={'tagline': '__blank__'}).json()
     assert j['total'] == 5
 
-    j = client.get('/metadata/entries', headers=hdr, params={'data18': '__set__'}).json()
+    j = client.get('/metadata/entries', params={'data18': '__set__'}).json()
     assert j['total'] == 0
 
-    j = client.get('/metadata/entries', headers=hdr, params={'limit': 0}).json()
+    j = client.get('/metadata/entries', params={'limit': 0}).json()
     assert j['total'] == 5 and len(j['entries']) == 5
 
     facets = j['facets']
@@ -207,50 +192,44 @@ def test_entries_facet_filters_paginate_consistently(monkeypatch: pytest.MonkeyP
 
 
 def test_entries_filter_by_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_library()
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    j = client.get('/metadata/entries', headers=hdr).json()
+    j = client.get('/metadata/entries').json()
     assert j['facets']['providers'] == ['Project1Service', 'Strike3']
     assert {e['provider'] for e in j['entries']} == {'Project1Service', 'Strike3'}
 
-    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Strike3'}).json()
+    j = client.get('/metadata/entries', params={'provider': 'Strike3'}).json()
     assert j['total'] == 3
     assert {e['studio'] for e in j['entries']} == {'Vixen'}
 
-    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Project1Service'}).json()
+    j = client.get('/metadata/entries', params={'provider': 'Project1Service'}).json()
     assert j['total'] == 2
 
-    assert client.get('/metadata/entries', headers=hdr, params={'provider': 'Vixen'}).json()['total'] == 0
-    assert client.get('/metadata/entries', headers=hdr, params={'provider': 'Nope'}).json()['total'] == 0
+    assert client.get('/metadata/entries', params={'provider': 'Vixen'}).json()['total'] == 0
+    assert client.get('/metadata/entries', params={'provider': 'Nope'}).json()['total'] == 0
 
 
 def test_a_provider_the_registry_forgot_still_filters_to_itself(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_scene('Some Retired Site', 'c9', 'Orphan Scene', 'Retired', '2024-06-01', 600.0)
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    j = client.get('/metadata/entries', headers=hdr).json()
+    j = client.get('/metadata/entries').json()
     assert j['facets']['providers'] == ['Some Retired Site']
 
-    j = client.get('/metadata/entries', headers=hdr, params={'provider': 'Some Retired Site'}).json()
+    j = client.get('/metadata/entries', params={'provider': 'Some Retired Site'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Orphan Scene'
 
 
 def test_page_offers_a_provider_filter(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'f-provider' in page.text
     assert '>Provider<' in page.text
     assert '<option value="__manual__">Manual</option>' in page.text
 
 
 def test_page_has_a_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert '@media (max-width: 720px)' in page.text
     assert 'data-label="Data18"' in page.text
     assert 'class="c-title"' in page.text
@@ -262,19 +241,17 @@ def test_page_has_a_card_layout(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cards_show_genre_counts_and_actor_names(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'data-label="Genres"' in page.text
     assert 'data-label="Actors"' in page.text
     assert 'personLink(a)' in page.text
     assert 'function personLink(' in page.text
-    assert "'/people/edit?' + p.toString()" in page.text
+    assert "'/people/edit?' + new URLSearchParams({name}).toString()" in page.text
     assert '${e.genres || 0}' in page.text
 
 
 def test_page_offers_an_actor_filter_and_bulk_refresh(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'id="f-actor"' in page.text
     assert '>Actor<' in page.text
     assert "'f-actor': 'actor'" in page.text
@@ -283,8 +260,7 @@ def test_page_offers_an_actor_filter_and_bulk_refresh(monkeypatch: pytest.Monkey
 
 
 def test_page_has_a_mobile_sort_control(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'mobileSort' in page.text
     assert '>Sort By<' in page.text
     assert 'buildSortOptions()' in page.text
@@ -295,12 +271,11 @@ def _edit_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: {'MediaContainer': {'Metadata': [{'title': 'Scene ' + key}]}})
-    return TestClient(create_app())
+    return authed_client()
 
 
 def test_edit_page_offers_a_refresh_button(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = _edit_client(monkeypatch).get('/metadata/edit?token=tok&key=studio/abc')
+    page = _edit_client(monkeypatch).get('/metadata/edit?key=studio/abc')
     assert page.status_code == 200
     assert '>Refresh Metadata<' in page.text
     assert 'refreshMeta()' in page.text
@@ -308,7 +283,6 @@ def test_edit_page_offers_a_refresh_button(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_refresh_queues_a_forced_rescrape(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
     from phoenixadult.models.provider_info import ProviderInfo
 
@@ -327,11 +301,10 @@ def test_refresh_queues_a_forced_rescrape(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: {'site': 'BaDoinkVR', 'cur_id': 'abc', 'rating_key': 'scene-badoinkvr-abc'})
     monkeypatch.setattr(mcr.scene_store, 'snapshot_state', lambda site, cur_id: {'key': 'studio/abc', 'updated_at': '100.0'})
 
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.post('/metadata/refresh', json={}, headers=hdr).status_code == 400
+    client = authed_client()
+    assert client.post('/metadata/refresh', json={}).status_code == 400
 
-    r = client.post('/metadata/refresh', json={'key': 'studio/abc'}, headers=hdr)
+    r = client.post('/metadata/refresh', json={'key': 'studio/abc'})
     assert r.status_code == 200
     assert r.json() == {
         'ok': True,
@@ -345,30 +318,26 @@ def test_refresh_queues_a_forced_rescrape(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_refresh_rejects_a_key_with_no_scene(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: None)
-    r = TestClient(create_app()).post('/metadata/refresh', json={'key': 'studio/gone'}, headers={'x-admin-token': 'tok'})
+    r = authed_client().post('/metadata/refresh', json={'key': 'studio/gone'})
     assert r.status_code == 404 and r.json()['ok'] is False
 
 
 def test_snapshot_endpoint_tracks_a_moved_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     monkeypatch.setattr(mcr.scene_store, 'snapshot_state', lambda site, cur_id: {'key': 'NewStudio/abc', 'updated_at': '200.0'})
     monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: {'MediaContainer': {'Metadata': [{'title': 'Renamed'}]}})
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.get('/metadata/snapshot', headers=hdr).status_code == 400
+    client = authed_client()
+    assert client.get('/metadata/snapshot').status_code == 400
 
-    j = client.get('/metadata/snapshot', headers=hdr, params={'site': 'BaDoinkVR', 'cur_id': 'abc'}).json()
+    j = client.get('/metadata/snapshot', params={'site': 'BaDoinkVR', 'cur_id': 'abc'}).json()
     assert j == {'ok': True, 'key': 'NewStudio/abc', 'updated_at': '200.0', 'metadata': {'title': 'Renamed'}}
 
 
 def test_refresh_bulk_queues_each_match(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
     from phoenixadult.models.provider_info import ProviderInfo
 
@@ -390,19 +359,17 @@ def test_refresh_bulk_queues_each_match(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(mcr, 'service_for', lambda provider_id: (provider, _Svc()))
     monkeypatch.setattr(mcr.scene_store, 'scrape_target', lambda key: targets.get(key))
 
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.post('/metadata/refresh-bulk', json={'keys': []}, headers=hdr).status_code == 400
-    assert client.post('/metadata/refresh-bulk', json={'keys': ['noslash']}, headers=hdr).status_code == 400
+    client = authed_client()
+    assert client.post('/metadata/refresh-bulk', json={'keys': []}).status_code == 400
+    assert client.post('/metadata/refresh-bulk', json={'keys': ['noslash']}).status_code == 400
 
-    r = client.post('/metadata/refresh-bulk', json={'keys': ['studio/a', 'studio/b', 'studio/gone']}, headers=hdr)
+    r = client.post('/metadata/refresh-bulk', json={'keys': ['studio/a', 'studio/b', 'studio/gone']})
     assert r.status_code == 200
     assert r.json() == {'ok': True, 'queued': 1, 'skipped': 2}
     assert queued == ['scene-badoinkvr-a', 'scene-badoinkvr-full']
 
 
 def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     import phoenixadult.routes.metadata_cache_routes as mcr
 
     seen: dict[str, object] = {}
@@ -413,8 +380,8 @@ def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(mcr.metadata_cache, 'entries_page', fake_page)
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
-    client = TestClient(create_app())
-    client.get('/metadata/entries', headers={'x-admin-token': 'tok'}, params={'actor': 'Jane Doe'})
+    client = authed_client()
+    client.get('/metadata/entries', params={'actor': 'Jane Doe'})
     assert seen['actor'] == 'Jane Doe'
 
 
@@ -436,30 +403,27 @@ def _seed_cast(site: str, cur: str, title: str, actors: list[str], genres: list[
 
 
 def test_entries_carry_actors_and_genre_counts_and_filter_by_actor(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_cast('Brazzers', 'x1', 'With Cast', ['Jane Doe', 'John Roe'], ['Anal', 'Blonde', 'MILF'])
     _seed_cast('Brazzers', 'x2', 'No Cast', [], ['Anal'])
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    by_title = {e['title']: e for e in client.get('/metadata/entries', headers=hdr).json()['entries']}
+    by_title = {e['title']: e for e in client.get('/metadata/entries').json()['entries']}
     assert by_title['With Cast']['actors'] == ['Jane Doe', 'John Roe']
     assert by_title['With Cast']['genres'] == 3
     assert by_title['No Cast']['actors'] == []
     assert by_title['No Cast']['genres'] == 1
 
-    j = client.get('/metadata/entries', headers=hdr, params={'actor': 'jane'}).json()
+    j = client.get('/metadata/entries', params={'actor': 'jane'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'With Cast'
 
-    j = client.get('/metadata/entries', headers=hdr, params={'actor': '__blank__'}).json()
+    j = client.get('/metadata/entries', params={'actor': '__blank__'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'No Cast'
 
-    assert client.get('/metadata/entries', headers=hdr, params={'actor': 'nobody'}).json()['total'] == 0
+    assert client.get('/metadata/entries', params={'actor': 'nobody'}).json()['total'] == 0
 
 
 def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert '<div class="searchbar">' in page.text
     assert '<div class="controls" id="controls">' in page.text
     assert '<div class="toolbar">' in page.text
@@ -469,43 +433,37 @@ def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPat
 
 
 def test_genre_filter_splits_tagged_from_untagged(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_cast('Brazzers', 'g1', 'Has Genres', ['Jane Doe'], ['Anal', 'MILF'])
     _seed_cast('Brazzers', 'g2', 'Bare Scene', ['Jane Doe'], [])
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    j = client.get('/metadata/entries', headers=hdr, params={'genre': '__set__'}).json()
+    j = client.get('/metadata/entries', params={'genre': '__set__'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Has Genres'
 
-    j = client.get('/metadata/entries', headers=hdr, params={'genre': '__blank__'}).json()
+    j = client.get('/metadata/entries', params={'genre': '__blank__'}).json()
     assert j['total'] == 1 and j['entries'][0]['title'] == 'Bare Scene'
 
-    assert client.get('/metadata/entries', headers=hdr).json()['total'] == 2
+    assert client.get('/metadata/entries').json()['total'] == 2
 
 
 def test_actor_suggestions_match_and_cap(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_cast('Brazzers', 's1', 'One', ['Jane Doe', 'Janet Rowe'], ['Anal'])
     _seed_cast('Brazzers', 's2', 'Two', ['John Roe', 'Jane Doe'], ['Anal'])
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    assert TestClient(create_app()).get('/metadata/actors', headers={'accept': 'application/json'}).status_code == 401
+    client = authed_client()
 
-    assert client.get('/metadata/actors').status_code == 401
-
-    everyone = client.get('/metadata/actors', headers=hdr).json()['actors']
+    everyone = client.get('/metadata/actors').json()['actors']
     assert everyone == ['Jane Doe', 'Janet Rowe', 'John Roe']
 
-    assert client.get('/metadata/actors', headers=hdr, params={'q': 'jan'}).json()['actors'] == ['Jane Doe', 'Janet Rowe']
-    assert client.get('/metadata/actors', headers=hdr, params={'q': 'roe'}).json()['actors'] == ['John Roe']
-    assert client.get('/metadata/actors', headers=hdr, params={'q': 'ow'}).json()['actors'] == ['Janet Rowe']
-    assert client.get('/metadata/actors', headers=hdr, params={'limit': 1}).json()['actors'] == ['Jane Doe']
-    assert client.get('/metadata/actors', headers=hdr, params={'q': 'nobody'}).json()['actors'] == []
+    assert client.get('/metadata/actors', params={'q': 'jan'}).json()['actors'] == ['Jane Doe', 'Janet Rowe']
+    assert client.get('/metadata/actors', params={'q': 'roe'}).json()['actors'] == ['John Roe']
+    assert client.get('/metadata/actors', params={'q': 'ow'}).json()['actors'] == ['Janet Rowe']
+    assert client.get('/metadata/actors', params={'limit': 1}).json()['actors'] == ['Jane Doe']
+    assert client.get('/metadata/actors', params={'q': 'nobody'}).json()['actors'] == []
 
 
 def test_page_wires_the_actor_autocomplete_and_genre_filter(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     assert 'list="actor-options"' in page.text
     assert '<datalist id="actor-options"></datalist>' in page.text
     assert 'actorChanged()' in page.text
@@ -517,8 +475,7 @@ def test_page_wires_the_actor_autocomplete_and_genre_filter(monkeypatch: pytest.
 
 
 def test_edit_page_stops_waiting_when_the_job_leaves_the_queue(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = _edit_client(monkeypatch).get('/metadata/edit?token=tok&key=studio/abc')
+    page = _edit_client(monkeypatch).get('/metadata/edit?key=studio/abc')
     assert 'REFRESH_SETTLE_MS' in page.text
     assert "return 'unchanged'" in page.text
     assert 'The scrape finished without changing this snapshot' in page.text
@@ -535,24 +492,22 @@ def _seed_faceted(site: str, cur: str, title: str, studio: str, tagline: str, da
 
 
 def test_facets_narrow_to_the_other_active_filters(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_faceted('Brazzers', 'f1', 'A', 'Brazzers', 'Real Wife Stories', '2024-01-05')
     _seed_faceted('Brazzers', 'f2', 'B', 'Brazzers', 'Mom Ok', '2023-06-11')
     _seed_faceted('Vixen', 'f3', 'C', 'Vixen', 'Blacked', '2022-03-02')
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
-    wide = client.get('/metadata/entries', headers=hdr).json()
+    wide = client.get('/metadata/entries').json()
     assert wide['studios'] == ['Brazzers', 'Vixen']
     assert wide['facets']['taglines'] == ['Blacked', 'Mom Ok', 'Real Wife Stories']
     assert wide['facets']['years'] == ['2024', '2023', '2022']
 
-    narrow = client.get('/metadata/entries', headers=hdr, params={'studio': 'Brazzers'}).json()
+    narrow = client.get('/metadata/entries', params={'studio': 'Brazzers'}).json()
     assert narrow['facets']['taglines'] == ['Mom Ok', 'Real Wife Stories']
     assert narrow['facets']['years'] == ['2024', '2023']
     assert narrow['studios'] == ['Brazzers', 'Vixen']
 
-    by_year = client.get('/metadata/entries', headers=hdr, params={'year': '2022'}).json()
+    by_year = client.get('/metadata/entries', params={'year': '2022'}).json()
     assert by_year['studios'] == ['Vixen']
     assert by_year['facets']['taglines'] == ['Blacked']
     assert by_year['facets']['years'] == ['2024', '2023', '2022']
@@ -575,15 +530,13 @@ def _seed_people(cur: str, title: str, roles: list[str], directors: list[str], c
 
 
 def test_blank_filters_find_snapshots_missing_people_and_collections(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     _seed_people('pp1', 'Full', ['Jane Doe'], ['A Director'], ['RWS'])
     _seed_people('pp2', 'No Cast', [], ['A Director'], ['RWS'])
     _seed_people('pp3', 'Bare', [], [], [])
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
 
     def titles(**params: str) -> list[str]:
-        return sorted(e['title'] for e in client.get('/metadata/entries', headers=hdr, params=params).json()['entries'])
+        return sorted(e['title'] for e in client.get('/metadata/entries', params=params).json()['entries'])
 
     assert titles(cast='__blank__') == ['Bare', 'No Cast']
     assert titles(cast='__set__') == ['Full']
@@ -594,8 +547,7 @@ def test_blank_filters_find_snapshots_missing_people_and_collections(monkeypatch
 
 
 def test_page_offers_blank_options_for_people_and_lists_them_first(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/metadata?token=tok')
+    page = authed_client().get('/metadata')
     for fid in ('f-cast', 'f-director', 'f-producer'):
         assert f'id="{fid}"' in page.text
     assert page.text.count('<option value="__blank__">Uncredited</option>') == 3
@@ -605,17 +557,16 @@ def test_page_offers_blank_options_for_people_and_lists_them_first(monkeypatch: 
 
 
 def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     client = _edit_client(monkeypatch)
 
-    listing = client.get('/metadata?token=tok')
+    listing = client.get('/metadata')
     assert 'id="sfwToggle"' in listing.text
     assert "const SFW_KEY = 'metadata-sfw';" in listing.text
     assert 'toggleSfw()' in listing.text
     assert "const thumb = SFW\n          ? ''" in listing.text
     assert 'Hidden' not in listing.text
 
-    editor = client.get('/metadata/edit?token=tok&key=studio/abc')
+    editor = client.get('/metadata/edit?key=studio/abc')
     assert 'id="sfwToggle"' in editor.text
     assert "const SFW_KEY = 'metadata-sfw';" in editor.text
     assert 'if (!SFW) {\n          const preview' in editor.text
@@ -626,7 +577,6 @@ def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
-    monkeypatch.setenv('ADMIN_TOKEN', '')
     from phoenixadult.models.metadata import PlexMetadataResponse
     from phoenixadult.utils import cache as mc
 
@@ -642,7 +592,7 @@ async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pyt
     assert await mc.write('MYLF', 'slug1', resp) is True
     key = mc.entries()[0]['key']
 
-    body = TestClient(create_app()).get(f'/metadata/edit?key={key}').text
+    body = authed_client().get(f'/metadata/edit?key={key}').text
     assert '"cool-scene-mylffeatures"' in body
     assert 'id="d18slug"' in body
     assert 'id="d18slugCopy"' in body
@@ -651,7 +601,6 @@ async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pyt
 async def test_entries_endpoint_filters_potential_duplicates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
-    monkeypatch.setenv('ADMIN_TOKEN', '')
     from phoenixadult.models.metadata import PlexMetadataResponse
     from phoenixadult.utils import cache as mc
 
@@ -680,7 +629,7 @@ async def test_entries_endpoint_filters_potential_duplicates(tmp_path: Path, mon
     assert await mc.write('MYLF', 'q2', resp('twin peaks', 'MylfWood')) is True
     assert await mc.write('MYLF', 'q3', resp('Unrelated Scene', 'Mylf Wood')) is True
 
-    client = TestClient(create_app())
+    client = authed_client()
     everything = client.get('/metadata/entries').json()
     assert everything['total'] == 3
     dups = client.get('/metadata/entries?dups=2').json()

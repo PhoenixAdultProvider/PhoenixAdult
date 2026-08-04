@@ -9,11 +9,11 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from phoenixadult.app_factory import create_app
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.images import image_fetcher
+from tests.conftest import authed_client
 
 SITE = 'Brazzers'
 CUR_ID = 'cur1'
@@ -48,8 +48,7 @@ def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'meta'))
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
-    monkeypatch.delenv('ADMIN_TOKEN', raising=False)
-    return TestClient(create_app())
+    return authed_client()
 
 
 def test_metadata_edit_page_renders_the_stored_fields(client: TestClient, tmp_path: Path) -> None:

@@ -10,16 +10,16 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
-from phoenixadult.routes import read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_nav
 from phoenixadult.routes.provider_router import service_for
 from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
 
-router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
 _TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
 _EDIT_TEMPLATE: str = load_data(__file__, 'metadata_edit', kind='html')
@@ -42,14 +42,11 @@ async def page(request: Request) -> HTMLResponse:
         run_in('store', metadata_cache.studios),
         run_in('store', metadata_cache.facets),
     )
-    token = request.query_params.get('token', '')
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
-    token_json = json.dumps(token).replace('<', '\\u003c')
     entries_json = json.dumps(entries).replace('<', '\\u003c')
     body = (
-        _TEMPLATE.replace('__NAV__', render_nav('metadata'))
+        _TEMPLATE.replace('__NAV__', render_nav('metadata', nav_username(request)))
         .replace('__STATE__', state)
-        .replace('__TOKEN__', token_json)
         .replace('__ENTRIES_JSON__', entries_json)
         .replace('__TOTAL__', json.dumps(total))
         .replace('__STUDIOS__', json.dumps(studios).replace('<', '\\u003c'))
@@ -70,9 +67,8 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     body = (
-        _EDIT_TEMPLATE.replace('__NAV__', render_nav('metadata'))
+        _EDIT_TEMPLATE.replace('__NAV__', render_nav('metadata', nav_username(request)))
         .replace('__SUBTITLE__', subtitle)
-        .replace('__TOKEN__', _json_attr(request.query_params.get('token', '')))
         .replace('__KEY__', _json_attr(key))
         .replace('__MAPPING_SLUG__', _json_attr(slug))
         .replace('__METADATA__', _json_attr(md[0]))

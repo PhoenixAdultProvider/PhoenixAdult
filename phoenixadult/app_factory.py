@@ -26,14 +26,16 @@ def _log_startup_banner() -> None:
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 
-    qs = f'?token={env.admin_token}' if env.admin_token else ''
-    logger.info(f'  Config UI:      {config.base_url}/config{qs}')
-    logger.info(f'  People cache:   {config.base_url}/people{qs}')
-    logger.info(f'  Metadata cache: {config.base_url}/metadata{qs}')
-    if not env.is_production:
-        logger.info(f'  Dev UI:         {config.base_url}/dev{qs}')
-    if not env.admin_token:
-        logger.warn('Admin auth DISABLED (ADMIN_TOKEN is blank) — /config and /dev are open to anyone who can reach this server')
+    from phoenixadult.utils.auth import user_store
+
+    if user_store.user_count() == 0:
+        logger.info(f'  First run — create the admin account at {config.base_url}/setup')
+    else:
+        logger.info(f'  Config UI:      {config.base_url}/config')
+        logger.info(f'  People cache:   {config.base_url}/people')
+        logger.info(f'  Metadata cache: {config.base_url}/metadata')
+        if not env.is_production:
+            logger.info(f'  Dev UI:         {config.base_url}/dev')
     base_url_warning = base_url_config_warning()
     if base_url_warning:
         logger.warn(base_url_warning)
@@ -95,10 +97,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan)
+    app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
+
+    # ── Authentication (login / setup / logout / account) ────────────────────
+    from phoenixadult.routes import auth_routes
+
+    app.include_router(auth_routes.public_router)
+    app.include_router(auth_routes.router)
 
     # ── Dynamic Provider Routes ──────────────────────────────────────────────
     for provider in get_all_providers():
@@ -139,6 +147,22 @@ def create_app() -> FastAPI:
         if 'text/html' in (request.headers.get('accept') or ''):
             return HTMLResponse(FORBIDDEN_PAGE, status_code=403)
         return JSONResponse({'error': 'Direct image access is not allowed'}, status_code=403)
+
+    # ── Login Required (redirect browsers to /login, JSON 401 for API callers) ─
+    from urllib.parse import quote
+
+    from phoenixadult.utils.auth import user_store
+    from phoenixadult.utils.auth.user_auth import LoginRequired
+
+    @app.exception_handler(LoginRequired)
+    async def login_required(request: Request, exc: LoginRequired) -> Response:
+        wants_html = request.method in ('GET', 'HEAD') and 'text/html' in (request.headers.get('accept') or '')
+        if not wants_html:
+            return JSONResponse({'error': 'Unauthorized'}, status_code=401)
+        if await asyncio.to_thread(user_store.user_count) == 0:
+            return Response(status_code=302, headers={'Location': '/setup'})
+        target = request.url.path + (f'?{request.url.query}' if request.url.query else '')
+        return Response(status_code=302, headers={'Location': f'/login?next={quote(target)}'})
 
     # ── Health ───────────────────────────────────────────────────────────────
     @app.get('/health')

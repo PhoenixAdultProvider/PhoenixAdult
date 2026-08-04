@@ -1,0 +1,54 @@
+__THEME__
+<style>
+  body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0;
+         min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 28px 26px;
+          width: 100%; max-width: 360px; }
+  h1 { font-size: 20px; margin: 0 0 4px; color: var(--heading-text); }
+  .sub { color: var(--muted-text); font-size: 13px; margin: 0 0 20px; }
+  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 12px 0 4px; }
+  input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
+          padding: 9px 11px; border-radius: 7px; font-size: 14px; }
+  input:focus { outline: 0; border-color: var(--input-focus-border); }
+  button { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
+           font-size: 14px; font-weight: 500; cursor: pointer; }
+  button:hover { background: var(--button-primary-hover-bg); }
+  button:disabled { opacity: .6; cursor: not-allowed; }
+  .err { margin-top: 14px; font-size: 13px; color: var(--status-danger-text); min-height: 1em; }
+</style>
+<body data-page="config">
+  <form class="card" id="loginForm">
+    <h1>Sign In</h1>
+    <div class="sub">__SUBTITLE__</div>
+    <label for="username">Username</label>
+    <input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" autofocus>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password">
+    <button type="submit" id="submitBtn">Sign In</button>
+    <div class="err" id="err"></div>
+  </form>
+  <script>
+    const NEXT = new URLSearchParams(location.search).get('next') || '';
+    const form = document.getElementById('loginForm');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('submitBtn');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username.value, password: password.value, next: NEXT }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.redirect) { location.href = data.redirect; return; }
+        err.textContent = data.error || 'Sign in failed.';
+      } catch (e) {
+        err.textContent = 'Network error.';
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>

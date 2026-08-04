@@ -4,44 +4,39 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from tests.conftest import authed_client
 
 
-def test_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    client = TestClient(create_app())
-    assert client.get('/people').status_code == 401
-    page = client.get('/people?token=tok')
+def test_requires_auth() -> None:
+    assert TestClient(create_app()).get('/people', headers={'accept': 'application/json'}).status_code == 401
+    page = authed_client().get('/people')
     assert page.status_code == 200
     assert 'People Cache' in page.text
 
 
 def test_restore_requires_filename(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    client = TestClient(create_app())
-    r = client.post('/people/restore', json={}, headers={'x-admin-token': 'tok'})
+    client = authed_client()
+    r = client.post('/people/restore', json={})
     assert r.status_code == 400
 
 
-def test_gender_validates(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
-    assert client.post('/people/gender', json={'gender': 'male'}, headers=hdr).status_code == 400
-    assert client.post('/people/gender', json={'filename': 'a.jpg', 'gender': 'x'}, headers=hdr).status_code == 400
-    r = client.post('/people/gender', json={'filename': 'unknown.jpg', 'gender': 'female'}, headers=hdr)
+def test_gender_validates() -> None:
+    client = authed_client()
+    assert client.post('/people/gender', json={'gender': 'male'}).status_code == 400
+    assert client.post('/people/gender', json={'filename': 'a.jpg', 'gender': 'x'}).status_code == 400
+    r = client.post('/people/gender', json={'filename': 'unknown.jpg', 'gender': 'female'})
     assert r.status_code == 200 and r.json()['ok'] is False
 
 
 def test_apostrophe_filename_renders_safe_buttons(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     d = Path(str(tmp_path)) / 'people' / 'actors' / 'female'
     d.mkdir(parents=True)
     (d / "actor.april-o'neil_female.jpg").write_bytes(b'x')
 
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert page.status_code == 200
     assert 'data-fn="actor.april-o&#x27;neil_female.jpg"' in page.text
     assert 'onclick="purge(' not in page.text
@@ -52,13 +47,12 @@ def test_apostrophe_filename_renders_safe_buttons(monkeypatch: pytest.MonkeyPatc
 def test_cards_are_hidden_until_the_tab_filter_runs(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     d = Path(str(tmp_path)) / 'people' / 'actors' / 'male'
     d.mkdir(parents=True)
     (d / 'actor.voodoo-child_male.jpg').write_bytes(b'x')
 
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert 'display:none}' in page.text.split('.card{')[1].split('.card.gf')[0]
 
 
@@ -121,20 +115,18 @@ def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest
 def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
     from pathlib import Path
 
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     d = Path(str(tmp_path)) / 'people' / 'actors' / 'female'
     d.mkdir(parents=True)
     (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
 
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert 'data-cropped="0"' in page.text
     assert 'id="cropToggle"' in page.text
 
 
 def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert 'filtersToggle' in page.text
     assert 'body.filters-open .tabs' in page.text
     assert 'updateFiltersToggle()' in page.text
@@ -142,8 +134,7 @@ def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.Monke
 
 
 def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert 'id="sfwToggle"' in page.text
     assert 'id="resetBtn"' in page.text
     assert "const SFW_KEY = 'metadata-sfw';" in page.text
@@ -155,15 +146,13 @@ def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) 
 def test_people_images_are_not_fetched_until_hydrated(monkeypatch: pytest.MonkeyPatch) -> None:
     import re
 
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     assert not re.search(r'<img [^>]*\ssrc=', page.text)
     assert 'img.dataset.src' in page.text
 
 
 def test_resetting_people_filters_leaves_sfw_alone(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
-    page = TestClient(create_app()).get('/people?token=tok')
+    page = authed_client().get('/people')
     body = page.text[page.text.index('function resetFilters()') :]
     assert 'SFW' not in body[: body.index('showTab(curTab)')]
 
@@ -194,7 +183,6 @@ def _person_cache(monkeypatch: pytest.MonkeyPatch, tmp_path):  # type: ignore[no
 
     from phoenixadult.utils import db
 
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('STATE_DB_PATH', str(Path(str(tmp_path)) / 'state.db'))
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
@@ -211,7 +199,7 @@ def test_the_edit_page_lists_the_scenes_that_credit_the_person(_person_cache: No
     _seed_scene('Earlier Scene', 'c2', 'Vixen', '', '2023-01-05', ['Jane Doe', 'Someone Else'])
     _seed_scene('Not Hers', 'c3', 'Vixen', '', '2025-01-05', ['Someone Else'])
 
-    page = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'})
+    page = authed_client().get('/people/edit', params={'filename': 'actor.jane-doe_female.jpg'})
 
     assert page.status_code == 200
     body = page.text
@@ -219,22 +207,22 @@ def test_the_edit_page_lists_the_scenes_that_credit_the_person(_person_cache: No
     assert body.index('Later Scene') < body.index('Earlier Scene')
     assert 'Not Hers' not in body
     assert 'Baby Got Boobs' in body and 'Brazzers' in body and '2024-06-01' in body
-    assert 'href="/metadata/edit?key=scenes/' in body and 'token=tok' in body
+    assert 'href="/metadata/edit?key=scenes/' in body
 
 
 def test_the_edit_page_resolves_a_person_by_name(_person_cache: None) -> None:
-    page = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'name': 'jane doe'})
+    page = authed_client().get('/people/edit', params={'name': 'jane doe'})
     assert page.status_code == 200
     assert 'Jane Doe' in page.text
 
-    missing = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'name': 'Nobody Here'})
+    missing = authed_client().get('/people/edit', params={'name': 'Nobody Here'})
     assert missing.status_code == 404
 
 
 def test_the_edit_page_says_so_when_no_snapshot_credits_the_person(_person_cache: None) -> None:
     _seed_scene('Not Hers', 'c9', 'Vixen', '', '2025-01-05', ['Someone Else'])
 
-    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+    body = authed_client().get('/people/edit', params={'filename': 'actor.jane-doe_female.jpg'}).text
 
     assert 'No cached snapshot credits this person.' in body
 
@@ -242,13 +230,13 @@ def test_the_edit_page_says_so_when_no_snapshot_credits_the_person(_person_cache
 def test_the_scene_list_is_skipped_when_the_cache_is_off(_person_cache: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'false')
 
-    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+    body = authed_client().get('/people/edit', params={'filename': 'actor.jane-doe_female.jpg'}).text
 
     assert 'The snapshot cache is off' in body
 
 
 def test_cards_are_wide_enough_that_names_never_break(_person_cache: None) -> None:
-    body = TestClient(create_app()).get('/people?token=tok').text
+    body = authed_client().get('/people').text
     assert 'minmax(460px,1fr)' in body
     assert '.hd b{white-space:nowrap}' in body
     assert 'flex-wrap:wrap' in body
@@ -272,7 +260,7 @@ def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> Non
         source='IAFD',
     )
 
-    body = TestClient(create_app()).get('/people?token=tok').text
+    body = authed_client().get('/people').text
 
     assert 'id="sourceFilter"' in body
     assert '<option value="IAFD">IAFD</option>' in body
@@ -282,14 +270,14 @@ def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> Non
 
 
 def test_the_list_offers_a_generic_only_toggle(_person_cache: None) -> None:
-    body = TestClient(create_app()).get('/people?token=tok').text
+    body = authed_client().get('/people').text
     assert 'id="genericToggle">Generic Only</button>' in body
     assert "src === 'Generic'" in body
     assert 'genericOnly' in body
 
 
 def test_the_edit_page_hides_its_previews_in_sfw_mode(_person_cache: None) -> None:
-    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+    body = authed_client().get('/people/edit', params={'filename': 'actor.jane-doe_female.jpg'}).text
     assert 'id="sfwToggle"' in body
     assert "const SFW_KEY = 'metadata-sfw';" in body
     assert 'body.sfw #previewCard { display: none; }' in body
@@ -300,7 +288,7 @@ def test_the_edit_page_hides_its_previews_in_sfw_mode(_person_cache: None) -> No
 def test_the_edit_page_offers_every_known_source(_person_cache: None) -> None:
     from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 
-    body = TestClient(create_app()).get('/people/edit', params={'token': 'tok', 'filename': 'actor.jane-doe_female.jpg'}).text
+    body = authed_client().get('/people/edit', params={'filename': 'actor.jane-doe_female.jpg'}).text
 
     assert 'id="f-recorded"' in body
     assert all(f'"{name}"' in body for name in KNOWN_SOURCES)
@@ -326,24 +314,23 @@ def test_saving_relabels_the_recorded_source_without_touching_the_image(_person_
         cropped=False,
         source='Scene',
     )
-    client = TestClient(create_app())
-    hdr = {'x-admin-token': 'tok'}
+    client = authed_client()
     body = {'filename': 'actor.jane-doe_female.jpg', 'upstream_url': 'https://cdn/j.jpg', 'cropped': False, 'recorded_source': 'IAFD'}
 
-    r = client.post('/people/save', json=body, headers=hdr)
+    r = client.post('/people/save', json=body)
 
     assert r.status_code == 200 and r.json() == {'ok': True, 'changed': True}
     assert pcr._find_entry('actor.jane-doe_female.jpg')['source'] == 'IAFD'
 
-    again = client.post('/people/save', json=body, headers=hdr)
+    again = client.post('/people/save', json=body)
     assert again.json() == {'ok': True, 'changed': False}
 
 
 def test_saving_rejects_a_source_it_does_not_know(_person_cache: None) -> None:
-    client = TestClient(create_app())
+    client = authed_client()
     body = {'filename': 'actor.jane-doe_female.jpg', 'upstream_url': 'https://cdn/j.jpg', 'cropped': False, 'recorded_source': 'Nowhere'}
 
-    r = client.post('/people/save', json=body, headers={'x-admin-token': 'tok'})
+    r = client.post('/people/save', json=body)
 
     assert r.status_code == 400 and 'Nowhere' in r.json()['error']
 
@@ -367,7 +354,7 @@ def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> 
         cropped=False,
     )
 
-    body = TestClient(create_app()).get('/people?token=tok').text
+    body = authed_client().get('/people').text
 
     assert 'id="singleToggle">Single Name</button>' in body
     assert "c.dataset.single === '1'" in body
@@ -376,18 +363,16 @@ def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> 
 
 
 def test_every_filter_toggle_has_an_active_style(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', '')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
-    body = TestClient(create_app()).get('/people').text
+    body = authed_client().get('/people').text
 
     for css in ('.croptoggle.on', '.noupstream.on', '.genericonly.on', '.singleonly.on'):
         assert css in body, f'{css} has no active style'
 
 
 def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
-    monkeypatch.setenv('ADMIN_TOKEN', '')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
-    body = TestClient(create_app()).get('/people').text
+    body = authed_client().get('/people').text
 
     assert 'function refreshSourceOptions(t)' in body
     assert 'refreshSourceOptions(t);' in body

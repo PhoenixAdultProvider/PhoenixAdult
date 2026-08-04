@@ -7,14 +7,9 @@ from urllib.parse import unquote, urlsplit
 
 from fastapi import Request
 
-from phoenixadult.config.env import env
+from phoenixadult.utils.auth.server_secret import signing_key
 
 _SIG_RE = re.compile(r'[?&]sig=[0-9a-f]*$')
-
-
-def _key() -> bytes | None:
-    token = env.admin_token
-    return token.encode() if token else None
 
 
 def strip_sig(url: str) -> str:
@@ -27,21 +22,17 @@ def _digest(key: bytes, path: str, query: str) -> str:
 
 
 def sign_url(url: str | None) -> str | None:
-    key = _key()
-    if not url or key is None:
+    if not url:
         return url
     bare = strip_sig(url)
     parts = urlsplit(bare)
     if not parts.path.startswith('/'):
         return url
-    digest = _digest(key, parts.path, parts.query)
+    digest = _digest(signing_key(), parts.path, parts.query)
     return f'{bare}{"&" if parts.query else "?"}sig={digest}'
 
 
 def signed_request_ok(request: Request) -> bool:
-    key = _key()
-    if key is None:
-        return False
     raw = request.url.query
     if raw.startswith('sig=') and '&' not in raw:
         sig, query = raw[4:], ''
@@ -49,4 +40,4 @@ def signed_request_ok(request: Request) -> bool:
         sig, query = raw[idx + 5 :], raw[:idx]
     else:
         return False
-    return hmac.compare_digest(sig, _digest(key, request.url.path, query))
+    return hmac.compare_digest(sig, _digest(signing_key(), request.url.path, query))

@@ -439,13 +439,7 @@
     const PREVIEW_PREFIX = 'phoenixcfg:img:';
     const imgDebounce = {};
 
-    // Forward the admin token (from the page URL ?token=) onto the API calls so
-    // the config UI works behind a tunnel where requests aren't loopback.
-    const TOKEN = new URLSearchParams(location.search).get('token') || '';
-    function api(path) {
-      if (!TOKEN) return path;
-      return path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN);
-    }
+    function api(path) { return path; }
 
     function esc(s) {
       return String(s ?? '')

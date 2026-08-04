@@ -137,15 +137,12 @@
       }
     }
 
-    const TOKEN = new URLSearchParams(location.search).get('token');
-
     const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
     async function refresh(since) {
       let ok = false;
       try {
         const headers = { accept: 'application/json' };
-        if (TOKEN) headers['x-admin-token'] = TOKEN;
         const url = since == null ? '/queue/api/state' : `/queue/api/state?wait=1&since=${since}`;
         const res = await fetch(url, { headers });
         if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); ok = true; }
@@ -165,7 +162,6 @@
 
     async function post(path, body) {
       const headers = { 'Content-Type': 'application/json' };
-      if (TOKEN) headers['x-admin-token'] = TOKEN;
       const res = await fetch(path, { method: 'POST', headers, body: JSON.stringify(body || {}) });
       if (res.ok) { STATE = await res.json(); fetchedAt = Date.now(); render(); }
     }

@@ -14,7 +14,6 @@ MOUNT = provider_mount_path(get_all_providers()[0])
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv('PLEX_CLIENT_ALLOWLIST', f'{APPROVED},second-server-id')
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     return TestClient(create_app(), client=('203.0.113.9', 51234))
 
 
@@ -39,8 +38,12 @@ def test_loopback_is_exempt(monkeypatch: pytest.MonkeyPatch) -> None:
     assert local.get(MOUNT).status_code == 200
 
 
-def test_admin_token_is_exempt(client: TestClient) -> None:
-    assert client.get(MOUNT, headers={'X-Admin-Token': 'tok'}).status_code == 200
+def test_api_key_is_exempt(client: TestClient) -> None:
+    from phoenixadult.utils.auth import user_store
+
+    uid = user_store.create_user('plexuser', 'pw', is_admin=True)
+    key = user_store.regenerate_api_key(uid)
+    assert client.get(MOUNT, headers={'x-api-key': key}).status_code == 200
 
 
 def test_empty_allowlist_disables_the_guard(monkeypatch: pytest.MonkeyPatch) -> None:

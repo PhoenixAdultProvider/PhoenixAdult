@@ -15,7 +15,6 @@ ADMIN_IMG = {'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Site': 'same-origin', 'Sec-
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv('IMAGE_GUARD_ENABLE', 'true')
-    monkeypatch.setenv('ADMIN_TOKEN', 'tok')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'cache'))
     (tmp_path / 'pic.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 16)
@@ -73,8 +72,12 @@ def test_legacy_browser_referer_fallback(client: TestClient) -> None:
     assert client.get('/images/local/pic.jpg', headers=foreign).status_code == 403
 
 
-def test_admin_token_is_served(client: TestClient) -> None:
-    assert client.get('/images/local/pic.jpg?token=tok', headers=BROWSER_NAV).status_code == 200
+def test_api_key_is_served(client: TestClient) -> None:
+    from phoenixadult.utils.auth import user_store
+
+    uid = user_store.create_user('imguser', 'pw', is_admin=True)
+    key = user_store.regenerate_api_key(uid)
+    assert client.get('/images/local/pic.jpg', headers={**BROWSER_NAV, 'x-api-key': key}).status_code == 200
 
 
 def test_guard_defaults_off(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

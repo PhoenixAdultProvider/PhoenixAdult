@@ -178,7 +178,6 @@
   </div>
 
   <script>
-    const TOKEN = __TOKEN__;
     let KEY = __KEY__;
     let MD = __METADATA__;
     const MAPPING_SLUG = __MAPPING_SLUG__;
@@ -213,10 +212,10 @@
       return url + (url.includes('?') ? '&' : '?') + 'v=' + imgRev;
     }
 
-    function hdrs() { return {'Content-Type': 'application/json', ...(TOKEN ? {'x-admin-token': TOKEN} : {})}; }
+    function hdrs() { return {'Content-Type': 'application/json'}; }
     function qs(id) { return document.getElementById(id); }
 
-    function leave() { location.href = '/metadata' + (TOKEN ? '?token=' + encodeURIComponent(TOKEN) : ''); }
+    function leave() { location.href = '/metadata'; }
 
     const PEOPLE_ROLES = {Role: 'actor', Director: 'director', Producer: 'producer'};
 
@@ -230,9 +229,7 @@
         if (role) {
           const link = document.createElement('a');
           link.textContent = value;
-          const p = new URLSearchParams({name: value, role});
-          if (TOKEN) p.set('token', TOKEN);
-          link.href = '/people/edit?' + p.toString();
+          link.href = '/people/edit?' + new URLSearchParams({name: value, role}).toString();
           chip.appendChild(link);
         } else {
           chip.appendChild(document.createTextNode(value));

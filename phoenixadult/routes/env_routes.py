@@ -29,13 +29,13 @@ from phoenixadult.config.env_overrides import (
     set_override,
 )
 from phoenixadult.registry import SITE_DEFINITIONS
-from phoenixadult.routes import read_json_body, render_nav
-from phoenixadult.utils.auth.env_auth import csrf_guard, env_auth_guard
+from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.session_log import DEFAULT_LINES, LINE_CHOICES, session_log
 
-router = APIRouter(dependencies=[Depends(env_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
 
 def _display_value(spec: EnvVarSpec) -> str:
@@ -175,12 +175,12 @@ async def api_logs(since: int = 0, limit: int = DEFAULT_LINES) -> JSONResponse:
 _CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
 
 
-def _render_ui(state: dict[str, Any]) -> str:
+def _render_ui(state: dict[str, Any], username: str) -> str:
     state_json = json.dumps(state, ensure_ascii=False).replace('<', '\\u003c')
-    return _CONFIG_HTML.replace('__NAV__', render_nav('config')).replace('__STATE_JSON__', state_json)
+    return _CONFIG_HTML.replace('__NAV__', render_nav('config', username)).replace('__STATE_JSON__', state_json)
 
 
 @router.get('')
 @router.get('/')
-async def page() -> HTMLResponse:
-    return HTMLResponse(_render_ui(_build_state()))
+async def page(request: Request) -> HTMLResponse:
+    return HTMLResponse(_render_ui(_build_state(), nav_username(request)))

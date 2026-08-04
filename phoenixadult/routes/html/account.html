@@ -1,0 +1,103 @@
+__NAV__
+<style>
+  body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
+  h1, .sub, .card { max-width: 640px; margin-inline: auto; }
+  .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px 18px; margin: 0 auto 18px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 10px 0 4px; }
+  input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
+          padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+  input:focus { outline: 0; border-color: var(--input-focus-border); }
+  button { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--button-primary-bg); color: var(--button-text); font-size: 13px; cursor: pointer; }
+  button:hover { background: var(--button-primary-hover-bg); }
+  button.secondary { background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--button-muted-text); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .status { font-size: 13px; color: var(--muted-text); }
+  .status.ok { color: var(--status-ok-text); }
+  .status.err { color: var(--status-danger-text); }
+  .keybox { font-family: ui-monospace, monospace; font-size: 13px; background: var(--code-bg); border: 1px solid var(--panel-border); color: var(--link-text);
+            border-radius: 6px; padding: 8px 10px; word-break: break-all; margin-top: 10px; }
+  .hint { font-size: 12px; color: var(--hint-text); margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--panel-border); }
+  th { color: var(--label-text); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .current-badge { font-size: 10px; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; background: var(--badge-info-bg); color: var(--badge-info-text); }
+</style>
+<body data-page="config">
+  <h1>Account</h1>
+  <div class="sub">Signed in as <strong>__USERNAME__</strong></div>
+
+  <div class="card">
+    <h2>Password</h2>
+    <label for="curPw">Current Password</label>
+    <input id="curPw" type="password" autocomplete="current-password">
+    <label for="newPw">New Password</label>
+    <input id="newPw" type="password" autocomplete="new-password">
+    <label for="confPw">Confirm New Password</label>
+    <input id="confPw" type="password" autocomplete="new-password">
+    <div class="row"><button onclick="changePassword()">Change Password</button><span class="status" id="pwStatus"></span></div>
+    <div class="hint">Changing your password signs out every other session.</div>
+  </div>
+
+  <div class="card">
+    <h2>API Key</h2>
+    <div class="status" id="keyHint">__API_KEY_HINT__</div>
+    <div class="keybox" id="keyReveal" style="display:none"></div>
+    <div class="row"><button class="secondary" onclick="regenKey()">Regenerate Key</button><span class="status" id="keyStatus"></span></div>
+    <div class="hint">Send it as <code>Authorization: Bearer &lt;key&gt;</code> or <code>x-api-key</code>. Shown once here — copy it now.</div>
+  </div>
+
+  <div class="card">
+    <h2>Sessions</h2>
+    <table id="sessions"><thead><tr><th>Signed In</th><th>Last Seen</th><th>Device</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <script>
+    const hdr = { 'Content-Type': 'application/json' };
+    function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
+    function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
+
+    async function changePassword() {
+      const cur = document.getElementById('curPw').value, nw = document.getElementById('newPw').value, cf = document.getElementById('confPw').value;
+      if (nw !== cf) { setStatus('pwStatus', 'Passwords do not match.', 'err'); return; }
+      if (nw.length < 8) { setStatus('pwStatus', 'At least 8 characters.', 'err'); return; }
+      const res = await fetch('/account/api/password', { method: 'POST', headers: hdr, body: JSON.stringify({ current: cur, new: nw }) });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setStatus('pwStatus', 'Password changed. Other sessions signed out.', 'ok'); ['curPw', 'newPw', 'confPw'].forEach((i) => document.getElementById(i).value = ''); loadSessions(); }
+      else setStatus('pwStatus', data.error || 'Failed.', 'err');
+    }
+
+    async function regenKey() {
+      if (!confirm('Regenerate your API key? The old key stops working immediately.')) return;
+      const res = await fetch('/account/api/key/regenerate', { method: 'POST', headers: hdr });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.key) {
+        const box = document.getElementById('keyReveal');
+        box.textContent = data.key; box.style.display = 'block';
+        setStatus('keyStatus', 'New key — copy it now, it will not be shown again.', 'ok');
+        document.getElementById('keyHint').textContent = data.hint;
+      } else setStatus('keyStatus', data.error || 'Failed.', 'err');
+    }
+
+    async function loadSessions() {
+      const res = await fetch('/account/api/sessions');
+      const data = await res.json().catch(() => ({ sessions: [] }));
+      const tb = document.querySelector('#sessions tbody');
+      tb.innerHTML = (data.sessions || []).map((s) => {
+        const badge = s.current ? ' <span class="current-badge">this device</span>' : '';
+        const action = s.current ? '' : `<button class="secondary" onclick="revoke('${s.tokenHash}')">Revoke</button>`;
+        const ua = (s.userAgent || '').replace(/[<>&]/g, '');
+        return `<tr><td>${fmt(s.createdAt)}${badge}</td><td>${fmt(s.lastSeenAt)}</td><td>${ua || '—'}</td><td>${action}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" class="status">No other sessions.</td></tr>';
+    }
+
+    async function revoke(tokenHash) {
+      const res = await fetch('/account/api/sessions/revoke', { method: 'POST', headers: hdr, body: JSON.stringify({ tokenHash }) });
+      if (res.ok) loadSessions();
+    }
+
+    loadSessions();
+  </script>
+</body>
