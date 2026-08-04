@@ -259,39 +259,5 @@ class _Env:
     def phoenix_extra_collections(self) -> bool:
         return _flag('PHOENIX_EXTRA_COLLECTIONS', '') == 'true'
 
-    @property
-    def plex_url(self) -> str | None:
-        return (os.environ.get('PLEX_URL') or '').strip().rstrip('/') or None
-
-    @property
-    def plex_token(self) -> str | None:
-        return (os.environ.get('PLEX_TOKEN') or '').strip() or None
-
-    @property
-    def plex_client_id(self) -> str | None:
-        return (os.environ.get('PLEX_CLIENT_ID') or '').strip() or None
-
-    @property
-    def plex_client_allowlist(self) -> tuple[str, ...]:
-        raw = os.environ.get('PLEX_CLIENT_ALLOWLIST') or ''
-        return tuple(s.strip() for s in raw.split(',') if s.strip())
-
-    @property
-    def plex_update_channel(self) -> str:
-        return _flag('PLEX_UPDATE_CHANNEL', 'plex')
-
-    @property
-    def plex_update_release(self) -> tuple[str, str] | None:
-        raw = (os.environ.get('PLEX_UPDATE_RELEASE') or '').strip()
-        if '|' not in raw:
-            return None
-        distro, _, build = raw.partition('|')
-        return (distro.strip(), build.strip())
-
-    @property
-    def admin_token(self) -> str | None:
-        token = (os.environ.get('ADMIN_TOKEN') or '').strip()
-        return token or None
-
 
 env = _Env()

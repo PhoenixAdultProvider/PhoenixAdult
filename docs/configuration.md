@@ -21,13 +21,12 @@ not exposed in the Config UI.
 
 ### 2. Config UI (Runtime)
 
-Open **`GET /config`** in a browser (allowed from loopback, or with the `ADMIN_TOKEN`
-header/query elsewhere). Edit a value and **Save**, and it is written to
-`env.overrides.json` and applied live — no restart for most options.
+Open **`GET /config`** in a browser and sign in. Edit a value and **Save**, and it is
+written to `env.overrides.json` and applied live — no restart for most options.
 
 The Config UI covers the per-feature options (caching, gender handling, sources,
 bypass, …). It does **not** edit the server, auth, and network variables — `PORT`,
-`PHOENIX_BASE_URL`, `NODE_ENV`, `ADMIN_TOKEN`, `LOG_DIR`, `HTTPS_PROXY`, `NO_PROXY`,
+`PHOENIX_BASE_URL`, `NODE_ENV`, `LOG_DIR`, `HTTPS_PROXY`, `NO_PROXY`,
 and `ENV_OVERRIDES_PATH` — which come from the environment at startup. **Reset** on a
 row clears its override and reverts to the `.env`/built-in value.
 
@@ -63,13 +62,29 @@ _Read from the environment at startup; not editable in the Config UI._
 | `PHOENIX_BASE_URL` | `http://localhost:3000` | Public base URL the provider advertises to Plex. Behind a reverse proxy or Cloudflare tunnel, set this to the externally reachable URL — it's the base for served image/poster links (see `IMAGE_BASE_URL` for local images specifically). |
 | `NODE_ENV` | `production` | `production` enables prod behavior (host redaction defaults on, no auto-reload, `/dev` disabled). Set `development` (or `dev`/`test`/`local`) for local work and the `/dev` UI. |
 
-### Admin Auth
+### User Accounts And API Keys
 
-_Read from the environment at startup; not editable in the Config UI._
+Authentication lives in the database, not the environment — there are no auth variables
+to set. On first run every admin page redirects to **`/setup`**, which creates the first
+account (an admin) and signs it in; afterwards `/setup` returns 404 and **`/login`** is
+the only way in, including from loopback.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `ADMIN_TOKEN` | _(unset)_ | Guards the admin surfaces (`/config`, `/dev`, `/people`, `/metadata`, `/logos`, `/queue`). When unset, those are reachable from loopback only. Set a token to reach them from another host (sent as the `x-admin-token` header or a `token` query param). |
+- **Sessions** last 30 days of inactivity and ride in an `HttpOnly`, `SameSite=Lax`
+  cookie that is marked `Secure` whenever the request arrives over https (including
+  behind a tunnel or reverse proxy that sets `X-Forwarded-Proto`).
+- **API keys** replace the old admin token for scripts. Generate one on **`/account`** —
+  it is shown once — and send it as `Authorization: Bearer pa_…` or `x-api-key: pa_…`.
+  Regenerating immediately invalidates the previous key.
+- **Admins** manage other accounts from the **Users** tab of `/config`: add or delete
+  users, reset passwords, and grant or revoke admin. The last admin cannot be deleted
+  or demoted.
+- **Lost every password?** Run `python scripts/reset_password.py <username>` on the
+  server (add `--create-admin` when no usable admin remains).
+
+Passwords are hashed with argon2id; API keys and session tokens are stored as SHA-256
+digests. A `secret.key` file is generated beside the database on first start and is used
+to sign image URLs and encrypt stored Plex tokens — **back it up with the database**, and
+note that losing it means re-fetching Plex tokens and refreshing Plex metadata once.
 
 ### Logging
 
@@ -78,7 +93,7 @@ _Read from the environment at startup; not editable in the Config UI._
 | `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose` — **except** requests made while scraping, which log at `info` (see below). Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
 | `LOG_REDACT_HOSTS` | on in `production`, else off | Masks the server's own host/FQDN (from `PHOENIX_BASE_URL`) **and** private/LAN/loopback IPs in logs — so with it **off** you can see your own LAN address (e.g. `IMAGE_BASE_URL=localipv4`) while debugging. **Public/routable IPs are always redacted**, in every environment, so a real address never leaks. |
-| `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see the admin token in URLs while testing. |
+| `LOG_REDACT_TOKEN` | on in `production`, else off | Masks secret query values (`?token=…`, `?apikey=…`, `?password=…`) in logs. Off outside production so you can see secret values in URLs while testing. |
 
 Every request a scraper makes while searching or updating is logged at `info` with its method and full URL, tagged with the phase and site — `[search TeamSkeet] Requesting GET "…"`, `[update TeamSkeet] Requesting GET "…"`. That covers the supporting fetches too: model pages, photo-gallery pages, Data18 enrichment. Requests outside a scrape (image downloads, Plex calls, the UIs) stay at `http`, so turning the level up is not needed to see how a match was reached.
 
@@ -93,7 +108,7 @@ The toolbar holds a **line limit** (50/100/200/500/1000, default 200), a **filte
 | `IMAGE_DIR` | `./local/images` | Directory served back to Plex for local people and logo image files. Headshots live in `IMAGE_DIR/people`; `logo.<site-slug>.<ext>` clearLogo files (per-studio subfolders) live in `IMAGE_DIR/logos` — manage them at `/logos` and push them to Plex **collections** from the Plex tab of `/config`. |
 | `IMAGE_MAX_BYTES` | `20M` | Hard ceiling on a single upstream image fetch; larger images are rejected. Accepts a byte count or a size like `20M`, `2000K`, `100B`. |
 | `IMAGE_PROXY_PIN` | `true` | SSRF hardening for `/images/proxy`: each hop is resolved once, validated public, and fetched by pinned IP (hostname kept in Host + TLS SNI). Turn off if a CDN rejects pinned fetches. |
-| `IMAGE_GUARD_ENABLE` | `false` | Serve logos, snapshot images, and people images only to: signed URLs (with `ADMIN_TOKEN` set, every emitted image URL carries a permanent `sig=` HMAC — no expiry, so Plex-held URLs never break), Plex (`PlexMediaServer` user agent), image fetchers (`Accept: image/*` non-navigation requests, e.g. Plex's cloud image proxy), loopback, admin-token requests, and the admin UIs (same-origin subresource checks). A browser typing an image URL directly gets a 403. The UA/Accept checks are best-effort, not authentication; signatures require the exact URL the provider emitted. A Plex metadata refresh picks up the signed URLs — snapshots store unsigned paths and are signed at serve time. |
+| `IMAGE_GUARD_ENABLE` | `false` | Serve logos, snapshot images, and people images only to: signed URLs (every emitted image URL carries a permanent `sig=` HMAC keyed by the server secret — no expiry, so Plex-held URLs never break), Plex (`PlexMediaServer` user agent), image fetchers (`Accept: image/*` non-navigation requests, e.g. Plex's cloud image proxy), loopback, signed-in or API-key requests, and the admin UIs (same-origin subresource checks). A browser typing an image URL directly gets a 403. The UA/Accept checks are best-effort, not authentication; signatures require the exact URL the provider emitted. A Plex metadata refresh picks up the signed URLs — snapshots store unsigned paths and are signed at serve time. |
 | `IMAGE_BASE_URL` | `baseurl` | Base URL Plex uses to fetch our locally-served images — actor/director/producer headshots and the clearLogos pushed to collections. Plex re-requests these and doesn't keep them, so behind a Cloudflare tunnel the FQDN eventually dies and the images break — a stable local address is more durable (see the option table below). Poster/art images always use `PHOENIX_BASE_URL`. |
 
 `IMAGE_BASE_URL` options:
@@ -182,23 +197,36 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | --- | --- | --- |
 | `METADATAAPI_TOKEN` | _(unset)_ | Bearer token for api.theporndb.net. Optional — without it the API serves a reduced response. |
 
-### Plex Server
+### Plex Connections
 
-Only needed for reconciliation (below). Both must be set or the feature stays off.
+Plex servers are paired per user from the **Plex tab** of `/config` — nothing is
+configured through environment variables. Add a connection, then either use **Fetch New
+Token** (a plex.tv sign-in whose token is stored server-side, never passing through the
+browser) or paste a token; pick the server address from the discovered list, and
+**Verify Server** to confirm identity and library access.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `PLEX_URL` | _(unset)_ | Base URL of the Plex server, e.g. `http://plex.lan:32400`. A LAN address is fine — the provider dials out to Plex, Plex never dials in. |
-| `PLEX_TOKEN` | _(unset)_ | `X-Plex-Token` for that server ([how to find yours](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)). Needs library write access, so treat it like a password. Sent as a header, never in a query string. Easiest setup: the **Plex tab** of `/config` — "Fetch New Token" signs in via plex.tv and saves it. |
-| `PLEX_CLIENT_ID` | _(unset)_ | Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device. |
-| `PLEX_CLIENT_ALLOWLIST` | _(unset)_ | Comma-separated `X-Plex-Client-Identifier` values allowed to call the provider endpoints; empty = no restriction. Loopback and admin-token requests always pass; everything else gets a 403. Manage it in the "Allowed Plex Clients" section of the Plex tab (entries display redacted; click Show to reveal). Find a server's identifier in the verbose request dump or its `Preferences.xml` (`ProcessedMachineIdentifier`). |
-| `PLEX_UPDATE_CHANNEL` | `plex` | Channel the "Check for Update" button checks: `plex` follows the server's own channel preference (`ButlerUpdateChannel`), or force `public` / `beta` (beta needs Plex Pass). |
-| `PLEX_UPDATE_RELEASE` | _(unset)_ | Release to update to as `distro\|build` (e.g. `debian\|linux-x86_64`); set from the Release dropdown in the Server section, shown whenever the platform lists more than one release. Unset = the release carrying the platform's latest version (Plex lists stale builds first — e.g. frozen Windows 32-bit), falling back to the first listed. |
+Each connection stores its own:
 
-The **Plex tab** of the `/config` UI drives all of this: fetch a token via plex.tv sign-in,
-pick your server from the discovered list (fills `PLEX_URL`), verify the connection
-(server identity + authenticated check), see the server version with a local-only
-update check (no notifications), and run reconciliation dry-run/apply without curl.
+- **Server URL** — a LAN address is fine; the provider dials out to Plex, never the reverse.
+- **Token** — encrypted at rest with the server secret and never shown again; the UI only
+  reports whether one is saved.
+- **Allowed Plex Clients** — `X-Plex-Client-Identifier` values permitted to call the
+  provider. While no connection lists any, the provider stays open to all callers. Find a
+  server's identifier in a verbose request dump or its `Preferences.xml`
+  (`ProcessedMachineIdentifier`).
+- **Update channel and release** — `plex` follows the server's own channel preference
+  (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release
+  dropdown appears whenever a platform lists more than one build; unset picks the release
+  carrying the platform's latest version, since Plex lists stale builds (e.g. frozen
+  Windows 32-bit) first.
+- **Image base URL override** — set this when a particular server must reach the provider
+  at a different address than the global `IMAGE_BASE_URL`.
+
+Reconcile, library import, and collection-logo pushes all run against the selected
+connection; a second reconcile on the same connection is refused while one is running,
+but different connections run in parallel. Upgrading from an older release migrates any
+existing `PLEX_*` settings into the first admin's connection automatically and clears
+them from `env.overrides.json`.
 
 ### Reviewing Cached Scenes
 
@@ -308,7 +336,7 @@ POST /plex/reconcile?sites=myfamilypies        # only these scraper clients
 GET  /plex/status                 # {"enabled": true|false}
 ```
 
-Admin-guarded like the cache UIs (`?token=` or `x-admin-token`). It reconciles the five tag
+Requires a signed-in session or an API key, like the cache UIs. It reconciles the five tag
 fields — Collection, Genre, Role, Director, Producer — removing only
 values Plex holds that the provider's current snapshot does not.
 

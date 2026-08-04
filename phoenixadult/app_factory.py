@@ -129,6 +129,11 @@ def create_app() -> FastAPI:
     # ── Runtime Config UI ────────────────────────────────────────────────────
     app.include_router(env_routes.router, prefix='/config')
 
+    # ── User Accounts (admin only) ───────────────────────────────────────────
+    from phoenixadult.routes import users_routes
+
+    app.include_router(users_routes.router, prefix='/users')
+
     # ── People Cache Review UI (admin-guarded) ─────────────────────────
     app.include_router(people_cache_routes.router, prefix='/people')
 

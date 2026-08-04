@@ -10,7 +10,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
     'Data18 Enrichment', 'MetadataAPI', 'Manual NFO', 'People Cache & Sources',
-    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Plex Server', 'Plex Access', 'Plex Updates',
+    'Gender Handling', 'Images', 'Logging', 'Metadata Cache',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
@@ -20,7 +20,6 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
     ('System', ['Logging', 'Metadata Cache']),
-    ('Plex', ['Plex Server', 'Plex Access', 'Plex Updates']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
@@ -254,53 +253,6 @@ ENV_CATALOG: list[EnvVarSpec] = [
         default_value='false',
     ),
     EnvVarSpec('REQBIN_API_KEY', 'ReqBin API Key', 'API key for the ReqBin HTTP-bypass fallback.', 'HTTP Bypass', 'secret'),
-    EnvVarSpec(
-        'PLEX_URL',
-        'Plex Server URL',
-        'Base URL of the Plex server to reconcile against, e.g. http://plex.lan:32400.',
-        'Plex Server',
-        'string',
-    ),
-    EnvVarSpec(
-        'PLEX_TOKEN',
-        'Plex Token',
-        'X-Plex-Token for the server above — fetch one with "Fetch New Token"; treat it like a password.',
-        'Plex Server',
-        'secret',
-    ),
-    EnvVarSpec(
-        'PLEX_CLIENT_ID',
-        'Plex Client Identifier',
-        'Device identifier the fetched token is bound to; clear it with the token to unlink this device.',
-        'Plex Server',
-        'secret',
-    ),
-    EnvVarSpec(
-        'PLEX_UPDATE_CHANNEL',
-        'Server Update Channel',
-        'Channel checked for server updates; plex = follow the server’s own channel preference.',
-        'Plex Updates',
-        'enum',
-        options=['plex', 'public', 'beta'],
-        default_value='plex',
-    ),
-    EnvVarSpec(
-        'PLEX_UPDATE_RELEASE',
-        'Server Update Release',
-        'Release to update to as distro|build; set from the Release dropdown in the Server section.',
-        'Plex Updates',
-        'string',
-        default_value='',
-    ),
-    EnvVarSpec(
-        'PLEX_CLIENT_ALLOWLIST',
-        'Approved Plex Clients',
-        'X-Plex-Client-Identifier values allowed to call the provider (empty = no restriction); loopback and admin-token requests always pass.',
-        'Plex Access',
-        'list',
-        default_value='',
-        secret_items=True,
-    ),
     EnvVarSpec(
         'BYPASS_ORDER',
         'Bypass Attempt Order',

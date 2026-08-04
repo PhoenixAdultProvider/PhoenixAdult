@@ -126,6 +126,10 @@
     .plex-status { font-size: 0.82rem; color: var(--muted-text); }
     .plex-status.ok { color: var(--status-ok-text); }
     .plex-status.err { color: var(--status-danger-text); }
+    .users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .users-table th, .users-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--panel-border); }
+    .users-table th { color: var(--label-text); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; }
+    .users-table td.actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
     .plex-kv { font-size: 0.82rem; color: var(--muted-text); display: grid; grid-template-columns: max-content 1fr;
                gap: 0.25rem 0.9rem; margin-top: 0.6rem; }
     .plex-kv b { color: var(--soft-text); font-weight: 600; }
@@ -445,6 +449,24 @@
     </div>
   </div>
 
+  <div id="tab-users" class="tabpane">
+    <h2>User Accounts</h2>
+    <div class="card">
+      <table class="users-table" id="users-table"><thead><tr><th>User</th><th>Admin</th><th>API Key</th><th>Connections</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+
+    <h2>Add User</h2>
+    <div class="card">
+      <div class="plex-row">
+        <input type="text" id="new-username" placeholder="username" autocomplete="off" spellcheck="false">
+        <input type="password" id="new-password" placeholder="password (8+ characters)" autocomplete="new-password">
+        <label class="hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
+        <button type="button" onclick="createUser()">Add User</button>
+        <span class="plex-status" id="users-status"></span>
+      </div>
+    </div>
+  </div>
+
   <div id="tab-theme" class="tabpane">
     <h2>Theme Selection</h2>
     <div class="card">
@@ -481,18 +503,21 @@
 
     const PLEX_GROUP = 'Plex Server';
     const PLEX_TAB = 'Plex';
+    const USERS_TAB = 'Users';
     const LOGS_TAB = 'Logs';
     const THEME_TAB = 'Theme';
 
+    function isAdmin() { return !!(STATE.user && STATE.user.isAdmin); }
     function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
     function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB); }
-    function tabIds() { return [...tabNames().map(tabSlug), 'plex', 'theme', 'logs']; }
+    function extraTabs() { return [PLEX_TAB, ...(isAdmin() ? [USERS_TAB] : []), THEME_TAB, LOGS_TAB]; }
+    function tabIds() { return [...tabNames().map(tabSlug), 'plex', ...(isAdmin() ? ['users'] : []), 'theme', 'logs']; }
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
       const current = document.querySelector('.tabbar button.active');
       const currentId = current ? current.id.replace('tabbtn-', '') : null;
-      document.getElementById('tabbar').innerHTML = [...tabNames(), PLEX_TAB, THEME_TAB, LOGS_TAB]
+      document.getElementById('tabbar').innerHTML = [...tabNames(), ...extraTabs()]
         .map((t) => '<button id="tabbtn-' + tabSlug(t) + '" onclick="showTab(\'' + tabSlug(t) + '\')">' + esc(t) + '</button>')
         .join('');
       document.getElementById('tabpanes').innerHTML = tabNames()
@@ -519,6 +544,7 @@
         if (btn) btn.classList.toggle('active', t === name);
       }
       if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadConnections().then(loadPlexLibraries); }
+      if (name === 'users') loadUsers();
       if (name === 'theme') initThemeTab();
       document.body.classList.toggle('logs-wide', name === 'logs');
       if (name === 'logs') logOpen(); else logStop();
@@ -531,6 +557,67 @@
     function renderGroup(group) {
       return '<h2>' + esc(group.name) + '</h2><div class="card">'
         + group.vars.map(renderVar).join('') + '</div>';
+    }
+
+    // ── Users Tab (admin only) ────────────────────────────────────────────────
+
+    function usersStatus(msg, kind) {
+      const el = document.getElementById('users-status');
+      el.textContent = msg;
+      el.className = 'plex-status' + (kind ? ' ' + kind : '');
+    }
+
+    async function loadUsers() {
+      const res = await fetch(api('/users/api/list'));
+      const data = await res.json().catch(() => ({ users: [] }));
+      const me = (STATE.user || {}).username;
+      document.querySelector('#users-table tbody').innerHTML = (data.users || []).map((u) => {
+        const self = u.username === me ? ' (you)' : '';
+        const toggle = '<button type="button" class="icon-btn" onclick="setUserAdmin(' + u.id + ',' + (!u.isAdmin) + ')">'
+          + (u.isAdmin ? 'Revoke Admin' : 'Make Admin') + '</button>';
+        return '<tr><td>' + esc(u.username) + self + '</td>'
+          + '<td>' + (u.isAdmin ? 'yes' : 'no') + '</td>'
+          + '<td>' + esc(u.apiKeyHint || '—') + '</td>'
+          + '<td>' + u.connections + '</td>'
+          + '<td class="actions">' + toggle
+          + '<button type="button" class="icon-btn" onclick="resetUserPassword(' + u.id + ')">Reset Password</button>'
+          + '<button type="button" class="srcitem-x" onclick="deleteUser(' + u.id + ',\'' + esc(u.username) + '\')">Delete</button></td></tr>';
+      }).join('');
+    }
+
+    async function usersPost(path, body) {
+      try {
+        await postJSON(api('/users/api/' + path), body);
+        usersStatus('Done.', 'ok');
+        await loadUsers();
+      } catch (err) {
+        usersStatus(err.message, 'err');
+      }
+    }
+
+    async function createUser() {
+      const username = document.getElementById('new-username').value.trim();
+      const password = document.getElementById('new-password').value;
+      const isAdmin = document.getElementById('new-is-admin').checked;
+      await usersPost('create', { username, password, isAdmin });
+      document.getElementById('new-username').value = '';
+      document.getElementById('new-password').value = '';
+      document.getElementById('new-is-admin').checked = false;
+    }
+
+    async function deleteUser(id, username) {
+      if (!confirm('Delete ' + username + '? Their Plex connections and sessions go with them.')) return;
+      await usersPost('delete', { id });
+    }
+
+    async function resetUserPassword(id) {
+      const password = prompt('New password (8+ characters):');
+      if (!password) return;
+      await usersPost('password', { id, password });
+    }
+
+    async function setUserAdmin(id, isAdmin) {
+      await usersPost('admin', { id, isAdmin });
     }
 
     // ── Theme Tab ─────────────────────────────────────────────────────────────

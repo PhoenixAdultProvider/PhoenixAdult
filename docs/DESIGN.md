@@ -103,20 +103,24 @@ flowchart LR
 | Fetch metadata | `GET /<mount>/library/metadata/{rating_key}` | none |
 | Fetch/proxy image | `GET\|HEAD /images/proxy`, `/images/proxy-classified` | none (SSRF-guarded) |
 | Local/manual images | `GET /images/local/{filename}`, `/images/manual-nfo/*` | none (path-guarded) |
-| Runtime config | `GET\|POST /config/...` | **loopback or `ADMIN_TOKEN`** |
-| Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **loopback or `ADMIN_TOKEN`** |
-| Cache editors | `GET /metadata/edit`, `/people/edit` + `POST …/save` | **loopback or `ADMIN_TOKEN`** |
-| Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` + `GET /metadata/snapshot` | **loopback or `ADMIN_TOKEN`** |
-| Cast autocomplete | `GET /metadata/actors?q=` | **loopback or `ADMIN_TOKEN`** |
-| Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **loopback or `ADMIN_TOKEN`** |
-| Image serving | `GET /images/*`, `GET /cache/*` | public by default; with `IMAGE_GUARD_ENABLE` only signed URLs (`sig=` HMAC keyed by `ADMIN_TOKEN`, no expiry — `phoenixadult/utils/auth/url_signing.py`), Plex (`PlexMediaServer` UA), image fetchers (`Accept: image/*` non-navigation), loopback, `ADMIN_TOKEN`, or same-origin admin-UI subresources — direct browsing gets 403 (`phoenixadult/utils/auth/image_guard.py`) |
-| Provider endpoints | `GET\|POST /<mount>/...` | public by default; with `PLEX_CLIENT_ALLOWLIST` set only approved `X-Plex-Client-Identifier` values, loopback, or `ADMIN_TOKEN` — others get 403 (`phoenixadult/utils/auth/plex_client_guard.py`) |
+| Sign in / first-run setup | `GET\|POST /login`, `/setup` | public (rate limited; `/setup` 404s once a user exists) |
+| Runtime config | `GET\|POST /config/...` | **session or API key** |
+| User accounts | `GET\|POST /users/api/...` | **session or API key, admin only** |
+| Account self-service | `GET /account` + `POST /account/api/...` | **session or API key** |
+| Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **session or API key** |
+| Cache editors | `GET /metadata/edit`, `/people/edit` + `POST …/save` | **session or API key** |
+| Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` + `GET /metadata/snapshot` | **session or API key** |
+| Cast autocomplete | `GET /metadata/actors?q=` | **session or API key** |
+| Plex connections | `GET\|POST /plex/connections/...` | **session or API key; each connection is scoped to its owner** |
+| Dev pipeline test | `GET\|POST /dev/...` (non-prod only) | **session or API key** |
+| Image serving | `GET /images/*`, `GET /cache/*` | public by default; with `IMAGE_GUARD_ENABLE` only signed URLs (`sig=` HMAC keyed by the server secret, no expiry — `phoenixadult/utils/auth/url_signing.py`), Plex (`PlexMediaServer` UA), image fetchers (`Accept: image/*` non-navigation), loopback, a session/API key, or same-origin admin-UI subresources — direct browsing gets 403 (`phoenixadult/utils/auth/image_guard.py`) |
+| Provider endpoints | `GET\|POST /<mount>/...` | open while no connection lists an allowed client; otherwise only `X-Plex-Client-Identifier` values in the union across all connections, loopback, or a session/API key — others get 403 (`phoenixadult/utils/auth/plex_client_guard.py`) |
 
-Every admin page shares one fixed top nav — Metadata, People, Logos, Queue, Dev, Config — rendered by `render_nav(active)` (`phoenixadult/routes/__init__.py`) from `phoenixadult/routes/html/nav.html` and injected at each template's `__NAV__` placeholder, including the `/metadata/edit` and `/people/edit` sub-pages (which highlight their parent). The Dev link appears only when the `/dev` routes are mounted (non-production `NODE_ENV`), and an inline script carries the current `?token=` onto every link so admin auth survives navigation.
+Every admin page shares one fixed top nav — Metadata, People, Logos, Queue, Dev, Config — rendered by `render_nav(active, username)` (`phoenixadult/routes/__init__.py`) from `phoenixadult/routes/html/nav.html` and injected at each template's `__NAV__` placeholder, including the `/metadata/edit` and `/people/edit` sub-pages (which highlight their parent). The Dev link appears only when the `/dev` routes are mounted (non-production `NODE_ENV`); the signed-in username links to `/account` and sits beside a Log Out button. The session cookie carries auth across navigation, so no token is threaded through links.
 
 The nav injection also carries the theme kit. Every color on every page is a CSS custom property named for the **element it styles** (`--card-bg`, `--button-primary-bg`, `--female`, …) and defined in per-theme stylesheets under `phoenixadult/routes/html/themes/` — `midnight`/`forest` (dark) and `day`/`meadow` (light), served publicly at `/themes/<name>.css` and validated against `THEME_NAMES` (`phoenixadult/routes/__init__.py`). Each theme file lists the shared element variables by category, then one `[data-page="…"]` block per page, so a single element on a single page can be recolored without touching anything else (each `<body>` carries its `data-page`). Pages follow the system light/dark mode by default; the sun/moon/Auto toggle on the right of the nav overrides the mode (`localStorage` `pa-theme`), and the Config UI's **Theme** tab (just before Logs, which stays last) picks which theme each mode loads (`pa-theme-dark`/`pa-theme-light`) and renders a per-page element preview of the selected light and dark themes side by side. `theme.html` is only the boot loader that swaps the `<link>`. Templates never use raw hex colors, and every referenced variable must exist in every theme — both enforced by `tests/routes/test_nav.py`.
 
-> Auth caveat: when `ADMIN_TOKEN` is **blank/unset**, the admin guard (`phoenixadult/utils/auth/env_auth.py`) disables auth entirely — `/config` and `/dev` become open to any caller. This is a deliberate convenience-over-safety default for trusted/local networks; it is documented at the top of `env_auth.py`. Set `ADMIN_TOKEN` whenever the server is reachable beyond loopback.
+> First run: with no accounts in the database every admin page redirects to `/setup`, which creates the first (admin) account and signs it in. After that `/setup` 404s and `/login` is the only way in — there is no loopback bypass. If every admin password is lost, `python scripts/reset_password.py <username> --create-admin` restores access from a shell on the server.
 
 ---
 
@@ -523,7 +527,7 @@ sequenceDiagram
   participant FS as env.overrides.json
 
   Op->>AG: POST /config/api/save {updates}
-  alt not loopback and no/invalid ADMIN_TOKEN
+  alt no session cookie and no valid API key
     AG-->>Op: 401
   else allowed
     AG->>CR: dependency passes
@@ -649,7 +653,7 @@ flowchart TB
     p1["Plex routes (match/metadata/images)"]:::pub
     p2["rating_key / filename / proxy url"]:::pub
   end
-  subgraph ADM["ADMIN — loopback or ADMIN_TOKEN"]
+  subgraph ADM["ADMIN — signed-in user or API key"]
     a1["/config (state/save/reset/restart)"]:::adm
     a2["/dev pipeline test"]:::adm
   end
@@ -669,7 +673,10 @@ flowchart TB
 
 **Controls in place**
 
-- **Admin auth** (`env_auth_guard`, `phoenixadult/utils/auth/env_auth.py`): wired as a router dependency (`APIRouter(dependencies=[Depends(env_auth_guard)])`) on both `env_routes` and `dev_routes`. When `ADMIN_TOKEN` is set, allows loopback **or** a matching token (timing-safe `hmac.compare_digest`, accepted via `Authorization: Bearer`, `X-Admin-Token`, or `?token=`). When `ADMIN_TOKEN` is blank, auth is **disabled** (open surfaces) — a deliberate convenience default for trusted/local networks.
+- **Admin auth** (`user_auth_guard`, `phoenixadult/utils/auth/user_auth.py`): wired as a router dependency on every admin router. Accepts a `pa_session` cookie (DB-backed, 30-day sliding expiry, HttpOnly + SameSite=Lax, `Secure` when the request arrives over https) **or** a per-user API key via `Authorization: Bearer` / `x-api-key`. Failure raises `LoginRequired`, which the app handler turns into a 302 to `/login?next=…` for browser navigations and a JSON 401 for everything else. There is no loopback bypass and no blank-token open mode.
+- **Credentials at rest**: passwords hash with **argon2id** (`argon2-cffi`); API keys and session tokens are high-entropy random values stored as SHA-256 digests. The only reversible secret is the Plex token, which must be replayed to Plex — it is encrypted with Fernet using a key derived from `secret.key` (generated beside the database, never in the DB or environment) and is never returned by any API.
+- **Brute force**: `/login` and `/setup` are throttled per IP+username — five free attempts, then exponential backoff to five minutes (`phoenixadult/utils/auth/rate_limit.py`), returning 429 with `Retry-After`.
+- **CSRF**: the session cookie is `SameSite=Lax`; unsafe methods additionally require a same-origin `Sec-Fetch-Site` and a matching `Origin` host. API-key callers are exempt (a header credential cannot be replayed cross-site).
 - **SSRF guard** (`phoenixadult/utils/http/ssrf_guard.py`): scheme allow-list + private/loopback/link-local/CGNAT/metadata (`169.254.169.254`) blocklist with hostname resolution; applied to the image proxy (`assert_fetchable_url`) and to the rating-key-decoded scene URL (`ensure_fetchable_url`).
 - **Path safety**: `_safe_path` (`phoenixadult/routes/image_routes.py`) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
 - **Secret hygiene**: `/config/api/state` redacts secret values (exposes only whether set); the request-logging middleware deliberately does not log `/config` bodies (they can carry secrets being saved).
@@ -700,7 +707,7 @@ flowchart LR
   ovfile -->|load_overrides applies OVER .env| envmod
   catalog -->|drives /config UI + validation| ovfile
   envmod --> consumers
-  note["Precedence: overrides > .env > built-in default.\nADMIN_TOKEN & bootstrap vars are runtime-exempt\n(not editable from the UI they protect)."]
+  note["Precedence: overrides > .env > built-in default.\nAccounts and Plex connections live in the database,\nnot the environment."]
   envmod -.-> note
 ```
 

@@ -54,7 +54,12 @@ def _options_for(spec: EnvVarSpec) -> list[str]:
     return spec.options
 
 
-def _build_state() -> dict[str, Any]:
+def _current_user(request: Request) -> dict[str, Any]:
+    user = getattr(request.state, 'user', None)
+    return {'username': user.username, 'isAdmin': user.is_admin} if user is not None else {}
+
+
+def _build_state(user: dict[str, Any] | None = None) -> dict[str, Any]:
     by_group: dict[str, list[dict[str, Any]]] = {}
     for spec in ENV_CATALOG:
         state = {
@@ -80,12 +85,12 @@ def _build_state() -> dict[str, Any]:
         return ENV_GROUP_ORDER.index(name) if name in ENV_GROUP_ORDER else len(ENV_GROUP_ORDER)
 
     groups = [{'name': name, 'tab': GROUP_TAB.get(name, 'System'), 'vars': vars_} for name, vars_ in sorted(by_group.items(), key=lambda kv: rank(kv[0]))]
-    return {'overridesPath': str(OVERRIDES_PATH), 'groups': groups, 'tabs': [tab for tab, _tab_groups in ENV_TABS]}
+    return {'overridesPath': str(OVERRIDES_PATH), 'groups': groups, 'tabs': [tab for tab, _tab_groups in ENV_TABS], 'user': user or {}}
 
 
 @router.get('/api/state')
-async def api_state() -> JSONResponse:
-    return JSONResponse(_build_state())
+async def api_state(request: Request) -> JSONResponse:
+    return JSONResponse(_build_state(_current_user(request)))
 
 
 @router.post('/api/save')
@@ -115,7 +120,7 @@ async def api_save(request: Request) -> JSONResponse:
 
         await asyncio.to_thread(_apply)
         logger.info('config', f'applied {len(clean)} override(s): {", ".join(k for k, _ in clean)}')
-    return JSONResponse(_build_state())
+    return JSONResponse(_build_state(_current_user(request)))
 
 
 @router.post('/api/reveal')
@@ -138,12 +143,12 @@ async def api_reset(request: Request) -> JSONResponse:
     if key is None:
         await asyncio.to_thread(clear_all_overrides)
         logger.info('config', 'cleared all overrides')
-        return JSONResponse(_build_state())
+        return JSONResponse(_build_state(_current_user(request)))
     if not isinstance(key, str) or not find_env_var(key):
         return JSONResponse({'error': f'"{key}" is not an editable variable'}, status_code=400)
     await asyncio.to_thread(clear_override, key)
     logger.info('config', f'cleared override: {key}')
-    return JSONResponse(_build_state())
+    return JSONResponse(_build_state(_current_user(request)))
 
 
 _MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'
@@ -183,4 +188,4 @@ def _render_ui(state: dict[str, Any], username: str) -> str:
 @router.get('')
 @router.get('/')
 async def page(request: Request) -> HTMLResponse:
-    return HTMLResponse(_render_ui(_build_state(), nav_username(request)))
+    return HTMLResponse(_render_ui(_build_state(_current_user(request)), nav_username(request)))

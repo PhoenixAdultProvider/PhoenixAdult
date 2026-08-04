@@ -38,13 +38,15 @@ NODE_ENV=development python -m phoenixadult.main
 ```
 
 - Health: `GET /health`
-- Config UI: `GET /config` (loopback or `ADMIN_TOKEN`)
-- Dev UI: `GET /dev` (non-production, loopback or `ADMIN_TOKEN`)
+- First-run setup: `GET /setup` — creates the first (admin) account
+- Sign in: `GET /login`; account and API key: `GET /account`
+- Config UI: `GET /config` (signed in)
+- Dev UI: `GET /dev` (non-production, signed in)
 - People-cache review: `GET /people-cache` — browse/manage cached cast & crew headshots (actors, directors, producers) and gender tags (needs `PEOPLE_CACHE_ENABLE`)
 - Metadata-cache review: `GET /metadata-cache` — sortable/filterable table of frozen scene snapshots, with per-row purge (needs `METADATA_CACHE_ENABLE`)
 - Plex agent mount: `/<provider>/movies` (e.g. `/phoenixadult/movies`)
 
-The two cache surfaces are admin-guarded the same way as `/config` and `/dev` (loopback or `ADMIN_TOKEN`). They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
+The two cache surfaces are guarded the same way as `/config` and `/dev` — a signed-in session or an API key. They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
 
 See the [configuration document](./docs/configuration.md) for every environment variable — with defaults and detailed usage — and the two ways to set them (`.env` at boot vs the runtime Config UI).
 
@@ -92,25 +94,21 @@ tunnel with `cloudflared` and point `PHOENIX_BASE_URL` at its hostname.
 
 ### Admin Surfaces Through the Tunnel
 
-`/config` and `/dev` are admin-guarded by `ADMIN_TOKEN`:
+Every admin page requires a signed-in user, from a tunnel or from loopback alike:
 
-- **`ADMIN_TOKEN` set** — open on loopback; any remote request (including via the
-  tunnel) must present the token.
-- **`ADMIN_TOKEN` blank/unset** — auth is **disabled**; the admin surfaces are
-  open to anyone who can reach the server. The startup log prints a warning when
-  this is the case. Only leave it blank on a trusted/local network.
+1. Start the server and open `https://<sub>.trycloudflare.com/setup` on first run to
+   create the admin account; afterwards sign in at `/login`.
+2. The session cookie carries auth across pages, so links and API calls work with no
+   token threading. It is `HttpOnly` and `SameSite=Lax`, and marked `Secure` automatically
+   when the tunnel terminates TLS.
 
-Over a tunnel with a token set:
+For scripts and automation, generate an API key on `/account` (shown once) and send it
+as a header — no secret ever lands in a URL, browser history, or tunnel access log:
 
-1. Set `ADMIN_TOKEN` in `.env` (any secret string) and start the server.
-2. Open the page with the token in the URL:
-   `https://<sub>.trycloudflare.com/dev?token=YOURTOKEN`
-   (same for `/config?token=YOURTOKEN`).
+```bash
+curl -H 'Authorization: Bearer pa_…' https://<sub>.trycloudflare.com/metadata/entries
+# or: curl -H 'x-api-key: pa_…' …
+```
 
-The startup banner prints these admin links with the token already included, so
-you can copy them straight from the log. The page forwards the token to its own
-API calls, so Search / Fetch / Save work without further steps. The token can
-also be sent as an `Authorization: Bearer <token>` or `X-Admin-Token` header.
-Note the `?token=` form puts the secret in the URL (browser history, tunnel
-access logs) — fine for a dev tunnel, but prefer a header for anything
-longer-lived.
+Locked out? Run `python scripts/reset_password.py <username>` on the server (add
+`--create-admin` if no admin account remains).

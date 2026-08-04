@@ -97,8 +97,9 @@ def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) 
 def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     body = client.get('/config').text
     assert "const LOGS_TAB = 'Logs';" in body
-    assert "return [...tabNames().map(tabSlug), 'plex', 'theme', 'logs'];" in body
-    assert '[...tabNames(), PLEX_TAB, THEME_TAB, LOGS_TAB]' in body
+    assert "'theme', 'logs'];" in body
+    assert 'THEME_TAB, LOGS_TAB]' in body
+    assert '[...tabNames(), ...extraTabs()]' in body
     assert 'id="tab-logs"' in body
     assert 'white-space: pre;' in body
     assert 'overflow: auto;' in body

@@ -343,6 +343,106 @@ by a scrape, giving the reference three states: blank (no id), filled (scraped) 
 `/metadata` Data18 filter reads it, so hand-made mappings can be listed and exported on their own.
 It round-trips through the snapshot as `data18.manual`, set only when true.
 
+## Schema Version 13 — Accounts, Sessions, and Plex Connections
+
+Authentication and Plex pairing move out of the environment and into the database, so the provider
+can serve several people and several Plex servers at once.
+
+```mermaid
+erDiagram
+  users ||--o{ sessions : "signs in"
+  users ||--o{ plex_connections : owns
+  plex_connections ||--o{ plex_connection_clients : "admits"
+
+  users {
+    int id PK
+    text username UK "COLLATE NOCASE"
+    text password_hash "argon2id"
+    int is_admin
+    text api_key_hash UK "sha256 of pa_… key"
+    text api_key_hint "display only"
+    real created_at
+    real password_changed_at
+  }
+  sessions {
+    text token_hash PK "sha256 of cookie value"
+    int user_id FK
+    real created_at
+    real last_seen_at "30-day sliding expiry"
+    text user_agent
+  }
+  plex_connections {
+    int id PK
+    int user_id FK
+    text name "unique per user"
+    text server_url
+    text token_encrypted "Fernet, key from secret.key"
+    text client_id "plex.tv device id"
+    text update_channel
+    text update_release "distro|build"
+    text image_base_url "per-server override"
+    real created_at
+  }
+  plex_connection_clients {
+    int connection_id PK,FK
+    text client_id PK "X-Plex-Client-Identifier"
+  }
+```
+
+```sql
+CREATE TABLE users (
+  id                  INTEGER PRIMARY KEY,
+  username            TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash       TEXT NOT NULL,
+  is_admin            INTEGER NOT NULL DEFAULT 0,
+  api_key_hash        TEXT UNIQUE,
+  api_key_hint        TEXT NOT NULL DEFAULT '',
+  created_at          REAL NOT NULL,
+  password_changed_at REAL NOT NULL
+);
+CREATE TABLE sessions (
+  token_hash   TEXT PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   REAL NOT NULL,
+  last_seen_at REAL NOT NULL,
+  user_agent   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX sessions_user ON sessions(user_id);
+CREATE TABLE plex_connections (
+  id              INTEGER PRIMARY KEY,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  server_url      TEXT NOT NULL DEFAULT '',
+  token_encrypted TEXT NOT NULL DEFAULT '',
+  client_id       TEXT NOT NULL DEFAULT '',
+  update_channel  TEXT NOT NULL DEFAULT 'plex',
+  update_release  TEXT NOT NULL DEFAULT '',
+  image_base_url  TEXT NOT NULL DEFAULT '',
+  created_at      REAL NOT NULL,
+  UNIQUE (user_id, name)
+);
+CREATE INDEX plex_connections_user ON plex_connections(user_id);
+CREATE TABLE plex_connection_clients (
+  connection_id INTEGER NOT NULL REFERENCES plex_connections(id) ON DELETE CASCADE,
+  client_id     TEXT NOT NULL,
+  PRIMARY KEY (connection_id, client_id)
+);
+CREATE INDEX plex_connection_clients_client ON plex_connection_clients(client_id);
+```
+
+Only reversible secret in the schema is `token_encrypted` — Plex replays that token on every call,
+so it cannot be hashed. It is encrypted with a key derived from `secret.key` (written beside the
+database, never stored in it), which means a stolen database or backup alone does not yield a
+usable Plex token. Passwords, API keys, and session cookies are one-way digests.
+
+Allowed client identifiers are a child table rather than a delimited column because the provider
+guard needs the **union across every user's connections** on each request; `SELECT DISTINCT` over an
+indexed column beats parsing strings in the hot path. An empty union leaves the provider open, which
+is what keeps a fresh install (and an upgrade that has not configured anything yet) serving Plex.
+
+Deleting a user cascades to their sessions and connections, and deleting a connection cascades to
+its client identifiers, so account removal leaves nothing behind.
+
 ## Why This Shape
 
 ### Why Dimension + Junction Tables
