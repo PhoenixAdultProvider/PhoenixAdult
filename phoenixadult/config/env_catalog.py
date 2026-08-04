@@ -298,7 +298,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'PLEX_UPDATE_RELEASE',
         'Server Update Release',
-        'Release to update to as distro|build; set from the Release dropdown in the Server section (Linux only).',
+        'Release to update to as distro|build; set from the Release dropdown in the Server section.',
         'Plex Updates',
         'string',
         default_value='',

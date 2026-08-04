@@ -144,13 +144,13 @@ async def update_status(force: bool = False) -> dict[str, Any]:
         return {'error': f'Could not match server platform: {platform_name}', 'current': current, 'platform': platform, 'channel': channel}
 
     releases = [r for r in (info.get('releases') or []) if isinstance(r, dict)]
+    latest = str(info.get('version') or '')
     wanted = env.plex_update_release
+    current_builds = [r for r in releases if latest and latest in str(r.get('url') or '')]
     release = next(
         (r for r in releases if wanted and r.get('distro') == wanted[0] and r.get('build') == wanted[1]),
-        releases[0] if releases else {},
+        current_builds[0] if current_builds else (releases[0] if releases else {}),
     )
-
-    latest = str(info.get('version') or '')
     result = {
         'current': current,
         'latest': latest,

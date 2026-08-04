@@ -195,7 +195,7 @@ Only needed for reconciliation (below). Both must be set or the feature stays of
 | `PLEX_CLIENT_ID` | _(unset)_ | Device identifier the fetched token is bound to; saved automatically by "Fetch New Token". Clear it together with the token to unlink this device. |
 | `PLEX_CLIENT_ALLOWLIST` | _(unset)_ | Comma-separated `X-Plex-Client-Identifier` values allowed to call the provider endpoints; empty = no restriction. Loopback and admin-token requests always pass; everything else gets a 403. Manage it in the "Allowed Plex Clients" section of the Plex tab (entries display redacted; click Show to reveal). Find a server's identifier in the verbose request dump or its `Preferences.xml` (`ProcessedMachineIdentifier`). |
 | `PLEX_UPDATE_CHANNEL` | `plex` | Channel the "Check for Update" button checks: `plex` follows the server's own channel preference (`ButlerUpdateChannel`), or force `public` / `beta` (beta needs Plex Pass). |
-| `PLEX_UPDATE_RELEASE` | _(unset)_ | Release to update to as `distro\|build` (e.g. `debian\|linux-x86_64`); set from the Release dropdown in the Server section, shown for Linux servers. Unset = the platform's first listed release. |
+| `PLEX_UPDATE_RELEASE` | _(unset)_ | Release to update to as `distro\|build` (e.g. `debian\|linux-x86_64`); set from the Release dropdown in the Server section, shown whenever the platform lists more than one release. Unset = the release carrying the platform's latest version (Plex lists stale builds first — e.g. frozen Windows 32-bit), falling back to the first listed. |
 
 The **Plex tab** of the `/config` UI drives all of this: fetch a token via plex.tv sign-in,
 pick your server from the discovered list (fills `PLEX_URL`), verify the connection

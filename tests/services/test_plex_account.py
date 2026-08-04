@@ -162,6 +162,24 @@ async def test_update_status_picks_the_configured_linux_release(monkeypatch: pyt
 
 
 @respx.mock
+async def test_update_status_default_release_skips_stale_builds(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('PLEX_URL', BASE)
+    monkeypatch.setenv('PLEX_TOKEN', 'tok')
+    respx.get(f'{BASE}/').mock(return_value=httpx.Response(200, json={'MediaContainer': {'version': '1.43.0', 'platform': 'Windows'}}))
+    _mock_prefs()
+    releases = [
+        {'label': 'Windows 32-bit', 'distro': 'english', 'build': 'windows-x86', 'url': 'https://d/1.42.2-x86.exe'},
+        {'label': 'Windows 64-bit', 'distro': 'english', 'build': 'windows-x86_64', 'url': 'https://d/1.43.3-x86_64.exe'},
+    ]
+    respx.get('https://plex.tv/api/downloads/5.json').mock(
+        return_value=httpx.Response(200, json={'computer': {'Windows': {'version': '1.43.3', 'releases': releases}}})
+    )
+    result = await plex_account.update_status(force=True)
+    assert result['label'] == 'Windows 64-bit'
+    assert result['downloadUrl'] == 'https://d/1.43.3-x86_64.exe'
+
+
+@respx.mock
 async def test_update_status_reports_unmatched_platform(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PLEX_URL', BASE)
     monkeypatch.setenv('PLEX_TOKEN', 'tok')

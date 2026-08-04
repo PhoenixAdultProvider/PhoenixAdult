@@ -1168,7 +1168,7 @@
       const row = document.getElementById('plex-update-release-row');
       const sel = document.getElementById('plex-update-release');
       const releases = data.releases || [];
-      if (data.serverPlatform !== 'Linux' || !releases.length) { row.style.display = 'none'; return; }
+      if (releases.length < 2) { row.style.display = 'none'; return; }
       const prev = sel.value;
       const wasDirty = prev && prev !== sel.dataset.initial;
       sel.innerHTML = releases.map((r) => {
