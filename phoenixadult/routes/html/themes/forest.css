@@ -205,13 +205,13 @@
 
 /* ── People Page ── */
 [data-theme-name="forest"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="people"] {
-  --card-bg: #1e2433;
-  --card-border: #334155;
-  --panel-border: #334155;
-  --progress-track: #1e2433;
+  --card-bg: #18241c;
+  --card-border: #2f4636;
+  --panel-border: #2f4636;
+  --progress-track: #18241c;
   --banner-danger-bg: #3b1d1d;
   --banner-danger-border: #b91c1c;
-  --button-disabled-bg: #334155;
+  --button-disabled-bg: #2f4636;
   --button-disabled-text: #94a3b8;
 }
 
@@ -225,15 +225,15 @@
   --button-primary-hover-bg: #15803d;
   --button-danger-bg: #7f1d1d;
   --button-danger-hover-bg: #991b1b;
-  --card-bg: #1e2433;
-  --card-border: #2d3748;
-  --input-bg: #0f1117;
+  --card-bg: #18241c;
+  --card-border: #2f4636;
+  --input-bg: #0c120e;
   --input-focus-border: #16a34a;
   --tab-active-underline: #16a34a;
   --subtitle-text: #64748b;
   --status-ok-text: #6ee7b7;
   --status-danger-text: #fca5a5;
-  --log-bg: #0b0d12;
+  --log-bg: #0a0f0c;
   --log-text: #cbd5e1;
 }
 
@@ -249,13 +249,13 @@
 [data-theme-name="forest"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="forest"][data-page="dev"] {
   --button-primary-bg: #16a34a;
   --button-primary-hover-bg: #15803d;
-  --card-bg: #1e2433;
-  --card-border: #2d3748;
-  --chip-border: #374151;
-  --input-bg: #0f1117;
+  --card-bg: #18241c;
+  --card-border: #2f4636;
+  --chip-border: #2f4636;
+  --input-bg: #0c120e;
   --input-focus-border: #16a34a;
   --spinner-track: #4b5563;
   --spinner-head: #16a34a;
   --status-ok-text: #6ee7b7;
-  --badge-info-bg: #1e3a5f;
+  --badge-info-bg: #14532d;
 }
