@@ -14,16 +14,6 @@ _HOST_CACHE_TTL = 30 * 60
 _COOKIES: SingleFlight[str, dict[str, str]] = SingleFlight()
 
 
-def parse_set_cookie(lines: list[str]) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for line in lines:
-        first = line.split(';', 1)[0]
-        eq = first.find('=')
-        if eq > 0:
-            out[first[:eq].strip()] = first[eq + 1 :].strip()
-    return out
-
-
 async def get_site_cookies(base_url: str) -> dict[str, str]:
     host = urlsplit(base_url).hostname or ''
     if not host:
@@ -33,8 +23,8 @@ async def get_site_cookies(base_url: str) -> dict[str, str]:
         cookies: dict[str, str] = {}
         try:
             async with make_http() as client:
-                r = await client.get(base_url, headers={'User-Agent': DEFAULT_UA})
-            cookies = parse_set_cookie(r.headers.get_list('set-cookie'))
+                await client.get(base_url, headers={'User-Agent': DEFAULT_UA})
+                cookies = dict(client.cookies)
         except httpx2.HTTPError as err:
             logger.warn('siteCookies', f'GET {base_url} failed: {err}')
         return cookies, time.time() + _HOST_CACHE_TTL

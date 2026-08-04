@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 import httpx2
+from pydantic import Field
 
+from phoenixadult.models.camel import CamelModel
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils import cache as metadata_cache
@@ -33,50 +34,25 @@ def enabled() -> bool:
     return bool(db.connect().execute('SELECT COUNT(*) FROM plex_connections WHERE server_url != "" AND token_encrypted != ""').fetchone()[0])
 
 
-@dataclass
-class ItemReport:
+class ItemReport(CamelModel):
     rating_key: str
     title: str
     guid: str
     site: str = ''
-    removals: dict[str, list[str]] = field(default_factory=dict)
-    reasons: dict[str, dict[str, str]] = field(default_factory=dict)
-    locked: list[str] = field(default_factory=list)
+    removals: dict[str, list[str]] = Field(default_factory=dict)
+    reasons: dict[str, dict[str, str]] = Field(default_factory=dict)
+    locked: list[str] = Field(default_factory=list)
     skipped: str | None = None
 
 
-@dataclass
-class ReconcileReport:
+class ReconcileReport(CamelModel):
     applied: bool
     scanned: int = 0
     matched: int = 0
     changed: int = 0
     skipped_locked: int = 0
     skipped_no_snapshot: int = 0
-    items: list[ItemReport] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            'applied': self.applied,
-            'scanned': self.scanned,
-            'matched': self.matched,
-            'changed': self.changed,
-            'skippedLocked': self.skipped_locked,
-            'skippedNoSnapshot': self.skipped_no_snapshot,
-            'items': [
-                {
-                    'ratingKey': i.rating_key,
-                    'title': i.title,
-                    'guid': i.guid,
-                    'site': i.site,
-                    'removals': i.removals,
-                    'reasons': i.reasons,
-                    'locked': i.locked,
-                    'skipped': i.skipped,
-                }
-                for i in self.items
-            ],
-        }
+    items: list[ItemReport] = Field(default_factory=list)
 
 
 def _guid_prefixes() -> tuple[str, ...]:
@@ -313,24 +289,13 @@ async def reconcile(
     return report
 
 
-@dataclass
-class CollectionLogoReport:
+class CollectionLogoReport(CamelModel):
     applied: bool
     collections: int = 0
     matched: int = 0
     pushed: int = 0
     already: int = 0
-    items: list[dict[str, str]] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            'applied': self.applied,
-            'collections': self.collections,
-            'matched': self.matched,
-            'pushed': self.pushed,
-            'already': self.already,
-            'items': self.items,
-        }
+    items: list[dict[str, str]] = Field(default_factory=list)
 
 
 async def push_collection_logos(connection: Connection, token: str, apply: bool = False, limit: int | None = None) -> CollectionLogoReport:

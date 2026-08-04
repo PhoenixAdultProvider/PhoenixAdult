@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import re
 import shutil
-from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -11,8 +10,10 @@ from urllib.parse import quote
 
 import httpx2
 from PIL import Image as PILImage
+from pydantic import Field
 
 from phoenixadult.mappers.metadata_mapper import build_artwork
+from phoenixadult.models.camel import CamelModel
 from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_connections import Connection
@@ -36,8 +37,7 @@ _NAME_BY_CLASS = {'coverPoster': 'poster', 'background': 'art', 'backgroundSquar
 _FOREIGN_GUID = re.compile(r'^[A-Za-z0-9._-]+://(?P<id>[^?#]+)')
 
 
-@dataclass
-class ItemReport:
+class ItemReport(CamelModel):
     rating_key: str
     title: str
     status: str
@@ -46,8 +46,7 @@ class ItemReport:
     detail: str = ''
 
 
-@dataclass
-class ImportReport:
+class ImportReport(CamelModel):
     applied: bool
     section: str = ''
     library: str = ''
@@ -58,24 +57,7 @@ class ImportReport:
     unresolved: int = 0
     failed: int = 0
     items_truncated: int = 0
-    items: list[ItemReport] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            'applied': self.applied,
-            'section': self.section,
-            'library': self.library,
-            'scanned': self.scanned,
-            'imported': self.imported,
-            'importable': self.importable,
-            'skippedExisting': self.skipped_existing,
-            'unresolved': self.unresolved,
-            'failed': self.failed,
-            'itemsTruncated': self.items_truncated,
-            'items': [
-                {'ratingKey': i.rating_key, 'title': i.title, 'status': i.status, 'site': i.site, 'curId': i.cur_id, 'detail': i.detail} for i in self.items
-            ],
-        }
+    items: list[ItemReport] = Field(default_factory=list)
 
     def add(self, item: ItemReport) -> None:
         if len(self.items) < _MAX_ITEMS:
@@ -234,16 +216,16 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
     resolved = _resolve(guid, studio)
     if resolved is None:
         report.unresolved += 1
-        report.add(ItemReport(rating_key, title, 'unresolved', detail=_unresolved_detail(guid, studio)))
+        report.add(ItemReport(rating_key=rating_key, title=title, status='unresolved', detail=_unresolved_detail(guid, studio)))
         return
     site_name, cur_id = resolved
     if not overwrite and scene_store.has(_hash(site_name, cur_id)):
         report.skipped_existing += 1
-        report.add(ItemReport(rating_key, title, 'skipped', site_name, cur_id, 'already cached'))
+        report.add(ItemReport(rating_key=rating_key, title=title, status='skipped', site=site_name, cur_id=cur_id, detail='already cached'))
         return
     report.importable += 1
     if not apply:
-        report.add(ItemReport(rating_key, title, 'importable', site_name, cur_id))
+        report.add(ItemReport(rating_key=rating_key, title=title, status='importable', site=site_name, cur_id=cur_id))
         return
 
     staging = safe_join(metadata_cache.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}')
@@ -257,13 +239,13 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         response = _build(item, site_name, cur_id, images)
         if await metadata_cache.write(site_name, cur_id, response):
             report.imported += 1
-            report.add(ItemReport(rating_key, title, 'imported', site_name, cur_id, f'{len(images)} images'))
+            report.add(ItemReport(rating_key=rating_key, title=title, status='imported', site=site_name, cur_id=cur_id, detail=f'{len(images)} images'))
         else:
             report.failed += 1
-            report.add(ItemReport(rating_key, title, 'failed', site_name, cur_id, 'snapshot write rejected'))
+            report.add(ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail='snapshot write rejected'))
     except (httpx2.HTTPError, OSError, ValueError) as err:
         report.failed += 1
-        report.add(ItemReport(rating_key, title, 'failed', site_name, cur_id, repr(err)))
+        report.add(ItemReport(rating_key=rating_key, title=title, status='failed', site=site_name, cur_id=cur_id, detail=repr(err)))
     finally:
         if staging is not None:
             shutil.rmtree(staging, ignore_errors=True)

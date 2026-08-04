@@ -4,33 +4,17 @@ import asyncio
 import ipaddress
 from urllib.parse import urlsplit
 
+_DOC_NETS = tuple(ipaddress.ip_network(n) for n in ('192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24'))
+
 
 def _ipv4_is_private(ip: str) -> bool:
-    parts = ip.split('.')
-    if len(parts) != 4:
-        return True
     try:
-        nums = [int(p) for p in parts]
+        addr = ipaddress.IPv4Address(ip)
     except ValueError:
         return True
-    if any(n < 0 or n > 255 for n in nums):
-        return True
-    a, b = nums[0], nums[1]
-    if a in (0, 127):
-        return True
-    if a == 10:
-        return True
-    if a == 172 and 16 <= b <= 31:
-        return True
-    if a == 192 and b == 168:
-        return True
-    if a == 169 and b == 254:
-        return True
-    if a == 100 and 64 <= b <= 127:
-        return True
-    if a >= 224:
-        return True
-    return False
+    if any(addr in net for net in _DOC_NETS):
+        return False
+    return not addr.is_global or addr.is_multicast
 
 
 def _ipv6_is_private(ip: str) -> bool:

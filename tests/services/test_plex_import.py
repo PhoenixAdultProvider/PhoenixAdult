@@ -305,6 +305,6 @@ def test_candidate_url_handles_every_key_shape() -> None:
 def test_report_caps_its_item_list() -> None:
     report = plex_import.ImportReport(applied=False)
     for i in range(plex_import._MAX_ITEMS + 25):
-        report.add(plex_import.ItemReport(str(i), 'x', 'importable'))
+        report.add(plex_import.ItemReport(rating_key=str(i), title='x', status='importable'))
     assert len(report.items) == plex_import._MAX_ITEMS
     assert report.items_truncated == 25

@@ -8,12 +8,14 @@ python -m scripts.site_health new        # only fixtures not yet in the report
 python -m scripts.site_health retry      # only sites whose last run failed
 ```
 
-Output lands at [`docs/site-health.md`](./site-health.md) (summary grid) and
-`docs/site-health-details.md` (per-site expected-vs-actual tables, generated locally and
-not committed). Each site gets a row in the summary grid with one icon per field type.
+Output lands at [`docs/site-health.md`](./site-health.md) (summary grid),
+`docs/site-health.json` (machine-readable results — the merge state for `new`/`retry`),
+and `docs/site-health-details.md` (per-site expected-vs-actual tables, generated locally
+and not committed). Each site gets a row in the summary grid with one icon per field type.
 
-`new` and `retry` merge their fresh rows back into the existing report in place,
-preserving the other sites without re-running them. Useful flags: `--output <path>`,
+`new` and `retry` merge fresh results into the JSON sidecar and re-render both reports,
+preserving the other sites without re-running them. The first `new` run after upgrading
+re-runs everything once (older reports have no sidecar). Useful flags: `--output <path>`,
 `--no-details`, `--keep-gender-skip`, `--keep-flaresolverr`.
 
 ### Fixture Schema (`tests/health/fixtures.json`)

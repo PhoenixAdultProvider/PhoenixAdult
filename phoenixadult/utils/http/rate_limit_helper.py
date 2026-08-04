@@ -56,34 +56,21 @@ _fast_slot_held: ContextVar[bool] = ContextVar('fast_slot_held', default=False)
 class FastGate:
     def __init__(self, slots: int = _FAST_SLOTS) -> None:
         self.slots = slots
+        self._sem = asyncio.Semaphore(slots)
         self._active = 0
-        self._waiters: list[asyncio.Future[None]] = []
+        self._waiting = 0
         self._loop_id: int | None = None
 
     def state(self) -> dict[str, int]:
-        return {'busy': self._active, 'slots': self.slots, 'waiting': len(self._waiters)}
+        return {'busy': self._active, 'slots': self.slots, 'waiting': self._waiting}
 
     def _ensure_loop(self) -> None:
         loop_id = id(asyncio.get_running_loop())
         if self._loop_id != loop_id:
             self._loop_id = loop_id
+            self._sem = asyncio.Semaphore(self.slots)
             self._active = 0
-            self._waiters = []
-
-    def _wake(self) -> None:
-        for waiter in self._waiters:
-            if not waiter.done():
-                waiter.set_result(None)
-
-    async def _acquire(self) -> None:
-        while self._active >= self.slots:
-            waiter: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-            self._waiters.append(waiter)
-            try:
-                await waiter
-            finally:
-                self._waiters.remove(waiter)
-        self._active += 1
+            self._waiting = 0
 
     @asynccontextmanager
     async def turn(self, allow_slow: bool) -> AsyncIterator[None]:
@@ -91,20 +78,25 @@ class FastGate:
         if _fast_slot_held.get():
             yield
             return
-        if allow_slow:
-            await self._acquire()
-        else:
-            try:
-                await asyncio.wait_for(self._acquire(), _FAST_SYNC_WAIT_BUDGET)
-            except TimeoutError:
-                raise PacingDeferredError(_FAST_SYNC_WAIT_BUDGET * (len(self._waiters) + 1)) from None
+        self._waiting += 1
+        try:
+            if allow_slow:
+                await self._sem.acquire()
+            else:
+                try:
+                    await asyncio.wait_for(self._sem.acquire(), _FAST_SYNC_WAIT_BUDGET)
+                except TimeoutError:
+                    raise PacingDeferredError(_FAST_SYNC_WAIT_BUDGET * self._waiting) from None
+        finally:
+            self._waiting -= 1
+        self._active += 1
         token = _fast_slot_held.set(True)
         try:
             yield
         finally:
             _fast_slot_held.reset(token)
             self._active -= 1
-            self._wake()
+            self._sem.release()
 
 
 FAST_GATE = FastGate()

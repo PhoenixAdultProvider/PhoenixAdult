@@ -11,7 +11,6 @@ from urllib.parse import urljoin, urlsplit
 import httpx2
 
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
-from phoenixadult.utils.cookies.site_cookies import parse_set_cookie
 from phoenixadult.utils.http.client import DEFAULT_UA, make_http
 from phoenixadult.utils.logging.logger import logger
 
@@ -58,7 +57,7 @@ async def get_verified_cookies(
                     if pace is not None:
                         await pace()
                     get_resp = await client.get(gallery_url, headers=_BASE_HEADERS, follow_redirects=False)
-                    initial.update(parse_set_cookie(get_resp.headers.get_list('set-cookie')))
+                    initial = dict(client.cookies)
                     loc = get_resp.headers.get('location', '')
                     if get_resp.status_code not in (301, 302, 303, 307, 308) or not loc:
                         break
@@ -115,6 +114,7 @@ async def get_verified_cookies(
                 await pace()
             async with make_http() as client:
                 post_resp = await client.post(verify_url, content=json.dumps(payload), headers=post_headers)
+                verify_cookies = dict(client.cookies)
         except httpx2.HTTPError as err:
             logger.warn('pow', f'POST {verify_url} failed: {err}')
             return None
@@ -131,7 +131,7 @@ async def get_verified_cookies(
             logger.warn('pow', f'verify success=false for {host}: {json.dumps(success)}')
             return None
 
-        merged = {**initial, **parse_set_cookie(post_resp.headers.get_list('set-cookie'))}
+        merged = {**initial, **verify_cookies}
         return merged, time.time() + _HOST_CACHE_TTL
 
     return await _COOKIES.get(host, _fetch)

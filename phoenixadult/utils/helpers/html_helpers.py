@@ -4,6 +4,9 @@ import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
+from w3lib.html import remove_tags, replace_entities
+from w3lib.url import add_or_replace_parameter
+
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines import SearchOptions, web_search
 
@@ -47,15 +50,11 @@ def append_year_param(url: str, param_name: str, year: int | None = None, search
         y = search_date[:4]
     if not re.match(r'^\d{4}$', y):
         return url
-    sep = '&' if '?' in url else '?'
-    return f'{url}{sep}{param_name}={y}'
-
-
-_TAG_RE = re.compile(r'<[^>]+>')
+    return add_or_replace_parameter(url, param_name, y)
 
 
 def strip_tags(html: str | None) -> str:
-    return _TAG_RE.sub('', html or '').strip()
+    return replace_entities(remove_tags(html or '')).strip()
 
 
 def script_match(script_text: str, pattern: re.Pattern[str] | str) -> str:

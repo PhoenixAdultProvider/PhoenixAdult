@@ -4,12 +4,7 @@ import httpx
 import httpx2
 import respx
 
-from phoenixadult.utils.cookies.site_cookies import get_site_cookies, parse_set_cookie
-
-
-def test_parse_set_cookie() -> None:
-    out = parse_set_cookie(['sess=abc; Path=/; HttpOnly', 'theme=dark; Secure', 'broken'])
-    assert out == {'sess': 'abc', 'theme': 'dark'}
+from phoenixadult.utils.cookies.site_cookies import get_site_cookies
 
 
 @respx.mock

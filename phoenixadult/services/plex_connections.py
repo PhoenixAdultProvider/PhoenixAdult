@@ -3,9 +3,11 @@ from __future__ import annotations
 import threading
 import time
 import uuid
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import ConfigDict
+
+from phoenixadult.models.camel import CamelModel
 from phoenixadult.utils import db
 from phoenixadult.utils.auth.server_secret import decrypt, encrypt
 
@@ -14,8 +16,9 @@ _union_cache: tuple[int, str, frozenset[str]] | None = None
 _generation = 0
 
 
-@dataclass(frozen=True)
-class Connection:
+class Connection(CamelModel):
+    model_config = ConfigDict(alias_generator=CamelModel.model_config['alias_generator'], populate_by_name=True, frozen=True)
+
     id: int
     user_id: int
     name: str
@@ -28,17 +31,7 @@ class Connection:
     allowed_clients: tuple[str, ...]
 
     def as_dict(self) -> dict[str, Any]:
-        return {
-            'id': self.id,
-            'name': self.name,
-            'serverUrl': self.server_url,
-            'clientId': self.client_id,
-            'updateChannel': self.update_channel,
-            'updateRelease': self.update_release,
-            'imageBaseUrl': self.image_base_url,
-            'hasToken': self.has_token,
-            'allowedClients': list(self.allowed_clients),
-        }
+        return self.model_dump(by_alias=True, exclude={'user_id'})
 
 
 def _bump() -> None:

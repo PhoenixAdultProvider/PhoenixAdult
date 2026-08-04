@@ -43,15 +43,14 @@ async def page(request: Request) -> HTMLResponse:
         run_in('store', metadata_cache.facets),
     )
     state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
-    entries_json = json.dumps(entries).replace('<', '\\u003c')
     body = (
         _TEMPLATE.replace('__NAV__', render_nav('metadata', nav_username(request)))
         .replace('__STATE__', state)
-        .replace('__ENTRIES_JSON__', entries_json)
+        .replace('__ENTRIES_JSON__', _json_attr(entries))
         .replace('__TOTAL__', json.dumps(total))
-        .replace('__STUDIOS__', json.dumps(studios).replace('<', '\\u003c'))
-        .replace('__FACETS__', json.dumps(facets).replace('<', '\\u003c'))
-        .replace('__DUP_KEYS__', json.dumps(dup_keys).replace('<', '\u003c'))
+        .replace('__STUDIOS__', _json_attr(studios))
+        .replace('__FACETS__', _json_attr(facets))
+        .replace('__DUP_KEYS__', _json_attr(dup_keys))
     )
     return HTMLResponse(body)
 

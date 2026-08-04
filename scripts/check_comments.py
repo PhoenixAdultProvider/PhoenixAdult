@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import ast
 import re
 import subprocess
@@ -123,8 +124,11 @@ def _changed_files(diff_args: list[str]) -> list[str]:
 
 
 def main() -> int:
-    rng = sys.argv[1] if len(sys.argv) > 1 else None
-    scan_all = rng == '--all'
+    parser = argparse.ArgumentParser(description='Fail if a diff adds a disallowed comment or any docstring.')
+    parser.add_argument('range', nargs='?', help='commit range to check (default: staged changes)')
+    parser.add_argument('--all', action='store_true', help='check every file in the repo')
+    opts = parser.parse_args()
+    rng, scan_all = opts.range, opts.all
     if scan_all:
         rng = None
         diff_args = []

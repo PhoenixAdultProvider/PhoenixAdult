@@ -13,6 +13,7 @@ from urllib.parse import urljoin
 from dateutil import parser as date_parser
 from dateutil.relativedelta import relativedelta
 from slugify import slugify as _slugify
+from w3lib.url import url_query_cleaner
 
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.similarity import compare_string
@@ -180,11 +181,11 @@ def to_https(raw: str) -> str:
 
 
 def strip_query(url: str | None) -> str:
-    return (url or '').split('?')[0]
+    return url_query_cleaner(url, []) if url else ''
 
 
 def join_url(path: str, base_url: str) -> str:
-    if path.startswith('http'):
+    if path.startswith(('http://', 'https://')):
         return path
     return f'{base_url}{path if path.startswith("/") else f"/{path}"}'
 

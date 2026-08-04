@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.services import plex_reconcile
 from tests.conftest import authed_client, seed_connection
 
 BASE = 'http://192.0.2.10:32400'
+
+
+@pytest.fixture(autouse=True)
+def _fresh_progress() -> None:
+    plex_reconcile._progress.clear()
 
 
 def test_requires_auth() -> None:

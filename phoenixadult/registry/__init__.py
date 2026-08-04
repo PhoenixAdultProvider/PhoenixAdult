@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import dataclasses
 import re
-import unicodedata
+
+from text_unidecode import unidecode
 
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
@@ -31,7 +32,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.298',
+        version='1.0.0-alpha.299',
         media_type='movie',
     ),
 ]
@@ -40,8 +41,7 @@ DEFAULT_PROVIDER_ID = PROVIDER_DEFINITIONS[0].id
 
 
 def normalize_site_key(token: str) -> str:
-    folded = unicodedata.normalize('NFKD', token).encode('ascii', 'ignore').decode('ascii')
-    return re.sub(r'[^a-z0-9]', '', folded.lower())
+    return re.sub(r'[^a-z0-9]', '', unidecode(token).lower())
 
 
 def _with_archive(sites: list[SiteInfo], archived: list[SiteInfo]) -> list[SiteInfo]:
