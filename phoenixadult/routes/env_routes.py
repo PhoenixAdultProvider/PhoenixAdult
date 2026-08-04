@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import signal
 from pathlib import Path
@@ -29,9 +28,8 @@ from phoenixadult.config.env_overrides import (
     set_override,
 )
 from phoenixadult.registry import SITE_DEFINITIONS
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
-from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.session_log import DEFAULT_LINES, LINE_CHOICES, session_log
 
@@ -177,12 +175,8 @@ async def api_logs(since: int = 0, limit: int = DEFAULT_LINES) -> JSONResponse:
     return JSONResponse({'seq': seq, 'lines': lines, 'reset': reset, 'choices': list(LINE_CHOICES)})
 
 
-_CONFIG_HTML: str = load_data(__file__, 'config_ui', kind='html')
-
-
 def _render_ui(state: dict[str, Any], username: str) -> str:
-    state_json = json.dumps(state, ensure_ascii=False).replace('<', '\\u003c')
-    return _CONFIG_HTML.replace('__NAV__', render_nav('config', username)).replace('__STATE_JSON__', state_json)
+    return render_page('config_ui', active='config', username=username, state=state)
 
 
 @router.get('')

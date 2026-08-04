@@ -47,7 +47,7 @@
   </style>
 </head>
 <body data-page="logos">
-  __NAV__
+  {% include 'nav.html' %}
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.
     Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.</div>
@@ -65,7 +65,7 @@
   <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
 
   <script>
-    let STATE = __STATE_JSON__;
+    let STATE = {{ state|tojson }};
 
     function api(path, opts = {}) {
       return fetch(path, opts);

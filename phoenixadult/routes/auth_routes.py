@@ -1,25 +1,17 @@
 from __future__ import annotations
 
-from html import escape as html_escape
-
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth import rate_limit, user_store
 from phoenixadult.utils.auth.passwords import hash_token, password_error
 from phoenixadult.utils.auth.user_auth import SESSION_COOKIE, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
 
 public_router = APIRouter()
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
-
-_THEME_TEMPLATE: str = load_data(__file__, 'theme', kind='html')
-_LOGIN_HTML: str = load_data(__file__, 'login', kind='html')
-_SETUP_HTML: str = load_data(__file__, 'setup', kind='html')
-_ACCOUNT_HTML: str = load_data(__file__, 'account', kind='html')
 
 
 def _client_ip(request: Request) -> str:
@@ -48,8 +40,7 @@ async def _seeded() -> bool:
 async def login_page(request: Request) -> HTMLResponse:
     if not await _seeded():
         return HTMLResponse(status_code=302, headers={'Location': '/setup'})
-    subtitle = 'Enter your credentials to continue.'
-    return HTMLResponse(_LOGIN_HTML.replace('__THEME__', _THEME_TEMPLATE).replace('__SUBTITLE__', subtitle))
+    return HTMLResponse(render_page('login', subtitle='Enter your credentials to continue.'))
 
 
 @public_router.post('/login')
@@ -79,7 +70,7 @@ async def login(request: Request) -> JSONResponse:
 async def setup_page(request: Request) -> HTMLResponse:
     if await _seeded():
         return HTMLResponse('Setup already complete.', status_code=404)
-    return HTMLResponse(_SETUP_HTML.replace('__THEME__', _THEME_TEMPLATE))
+    return HTMLResponse(render_page('setup'))
 
 
 @public_router.post('/setup')
@@ -126,13 +117,8 @@ async def account_page(request: Request) -> HTMLResponse:
     user = await resolve_user(request)
     assert user is not None
     row = await run_in('store', user_store.get_by_id, user.id)
-    hint = row.api_key_hint if row else ''
-    body = (
-        _ACCOUNT_HTML.replace('__NAV__', render_nav('', nav_username(request)))
-        .replace('__USERNAME__', html_escape(user.username))
-        .replace('__API_KEY_HINT__', html_escape(hint) or 'No key generated yet.')
-    )
-    return HTMLResponse(body)
+    hint = (row.api_key_hint if row else '') or 'No key generated yet.'
+    return HTMLResponse(render_page('account', active='', username=nav_username(request), api_key_hint=hint))
 
 
 @router.post('/account/api/password')

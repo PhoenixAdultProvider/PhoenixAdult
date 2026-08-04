@@ -1,4 +1,4 @@
-__THEME__
+{% include 'theme.html' %}
 <style>
   body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0;
          min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -27,7 +27,7 @@ __THEME__
 <body data-page="config">
   <form class="card" id="loginForm">
     <h1>Sign In</h1>
-    <div class="sub">__SUBTITLE__</div>
+    <div class="sub">{{ subtitle }}</div>
     <label for="username">Username</label>
     <input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" autofocus>
     <div class="field-head">

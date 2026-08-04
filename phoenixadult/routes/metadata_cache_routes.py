@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import html
-import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -10,27 +8,19 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import service_for
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
-_TEMPLATE: str = load_data(__file__, 'metadata_cache', kind='html')
-_EDIT_TEMPLATE: str = load_data(__file__, 'metadata_edit', kind='html')
-
 _SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
 _EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt', 'data18_id', 'data18_type')
 _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
-
-
-def _json_attr(value: object) -> str:
-    return json.dumps(value).replace('<', '\\u003c')
 
 
 @router.get('', response_class=HTMLResponse)
@@ -42,17 +32,20 @@ async def page(request: Request) -> HTMLResponse:
         run_in('store', metadata_cache.studios),
         run_in('store', metadata_cache.facets),
     )
-    state = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
-    body = (
-        _TEMPLATE.replace('__NAV__', render_nav('metadata', nav_username(request)))
-        .replace('__STATE__', state)
-        .replace('__ENTRIES_JSON__', _json_attr(entries))
-        .replace('__TOTAL__', json.dumps(total))
-        .replace('__STUDIOS__', _json_attr(studios))
-        .replace('__FACETS__', _json_attr(facets))
-        .replace('__DUP_KEYS__', _json_attr(dup_keys))
+    status = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
+    return HTMLResponse(
+        render_page(
+            'metadata_cache',
+            active='metadata',
+            username=nav_username(request),
+            status=status,
+            entries=entries,
+            total=total,
+            studios=studios,
+            facets=facets,
+            dup_keys=dup_keys,
+        )
     )
-    return HTMLResponse(body)
 
 
 @router.get('/edit', response_class=HTMLResponse)
@@ -61,18 +54,10 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     if loaded is None:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
-    subtitle = f'<code id="subKey">{html.escape(key)}</code>'
     from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
-    body = (
-        _EDIT_TEMPLATE.replace('__NAV__', render_nav('metadata', nav_username(request)))
-        .replace('__SUBTITLE__', subtitle)
-        .replace('__KEY__', _json_attr(key))
-        .replace('__MAPPING_SLUG__', _json_attr(slug))
-        .replace('__METADATA__', _json_attr(md[0]))
-    )
-    return HTMLResponse(body)
+    return HTMLResponse(render_page('metadata_edit', active='metadata', username=nav_username(request), key=key, mapping_slug=slug, metadata=md[0]))
 
 
 @router.post('/save')

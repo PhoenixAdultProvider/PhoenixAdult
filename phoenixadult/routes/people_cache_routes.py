@@ -14,11 +14,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_nav, render_page
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.logging.logger import logger
@@ -30,15 +29,9 @@ from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonS
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 
-_EDIT_TEMPLATE: str = load_data(__file__, 'people_edit', kind='html')
 FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_storage_source.name]
 _BULK_CONCURRENCY = 3
 _BULK_MAX = 250
-
-
-def _json_attr(value: object) -> str:
-    return json.dumps(value).replace('<', '\\u003c')
-
 
 _ROLES = ('actor', 'director', 'producer')
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
@@ -590,22 +583,25 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
-    origin = html.escape(str(entry.get('source', '')) or 'unrecorded')
-    subtitle = f'{html.escape(str(entry["role"]))} · <code>{html.escape(relpath)}</code> · from {origin}'
     credits = await run_in('store', _scene_credits, entry)
-    body = (
-        _EDIT_TEMPLATE.replace('__NAV__', render_nav('people', nav_username(request)))
-        .replace('__ACTOR_NAME__', html.escape(str(entry['name'])))
-        .replace('__SUBTITLE__', subtitle)
-        .replace('__CACHED_SRC__', html.escape(cached_src, quote=True))
-        .replace('__FILENAME__', _json_attr(filename))
-        .replace('__ENTRY__', _json_attr(entry))
-        .replace('__SOURCES__', _json_attr([source.name for source in FETCHABLE_SOURCES]))
-        .replace('__CROP_AVAILABLE__', 'true' if face_crop.available() else 'false')
-        .replace('__RECORDED_SOURCES__', _json_attr(list(KNOWN_SOURCES)))
-        .replace('__SCENES__', credits)
+    return HTMLResponse(
+        render_page(
+            'people_edit',
+            active='people',
+            username=nav_username(request),
+            actor_name=str(entry['name']),
+            role=str(entry['role']),
+            relpath=relpath,
+            origin=str(entry.get('source', '')) or 'unrecorded',
+            cached_src=cached_src,
+            filename=filename,
+            entry=entry,
+            sources=[source.name for source in FETCHABLE_SOURCES],
+            crop_available=face_crop.available(),
+            recorded_sources=list(KNOWN_SOURCES),
+            credits=credits,
+        )
     )
-    return HTMLResponse(body)
 
 
 @router.post('/lookup')

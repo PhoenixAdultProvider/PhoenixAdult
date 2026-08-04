@@ -146,9 +146,9 @@
   </style>
 </head>
 <body data-page="metadata">
-  __NAV__
+  {% include 'nav.html' %}
   <h1>Snapshot Metadata Cache</h1>
-  <div class="sub">Status: __STATE__</div>
+  <div class="sub">Status: {{ status }}</div>
 
   <div class="searchbar">
     <div class="filter-group">
@@ -271,11 +271,11 @@
   <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
   <script>
-    const DUP_KEYS = __DUP_KEYS__;
-    let ALL = __ENTRIES_JSON__;
-    let TOTAL = __TOTAL__;
-    let STUDIOS = __STUDIOS__;
-    let FACET_VALUES = __FACETS__;
+    const DUP_KEYS = {{ dup_keys|tojson }};
+    let ALL = {{ entries|tojson }};
+    let TOTAL = {{ total|tojson }};
+    let STUDIOS = {{ studios|tojson }};
+    let FACET_VALUES = {{ facets|tojson }};
     let DUP_SET = new Set(DUP_KEYS);
     let showDupsOnly = false;
     let showPotential = false;

@@ -267,7 +267,7 @@
   </style>
 </head>
 <body data-page="config">
-  __NAV__
+  {% include 'nav.html' %}
   <h1>⚙️ PhoenixAdult Config</h1>
   <p class="sub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
@@ -482,7 +482,7 @@
   </div>
 
   <script>
-    const STATE = __STATE_JSON__;
+    const STATE = {{ state|tojson }};
     let plexLibrariesLoaded = false;
     const LISTS = {};                 // key → ordered array (list controls)
     const PREVIEW_PREFIX = 'phoenixcfg:img:';

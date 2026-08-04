@@ -57,7 +57,7 @@
   </style>
 </head>
 <body data-page="queue">
-  __NAV__
+  {% include 'nav.html' %}
   <h1>Scrape Queue</h1>
   <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
   <div class="progress" id="progress" style="display:none">
@@ -74,7 +74,7 @@
   <div class="list" id="updates"></div>
 
   <script>
-    let STATE = __STATE_JSON__;
+    let STATE = {{ state|tojson }};
     let fetchedAt = Date.now();
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }

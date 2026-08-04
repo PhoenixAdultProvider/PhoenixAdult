@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.registry import canonical_site_display
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import load_data
 from phoenixadult.utils.images import logo_cache
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
-
-_TEMPLATE: str = load_data(__file__, 'logos_ui', kind='html')
 
 
 def _state() -> dict[str, object]:
@@ -27,8 +22,7 @@ def _state() -> dict[str, object]:
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    body = _TEMPLATE.replace('__NAV__', render_nav('logos', nav_username(request)))
-    return HTMLResponse(body.replace('__STATE_JSON__', json.dumps(await run_in('store', _state))))
+    return HTMLResponse(render_page('logos_ui', active='logos', username=nav_username(request), state=await run_in('store', _state)))
 
 
 @router.get('/api/list')

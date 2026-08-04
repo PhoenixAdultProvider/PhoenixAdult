@@ -14,13 +14,13 @@ from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
-from phoenixadult.routes import nav_username, read_json_body, render_nav
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.services.metadata_service import refresh_cached_snapshot
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import embed_subsite, load_data, split_subsite, title_distance_score
+from phoenixadult.utils.helpers.helpers import embed_subsite, split_subsite, title_distance_score
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.log_capture import begin_capture
 from phoenixadult.utils.logging.logger import logger
@@ -583,7 +583,4 @@ def _render_ui(sites: list[dict[str, Any]], username: str) -> str:
             f'    </tr>'
         )
 
-    return _DEV_HTML.replace('__NAV__', render_nav('dev', username)).replace('__SITE_ROWS__', ''.join(rows))
-
-
-_DEV_HTML: str = load_data(__file__, 'dev_ui', kind='html')
+    return render_page('dev_ui', active='dev', username=username, site_rows=''.join(rows))

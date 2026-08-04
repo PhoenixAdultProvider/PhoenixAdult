@@ -89,9 +89,9 @@
   </style>
 </head>
 <body data-page="metadata-edit">
-  __NAV__
+  {% include 'nav.html' %}
   <h1>Edit Snapshot</h1>
-  <div class="sub">__SUBTITLE__</div>
+  <div class="sub"><code id="subKey">{{ key }}</code></div>
 
   <div class="cols">
       <fieldset>
@@ -178,9 +178,9 @@
   </div>
 
   <script>
-    let KEY = __KEY__;
-    let MD = __METADATA__;
-    const MAPPING_SLUG = __MAPPING_SLUG__;
+    let KEY = {{ key|tojson }};
+    let MD = {{ metadata|tojson }};
+    const MAPPING_SLUG = {{ mapping_slug|tojson }};
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
     try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}

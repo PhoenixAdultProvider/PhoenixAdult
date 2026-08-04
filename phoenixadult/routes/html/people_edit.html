@@ -68,9 +68,9 @@
   </style>
 </head>
 <body data-page="people-edit">
-  __NAV__
-  <h1><span id="actorName">__ACTOR_NAME__</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
-  <div class="sub">__SUBTITLE__</div>
+  {% include 'nav.html' %}
+  <h1><span id="actorName">{{ actor_name }}</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
+  <div class="sub">{{ role }} · <code>{{ relpath }}</code> · from {{ origin }}</div>
 
   <div class="wrap">
     <fieldset>
@@ -93,14 +93,14 @@
     <fieldset id="previewCard">
       <legend>Preview</legend>
       <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" data-src="__CACHED_SRC__" alt=""></figure>
+        <figure><figcaption>Cached (Shown in Plex)</figcaption><img id="cachedImg" data-src="{{ cached_src }}" alt=""></figure>
         <figure><figcaption>Upstream Original</figcaption><img id="upstreamImg" alt=""></figure>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>Scenes</legend>
-      __SCENES__
+      {{ credits|safe }}
     </fieldset>
 
     <div class="bar">
@@ -111,11 +111,11 @@
   </div>
 
   <script>
-    const FILENAME = __FILENAME__;
-    const ENTRY = __ENTRY__;
-    const SOURCES = __SOURCES__;
-    const CROP_AVAILABLE = __CROP_AVAILABLE__;
-    const RECORDED_SOURCES = __RECORDED_SOURCES__;
+    const FILENAME = {{ filename|tojson }};
+    const ENTRY = {{ entry|tojson }};
+    const SOURCES = {{ sources|tojson }};
+    const CROP_AVAILABLE = {{ crop_available|tojson }};
+    const RECORDED_SOURCES = {{ recorded_sources|tojson }};
     const UNCROPPED_SOURCES = ['IAFD'];
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
