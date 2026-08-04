@@ -14,7 +14,6 @@ from phoenixadult.utils.images.image_fetcher import ImageEntry
 @pytest.fixture(autouse=True)
 def _clean() -> None:
     fetcher._cache.clear()
-    fetcher._cache_total_bytes = 0
     fetcher._byte_digests.clear()
     fetcher._pixel_digests.clear()
 
@@ -72,7 +71,6 @@ async def test_without_cached_bytes_nothing_is_deduped() -> None:
     body = _jpeg(800, 600)
     probed = [_seed('https://a/1.jpg', body), _seed('https://b/2.jpg', body)]
     fetcher._cache.clear()
-    fetcher._cache_total_bytes = 0
 
     kept = await _dedupe_artwork(probed)
     assert len(kept) == 2

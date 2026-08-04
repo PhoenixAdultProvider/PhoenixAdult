@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 import sqlite3
+import weakref
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -39,8 +40,7 @@ if TYPE_CHECKING:
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
-_write_locks: dict[str, asyncio.Lock] = {}
-_write_lock_users: dict[str, int] = {}
+_write_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
 
 
 def enabled() -> bool:
@@ -237,16 +237,12 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
     if final_dir is None:
         return False
 
-    lock = _write_locks.setdefault(scene_hash, asyncio.Lock())
-    _write_lock_users[scene_hash] = _write_lock_users.get(scene_hash, 0) + 1
-    try:
-        async with lock:
-            return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear)
-    finally:
-        _write_lock_users[scene_hash] -= 1
-        if _write_lock_users[scene_hash] == 0:
-            del _write_lock_users[scene_hash]
-            _write_locks.pop(scene_hash, None)
+    lock = _write_locks.get(scene_hash)
+    if lock is None:
+        lock = asyncio.Lock()
+        _write_locks[scene_hash] = lock
+    async with lock:
+        return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear)
 
 
 _CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')

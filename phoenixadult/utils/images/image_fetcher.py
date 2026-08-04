@@ -4,11 +4,12 @@ import asyncio
 import hashlib
 import io
 import time
-from collections import OrderedDict
+import weakref
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import httpx2
+from cachetools import LRUCache, TLRUCache, TTLCache
 from PIL import Image, ImageFile
 
 from phoenixadult.config.env import env
@@ -32,25 +33,25 @@ _DIMS_TTL = 60 * 60
 _DIMS_MISS_TTL = 300.0
 _DIMS_CACHE_MAX = 8192
 
-_shared_image_clients: dict[int, httpx2.AsyncClient] = {}
-_shared_probe_clients: dict[int, httpx2.AsyncClient] = {}
+_shared_image_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, httpx2.AsyncClient] = weakref.WeakKeyDictionary()
+_shared_probe_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, httpx2.AsyncClient] = weakref.WeakKeyDictionary()
 
 
 def _image_client() -> httpx2.AsyncClient:
-    loop_id = id(asyncio.get_running_loop())
-    client = _shared_image_clients.get(loop_id)
+    loop = asyncio.get_running_loop()
+    client = _shared_image_clients.get(loop)
     if client is None:
         client = make_http(timeout=10.0, max_redirects=3)
-        _shared_image_clients[loop_id] = client
+        _shared_image_clients[loop] = client
     return client
 
 
 def _probe_client() -> httpx2.AsyncClient:
-    loop_id = id(asyncio.get_running_loop())
-    client = _shared_probe_clients.get(loop_id)
+    loop = asyncio.get_running_loop()
+    client = _shared_probe_clients.get(loop)
     if client is None:
         client = make_http(timeout=_PROBE_TIMEOUT, max_redirects=3)
-        _shared_probe_clients[loop_id] = client
+        _shared_probe_clients[loop] = client
     return client
 
 
@@ -64,34 +65,23 @@ class ImageEntry:
     solid: bool = False
 
 
-_cache: OrderedDict[str, ImageEntry] = OrderedDict()
-_cache_total_bytes = 0
-_dims_cache: OrderedDict[str, tuple[float, tuple[int, int] | None]] = OrderedDict()
+_cache: TTLCache[str, ImageEntry] = TTLCache(maxsize=_CACHE_MAX_TOTAL_BYTES, ttl=_CACHE_TTL, getsizeof=lambda e: len(e.data))
+
+
+def _dims_ttu(_key: str, dims: tuple[int, int] | None, now: float) -> float:
+    return now + (_DIMS_TTL if dims else _DIMS_MISS_TTL)
+
+
+_dims_cache: TLRUCache[str, tuple[int, int] | None] = TLRUCache(maxsize=_DIMS_CACHE_MAX, ttu=_dims_ttu)
+_DIMS_MISSING: tuple[int, int] = (-1, -1)
 
 
 def _cache_get(url: str) -> ImageEntry | None:
-    global _cache_total_bytes
-    entry = _cache.get(url)
-    if entry is None:
-        return None
-    if time.time() - entry.cached_at >= _CACHE_TTL:
-        del _cache[url]
-        _cache_total_bytes -= len(entry.data)
-        return None
-    _cache.move_to_end(url)
-    return entry
+    return _cache.get(url)
 
 
 def _cache_put(url: str, entry: ImageEntry) -> None:
-    global _cache_total_bytes
-    old = _cache.pop(url, None)
-    if old is not None:
-        _cache_total_bytes -= len(old.data)
     _cache[url] = entry
-    _cache_total_bytes += len(entry.data)
-    while _cache_total_bytes > _CACHE_MAX_TOTAL_BYTES and _cache:
-        _, evicted = _cache.popitem(last=False)
-        _cache_total_bytes -= len(evicted.data)
 
 
 def _max_bytes() -> int:
@@ -155,8 +145,8 @@ async def _get_once_pinned(url: str, referer: str | None, cookie: str | None) ->
     return _accept_image_response(resp, url)
 
 
-_byte_digests: dict[str, str] = {}
-_pixel_digests: dict[str, str] = {}
+_byte_digests: LRUCache[str, str] = LRUCache(maxsize=_DIMS_CACHE_MAX)
+_pixel_digests: LRUCache[str, str] = LRUCache(maxsize=_DIMS_CACHE_MAX)
 
 
 def _sha1(data: bytes) -> str:
@@ -298,22 +288,14 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
 
 
 def _dims_cache_get(url: str) -> tuple[bool, tuple[int, int] | None]:
-    hit = _dims_cache.get(url)
-    if hit is None:
+    hit = _dims_cache.get(url, _DIMS_MISSING)
+    if hit is _DIMS_MISSING:
         return False, None
-    stored_at, dims = hit
-    if time.time() - stored_at >= (_DIMS_TTL if dims else _DIMS_MISS_TTL):
-        del _dims_cache[url]
-        return False, None
-    _dims_cache.move_to_end(url)
-    return True, dims
+    return True, hit
 
 
 def _dims_cache_put(url: str, dims: tuple[int, int] | None) -> None:
-    _dims_cache.pop(url, None)
-    _dims_cache[url] = (time.time(), dims)
-    while len(_dims_cache) > _DIMS_CACHE_MAX:
-        _dims_cache.popitem(last=False)
+    _dims_cache[url] = dims
 
 
 def _dims_from_head(data: bytes) -> tuple[int, int] | None:

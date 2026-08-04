@@ -8,6 +8,7 @@ import threading
 from pathlib import Path
 
 from cryptography.fernet import Fernet
+from filelock import FileLock
 
 from phoenixadult.config.env import env
 
@@ -25,12 +26,15 @@ def _load_or_create(path: Path) -> bytes:
     if path.exists():
         return base64.urlsafe_b64decode(path.read_text(encoding='ascii').strip())
     path.parent.mkdir(parents=True, exist_ok=True)
-    raw = os.urandom(_SECRET_BYTES)
-    tmp = path.with_suffix('.key.tmp')
-    tmp.write_text(base64.urlsafe_b64encode(raw).decode('ascii'), encoding='ascii')
-    with contextlib.suppress(OSError):
-        os.chmod(tmp, 0o600)
-    os.replace(tmp, path)
+    with FileLock(str(path) + '.lock'):
+        if path.exists():
+            return base64.urlsafe_b64decode(path.read_text(encoding='ascii').strip())
+        raw = os.urandom(_SECRET_BYTES)
+        tmp = path.with_suffix('.key.tmp')
+        tmp.write_text(base64.urlsafe_b64encode(raw).decode('ascii'), encoding='ascii')
+        with contextlib.suppress(OSError):
+            os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
     return raw
 
 

@@ -3,10 +3,10 @@ from __future__ import annotations
 import os
 import re
 import socket
-import time
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from cachetools import TTLCache
 from dotenv import find_dotenv, load_dotenv
 
 from phoenixadult.config.env_overrides import load_overrides
@@ -53,13 +53,13 @@ def base_url_config_warning() -> str | None:
 
 
 _LOCAL_IP_TTL = 60.0
-_local_ip_cache: dict[tuple[socket.AddressFamily, str], tuple[float, str]] = {}
+_local_ip_cache: TTLCache[tuple[socket.AddressFamily, str], str] = TTLCache(maxsize=8, ttl=_LOCAL_IP_TTL)
 
 
 def _local_ip(family: socket.AddressFamily, probe: str) -> str:
     hit = _local_ip_cache.get((family, probe))
-    if hit and time.monotonic() - hit[0] < _LOCAL_IP_TTL:
-        return hit[1]
+    if hit is not None:
+        return hit
     fallback = '127.0.0.1' if family == socket.AF_INET else '::1'
     try:
         with socket.socket(family, socket.SOCK_DGRAM) as s:
@@ -67,7 +67,7 @@ def _local_ip(family: socket.AddressFamily, probe: str) -> str:
             ip = str(s.getsockname()[0])
     except OSError:
         ip = fallback
-    _local_ip_cache[(family, probe)] = (time.monotonic(), ip)
+    _local_ip_cache[(family, probe)] = ip
     return ip
 
 

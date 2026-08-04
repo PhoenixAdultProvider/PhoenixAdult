@@ -4,6 +4,8 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 
+from cachetools import TTLCache
+
 from phoenixadult.clients import is_paced
 from phoenixadult.clients.base import PacingDeferredError, SceneContext, SceneDetail
 from phoenixadult.config.env import env
@@ -98,7 +100,7 @@ class MetadataService:
     def __init__(self) -> None:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
-        self._memo: dict[tuple[str, str, str], tuple[float, PlexMetadataResponse]] = {}
+        self._memo: TTLCache[tuple[str, str, str], PlexMetadataResponse] = TTLCache(maxsize=_MEMO_MAX_ENTRIES, ttl=_MEMO_TTL_SECONDS)
         self._coalesce: Coalescer[tuple[str, str, str], PlexMetadataResponse | None] = Coalescer()
         self._refresh_log: dict[tuple[str, str, str], list[float]] = {}
 
@@ -121,17 +123,14 @@ class MetadataService:
                 provider.id, f'Force refresh ({env.refresh_force_count}x within {_REFRESH_WINDOW_SECONDS:.0f}s) for ratingKey={rating_key} — re-scraping'
             )
         hit = self._memo.get(key)
-        if hit and not force and time.monotonic() - hit[0] < _MEMO_TTL_SECONDS:
+        if hit is not None and not force:
             logger.debug(provider.id, f'memo hit for ratingKey={rating_key}')
-            return hit[1]
+            return hit
 
         async def _run() -> PlexMetadataResponse | None:
             result = await self._fetch_metadata(rating_key, provider, language, force=force)
             if result is not None:
-                self._memo[key] = (time.monotonic(), result)
-                if len(self._memo) > _MEMO_MAX_ENTRIES:
-                    cutoff = time.monotonic() - _MEMO_TTL_SECONDS
-                    self._memo = {k: v for k, v in self._memo.items() if v[0] >= cutoff}
+                self._memo[key] = result
             return result
 
         task = asyncio.ensure_future(self._coalesce.run(key, _run))

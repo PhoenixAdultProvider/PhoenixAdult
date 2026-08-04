@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx2
+from cachetools import LRUCache
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
@@ -59,7 +60,7 @@ def _subdir_for(filename: str) -> str:
     return _subdir(type, gender)  # type: ignore[arg-type]
 
 
-_bust_cache: dict[str, tuple[float, str]] = {}
+_bust_cache: LRUCache[str, tuple[float, str]] = LRUCache(maxsize=8192)
 
 
 def _bust_token(relpath: str, data: bytes | None) -> str:

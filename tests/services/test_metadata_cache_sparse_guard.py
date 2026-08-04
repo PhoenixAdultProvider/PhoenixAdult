@@ -22,7 +22,6 @@ def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'snapshots'))
     fetcher._cache.clear()
-    fetcher._cache_total_bytes = 0
     buf = io.BytesIO()
     Image.effect_noise((800, 1200), 90).convert('RGB').save(buf, format='JPEG', quality=95)
     fetcher._cache_put(IMG, ImageEntry(data=buf.getvalue(), content_type='image/jpeg', cached_at=9e9, width=800, height=1200))

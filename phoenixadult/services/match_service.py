@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
+
+from cachetools import TTLCache
 
 from phoenixadult.clients import is_paced
 from phoenixadult.clients.base import PacingDeferredError, SearchContext, SearchResult
@@ -50,7 +51,7 @@ class MatchService:
         self._scraper = ScraperRouter()
         self._mapper = MetadataMapper()
         self.metadata_service: Any = None
-        self._search_memo: dict[tuple[str, str, str, str, str], tuple[float, list[SearchResult]]] = {}
+        self._search_memo: TTLCache[tuple[str, str, str, str, str], list[SearchResult]] = TTLCache(maxsize=_SEARCH_MEMO_MAX, ttl=_SEARCH_MEMO_TTL)
         self._search_coalesce: Coalescer[tuple[str, str, str, str, str], list[SearchResult] | None] = Coalescer()
 
     def _memo_key(self, search_data: SearchContext) -> tuple[str, str, str, str, str]:
@@ -68,9 +69,9 @@ class MatchService:
     async def _search_results(self, search_data: SearchContext, provider: ProviderInfo, allow_slow: bool = False) -> list[SearchResult] | None:
         key = self._memo_key(search_data)
         hit = self._search_memo.get(key)
-        if hit and time.monotonic() - hit[0] < _SEARCH_MEMO_TTL:
+        if hit is not None:
             logger.info(provider.id, f'search memo hit for "{search_data.title}" on {search_data.site_info.name}')
-            return hit[1]
+            return hit
 
         paced = self._is_paced(search_data)
         if paced:
@@ -83,7 +84,7 @@ class MatchService:
             else:
                 logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
             if stored is not None:
-                self._search_memo[key] = (time.monotonic(), stored)
+                self._search_memo[key] = stored
                 return stored
 
         search_data.allow_slow = allow_slow
@@ -91,10 +92,7 @@ class MatchService:
         async def _run() -> list[SearchResult] | None:
             raw = await self._scraper.search(search_data)
             if raw is not None:
-                self._search_memo[key] = (time.monotonic(), raw)
-                if len(self._search_memo) > _SEARCH_MEMO_MAX:
-                    cutoff = time.monotonic() - _SEARCH_MEMO_TTL
-                    self._search_memo = {k: v for k, v in self._search_memo.items() if v[0] >= cutoff}
+                self._search_memo[key] = raw
                 if paced:
                     await run_in('store', search_store.save, key, raw)
             return raw

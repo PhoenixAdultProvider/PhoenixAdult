@@ -17,7 +17,6 @@ URL = 'https://cdn.example.com/scene/poster.jpg'
 def _clean(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'false')
     fetcher._cache.clear()
-    fetcher._cache_total_bytes = 0
     fetcher._dims_cache.clear()
     fetcher._shared_probe_clients.clear()
     fetcher._shared_image_clients.clear()

@@ -25,9 +25,12 @@ def _limit(request: Request) -> tuple[int | None, JSONResponse | None]:
     if not raw:
         return None, None
     try:
-        return int(raw), None
+        value = int(raw)
     except ValueError:
         return None, JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+    if value < 0:
+        return None, JSONResponse({'error': 'limit must be an integer'}, status_code=400)
+    return value, None
 
 
 async def _owned(request: Request, connection_id: int) -> Connection | None:

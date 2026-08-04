@@ -4,6 +4,8 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from cachetools import TTLCache
+
 _FREE_ATTEMPTS = 5
 _MAX_BACKOFF = 300.0
 _IDLE_PRUNE_SECONDS = 3600.0
@@ -15,20 +17,13 @@ class _Bucket:
     last_failure: float = field(default=0.0)
 
 
-_buckets: dict[tuple[str, str], _Bucket] = {}
+_buckets: TTLCache[tuple[str, str], _Bucket] = TTLCache(maxsize=4096, ttl=_IDLE_PRUNE_SECONDS)
 _lock = threading.Lock()
-
-
-def _prune(now: float) -> None:
-    stale = [k for k, b in _buckets.items() if now - b.last_failure > _IDLE_PRUNE_SECONDS]
-    for k in stale:
-        del _buckets[k]
 
 
 def retry_after(scope: str, key: str) -> float:
     now = time.time()
     with _lock:
-        _prune(now)
         bucket = _buckets.get((scope, key))
         if bucket is None or bucket.failures <= _FREE_ATTEMPTS:
             return 0.0
@@ -40,9 +35,10 @@ def retry_after(scope: str, key: str) -> float:
 def record_failure(scope: str, key: str) -> None:
     now = time.time()
     with _lock:
-        bucket = _buckets.setdefault((scope, key), _Bucket())
+        bucket = _buckets.get((scope, key)) or _Bucket()
         bucket.failures += 1
         bucket.last_failure = now
+        _buckets[(scope, key)] = bucket
 
 
 def record_success(scope: str, key: str) -> None:
