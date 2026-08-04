@@ -114,3 +114,19 @@ def test_setup_compares_the_confirm_field_not_the_window_global() -> None:
     body = _remote().get('/setup').text
     assert 'pwField.value !== confirmField.value' in body
     assert 'password.value !== confirm.value' not in body
+
+
+def test_password_strength_scores_without_blocking() -> None:
+    c = _remote()
+    weak = c.post('/api/password-strength', json={'password': 'Passw0rd!'}).json()
+    strong = c.post('/api/password-strength', json={'password': 'correct horse battery staple 9X!'}).json()
+    assert weak['score'] < strong['score'] == 4
+    assert c.post('/api/password-strength', json={}).json() == {'score': 0, 'feedback': ''}
+
+
+def test_the_strength_meter_is_advisory_on_every_password_surface() -> None:
+    c = _remote()
+    assert 'pwMeterFill' in c.get('/setup').text
+    c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
+    assert 'pwMeterFill' in c.get('/account').text
+    assert 'pwMeterFill' in c.get('/config').text

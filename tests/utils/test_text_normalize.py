@@ -37,6 +37,22 @@ def test_normalize_text_tidies_whitespace(raw: str, expected: str) -> None:
     assert normalize_text(raw) == expected
 
 
+@pytest.mark.parametrize(
+    ('raw', 'expected'),
+    [
+        ('donâ€™t stop', "don't stop"),
+        ('Ã©lÃ¨ve', 'élève'),
+        ('café stays', 'café stays'),
+    ],
+)
+def test_normalize_text_repairs_mojibake(raw: str, expected: str) -> None:
+    assert normalize_text(raw) == expected
+
+
+def test_normalize_text_leaves_fullwidth_characters_alone() -> None:
+    assert normalize_text('ＡＢＣ') == 'ＡＢＣ'
+
+
 def test_normalize_text_keeps_paragraph_breaks() -> None:
     assert normalize_text('para one\n\npara two') == 'para one\n\npara two'
 

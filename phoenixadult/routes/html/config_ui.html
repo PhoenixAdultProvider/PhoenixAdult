@@ -126,6 +126,12 @@
     .plex-status { font-size: 0.82rem; color: var(--muted-text); }
     .plex-status.ok { color: var(--status-ok-text); }
     .plex-status.err { color: var(--status-danger-text); }
+    .user-meter { height: 5px; margin-top: 6px; max-width: 320px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
+    .user-meter-fill { height: 100%; width: 0; border-radius: 3px; transition: width .2s ease, background .2s ease; }
+    .user-meter-fill[data-score='0'], .user-meter-fill[data-score='1'] { background: var(--button-danger-bg); }
+    .user-meter-fill[data-score='2'] { background: var(--badge-warning-text); }
+    .user-meter-fill[data-score='3'] { background: var(--progress-fill); }
+    .user-meter-fill[data-score='4'] { background: var(--button-success-bg); }
     .users-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .users-table th, .users-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--panel-border); }
     .users-table th { color: var(--label-text); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; }
@@ -464,6 +470,8 @@
         <button type="button" onclick="createUser()">Add User</button>
         <span class="plex-status" id="users-status"></span>
       </div>
+      <div class="user-meter" id="pwMeter" hidden><div class="user-meter-fill" id="pwMeterFill"></div></div>
+      <div class="hint" id="pwMeterText"></div>
     </div>
   </div>
 
@@ -596,6 +604,28 @@
     }
 
     const PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+    const METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+    let meterTimer = 0;
+
+    document.getElementById('new-password').addEventListener('input', (e) => {
+      clearTimeout(meterTimer);
+      const value = e.target.value;
+      const meter = document.getElementById('pwMeter');
+      if (!value) { meter.hidden = true; document.getElementById('pwMeterText').textContent = ''; return; }
+      meterTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/password-strength', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: value }),
+          });
+          const data = await res.json();
+          meter.hidden = false;
+          const fill = document.getElementById('pwMeterFill');
+          fill.dataset.score = data.score;
+          fill.style.width = (data.score + 1) * 20 + '%';
+          document.getElementById('pwMeterText').textContent = 'Strength: ' + METER_LABELS[data.score] + (data.feedback ? ' — ' + data.feedback : '');
+        } catch (e) {}
+      }, 250);
+    });
 
     function passwordOk(pw) {
       if (pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)) return true;

@@ -23,6 +23,17 @@ def password_error(password: str) -> str | None:
     return None if ok else PASSWORD_RULE
 
 
+def password_strength(password: str) -> dict[str, object]:
+    from zxcvbn import zxcvbn
+
+    if not password:
+        return {'score': 0, 'feedback': ''}
+    result = zxcvbn(password[:72])
+    feedback = result.get('feedback') or {}
+    suggestions = feedback.get('suggestions') or []
+    return {'score': int(result['score']), 'feedback': str(feedback.get('warning') or (suggestions[0] if suggestions else ''))}
+
+
 def hash_password(password: str) -> str:
     return _hasher.hash(password)
 

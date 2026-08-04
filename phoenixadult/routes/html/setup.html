@@ -19,6 +19,12 @@
             text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
   .reveal:hover { background: none; text-decoration: underline; }
   .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
+  .meter { height: 5px; margin-top: 6px; background: var(--progress-track); border-radius: 3px; overflow: hidden; }
+  .meter-fill { height: 100%; width: 0; border-radius: 3px; transition: width .2s ease, background .2s ease; }
+  .meter-fill[data-score='0'], .meter-fill[data-score='1'] { background: var(--button-danger-bg); }
+  .meter-fill[data-score='2'] { background: var(--badge-warning-text); }
+  .meter-fill[data-score='3'] { background: var(--progress-fill); }
+  .meter-fill[data-score='4'] { background: var(--button-success-bg); }
   button { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
            font-size: 14px; font-weight: 500; cursor: pointer; }
   button:hover { background: var(--button-primary-hover-bg); }
@@ -37,6 +43,8 @@
     </div>
     <input id="password" name="password" type="password" autocomplete="new-password">
     <div class="hint">8+ characters with an uppercase letter, a number, and a special character.</div>
+    <div class="meter" id="pwMeter" hidden><div class="meter-fill" id="pwMeterFill"></div></div>
+    <div class="hint" id="pwMeterText"></div>
     <div class="field-head">
       <label for="confirm">Confirm Password</label>
       <button type="button" class="reveal" data-for="confirm">Show</button>
@@ -69,6 +77,28 @@
       const ok = pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
       return ok ? '' : RULE;
     }
+
+    const METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+    let meterTimer = 0;
+    pwField.addEventListener('input', () => {
+      clearTimeout(meterTimer);
+      const value = pwField.value;
+      const meter = document.getElementById('pwMeter');
+      if (!value) { meter.hidden = true; document.getElementById('pwMeterText').textContent = ''; return; }
+      meterTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/password-strength', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: value }),
+          });
+          const data = await res.json();
+          meter.hidden = false;
+          const fill = document.getElementById('pwMeterFill');
+          fill.dataset.score = data.score;
+          fill.style.width = (data.score + 1) * 20 + '%';
+          document.getElementById('pwMeterText').textContent = 'Strength: ' + METER_LABELS[data.score] + (data.feedback ? ' — ' + data.feedback : '');
+        } catch (e) {}
+      }, 250);
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

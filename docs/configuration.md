@@ -83,7 +83,8 @@ the only way in, including from loopback.
 
 Every password — at setup, on `/account`, from the Users tab, and in the recovery
 script — must be at least 8 characters and contain an uppercase letter, a number, and a
-special character.
+special character. The password fields also show an advisory zxcvbn strength meter
+(Very Weak → Very Strong); it never blocks — the composition rule is the only hard floor.
 
 Passwords are hashed with argon2id; API keys and session tokens are stored as SHA-256
 digests. A `secret.key` file is generated beside the database on first start and is used

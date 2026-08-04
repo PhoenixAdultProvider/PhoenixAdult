@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth import rate_limit, user_store
-from phoenixadult.utils.auth.passwords import hash_token, password_error
+from phoenixadult.utils.auth.passwords import hash_token, password_error, password_strength
 from phoenixadult.utils.auth.user_auth import SESSION_COOKIE, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
@@ -64,6 +64,12 @@ async def login(request: Request) -> JSONResponse:
     _set_session_cookie(response, token, request)
     logger.info('auth', f'login: {user.username}')
     return response
+
+
+@public_router.post('/api/password-strength')
+async def password_strength_api(request: Request) -> JSONResponse:
+    body = await read_json_body(request)
+    return JSONResponse(password_strength(str(body.get('password') or '')))
 
 
 @public_router.get('/setup', response_class=HTMLResponse)
