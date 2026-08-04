@@ -291,7 +291,12 @@
   <div class="card" style="padding:0;overflow:hidden">
     <table class="sites-table">
       <thead><tr><th>Site</th><th>Content Type</th><th>Scraper</th><th>Aliases</th></tr></thead>
-      <tbody>{{ site_rows|safe }}</tbody>
+      <tbody>{% for s in sites %}<tr{% if s.grouped %} class="group-row"{% endif %}>
+      <td class="c-site">{% if s.grouped %}<strong>{{ s.name }}</strong> <span class="group-badge">{{ s.aliases|length }} sites</span>{% else %}{{ s.name }}{% endif %}</td>
+      <td class="c-type" data-label="Content Type"><code>{{ s.contentType }}</code></td>
+      <td class="c-scraper" data-label="Scraper"><code>{{ s.scraperType }}</code></td>
+      <td class="c-aliases" data-label="Aliases">{% if s.aliases %}<details><summary>{{ s.aliases|length }} {{ 'site' if s.grouped else 'alias' }}{{ ('' if s.aliases|length == 1 else 's' if s.grouped else 'es') }}</summary><div class="alias-list">{% for a in s.aliases %}<span class="alias-chip">{{ a }}</span>{% endfor %}</div></details>{% else %}—{% endif %}</td>
+    </tr>{% endfor %}</tbody>
     </table>
   </div>
 

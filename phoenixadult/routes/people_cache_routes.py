@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import html
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -14,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.routes import nav_username, read_json_body, render_nav, render_page
+from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -118,57 +117,21 @@ def _gender_of(gender: str) -> Gender:
             return ''
 
 
-def _gender_buttons(gender: str) -> str:
-    cur = _gender_of(gender)
-    out = []
-    for key, css, label in _GENDERS:
-        active = ' active' if key == cur else ''
-        dis = ' disabled' if key == cur else ''
-        out.append(f'<button class="g {css}{active}" data-g="{key}"{dis}>{label}</button>')
-    return f'<div class="gender"><span>Gender:</span>{"".join(out)}</div>'
-
-
-def _card(entry: dict[str, Any]) -> str:
-    name = html.escape(str(entry.get('name', '')))
+def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
+    name = str(entry.get('name', ''))
     filename = str(entry.get('filename', ''))
-    role = str(entry.get('role', ''))
-    upstream = str(entry.get('upstream_url', ''))
-    cropped = bool(entry.get('cropped'))
-    timestamp = html.escape(str(entry.get('ts', '')))
-    gcss = next(css for key, css, _ in _GENDERS if key == _gender_of(str(entry.get('gender', ''))))
     relpath = str(entry.get('relpath', filename))
-    ctype = html.escape(str(entry.get('type', '')), quote=True)
-    local_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
-    role_badge = f'<span class="role {_ROLE_CSS.get(role, "")}">{html.escape(role)}</span>'
-    crop_badge = '<span class="badge crop">cropped</span>' if cropped else '<span class="badge orig">original</span>'
-    source = str(entry.get('source', ''))
-    source_badge = f'<span class="badge src">{html.escape(source)}</span>' if source else ''
-    filename_attr = html.escape(filename, quote=True)
-    if upstream:
-        upstream_fig = (
-            f'<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={quote(upstream, safe="")}" loading="lazy"></figure>'
-        )
-        restore_btn = '<button class="restore">Use Original</button>' if cropped else '<button class="restore" disabled>Original Kept</button>'
-    else:
-        upstream_fig = ''
-        restore_btn = '<button class="restore" disabled>No Upstream Recorded</button>'
-    edit_btn = '<button class="edit">Edit</button>'
-    purge_btn = '<button class="purge">Purge</button>'
-    search_key = html.escape(str(entry.get('name', '')).casefold(), quote=True)
-    single = len(str(entry.get('name', '')).split()) == 1
-    flags = (
-        f'data-cropped="{1 if cropped else 0}" data-name="{search_key}" data-upstream="{1 if upstream else 0}" '
-        f'data-source="{html.escape(source, quote=True)}" data-single="{1 if single else 0}"'
-    )
-    return f"""<div class="card {gcss}" data-type="{ctype}" data-fn="{filename_attr}" {flags}>
-      <div class="hd">{role_badge}<b>{name}</b> {crop_badge}{source_badge}<span class="ts">{timestamp}</span></div>
-      <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{html.escape(local_src)}" loading="lazy"></figure>
-        {upstream_fig}
-      </div>
-      {_gender_buttons(str(entry.get('gender', '')))}
-      <div class="actions">{restore_btn}{edit_btn}{purge_btn}</div>
-    </div>"""
+    gender_norm = _gender_of(str(entry.get('gender', '')))
+    return {
+        **entry,
+        'gender_norm': gender_norm,
+        'gcss': next(css for key, css, _ in _GENDERS if key == gender_norm),
+        'role_css': _ROLE_CSS.get(str(entry.get('role', '')), ''),
+        'local_src': f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}',
+        'upstream_quoted': quote(str(entry.get('upstream_url', '')), safe=''),
+        'search_key': name.casefold(),
+        'single': len(name.split()) == 1,
+    }
 
 
 @router.get('', response_class=HTMLResponse)
@@ -177,363 +140,26 @@ async def page(request: Request) -> HTMLResponse:
     entries = await run_in('store', _list_people, people_cache_dir())
     type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
     default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
-    warn = '' if face_crop.available() else '<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>'
-    empty = '<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>' if not entries else ''
     summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
-    img_base = html.escape(image_base_url())
-    img_opt = html.escape(env.image_base_url_raw)
-    tabs = ''.join(
-        f'<button class="tab" data-t="{t}" data-label="{label}" onclick="showTab({t!r})">{label} <span class="cnt">{type_counts[t]}</span></button>'
-        for t, label in _TABS
+    return HTMLResponse(
+        render_page(
+            'people_ui',
+            active='people',
+            username=nav_username(request),
+            entries=[_display_entry(e) for e in entries],
+            tabs=_TABS,
+            type_counts=type_counts,
+            default_tab=default_tab,
+            summary=summary,
+            img_base=image_base_url(),
+            img_opt=env.image_base_url_raw,
+            crop_available=face_crop.available(),
+            genders=_GENDERS,
+            fetchable_sources=[s.name for s in FETCHABLE_SOURCES],
+            present_sources=sorted({str(e['source']) for e in entries if e['source']}, key=str.casefold),
+            has_unrecorded=any(not e['source'] for e in entries),
+        )
     )
-    cards = '\n'.join(_card(e) for e in entries)
-    source_options = ''.join(f'<option value="{html.escape(s.name, quote=True)}">{html.escape(s.name)}</option>' for s in FETCHABLE_SOURCES)
-    present = sorted({str(e['source']) for e in entries if e['source']}, key=str.casefold)
-    unrecorded = '<option value="__blank__">Unrecorded</option>' if any(not e['source'] for e in entries) else ''
-    source_filter_options = (
-        '<option value="">Any Source</option>'
-        + unrecorded
-        + ''.join(f'<option value="{html.escape(name, quote=True)}">{html.escape(name)}</option>' for name in present)
-    )
-    body = f"""<!doctype html><html><head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
-    <style>
-      body{{font-family:system-ui,sans-serif;background:var(--page-bg);color:var(--page-text);margin:0;padding:24px}}
-      h1{{font-size:20px}} .sub{{color:var(--muted-text);font-size:13px;margin-bottom:20px}}
-      .warn{{background:var(--banner-danger-bg);border:1px solid var(--banner-danger-border);padding:8px 12px;border-radius:6px}}
-      .empty{{color:var(--muted-text)}}
-      .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px}}
-      .card{{background:var(--card-bg);border:1px solid var(--card-border);border-left:5px solid var(--card-stripe);
-        border-radius:8px;padding:12px;display:none}}
-      .card.gf{{border-left-color:var(--female);background:var(--female-card-bg)}}
-      .card.gm{{border-left-color:var(--button-primary-bg);background:var(--male-card-bg)}}
-      .card.gt{{border-left-color:var(--trans);background:var(--trans-card-bg)}}
-      .card.gn{{border-left-color:var(--gender-none)}}
-      .hd{{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}}
-      .hd b{{white-space:nowrap}} .ts{{margin-left:auto;color:var(--label-text);font-size:12px}}
-      .badge{{font-size:11px;padding:1px 7px;border-radius:10px}} .badge.crop{{background:var(--badge-info-bg)}}
-      .badge.orig{{background:var(--badge-neutral-bg)}}
-      .badge.src{{background:var(--badge-muted-bg);border:1px solid var(--badge-muted-border);color:var(--badge-muted-text)}}
-      .role{{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--role-badge-bg);color:var(--role-badge-text)}}
-      .role.r-actor{{background:var(--role-actor-bg)}} .role.r-director{{background:var(--role-director-bg)}}
-      .role.r-producer{{background:var(--role-producer-bg)}}
-      .imgs{{display:flex;gap:10px}} figure{{margin:0;flex:1;text-align:center}}
-      figcaption{{font-size:11px;color:var(--muted-text);margin-bottom:4px}}
-      img{{width:100%;height:170px;object-fit:contain;background:var(--image-well-bg);border-radius:6px}}
-      body.sfw .imgs{{display:none}}
-      .sfwtoggle.on{{background:var(--button-success-bg);border-color:var(--button-success-bg);color:var(--button-text)}}
-      .gender{{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted-text)}}
-      .gender .g{{flex:1;margin:0;padding:5px;font-size:12px}}
-      .g.gf.active{{background:var(--female)}} .g.gm.active{{background:var(--button-primary-bg)}}
-      .g.gt.active{{background:var(--trans)}} .g.gn.active{{background:var(--gender-none)}}
-      button{{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--button-primary-bg);color:var(--button-text);cursor:pointer}}
-      button:disabled{{cursor:default;opacity:.7}}
-      .actions{{display:flex;gap:8px}}
-      button.restore{{background:var(--button-primary-bg);flex:1}}
-      button.restore:disabled{{background:var(--button-disabled-bg);color:var(--button-disabled-text);opacity:1}}
-      button.edit{{background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--soft-text);flex:0 0 80px}}
-      button.edit:hover{{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}}
-      button.purge{{background:var(--button-danger-bg);flex:0 0 90px}}
-      .search{{margin-bottom:16px}}
-      .search input{{width:320px;max-width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
-        padding:7px 10px;border-radius:6px;font-size:13px}}
-      .search input:focus{{outline:0;border-color:var(--input-focus-border)}}
-      .search .cnt{{color:var(--label-text);font-size:12px;margin-left:10px}}
-      .search{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}}
-      .search select{{background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
-        padding:7px 10px;border-radius:6px;font-size:13px}}
-      button.bulk{{width:auto;margin:0;padding:7px 16px;background:var(--button-secondary-bg);
-        border:1px solid var(--button-secondary-border);color:var(--soft-text)}}
-      button.bulk:hover{{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}}
-      button.bulk:disabled{{background:var(--button-secondary-bg);color:var(--label-text)}}
-      .progress{{flex:1 1 220px;max-width:320px;height:8px;background:var(--progress-track);border:1px solid var(--panel-border);
-        border-radius:6px;overflow:hidden}}
-      .progress .fill{{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}}
-      .filters-toggle{{display:none}}
-      .tabs{{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}}
-      .tab{{width:auto;margin:0;padding:6px 12px;background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--muted-text)}}
-      .tab.active{{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}}
-      .croptoggle{{margin-left:auto}} .croptoggle.on{{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}}
-      .noupstream.on{{background:var(--badge-warning-bg);color:var(--badge-warning-text);border-color:var(--badge-warning-border)}}
-      .genericonly.on{{background:var(--badge-violet-deep-bg);color:var(--badge-violet-deep-text);border-color:var(--badge-violet-border)}}
-      .singleonly.on{{background:var(--badge-teal-bg);color:var(--badge-teal-text);border-color:var(--badge-teal-border)}}
-      .tab .cnt{{opacity:.65;font-size:11px}}
-      @media (max-width:720px){{
-        body{{padding:14px}}
-        .grid{{grid-template-columns:1fr}}
-        .actions{{flex-wrap:wrap}} button.edit,button.purge{{flex:1 1 auto}}
-        .filters-toggle{{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid var(--button-secondary-border);
-          border-radius:6px;background:var(--button-secondary-bg);color:var(--soft-text);font-size:13px;cursor:pointer}}
-        .filters-toggle.on{{border-color:var(--button-primary-bg);color:var(--page-text)}}
-        .tabs{{display:none;flex-direction:column;gap:6px}}
-        body.filters-open .tabs{{display:flex}}
-        .tab{{width:100%}} .croptoggle{{margin-left:0}}
-        .search{{gap:10px}}
-        .search input{{width:100%;flex:1 1 100%}}
-        .search>select,.search>button.bulk,.search>.progress,.search>#bulkStatus{{display:none}}
-        body.filters-open .search>select,body.filters-open .search>button.bulk{{display:block;width:100%;max-width:none}}
-        body.filters-open .search>.progress{{display:block;max-width:none;flex:1 1 100%}}
-        body.filters-open .search>#bulkStatus{{display:block}}
-        body.filters-open .search>.progress[hidden]{{display:none}}
-      }}
-    </style></head><body data-page="people">
-    {render_nav('people', nav_username(request))}
-    <h1>People Cache</h1>
-    <div class="sub">Cached cast &amp; crew headshots ({summary}). Newest first.
-      "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
-      <br>Serving people images via <code>IMAGE_BASE_URL={img_opt}</code> → <code>{img_base}</code></div>
-    {warn}
-    <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
-    <div class="tabs">{tabs}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
-      <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
-      <button class="tab genericonly" id="genericToggle">Generic Only</button>
-      <button class="tab singleonly" id="singleToggle">Single Name</button></div>
-    <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
-      <select id="sourceFilter">{source_filter_options}</select>
-      <select id="bulkSource">{source_options}</select>
-      <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
-      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
-      <button class="tab" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
-      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
-      <span class="cnt" id="bulkStatus"></span></div>
-    <div class="grid">{cards}</div>
-    <p class="empty viewempty" style="display:none">No images in this category.</p>
-    {empty}
-    <script>
-      function hdrs(){{ return {{'Content-Type':'application/json'}}; }}
-      async function post(url, body){{
-        const r = await fetch(url, {{method:'POST', headers:hdrs(), body:JSON.stringify(body)}});
-        return r.json().catch(()=>({{ok:false}}));
-      }}
-      async function restore(filename){{
-        const j = await post('/people/restore', {{filename}});
-        if(j.ok) location.reload(); else alert('Restore failed');
-      }}
-      async function setGender(filename, gender){{
-        const j = await post('/people/gender', {{filename, gender}});
-        if(j.ok) location.reload(); else alert('Set gender failed');
-      }}
-      async function purge(filename){{
-        if(!confirm('Delete '+filename+' from the local cache?')) return;
-        const j = await post('/people/purge', {{filename}});
-        if(j.ok) location.reload(); else alert('Purge failed');
-      }}
-      function edit(filename){{
-        location.href = '/people/edit?' + new URLSearchParams({{filename}}).toString();
-      }}
-      const STORE_KEY = 'people-cache-filters';
-      const SFW_KEY = 'metadata-sfw';
-      let SFW = false;
-      try {{ SFW = localStorage.getItem(SFW_KEY) === '1'; }} catch {{}}
-      function paintImages(){{
-        document.body.classList.toggle('sfw', SFW);
-        document.querySelectorAll('.imgs img').forEach(img => {{
-          if(SFW) img.removeAttribute('src');
-          else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
-        }});
-        const btn = document.getElementById('sfwToggle');
-        btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
-        btn.classList.toggle('on', SFW);
-      }}
-      function toggleSfw(){{
-        SFW = !SFW;
-        try {{ localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); }} catch {{}}
-        paintImages();
-      }}
-      function resetFilters(){{
-        croppedOnly = false;
-        noUpstreamOnly = false;
-        genericOnly = false;
-        singleOnly = false;
-        document.getElementById('nameSearch').value = '';
-        document.getElementById('sourceFilter').value = '';
-        document.getElementById('cropToggle').classList.remove('on');
-        document.getElementById('upstreamToggle').classList.remove('on');
-        document.getElementById('genericToggle').classList.remove('on');
-        document.getElementById('singleToggle').classList.remove('on');
-        showTab(curTab);
-      }}
-      let croppedOnly = false;
-      let noUpstreamOnly = false;
-      let genericOnly = false;
-      let singleOnly = false;
-      let curTab = '';
-      function saveFilters(){{
-        const search = document.getElementById('nameSearch').value;
-        const source = document.getElementById('sourceFilter').value;
-        try {{ localStorage.setItem(STORE_KEY, JSON.stringify({{croppedOnly, noUpstreamOnly, genericOnly, singleOnly, search, source}})); }} catch {{}}
-      }}
-      function restoreFilters(){{
-        let saved;
-        try {{ saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); }} catch {{}}
-        if(!saved) return;
-        croppedOnly = !!saved.croppedOnly;
-        noUpstreamOnly = !!saved.noUpstreamOnly;
-        genericOnly = !!saved.genericOnly;
-        singleOnly = !!saved.singleOnly;
-        document.getElementById('nameSearch').value = saved.search || '';
-        const picker = document.getElementById('sourceFilter');
-        if(saved.source && [...picker.options].some(o => o.value === saved.source)) picker.value = saved.source;
-        document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
-        document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
-        document.getElementById('genericToggle').classList.toggle('on', genericOnly);
-        document.getElementById('singleToggle').classList.toggle('on', singleOnly);
-      }}
-      function refreshSourceOptions(t){{
-        const picker = document.getElementById('sourceFilter');
-        const present = new Set();
-        let blank = false;
-        document.querySelectorAll('.card').forEach(c=>{{
-          if(c.dataset.type!==t) return;
-          const s = c.dataset.source || '';
-          if(s) present.add(s); else blank = true;
-        }});
-        for(const o of picker.options){{
-          if(!o.value) continue;
-          o.hidden = o.value==='__blank__' ? !blank : !present.has(o.value);
-        }}
-        const cur = picker.selectedOptions[0];
-        if(cur && cur.hidden) picker.value = '';
-      }}
-      function showTab(t){{
-        curTab = t;
-        history.replaceState(null, '', '#'+t);  // remember the tab across a reload (purge/restore/gender)
-        document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
-        refreshSourceOptions(t);
-        const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
-        const wanted = document.getElementById('sourceFilter').value;
-        let n=0;
-        document.querySelectorAll('.card').forEach(c=>{{
-          const src = c.dataset.source || '';
-          const sourceOk = !wanted || (wanted === '__blank__' ? !src : src === wanted);
-          const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!noUpstreamOnly || c.dataset.upstream==='0')
-            && (!genericOnly || src === 'Generic') && (!singleOnly || c.dataset.single === '1') && sourceOk
-            && (!needle || (c.dataset.name||'').includes(needle));
-          c.style.display=m?'block':'none'; if(m)n++;
-        }});
-        document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
-        const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
-        updateFiltersToggle();
-        saveFilters();
-      }}
-      function toggleFilters(){{
-        const open = document.body.classList.toggle('filters-open');
-        document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
-      }}
-      function updateFiltersToggle(){{
-        const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (singleOnly?1:0)
-          + (document.getElementById('sourceFilter').value?1:0);
-        const tab = document.querySelector('.tab.active');
-        const label = tab ? tab.dataset.label : 'People';
-        const btn = document.getElementById('filtersToggle');
-        btn.textContent = label + ' · Filters' + (active ? ' ('+active+' Active)' : '');
-        btn.classList.toggle('on', active > 0);
-      }}
-      document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
-      document.getElementById('sourceFilter').addEventListener('change', () => showTab(curTab));
-      function shownFilenames(){{
-        return Array.from(document.querySelectorAll('.card'))
-          .filter(c => c.style.display !== 'none')
-          .map(c => c.dataset.fn)
-          .filter(Boolean);
-      }}
-      function setProgress(done, total){{
-        const bar = document.getElementById('bulkProgress');
-        bar.hidden = false;
-        document.getElementById('bulkFill').style.width = (total ? (done/total)*100 : 0)+'%';
-      }}
-      async function* ndjson(response){{
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        for(;;){{
-          const {{done, value}} = await reader.read();
-          buf += done ? '' : decoder.decode(value, {{stream:true}});
-          let cut;
-          while((cut = buf.indexOf('\\n')) >= 0){{
-            const line = buf.slice(0, cut).trim();
-            buf = buf.slice(cut+1);
-            if(line) yield JSON.parse(line);
-          }}
-          if(done) return;
-        }}
-      }}
-      document.getElementById('bulkBtn').addEventListener('click', async () => {{
-        const btn = document.getElementById('bulkBtn');
-        const status = document.getElementById('bulkStatus');
-        const source = document.getElementById('bulkSource').value;
-        const filenames = shownFilenames();
-        if(!filenames.length){{ status.textContent = 'Nothing shown to fetch'; return; }}
-        if(!confirm('Replace the cached image for '+filenames.length+' shown '+(filenames.length===1?'person':'people')+' using '+source+'?')) return;
-        btn.disabled = true;
-        setProgress(0, filenames.length);
-        status.textContent = 'Fetching 0 of '+filenames.length+' from '+source+'…';
-        let summary = null;
-        try {{
-          const r = await fetch('/people/bulk-fetch', {{method:'POST', headers:hdrs(), body:JSON.stringify({{source, filenames}})}});
-          if(!r.ok) {{
-            const err = await r.json().catch(()=>({{}}));
-            throw new Error(err.error || 'Bulk fetch failed');
-          }}
-          for await (const msg of ndjson(r)){{
-            if(msg.done){{
-              setProgress(msg.done, msg.total);
-              status.textContent = 'Fetching '+msg.done+' of '+msg.total+' from '+source+'…';
-            }}
-            if(msg.ok) summary = msg;
-          }}
-        }} catch(err) {{
-          btn.disabled = false;
-          document.getElementById('bulkProgress').hidden = true;
-          status.textContent = String(err.message || err);
-          return;
-        }}
-        btn.disabled = false;
-        if(!summary) {{ status.textContent = 'Bulk fetch ended early'; return; }}
-        setProgress(1, 1);
-        const parts = [summary.updated+' updated', summary.missed+' not found'];
-        if(summary.failed) parts.push(summary.failed+' failed');
-        if(summary.truncated) parts.push(summary.truncated+' skipped over the batch cap');
-        status.textContent = parts.join(', ');
-        if(summary.updated) setTimeout(() => location.reload(), 1200);
-      }});
-      document.getElementById('cropToggle').addEventListener('click', () => {{
-        croppedOnly = !croppedOnly;
-        document.getElementById('cropToggle').classList.toggle('on', croppedOnly);
-        showTab(curTab);
-      }});
-      document.getElementById('upstreamToggle').addEventListener('click', () => {{
-        noUpstreamOnly = !noUpstreamOnly;
-        document.getElementById('upstreamToggle').classList.toggle('on', noUpstreamOnly);
-        showTab(curTab);
-      }});
-      document.getElementById('genericToggle').addEventListener('click', () => {{
-        genericOnly = !genericOnly;
-        document.getElementById('genericToggle').classList.toggle('on', genericOnly);
-        showTab(curTab);
-      }});
-      document.getElementById('singleToggle').addEventListener('click', () => {{
-        singleOnly = !singleOnly;
-        document.getElementById('singleToggle').classList.toggle('on', singleOnly);
-        showTab(curTab);
-      }});
-      document.addEventListener('click', e => {{
-        const b = e.target.closest('button');
-        if (!b || b.disabled) return;
-        const fn = b.closest('.card')?.dataset.fn;
-        if (!fn) return;
-        if (b.classList.contains('purge')) purge(fn);
-        else if (b.classList.contains('edit')) edit(fn);
-        else if (b.classList.contains('restore')) restore(fn);
-        else if (b.classList.contains('g')) setGender(fn, b.dataset.g);
-      }});
-      const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
-      const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
-      restoreFilters();
-      paintImages();
-      showTab(_tabs.has(_hash) ? _hash : {default_tab!r});
-    </script></body></html>"""
-    return HTMLResponse(body)
 
 
 def _find_entry(filename: str) -> dict[str, Any] | None:
@@ -546,26 +172,13 @@ def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
     return next((e for e in matches if str(e['role']) == role), None) or (matches[0] if matches else None)
 
 
-def _scene_credits(entry: dict[str, Any]) -> str:
+def _scene_rows(entry: dict[str, Any]) -> list[dict[str, Any]] | None:
     from phoenixadult.utils import cache as metadata_cache
 
     if not metadata_cache.enabled():
-        return '<div class="hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>'
+        return None
     scenes = scene_store.scenes_for_person(str(entry.get('name', '')), str(entry.get('role', '')))
-    if not scenes:
-        return '<div class="hint">No cached snapshot credits this person.</div>'
-    rows = ''.join(
-        f'<tr><td><a href="/metadata/edit?key={quote(scene["key"], safe="/")}">{html.escape(scene["title"])}</a></td>'
-        f'<td class="nowrap">{html.escape(scene["date"]) or "&mdash;"}</td>'
-        f'<td>{html.escape(scene["studio"]) or "&mdash;"}</td>'
-        f'<td>{html.escape(scene["tagline"]) or "&mdash;"}</td></tr>'
-        for scene in scenes
-    )
-    return (
-        '<div class="scenewrap"><table class="scenes">'
-        '<thead><tr><th>Title</th><th>Date</th><th>Studio</th><th>Sub-Site</th></tr></thead>'
-        f'<tbody>{rows}</tbody></table></div>'
-    )
+    return [{**scene, 'key_quoted': quote(scene['key'], safe='/')} for scene in scenes]
 
 
 @router.get('/edit', response_class=HTMLResponse)
@@ -583,7 +196,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
     cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
-    credits = await run_in('store', _scene_credits, entry)
+    scenes = await run_in('store', _scene_rows, entry)
     return HTMLResponse(
         render_page(
             'people_edit',
@@ -599,7 +212,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
             sources=[source.name for source in FETCHABLE_SOURCES],
             crop_available=face_crop.available(),
             recorded_sources=list(KNOWN_SOURCES),
-            credits=credits,
+            scenes=scenes,
         )
     )
 

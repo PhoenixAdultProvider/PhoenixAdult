@@ -38,7 +38,8 @@ def test_apostrophe_filename_renders_safe_buttons(monkeypatch: pytest.MonkeyPatc
 
     page = authed_client().get('/people')
     assert page.status_code == 200
-    assert 'data-fn="actor.april-o&#x27;neil_female.jpg"' in page.text
+    assert 'data-fn="actor.april-o&#39;neil_female.jpg"' in page.text
+    assert 'data-fn="actor.april-o\'neil' not in page.text
     assert 'onclick="purge(' not in page.text
     assert 'onclick="restore(' not in page.text
     assert 'onclick="setGender(' not in page.text

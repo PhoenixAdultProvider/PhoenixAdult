@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import html
 import time
 from collections.abc import Callable
 from typing import Any
@@ -559,28 +558,4 @@ def _render_ui(sites: list[dict[str, Any]], username: str) -> str:
             }
         )
     display.sort(key=lambda x: x['name'].lower())
-
-    rows: list[str] = []
-    for s in display:
-        name_cell = (
-            f'<strong>{html.escape(s["name"])}</strong> <span class="group-badge">{len(s["aliases"])} sites</span>' if s['grouped'] else html.escape(s['name'])
-        )
-        if s['aliases']:
-            n = len(s['aliases'])
-            noun = 'site' if s['grouped'] else 'alias'
-            plural = '' if n == 1 else 's' if s['grouped'] else 'es'
-            chips = ''.join(f'<span class="alias-chip">{html.escape(a)}</span>' for a in s['aliases'])
-            alias_cell = f'<details><summary>{n} {noun}{plural}</summary><div class="alias-list">{chips}</div></details>'
-        else:
-            alias_cell = '—'
-        tr_class = ' class="group-row"' if s['grouped'] else ''
-        rows.append(
-            f'<tr{tr_class}>\n'
-            f'      <td class="c-site">{name_cell}</td>\n'
-            f'      <td class="c-type" data-label="Content Type"><code>{html.escape(s["contentType"])}</code></td>\n'
-            f'      <td class="c-scraper" data-label="Scraper"><code>{html.escape(s["scraperType"])}</code></td>\n'
-            f'      <td class="c-aliases" data-label="Aliases">{alias_cell}</td>\n'
-            f'    </tr>'
-        )
-
-    return render_page('dev_ui', active='dev', username=username, site_rows=''.join(rows))
+    return render_page('dev_ui', active='dev', username=username, sites=display)

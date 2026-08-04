@@ -100,7 +100,9 @@
 
     <fieldset>
       <legend>Scenes</legend>
-      {{ credits|safe }}
+      {% if scenes is none %}<div class="hint">The snapshot cache is off, so there is nothing to list. Set <code>METADATA_CACHE_ENABLE</code> to turn it on.</div>
+      {% elif not scenes %}<div class="hint">No cached snapshot credits this person.</div>
+      {% else %}<div class="scenewrap"><table class="scenes"><thead><tr><th>Title</th><th>Date</th><th>Studio</th><th>Sub-Site</th></tr></thead><tbody>{% for scene in scenes %}<tr><td><a href="/metadata/edit?key={{ scene.key_quoted }}">{{ scene.title }}</a></td><td class="nowrap">{{ scene.date or '—' }}</td><td>{{ scene.studio or '—' }}</td><td>{{ scene.tagline or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
     </fieldset>
 
     <div class="bar">
