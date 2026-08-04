@@ -12,7 +12,7 @@ def test_x_series_prefixes_resolve_to_teamskeet_without_an_alias() -> None:
 
 
 def test_exact_aliases_still_win_over_the_prefix() -> None:
-    site = find_site('MYLF X Dante Colle')
+    site = find_site('MYLF X Bang')
     assert site is not None and site.name == 'TeamSkeet'
     assert canonical_site_display('TeamSkeet X Reislin') == 'TeamSkeet X Reislin'
 

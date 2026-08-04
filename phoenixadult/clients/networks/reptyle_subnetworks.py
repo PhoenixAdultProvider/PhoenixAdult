@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.registry.selectors.networks.reptyle_networks import reptyle_subnetworks
 
-_SUBNETWORKS: dict[str, list[str]] = load_data(__file__, 'reptyle_subnetworks')
+_SUBNETWORKS: dict[str, list[str]] = reptyle_subnetworks()
 
 
 def _norm(s: str) -> str:

@@ -1618,7 +1618,8 @@ To update the site list run `python -m scripts.generate_sitelist`
     - TeamSkeet X DocTayTay
     - TeamSkeet X Erotique TV Live
     - TeamSkeet X Eva Elfie
-    - TeamSkeet X EvilAngel
+    - TeamSkeet X Evil Angel
+    - TeamSkeet X Filthy Kings
     - TeamSkeet X Fit18
     - TeamSkeet X Flora Rodgers
     - TeamSkeet X Fucking Awesome
@@ -1628,11 +1629,13 @@ To update the site list run `python -m scripts.generate_sitelist`
     - TeamSkeet X Hussie Pass
     - TeamSkeet X Impure Desire
     - TeamSkeet X James Deen
+    - TeamSkeet X JapornXXX
     - TeamSkeet X JavHub
     - TeamSkeet X Jonathan Jordan
     - TeamSkeet X Joy Bear
     - TeamSkeet X Kriss Kiss
     - TeamSkeet X Layna Landry
+    - TeamSkeet X Lethal Hardcore
     - TeamSkeet X LunaXJames
     - TeamSkeet X Luxury Girl
     - TeamSkeet X Mickey Mod
@@ -1648,9 +1651,12 @@ To update the site list run `python -m scripts.generate_sitelist`
     - TeamSkeet X Series
     - TeamSkeet X Slut Inspection
     - TeamSkeet X SpankMonster
+    - TeamSkeet X Sparks Entertainment
+    - TeamSkeet X Stella Sedona
     - TeamSkeet X Sweetie Fox
     - TeamSkeet X ToughLoveX
-    - TeamSkeet X YoungBusty
+    - TeamSkeet X YesGirlz
+    - TeamSkeet X Young Busty
     - Teen Curves
     - Teen JOI
     - Teen Pies
