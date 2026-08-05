@@ -43,6 +43,28 @@
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--panel-border); }
   th { color: var(--label-text); font-weight: 500; font-size: 11px; text-transform: uppercase; }
   .current-badge { font-size: 10px; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; background: var(--badge-info-bg); color: var(--badge-info-text); }
+  @media (max-width: 720px) {
+    body { padding: 14px; }
+    h1, .sub, .card { max-width: none; }
+    .card { padding: 0.9rem; }
+    button { padding: 11px 16px; font-size: 14px; }
+    .row { gap: 8px; }
+    .row button { flex: 1 1 auto; }
+    .keybox { font-size: 12px; }
+
+    table, tbody { display: block; }
+    thead { display: none; }
+    tbody tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--panel-border); }
+    tbody td { display: block; width: auto; padding: 0; border: 0; }
+    .s-start { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .s-seen, .s-device { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; overflow-wrap: anywhere; }
+    .s-seen::before, .s-device::before {
+      content: attr(data-label); flex: 0 0 auto; color: var(--label-text); font-size: 10px;
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .s-action:not(:empty) { margin-top: 8px; }
+    .s-action button { width: 100%; }
+  }
 </style>
 <body data-page="config">
   <h1>Account</h1>
@@ -151,7 +173,10 @@
         const badge = s.current ? ' <span class="current-badge">this device</span>' : '';
         const action = s.current ? '' : `<button class="secondary" onclick="revoke('${s.tokenHash}')">Revoke</button>`;
         const ua = (s.userAgent || '').replace(/[<>&]/g, '');
-        return `<tr><td>${fmt(s.createdAt)}${badge}</td><td>${fmt(s.lastSeenAt)}</td><td>${ua || '—'}</td><td>${action}</td></tr>`;
+        return `<tr><td class="s-start" data-label="Signed In">${fmt(s.createdAt)}${badge}</td>`
+          + `<td class="s-seen" data-label="Last Seen">${fmt(s.lastSeenAt)}</td>`
+          + `<td class="s-device" data-label="Device">${ua || '—'}</td>`
+          + `<td class="s-action">${action}</td></tr>`;
       }).join('') || '<tr><td colspan="4" class="status">No other sessions.</td></tr>';
     }
 

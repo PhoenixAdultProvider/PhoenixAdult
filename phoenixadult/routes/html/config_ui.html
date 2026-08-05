@@ -269,6 +269,22 @@
       .recon-items { max-height: 50vh; }
       pre.report { font-size: 0.7rem; max-height: 240px; overflow-wrap: anywhere; }
       details.rawjson summary { flex-wrap: wrap; }
+
+      .users-table, .users-table tbody { display: block; }
+      .users-table thead { display: none; }
+      .users-table tr { display: block; padding: 0.7rem 0; border-bottom: 1px solid var(--panel-border); }
+      .users-table td { display: block; width: auto; padding: 0; border: 0; }
+      .u-name { font-size: 0.95rem; font-weight: 500; margin-bottom: 0.35rem; overflow-wrap: anywhere; }
+      .u-admin, .u-key, .u-conns { display: flex; gap: 0.5rem; align-items: baseline; margin-top: 0.25rem; overflow-wrap: anywhere; }
+      .u-admin::before, .u-key::before, .u-conns::before {
+        content: attr(data-label); flex: 0 0 auto; color: var(--label-text); font-size: 0.62rem;
+        text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .users-table td.actions { margin-top: 0.6rem; gap: 0.4rem; }
+      .users-table td.actions button { flex: 1 1 auto; padding: 0.55rem 0.7rem; }
+      .user-field { flex: 1 1 100%; }
+      .user-meter { max-width: none; }
+      #tab-users .plex-row label.hint { flex: 1 1 100%; }
     }
   </style>
 </head>
@@ -458,8 +474,8 @@
     <h2>Add User</h2>
     <div class="card">
       <div class="plex-row">
-        <input type="text" id="new-username" placeholder="username" autocomplete="off" spellcheck="false">
-        <input type="password" id="new-password" placeholder="password (8+, upper, number, special)" autocomplete="new-password">
+        <input type="text" id="new-username" class="user-field" placeholder="username" autocomplete="off" spellcheck="false">
+        <input type="password" id="new-password" class="user-field" placeholder="password (8+, upper, number, special)" autocomplete="new-password">
         <label class="hint" style="display:flex; align-items:center; gap:6px"><input type="checkbox" id="new-is-admin"> Admin</label>
         <button type="button" onclick="createUser()">Add User</button>
         <span class="plex-status" id="users-status"></span>
@@ -661,10 +677,10 @@
         const self = u.username === me ? ' (you)' : '';
         const toggle = '<button type="button" class="icon-btn" onclick="setUserAdmin(' + u.id + ',' + (!u.isAdmin) + ')">'
           + (u.isAdmin ? 'Revoke Admin' : 'Make Admin') + '</button>';
-        return '<tr><td>' + esc(u.username) + self + '</td>'
-          + '<td>' + (u.isAdmin ? 'yes' : 'no') + '</td>'
-          + '<td>' + esc(u.apiKeyHint || '—') + '</td>'
-          + '<td>' + u.connections + '</td>'
+        return '<tr><td class="u-name">' + esc(u.username) + self + '</td>'
+          + '<td class="u-admin" data-label="Admin">' + (u.isAdmin ? 'yes' : 'no') + '</td>'
+          + '<td class="u-key" data-label="API Key">' + esc(u.apiKeyHint || '—') + '</td>'
+          + '<td class="u-conns" data-label="Connections">' + u.connections + '</td>'
           + '<td class="actions">' + toggle
           + '<button type="button" class="icon-btn" onclick="resetUserPassword(' + u.id + ')">Reset Password</button>'
           + '<button type="button" class="srcitem-x" onclick="deleteUser(' + u.id + ',\'' + esc(u.username) + '\')">Delete</button></td></tr>';
