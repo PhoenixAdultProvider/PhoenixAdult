@@ -92,7 +92,8 @@ class MatchService:
         async def _run() -> list[SearchResult] | None:
             raw = await self._scraper.search(search_data)
             if raw is not None and (raw or not transport_failures()):
-                self._search_memo[key] = raw
+                if raw:
+                    self._search_memo[key] = raw
                 if paced:
                     await run_in('store', search_store.save, key, raw)
             return raw

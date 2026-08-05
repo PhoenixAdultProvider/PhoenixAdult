@@ -62,13 +62,32 @@ async def test_search_memo_absorbs_duplicate_searches(monkeypatch: pytest.Monkey
 
     async def fake_search(search_data: SearchContext) -> list[SearchResult]:
         calls.append(search_data.title)
-        return []
+        return [SearchResult(title=search_data.title, scene_url='https://nubilefilms.com/video/watch/1', cur_id=search_data.title)]
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
     await svc._search_results(_ctx('scene a'), PROVIDER)
     await svc._search_results(_ctx('scene a'), PROVIDER)
     await svc._search_results(_ctx('scene b'), PROVIDER)
     assert calls == ['scene a', 'scene b']
+
+
+async def test_empty_results_are_never_stored(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+
+    svc = MatchService()
+    calls: list[str] = []
+
+    async def empty_search(search_data: SearchContext) -> list[SearchResult]:
+        calls.append(search_data.title)
+        return []
+
+    monkeypatch.setattr(svc._scraper, 'search', empty_search)
+    monkeypatch.setattr(svc, '_is_paced', lambda _ctx: True)
+    assert await svc._search_results(_ctx(), PROVIDER) == []
+    assert svc._search_memo.get(svc._memo_key(_ctx())) is None
+    assert search_store.load(svc._memo_key(_ctx())) is None
+    assert await svc._search_results(_ctx(), PROVIDER) == []
+    assert calls == ['cool scene', 'cool scene']
 
 
 async def test_a_transport_failure_never_caches_or_erases_results(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -106,7 +125,7 @@ async def test_memo_key_normalizes_case_and_whitespace(monkeypatch: pytest.Monke
 
     async def fake_search(search_data: SearchContext) -> list[SearchResult]:
         calls.append(search_data.title)
-        return []
+        return [SearchResult(title='Found', scene_url='https://nubilefilms.com/video/watch/1', cur_id='abc')]
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
     await svc._search_results(_ctx('scene a'), PROVIDER)
