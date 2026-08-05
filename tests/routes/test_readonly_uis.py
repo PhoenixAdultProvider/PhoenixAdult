@@ -29,8 +29,11 @@ def test_metadata_hides_purge_and_says_view(member: TestClient) -> None:
     assert 'id="purgeAllBtn"' not in body
     assert 'id="dupBtn"' not in body
     assert 'id="pruneBtn"' not in body
+    assert 'id="refreshAllBtn"' not in body
+    assert 'id="exportBtn"' in body, 'export is read-only and stays available'
     admin_body = authed_client().get('/metadata').text
     assert 'id="purgeAllBtn"' in admin_body and 'const IS_ADMIN = true;' in admin_body
+    assert 'id="refreshAllBtn"' in admin_body
 
 
 def test_metadata_edit_is_read_only(member: TestClient) -> None:
@@ -92,6 +95,8 @@ def test_write_endpoints_reject_non_admins(member: TestClient) -> None:
         ('/metadata/save', {'key': 'a/b', 'title': 'x'}),
         ('/metadata/purge', {'key': 'a/b'}),
         ('/metadata/purge-bulk', {'keys': ['a/b']}),
+        ('/metadata/refresh', {'key': 'a/b'}),
+        ('/metadata/refresh-bulk', {'keys': ['a/b']}),
         ('/metadata/purge-duplicates', {}),
         ('/metadata/prune-names', {}),
         ('/people/save', {'filename': 'a.jpg'}),

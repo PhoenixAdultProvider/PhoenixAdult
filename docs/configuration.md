@@ -87,9 +87,10 @@ the only way in, including from loopback.
   `/logos`, and `/queue` still open and browse normally, but every write control is
   gone: no purge (single or bulk), prune, rescan, or flush; no image fetching on
   People; the card action reads **View** instead of Edit, and the edit screens show
-  locked fields with no add/remove chips, image rotate/remove, or Save. Each write
-  endpoint behind those buttons returns 403 as well, so the read-only view cannot be
-  bypassed by hand-crafted requests.
+  locked fields with no add/remove chips, image rotate/remove, or Save, and no
+  Refresh All (re-scraping overwrites snapshots). Each write endpoint behind those
+  buttons returns 403 as well, so the read-only view cannot be bypassed by
+  hand-crafted requests. Browsing, filtering, and Export Mappings stay available.
 - **Clients** (admin tab) records every request that carried an
   `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
   count, and last path — the quickest way to grab an identifier for a connection's

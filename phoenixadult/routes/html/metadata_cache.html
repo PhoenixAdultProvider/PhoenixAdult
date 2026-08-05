@@ -245,8 +245,8 @@
 {% if is_admin() %}    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
 {% endif %}    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
-    <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
-{% if is_admin() %}    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
+{% if is_admin() %}    <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
+    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
     <span class="spacer"></span>
     <span class="count-badge" id="count"></span>
     <span id="pager">
@@ -541,8 +541,10 @@
       exportBtn.disabled = !TOTAL;
       exportBtn.textContent = `Export Mappings (${TOTAL})`;
       const refreshBtn = document.getElementById('refreshAllBtn');
-      refreshBtn.disabled = !TOTAL;
-      refreshBtn.textContent = filtered ? `Refresh Filtered (${TOTAL})` : `Refresh All (${TOTAL})`;
+      if (refreshBtn) {
+        refreshBtn.disabled = !TOTAL;
+        refreshBtn.textContent = filtered ? `Refresh Filtered (${TOTAL})` : `Refresh All (${TOTAL})`;
+      }
 
       const cards = document.getElementById('cards');
       const empty = document.getElementById('empty');

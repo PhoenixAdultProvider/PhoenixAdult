@@ -81,7 +81,7 @@ async def save(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'key': moved})
 
 
-@router.post('/refresh')
+@router.post('/refresh', dependencies=_admin)
 async def refresh(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
@@ -113,7 +113,7 @@ async def refresh(request: Request) -> JSONResponse:
     )
 
 
-@router.post('/refresh-bulk')
+@router.post('/refresh-bulk', dependencies=_admin)
 async def refresh_bulk(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     keys = data.get('keys')

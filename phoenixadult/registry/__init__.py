@@ -32,7 +32,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.314',
+        version='1.0.0-alpha.315',
         media_type='movie',
     ),
 ]
