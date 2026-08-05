@@ -97,24 +97,24 @@
       <fieldset>
         <legend>Scene</legend>
         <label for="f-title">Title</label>
-        <input type="text" id="f-title">
+        <input type="text" id="f-title"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-titleSort">Sort Title</label>
-        <input type="text" id="f-titleSort">
+        <input type="text" id="f-titleSort"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-date">Date</label>
-        <input type="date" id="f-date">
+        <input type="date" id="f-date"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-studio">Studio</label>
-        <input type="text" id="f-studio">
+        <input type="text" id="f-studio"{% if not is_admin() %} readonly{% endif %}>
         <div class="hint">Changing Studio or Tagline moves the snapshot folder.</div>
         <label for="f-tagline">Tagline</label>
-        <input type="text" id="f-tagline">
+        <input type="text" id="f-tagline"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-summary">Summary</label>
-        <textarea id="f-summary"></textarea>
+        <textarea id="f-summary"{% if not is_admin() %} readonly{% endif %}></textarea>
       </fieldset>
 
       <fieldset>
         <legend>Data18</legend>
         <label for="f-data18Id">Data18 ID</label>
-        <input type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated">
+        <input type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-data18Type">Data18 Type</label>
         <select id="f-data18Type">
           <option value="scene">scene</option>
@@ -129,38 +129,38 @@
       <fieldset>
         <legend>Genres</legend>
         <div class="chips" id="c-Genre"></div>
-        <div class="addrow"><input type="text" id="a-Genre" placeholder="Add a genre…"><button data-add="Genre">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Genre" placeholder="Add a genre…"><button data-add="Genre">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Collections</legend>
         <div class="chips" id="c-Collection"></div>
-        <div class="addrow"><input type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Actors</legend>
         <div class="chips" id="c-Role"></div>
-        <div class="addrow"><input type="text" id="a-Role" placeholder="Add an actor…"><button data-add="Role">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Role" placeholder="Add an actor…"><button data-add="Role">Add</button></div>{% endif %}
         <div class="hint">A removed name loses its cached headshot link; a new one resolves on the next serve.</div>
       </fieldset>
 
       <fieldset>
         <legend>Directors</legend>
         <div class="chips" id="c-Director"></div>
-        <div class="addrow"><input type="text" id="a-Director" placeholder="Add a director…"><button data-add="Director">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Director" placeholder="Add a director…"><button data-add="Director">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Producers</legend>
         <div class="chips" id="c-Producer"></div>
-        <div class="addrow"><input type="text" id="a-Producer" placeholder="Add a producer…"><button data-add="Producer">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Producer" placeholder="Add a producer…"><button data-add="Producer">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Images</legend>
         <div class="imgs" id="imgs"></div>
-        <div class="addrow"><input type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>
+        {% if is_admin() %}<div class="addrow"><input type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>{% endif %}
         <div class="hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
       </fieldset>
   </div>
@@ -170,14 +170,15 @@
       <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
       <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
     </div>
-    <button class="save" id="saveBtn" onclick="save()">Save</button>
+{% if is_admin() %}    <button class="save" id="saveBtn" onclick="save()">Save</button>
     <button class="refresh" id="refreshBtn" onclick="refreshMeta()">Refresh Metadata</button>
-    <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="cancel" onclick="leave()">Cancel</button>
+{% endif %}    <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
+    <button class="cancel" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
     <span class="status" id="status"></span>
   </div>
 
   <script>
+    const IS_ADMIN = {{ is_admin()|tojson }};
     let KEY = {{ key|tojson }};
     let MD = {{ metadata|tojson }};
     const MAPPING_SLUG = {{ mapping_slug|tojson }};
@@ -234,11 +235,13 @@
         } else {
           chip.appendChild(document.createTextNode(value));
         }
-        const drop = document.createElement('button');
-        drop.textContent = '×';
-        drop.title = 'Remove';
-        drop.onclick = () => { LISTS[field].splice(idx, 1); renderChips(field); };
-        chip.appendChild(drop);
+        if (IS_ADMIN) {
+          const drop = document.createElement('button');
+          drop.textContent = '×';
+          drop.title = 'Remove';
+          drop.onclick = () => { LISTS[field].splice(idx, 1); renderChips(field); };
+          chip.appendChild(drop);
+        }
         box.appendChild(chip);
       });
     }
@@ -273,10 +276,11 @@
           kind.appendChild(opt);
         });
         kind.onchange = () => { images[idx].type = kind.value; };
+        kind.disabled = !IS_ADMIN;
         card.appendChild(kind);
         const spin = document.createElement('div');
         spin.className = 'spin';
-        [['↺', 270, 'Rotate 90° counter-clockwise'], ['↻', 90, 'Rotate 90° clockwise']].forEach(([glyph, delta, label]) => {
+        (IS_ADMIN ? [['↺', 270, 'Rotate 90° counter-clockwise'], ['↻', 90, 'Rotate 90° clockwise']] : []).forEach(([glyph, delta, label]) => {
           const b = document.createElement('button');
           b.type = 'button';
           b.textContent = glyph;
@@ -288,11 +292,13 @@
         badge.textContent = img.rotate ? img.rotate + '°' : '';
         spin.appendChild(badge);
         card.appendChild(spin);
-        const drop = document.createElement('button');
-        drop.className = 'drop';
-        drop.textContent = 'Remove';
-        drop.onclick = () => { images.splice(idx, 1); renderImages(); };
-        card.appendChild(drop);
+        if (IS_ADMIN) {
+          const drop = document.createElement('button');
+          drop.className = 'drop';
+          drop.textContent = 'Remove';
+          drop.onclick = () => { images.splice(idx, 1); renderImages(); };
+          card.appendChild(drop);
+        }
         box.appendChild(card);
       });
     }
@@ -505,7 +511,7 @@
       btn.onclick = () => addTo(field, qs('a-' + field));
       qs('a-' + field).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addTo(field, qs('a-' + field)); } });
     });
-    qs('addImg').onclick = () => {
+    if (qs('addImg')) qs('addImg').onclick = () => {
       const input = qs('a-img');
       const url = input.value.trim();
       if (!url) return;

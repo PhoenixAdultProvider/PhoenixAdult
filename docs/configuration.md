@@ -83,6 +83,13 @@ the only way in, including from loopback.
   tab. Every environment tab (Matching, Scraping, People, Images, System) plus
   **Logs** and the **Clients** hit log is admin-only, enforced server-side — the
   save/reset/reveal/restart/logs endpoints return 403 for non-admins.
+- **The other admin UIs are read-only for non-admins.** `/metadata`, `/people`,
+  `/logos`, and `/queue` still open and browse normally, but every write control is
+  gone: no purge (single or bulk), prune, rescan, or flush; no image fetching on
+  People; the card action reads **View** instead of Edit, and the edit screens show
+  locked fields with no add/remove chips, image rotate/remove, or Save. Each write
+  endpoint behind those buttons returns 403 as well, so the read-only view cannot be
+  bypassed by hand-crafted requests.
 - **Clients** (admin tab) records every request that carried an
   `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
   count, and last path — the quickest way to grab an identifier for a connection's

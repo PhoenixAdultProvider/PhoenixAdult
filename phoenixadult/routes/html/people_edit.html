@@ -76,18 +76,18 @@
     <fieldset>
       <legend>Source</legend>
       <label for="f-upstream">Upstream Original URL</label>
-      <input type="text" id="f-upstream" placeholder="https://…">
-      <div class="fetchrow">
+      <input type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
+{% if is_admin() %}      <div class="fetchrow">
         <select id="f-source"></select>
         <button class="fetch" id="fetchBtn">Fetch From</button>
         <span class="status" id="fetchStatus"></span>
       </div>
       <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>
-      <div class="toggle"><input type="checkbox" id="f-cropped"><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--soft-text)">Cropped Status — face-crop the image</label></div>
+{% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--soft-text)">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
       <label for="f-recorded">Recorded Source</label>
-      <select id="f-recorded" class="recorded"></select>
-      <div class="hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>
+      <select id="f-recorded" class="recorded"{% if not is_admin() %} disabled{% endif %}></select>
+{% if is_admin() %}      <div class="hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>{% endif %}
     </fieldset>
 
     <fieldset id="previewCard">
@@ -106,8 +106,8 @@
     </fieldset>
 
     <div class="bar">
-      <button class="save" id="saveBtn" onclick="save()">Save</button>
-      <button class="cancel" onclick="leave()">Cancel</button>
+{% if is_admin() %}      <button class="save" id="saveBtn" onclick="save()">Save</button>
+{% endif %}      <button class="cancel" onclick="leave()">{{ 'Cancel' if is_admin() else 'Back' }}</button>
       <span class="status" id="status"></span>
     </div>
   </div>
@@ -172,7 +172,7 @@
     qs('f-upstream').addEventListener('change', refreshUpstream);
     refreshUpstream();
 
-    SOURCES.forEach(name => {
+    if (qs('f-source')) SOURCES.forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
@@ -187,7 +187,7 @@
       qs('f-recorded').appendChild(opt);
     }
 
-    qs('fetchBtn').onclick = async () => {
+    if (qs('fetchBtn')) qs('fetchBtn').onclick = async () => {
       const button = qs('fetchBtn');
       const source = qs('f-source').value;
       button.disabled = true;

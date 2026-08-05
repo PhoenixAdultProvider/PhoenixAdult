@@ -11,12 +11,13 @@ from phoenixadult.registry import find_site
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import service_for
 from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 _SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
 _EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt', 'data18_id', 'data18_type')
@@ -60,7 +61,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     return HTMLResponse(render_page('metadata_edit', active='metadata', username=nav_username(request), key=key, mapping_slug=slug, metadata=md[0]))
 
 
-@router.post('/save')
+@router.post('/save', dependencies=_admin)
 async def save(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
@@ -235,7 +236,7 @@ async def entries_json(
     return JSONResponse({'entries': entries, 'dup_keys': dup_keys, 'total': total, 'studios': studios, 'facets': facets})
 
 
-@router.post('/purge')
+@router.post('/purge', dependencies=_admin)
 async def purge(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     key = str(data.get('key', ''))
@@ -245,7 +246,7 @@ async def purge(request: Request) -> JSONResponse:
     return JSONResponse({'ok': ok})
 
 
-@router.post('/purge-bulk')
+@router.post('/purge-bulk', dependencies=_admin)
 async def purge_bulk(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     keys = data.get('keys')
@@ -255,12 +256,12 @@ async def purge_bulk(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'purged': purged})
 
 
-@router.post('/purge-duplicates')
+@router.post('/purge-duplicates', dependencies=_admin)
 async def purge_duplicates() -> JSONResponse:
     return JSONResponse({'ok': True, 'purged': await run_in('store', metadata_cache.purge_duplicates)})
 
 
-@router.post('/prune-names')
+@router.post('/prune-names', dependencies=_admin)
 async def prune_names() -> JSONResponse:
     pruned = await run_in('store', scene_store.prune_orphan_names)
     return JSONResponse({'ok': True, 'pruned': pruned, 'total': sum(pruned.values())})

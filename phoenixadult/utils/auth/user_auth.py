@@ -14,10 +14,15 @@ SESSION_COOKIE = 'pa_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
 current_user_theme: ContextVar[dict[str, str] | None] = ContextVar('user_theme', default=None)
+current_user_is_admin: ContextVar[bool] = ContextVar('user_is_admin', default=False)
 
 
 def user_theme() -> dict[str, str]:
     return current_user_theme.get() or {'dark': '', 'light': ''}
+
+
+def is_admin() -> bool:
+    return current_user_is_admin.get()
 
 
 class LoginRequired(Exception):
@@ -51,6 +56,7 @@ async def resolve_user(request: Request) -> AuthedUser | None:
     if user is None and (key := presented_api_key(request)):
         user = await run_in('store', user_store.user_for_api_key, key)
     request.state.user = user
+    current_user_is_admin.set(bool(user and user.is_admin))
     if user is not None:
         current_user_theme.set({'dark': user.theme_dark, 'light': user.theme_light})
         token = await run_in('store', user_tokens.token_for_user, user.id)

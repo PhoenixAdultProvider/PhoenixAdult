@@ -107,8 +107,8 @@ flowchart LR
 | Runtime config | `GET\|POST /config/...` | **session or API key** |
 | User accounts | `GET\|POST /users/api/...` | **session or API key, admin only** |
 | Account self-service | `GET /account` + `POST /account/api/...` | **session or API key** |
-| Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **session or API key** |
-| Cache editors | `GET /metadata/edit`, `/people/edit` + `POST …/save` | **session or API key** |
+| Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **session or API key** (read-only for non-admins — write controls hidden and their endpoints 403) |
+| Cache editors | `GET /metadata/edit`, `/people/edit` | **session or API key**; `POST …/save` and every purge/restore/gender/fetch/rescan/flush endpoint is **admin only** |
 | Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` + `GET /metadata/snapshot` | **session or API key** |
 | Cast autocomplete | `GET /metadata/actors?q=` | **session or API key** |
 | Plex connections | `GET\|POST /plex/connections/...` | **session or API key; each connection is scoped to its owner** |

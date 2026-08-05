@@ -49,22 +49,23 @@
 <body data-page="logos">
   {% include 'nav.html' %}
   <h1>Logo Cache</h1>
-  <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.
-    Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.</div>
+  <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
+    Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.{% endif %}</div>
   <div class="bar">
     <input type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
     <label style="font-size:13px;color:var(--muted-text);display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
     </label>
     <span class="count-badge" id="count"></span>
-    <button type="button" class="rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+{% if is_admin() %}    <button type="button" class="rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
     <span class="rescan-status" id="rescan-status"></span>
-    <button type="button" class="purge-all-btn" onclick="purgeAll()">Purge All</button>
+    <button type="button" class="purge-all-btn" onclick="purgeAll()">Purge All</button>{% endif %}
   </div>
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
 
   <script>
+    const IS_ADMIN = {{ is_admin()|tojson }};
     let STATE = {{ state|tojson }};
 
     function api(path, opts = {}) {
@@ -91,7 +92,7 @@
           <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--empty-text);font-weight:400">· ${esc(l.slug)}</span></div>
           <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
-          <button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>
+          ${IS_ADMIN ? `<button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
         </div>`).join('');
     }
 

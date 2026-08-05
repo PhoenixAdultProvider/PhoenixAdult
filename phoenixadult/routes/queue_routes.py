@@ -5,10 +5,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.services import scrape_queue
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, pacer_states
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 _WATCH_TIMEOUT = 25.0
 
@@ -30,7 +31,7 @@ async def state(wait: int = 0, since: int = -1) -> JSONResponse:
     return JSONResponse(_state())
 
 
-@router.post('/api/flush')
+@router.post('/api/flush', dependencies=_admin)
 async def flush(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     kind = str(body.get('kind') or '')
@@ -39,7 +40,7 @@ async def flush(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'flushed': scrape_queue.flush(kind), **_state()})
 
 
-@router.post('/api/resume')
+@router.post('/api/resume', dependencies=_admin)
 async def resume() -> JSONResponse:
     scrape_queue.resume()
     return JSONResponse({'ok': True, **_state()})

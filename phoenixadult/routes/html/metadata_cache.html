@@ -241,11 +241,11 @@
     <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
     <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
     <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
-    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+{% if is_admin() %}    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
-    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
+{% endif %}    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
     <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
-    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>
+{% if is_admin() %}    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
     <span class="spacer"></span>
     <span class="count-badge" id="count"></span>
     <span id="pager">
@@ -271,6 +271,7 @@
   <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
   <script>
+    const IS_ADMIN = {{ is_admin()|tojson }};
     const DUP_KEYS = {{ dup_keys|tojson }};
     let ALL = {{ entries|tojson }};
     let TOTAL = {{ total|tojson }};
@@ -531,8 +532,10 @@
 
       const filtered = anyFilterActive();
       const bulkBtn = document.getElementById('purgeAllBtn');
-      bulkBtn.disabled = !TOTAL;
-      bulkBtn.textContent = filtered ? `Purge Filtered (${TOTAL})` : `Purge All (${TOTAL})`;
+      if (bulkBtn) {
+        bulkBtn.disabled = !TOTAL;
+        bulkBtn.textContent = filtered ? `Purge Filtered (${TOTAL})` : `Purge All (${TOTAL})`;
+      }
       const exportBtn = document.getElementById('exportBtn');
       exportBtn.disabled = !TOTAL;
       exportBtn.textContent = `Export Mappings (${TOTAL})`;
@@ -567,8 +570,8 @@
           <div class="c-row c-data18" data-label="Data18">${data18}</div>
           <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
           <div class="c-actions">
-            <button class="edit-btn" onclick="edit(${key})">Edit</button>
-            <button class="purge-btn" onclick="purge(${key})">Purge</button>
+            <button class="edit-btn" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
+            ${IS_ADMIN ? `<button class="purge-btn" onclick="purge(${key})">Purge</button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -744,9 +747,11 @@
     function updateDupButtons() {
       const n = DUP_SET.size;
       const btn = document.getElementById('dupBtn');
-      btn.textContent = n ? `Purge ${n} Duplicate ${n === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
-      btn.disabled = !n;
-      btn.classList.toggle('active', n > 0);
+      if (btn) {
+        btn.textContent = n ? `Purge ${n} Duplicate ${n === 1 ? 'Entry' : 'Entries'}` : 'No Duplicate Entries';
+        btn.disabled = !n;
+        btn.classList.toggle('active', n > 0);
+      }
       document.getElementById('dupToggle').hidden = !n;
       if (!n && showDupsOnly) setDupsOnly(false);
     }

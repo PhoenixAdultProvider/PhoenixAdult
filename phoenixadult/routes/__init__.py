@@ -26,11 +26,12 @@ def nav_items() -> list[tuple[str, str, str]]:
     return [*_NAV_ITEMS, *(() if env.is_production else (_NAV_DEV_ITEM,)), _NAV_CONFIG_ITEM]
 
 
-from phoenixadult.utils.auth.user_auth import user_theme  # noqa: E402
+from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402
 
 _jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True)
 _jinja.globals['nav_items'] = nav_items
 _jinja.globals['user_theme'] = user_theme
+_jinja.globals['is_admin'] = is_admin
 
 
 def render_page(name: str, **context: Any) -> str:

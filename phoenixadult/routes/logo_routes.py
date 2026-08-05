@@ -5,11 +5,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.registry import canonical_site_display
 from phoenixadult.routes import nav_username, read_json_body, render_page
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import logo_cache
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 
 def _state() -> dict[str, object]:
@@ -30,7 +31,7 @@ async def list_logos() -> JSONResponse:
     return JSONResponse(await run_in('store', _state))
 
 
-@router.post('/api/purge')
+@router.post('/api/purge', dependencies=_admin)
 async def purge(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     rel = str(body.get('rel') or '')
@@ -41,11 +42,11 @@ async def purge(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True})
 
 
-@router.post('/api/purge-all')
+@router.post('/api/purge-all', dependencies=_admin)
 async def purge_all() -> JSONResponse:
     return JSONResponse({'ok': True, 'purged': await run_in('fs', logo_cache.purge_all)})
 
 
-@router.post('/api/rescan')
+@router.post('/api/rescan', dependencies=_admin)
 async def rescan() -> JSONResponse:
     return JSONResponse({'ok': True, 'count': await run_in('fs', logo_cache.rescan)})

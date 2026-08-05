@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import nav_username, read_json_body, render_page
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
@@ -27,6 +27,7 @@ from phoenixadult.utils.people.sources.localStorage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_storage_source.name]
 _BULK_CONCURRENCY = 3
@@ -217,7 +218,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
     )
 
 
-@router.post('/lookup')
+@router.post('/lookup', dependencies=_admin)
 async def lookup(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
@@ -240,7 +241,7 @@ async def lookup(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'url': hit.url, 'gender': hit.gender or '', 'source': source.name})
 
 
-@router.post('/bulk-fetch')
+@router.post('/bulk-fetch', dependencies=_admin)
 async def bulk_fetch(request: Request) -> Response:
     data = await read_json_body(request)
     wanted = str(data.get('source', ''))
@@ -319,7 +320,7 @@ def _relabel_source(entry: dict[str, Any], source: str) -> bool:
     return True
 
 
-@router.post('/save')
+@router.post('/save', dependencies=_admin)
 async def save(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
@@ -349,7 +350,7 @@ async def save(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'changed': True, 'scenes': len(flagged)})
 
 
-@router.post('/restore')
+@router.post('/restore', dependencies=_admin)
 async def restore(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
@@ -359,7 +360,7 @@ async def restore(request: Request) -> JSONResponse:
     return JSONResponse({'ok': ok})
 
 
-@router.post('/purge')
+@router.post('/purge', dependencies=_admin)
 async def purge_file(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))
@@ -368,7 +369,7 @@ async def purge_file(request: Request) -> JSONResponse:
     return JSONResponse({'ok': await run_in('fs', purge, filename)})
 
 
-@router.post('/gender')
+@router.post('/gender', dependencies=_admin)
 async def gender(request: Request) -> JSONResponse:
     data = await read_json_body(request)
     filename = str(data.get('filename', ''))

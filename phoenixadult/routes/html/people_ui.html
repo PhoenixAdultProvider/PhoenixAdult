@@ -82,9 +82,8 @@
     </style></head><body data-page="people">
     {% include 'nav.html' %}
     <h1>People Cache</h1>
-    <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.
-      "Use Original" restores the preserved pre-crop original (Plex may need a refresh).
-      <br>Serving people images via <code>IMAGE_BASE_URL={{ img_opt }}</code> → <code>{{ img_base }}</code></div>
+    <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
+      "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
     {% if not crop_available %}<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>{% endif %}
     <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
     <div class="tabs">{% for t, label in tabs %}<button class="tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
@@ -93,20 +92,20 @@
       <button class="tab singleonly" id="singleToggle">Single Name</button></div>
     <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
       <select id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
-      <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+{% if is_admin() %}      <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
-      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
+{% endif %}      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
       <button class="tab" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
-      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
-      <span class="cnt" id="bulkStatus"></span></div>
+{% if is_admin() %}      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
+      <span class="cnt" id="bulkStatus"></span>{% endif %}</div>
     <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
       <div class="hd"><span class="role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="badge crop">cropped</span>{% else %}<span class="badge orig">original</span>{% endif %}{% if e.source %}<span class="badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
       <div class="imgs">
         <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{{ e.local_src }}" loading="lazy"></figure>
         {% if e.upstream_url %}<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={{ e.upstream_quoted }}" loading="lazy"></figure>{% endif %}
       </div>
-      <div class="gender"><span>Gender:</span>{% for key, css, label in genders %}<button class="g {{ css }}{% if key == e.gender_norm %} active{% endif %}" data-g="{{ key }}"{% if key == e.gender_norm %} disabled{% endif %}>{{ label }}</button>{% endfor %}</div>
-      <div class="actions">{% if e.upstream_url %}{% if e.cropped %}<button class="restore">Use Original</button>{% else %}<button class="restore" disabled>Original Kept</button>{% endif %}{% else %}<button class="restore" disabled>No Upstream Recorded</button>{% endif %}<button class="edit">Edit</button><button class="purge">Purge</button></div>
+      <div class="gender"><span>Gender:</span>{% for key, css, label in genders %}<button class="g {{ css }}{% if key == e.gender_norm %} active{% endif %}" data-g="{{ key }}"{% if key == e.gender_norm or not is_admin() %} disabled{% endif %}>{{ label }}</button>{% endfor %}</div>
+      <div class="actions">{% if is_admin() %}{% if e.upstream_url %}{% if e.cropped %}<button class="restore">Use Original</button>{% else %}<button class="restore" disabled>Original Kept</button>{% endif %}{% else %}<button class="restore" disabled>No Upstream Recorded</button>{% endif %}{% endif %}<button class="edit">{{ 'Edit' if is_admin() else 'View' }}</button>{% if is_admin() %}<button class="purge">Purge</button>{% endif %}</div>
     </div>
 {% endfor %}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
@@ -270,7 +269,7 @@
           if(done) return;
         }
       }
-      document.getElementById('bulkBtn').addEventListener('click', async () => {
+      if (document.getElementById('bulkBtn')) document.getElementById('bulkBtn').addEventListener('click', async () => {
         const btn = document.getElementById('bulkBtn');
         const status = document.getElementById('bulkStatus');
         const source = document.getElementById('bulkSource').value;

@@ -67,13 +67,14 @@
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
   <h2>Searches <span class="count-badge" id="search-count"></span>
-    <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button></h2>
+{% if is_admin() %}    <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
   <div class="list" id="searches"></div>
   <h2>Updates <span class="count-badge" id="update-count"></span>
-    <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button></h2>
+{% if is_admin() %}    <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
   <div class="list" id="updates"></div>
 
   <script>
+    const IS_ADMIN = {{ is_admin()|tojson }};
     let STATE = {{ state|tojson }};
     let fetchedAt = Date.now();
 
@@ -119,7 +120,7 @@
       if (STATE.paused) {
         const left = Math.max(0, (STATE.resumeIn || 0) - drift);
         banner.innerHTML = `Queue paused — ${esc(STATE.pauseReason || 'ban detected')} · auto-resumes in ${fmtSecs(left)} ` +
-          '<button type="button" onclick="resumeQueue()">Resume Now</button>';
+          (IS_ADMIN ? '<button type="button" onclick="resumeQueue()">Resume Now</button>' : '');
         banner.style.display = 'flex';
       } else {
         banner.style.display = 'none';
