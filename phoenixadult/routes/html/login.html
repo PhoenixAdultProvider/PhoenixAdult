@@ -1,51 +1,55 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign In — PhoenixAdult</title>
 {% include 'theme.html' %}
 <style>
   body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0;
-         min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+         min-height: 100svh; display: flex; align-items: center; justify-content: center;
+         padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 28px 26px;
-          width: 100%; max-width: 360px; }
+          width: 100%; max-width: 380px; }
   h1 { font-size: 20px; margin: 0 0 4px; color: var(--heading-text); }
   .sub { color: var(--muted-text); font-size: 13px; margin: 0 0 20px; }
   label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--label-text); margin: 12px 0 4px; }
   .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .field-head label { margin-bottom: 4px; }
   input { width: 100%; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
-          padding: 9px 11px; border-radius: 7px; font-size: 14px; }
+          padding: 11px 12px; border-radius: 7px; font-size: 16px; }
   /* Room at the right edge for password-manager icons, which overlay the field itself. */
-  input[type=password], input.revealed { padding-right: 40px; }
+  input[type=password], input.revealed { padding-right: 44px; }
   input:focus { outline: 0; border-color: var(--input-focus-border); }
   input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
-  .reveal { width: auto; margin: 0; padding: 0; background: none; border: 0; color: var(--link-text); font-size: 11px;
+  .reveal { width: auto; min-height: 32px; margin: 0; padding: 0 4px; background: none; border: 0; color: var(--link-text); font-size: 12px;
             text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }
   .reveal:hover { background: none; text-decoration: underline; }
-  button { width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
-           font-size: 14px; font-weight: 500; cursor: pointer; }
+  button { width: 100%; margin-top: 20px; padding: 13px; border: 0; border-radius: 7px; background: var(--button-primary-bg); color: var(--button-text);
+           font-size: 16px; font-weight: 500; cursor: pointer; }
   button:hover { background: var(--button-primary-hover-bg); }
   button:disabled { opacity: .6; cursor: not-allowed; }
   .err { margin-top: 14px; font-size: 13px; color: var(--status-danger-text); min-height: 1em; }
+  @media (max-width: 420px) {
+    .card { border: 0; border-radius: 0; padding: 24px 18px; background: none; }
+    body { align-items: flex-start; padding-top: max(32px, env(safe-area-inset-top)); }
+  }
 </style>
+</head>
 <body data-page="config">
-  <form class="card" id="loginForm">
+  <form class="card" id="loginForm" method="post" action="/login" autocomplete="on">
     <h1>Sign In</h1>
     <div class="sub">{{ subtitle }}</div>
+    <input type="hidden" name="next" value="{{ next }}">
     <label for="username">Username</label>
-    <input id="username" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" autofocus>
+    <input id="username" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" required autofocus>
     <div class="field-head">
       <label for="password">Password</label>
       <button type="button" class="reveal" data-for="password">Show</button>
     </div>
-    <input id="password" name="password" type="password" autocomplete="current-password">
+    <input id="password" name="password" type="password" autocomplete="current-password" enterkeyhint="go" required>
     <button type="submit" id="submitBtn">Sign In</button>
-    <div class="err" id="err"></div>
+    <div class="err" id="err">{{ error }}</div>
   </form>
   <script>
-    const NEXT = new URLSearchParams(location.search).get('next') || '';
-    const form = document.getElementById('loginForm');
-    const err = document.getElementById('err');
-    const btn = document.getElementById('submitBtn');
-    const nameField = document.getElementById('username');
-    const pwField = document.getElementById('password');
-
     document.querySelectorAll('.reveal').forEach((toggle) => {
       toggle.addEventListener('click', () => {
         const field = document.getElementById(toggle.dataset.for);
@@ -56,23 +60,10 @@
       });
     });
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      err.textContent = '';
-      btn.disabled = true;
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: nameField.value, password: pwField.value, next: NEXT }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.redirect) { location.href = data.redirect; return; }
-        err.textContent = data.error || 'Sign in failed.';
-      } catch (e) {
-        err.textContent = 'Network error.';
-      }
-      btn.disabled = false;
+    document.getElementById('loginForm').addEventListener('submit', () => {
+      document.getElementById('submitBtn').disabled = true;
+      setTimeout(() => { document.getElementById('submitBtn').disabled = false; }, 5000);
     });
   </script>
 </body>
+</html>

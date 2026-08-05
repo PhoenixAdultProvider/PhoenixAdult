@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qs
+
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -40,27 +42,45 @@ async def _seeded() -> bool:
 async def login_page(request: Request) -> HTMLResponse:
     if not await _seeded():
         return HTMLResponse(status_code=302, headers={'Location': '/setup'})
-    return HTMLResponse(render_page('login', subtitle='Enter your credentials to continue.'))
+    return HTMLResponse(_login_html(request.query_params.get('next', '')))
+
+
+def _login_html(next_path: str, error: str = '') -> str:
+    return render_page('login', subtitle='Enter your credentials to continue.', next=_safe_next(next_path), error=error)
+
+
+async def _credentials(request: Request) -> tuple[dict[str, str], bool]:
+    if 'application/x-www-form-urlencoded' in (request.headers.get('content-type') or ''):
+        posted = parse_qs((await request.body()).decode('utf-8', 'replace'), keep_blank_values=True)
+        return {k: (posted.get(k) or [''])[0] for k in ('username', 'password', 'next')}, True
+    body = await read_json_body(request)
+    return {k: str(body.get(k) or '') for k in ('username', 'password', 'next')}, False
 
 
 @public_router.post('/login')
-async def login(request: Request) -> JSONResponse:
-    body = await read_json_body(request)
-    username = str(body.get('username') or '').strip()
-    password = str(body.get('password') or '')
+async def login(request: Request) -> Response:
+    fields, from_form = await _credentials(request)
+    username, password = fields['username'].strip(), fields['password']
+
+    def fail(message: str, status: int, headers: dict[str, str] | None = None) -> Response:
+        if from_form:
+            return HTMLResponse(_login_html(fields['next'], message), status_code=status, headers=headers)
+        return JSONResponse({'error': message}, status_code=status, headers=headers)
+
     scope, key = 'login', f'{_client_ip(request)}|{username.casefold()}'
     wait = rate_limit.retry_after(scope, key)
     if wait > 0:
-        return JSONResponse({'error': f'Too many attempts — wait {int(wait) + 1}s.'}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
+        return fail(f'Too many attempts — wait {int(wait) + 1}s.', 429, {'Retry-After': str(int(wait) + 1)})
     if not username or not password:
-        return JSONResponse({'error': 'Username and password are required.'}, status_code=400)
+        return fail('Username and password are required.', 400)
     user = await run_in('store', user_store.verify_login, username, password)
     if user is None:
         rate_limit.record_failure(scope, key)
-        return JSONResponse({'error': 'Invalid username or password.'}, status_code=401)
+        return fail('Invalid username or password.', 401)
     rate_limit.record_success(scope, key)
     token = await run_in('store', user_store.create_session, user.id, request.headers.get('user-agent', ''))
-    response = JSONResponse({'redirect': _safe_next(str(body.get('next') or ''))})
+    target = _safe_next(fields['next'])
+    response: Response = Response(status_code=303, headers={'Location': target}) if from_form else JSONResponse({'redirect': target})
     _set_session_cookie(response, token, request)
     logger.info('auth', f'login: {user.username}')
     return response
@@ -76,21 +96,26 @@ async def password_strength_api(request: Request) -> JSONResponse:
 async def setup_page(request: Request) -> HTMLResponse:
     if await _seeded():
         return HTMLResponse('Setup already complete.', status_code=404)
-    return HTMLResponse(render_page('setup'))
+    return HTMLResponse(render_page('setup', error=''))
 
 
 @public_router.post('/setup')
-async def setup(request: Request) -> JSONResponse:
-    body = await read_json_body(request)
-    username = str(body.get('username') or '').strip()
-    password = str(body.get('password') or '')
+async def setup(request: Request) -> Response:
+    fields, from_form = await _credentials(request)
+    username, password = fields['username'].strip(), fields['password']
+
+    def fail(message: str, status: int, headers: dict[str, str] | None = None) -> Response:
+        if from_form:
+            return HTMLResponse(render_page('setup', error=message), status_code=status, headers=headers)
+        return JSONResponse({'error': message}, status_code=status, headers=headers)
+
     wait = rate_limit.retry_after('setup', _client_ip(request))
     if wait > 0:
-        return JSONResponse({'error': f'Too many attempts — wait {int(wait) + 1}s.'}, status_code=429, headers={'Retry-After': str(int(wait) + 1)})
+        return fail(f'Too many attempts — wait {int(wait) + 1}s.', 429, {'Retry-After': str(int(wait) + 1)})
     if len(username) < 3:
-        return JSONResponse({'error': 'Username must be at least 3 characters.'}, status_code=400)
+        return fail('Username must be at least 3 characters.', 400)
     if (problem := password_error(password)) is not None:
-        return JSONResponse({'error': problem}, status_code=400)
+        return fail(problem, 400)
 
     def _create() -> int | None:
         if user_store.user_count() > 0:
@@ -100,9 +125,9 @@ async def setup(request: Request) -> JSONResponse:
     user_id = await run_in('store', _create)
     if user_id is None:
         rate_limit.record_failure('setup', _client_ip(request))
-        return JSONResponse({'error': 'An account already exists.'}, status_code=409)
+        return fail('An account already exists.', 409)
     token = await run_in('store', user_store.create_session, user_id, request.headers.get('user-agent', ''))
-    response = JSONResponse({'redirect': '/config'})
+    response: Response = Response(status_code=303, headers={'Location': '/config'}) if from_form else JSONResponse({'redirect': '/config'})
     _set_session_cookie(response, token, request)
     logger.info('auth', f'setup: created admin {username}')
     return response

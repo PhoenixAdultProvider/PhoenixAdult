@@ -100,20 +100,77 @@ def test_session_cookie_is_httponly_and_lax() -> None:
 def test_the_credential_pages_reveal_outside_the_password_manager_overlay() -> None:
     c = _remote()
     setup = c.get('/setup').text
-    for marker in ('class="reveal" data-for="password"', 'class="reveal" data-for="confirm"', 'input[type=password], input.revealed { padding-right: 40px; }'):
+    for marker in ('class="reveal" data-for="password"', 'class="reveal" data-for="confirm"', 'input[type=password], input.revealed { padding-right:'):
         assert marker in setup
     assert 'uppercase letter, a number, and a special character' in setup
 
     c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
     login = _remote().get('/login').text
     assert 'class="reveal" data-for="password"' in login
-    assert 'input[type=password], input.revealed { padding-right: 40px; }' in login
+    assert 'input[type=password], input.revealed { padding-right:' in login
 
 
 def test_setup_compares_the_confirm_field_not_the_window_global() -> None:
     body = _remote().get('/setup').text
-    assert 'pwField.value !== confirmField.value' in body
+    assert 'confirmField.value' in body
     assert 'password.value !== confirm.value' not in body
+    assert 'confirm.value' not in body.replace('confirmField.value', '')
+
+
+def test_the_credential_pages_are_real_forms_browsers_can_autofill() -> None:
+    c = _remote()
+    setup = c.get('/setup').text
+    for marker in ('method="post"', 'action="/setup"', 'autocomplete="username"', 'autocomplete="new-password"'):
+        assert marker in setup, marker
+    c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
+
+    login = _remote().get('/login').text
+    for marker in ('method="post"', 'action="/login"', 'autocomplete="username"', 'autocomplete="current-password"'):
+        assert marker in login, marker
+    assert 'e.preventDefault()' not in login, 'a fetch-intercepted submit is what suppresses save-password prompts'
+
+
+def test_the_credential_pages_declare_a_mobile_viewport() -> None:
+    c = _remote()
+    for page in (c.get('/setup').text,):
+        assert '<meta name="viewport" content="width=device-width' in page
+        assert 'font-size: 16px' in page, 'inputs under 16px make iOS zoom on focus'
+    c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
+    for path in ('/login', '/account'):
+        page = c.get(path).text
+        assert '<meta name="viewport" content="width=device-width' in page, path
+
+
+def test_a_form_login_redirects_and_sets_the_cookie() -> None:
+    c = _remote()
+    c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
+
+    fresh = _remote()
+    ok = fresh.post('/login', data={'username': 'admin', 'password': 'Hunter2hunter!', 'next': '/people'}, follow_redirects=False)
+    assert ok.status_code == 303 and ok.headers['location'] == '/people'
+    assert 'pa_session' in fresh.cookies
+
+    bad = _remote().post('/login', data={'username': 'admin', 'password': 'nope'}, follow_redirects=False)
+    assert bad.status_code == 401
+    assert 'Invalid username or password.' in bad.text and 'action="/login"' in bad.text
+
+
+def test_a_form_login_will_not_redirect_off_site() -> None:
+    c = _remote()
+    c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
+    r = _remote().post('/login', data={'username': 'admin', 'password': 'Hunter2hunter!', 'next': 'https://evil.example'}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers['location'] == '/config'
+
+
+def test_a_form_setup_redirects_and_reports_errors_inline() -> None:
+    weak = _remote().post('/setup', data={'username': 'admin', 'password': 'weak'}, follow_redirects=False)
+    assert weak.status_code == 400
+    assert 'uppercase letter' in weak.text and 'action="/setup"' in weak.text
+
+    c = _remote()
+    ok = c.post('/setup', data={'username': 'admin', 'password': 'Hunter2hunter!'}, follow_redirects=False)
+    assert ok.status_code == 303 and ok.headers['location'] == '/config'
+    assert 'pa_session' in c.cookies
 
 
 def test_password_strength_scores_without_blocking() -> None:
