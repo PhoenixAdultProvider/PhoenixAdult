@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a308"
+version = "1.0.0a309"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -85,12 +85,13 @@ markers = ["allow_network: permit real network access in this test"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-addopts = "--cov=phoenixadult --cov-report=term-missing"
+# Coverage is opt-in: `pytest --cov` costs ~45s on a full run. Settings live below.
 
 [tool.coverage.run]
 branch = true
 source = ["phoenixadult"]
 omit = ["phoenixadult/graveyard/*"]
+
 
 [tool.coverage.report]
 show_missing = true

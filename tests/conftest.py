@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import socket
 import tempfile
 from collections.abc import Iterator
@@ -46,11 +47,40 @@ def _no_live_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(socket.socket, 'connect', guarded_connect)
 
 
-@pytest.fixture(autouse=True)
-def _state_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+@pytest.fixture(scope='session', autouse=True)
+def _cheap_password_hashing() -> None:
+    from argon2 import PasswordHasher
+
+    from phoenixadult.utils.auth import passwords
+
+    passwords._hasher = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+
+
+@pytest.fixture(scope='session')
+def _migrated_schema(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
     from phoenixadult.utils import db
 
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
+    template = tmp_path_factory.mktemp('schema') / 'template.db'
+    previous = os.environ.get('STATE_DB_PATH')
+    os.environ['STATE_DB_PATH'] = str(template)
+    try:
+        db.connect()
+    finally:
+        db.close()
+        if previous is None:
+            os.environ.pop('STATE_DB_PATH', None)
+        else:
+            os.environ['STATE_DB_PATH'] = previous
+    yield template
+
+
+@pytest.fixture(autouse=True)
+def _state_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, _migrated_schema: Path) -> Iterator[None]:
+    from phoenixadult.utils import db
+
+    target = tmp_path / 'state.db'
+    shutil.copyfile(_migrated_schema, target)
+    monkeypatch.setenv('STATE_DB_PATH', str(target))
     yield
     db.close()
 

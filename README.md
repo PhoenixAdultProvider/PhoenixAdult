@@ -54,8 +54,8 @@ Lint / type-check / test:
 
 ```bash
 ruff check . && ruff format --check .
-mypy app
-pytest
+mypy phoenixadult
+pytest             # add --cov for a coverage report (roughly doubles the runtime)
 ```
 
 ### Clients
