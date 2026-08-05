@@ -50,14 +50,26 @@ def test_metadata_edit_is_read_only(member: TestClient) -> None:
     assert '>Back</button>' in body
 
 
-def test_people_hides_writes_and_the_serving_line(member: TestClient) -> None:
+@pytest.fixture
+def _one_cached_person(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    folder = tmp_path / 'images' / 'people' / 'actors' / 'female'
+    folder.mkdir(parents=True)
+    (folder / 'actor.jane-doe_female.jpg').write_bytes(b'x')
+
+
+def test_people_hides_writes_and_the_serving_line(member: TestClient, _one_cached_person: None) -> None:
     body = member.get('/people').text
+    assert 'class="card' in body, 'the fixture person should render a card to assert against'
     assert 'id="bulkBtn"' not in body
     assert 'id="bulkSource"' not in body
     assert 'Serving people images via' not in body
     assert '>View</button>' in body and '>Edit</button>' not in body
     assert 'class="purge"' not in body
     assert 'class="restore"' not in body
+
+    admin_body = authed_client().get('/people').text
+    assert '>Edit</button>' in admin_body and 'class="purge"' in admin_body
 
 
 def test_logos_and_queue_hide_their_write_controls(member: TestClient) -> None:

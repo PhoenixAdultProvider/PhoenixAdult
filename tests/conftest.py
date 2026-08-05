@@ -86,6 +86,12 @@ def _state_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, _migrated_schema:
 
 
 @pytest.fixture(autouse=True)
+def _isolated_local_dirs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'cache'))
+
+
+@pytest.fixture(autouse=True)
 def _offline_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('BYPASS_ORDER', 'FlareSolverr,ReqBin')
     monkeypatch.delenv('FLARESOLVERR_URL', raising=False)
