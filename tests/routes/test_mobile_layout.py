@@ -69,6 +69,18 @@ def test_the_users_tab_labels_its_cells_for_stacking(pages: dict[str, str]) -> N
         assert marker in config, marker
 
 
+def test_the_theme_pickers_read_light_then_dark_and_stay_inline(pages: dict[str, str]) -> None:
+    config = pages['config']
+    light, dark = config.index('id="themeLight"'), config.index('id="themeDark"')
+    assert light < dark, 'the Light picker should come first, matching the Light/Dark preview pair'
+    assert config.index("box(light, 'Light')") < config.index("box(dark, 'Dark')")
+    assert '.theme-picker label span { white-space: nowrap; }' in config, 'the labels should not wrap mid-phrase'
+
+    mobile = ''.join(re.findall(r'@media \(max-width:\s*\d+px\)\s*\{(.*?)\n\s{0,6}\}\n', config, re.DOTALL))
+    assert '.theme-picker { display: grid; grid-template-columns: 1fr 1fr;' in mobile, 'both pickers should stay side by side on phones'
+    assert '.theme-picker select { flex: 1 1 auto; width: 100%; min-width: 0; }' in mobile, 'the selects must shrink out of their 160px desktop floor'
+
+
 def test_the_account_sessions_table_labels_its_cells(pages: dict[str, str]) -> None:
     account = pages['account']
     for marker in ('data-label="Signed In"', 'data-label="Last Seen"', 'data-label="Device"', '.s-seen::before'):

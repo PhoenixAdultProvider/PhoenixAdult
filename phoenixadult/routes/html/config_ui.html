@@ -181,6 +181,7 @@
     /* Theme tab */
     .theme-picker { display: flex; gap: 1.5rem; flex-wrap: wrap; }
     .theme-picker label { font-size: 0.85rem; color: var(--muted-text); display: flex; align-items: center; gap: 0.6rem; }
+    .theme-picker label span { white-space: nowrap; }
     .theme-picker select { min-width: 160px; }
     .pv-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
     .pv-box { border-radius: 8px; border: 1px solid var(--panel-border); overflow: hidden; }
@@ -269,6 +270,10 @@
       .recon-items { max-height: 50vh; }
       pre.report { font-size: 0.7rem; max-height: 240px; overflow-wrap: anywhere; }
       details.rawjson summary { flex-wrap: wrap; }
+
+      .theme-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; flex-wrap: nowrap; }
+      .theme-picker label { flex-direction: column; align-items: stretch; gap: 0.3rem; min-width: 0; }
+      .theme-picker select { flex: 1 1 auto; width: 100%; min-width: 0; }
 
       .users-table, .users-table tbody { display: block; }
       .users-table thead { display: none; }
@@ -499,8 +504,8 @@
     <h2>Theme Selection</h2>
     <div class="card">
       <div class="theme-picker">
-        <label>Dark Theme <select id="themeDark"></select></label>
-        <label>Light Theme <select id="themeLight"></select></label>
+        <label><span>Light Theme</span> <select id="themeLight"></select></label>
+        <label><span>Dark Theme</span> <select id="themeDark"></select></label>
       </div>
       <p class="hint">Pages follow the system light/dark mode (override with the nav sun/moon toggle); choices apply immediately
         and are remembered per browser.</p>
@@ -829,7 +834,7 @@
       for (const names of [window.paTheme.themes.dark, window.paTheme.themes.light]) {
         for (const name of names) window.paTheme.ensureLoaded(name);
       }
-      for (const [mode, id] of [['dark', 'themeDark'], ['light', 'themeLight']]) {
+      for (const [mode, id] of [['light', 'themeLight'], ['dark', 'themeDark']]) {
         const sel = document.getElementById(id);
         sel.innerHTML = window.paTheme.themes[mode]
           .map((n) => '<option value="' + esc(n) + '">' + esc(n[0].toUpperCase() + n.slice(1)) + '</option>').join('');
