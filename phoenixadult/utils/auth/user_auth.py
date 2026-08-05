@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import time
+from contextvars import ContextVar
 
 from fastapi import HTTPException, Request
 
-from phoenixadult.utils.auth import user_store
+from phoenixadult.utils.auth import user_store, user_tokens
 from phoenixadult.utils.auth.passwords import hash_token
 from phoenixadult.utils.auth.user_store import AuthedUser
 from phoenixadult.utils.concurrency.pools import run_in
 
 SESSION_COOKIE = 'pa_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+
+current_user_theme: ContextVar[dict[str, str] | None] = ContextVar('user_theme', default=None)
+
+
+def user_theme() -> dict[str, str]:
+    return current_user_theme.get() or {'dark': '', 'light': ''}
 
 
 class LoginRequired(Exception):
@@ -44,6 +51,10 @@ async def resolve_user(request: Request) -> AuthedUser | None:
     if user is None and (key := presented_api_key(request)):
         user = await run_in('store', user_store.user_for_api_key, key)
     request.state.user = user
+    if user is not None:
+        current_user_theme.set({'dark': user.theme_dark, 'light': user.theme_light})
+        token = await run_in('store', user_tokens.token_for_user, user.id)
+        user_tokens.current_metadataapi_token.set(token)
     return user
 
 

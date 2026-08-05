@@ -1,9 +1,11 @@
 <link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">
+{% if user_theme().dark or user_theme().light %}<script>window.paUserTheme = {{ user_theme()|tojson }};</script>{% endif %}
 <script>
   (function () {
     const MODE_KEY = 'pa-theme';
     const NAME_KEYS = { dark: 'pa-theme-dark', light: 'pa-theme-light' };
     const THEMES = { dark: ['midnight', 'forest'], light: ['day', 'meadow'] };
+    const SERVER = window.paUserTheme || {};
     const media = matchMedia('(prefers-color-scheme: light)');
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
     const write = (key, value) => { try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} };
@@ -14,6 +16,8 @@
     }
 
     function themeName(mode) {
+      const server = SERVER[mode];
+      if (THEMES[mode].includes(server)) return server;
       const stored = read(NAME_KEYS[mode]);
       return THEMES[mode].includes(stored) ? stored : THEMES[mode][0];
     }
@@ -36,7 +40,7 @@
       resolvedMode,
       themeName,
       set(pref) { write(MODE_KEY, pref === 'auto' ? null : pref); apply(); },
-      setThemeName(mode, name) { if (THEMES[mode].includes(name)) { write(NAME_KEYS[mode], name); apply(); } },
+      setThemeName(mode, name) { if (THEMES[mode].includes(name)) { SERVER[mode] = name; write(NAME_KEYS[mode], name); apply(); } },
       ensureLoaded(name) {
         const id = 'pa-theme-css-' + name;
         if (document.getElementById(id)) return;

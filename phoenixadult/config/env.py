@@ -244,10 +244,6 @@ class _Env:
         return _flag('DATA18_EXTRA', '') == 'true'
 
     @property
-    def metadata_api_token(self) -> str | None:
-        return os.environ.get('METADATAAPI_TOKEN')
-
-    @property
     def google_search_api_key(self) -> str | None:
         return os.environ.get('GOOGLE_SEARCH_API_KEY')
 

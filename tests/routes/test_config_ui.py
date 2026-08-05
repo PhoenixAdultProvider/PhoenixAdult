@@ -97,8 +97,8 @@ def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) 
 def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     body = client.get('/config').text
     assert "const LOGS_TAB = 'Logs';" in body
-    assert "'theme', 'logs'];" in body
-    assert 'THEME_TAB, LOGS_TAB]' in body
+    assert "'theme', ...(isAdmin() ? ['logs'] : [])];" in body
+    assert 'THEME_TAB, ...(isAdmin() ? [LOGS_TAB] : [])];' in body
     assert '[...tabNames(), ...extraTabs()]' in body
     assert 'id="tab-logs"' in body
     assert 'white-space: pre;' in body
@@ -159,6 +159,85 @@ def test_the_log_view_shows_the_same_redaction_the_file_gets(client: TestClient,
     hit = next(line for line in lines if 'fetching' in line)
     assert 'abcdef0123456789' not in hit
     assert 'token=***REDACTED***' in hit
+
+
+def _member_client() -> TestClient:
+    from phoenixadult.utils.auth import user_store
+
+    uid = user_store.create_user('member', 'pw-member', is_admin=False)
+    token = user_store.create_session(uid, 'pytest')
+    member = TestClient(create_app())
+    member.cookies.set('pa_session', token)
+    return member
+
+
+def test_non_admins_get_a_filtered_state_and_no_env_writes(client: TestClient) -> None:
+    member = _member_client()
+    state = member.get('/config/api/state').json()
+    assert state['groups'] == [] and state['tabs'] == [] and state['overridesPath'] == ''
+    assert state['metadataapi'] == {'hasToken': False}
+    assert member.post('/config/api/save', json={'updates': {'LOG_LEVEL': 'info'}}).status_code == 403
+    assert member.post('/config/api/reset', json={}).status_code == 403
+    assert member.post('/config/api/restart').status_code == 403
+    assert member.get('/config/api/logs').status_code == 403
+    assert member.get('/config/api/clients').status_code == 403
+    assert member.get('/config').status_code == 200
+
+
+def test_metadataapi_tokens_are_per_user(client: TestClient) -> None:
+    member = _member_client()
+    assert client.post('/config/api/metadataapi', json={'token': 'admin-tok'}).json() == {'hasToken': True}
+    assert member.get('/config/api/state').json()['metadataapi'] == {'hasToken': False}
+    assert member.post('/config/api/metadataapi', json={'token': 'member-tok'}).json() == {'hasToken': True}
+
+    from phoenixadult.utils.auth import user_store, user_tokens
+
+    users = {u['username']: u['id'] for u in user_store.list_users()}
+    assert user_tokens.token_for_user(users['tester']) == 'admin-tok'
+    assert user_tokens.token_for_user(users['member']) == 'member-tok'
+    assert client.post('/config/api/metadataapi', json={}).json() == {'hasToken': False}
+    assert user_tokens.token_for_user(users['member']) == 'member-tok'
+
+
+def test_theme_saves_to_the_calling_user_only(client: TestClient) -> None:
+    member = _member_client()
+    assert client.post('/config/api/theme', json={'dark': 'forest', 'light': 'meadow'}).status_code == 200
+    assert member.post('/config/api/theme', json={'dark': 'midnight', 'light': 'day'}).status_code == 200
+    assert client.post('/config/api/theme', json={'dark': 'nope'}).status_code == 400
+
+    from phoenixadult.utils.auth import user_store
+
+    rows = {r['username']: r for r in user_store.list_users()}
+    admin_page = client.get('/config').text
+    assert '"dark": "forest"' in admin_page and '"light": "meadow"' in admin_page
+    member_page = member.get('/config').text
+    assert '"dark": "midnight"' in member_page and '"light": "day"' in member_page
+    assert rows is not None
+
+
+def test_client_hits_record_plex_headers_for_admins(client: TestClient) -> None:
+    from phoenixadult.utils.plex import client_hits
+
+    client_hits.clear()
+    client.post(
+        '/phoenixadult/movies/library/metadata/matches',
+        json={'type': 1, 'title': 'nope'},
+        headers={'x-plex-client-identifier': 'cid-123', 'x-plex-device-name': 'MAR', 'x-plex-product': 'Plex Media Server'},
+    )
+    hits = client.get('/config/api/clients').json()['clients']
+    assert len(hits) == 1
+    assert hits[0]['clientId'] == 'cid-123'
+    assert hits[0]['headers']['x-plex-device-name'] == 'MAR'
+    assert hits[0]['count'] == 1 and hits[0]['lastPath'].endswith('/matches')
+
+
+def test_the_config_page_carries_the_new_admin_sections(client: TestClient) -> None:
+    body = client.get('/config').text
+    assert 'id="tab-clients"' in body
+    assert 'function metadataApiCardHtml()' in body
+    assert 'function imageOverrideCardHtml()' in body
+    assert 'id="conn-image-base"' in body
+    assert 'saveThemeChoice' in body
 
 
 def test_the_logs_tab_breaks_out_of_the_page_width_but_the_header_stays_put(client: TestClient) -> None:

@@ -382,6 +382,11 @@ _MIGRATIONS: list[_Migration] = [
     );
     CREATE INDEX plex_connection_clients_client ON plex_connection_clients(client_id);
     """,
+    """
+    ALTER TABLE users ADD COLUMN theme_dark TEXT NOT NULL DEFAULT '';
+    ALTER TABLE users ADD COLUMN theme_light TEXT NOT NULL DEFAULT '';
+    ALTER TABLE users ADD COLUMN metadataapi_token_encrypted TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 _local = threading.local()

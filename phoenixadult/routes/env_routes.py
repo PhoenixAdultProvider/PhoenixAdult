@@ -28,12 +28,16 @@ from phoenixadult.config.env_overrides import (
     set_override,
 )
 from phoenixadult.registry import SITE_DEFINITIONS
-from phoenixadult.routes import nav_username, read_json_body, render_page
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.routes import THEME_NAMES, nav_username, read_json_body, render_page
+from phoenixadult.utils.auth import user_store, user_tokens
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, resolve_user, user_auth_guard
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.session_log import DEFAULT_LINES, LINE_CHOICES, session_log
+from phoenixadult.utils.plex import client_hits
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 
 def _display_value(spec: EnvVarSpec) -> str:
@@ -57,7 +61,9 @@ def _current_user(request: Request) -> dict[str, Any]:
     return {'username': user.username, 'isAdmin': user.is_admin} if user is not None else {}
 
 
-def _build_state(user: dict[str, Any] | None = None) -> dict[str, Any]:
+def _build_state(user: dict[str, Any] | None = None, has_metadataapi_token: bool = False) -> dict[str, Any]:
+    if not (user or {}).get('isAdmin'):
+        return {'overridesPath': '', 'groups': [], 'tabs': [], 'user': user or {}, 'metadataapi': {'hasToken': has_metadataapi_token}}
     by_group: dict[str, list[dict[str, Any]]] = {}
     for spec in ENV_CATALOG:
         state = {
@@ -83,15 +89,28 @@ def _build_state(user: dict[str, Any] | None = None) -> dict[str, Any]:
         return ENV_GROUP_ORDER.index(name) if name in ENV_GROUP_ORDER else len(ENV_GROUP_ORDER)
 
     groups = [{'name': name, 'tab': GROUP_TAB.get(name, 'System'), 'vars': vars_} for name, vars_ in sorted(by_group.items(), key=lambda kv: rank(kv[0]))]
-    return {'overridesPath': str(OVERRIDES_PATH), 'groups': groups, 'tabs': [tab for tab, _tab_groups in ENV_TABS], 'user': user or {}}
+    return {
+        'overridesPath': str(OVERRIDES_PATH),
+        'groups': groups,
+        'tabs': [tab for tab, _tab_groups in ENV_TABS],
+        'user': user or {},
+        'metadataapi': {'hasToken': has_metadataapi_token},
+    }
+
+
+async def _state_for(request: Request) -> dict[str, Any]:
+    user = await resolve_user(request)
+    assert user is not None
+    has_token = bool(await run_in('store', user_store.metadataapi_token_encrypted, user.id))
+    return _build_state(_current_user(request), has_token)
 
 
 @router.get('/api/state')
 async def api_state(request: Request) -> JSONResponse:
-    return JSONResponse(_build_state(_current_user(request)))
+    return JSONResponse(await _state_for(request))
 
 
-@router.post('/api/save')
+@router.post('/api/save', dependencies=_admin)
 async def api_save(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     updates = body.get('updates')
@@ -118,10 +137,10 @@ async def api_save(request: Request) -> JSONResponse:
 
         await asyncio.to_thread(_apply)
         logger.info('config', f'applied {len(clean)} override(s): {", ".join(k for k, _ in clean)}')
-    return JSONResponse(_build_state(_current_user(request)))
+    return JSONResponse(await _state_for(request))
 
 
-@router.post('/api/reveal')
+@router.post('/api/reveal', dependencies=_admin)
 async def api_reveal(request: Request) -> JSONResponse:
     body = await read_json_body(request)
     key = str(body.get('key') or '')
@@ -131,7 +150,7 @@ async def api_reveal(request: Request) -> JSONResponse:
     return JSONResponse({'key': key, 'value': os.environ.get(key, '')})
 
 
-@router.post('/api/reset')
+@router.post('/api/reset', dependencies=_admin)
 async def api_reset(request: Request) -> JSONResponse:
     try:
         body = await request.json()
@@ -141,18 +160,18 @@ async def api_reset(request: Request) -> JSONResponse:
     if key is None:
         await asyncio.to_thread(clear_all_overrides)
         logger.info('config', 'cleared all overrides')
-        return JSONResponse(_build_state(_current_user(request)))
+        return JSONResponse(await _state_for(request))
     if not isinstance(key, str) or not find_env_var(key):
         return JSONResponse({'error': f'"{key}" is not an editable variable'}, status_code=400)
     await asyncio.to_thread(clear_override, key)
     logger.info('config', f'cleared override: {key}')
-    return JSONResponse(_build_state(_current_user(request)))
+    return JSONResponse(await _state_for(request))
 
 
 _MAIN_PY = Path(__file__).resolve().parent.parent / 'main.py'
 
 
-@router.post('/api/restart')
+@router.post('/api/restart', dependencies=_admin)
 async def api_restart() -> JSONResponse:
     if not env.is_production:
         try:
@@ -169,10 +188,39 @@ async def api_restart() -> JSONResponse:
     return JSONResponse({'ok': True, 'method': 'shutdown'})
 
 
-@router.get('/api/logs')
+@router.get('/api/logs', dependencies=_admin)
 async def api_logs(since: int = 0, limit: int = DEFAULT_LINES) -> JSONResponse:
     seq, lines, reset = session_log.tail(since, limit)
     return JSONResponse({'seq': seq, 'lines': lines, 'reset': reset, 'choices': list(LINE_CHOICES)})
+
+
+@router.post('/api/theme')
+async def api_theme(request: Request) -> JSONResponse:
+    user = await resolve_user(request)
+    assert user is not None
+    body = await read_json_body(request)
+    dark = str(body.get('dark') or '')
+    light = str(body.get('light') or '')
+    if (dark and dark not in THEME_NAMES) or (light and light not in THEME_NAMES):
+        return JSONResponse({'error': 'unknown theme'}, status_code=400)
+    await run_in('store', user_store.set_theme, user.id, dark, light)
+    return JSONResponse({'ok': True})
+
+
+@router.post('/api/metadataapi')
+async def api_metadataapi(request: Request) -> JSONResponse:
+    user = await resolve_user(request)
+    assert user is not None
+    body = await read_json_body(request)
+    token = str(body.get('token') or '').strip()
+    await run_in('store', user_tokens.save_token_for_user, user.id, token)
+    logger.info('config', f'{user.username} {"set" if token else "cleared"} their MetadataAPI token')
+    return JSONResponse({'hasToken': bool(token)})
+
+
+@router.get('/api/clients', dependencies=_admin)
+async def api_clients() -> JSONResponse:
+    return JSONResponse({'clients': client_hits.list_hits()})
 
 
 def _render_ui(state: dict[str, Any], username: str) -> str:
@@ -182,4 +230,4 @@ def _render_ui(state: dict[str, Any], username: str) -> str:
 @router.get('')
 @router.get('/')
 async def page(request: Request) -> HTMLResponse:
-    return HTMLResponse(_render_ui(_build_state(_current_user(request)), nav_username(request)))
+    return HTMLResponse(_render_ui(await _state_for(request), nav_username(request)))

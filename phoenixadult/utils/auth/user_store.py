@@ -17,6 +17,8 @@ class AuthedUser:
     username: str
     is_admin: bool
     via: Literal['session', 'api_key']
+    theme_dark: str = ''
+    theme_light: str = ''
 
 
 @dataclass(frozen=True)
@@ -104,10 +106,12 @@ def regenerate_api_key(user_id: int) -> str:
 
 
 def user_for_api_key(presented: str) -> AuthedUser | None:
-    row = db.connect().execute('SELECT id, username, is_admin FROM users WHERE api_key_hash = ?', (hash_token(presented),)).fetchone()
+    row = db.connect().execute('SELECT id, username, is_admin, theme_dark, theme_light FROM users WHERE api_key_hash = ?', (hash_token(presented),)).fetchone()
     if row is None:
         return None
-    return AuthedUser(id=row['id'], username=row['username'], is_admin=bool(row['is_admin']), via='api_key')
+    return AuthedUser(
+        id=row['id'], username=row['username'], is_admin=bool(row['is_admin']), via='api_key', theme_dark=row['theme_dark'], theme_light=row['theme_light']
+    )
 
 
 def create_session(user_id: int, user_agent: str) -> str:
@@ -125,10 +129,8 @@ def create_session(user_id: int, user_agent: str) -> str:
 
 def session_user(token_hash: str, now: float) -> AuthedUser | None:
     conn = db.connect()
-    row = conn.execute(
-        'SELECT s.last_seen_at, u.id, u.username, u.is_admin FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?',
-        (token_hash,),
-    ).fetchone()
+    query = 'SELECT s.last_seen_at, u.id, u.username, u.is_admin, u.theme_dark, u.theme_light FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?'  # noqa: E501
+    row = conn.execute(query, (token_hash,)).fetchone()
     if row is None:
         return None
     if now - row['last_seen_at'] > SESSION_TTL_SECONDS:
@@ -138,7 +140,9 @@ def session_user(token_hash: str, now: float) -> AuthedUser | None:
     if now - row['last_seen_at'] > _LAST_SEEN_BUMP_SECONDS:
         with conn:
             conn.execute('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?', (now, token_hash))
-    return AuthedUser(id=row['id'], username=row['username'], is_admin=bool(row['is_admin']), via='session')
+    return AuthedUser(
+        id=row['id'], username=row['username'], is_admin=bool(row['is_admin']), via='session', theme_dark=row['theme_dark'], theme_light=row['theme_light']
+    )
 
 
 def delete_session(token_hash: str) -> None:
@@ -174,3 +178,29 @@ def revoke_session(user_id: int, token_hash: str) -> None:
 def oldest_admin_id() -> int | None:
     row = db.connect().execute('SELECT id FROM users WHERE is_admin = 1 ORDER BY id LIMIT 1').fetchone()
     return int(row['id']) if row else None
+
+
+def set_theme(user_id: int, dark: str, light: str) -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute('UPDATE users SET theme_dark = ?, theme_light = ? WHERE id = ?', (dark, light, user_id))
+
+
+def set_metadataapi_token(user_id: int, encrypted: str) -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute('UPDATE users SET metadataapi_token_encrypted = ? WHERE id = ?', (encrypted, user_id))
+
+
+def metadataapi_token_encrypted(user_id: int) -> str:
+    row = db.connect().execute('SELECT metadataapi_token_encrypted FROM users WHERE id = ?', (user_id,)).fetchone()
+    return str(row['metadataapi_token_encrypted']) if row else ''
+
+
+def first_metadataapi_token_encrypted() -> str:
+    row = db.connect().execute("SELECT metadataapi_token_encrypted FROM users WHERE metadataapi_token_encrypted != '' ORDER BY id LIMIT 1").fetchone()
+    return str(row['metadataapi_token_encrypted']) if row else ''
+
+
+def any_metadataapi_token() -> bool:
+    return bool(db.connect().execute("SELECT COUNT(*) FROM users WHERE metadataapi_token_encrypted != ''").fetchone()[0])

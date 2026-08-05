@@ -9,14 +9,14 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 # fmt: off
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
-    'Data18 Enrichment', 'MetadataAPI', 'Manual NFO', 'People Cache & Sources',
+    'Data18 Enrichment', 'Manual NFO', 'People Cache & Sources',
     'Gender Handling', 'Images', 'Logging', 'Metadata Cache',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
     ('Matching', ['Matching & Title Parsing']),
     ('Scraping', ['Scraping & Pacing', 'HTTP Bypass', 'Web Search']),
-    ('Enrichment', ['Data18 Enrichment', 'MetadataAPI', 'Manual NFO']),
+    ('Enrichment', ['Data18 Enrichment', 'Manual NFO']),
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
     ('System', ['Logging', 'Metadata Cache']),
@@ -313,13 +313,6 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Data18 Enrichment',
         'boolean',
         default_value='false',
-    ),
-    EnvVarSpec(
-        'METADATAAPI_TOKEN',
-        'ThePornDB API Token',
-        'Bearer token for api.theporndb.net; without it the API serves a reduced response.',
-        'MetadataAPI',
-        'secret',
     ),
     EnvVarSpec(
         'PHOENIX_EXTRA_COLLECTIONS',

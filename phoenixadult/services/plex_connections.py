@@ -167,6 +167,14 @@ def invalidate() -> None:
         _union_cache = None
 
 
+def owner_for_client(client_id: str) -> int | None:
+    query = (
+        'SELECT c.user_id FROM plex_connections c JOIN plex_connection_clients pcc ON pcc.connection_id = c.id WHERE pcc.client_id = ? ORDER BY c.id LIMIT 1'
+    )
+    row = db.connect().execute(query, (client_id,)).fetchone()
+    return int(row['user_id']) if row else None
+
+
 _MIGRATED_KEYS = ('PLEX_URL', 'PLEX_TOKEN', 'PLEX_CLIENT_ID', 'PLEX_CLIENT_ALLOWLIST', 'PLEX_UPDATE_CHANNEL', 'PLEX_UPDATE_RELEASE')
 
 

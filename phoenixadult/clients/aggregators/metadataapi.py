@@ -5,8 +5,8 @@ from urllib.parse import quote
 import httpx2
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
-from phoenixadult.config.env import env
 from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.auth.user_tokens import metadataapi_token
 from phoenixadult.utils.helpers.helpers import api_date, build_search_result
 from phoenixadult.utils.http.client import make_http
 
@@ -14,7 +14,7 @@ _API_BASE = 'https://api.theporndb.net'
 
 
 def _auth_headers() -> dict[str, str]:
-    token = env.metadata_api_token
+    token = metadataapi_token()
     return {'Accept': 'application/json', 'Authorization': f'Bearer {token}'} if token else {}
 
 

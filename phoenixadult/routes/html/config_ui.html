@@ -275,7 +275,7 @@
 <body data-page="config">
   {% include 'nav.html' %}
   <h1>⚙️ PhoenixAdult Config</h1>
-  <p class="sub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
+  <p class="sub" id="ovSub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
   <div class="toolbar" id="toolbar">
     <button id="saveBtn" onclick="save()" disabled>Save Changes</button>
@@ -330,12 +330,6 @@
           <button type="button" class="icon-btn" onclick="addAllowedClient()">Add</button>
         </div>
         <div class="hint">Empty on every connection means any Plex server may call the provider.</div>
-      </div>
-
-      <h2>Image Base URL Override</h2>
-      <div class="card">
-        <input type="text" id="conn-image-base" placeholder="blank uses the global Local Image Base Address" onchange="saveConnection()">
-        <div class="hint">Set this when a server reaches the provider at a different address than the global setting.</div>
       </div>
 
       <h2>Server Updates</h2>
@@ -475,6 +469,16 @@
     </div>
   </div>
 
+  <div id="tab-clients" class="tabpane">
+    <h2>Plex Client Hits</h2>
+    <div class="card">
+      <div class="var-desc">Every request that carried an <code>X-Plex-Client-Identifier</code> header, newest first. Copy an identifier into a
+        connection's Allowed Plex Clients list to pin the provider to that server.</div>
+      <div class="plex-row"><button type="button" class="secondary" onclick="loadClients()">Refresh</button><span class="plex-status" id="clients-status"></span></div>
+    </div>
+    <div id="clients-list"></div>
+  </div>
+
   <div id="tab-theme" class="tabpane">
     <h2>Theme Selection</h2>
     <div class="card">
@@ -512,17 +516,46 @@
     const PLEX_GROUP = 'Plex Server';
     const PLEX_TAB = 'Plex';
     const USERS_TAB = 'Users';
+    const CLIENTS_TAB = 'Clients';
     const LOGS_TAB = 'Logs';
     const THEME_TAB = 'Theme';
+    const ENRICHMENT_TAB = 'Enrichment';
 
     function isAdmin() { return !!(STATE.user && STATE.user.isAdmin); }
     function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
-    function tabNames() { return (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB); }
-    function extraTabs() { return [PLEX_TAB, ...(isAdmin() ? [USERS_TAB] : []), THEME_TAB, LOGS_TAB]; }
-    function tabIds() { return [...tabNames().map(tabSlug), 'plex', ...(isAdmin() ? ['users'] : []), 'theme', 'logs']; }
+    function tabNames() {
+      const names = (STATE.tabs || []).filter((t) => t !== PLEX_TAB && t !== LOGS_TAB && t !== THEME_TAB);
+      if (!names.includes(ENRICHMENT_TAB)) names.push(ENRICHMENT_TAB);
+      return names;
+    }
+    function extraTabs() { return [PLEX_TAB, ...(isAdmin() ? [USERS_TAB, CLIENTS_TAB] : []), THEME_TAB, ...(isAdmin() ? [LOGS_TAB] : [])]; }
+    function tabIds() { return [...tabNames().map(tabSlug), 'plex', ...(isAdmin() ? ['users', 'clients'] : []), 'theme', ...(isAdmin() ? ['logs'] : [])]; }
+
+    function metadataApiCardHtml() {
+      const hasToken = !!(STATE.metadataapi && STATE.metadataapi.hasToken);
+      return '<h2>MetadataAPI</h2><div class="card">'
+        + '<div class="var-desc">ThePornDB bearer token for api.theporndb.net — stored on your account, encrypted, and never shown again. '
+        + 'Scrapes serving your Plex servers use your token.</div>'
+        + '<div class="plex-row">'
+        + '<input type="password" id="metadataapi-token" placeholder="' + (hasToken ? '●●●●●●●● token saved — paste to replace' : 'paste your token') + '" autocomplete="off">'
+        + '<button type="button" onclick="saveMetadataApiToken(true)">Save Token</button>'
+        + '<button type="button" class="danger" onclick="saveMetadataApiToken(false)">Clear</button>'
+        + '<span class="plex-status" id="metadataapi-status"></span>'
+        + '</div></div>';
+    }
+
+    function imageOverrideCardHtml() {
+      return '<h2>Image Base URL Override</h2><div class="card">'
+        + '<div class="var-desc">Per-connection override for the connection selected on the Plex tab (<span id="img-override-conn">none selected</span>).</div>'
+        + '<input type="text" id="conn-image-base" placeholder="blank uses the global Local Image Base Address" onchange="saveConnection()">'
+        + '<div class="hint">Set this when a server reaches the provider at a different address than the global setting.</div>'
+        + '</div>';
+    }
 
     function render() {
       document.getElementById('ovPath').textContent = STATE.overridesPath;
+      document.getElementById('ovSub').style.display = isAdmin() ? '' : 'none';
+      document.getElementById('toolbar').style.display = isAdmin() ? '' : 'none';
       const current = document.querySelector('.tabbar button.active');
       const currentId = current ? current.id.replace('tabbtn-', '') : null;
       document.getElementById('tabbar').innerHTML = [...tabNames(), ...extraTabs()]
@@ -533,6 +566,9 @@
           + STATE.groups.filter((g) => g.tab === t && g.name !== PLEX_GROUP).map(renderGroup).join('')
           + '</div>')
         .join('');
+      document.getElementById('tab-enrichment').insertAdjacentHTML('afterbegin', metadataApiCardHtml());
+      const imgPane = document.getElementById('tab-images');
+      if (imgPane) imgPane.insertAdjacentHTML('beforeend', imageOverrideCardHtml());
       for (const v of allVars()) {
         if (v.kind === 'list') initList(v);
         if (v.preview === 'image') {
@@ -551,8 +587,9 @@
         if (pane) pane.classList.toggle('active', t === name);
         if (btn) btn.classList.toggle('active', t === name);
       }
-      if (name === 'plex' && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadConnections().then(loadPlexLibraries); }
+      if ((name === 'plex' || name === 'images') && !plexLibrariesLoaded) { plexLibrariesLoaded = true; loadConnections().then(loadPlexLibraries); }
       if (name === 'users') loadUsers();
+      if (name === 'clients') loadClients();
       if (name === 'theme') initThemeTab();
       document.body.classList.toggle('logs-wide', name === 'logs');
       if (name === 'logs') logOpen(); else logStop();
@@ -560,6 +597,47 @@
       if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
       if (history.replaceState) history.replaceState(null, '', '#' + name);
       if (name === 'plex') plexUpdateStatus(false);
+    }
+
+    async function saveMetadataApiToken(save) {
+      const input = document.getElementById('metadataapi-token');
+      const token = save ? input.value.trim() : '';
+      const status = document.getElementById('metadataapi-status');
+      if (save && !token) { status.textContent = 'Paste a token first.'; status.className = 'plex-status err'; return; }
+      try {
+        const res = await postJSON(api('/config/api/metadataapi'), { token });
+        STATE.metadataapi = { hasToken: !!res.hasToken };
+        input.value = '';
+        input.placeholder = res.hasToken ? '●●●●●●●● token saved — paste to replace' : 'paste your token';
+        status.textContent = res.hasToken ? 'Token Saved.' : 'Token Cleared.';
+        status.className = 'plex-status ok';
+      } catch (err) {
+        status.textContent = err.message;
+        status.className = 'plex-status err';
+      }
+    }
+
+    async function loadClients() {
+      const res = await fetch(api('/config/api/clients'));
+      const data = await res.json().catch(() => ({ clients: [] }));
+      const list = document.getElementById('clients-list');
+      const fmt = (ts) => new Date(ts * 1000).toLocaleString();
+      list.innerHTML = (data.clients || []).map((c) => {
+        const h = c.headers || {};
+        const title = h['x-plex-device-name'] || h['x-plex-product'] || c.clientId;
+        const rows = Object.keys(h).sort()
+          .map((k) => '<tr><td class="c-key"><code>' + esc(k) + '</code></td><td>' + esc(String(h[k])) + '</td></tr>').join('');
+        return '<h2>' + esc(String(title)) + '</h2><div class="card">'
+          + '<div class="plex-row"><code>' + esc(c.clientId) + '</code>'
+          + '<button type="button" class="copy-btn" onclick="navigator.clipboard.writeText(\'' + esc(c.clientId) + '\')">Copy</button>'
+          + '<span class="hint">' + c.count + ' hit(s) · first ' + esc(fmt(c.firstSeen)) + ' · last ' + esc(fmt(c.lastSeen))
+          + ' · ' + esc(c.lastPath || '') + '</span></div>'
+          + '<table class="users-table"><tbody>' + rows + '</tbody></table>'
+          + '</div>';
+      }).join('') || '<div class="card"><span class="hint">No client hits recorded since the last restart.</span></div>';
+      const status = document.getElementById('clients-status');
+      status.textContent = (data.clients || []).length + ' client(s)';
+      status.className = 'plex-status';
     }
 
     function renderGroup(group) {
@@ -740,8 +818,14 @@
         sel.innerHTML = window.paTheme.themes[mode]
           .map((n) => '<option value="' + esc(n) + '">' + esc(n[0].toUpperCase() + n.slice(1)) + '</option>').join('');
         sel.value = window.paTheme.themeName(mode);
-        sel.onchange = () => { window.paTheme.setThemeName(mode, sel.value); renderThemePreview(); };
+        sel.onchange = () => { window.paTheme.setThemeName(mode, sel.value); renderThemePreview(); saveThemeChoice(); };
       }
+    }
+
+    async function saveThemeChoice() {
+      const dark = document.getElementById('themeDark').value;
+      const light = document.getElementById('themeLight').value;
+      try { await postJSON(api('/config/api/theme'), { dark, light }); } catch (err) {}
     }
 
     function selectControl(key, initial, pairs) {
@@ -1230,7 +1314,10 @@
       if (!conn) { plexStatus('plex-conn-status', 'Add a connection to pair a Plex server.', ''); return; }
       document.getElementById('conn-name').value = conn.name;
       document.getElementById('conn-url').value = conn.serverUrl;
-      document.getElementById('conn-image-base').value = conn.imageBaseUrl;
+      const imgBase = document.getElementById('conn-image-base');
+      if (imgBase) imgBase.value = conn.imageBaseUrl;
+      const imgLabel = document.getElementById('img-override-conn');
+      if (imgLabel) imgLabel.textContent = conn.name;
       document.getElementById('plex-update-channel').value = conn.updateChannel || 'plex';
       renderAllowedClients();
       plexStatus('plex-conn-status', conn.hasToken ? 'Token saved.' : 'No token yet — fetch or paste one.', conn.hasToken ? 'ok' : '');
@@ -1279,10 +1366,11 @@
       const body = {
         name: document.getElementById('conn-name').value.trim(),
         serverUrl: document.getElementById('conn-url').value.trim(),
-        imageBaseUrl: document.getElementById('conn-image-base').value.trim(),
         updateChannel: document.getElementById('plex-update-channel').value,
         updateRelease: document.getElementById('plex-update-release').value,
       };
+      const imgBase = document.getElementById('conn-image-base');
+      if (imgBase) body.imageBaseUrl = imgBase.value.trim();
       try {
         await postJSON(api(connPath()), body);
         await loadConnections(CONN_ID);

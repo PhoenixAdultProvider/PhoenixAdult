@@ -49,6 +49,13 @@ def _migrate_plex_env() -> None:
         logger.info('plex-connections', f'migrated the PLEX_* settings into the "{migrated}" connection')
 
 
+def _migrate_metadataapi_env() -> None:
+    from phoenixadult.utils.auth import user_tokens
+
+    if user_tokens.migrate_env_token():
+        logger.info('config', 'migrated METADATAAPI_TOKEN into the first admin account')
+
+
 async def _try_startup(label: str, fn: Callable[[], object]) -> None:
     try:
         await asyncio.to_thread(fn)
@@ -89,6 +96,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
     await _try_startup('plex connection migration', _migrate_plex_env)
+    await _try_startup('metadataapi token migration', _migrate_metadataapi_env)
     if people_cache.cache_enabled():
         await _try_startup('people-cache reconcile', people_cache.reconcile)
     await _try_startup('logo-cache reconcile', logo_cache.reconcile)
@@ -110,6 +118,22 @@ def create_app() -> FastAPI:
 
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
+
+    # ── Plex Client Tracking (records hits; resolves the owner's enrichment token) ─
+    from phoenixadult.services import plex_connections
+    from phoenixadult.utils.auth import user_tokens
+    from phoenixadult.utils.plex import client_hits
+
+    @app.middleware('http')
+    async def plex_client_middleware(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
+        client_id = request.headers.get('x-plex-client-identifier')
+        if client_id:
+            client_hits.record(client_id, request.headers, request.url.path)
+            owner = await asyncio.to_thread(plex_connections.owner_for_client, client_id)
+            if owner is not None:
+                token = await asyncio.to_thread(user_tokens.token_for_user, owner)
+                user_tokens.current_metadataapi_token.set(token)
+        return await call_next(request)  # type: ignore[no-any-return]
 
     # ── Authentication (login / setup / logout / account) ────────────────────
     from phoenixadult.routes import auth_routes

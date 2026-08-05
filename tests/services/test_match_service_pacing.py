@@ -71,6 +71,35 @@ async def test_search_memo_absorbs_duplicate_searches(monkeypatch: pytest.Monkey
     assert calls == ['scene a', 'scene b']
 
 
+async def test_a_transport_failure_never_caches_or_erases_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+    from phoenixadult.utils.http import connectivity
+
+    svc = MatchService()
+    key = svc._memo_key(_ctx())
+    search_store.save(key, [SearchResult(title='Kept Scene', scene_url='https://nubilefilms.com/video/watch/9', cur_id='keep')])
+    calls: list[str] = []
+
+    async def failing_search(search_data: SearchContext) -> list[SearchResult]:
+        calls.append(search_data.title)
+        connectivity.note_transport_failure('dns down')
+        return []
+
+    monkeypatch.setattr(svc._scraper, 'search', failing_search)
+    monkeypatch.setattr(svc, '_is_paced', lambda _ctx: True)
+    connectivity.begin_transport_watch()
+    orig_load, orig_similar = search_store.load, search_store.load_similar
+    monkeypatch.setattr(search_store, 'load', lambda _key: None)
+    monkeypatch.setattr(search_store, 'load_similar', lambda _key: None)
+    assert await svc._search_results(_ctx(), PROVIDER) == []
+
+    assert svc._search_memo.get(key) is None
+    monkeypatch.setattr(search_store, 'load', orig_load)
+    monkeypatch.setattr(search_store, 'load_similar', orig_similar)
+    stored = search_store.load(key)
+    assert stored is not None and stored[0].title == 'Kept Scene'
+
+
 async def test_memo_key_normalizes_case_and_whitespace(monkeypatch: pytest.MonkeyPatch) -> None:
     svc = MatchService()
     calls: list[str] = []

@@ -78,6 +78,15 @@ the only way in, including from loopback.
 - **Admins** manage other accounts from the **Users** tab of `/config`: add or delete
   users, reset passwords, and grant or revoke admin. The last admin cannot be deleted
   or demoted.
+- **Non-admins** see only their own surface on `/config`: the **Plex** tab (their
+  connections), the **Enrichment** tab (their MetadataAPI token), and the **Theme**
+  tab. Every environment tab (Matching, Scraping, People, Images, System) plus
+  **Logs** and the **Clients** hit log is admin-only, enforced server-side — the
+  save/reset/reveal/restart/logs endpoints return 403 for non-admins.
+- **Clients** (admin tab) records every request that carried an
+  `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
+  count, and last path — the quickest way to grab an identifier for a connection's
+  allowlist. In-memory; clears on restart.
 - **Lost every password?** Run `python scripts/reset_password.py <username>` on the
   server (add `--create-admin` when no usable admin remains).
 
@@ -203,9 +212,13 @@ markup change or block no longer ends the chain.
 
 ### MetadataAPI
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `METADATAAPI_TOKEN` | _(unset)_ | Bearer token for api.theporndb.net. Optional — without it the API serves a reduced response. |
+The ThePornDB bearer token is stored **per user account** (encrypted, never shown
+after save), not as an environment variable — set it on the **Enrichment** tab of
+`/config`, which every signed-in user can reach. Scrapes serving a Plex server use
+the token of the connection owner whose allowlist matched the calling server;
+background/queued scrapes fall back to the first configured token. A legacy
+`METADATAAPI_TOKEN` environment value migrates into the first admin account on
+startup and is cleared from the overrides.
 
 ### Plex Connections
 
@@ -230,7 +243,8 @@ Each connection stores its own:
   carrying the platform's latest version, since Plex lists stale builds (e.g. frozen
   Windows 32-bit) first.
 - **Image base URL override** — set this when a particular server must reach the provider
-  at a different address than the global `IMAGE_BASE_URL`.
+  at a different address than the global `IMAGE_BASE_URL`. It lives on the **Images** tab
+  (admin-only) and edits the connection currently selected on the Plex tab.
 
 Reconcile, library import, and collection-logo pushes all run against the selected
 connection; a second reconcile on the same connection is refused while one is running,

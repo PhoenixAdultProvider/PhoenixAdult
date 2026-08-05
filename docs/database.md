@@ -443,6 +443,24 @@ is what keeps a fresh install (and an upgrade that has not configured anything y
 Deleting a user cascades to their sessions and connections, and deleting a connection cascades to
 its client identifiers, so account removal leaves nothing behind.
 
+## Schema Version 14 — Per-User Themes and Enrichment Tokens
+
+Three columns join `users`, all defaulting to empty:
+
+```sql
+ALTER TABLE users ADD COLUMN theme_dark TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN theme_light TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN metadataapi_token_encrypted TEXT NOT NULL DEFAULT '';
+```
+
+`theme_dark`/`theme_light` hold the account's chosen theme per mode — saved from the
+Config UI's Theme tab and injected at page render, so a selection follows the account
+across browsers and never affects anyone else's. `metadataapi_token_encrypted` is the
+user's ThePornDB bearer token, Fernet-encrypted with the same `secret.key` derivation
+as Plex tokens; scrapes resolve it from the requesting user (admin UIs) or the owner
+of the matched Plex connection (provider traffic), falling back to the first
+configured token for background work.
+
 ## Why This Shape
 
 ### Why Dimension + Junction Tables
