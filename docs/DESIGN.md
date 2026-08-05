@@ -43,7 +43,7 @@ flowchart LR
   sites["Upstream studio/network sites<br/>(HTML + JSON APIs)"]:::ext
   flare["Impersonate / FlareSolverr / Playwright / ReqBin<br/>(anti-bot bypass)"]:::ext
   photos["Actor-photo & gender sources<br/>(IAFD, AdultDVDEmpire, …)"]:::ext
-  websearch["Google CSE / DuckDuckGo<br/>(fallback site search)"]:::ext
+  websearch["Google CSE / DuckDuckGo / ddgs<br/>(fallback site search)"]:::ext
 
   plex -- "match / metadata / image requests (HTTP)" --> sys
   op -- "config & dev UIs (HTTP)" --> sys

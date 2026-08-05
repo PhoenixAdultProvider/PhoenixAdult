@@ -3,13 +3,14 @@ from __future__ import annotations
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines.duckduckgo import DuckDuckGoClient
 from phoenixadult.utils.searchengines.google_cse import GoogleCseClient
+from phoenixadult.utils.searchengines.metasearch import MetasearchClient
 from phoenixadult.utils.searchengines.types import SearchEngineClient, SearchOptions
 
 __all__ = ['SearchEngineClient', 'SearchOptions', 'web_search']
 
 
 def _default_chain() -> list[SearchEngineClient]:
-    return [GoogleCseClient(), DuckDuckGoClient()]
+    return [GoogleCseClient(), DuckDuckGoClient(), MetasearchClient()]
 
 
 async def web_search(opts: SearchOptions) -> list[str]:

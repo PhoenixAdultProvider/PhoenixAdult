@@ -176,6 +176,11 @@ See the [manual searching](./manualsearch.md) doc for how manual matching works.
 | `GOOGLE_SEARCH_API_KEY` | _(unset)_ | Google Custom Search API key. With the CX set, Google CSE runs before the DuckDuckGo fallback. |
 | `GOOGLE_SEARCH_CX` | _(unset)_ | Programmable Search Engine ID (CX) paired with the API key. |
 
+The engine chain is Google CSE (when configured) → DuckDuckGo → ddgs metasearch.
+The final entry uses the [ddgs](https://github.com/deedy5/ddgs) library's auto
+backend — several engines behind browser-impersonated TLS — so a DuckDuckGo
+markup change or block no longer ends the chain.
+
 ### HTTP Bypass
 
 | Variable | Default | Description |
