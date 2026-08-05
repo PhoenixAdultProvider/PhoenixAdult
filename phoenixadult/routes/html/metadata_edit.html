@@ -519,7 +519,7 @@
       input.value = '';
       renderImages();
     };
-    qs('a-img').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); qs('addImg').click(); } });
+    if (qs('a-img')) qs('a-img').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); qs('addImg').click(); } });
     qs('f-data18Id').addEventListener('input', renderData18State);
     qs('f-data18Type').addEventListener('change', renderData18State);
 

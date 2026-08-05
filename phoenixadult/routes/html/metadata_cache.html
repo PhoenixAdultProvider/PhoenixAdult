@@ -67,6 +67,7 @@
       font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
     }
     .c-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 4px; }
+    .c-actions:has(> button:only-child) { grid-template-columns: minmax(0, 160px); justify-content: center; }
     .c-actions button { width: 100%; }
 
     /* ── Misc ── */
@@ -239,8 +240,8 @@
   <div class="toolbar">
     <button class="reset-btn" onclick="reset()">Reset</button>
     <button class="sfw-toggle" id="sfwToggle" onclick="toggleSfw()"></button>
-    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
-    <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
+{% if is_admin() %}    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
+    <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
 {% if is_admin() %}    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
     <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
 {% endif %}    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
@@ -720,6 +721,7 @@
       showDupsOnly = on;
       if (on && showPotential) setPotential(false);
       const t = document.getElementById('dupToggle');
+      if (!t) return;
       t.classList.toggle('on', on);
       t.textContent = on ? 'Showing Stale Only' : 'Show Stale';
     }
@@ -728,6 +730,7 @@
       showPotential = on;
       if (on && showDupsOnly) setDupsOnly(false);
       const t = document.getElementById('potToggle');
+      if (!t) return;
       t.classList.toggle('on', on);
       t.textContent = on ? 'Showing Duplicates Only' : 'Show Duplicates';
     }
@@ -752,7 +755,8 @@
         btn.disabled = !n;
         btn.classList.toggle('active', n > 0);
       }
-      document.getElementById('dupToggle').hidden = !n;
+      const dupToggle = document.getElementById('dupToggle');
+      if (dupToggle) dupToggle.hidden = !n;
       if (!n && showDupsOnly) setDupsOnly(false);
     }
 

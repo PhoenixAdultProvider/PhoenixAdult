@@ -32,6 +32,8 @@
       button{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--button-primary-bg);color:var(--button-text);cursor:pointer}
       button:disabled{cursor:default;opacity:.7}
       .actions{display:flex;gap:8px}
+      .actions:has(> button:only-child){justify-content:center}
+      .actions > button.edit:only-child{flex:0 0 160px}
       button.restore{background:var(--button-primary-bg);flex:1}
       button.restore:disabled{background:var(--button-disabled-bg);color:var(--button-disabled-text);opacity:1}
       button.edit{background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--soft-text);flex:0 0 80px}

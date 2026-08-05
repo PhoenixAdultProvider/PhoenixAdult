@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -96,6 +100,60 @@ def test_write_endpoints_reject_non_admins(member: TestClient) -> None:
 def test_read_only_pages_still_load_for_non_admins(member: TestClient) -> None:
     for path in ('/metadata', '/people', '/logos', '/queue'):
         assert member.get(path).status_code == 200, path
+
+
+def _seed_snapshot() -> str:
+    from phoenixadult.utils import cache as metadata_cache
+    from phoenixadult.utils.cache import scene_store
+
+    md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
+    payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+    scene_hash = metadata_cache._hash('Studio', 'cur1')
+    scene_store.upsert('Studio', 'cur1', scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    return str(scene_store.snapshot_state('Studio', 'cur1')['key'])
+
+
+_HARNESS = Path(__file__).parent / '_js' / 'page_load_harness.js'
+
+
+def _assert_page_scripts_load(client: TestClient, path: str, label: str, tmp_path: Path) -> None:
+    html = client.get(path).text
+    page = tmp_path / f'{label}.html'
+    page.write_text(html, encoding='utf-8')
+    result = subprocess.run(['node', str(_HARNESS), str(page)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, f'{path} ({label}) failed at load: {result.stdout.strip()} {result.stderr.strip()}'
+
+
+@pytest.mark.skipif(shutil.which('node') is None, reason='node is needed to execute the page scripts')
+def test_every_page_script_survives_load_for_both_roles(member: TestClient, tmp_path: Path) -> None:
+    key = _seed_snapshot()
+    admin = authed_client()
+    for path in ('/metadata', f'/metadata/edit?key={key}', '/people', '/logos', '/queue', '/config'):
+        slug = path.strip('/').replace('/', '-').split('?')[0]
+        _assert_page_scripts_load(member, path, f'member-{slug}', tmp_path)
+        _assert_page_scripts_load(admin, path, f'admin-{slug}', tmp_path)
+
+
+def test_a_lone_view_button_is_centered(member: TestClient) -> None:
+    metadata = member.get('/metadata').text
+    assert '.c-actions:has(> button:only-child)' in metadata
+    people = member.get('/people').text
+    assert '.actions:has(> button:only-child){justify-content:center}' in people
+
+
+def test_duplicate_toggles_are_admin_only(member: TestClient) -> None:
+    body = member.get('/metadata').text
+    assert 'id="potToggle"' not in body
+    assert 'id="dupToggle"' not in body
+    admin_body = authed_client().get('/metadata').text
+    assert 'id="potToggle"' in admin_body and 'id="dupToggle"' in admin_body
+
+
+def test_the_viewer_still_populates_and_labels_sfw(member: TestClient) -> None:
+    body = member.get(f'/metadata/edit?key={_seed_snapshot()}').text
+    assert body.rstrip().endswith('</html>')
+    assert 'paintSfwToggle();\n    load();' in body
+    assert "if (qs('a-img'))" in body
 
 
 def test_the_nav_logout_button_cannot_stretch(member: TestClient) -> None:
