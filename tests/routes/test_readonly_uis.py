@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -136,8 +137,13 @@ def _assert_page_scripts_load(client: TestClient, path: str, label: str, tmp_pat
     assert result.returncode == 0, f'{path} ({label}) failed at load: {result.stdout.strip()} {result.stderr.strip()}'
 
 
-@pytest.mark.skipif(shutil.which('node') is None, reason='node is needed to execute the page scripts')
+def _in_ci() -> bool:
+    return bool(os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'))
+
+
+@pytest.mark.skipif(shutil.which('node') is None and not _in_ci(), reason='node is needed to execute the page scripts')
 def test_every_page_script_survives_load_for_both_roles(member: TestClient, tmp_path: Path) -> None:
+    assert shutil.which('node'), 'CI installs nodejs for this test — a missing node must fail, not skip'
     key = _seed_snapshot()
     admin = authed_client()
     for path in ('/metadata', f'/metadata/edit?key={key}', '/people', '/logos', '/queue', '/config'):

@@ -34,6 +34,8 @@ jobs:
 
       - name: Install
         run: |
+          # nodejs runs the page-script load test; without it that test skips.
+          apt-get update -qq && apt-get install -y -qq --no-install-recommends nodejs
           pip install -q uv
           uv pip install --system -e '.[dev,face]'
 
