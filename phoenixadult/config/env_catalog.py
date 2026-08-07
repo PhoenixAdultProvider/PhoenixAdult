@@ -66,8 +66,8 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'CLIENT_TOKEN_REQUIRED',
         'Require A Registered Plex Client',
-        'When on, provider requests must carry an X-Plex-Client-Identifier listed under a Plex connection. Plex sends no '
-        'identifier while adding a provider, so turn this on only after the provider is registered.',
+        'When on, match and metadata requests must carry an X-Plex-Client-Identifier listed under a Plex connection. '
+        'The provider URL itself always answers, so Plex can add the provider at any time.',
         'Provider Access',
         'boolean',
         default_value='false',

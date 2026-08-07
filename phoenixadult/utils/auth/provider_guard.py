@@ -51,7 +51,7 @@ async def provider_guard(request: Request) -> None:
             raise _refuse(request, 404, 'the ?apikey= on the URL does not match any user API key')
 
     client_id = (request.headers.get('x-plex-client-identifier') or '').strip()
-    if env.client_token_required:
+    if env.client_token_required and '/library/' in request.url.path:
         allowed = await run_in('store', allowed_client_union)
         if not client_id:
             raise _refuse(request, 404, 'the request sent no X-Plex-Client-Identifier, and CLIENT_TOKEN_REQUIRED demands a registered one')

@@ -118,7 +118,7 @@ this as noise reduction, not authentication; the settings below are the real gat
 | Variable | Default | Description |
 | --- | --- | --- |
 | `TOKEN_BASED_AUTH` | `false` | Require a user API key on the provider URL: register it in Plex as `http://host:3000/phoenixadult/movies?apikey=pa_…` (`?token=` is accepted too). Many keys serve the one route, and revoking a key is regenerating it on **Account**. Enforced strictly — loopback and signed-in sessions do **not** bypass it. |
-| `CLIENT_TOKEN_REQUIRED` | `false` | Require an `X-Plex-Client-Identifier` registered under a Plex connection. **Register the provider first**: Plex sends no identifier on the add-provider request, so turning this on beforehand makes the provider unaddable. |
+| `CLIENT_TOKEN_REQUIRED` | `false` | Require match and metadata requests to carry an `X-Plex-Client-Identifier` registered under a Plex connection. The provider URL itself (the capability document Plex reads when adding the provider) always answers, so the provider can be added at any time — Plex sends no identifier on that request. |
 | `API_REQUESTS_PER_DAY` | `0` | Daily request cap applied separately to each Plex client and each API key; `0` is unlimited. Over the cap the provider answers `429` with `Retry-After` set to the seconds remaining until local midnight. Counts live in SQLite and survive restarts. |
 
 Failures are logged at `warn` with the reason and the caller. Set `LOG_LEVEL=verbose` to
@@ -261,10 +261,8 @@ Each connection stores its own:
 - **Allowed Plex Clients** — `X-Plex-Client-Identifier` values associated with this
   connection. They map an incoming client to its owning user, which is how a request picks
   up that user's MetadataAPI token, and they are the allowlist `CLIENT_TOKEN_REQUIRED`
-  checks. Leave that setting off until the provider is registered: Plex sends no client
-  identifier at all on the request that adds a provider, so no allowlist can admit it.
-  Find a server's identifier in a verbose request dump, the Clients tab, or its
-  `Preferences.xml` (`ProcessedMachineIdentifier`).
+  checks on match/metadata requests. Find a server's identifier in a verbose request
+  dump, the Clients tab, or its `Preferences.xml` (`ProcessedMachineIdentifier`).
 - **Update channel and release** — `plex` follows the server's own channel preference
   (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release
   dropdown appears whenever a platform lists more than one build; unset picks the release

@@ -55,14 +55,19 @@ def test_token_based_auth_is_off_by_default(plex: TestClient) -> None:
     assert plex.get(MOUNT).status_code == 200
 
 
-def test_client_token_required_demands_a_registered_identifier(monkeypatch: pytest.MonkeyPatch, plex: TestClient) -> None:
+def test_client_token_required_gates_matches_but_never_the_provider_url(monkeypatch: pytest.MonkeyPatch, plex: TestClient) -> None:
     from phoenixadult.services import plex_connections
 
     plex_connections.set_allowed_clients(seed_connection().id, ['registered-server'])
     monkeypatch.setenv('CLIENT_TOKEN_REQUIRED', 'true')
-    assert plex.get(MOUNT).status_code == 404, 'no identifier at all'
-    assert plex.get(MOUNT, headers={'X-Plex-Client-Identifier': 'stranger'}).status_code == 404
-    assert plex.get(MOUNT, headers={'X-Plex-Client-Identifier': 'registered-server'}).status_code == 200
+    assert plex.get(MOUNT).status_code == 200, 'the provider URL itself can never be locked, or Plex could not add it'
+    match = f'{MOUNT}/library/metadata/matches'
+    body = {'type': 1, 'filename': 'a.mp4'}
+    assert plex.post(match, json=body).status_code == 404, 'a match without an identifier is refused'
+    assert plex.post(match, json=body, headers={'X-Plex-Client-Identifier': 'stranger'}).status_code == 404
+    assert plex.post(match, json=body, headers={'X-Plex-Client-Identifier': 'registered-server'}).status_code == 200
+    assert plex.get(f'{MOUNT}/library/metadata/scene-x', headers={'X-Plex-Client-Identifier': 'stranger'}).status_code == 404
+    assert plex.get(f'{MOUNT}/library/metadata/scene-x', headers={'X-Plex-Client-Identifier': 'registered-server'}).status_code != 404
 
 
 def test_a_signed_in_session_does_not_bypass_the_guard(monkeypatch: pytest.MonkeyPatch) -> None:
