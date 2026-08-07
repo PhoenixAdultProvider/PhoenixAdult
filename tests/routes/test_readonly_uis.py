@@ -151,7 +151,7 @@ def test_every_page_script_survives_load_for_both_roles(member: TestClient, tmp_
     assert shutil.which('node'), 'CI installs nodejs for this test — a missing node must fail, not skip'
     key = _seed_snapshot()
     admin = authed_client()
-    for path in ('/metadata', f'/metadata/edit?key={key}', '/people', '/logos', '/queue', '/config'):
+    for path in ('/metadata', f'/metadata/edit?key={key}', '/people', '/logos', '/queue', '/config', '/account'):
         slug = path.strip('/').replace('/', '-').split('?')[0]
         _assert_page_scripts_load(member, path, f'member-{slug}', tmp_path)
         _assert_page_scripts_load(admin, path, f'admin-{slug}', tmp_path)

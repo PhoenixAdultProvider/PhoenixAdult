@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from phoenixadult.utils import db
 from phoenixadult.utils.auth.passwords import generate_api_key, generate_session_token, hash_password, hash_token, verify_password
+from phoenixadult.utils.auth.server_secret import decrypt, encrypt
 
 SESSION_TTL_SECONDS = 30 * 24 * 3600
 _LAST_SEEN_BUMP_SECONDS = 3600
@@ -101,8 +102,15 @@ def regenerate_api_key(user_id: int) -> str:
     plain, key_hash, hint = generate_api_key()
     conn = db.connect()
     with conn:
-        conn.execute('UPDATE users SET api_key_hash = ?, api_key_hint = ? WHERE id = ?', (key_hash, hint, user_id))
+        conn.execute('UPDATE users SET api_key_hash = ?, api_key_hint = ?, api_key_encrypted = ? WHERE id = ?', (key_hash, hint, encrypt(plain), user_id))
     return plain
+
+
+def api_key_for_user(user_id: int) -> str:
+    row = db.connect().execute('SELECT api_key_encrypted FROM users WHERE id = ?', (user_id,)).fetchone()
+    if row is None or not row['api_key_encrypted']:
+        return ''
+    return decrypt(row['api_key_encrypted']) or ''
 
 
 def user_for_api_key(presented: str) -> AuthedUser | None:

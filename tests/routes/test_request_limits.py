@@ -42,6 +42,18 @@ def test_the_limit_also_applies_per_api_key(plex: TestClient) -> None:
     assert plex.get(MOUNT, params={'apikey': key}).status_code == 429, 'the key is capped even as the client id varies'
 
 
+def test_regenerating_the_key_does_not_reset_the_daily_limit(plex: TestClient) -> None:
+    from phoenixadult.utils.auth import user_store
+
+    uid = user_store.create_user('rotator', 'Hunter2hunter!', is_admin=True)
+    key = user_store.regenerate_api_key(uid)
+    for _ in range(4):
+        plex.get(MOUNT, params={'apikey': key})
+    assert plex.get(MOUNT, params={'apikey': key}).status_code == 429
+    fresh = user_store.regenerate_api_key(uid)
+    assert plex.get(MOUNT, params={'apikey': fresh}).status_code == 429, 'the budget belongs to the user, not the key'
+
+
 def test_a_throttled_response_says_when_to_come_back(plex: TestClient) -> None:
     for _ in range(4):
         _as(plex, 'noisy')

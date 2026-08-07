@@ -39,13 +39,13 @@ def test_change_password_revokes_other_sessions() -> None:
     assert user_store.session_user(hash_token(other), time.time()) is None
 
 
-def test_regenerate_api_key_shows_it_once() -> None:
+def test_regenerate_api_key_returns_a_working_key() -> None:
     client = authed_client()
     r = client.post('/account/api/key/regenerate')
     assert r.status_code == 200
     key = r.json()['key']
     assert key.startswith('pa_')
-    assert client.get('/account').text.count(key) == 0
+    assert key in client.get('/account').text, 'the key stays visible on the account page'
 
     other = TestClient(create_app())
     assert other.get('/config', headers={'accept': 'text/html', 'x-api-key': key}, follow_redirects=False).status_code == 200
@@ -88,3 +88,27 @@ def test_the_provider_url_shows_a_key_slot_when_token_auth_is_on(monkeypatch: py
     off = authed_client().get('/account').text
     assert 'YOUR_API_KEY' not in off, 'with token auth off the plain URL is what Plex needs'
     assert 'const TOKEN_AUTH = false;' in off
+
+
+def test_the_page_scripts_are_valid_javascript() -> None:
+    body = authed_client().get('/account').text
+    script = body.split('<script>')[1].split('</script>')[0]
+    assert '&#34;' not in script and '&amp;' not in script, 'autoescaped entities inside <script> kill every button on the page'
+
+
+def test_the_account_page_shows_the_full_key_and_a_copy_button() -> None:
+    client = authed_client()
+    key = client.post('/account/api/key/regenerate').json()['key']
+    body = client.get('/account').text
+    assert key in body, 'the key is shown in full, not obfuscated'
+    assert "copyText('keyReveal'" in body and '>Copy Key</button>' in body
+    assert '>Copy URL</button>' in body
+
+
+def test_the_provider_url_carries_the_real_key_when_token_auth_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = authed_client()
+    key = client.post('/account/api/key/regenerate').json()['key']
+    monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
+    body = client.get('/account').text
+    assert f'/phoenixadult/movies?apikey={key}' in body, 'the instructions show the URL Plex actually needs'
+    assert 'YOUR_API_KEY' not in body

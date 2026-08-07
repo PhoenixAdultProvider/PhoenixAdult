@@ -72,9 +72,11 @@ the only way in, including from loopback.
 - **Sessions** last 30 days of inactivity and ride in an `HttpOnly`, `SameSite=Lax`
   cookie that is marked `Secure` whenever the request arrives over https (including
   behind a tunnel or reverse proxy that sets `X-Forwarded-Proto`).
-- **API keys** replace the old admin token for scripts. Generate one on **`/account`** —
-  it is shown once — and send it as `Authorization: Bearer pa_…` or `x-api-key: pa_…`.
-  Regenerating immediately invalidates the previous key.
+- **API keys** replace the old admin token for scripts. Generate one on **`/account`**,
+  where it stays visible (stored encrypted with the server secret, like Plex tokens) with
+  a copy button, and send it as `Authorization: Bearer pa_…` or `x-api-key: pa_…`.
+  Regenerating immediately invalidates the previous key — and does not reset the daily
+  request limit, which is counted against the user, not the key.
 - **Admins** manage other accounts from the **Users** tab of `/config`: add or delete
   users, reset passwords, and grant or revoke admin. The last admin cannot be deleted
   or demoted.

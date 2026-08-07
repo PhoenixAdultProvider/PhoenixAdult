@@ -62,5 +62,5 @@ async def provider_guard(request: Request) -> None:
     if cap:
         if client_id and await _over_quota('client', client_id, cap):
             raise _refuse(request, 429, f'client "{client_id}" has passed its {cap}-request daily limit')
-        if user is not None and await _over_quota('apikey', str(user.id), cap):
+        if user is not None and await _over_quota('user', str(user.id), cap):
             raise _refuse(request, 429, f'the API key for "{user.username}" has passed its {cap}-request daily limit')

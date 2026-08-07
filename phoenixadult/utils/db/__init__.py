@@ -405,6 +405,9 @@ _MIGRATIONS: list[_Migration] = [
     );
     CREATE INDEX daily_requests_day ON daily_requests(day);
     """,
+    """
+    ALTER TABLE users ADD COLUMN api_key_encrypted TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 _local = threading.local()
