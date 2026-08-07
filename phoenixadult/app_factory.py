@@ -137,6 +137,10 @@ def create_app() -> FastAPI:
                 user_tokens.current_metadataapi_token.set(token)
         return await call_next(request)  # type: ignore[no-any-return]
 
+    from phoenixadult.utils.auth.hook_middleware import HookPathMiddleware
+
+    app.add_middleware(HookPathMiddleware)
+
     # ── Authentication (login / setup / logout / account) ────────────────────
     from phoenixadult.routes import auth_routes
 

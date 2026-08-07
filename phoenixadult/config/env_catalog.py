@@ -56,9 +56,9 @@ class EnvVarSpec:
 ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'TOKEN_BASED_AUTH',
-        'Require An API Key On The Provider URL',
-        'When on, the provider mount answers only requests carrying ?apikey=<a user API key>. Register it in Plex as '
-        'http://host:port/phoenixadult/movies?apikey=YOUR_KEY. Generate keys on the Account page.',
+        'Require An API Key In The Provider URL',
+        'When on, the provider mount answers only through its hook path. Register it in Plex as '
+        'http://host:port/api/hook/YOUR_KEY/phoenixadult/movies. Generate keys on the Account page.',
         'Provider Access',
         'boolean',
         default_value='false',

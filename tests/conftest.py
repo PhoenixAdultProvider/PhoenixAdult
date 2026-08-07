@@ -147,6 +147,14 @@ def no_web_search() -> object:
     return _none
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits() -> None:
+    from phoenixadult.utils.auth import rate_limit
+
+    with rate_limit._lock:
+        rate_limit._buckets.clear()
+
+
 PLEX_UA = 'PlexMediaServer/1.43.3.10861-07dfddaeb'
 
 

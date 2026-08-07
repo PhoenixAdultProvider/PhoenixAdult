@@ -10,6 +10,8 @@ from phoenixadult.config.env import env
 
 MASK = '***REDACTED***'
 
+_HOOK_PATH = re.compile(r'(/api/hook/)[^/\s"\'#?]+')
+
 _QUERY_SECRET = re.compile(r'(?i)\b(token|api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret|password|passwd|pwd)=([^&\s"\'#]+)')
 
 _IPV4 = re.compile(r'\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b')
@@ -55,6 +57,7 @@ def _redact_ip(match: re.Match[str]) -> str:
 
 
 def redact(text: str) -> str:
+    text = _HOOK_PATH.sub(r'\1' + MASK, text)
     if env.log_redact_token:
         text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
     if env.log_redact_hosts:

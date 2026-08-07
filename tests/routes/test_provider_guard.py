@@ -39,15 +39,45 @@ def test_a_registered_allowlist_alone_no_longer_blocks_plex(plex: TestClient) ->
     assert plex.get(MOUNT).status_code == 200, 'Plex sends no client identifier when a provider is added'
 
 
-def test_token_based_auth_demands_a_valid_key_on_the_url(monkeypatch: pytest.MonkeyPatch, plex: TestClient) -> None:
+def test_token_based_auth_demands_a_hook_url(monkeypatch: pytest.MonkeyPatch, plex: TestClient) -> None:
     key = _api_key()
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
-    assert plex.get(MOUNT).status_code == 404, 'no key on the URL'
-    assert plex.get(MOUNT, params={'apikey': 'pa_not-a-real-key'}).status_code == 404
-    assert plex.get(MOUNT, params={'apikey': key}).status_code == 200
-    assert plex.get(MOUNT, params={'token': key}).status_code == 200, 'the token= spelling is accepted too'
-    assert plex.post(f'{MOUNT}/library/metadata/matches', params={'apikey': key}, json={'type': 1, 'filename': 'a.mp4'}).status_code == 200
+    assert plex.get(MOUNT).status_code == 404, 'the bare mount is unreachable'
+    assert plex.get(MOUNT, params={'apikey': key}).status_code == 404, 'query-param keys are gone - Plex drops them on generated requests'
+    assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200
+    assert plex.post(f'/api/hook/{key}{MOUNT}/library/metadata/matches', json={'type': 1, 'filename': 'a.mp4'}).status_code == 200
     assert plex.post(f'{MOUNT}/library/metadata/matches', json={'type': 1, 'filename': 'a.mp4'}).status_code == 404
+
+
+def test_the_hook_url_works_even_with_token_auth_off(plex: TestClient) -> None:
+    key = _api_key()
+    assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200, 'a valid hook URL is always honored'
+    assert plex.get(f'/api/hook/pa_wrong{MOUNT}').status_code == 404
+
+
+def test_hook_urls_serve_only_the_provider_mount(plex: TestClient) -> None:
+    key = _api_key()
+    assert plex.get(f'/api/hook/{key}/config').status_code == 404, 'the capability URL must not open the admin UIs'
+    assert plex.get(f'/api/hook/{key}/login').status_code == 404
+
+
+def test_failed_hook_attempts_are_rate_limited_by_ip(plex: TestClient) -> None:
+    _api_key()
+    for _ in range(6):
+        assert plex.get(f'/api/hook/pa_guess{MOUNT}').status_code == 404
+    throttled = plex.get(f'/api/hook/pa_guess{MOUNT}')
+    assert throttled.status_code == 429
+    assert int(throttled.headers['retry-after']) > 0
+
+
+def test_the_hook_token_never_reaches_the_logs(plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    key = _api_key()
+    with caplog.at_level(5, logger='phoenixadult'):
+        assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200
+        plex.get(f'/api/hook/pa_wrong-guess{MOUNT}')
+    assert key not in caplog.text, 'a capability URL in the logs is a leaked credential'
+    assert 'pa_wrong-guess' not in caplog.text
+    assert '/api/hook/***REDACTED***/' in caplog.text
 
 
 def test_token_based_auth_is_off_by_default(plex: TestClient) -> None:
@@ -76,7 +106,7 @@ def test_a_signed_in_session_does_not_bypass_the_guard(monkeypatch: pytest.Monke
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
     admin = authed_client()
     admin.headers['user-agent'] = PLEX_UA
-    assert admin.get(MOUNT).status_code == 404, 'strict mode: even an admin session needs the key on the URL'
+    assert admin.get(MOUNT).status_code == 404, 'strict mode: even an admin session needs the hook URL'
 
 
 def test_provider_requests_are_traced_with_their_headers(plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:

@@ -122,7 +122,8 @@
 
   <script>
     const hdr = { 'Content-Type': 'application/json' };
-    const PROVIDER_URL = {{ provider_base_url | tojson }};
+    const HOOK_PREFIX = {{ hook_prefix | tojson }};
+    const MOUNT_PATH = {{ mount_path | tojson }};
     const TOKEN_AUTH = {{ token_auth }};
 
     async function copyText(sourceId, statusId) {
@@ -202,8 +203,8 @@
         document.getElementById('copyKeyBtn').style.display = '';
         setStatus('keyStatus', 'New key — the old one has stopped working.', 'ok');
         if (TOKEN_AUTH) {
-          document.getElementById('providerUrl').textContent = PROVIDER_URL + '?apikey=' + data.key;
-          document.getElementById('providerUrlNote').textContent = 'This URL includes your API key. Update it in Plex.';
+          document.getElementById('providerUrl').textContent = HOOK_PREFIX + data.key + MOUNT_PATH;
+          document.getElementById('providerUrlNote').textContent = 'This URL carries your new API key. Update it in Plex.';
         }
       } else setStatus('keyStatus', data.error || 'Failed.', 'err');
     }

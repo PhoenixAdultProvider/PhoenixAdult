@@ -4,22 +4,12 @@ from fastapi import HTTPException, Request
 
 from phoenixadult.config.env import env
 from phoenixadult.services.plex_connections import allowed_client_union
-from phoenixadult.utils.auth import user_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.request_trace import trace_request
 from phoenixadult.utils.plex import daily_quota
 
 PLEX_SERVER_UA = 'plexmediaserver'
-_TOKEN_PARAMS = ('apikey', 'token')
-
-
-def presented_url_token(request: Request) -> str:
-    for name in _TOKEN_PARAMS:
-        value = (request.query_params.get(name) or '').strip()
-        if value:
-            return value
-    return ''
 
 
 def _refuse(request: Request, status: int, note: str) -> HTTPException:
@@ -42,13 +32,9 @@ async def provider_guard(request: Request) -> None:
     if PLEX_SERVER_UA not in agent.lower():
         raise _refuse(request, 404, f'user-agent "{agent or "(none)"}" is not a Plex Media Server, and only Plex may reach the provider mount')
 
-    token = presented_url_token(request)
-    user = await run_in('store', user_store.user_for_api_key, token) if token else None
-    if env.token_based_auth:
-        if not token:
-            raise _refuse(request, 404, 'the URL carried no ?apikey=, and TOKEN_BASED_AUTH requires one')
-        if user is None:
-            raise _refuse(request, 404, 'the ?apikey= on the URL does not match any user API key')
+    user = getattr(request.state, 'hook_user', None)
+    if env.token_based_auth and user is None:
+        raise _refuse(request, 404, 'the request came to the bare mount, and TOKEN_BASED_AUTH only answers /api/hook/<key>/ URLs')
 
     client_id = (request.headers.get('x-plex-client-identifier') or '').strip()
     if env.client_token_required and '/library/' in request.url.path:

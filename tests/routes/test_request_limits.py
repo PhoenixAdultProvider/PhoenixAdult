@@ -38,8 +38,8 @@ def test_the_limit_also_applies_per_api_key(plex: TestClient) -> None:
     uid = user_store.create_user('keyholder', 'Hunter2hunter!', is_admin=True)
     key = user_store.regenerate_api_key(uid)
     for _ in range(3):
-        assert plex.get(MOUNT, params={'apikey': key}).status_code == 200
-    assert plex.get(MOUNT, params={'apikey': key}).status_code == 429, 'the key is capped even as the client id varies'
+        assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200
+    assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 429, 'the key is capped even as the client id varies'
 
 
 def test_regenerating_the_key_does_not_reset_the_daily_limit(plex: TestClient) -> None:
@@ -48,10 +48,10 @@ def test_regenerating_the_key_does_not_reset_the_daily_limit(plex: TestClient) -
     uid = user_store.create_user('rotator', 'Hunter2hunter!', is_admin=True)
     key = user_store.regenerate_api_key(uid)
     for _ in range(4):
-        plex.get(MOUNT, params={'apikey': key})
-    assert plex.get(MOUNT, params={'apikey': key}).status_code == 429
+        plex.get(f'/api/hook/{key}{MOUNT}')
+    assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 429
     fresh = user_store.regenerate_api_key(uid)
-    assert plex.get(MOUNT, params={'apikey': fresh}).status_code == 429, 'the budget belongs to the user, not the key'
+    assert plex.get(f'/api/hook/{fresh}{MOUNT}').status_code == 429, 'the budget belongs to the user, not the key'
 
 
 def test_a_throttled_response_says_when_to_come_back(plex: TestClient) -> None:

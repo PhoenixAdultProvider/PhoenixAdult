@@ -149,15 +149,16 @@ def _provider_url_fields(api_key: str) -> dict[str, str]:
     from phoenixadult.registry import get_all_providers
     from phoenixadult.utils.plex.media_type import provider_mount_path
 
-    base = f'{config.base_url}{provider_mount_path(get_all_providers()[0])}'
+    mount = provider_mount_path(get_all_providers()[0])
+    fields = {'hook_prefix': f'{config.base_url}/api/hook/', 'mount_path': mount}
     if not env.token_based_auth:
         note = 'Plex must reach this address; behind a proxy or tunnel, set PHOENIX_BASE_URL to the URL Plex should use.'
-        return {'provider_url': base, 'provider_url_note': note, 'provider_base_url': base, 'token_auth': 'false'}
+        return {'provider_url': f'{config.base_url}{mount}', 'provider_url_note': note, 'token_auth': 'false', **fields}
     if api_key:
-        note = 'This URL includes your API key.'
-        return {'provider_url': f'{base}?apikey={api_key}', 'provider_url_note': note, 'provider_base_url': base, 'token_auth': 'true'}
-    note = 'This install requires a key on the URL. Generate one above and it will be filled in.'
-    return {'provider_url': f'{base}?apikey=YOUR_API_KEY', 'provider_url_note': note, 'provider_base_url': base, 'token_auth': 'true'}
+        note = 'This URL carries your API key in its path.'
+        return {'provider_url': f'{config.base_url}/api/hook/{api_key}{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
+    note = 'This install requires a key in the URL. Generate one above and it will be filled in.'
+    return {'provider_url': f'{config.base_url}/api/hook/YOUR_API_KEY{mount}', 'provider_url_note': note, 'token_auth': 'true', **fields}
 
 
 @router.get('/account', response_class=HTMLResponse)

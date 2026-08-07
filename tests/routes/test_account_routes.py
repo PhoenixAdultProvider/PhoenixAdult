@@ -82,7 +82,7 @@ def test_the_account_page_explains_how_to_add_the_provider_to_plex() -> None:
 def test_the_provider_url_shows_a_key_slot_when_token_auth_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
     body = authed_client().get('/account').text
-    assert '/phoenixadult/movies?apikey=YOUR_API_KEY' in body
+    assert '/api/hook/YOUR_API_KEY/phoenixadult/movies' in body
     assert 'const TOKEN_AUTH = true;' in body, 'regenerating a key should fill the URL in'
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'false')
     off = authed_client().get('/account').text
@@ -110,5 +110,5 @@ def test_the_provider_url_carries_the_real_key_when_token_auth_is_on(monkeypatch
     key = client.post('/account/api/key/regenerate').json()['key']
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
     body = client.get('/account').text
-    assert f'/phoenixadult/movies?apikey={key}' in body, 'the instructions show the URL Plex actually needs'
+    assert f'/api/hook/{key}/phoenixadult/movies' in body, 'the instructions show the URL Plex actually needs'
     assert 'YOUR_API_KEY' not in body
