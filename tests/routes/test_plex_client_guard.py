@@ -70,3 +70,27 @@ def test_any_connections_client_id_is_accepted() -> None:
 
     remote = TestClient(create_app(), client=('203.0.113.9', 51234))
     assert remote.get(MOUNT, headers={'X-Plex-Client-Identifier': 'their-server-id'}).status_code == 200
+
+
+def test_the_rejection_log_names_the_client_and_the_remedy(client: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level('WARNING'):
+        assert client.get(MOUNT, headers={'X-Plex-Client-Identifier': 'someone-else'}).status_code == 403
+    message = caplog.text
+    assert 'someone-else' in message, 'the log must name the identifier that was refused'
+    assert '203.0.113.9' in message, 'the log must name where the request came from'
+    assert 'not one of the 2 registered' in message, 'the log must say how many identifiers are allowed'
+    assert 'Config > Clients' in message and 'Allowed Plex Clients' in message, 'the log must say how to fix it'
+    assert message.isascii(), 'log messages must survive a cp1252 console on Windows'
+
+
+def test_the_rejection_log_calls_out_a_missing_header(client: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level('WARNING'):
+        assert client.get(MOUNT).status_code == 403
+    assert 'no X-Plex-Client-Identifier header' in caplog.text
+    assert 'Clear the list' in caplog.text, 'allowlisting cannot match an absent identifier, so say so'
+
+
+def test_allowed_requests_say_which_rule_let_them_through(client: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level('DEBUG'):
+        assert client.get(MOUNT, headers={'X-Plex-Client-Identifier': APPROVED}).status_code == 200
+    assert f'client "{APPROVED}" is registered' in caplog.text
