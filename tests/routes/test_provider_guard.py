@@ -70,7 +70,8 @@ def test_failed_hook_attempts_are_rate_limited_by_ip(plex: TestClient) -> None:
     assert int(throttled.headers['retry-after']) > 0
 
 
-def test_the_hook_token_never_reaches_the_logs(plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+def test_the_hook_token_is_masked_when_the_flag_is_on(monkeypatch: pytest.MonkeyPatch, plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     key = _api_key()
     with caplog.at_level(5, logger='phoenixadult'):
         assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200
@@ -78,6 +79,15 @@ def test_the_hook_token_never_reaches_the_logs(plex: TestClient, caplog: pytest.
     assert key not in caplog.text, 'a capability URL in the logs is a leaked credential'
     assert 'pa_wrong-guess' not in caplog.text
     assert '/api/hook/***REDACTED***/' in caplog.text
+
+
+def test_the_hook_token_is_masked_in_production_no_matter_what(monkeypatch: pytest.MonkeyPatch, plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.setenv('NODE_ENV', 'production')
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
+    key = _api_key()
+    with caplog.at_level(5, logger='phoenixadult'):
+        assert plex.get(f'/api/hook/{key}{MOUNT}').status_code == 200
+    assert key not in caplog.text, 'production must redact even with the flag set off'
 
 
 def test_token_based_auth_is_off_by_default(plex: TestClient) -> None:
@@ -125,12 +135,19 @@ def test_refused_requests_are_traced_before_they_are_refused(caplog: pytest.LogC
     assert 'is not a Plex Media Server' in caplog.text
 
 
-def test_the_trace_masks_credential_headers(plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+def test_the_trace_masks_credential_headers_when_the_flag_is_on(monkeypatch: pytest.MonkeyPatch, plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
     with caplog.at_level(5, logger='phoenixadult'):
         plex.get(MOUNT, headers={'X-Plex-Token': 'super-secret', 'Authorization': 'Bearer pa_secret', 'X-Plex-Product': 'PMS'})
     assert 'PMS' in caplog.text, 'the trace should still run'
     assert 'super-secret' not in caplog.text
     assert 'pa_secret' not in caplog.text
+
+
+def test_the_trace_shows_everything_in_dev_with_the_flags_off(plex: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(5, logger='phoenixadult'):
+        plex.get(MOUNT, headers={'X-Plex-Token': 'visible-in-dev', 'X-Plex-Product': 'PMS'})
+    assert 'visible-in-dev' in caplog.text, 'dev with LOG_REDACT_TOKEN off must not mask anything'
 
 
 def test_tracing_costs_nothing_when_the_level_is_off(plex: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

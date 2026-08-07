@@ -12,7 +12,12 @@ _SECRET_HEADERS = frozenset({'authorization', 'cookie', 'proxy-authorization', '
 
 
 def _headers(request: Request) -> str:
-    shown = {k: (MASK if k.lower() in _SECRET_HEADERS else v) for k, v in request.headers.items()}
+    from phoenixadult.config.env import env
+
+    if env.log_redact_token:
+        shown = {k: (MASK if k.lower() in _SECRET_HEADERS else v) for k, v in request.headers.items()}
+    else:
+        shown = dict(request.headers)
     return json.dumps(shown, indent=2, sort_keys=True)
 
 

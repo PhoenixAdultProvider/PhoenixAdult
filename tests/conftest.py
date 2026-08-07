@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 os.environ['LOG_DIR'] = os.path.join(tempfile.gettempdir(), 'phoenixadult-pytest-logs')
+os.environ['NODE_ENV'] = 'test'
 
 import pytest  # noqa: E402
 import pytest_httpx2  # noqa: E402, F401  — registers the "httpcore2" respx mocker

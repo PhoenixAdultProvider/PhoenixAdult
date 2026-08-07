@@ -47,9 +47,14 @@ def test_private_ipv4_shown_when_flag_off(monkeypatch):
     assert redact('serving http://10.0.0.5:3000/x') == 'serving http://10.0.0.5:3000/x'
 
 
-def test_public_ipv4_masked_even_when_flag_off(monkeypatch):
+def test_public_ipv4_shown_when_flag_off(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
-    assert redact('upstream 8.8.8.8 reached') == 'upstream ***REDACTED*** reached'
+    assert redact('upstream 203.0.113.77 reached') == 'upstream 203.0.113.77 reached'
+
+
+def test_public_ipv4_masked_when_flag_on(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'true')
+    assert redact('upstream 203.0.113.77 reached') == 'upstream ***REDACTED*** reached'
 
 
 def test_private_ipv6_masked_when_flag_on(monkeypatch):
@@ -62,9 +67,9 @@ def test_link_local_ipv6_shown_when_flag_off(monkeypatch):
     assert redact('from fe80::1ff:fe23:4567:890a here') == 'from fe80::1ff:fe23:4567:890a here'
 
 
-def test_public_ipv6_masked_even_when_flag_off(monkeypatch):
+def test_public_ipv6_shown_when_flag_off(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
-    assert redact('peer 2606:4700:4700::1111 ok') == 'peer ***REDACTED*** ok'
+    assert redact('peer 2001:db8::1111 ok') == 'peer 2001:db8::1111 ok'
 
 
 def test_redact_leaves_plain_text_untouched():
@@ -116,13 +121,13 @@ def test_filter_shows_private_ip_when_flag_off(monkeypatch):
     assert rec.getMessage() == 'host http://10.0.0.1/x'
 
 
-def test_filter_redacts_public_uvicorn_access_ip_and_token_when_flag_off(monkeypatch):
+def test_filter_honors_each_flag_independently(monkeypatch):
     monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
     monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
-    args = ('8.8.8.8:0', 'GET', '/people?token=deadbeefcafe', '1.1', 200)
+    args = ('203.0.113.9:0', 'GET', '/people?token=deadbeefcafe', '1.1', 200)
     rec = _record('uvicorn.access', '%s - "%s %s HTTP/%s" %d', args)
     RedactionFilter().filter(rec)
-    assert rec.args[0] == '***REDACTED***:0'
+    assert rec.args[0] == '203.0.113.9:0', 'hosts flag is off, so the address stays'
     assert rec.args[2] == '/people?token=***REDACTED***'
 
 
@@ -174,3 +179,22 @@ def test_log_redact_token_follows_production_default(monkeypatch):
     for flag in ('1', 'yes', 'on', 'TRUE'):
         monkeypatch.setenv('LOG_REDACT_TOKEN', flag)
         assert env.log_redact_token is True
+
+
+def test_production_forces_both_redactions_on(monkeypatch):
+    monkeypatch.setenv('NODE_ENV', 'production')
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
+    assert redact('peer 203.0.113.77 key /api/hook/pa_secret/x ?token=deadbeef') == 'peer ***REDACTED*** key /api/hook/***REDACTED***/x ?token=***REDACTED***'
+
+
+def test_dev_with_both_flags_off_redacts_nothing(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_HOSTS', 'false')
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'false')
+    line = 'peer 203.0.113.77 key /api/hook/pa_secret/x ?token=deadbeef'
+    assert redact(line) == line
+
+
+def test_the_hook_token_masks_under_the_token_flag(monkeypatch):
+    monkeypatch.setenv('LOG_REDACT_TOKEN', 'true')
+    assert redact('GET /api/hook/pa_secret/phoenixadult/movies') == 'GET /api/hook/***REDACTED***/phoenixadult/movies'

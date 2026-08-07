@@ -64,8 +64,13 @@ def _current_user(request: Request) -> dict[str, Any]:
 def _build_state(user: dict[str, Any] | None = None, has_metadataapi_token: bool = False) -> dict[str, Any]:
     if not (user or {}).get('isAdmin'):
         return {'overridesPath': '', 'groups': [], 'tabs': [], 'user': user or {}, 'metadataapi': {'hasToken': has_metadataapi_token}}
+    from phoenixadult.config.env import env as _env
+
+    hidden = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'} if _env.is_production else set()
     by_group: dict[str, list[dict[str, Any]]] = {}
     for spec in ENV_CATALOG:
+        if spec.key in hidden:
+            continue
         state = {
             'key': spec.key,
             'label': spec.label,

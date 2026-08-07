@@ -10,7 +10,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
     'Data18 Enrichment', 'Manual NFO', 'People Cache & Sources',
-    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Provider Access',
+    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Provider Access', 'Log Redaction',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
@@ -20,7 +20,7 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
     ('System', ['Logging', 'Metadata Cache']),
-    ('Security', ['Provider Access']),
+    ('Security', ['Provider Access', 'Log Redaction']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
@@ -56,7 +56,7 @@ class EnvVarSpec:
 ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'TOKEN_BASED_AUTH',
-        'Require An API Key In The Provider URL',
+        'Require an API Key in the Provider URL',
         'When on, the provider mount answers only through its hook path. Register it in Plex as '
         'http://host:port/api/hook/YOUR_KEY/phoenixadult/movies. Generate keys on the Account page.',
         'Provider Access',
@@ -65,7 +65,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'CLIENT_TOKEN_REQUIRED',
-        'Require A Registered Plex Client',
+        'Require a Registered Plex Client',
         'When on, match and metadata requests must carry an X-Plex-Client-Identifier listed under a Plex connection. '
         'The provider URL itself always answers, so Plex can add the provider at any time.',
         'Provider Access',
@@ -86,7 +86,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_LEVEL',
         'Log Level',
-        'Log verbosity, least to most; HTTP access lines only appear at http or verbose.',
+        'Log Verbosity, least to most; HTTP access lines only appear at http or verbose.',
         'Logging',
         'enum',
         options=['error', 'warn', 'info', 'debug', 'http', 'verbose'],
@@ -95,17 +95,19 @@ ENV_CATALOG: list[EnvVarSpec] = [
     ),
     EnvVarSpec(
         'LOG_REDACT_HOSTS',
-        'Redact the Server Host in Logs',
-        'Also redact the server’s own host and LAN/loopback IPs (public IPs are always redacted); defaults on in production.',
-        'Logging',
+        'Redact Hosts and IPs in Logs',
+        'Mask every IP address and the server’s own host in logs. A development-only switch: production always redacts and this setting disappears there.',
+        'Log Redaction',
         'boolean',
         default_value='false',
     ),
     EnvVarSpec(
         'LOG_REDACT_TOKEN',
         'Redact Tokens in Logs',
-        'Mask secret query values (?token=…, ?apikey=…, ?password=…) in logs; defaults on in production.',
-        'Logging',
+        'Mask credentials in logs: hook-path API keys (/api/hook/…), secret query values (?token=…, ?password=…), and '
+        'credential headers in request dumps. A development-only switch: production always redacts and this setting '
+        'disappears there.',
+        'Log Redaction',
         'boolean',
         default_value='false',
     ),

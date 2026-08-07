@@ -21,19 +21,21 @@ class _Env:
     def log_dir(self) -> str:
         return os.environ.get('LOG_DIR') or str(_cwd() / 'logs')
 
-    @property
-    def log_redact_hosts(self) -> bool:
-        raw = os.environ.get('LOG_REDACT_HOSTS')
+    def _redact_flag(self, name: str) -> bool:
+        if self.is_production:
+            return True
+        raw = os.environ.get(name)
         if raw is None or raw.strip() == '':
-            return self.is_production
+            return False
         return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
 
     @property
+    def log_redact_hosts(self) -> bool:
+        return self._redact_flag('LOG_REDACT_HOSTS')
+
+    @property
     def log_redact_token(self) -> bool:
-        raw = os.environ.get('LOG_REDACT_TOKEN')
-        if raw is None or raw.strip() == '':
-            return self.is_production
-        return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
+        return self._redact_flag('LOG_REDACT_TOKEN')
 
     @property
     def https_proxy(self) -> str | None:

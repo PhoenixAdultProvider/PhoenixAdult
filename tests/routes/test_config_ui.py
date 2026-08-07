@@ -249,3 +249,11 @@ def test_the_logs_tab_breaks_out_of_the_page_width_but_the_header_stays_put(clie
     assert 'function logFill()' in body
     assert "window.addEventListener('resize'" in body
     assert 'max-width: 1092px' in body
+
+
+def test_production_locks_the_redaction_flags_out_of_the_ui(monkeypatch: pytest.MonkeyPatch) -> None:
+    keys = {v['key'] for g in authed_client().get('/config/api/state').json()['groups'] for v in g['vars']}
+    assert {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'} <= keys, 'in dev the switches are offered'
+    monkeypatch.setenv('NODE_ENV', 'production')
+    prod_keys = {v['key'] for g in authed_client().get('/config/api/state').json()['groups'] for v in g['vars']}
+    assert 'LOG_REDACT_HOSTS' not in prod_keys and 'LOG_REDACT_TOKEN' not in prod_keys, 'production always redacts; the switches disappear'

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipaddress
 import logging
 import os
 import re
@@ -45,27 +44,16 @@ def _own_host() -> str | None:
     return host
 
 
-def _redact_ip(match: re.Match[str]) -> str:
-    raw = match.group(0)
-    try:
-        addr = ipaddress.ip_address(raw)
-    except ValueError:
-        return MASK
-    if addr.is_private and not env.log_redact_hosts:
-        return raw
-    return MASK
-
-
 def redact(text: str) -> str:
-    text = _HOOK_PATH.sub(r'\1' + MASK, text)
     if env.log_redact_token:
+        text = _HOOK_PATH.sub(r'\1' + MASK, text)
         text = _QUERY_SECRET.sub(r'\1=' + MASK, text)
     if env.log_redact_hosts:
         own = _own_host()
         if own:
             text = re.sub(rf'(?i)(?<![\w.-]){re.escape(own)}(?![\w-])', MASK, text)
-    text = _IPV6.sub(_redact_ip, text)
-    text = _IPV4.sub(_redact_ip, text)
+        text = _IPV6.sub(MASK, text)
+        text = _IPV4.sub(MASK, text)
     return text
 
 
