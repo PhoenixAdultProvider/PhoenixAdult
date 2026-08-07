@@ -95,5 +95,9 @@ class _Logger:
         self._emit(logging.DEBUG, a, b, **meta)
 
 
+def verbose_enabled() -> bool:
+    return _base.isEnabledFor(VERBOSE)
+
+
 logger = _Logger()
 logger.info(f'Logging to console (LOG_LEVEL={config.log_level}) and {_LOG_FILE}')

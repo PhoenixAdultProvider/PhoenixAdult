@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from urllib.parse import urlparse
 
 from fastapi import Request
@@ -9,6 +8,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.auth.url_signing import signed_request_ok
 from phoenixadult.utils.auth.user_auth import _is_loopback, resolve_user
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.request_trace import trace_request
 
 _PLEX_UA = 'plexmediaserver'
 
@@ -60,7 +60,7 @@ def _same_origin_subresource(request: Request) -> bool:
 async def image_guard(request: Request) -> None:
     if not env.image_guard_enabled:
         return
-    logger.verbose('image-guard', f'{request.method} {request.url.path} headers:\n' + json.dumps(dict(request.headers), indent=2, sort_keys=True))
+    trace_request('image-guard', request)
     if signed_request_ok(request):
         return
     if _PLEX_UA in (request.headers.get('user-agent') or '').lower():

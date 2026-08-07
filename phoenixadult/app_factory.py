@@ -26,11 +26,7 @@ def _log_startup_banner() -> None:
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 
-    from phoenixadult.services.plex_connections import allowed_client_union
-
-    registered = allowed_client_union()
-    if registered:
-        logger.info(f'  {len(registered)} Plex client(s) are registered — any other client is refused with 403 (Config → Plex → Allowed Plex Clients)')
+    logger.info('  The provider mount is open to any client; set LOG_LEVEL=verbose to dump the headers of every request it receives')
 
     from phoenixadult.utils.auth import user_store
 

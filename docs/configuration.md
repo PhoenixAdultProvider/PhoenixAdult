@@ -241,9 +241,12 @@ Each connection stores its own:
 - **Server URL** — a LAN address is fine; the provider dials out to Plex, never the reverse.
 - **Token** — encrypted at rest with the server secret and never shown again; the UI only
   reports whether one is saved.
-- **Allowed Plex Clients** — `X-Plex-Client-Identifier` values permitted to call the
-  provider. While no connection lists any, the provider stays open to all callers. Find a
-  server's identifier in a verbose request dump or its `Preferences.xml`
+- **Allowed Plex Clients** — `X-Plex-Client-Identifier` values associated with this
+  connection. **These no longer gate the provider**, which is open to every caller: Plex
+  sends no client identifier at all when you add a provider, so no allowlist could ever
+  admit that first request. They still map an incoming client to its owning user, which is
+  how a request picks up that user's MetadataAPI token. Find a server's identifier in a
+  verbose request dump, the Clients tab, or its `Preferences.xml`
   (`ProcessedMachineIdentifier`).
 - **Update channel and release** — `plex` follows the server's own channel preference
   (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-from typing import Any
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
@@ -13,20 +10,16 @@ from phoenixadult.services import scrape_queue
 from phoenixadult.services.match_service import MatchRequest, MatchService
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
-from phoenixadult.utils.auth.plex_client_guard import plex_client_guard
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.request_trace import trace_body, trace_request
 from phoenixadult.utils.plex.media_type import plex_media_type_id
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
 
 _SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
 
 
-def _dump_request(provider_id: str, request: Request, body: dict[str, Any] | None = None) -> None:
-    lines = [f'{request.method} {request.url.path}{"?" + request.url.query if request.url.query else ""}']
-    lines.append('headers:\n' + json.dumps(dict(request.headers), indent=2, sort_keys=True))
-    if body is not None:
-        lines.append('body:\n' + json.dumps(body, indent=2, sort_keys=True))
-    logger.verbose(provider_id, '\n'.join(lines))
+async def trace_provider_request(request: Request) -> None:
+    trace_request('provider', request)
 
 
 def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None:
@@ -57,7 +50,7 @@ async def restore_queue() -> None:
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
-    router = APIRouter(dependencies=[Depends(plex_client_guard)])
+    router = APIRouter(dependencies=[Depends(trace_provider_request)])
     match_service = MatchService()
     metadata_service = MetadataService()
     match_service.metadata_service = metadata_service
@@ -88,7 +81,7 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
     @router.post('/library/metadata/matches')
     async def match(request: Request) -> JSONResponse:
         body = await read_json_body(request)
-        _dump_request(provider.id, request, body)
+        trace_body(provider.id, request, body)
         language = request.headers.get('x-plex-language')
         try:
             req = MatchRequest(
@@ -116,7 +109,6 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
 
     @router.get('/library/metadata/{rating_key}/images')
     async def images(rating_key: str, request: Request) -> JSONResponse:
-        _dump_request(provider.id, request)
         try:
             language = request.headers.get('x-plex-language')
             result = await metadata_service.get_metadata(rating_key, provider, language)
@@ -142,7 +134,6 @@ def create_provider_router(provider: ProviderInfo) -> APIRouter:
 
     @router.get('/library/metadata/{rating_key}')
     async def metadata(rating_key: str, request: Request) -> JSONResponse:
-        _dump_request(provider.id, request)
         try:
             language = request.headers.get('x-plex-language')
             result = await metadata_service.get_metadata(rating_key, provider, language, is_refresh=True)
