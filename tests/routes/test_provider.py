@@ -3,14 +3,14 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from phoenixadult.app_factory import create_app
 from phoenixadult.registry import get_all_providers
 from phoenixadult.utils.plex.media_type import provider_mount_path
+from tests.conftest import plex_client
 
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(create_app())
+    return plex_client()
 
 
 def test_health(client: TestClient) -> None:

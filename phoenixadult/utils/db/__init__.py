@@ -387,6 +387,24 @@ _MIGRATIONS: list[_Migration] = [
     ALTER TABLE users ADD COLUMN theme_light TEXT NOT NULL DEFAULT '';
     ALTER TABLE users ADD COLUMN metadataapi_token_encrypted TEXT NOT NULL DEFAULT '';
     """,
+    """
+    CREATE TABLE client_hits (
+      client_id  TEXT PRIMARY KEY,
+      headers    TEXT NOT NULL DEFAULT '{}',
+      count      INTEGER NOT NULL DEFAULT 0,
+      first_seen REAL NOT NULL,
+      last_seen  REAL NOT NULL,
+      last_path  TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE daily_requests (
+      scope TEXT NOT NULL,
+      key   TEXT NOT NULL,
+      day   TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (scope, key, day)
+    );
+    CREATE INDEX daily_requests_day ON daily_requests(day);
+    """,
 ]
 
 _local = threading.local()

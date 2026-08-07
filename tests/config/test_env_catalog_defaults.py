@@ -26,6 +26,8 @@ _BOOL_GETTERS: dict[str, Callable[[], bool]] = {
     'DISABLE_AUTO_MATCH': lambda: env.disable_auto_match,
     'IMAGE_PROXY_PIN': lambda: env.image_proxy_pin,
     'IMAGE_GUARD_ENABLE': lambda: env.image_guard_enabled,
+    'TOKEN_BASED_AUTH': lambda: env.token_based_auth,
+    'CLIENT_TOKEN_REQUIRED': lambda: env.client_token_required,
 }
 
 

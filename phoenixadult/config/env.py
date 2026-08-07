@@ -139,6 +139,21 @@ class _Env:
         return _flag('IMAGE_GUARD_ENABLE', '') == 'true'
 
     @property
+    def token_based_auth(self) -> bool:
+        return _flag('TOKEN_BASED_AUTH', '') == 'true'
+
+    @property
+    def client_token_required(self) -> bool:
+        return _flag('CLIENT_TOKEN_REQUIRED', '') == 'true'
+
+    @property
+    def api_requests_per_day(self) -> int:
+        try:
+            return max(0, int(os.environ.get('API_REQUESTS_PER_DAY') or 0))
+        except ValueError:
+            return 0
+
+    @property
     def bypass_auto_retry(self) -> bool:
         return _flag('BYPASS_AUTO_RETRY', '') == 'true'
 

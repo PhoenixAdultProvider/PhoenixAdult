@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -143,13 +144,27 @@ async def logout(request: Request) -> Response:
     return response
 
 
+def _provider_url_fields() -> dict[str, str]:
+    from phoenixadult.config import config
+    from phoenixadult.config.env import env
+    from phoenixadult.registry import get_all_providers
+    from phoenixadult.utils.plex.media_type import provider_mount_path
+
+    base = f'{config.base_url}{provider_mount_path(get_all_providers()[0])}'
+    if env.token_based_auth:
+        note = 'This install requires a key on the URL. Regenerate below to fill it in, or paste an existing key in place of YOUR_API_KEY.'
+        return {'provider_url': f'{base}?apikey=YOUR_API_KEY', 'provider_url_note': note, 'provider_base_url': json.dumps(base), 'token_auth': 'true'}
+    note = 'Plex must reach this address; behind a proxy or tunnel, set PHOENIX_BASE_URL to the URL Plex should use.'
+    return {'provider_url': base, 'provider_url_note': note, 'provider_base_url': json.dumps(base), 'token_auth': 'false'}
+
+
 @router.get('/account', response_class=HTMLResponse)
 async def account_page(request: Request) -> HTMLResponse:
     user = await resolve_user(request)
     assert user is not None
     row = await run_in('store', user_store.get_by_id, user.id)
     hint = (row.api_key_hint if row else '') or 'No key generated yet.'
-    return HTMLResponse(render_page('account', active='', username=nav_username(request), api_key_hint=hint))
+    return HTMLResponse(render_page('account', active='', username=nav_username(request), api_key_hint=hint, **_provider_url_fields()))
 
 
 @router.post('/account/api/password')

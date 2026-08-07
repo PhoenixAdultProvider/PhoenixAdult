@@ -10,16 +10,13 @@ from phoenixadult.services import scrape_queue
 from phoenixadult.services.match_service import MatchRequest, MatchService
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
+from phoenixadult.utils.auth.provider_guard import provider_guard
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.logging.request_trace import trace_body, trace_request
+from phoenixadult.utils.logging.request_trace import trace_body
 from phoenixadult.utils.plex.media_type import plex_media_type_id
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
 
 _SERVICES: list[tuple[ProviderInfo, MatchService, MetadataService]] = []
-
-
-async def trace_provider_request(request: Request) -> None:
-    trace_request('provider', request)
 
 
 def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None:
@@ -50,7 +47,7 @@ async def restore_queue() -> None:
 
 
 def create_provider_router(provider: ProviderInfo) -> APIRouter:
-    router = APIRouter(dependencies=[Depends(trace_provider_request)])
+    router = APIRouter(dependencies=[Depends(provider_guard)])
     match_service = MatchService()
     metadata_service = MetadataService()
     match_service.metadata_service = metadata_service

@@ -94,7 +94,7 @@ the only way in, including from loopback.
 - **Clients** (admin tab) records every request that carried an
   `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
   count, and last path — the quickest way to grab an identifier for a connection's
-  allowlist. In-memory; clears on restart.
+  allowlist. Stored in SQLite, so counts survive a restart.
 - **Lost every password?** Run `python scripts/reset_password.py <username>` on the
   server (add `--create-admin` when no usable admin remains).
 
@@ -107,6 +107,23 @@ Passwords are hashed with argon2id; API keys and session tokens are stored as SH
 digests. A `secret.key` file is generated beside the database on first start and is used
 to sign image URLs and encrypt stored Plex tokens — **back it up with the database**, and
 note that losing it means re-fetching Plex tokens and refreshing Plex metadata once.
+
+### Provider Access
+
+The provider mount (`/phoenixadult/movies`) answers only requests whose `User-Agent`
+contains `PlexMediaServer`; anything else — browsers, scanners, curl — gets a 404, so the
+mount does not advertise its own existence. A user agent is trivially spoofed, so treat
+this as noise reduction, not authentication; the settings below are the real gate.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TOKEN_BASED_AUTH` | `false` | Require a user API key on the provider URL: register it in Plex as `http://host:3000/phoenixadult/movies?apikey=pa_…` (`?token=` is accepted too). Many keys serve the one route, and revoking a key is regenerating it on **Account**. Enforced strictly — loopback and signed-in sessions do **not** bypass it. |
+| `CLIENT_TOKEN_REQUIRED` | `false` | Require an `X-Plex-Client-Identifier` registered under a Plex connection. **Register the provider first**: Plex sends no identifier on the add-provider request, so turning this on beforehand makes the provider unaddable. |
+| `API_REQUESTS_PER_DAY` | `0` | Daily request cap applied separately to each Plex client and each API key; `0` is unlimited. Over the cap the provider answers `429` with `Retry-After` set to the seconds remaining until local midnight. Counts live in SQLite and survive restarts. |
+
+Failures are logged at `warn` with the reason and the caller. Set `LOG_LEVEL=verbose` to
+dump every provider request's headers — including refused ones, which is usually what you
+need when Plex will not connect. Credential-bearing headers are masked in that dump.
 
 ### Logging
 
@@ -242,12 +259,12 @@ Each connection stores its own:
 - **Token** — encrypted at rest with the server secret and never shown again; the UI only
   reports whether one is saved.
 - **Allowed Plex Clients** — `X-Plex-Client-Identifier` values associated with this
-  connection. **These no longer gate the provider**, which is open to every caller: Plex
-  sends no client identifier at all when you add a provider, so no allowlist could ever
-  admit that first request. They still map an incoming client to its owning user, which is
-  how a request picks up that user's MetadataAPI token. Find a server's identifier in a
-  verbose request dump, the Clients tab, or its `Preferences.xml`
-  (`ProcessedMachineIdentifier`).
+  connection. They map an incoming client to its owning user, which is how a request picks
+  up that user's MetadataAPI token, and they are the allowlist `CLIENT_TOKEN_REQUIRED`
+  checks. Leave that setting off until the provider is registered: Plex sends no client
+  identifier at all on the request that adds a provider, so no allowlist can admit it.
+  Find a server's identifier in a verbose request dump, the Clients tab, or its
+  `Preferences.xml` (`ProcessedMachineIdentifier`).
 - **Update channel and release** — `plex` follows the server's own channel preference
   (`ButlerUpdateChannel`), or force `public`/`beta` (beta needs Plex Pass). The release
   dropdown appears whenever a platform lists more than one build; unset picks the release

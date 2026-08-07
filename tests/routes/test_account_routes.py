@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
@@ -67,3 +68,23 @@ def test_sessions_can_be_listed_and_revoked() -> None:
     r = client.post('/account/api/sessions/revoke', json={'tokenHash': hash_token(other)})
     assert r.status_code == 200
     assert len(client.get('/account/api/sessions').json()['sessions']) == 1
+
+
+def test_the_account_page_explains_how_to_add_the_provider_to_plex() -> None:
+    body = authed_client().get('/account').text
+    assert 'Configure The Provider In Plex' in body
+    assert 'Settings &rarr; Metadata Agents &rarr; Add Provider' in body
+    assert 'Add Agent' in body and 'Primary' in body
+    assert 'Plex Local Media' in body
+    assert '/phoenixadult/movies' in body
+
+
+def test_the_provider_url_shows_a_key_slot_when_token_auth_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
+    body = authed_client().get('/account').text
+    assert '/phoenixadult/movies?apikey=YOUR_API_KEY' in body
+    assert 'const TOKEN_AUTH = true;' in body, 'regenerating a key should fill the URL in'
+    monkeypatch.setenv('TOKEN_BASED_AUTH', 'false')
+    off = authed_client().get('/account').text
+    assert 'YOUR_API_KEY' not in off, 'with token auth off the plain URL is what Plex needs'
+    assert 'const TOKEN_AUTH = false;' in off

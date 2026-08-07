@@ -10,7 +10,7 @@ EnvVarKind = Literal['string', 'boolean', 'number', 'secret', 'bytes', 'enum', '
 ENV_GROUP_ORDER = [
     'Matching & Title Parsing', 'Scraping & Pacing', 'HTTP Bypass', 'Web Search',
     'Data18 Enrichment', 'Manual NFO', 'People Cache & Sources',
-    'Gender Handling', 'Images', 'Logging', 'Metadata Cache',
+    'Gender Handling', 'Images', 'Logging', 'Metadata Cache', 'Provider Access',
 ]
 
 ENV_TABS: list[tuple[str, list[str]]] = [
@@ -20,6 +20,7 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
     ('System', ['Logging', 'Metadata Cache']),
+    ('Security', ['Provider Access']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
@@ -53,6 +54,35 @@ class EnvVarSpec:
 
 
 ENV_CATALOG: list[EnvVarSpec] = [
+    EnvVarSpec(
+        'TOKEN_BASED_AUTH',
+        'Require An API Key On The Provider URL',
+        'When on, the provider mount answers only requests carrying ?apikey=<a user API key>. Register it in Plex as '
+        'http://host:port/phoenixadult/movies?apikey=YOUR_KEY. Generate keys on the Account page.',
+        'Provider Access',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
+        'CLIENT_TOKEN_REQUIRED',
+        'Require A Registered Plex Client',
+        'When on, provider requests must carry an X-Plex-Client-Identifier listed under a Plex connection. Plex sends no '
+        'identifier while adding a provider, so turn this on only after the provider is registered.',
+        'Provider Access',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
+        'API_REQUESTS_PER_DAY',
+        'Daily Provider Request Limit',
+        'Requests each Plex client and each API key may make to the provider per day. 0 means unlimited. Over the limit '
+        'the provider answers 429 until midnight.',
+        'Provider Access',
+        'number',
+        default_value='0',
+        min=0,
+        max=1000000,
+    ),
     EnvVarSpec(
         'LOG_LEVEL',
         'Log Level',

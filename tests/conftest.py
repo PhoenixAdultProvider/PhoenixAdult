@@ -145,3 +145,14 @@ def no_web_search() -> object:
         return []
 
     return _none
+
+
+PLEX_UA = 'PlexMediaServer/1.43.3.10861-07dfddaeb'
+
+
+def plex_client(app: Any = None, host: str = '203.0.113.9') -> Any:
+    from starlette.testclient import TestClient
+
+    from phoenixadult.app_factory import create_app
+
+    return TestClient(app or create_app(), client=(host, 51234), headers={'user-agent': PLEX_UA})

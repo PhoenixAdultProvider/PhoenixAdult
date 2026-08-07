@@ -39,6 +39,9 @@
   .keybox { font-family: ui-monospace, monospace; font-size: 13px; background: var(--code-bg); border: 1px solid var(--panel-border); color: var(--link-text);
             border-radius: 6px; padding: 8px 10px; word-break: break-all; margin-top: 10px; }
   .hint { font-size: 12px; color: var(--hint-text); margin-top: 6px; }
+  .steps { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+  .steps li { margin-bottom: 10px; }
+  .steps .keybox { margin-top: 6px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--panel-border); }
   th { color: var(--label-text); font-weight: 500; font-size: 11px; text-transform: uppercase; }
@@ -94,12 +97,28 @@
   </div>
 
   <div class="card">
+    <h2>Configure The Provider In Plex</h2>
+    <ol class="steps">
+      <li>Go to <strong>Settings &rarr; Metadata Agents &rarr; Add Provider</strong> and enter the URL for this provider:
+        <div class="keybox" id="providerUrl">{{ provider_url }}</div>
+        <div class="hint" id="providerUrlNote">{{ provider_url_note }}</div>
+      </li>
+      <li>Still under <strong>Metadata Agents</strong>, click <strong>Add Agent</strong>, give it any name you want, and make the
+        newly added provider the <strong>Primary</strong> metadata provider.</li>
+      <li>Add additional providers if needed. Adding <strong>Plex Local Media</strong> as well is generally recommended, so local
+        metadata and assets are picked up.</li>
+    </ol>
+  </div>
+
+  <div class="card">
     <h2>Sessions</h2>
     <table id="sessions"><thead><tr><th>Signed In</th><th>Last Seen</th><th>Device</th><th></th></tr></thead><tbody></tbody></table>
   </div>
 
   <script>
     const hdr = { 'Content-Type': 'application/json' };
+    const PROVIDER_URL = {{ provider_base_url }};
+    const TOKEN_AUTH = {{ token_auth }};
     function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
     function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
 
@@ -162,6 +181,10 @@
         box.textContent = data.key; box.style.display = 'block';
         setStatus('keyStatus', 'New key — copy it now, it will not be shown again.', 'ok');
         document.getElementById('keyHint').textContent = data.hint;
+        if (TOKEN_AUTH) {
+          document.getElementById('providerUrl').textContent = PROVIDER_URL + '?apikey=' + data.key;
+          document.getElementById('providerUrlNote').textContent = 'Copy this now — the key is only shown once.';
+        }
       } else setStatus('keyStatus', data.error || 'Failed.', 'err');
     }
 
