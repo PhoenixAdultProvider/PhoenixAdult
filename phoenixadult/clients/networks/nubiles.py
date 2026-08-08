@@ -15,6 +15,7 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.captcha.pow import get_verified_cookies
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.http.connectivity import internet_reachable
 from phoenixadult.utils.http.rate_limit_helper import ScenePacer
 from phoenixadult.utils.images.image_fetcher import fetch_image
 from phoenixadult.utils.logging.logger import logger
@@ -125,7 +126,15 @@ class NubilesClient(Client):
             try:
                 r = await self.http.get(url, headers={'Cookie': cookie})
             except Exception as err:  # noqa: BLE001 - network errors yield no page
-                logger.warn('Nubiles', f'{label} failed: {err!r}')
+                if attempt < _MAX_RETRIES:
+                    logger.warn('Nubiles', f'{label} failed: {err!r} (attempt {attempt}/{_MAX_RETRIES})')
+                    await asyncio.sleep(_jittered(_PACE_SECONDS))
+                    continue
+                if await internet_reachable():
+                    logger.warn('Nubiles', f'{label} refused {_MAX_RETRIES}x while the internet is reachable ({err!r}) — treating as a network-level ban')
+                    self.pacer.flag_ban()
+                else:
+                    logger.warn('Nubiles', f'{label} failed: {err!r} — no connectivity, not counting it against the site')
                 return None
             if r.status_code != 429:
                 break

@@ -149,6 +149,14 @@ def no_web_search() -> object:
 
 
 @pytest.fixture(autouse=True)
+def _fresh_queue_pause() -> None:
+    from phoenixadult.services import scrape_queue
+
+    scrape_queue._paused_until = 0.0
+    scrape_queue._pause_reason = ''
+
+
+@pytest.fixture(autouse=True)
 def _fresh_rate_limits() -> None:
     from phoenixadult.utils.auth import rate_limit
 

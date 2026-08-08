@@ -165,3 +165,80 @@ async def test_warm_images_noop_without_art(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(nubiles, 'fetch_image', fake_fetch)
     await NubilesClient()._warm_images(SceneDetail())
     assert called is False
+
+
+class _Site:
+    base_url = 'https://nubilefilms.com'
+    search_path = '/video/search'
+
+
+def _quiet_client(monkeypatch: pytest.MonkeyPatch) -> NubilesClient:
+    client = NubilesClient()
+
+    async def no_pace(label: str = 'request') -> None:
+        return None
+
+    async def no_cookies(site: object) -> str:
+        return ''
+
+    async def no_sleep(_secs: float) -> None:
+        return None
+
+    monkeypatch.setattr(client.pacer, 'pace', no_pace)
+    monkeypatch.setattr(client, '_cookie_header_for', no_cookies)
+    monkeypatch.setattr(nubiles.asyncio, 'sleep', no_sleep)
+    return client
+
+
+async def test_a_transport_blip_is_retried_not_fatal(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _quiet_client(monkeypatch)
+    calls = {'n': 0}
+
+    class _OkResp:
+        status_code = 200
+        text = '<html>ok</html>'
+
+    async def flaky(url: str, **kwargs: object) -> _OkResp:
+        calls['n'] += 1
+        if calls['n'] == 1:
+            raise ConnectionError('reset')
+        return _OkResp()
+
+    monkeypatch.setattr(client.http, 'get', flaky)
+    page = await client._get('https://nubilefilms.com/x', _Site(), None, 'test')
+    assert page is not None and calls['n'] == 2
+    assert client.pacer._ban_until == 0.0
+
+
+async def test_persistent_refusal_with_internet_up_pauses_the_queue(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _quiet_client(monkeypatch)
+
+    async def refused(url: str, **kwargs: object) -> object:
+        raise ConnectionError('refused')
+
+    async def online() -> bool:
+        return True
+
+    banned = {'called': False}
+    monkeypatch.setattr(client.http, 'get', refused)
+    monkeypatch.setattr(nubiles, 'internet_reachable', online)
+    monkeypatch.setattr(client.pacer, 'flag_ban', lambda *a, **k: banned.update(called=True))
+    assert await client._get('https://nubilefilms.com/x', _Site(), None, 'test') is None
+    assert banned['called'], 'a connection refused with the internet reachable is a network-level ban'
+
+
+async def test_persistent_refusal_while_offline_blames_nobody(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _quiet_client(monkeypatch)
+
+    async def refused(url: str, **kwargs: object) -> object:
+        raise ConnectionError('refused')
+
+    async def offline() -> bool:
+        return False
+
+    banned = {'called': False}
+    monkeypatch.setattr(client.http, 'get', refused)
+    monkeypatch.setattr(nubiles, 'internet_reachable', offline)
+    monkeypatch.setattr(client.pacer, 'flag_ban', lambda *a, **k: banned.update(called=True))
+    assert await client._get('https://nubilefilms.com/x', _Site(), None, 'test') is None
+    assert not banned['called'], 'a local outage must not pause the queue for 15 minutes'
