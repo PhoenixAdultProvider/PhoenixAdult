@@ -22,6 +22,7 @@
     .count-badge { font-size: 12px; color: var(--label-text); font-weight: 400; }
     .queues { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
     .queue-col { min-width: 0; }
+    .eta { font-size: 13px; color: var(--status-warn-text); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
     .list { display: flex; flex-direction: column; gap: 6px; }
     .item { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
     .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
@@ -63,6 +64,7 @@
   {% include 'nav.html' %}
   <h1>Scrape Queue</h1>
   <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
+  <div class="eta" id="eta" style="display:none"></div>
   <div class="progress" id="progress" style="display:none">
     <div class="progress-head"><span id="progress-label"></span><span id="progress-pct"></span></div>
     <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
@@ -95,6 +97,12 @@
       return m ? m + 'm ' + String(Math.floor(s % 60)).padStart(2, '0') + 's' : Math.floor(s) + 's';
     }
 
+    function fmtEta(s) {
+      if (s >= 5400) return '~' + (s / 3600).toFixed(1) + 'h';
+      if (s >= 90) return '~' + Math.round(s / 60) + 'm';
+      return '~' + Math.max(5, Math.round(s / 5) * 5) + 's';
+    }
+
     function render() {
       const drift = (Date.now() - fetchedAt) / 1000;
       const fl = STATE.fastLane;
@@ -111,13 +119,18 @@
           `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
       }).join('') || '<div class="empty">no paced scrapers registered</div>';
 
+      const eta = STATE.etaSeconds == null ? null : Math.max(0, STATE.etaSeconds - drift);
+      const etaBox = document.getElementById('eta');
+      etaBox.textContent = eta == null ? '' : `estimated ${fmtEta(eta)} to clear the queue`;
+      etaBox.style.display = eta == null ? 'none' : '';
+
       const total = STATE.total || 0;
       const done = Math.min(STATE.done || 0, total);
       const box = document.getElementById('progress');
       if (total > 0) {
         const pct = Math.round((done / total) * 100);
         document.getElementById('progress-label').textContent =
-          `${done} of ${total} done · ${STATE.running || 0} running · ${STATE.pending || 0} left`;
+          `${done} of ${total} done · ${STATE.running || 0} running · ${STATE.pending || 0} left` + (eta == null ? '' : ` · ${fmtEta(eta)} remaining`);
         document.getElementById('progress-pct').textContent = pct + '%';
         document.getElementById('progress-fill').style.width = pct + '%';
         box.style.display = '';

@@ -23,6 +23,10 @@ _SYNC_WAIT_BUDGET = 10.0
 _PACERS: weakref.WeakSet[ScenePacer] = weakref.WeakSet()
 
 
+def max_pending_wait() -> float:
+    return max((p.pending_wait() for p in _PACERS), default=0.0)
+
+
 def pacer_states() -> list[dict[str, object]]:
     out = []
     for p in sorted(_PACERS, key=lambda p: p.tag):

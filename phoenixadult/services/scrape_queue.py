@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -57,6 +59,8 @@ _paused_until: float = 0.0
 _pause_reason: str = ''
 _revision = 0
 _waiters: list[asyncio.Future[None]] = []
+_durations: dict[str, deque[float]] = {FAST: deque(maxlen=20), PACED: deque(maxlen=20)}
+_DEFAULT_RUNTIME = 20.0
 
 
 def _bump() -> None:
@@ -223,6 +227,7 @@ def snapshot() -> dict[str, object]:
 
     rows = [row(e) for e in _pending.values() if e.key in _running] + [row(e) for e in _pending.values() if e.key not in _running]
     return {
+        'etaSeconds': _estimate_eta(now),
         'pending': len(_pending),
         'running': len(_running),
         'slots': sum(_LANE_WORKERS.values()),
@@ -234,6 +239,33 @@ def snapshot() -> dict[str, object]:
         'resumeIn': round(paused_for(), 1),
         'revision': _revision,
     }
+
+
+def _estimate_eta(now: float) -> int | None:
+    if not _pending:
+        return None
+    from phoenixadult.config.env import env
+    from phoenixadult.utils.http import rate_limit_helper as pacing
+
+    def avg(lane: str) -> float:
+        samples = _durations[lane]
+        return sum(samples) / len(samples) if samples else _DEFAULT_RUNTIME
+
+    def remaining(entry_key: str, lane: str) -> float:
+        started = _running.get(entry_key)
+        if started is None:
+            return avg(lane)
+        return max(0.0, avg(lane) - (now - started))
+
+    fast = [e for e in _pending.values() if e.lane == FAST]
+    paced = [e for e in _pending.values() if e.lane == PACED]
+    eta_fast = math.ceil(len(fast) / _LANE_WORKERS[FAST]) * avg(FAST) if fast else 0.0
+    per_scene_gap = env.scene_gap + (pacing._GAP_JITTER_MIN + pacing._GAP_JITTER_MAX) / 2
+    window_floor = pacing._SCENE_WINDOW / pacing._SCENE_WINDOW_MAX
+    per_paced_job = max(per_scene_gap + avg(PACED), window_floor)
+    pacer_wait = pacing.max_pending_wait() if paced else 0.0
+    eta_paced = pacer_wait + sum(per_paced_job if e.key not in _running else remaining(e.key, PACED) for e in paced)
+    return int(max(eta_fast, eta_paced) + paused_for())
 
 
 def _mark_done() -> None:
@@ -261,7 +293,9 @@ async def _run(lane: str) -> None:
         except Exception as err:  # noqa: BLE001 - one failed job never kills the worker
             logger.warn('scrape-queue', f'background scrape failed {entry.key}: {err!r}')
         finally:
-            _running.pop(entry.key, None)
+            started = _running.pop(entry.key, None)
+            if started is not None:
+                _durations[lane].append(time.monotonic() - started)
             _pending.pop(entry.key, None)
             _persist_remove(entry.key)
             _mark_done()

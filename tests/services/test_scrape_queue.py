@@ -270,3 +270,49 @@ async def test_progress_survives_a_partial_drain() -> None:
 
     release.set()
     await _drain()
+
+
+def _seed(monkeypatch, entries: list[tuple[str, str]], durations: dict[str, list[float]] | None = None) -> None:
+    import time
+
+    pending = {k: scrape_queue.QueueEntry(key=k, kind='update', label=k, queued_at=time.monotonic(), lane=lane) for k, lane in entries}
+    monkeypatch.setattr(scrape_queue, '_pending', pending)
+    monkeypatch.setattr(scrape_queue, '_running', {})
+    for lane, samples in (durations or {}).items():
+        scrape_queue._durations[lane].clear()
+        scrape_queue._durations[lane].extend(samples)
+
+
+def test_eta_is_none_with_nothing_queued(monkeypatch) -> None:
+    _seed(monkeypatch, [])
+    assert scrape_queue._estimate_eta(0.0) is None
+
+
+def test_fast_lane_eta_divides_work_across_the_slots(monkeypatch) -> None:
+    _seed(monkeypatch, [(f'f{i}', scrape_queue.FAST) for i in range(6)], {scrape_queue.FAST: [30.0]})
+    assert scrape_queue._estimate_eta(0.0) == 60
+
+
+def test_paced_eta_charges_the_gap_jitter_midpoint_per_job(monkeypatch) -> None:
+    monkeypatch.setenv('SCENE_GAP', '40')
+    _seed(monkeypatch, [(f'p{i}', scrape_queue.PACED) for i in range(3)], {scrape_queue.PACED: [20.0]})
+    assert scrape_queue._estimate_eta(0.0) == int((40 + 27.5 + 20) * 3)
+
+
+def test_paced_eta_never_undercuts_the_scene_window_floor(monkeypatch) -> None:
+    monkeypatch.setenv('SCENE_GAP', '0')
+    _seed(monkeypatch, [(f'p{i}', scrape_queue.PACED) for i in range(4)], {scrape_queue.PACED: [5.0]})
+    assert scrape_queue._estimate_eta(0.0) == 75 * 4, '8 scenes per 10 minutes means at least 75s per scene'
+
+
+def test_eta_includes_a_pause(monkeypatch) -> None:
+    import time
+
+    _seed(monkeypatch, [('f1', scrape_queue.FAST)], {scrape_queue.FAST: [10.0]})
+    monkeypatch.setattr(scrape_queue, '_paused_until', time.monotonic() + 100)
+    assert scrape_queue._estimate_eta(time.monotonic()) >= 100
+
+
+def test_the_snapshot_exposes_the_eta(monkeypatch) -> None:
+    _seed(monkeypatch, [('f1', scrape_queue.FAST)], {scrape_queue.FAST: [10.0]})
+    assert scrape_queue.snapshot()['etaSeconds'] == 10
