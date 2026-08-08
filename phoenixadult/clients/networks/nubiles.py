@@ -151,6 +151,7 @@ class NubilesClient(Client):
             self.pacer.flag_ban()
             return None
 
+        self.pacer.clear_ban()
         if capture is not None:
             capture.append(RawCaptureEntry(label, 'html', r.text))
 

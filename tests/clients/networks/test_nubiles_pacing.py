@@ -242,3 +242,44 @@ async def test_persistent_refusal_while_offline_blames_nobody(monkeypatch: pytes
     monkeypatch.setattr(client.pacer, 'flag_ban', lambda *a, **k: banned.update(called=True))
     assert await client._get('https://nubilefilms.com/x', _Site(), None, 'test') is None
     assert not banned['called'], 'a local outage must not pause the queue for 15 minutes'
+
+
+async def test_a_successful_request_clears_an_active_ban(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.services import scrape_queue
+
+    client = _quiet_client(monkeypatch)
+    client.pacer.flag_ban()
+    assert scrape_queue.paused_for() > 0
+    revision_before = scrape_queue.snapshot()['revision']
+
+    class _OkResp:
+        status_code = 200
+        text = '<html>ok</html>'
+
+    async def ok(url: str, **kwargs: object) -> _OkResp:
+        return _OkResp()
+
+    monkeypatch.setattr(client.http, 'get', ok)
+    assert await client._get('https://nubilefilms.com/x', _Site(), None, 'test') is not None
+    assert client.pacer._ban_until == 0.0, 'the ban must not outlive proof the site is answering'
+    assert scrape_queue.paused_for() == 0, 'the queue pause caused by the ban lifts with it'
+    assert scrape_queue.snapshot()['revision'] > revision_before, 'the UI longpoll must be woken to repaint the pacer tile'
+
+
+async def test_clearing_without_a_ban_does_not_wake_the_ui(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.services import scrape_queue
+
+    client = _quiet_client(monkeypatch)
+    revision_before = scrape_queue.snapshot()['revision']
+    client.pacer.clear_ban()
+    assert scrape_queue.snapshot()['revision'] == revision_before, 'no ban means nothing changed; longpolls stay asleep'
+
+
+async def test_a_manual_pause_survives_another_sites_recovery(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.services import scrape_queue
+
+    client = _quiet_client(monkeypatch)
+    client.pacer.flag_ban()
+    scrape_queue.pause('SomeOther ban detected', 500)
+    client.pacer.clear_ban()
+    assert scrape_queue.paused_for() > 0, "clearing this site's ban must not resume a pause owned by another reason"

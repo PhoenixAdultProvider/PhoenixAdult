@@ -116,6 +116,15 @@ def resume() -> None:
     logger.info('scrape-queue', 'queue resumed')
 
 
+def ban_cleared(reason: str) -> None:
+    global _paused_until, _pause_reason
+    if paused_for() > 0 and _pause_reason == reason:
+        _paused_until = 0.0
+        _pause_reason = ''
+        logger.info('scrape-queue', 'queue resumed - the banned site is answering again')
+    _bump()
+
+
 def paused_for() -> float:
     return max(0.0, _paused_until - time.monotonic())
 

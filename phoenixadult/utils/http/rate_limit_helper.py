@@ -126,6 +126,15 @@ class ScenePacer:
         self._ban_until = time.monotonic() + seconds
         scrape_queue.pause(f'{self.tag} ban detected', seconds)
 
+    def clear_ban(self) -> None:
+        from phoenixadult.services import scrape_queue
+
+        if self._ban_until <= time.monotonic():
+            return
+        self._ban_until = 0.0
+        logger.info(self.tag, 'ban cleared - the site answered a request normally')
+        scrape_queue.ban_cleared(f'{self.tag} ban detected')
+
     def jitter(self, base: float) -> float:
         return base + random.uniform(0.0, self.pace_jitter)
 
