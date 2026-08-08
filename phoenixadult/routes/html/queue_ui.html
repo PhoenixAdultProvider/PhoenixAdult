@@ -20,6 +20,8 @@
     .pacer .cd.ready { color: var(--status-ok-text); }
     .pacer .win { color: var(--label-text); font-size: 12px; }
     .count-badge { font-size: 12px; color: var(--label-text); font-weight: 400; }
+    .queues { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
+    .queue-col { min-width: 0; }
     .list { display: flex; flex-direction: column; gap: 6px; }
     .item { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
     .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
@@ -49,6 +51,7 @@
       h2 .count-badge, .flush-btn { margin-left: 0; }
       .pacers { gap: 8px; }
       .pacer { width: 100%; flex-wrap: wrap; gap: 4px 14px; }
+      .queues { grid-template-columns: 1fr; }
       .item { flex-wrap: wrap; }
       .item .label { flex: 1 1 100%; order: 1; }
       .item .age { margin-left: auto; }
@@ -66,12 +69,18 @@
   </div>
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
-  <h2>Searches <span class="count-badge" id="search-count"></span>
-{% if is_admin() %}    <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
-  <div class="list" id="searches"></div>
-  <h2>Updates <span class="count-badge" id="update-count"></span>
-{% if is_admin() %}    <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
-  <div class="list" id="updates"></div>
+  <div class="queues">
+    <div class="queue-col">
+      <h2>Searches <span class="count-badge" id="search-count"></span>
+{% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
+      <div class="list" id="searches"></div>
+    </div>
+    <div class="queue-col">
+      <h2>Updates <span class="count-badge" id="update-count"></span>
+{% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
+      <div class="list" id="updates"></div>
+    </div>
+  </div>
 
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};

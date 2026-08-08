@@ -85,3 +85,11 @@ def test_the_account_sessions_table_labels_its_cells(pages: dict[str, str]) -> N
     account = pages['account']
     for marker in ('data-label="Signed In"', 'data-label="Last Seen"', 'data-label="Device"', '.s-seen::before'):
         assert marker in account, marker
+
+
+def test_the_queue_lists_sit_side_by_side_and_stack_on_phones(pages: dict[str, str]) -> None:
+    queue = pages['queue']
+    assert '.queues { display: grid; grid-template-columns: 1fr 1fr;' in queue, 'Searches and Updates should be two columns'
+    assert queue.index('id="searches"') < queue.index('id="updates"')
+    mobile = ''.join(re.findall(r'@media \(max-width:\s*\d+px\)\s*\{(.*?)\n\s{0,6}\}\n', queue, re.DOTALL))
+    assert '.queues { grid-template-columns: 1fr; }' in mobile, 'the columns must stack on phones'
