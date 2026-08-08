@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import json
-import sqlite3
-import time
 from pathlib import Path
 
 import httpx
 import pytest
 import respx
 
-from phoenixadult.utils import db
 from phoenixadult.utils.images import face_crop_log
 from phoenixadult.utils.people import cache
 from phoenixadult.utils.people.generic import generic_image_url
@@ -64,36 +60,3 @@ async def test_an_explicit_source_beats_the_host(tmp_path: Path, monkeypatch: py
 
     entry = face_crop_log.entry_for(str(tmp_path / 'people' / 'actors' / 'female'), 'actor.jane-doe_female.jpg')
     assert entry is not None and entry['source'] == 'Scene'
-
-
-def _legacy_db(path: Path, rows: list[tuple[str, str]]) -> None:
-    conn = sqlite3.connect(path)
-    for idx, script in enumerate(db._MIGRATIONS[:4], start=1):
-        assert isinstance(script, str)
-        conn.executescript(script)
-        conn.execute(f'PRAGMA user_version = {idx}')
-    for rel_path, url in rows:
-        entry = {'name': 'Jane Doe', 'filename': rel_path.rpartition('/')[2], 'base': 'b', 'orig_ext': '.jpg', 'upstream_url': url, 'cropped': False}
-        conn.execute('INSERT INTO crop_log(rel_path, entry, cropped_at) VALUES(?, ?, ?)', (rel_path, json.dumps(entry), time.time()))
-    conn.commit()
-    conn.close()
-
-
-def test_existing_headshots_get_a_source_derived_from_their_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    path = tmp_path / 'legacy.db'
-    _legacy_db(
-        path,
-        [
-            ('actors/female/actor.jane_female.jpg', 'https://www.iafd.com/graphics/headshots/jane.jpg'),
-            ('actors/male/actor.john_male.jpg', 'https://cdn.somestudio.com/scenes/john.jpg'),
-            ('actors/female/actor.jill_female.jpg', ''),
-        ],
-    )
-    monkeypatch.setenv('STATE_DB_PATH', str(path))
-    db.close()
-
-    conn = db.connect()
-    sources = {str(r['rel_path']): str(r['source']) for r in conn.execute('SELECT rel_path, source FROM crop_log').fetchall()}
-    assert sources['actors/female/actor.jane_female.jpg'] == 'IAFD'
-    assert sources['actors/male/actor.john_male.jpg'] == 'Scene'
-    assert sources['actors/female/actor.jill_female.jpg'] == ''

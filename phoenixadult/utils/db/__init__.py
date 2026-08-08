@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sqlite3
 import threading
 from collections.abc import Callable
@@ -11,23 +10,6 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.logging.logger import logger
 
 _BUSY_TIMEOUT_MS = 5000
-
-
-def _backfill_image_sources(conn: sqlite3.Connection) -> None:
-    from phoenixadult.utils.people.image_source import SCENE_SOURCE, source_for_url
-
-    conn.execute("ALTER TABLE crop_log ADD COLUMN source TEXT NOT NULL DEFAULT ''")
-    derived: list[tuple[str, str]] = []
-    for row in conn.execute('SELECT rel_path, entry FROM crop_log').fetchall():
-        try:
-            entry = json.loads(str(row['entry']))
-        except ValueError:
-            continue
-        url = str(entry.get('upstream_url') or '') if isinstance(entry, dict) else ''
-        if url:
-            derived.append((source_for_url(url) or SCENE_SOURCE, str(row['rel_path'])))
-    conn.executemany('UPDATE crop_log SET source = ? WHERE rel_path = ?', derived)
-    logger.info('db', f'derived the source of {len(derived)} cached headshot(s) from their URLs')
 
 
 @dataclass(frozen=True)
@@ -170,245 +152,216 @@ def prune_orphan_names(conn: sqlite3.Connection) -> dict[str, int]:
     return pruned
 
 
-_Migration = str | Callable[[sqlite3.Connection], None]
-
-_MIGRATIONS: list[_Migration] = [
-    """
+_SCHEMA_V1 = """
     CREATE TABLE queue_replays (
-      key       TEXT PRIMARY KEY,
-      replay    TEXT NOT NULL,
-      queued_at REAL NOT NULL
-    );
+          key       TEXT PRIMARY KEY,
+          replay    TEXT NOT NULL,
+          queued_at REAL NOT NULL
+        );
     CREATE TABLE searches (
-      key_hash  TEXT PRIMARY KEY,
-      site      TEXT NOT NULL,
-      title     TEXT NOT NULL,
-      date      TEXT NOT NULL,
-      scene_id  TEXT NOT NULL,
-      language  TEXT NOT NULL,
-      saved_at  REAL NOT NULL
-    );
+          key_hash  TEXT PRIMARY KEY,
+          site      TEXT NOT NULL,
+          title     TEXT NOT NULL,
+          date      TEXT NOT NULL,
+          scene_id  TEXT NOT NULL,
+          language  TEXT NOT NULL,
+          saved_at  REAL NOT NULL
+        );
     CREATE INDEX searches_similar ON searches(site, date, scene_id, language);
     CREATE INDEX searches_ttl ON searches(saved_at);
     CREATE TABLE search_results (
-      key_hash TEXT NOT NULL REFERENCES searches(key_hash) ON DELETE CASCADE,
-      pos      INTEGER NOT NULL,
-      cur_id   TEXT NOT NULL,
-      title    TEXT NOT NULL,
-      subsite  TEXT NOT NULL DEFAULT '',
-      payload  TEXT NOT NULL,
-      PRIMARY KEY (key_hash, pos)
-    );
+          key_hash TEXT NOT NULL REFERENCES searches(key_hash) ON DELETE CASCADE,
+          pos      INTEGER NOT NULL,
+          cur_id   TEXT NOT NULL,
+          title    TEXT NOT NULL,
+          subsite  TEXT NOT NULL DEFAULT '',
+          payload  TEXT NOT NULL,
+          PRIMARY KEY (key_hash, pos)
+        );
     CREATE INDEX search_results_cur ON search_results(cur_id);
-    """,
-    """
     CREATE TABLE studios (
-      id   INTEGER PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
+          id   INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE
+        );
     CREATE TABLE taglines (
-      id   INTEGER PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
+          id   INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE
+        );
     CREATE TABLE genres (
-      id   INTEGER PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
+          id   INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE
+        );
     CREATE TABLE collections (
-      id   INTEGER PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
+          id   INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE
+        );
     CREATE TABLE countries (
-      id   INTEGER PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
+          id   INTEGER PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE
+        );
     CREATE TABLE scenes (
-      id              INTEGER PRIMARY KEY,
-      hash            TEXT NOT NULL UNIQUE,
-      site            TEXT NOT NULL,
-      cur_id          TEXT NOT NULL,
-      rel_path        TEXT NOT NULL,
-      identifier      TEXT NOT NULL,
-      rating_key      TEXT NOT NULL,
-      guid            TEXT NOT NULL,
-      title           TEXT NOT NULL,
-      title_sort      TEXT,
-      original_title  TEXT,
-      summary         TEXT,
-      release_date    TEXT,
-      year            INTEGER,
-      duration        INTEGER,
-      rating          REAL,
-      audience_rating REAL,
-      content_rating  TEXT,
-      is_adult        INTEGER,
-      data18_type     TEXT,
-      data18_id       TEXT,
-      thumb           TEXT,
-      art             TEXT,
-      studio_id       INTEGER REFERENCES studios(id),
-      tagline_id      INTEGER REFERENCES taglines(id),
-      updated_at      REAL NOT NULL
-    );
+          id              INTEGER PRIMARY KEY,
+          hash            TEXT NOT NULL UNIQUE,
+          site            TEXT NOT NULL,
+          cur_id          TEXT NOT NULL,
+          rel_path        TEXT NOT NULL,
+          identifier      TEXT NOT NULL,
+          rating_key      TEXT NOT NULL,
+          guid            TEXT NOT NULL,
+          title           TEXT NOT NULL,
+          title_sort      TEXT,
+          original_title  TEXT,
+          summary         TEXT,
+          release_date    TEXT,
+          year            INTEGER,
+          duration        INTEGER,
+          rating          REAL,
+          audience_rating REAL,
+          content_rating  TEXT,
+          is_adult        INTEGER,
+          data18_type     TEXT,
+          data18_id       TEXT,
+          thumb           TEXT,
+          art             TEXT,
+          studio_id       INTEGER REFERENCES studios(id),
+          tagline_id      INTEGER REFERENCES taglines(id),
+          updated_at      REAL NOT NULL
+        , force_refresh INTEGER NOT NULL DEFAULT 0, data18_manual INTEGER NOT NULL DEFAULT 0, data18_also TEXT NOT NULL DEFAULT '');
     CREATE INDEX scenes_rel ON scenes(rel_path);
     CREATE INDEX scenes_updated ON scenes(updated_at);
     CREATE TABLE scene_genres (
-      scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-      genre_id INTEGER NOT NULL REFERENCES genres(id),
-      pos      INTEGER NOT NULL,
-      PRIMARY KEY (scene_id, genre_id)
-    );
+          scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
+          genre_id INTEGER NOT NULL REFERENCES genres(id),
+          pos      INTEGER NOT NULL,
+          PRIMARY KEY (scene_id, genre_id)
+        );
     CREATE TABLE scene_collections (
-      scene_id      INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-      collection_id INTEGER NOT NULL REFERENCES collections(id),
-      pos           INTEGER NOT NULL,
-      PRIMARY KEY (scene_id, collection_id)
-    );
+          scene_id      INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
+          collection_id INTEGER NOT NULL REFERENCES collections(id),
+          pos           INTEGER NOT NULL,
+          PRIMARY KEY (scene_id, collection_id)
+        );
     CREATE TABLE scene_countries (
-      scene_id   INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-      country_id INTEGER NOT NULL REFERENCES countries(id),
-      pos        INTEGER NOT NULL,
-      PRIMARY KEY (scene_id, country_id)
-    );
+          scene_id   INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
+          country_id INTEGER NOT NULL REFERENCES countries(id),
+          pos        INTEGER NOT NULL,
+          PRIMARY KEY (scene_id, country_id)
+        );
     CREATE TABLE people (
-      id              INTEGER PRIMARY KEY,
-      name            TEXT NOT NULL,
-      scope_studio_id INTEGER REFERENCES studios(id),
-      gender          TEXT NOT NULL DEFAULT '',
-      iafd_id         TEXT,
-      UNIQUE (name, scope_studio_id)
-    );
+          id              INTEGER PRIMARY KEY,
+          name            TEXT NOT NULL,
+          scope_studio_id INTEGER REFERENCES studios(id),
+          gender          TEXT NOT NULL DEFAULT '',
+          iafd_id         TEXT,
+          UNIQUE (name, scope_studio_id)
+        );
     CREATE UNIQUE INDEX people_global ON people(name) WHERE scope_studio_id IS NULL;
     CREATE TABLE scene_people (
-      scene_id       INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-      person_id      INTEGER NOT NULL REFERENCES people(id),
-      role           TEXT NOT NULL,
-      part           TEXT,
-      pos            INTEGER NOT NULL,
-      photo_rel_path TEXT,
-      PRIMARY KEY (scene_id, person_id, role)
-    );
+          scene_id       INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
+          person_id      INTEGER NOT NULL REFERENCES people(id),
+          role           TEXT NOT NULL,
+          part           TEXT,
+          pos            INTEGER NOT NULL,
+          photo_rel_path TEXT,
+          PRIMARY KEY (scene_id, person_id, role)
+        );
     CREATE TABLE scene_images (
-      id       INTEGER PRIMARY KEY,
-      scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-      kind     TEXT NOT NULL,
-      rel_path TEXT NOT NULL,
-      width    INTEGER,
-      height   INTEGER,
-      bytes    INTEGER,
-      pos      INTEGER NOT NULL
-    );
+          id       INTEGER PRIMARY KEY,
+          scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
+          kind     TEXT NOT NULL,
+          rel_path TEXT NOT NULL,
+          width    INTEGER,
+          height   INTEGER,
+          bytes    INTEGER,
+          pos      INTEGER NOT NULL
+        , priority INTEGER NOT NULL DEFAULT 0);
     CREATE INDEX scene_images_scene ON scene_images(scene_id);
-    """,
-    """
     CREATE TABLE people_images (
-      type     TEXT NOT NULL,
-      slug     TEXT NOT NULL,
-      gender   TEXT NOT NULL DEFAULT '',
-      ext      TEXT NOT NULL,
-      rel_path TEXT NOT NULL,
-      mtime    REAL NOT NULL,
-      PRIMARY KEY (type, slug, gender)
-    );
+          type     TEXT NOT NULL,
+          slug     TEXT NOT NULL,
+          gender   TEXT NOT NULL DEFAULT '',
+          ext      TEXT NOT NULL,
+          rel_path TEXT NOT NULL,
+          mtime    REAL NOT NULL,
+          PRIMARY KEY (type, slug, gender)
+        );
     CREATE TABLE logos (
-      studio_slug TEXT NOT NULL DEFAULT '',
-      name_slug   TEXT NOT NULL,
-      rel_path    TEXT NOT NULL,
-      mtime       REAL NOT NULL,
-      PRIMARY KEY (studio_slug, name_slug)
-    );
+          studio_slug TEXT NOT NULL DEFAULT '',
+          name_slug   TEXT NOT NULL,
+          rel_path    TEXT NOT NULL,
+          mtime       REAL NOT NULL,
+          PRIMARY KEY (studio_slug, name_slug)
+        );
     CREATE INDEX logos_name ON logos(name_slug);
     CREATE TABLE crop_log (
-      rel_path   TEXT PRIMARY KEY,
-      entry      TEXT NOT NULL,
-      cropped_at REAL NOT NULL
-    );
-    """,
-    """
-    ALTER TABLE scenes ADD COLUMN force_refresh INTEGER NOT NULL DEFAULT 0;
+          rel_path   TEXT PRIMARY KEY,
+          entry      TEXT NOT NULL,
+          cropped_at REAL NOT NULL
+        , source TEXT NOT NULL DEFAULT '');
     CREATE INDEX scenes_force ON scenes(force_refresh) WHERE force_refresh = 1;
-    """,
-    _backfill_image_sources,
-    """
-    ALTER TABLE scenes ADD COLUMN data18_manual INTEGER NOT NULL DEFAULT 0;
-    """,
-    _fold_case_duplicate_names,
-    _fold_recased_duplicate_names,
-    """
-    ALTER TABLE scenes ADD COLUMN data18_also TEXT NOT NULL DEFAULT '';
-    """,
-    """
-    ALTER TABLE scene_images ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
-    """,
-    _recase_noncanonical_names,
-    _recase_noncanonical_names,
-    """
+    CREATE UNIQUE INDEX people_ci_global ON people(name COLLATE NOCASE) WHERE scope_studio_id IS NULL;
+    CREATE UNIQUE INDEX people_ci_scoped ON people(name COLLATE NOCASE, scope_studio_id) WHERE scope_studio_id IS NOT NULL;
+    CREATE UNIQUE INDEX studios_ci ON studios(name COLLATE NOCASE);
+    CREATE UNIQUE INDEX taglines_ci ON taglines(name COLLATE NOCASE);
+    CREATE UNIQUE INDEX collections_ci ON collections(name COLLATE NOCASE);
+    CREATE UNIQUE INDEX genres_ci ON genres(name COLLATE NOCASE);
+    CREATE UNIQUE INDEX countries_ci ON countries(name COLLATE NOCASE);
     CREATE TABLE users (
-      id                  INTEGER PRIMARY KEY,
-      username            TEXT NOT NULL UNIQUE COLLATE NOCASE,
-      password_hash       TEXT NOT NULL,
-      is_admin            INTEGER NOT NULL DEFAULT 0,
-      api_key_hash        TEXT UNIQUE,
-      api_key_hint        TEXT NOT NULL DEFAULT '',
-      created_at          REAL NOT NULL,
-      password_changed_at REAL NOT NULL
-    );
+          id                  INTEGER PRIMARY KEY,
+          username            TEXT NOT NULL UNIQUE COLLATE NOCASE,
+          password_hash       TEXT NOT NULL,
+          is_admin            INTEGER NOT NULL DEFAULT 0,
+          api_key_hash        TEXT UNIQUE,
+          api_key_hint        TEXT NOT NULL DEFAULT '',
+          created_at          REAL NOT NULL,
+          password_changed_at REAL NOT NULL
+        , theme_dark TEXT NOT NULL DEFAULT '', theme_light TEXT NOT NULL DEFAULT '',
+    metadataapi_token_encrypted TEXT NOT NULL DEFAULT '', api_key_encrypted TEXT NOT NULL DEFAULT '');
     CREATE TABLE sessions (
-      token_hash   TEXT PRIMARY KEY,
-      user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      created_at   REAL NOT NULL,
-      last_seen_at REAL NOT NULL,
-      user_agent   TEXT NOT NULL DEFAULT ''
-    );
+          token_hash   TEXT PRIMARY KEY,
+          user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at   REAL NOT NULL,
+          last_seen_at REAL NOT NULL,
+          user_agent   TEXT NOT NULL DEFAULT ''
+        );
     CREATE INDEX sessions_user ON sessions(user_id);
     CREATE TABLE plex_connections (
-      id              INTEGER PRIMARY KEY,
-      user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      name            TEXT NOT NULL,
-      server_url      TEXT NOT NULL DEFAULT '',
-      token_encrypted TEXT NOT NULL DEFAULT '',
-      client_id       TEXT NOT NULL DEFAULT '',
-      update_channel  TEXT NOT NULL DEFAULT 'plex',
-      update_release  TEXT NOT NULL DEFAULT '',
-      image_base_url  TEXT NOT NULL DEFAULT '',
-      created_at      REAL NOT NULL,
-      UNIQUE (user_id, name)
-    );
+          id              INTEGER PRIMARY KEY,
+          user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name            TEXT NOT NULL,
+          server_url      TEXT NOT NULL DEFAULT '',
+          token_encrypted TEXT NOT NULL DEFAULT '',
+          client_id       TEXT NOT NULL DEFAULT '',
+          update_channel  TEXT NOT NULL DEFAULT 'plex',
+          update_release  TEXT NOT NULL DEFAULT '',
+          image_base_url  TEXT NOT NULL DEFAULT '',
+          created_at      REAL NOT NULL,
+          UNIQUE (user_id, name)
+        );
     CREATE INDEX plex_connections_user ON plex_connections(user_id);
     CREATE TABLE plex_connection_clients (
-      connection_id INTEGER NOT NULL REFERENCES plex_connections(id) ON DELETE CASCADE,
-      client_id     TEXT NOT NULL,
-      PRIMARY KEY (connection_id, client_id)
-    );
+          connection_id INTEGER NOT NULL REFERENCES plex_connections(id) ON DELETE CASCADE,
+          client_id     TEXT NOT NULL,
+          PRIMARY KEY (connection_id, client_id)
+        );
     CREATE INDEX plex_connection_clients_client ON plex_connection_clients(client_id);
-    """,
-    """
-    ALTER TABLE users ADD COLUMN theme_dark TEXT NOT NULL DEFAULT '';
-    ALTER TABLE users ADD COLUMN theme_light TEXT NOT NULL DEFAULT '';
-    ALTER TABLE users ADD COLUMN metadataapi_token_encrypted TEXT NOT NULL DEFAULT '';
-    """,
-    """
     CREATE TABLE client_hits (
-      client_id  TEXT PRIMARY KEY,
-      headers    TEXT NOT NULL DEFAULT '{}',
-      count      INTEGER NOT NULL DEFAULT 0,
-      first_seen REAL NOT NULL,
-      last_seen  REAL NOT NULL,
-      last_path  TEXT NOT NULL DEFAULT ''
-    );
+          client_id  TEXT PRIMARY KEY,
+          headers    TEXT NOT NULL DEFAULT '{}',
+          count      INTEGER NOT NULL DEFAULT 0,
+          first_seen REAL NOT NULL,
+          last_seen  REAL NOT NULL,
+          last_path  TEXT NOT NULL DEFAULT ''
+        );
     CREATE TABLE daily_requests (
-      scope TEXT NOT NULL,
-      key   TEXT NOT NULL,
-      day   TEXT NOT NULL,
-      count INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (scope, key, day)
-    );
+          scope TEXT NOT NULL,
+          key   TEXT NOT NULL,
+          day   TEXT NOT NULL,
+          count INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (scope, key, day)
+        );
     CREATE INDEX daily_requests_day ON daily_requests(day);
-    """,
-    """
-    ALTER TABLE users ADD COLUMN api_key_encrypted TEXT NOT NULL DEFAULT '';
-    """,
-]
+"""
 
 _local = threading.local()
 _open: list[sqlite3.Connection] = []
@@ -465,14 +418,14 @@ def close() -> None:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
-    for idx, step in enumerate(_MIGRATIONS[version:], start=version + 1):
-        if isinstance(step, str):
-            conn.executescript(step)
-        else:
-            step(conn)
-        conn.execute(f'PRAGMA user_version = {idx}')
-        conn.commit()
-        logger.info('db', f'phoenixadult.db schema migrated to v{idx}')
+    if version == 1:
+        return
+    if version != 0:
+        raise RuntimeError(f'this database reports schema v{version}, which predates schema v1 - start with a fresh database file')
+    conn.executescript(_SCHEMA_V1)
+    conn.execute('PRAGMA user_version = 1')
+    conn.commit()
+    logger.info('db', 'phoenixadult.db created at schema v1')
 
 
 # ── Shared Helpers ────────────────────────────────────────────────────────────

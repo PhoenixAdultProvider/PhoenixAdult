@@ -35,9 +35,13 @@ file). Opening is serialized under a lock: switching a fresh database to WAL nee
 crediting that performer, and the next serve consumes it to rebuild their headshot URLs. The
 snapshot upsert deliberately omits the column, so rewriting a scene never clears a pending flag.
 
-Schema versioning uses `PRAGMA user_version` with a linear, append-only migration list
-(`_MIGRATIONS` in `phoenixadult/utils/db/__init__.py`). A migration script is never edited after
-it ships; changes append a new version.
+Schema versioning uses `PRAGMA user_version`. **Version 1 is the baseline**: the full
+schema is created in one shot from `_SCHEMA_V1` in `phoenixadult/utils/db/__init__.py`
+and stamped `user_version = 1`. The incremental migration history that produced this
+shape (sixteen steps, folded 2026-08-07) was collapsed once the schema stabilised —
+a database reporting any other version predates v1 and is refused at startup with an
+error naming the fix: start from a fresh file. Future schema changes will append
+migrations on top of v1.
 
 ## Design Principle
 
@@ -48,7 +52,7 @@ The **scene store is the exception**: it is primary data — snapshots are expen
 recreate under anti-ban pacing — so it gets first-class backup support (`VACUUM INTO`,
 below).
 
-## Schema Version 1 — Queue Replays & Search Store
+## Queue Replays & Search Store
 
 Derived state — re-derivable by re-scraping, so no permanent data loss on deletion,
 though rebuilding the search store means re-searching every title under anti-ban pacing.
@@ -60,7 +64,7 @@ though rebuilding the search store means re-searching every title under anti-ban
   search store; cached results are perpetual by default (`SEARCH_STORE_TTL_DAYS=0`).
   `load_similar` and `find_title` are indexed lookups instead of per-call directory scans.
 
-## Schema Version 2 — the Scene Store
+## The Scene Store
 
 One row per snapshotted scene, fully normalized: scalar fields inline on `scenes`,
 one-to-many lookups in dimension tables (`studios`, `taglines`), many-to-many fields in
@@ -235,7 +239,7 @@ CREATE TABLE scene_images (
 CREATE INDEX scene_images_scene ON scene_images(scene_id);
 ```
 
-## Schema Version 3 — People-Image Index, Logo Index, and Crop Log
+## People-Image Index, Logo Index, and Crop Log
 
 Derived state over files that remain the source of truth. These three tables replace the
 last of the throttled directory rescans:
@@ -309,7 +313,7 @@ CREATE TABLE crop_log (
 );
 ```
 
-## Schema Version 5 — Headshot Sources
+## Headshot Sources
 
 `crop_log.source` records which headshot source produced each cached image, so the
 people UI can say where a face came from and a bulk re-fetch can be aimed at one
@@ -321,13 +325,11 @@ host by `source_for_url` (`phoenixadult/utils/people/image_source.py`).
 The column is authoritative and the JSON `entry` blob never carries a source; readers in
 `face_crop_log` fold the column into the dict they return.
 
-Existing rows were backfilled at migration time from their stored `upstream_url`. A URL
-no source claims is recorded as `Scene`: before this version the cache only ever wrote a
-people-source image, the scene page's image, or the silhouette, so an unclaimed host was
-a scene image by elimination. This is the first migration step that is a Python callable
-rather than a SQL script — `_MIGRATIONS` accepts either.
+Rows written before the column existed had their source derived from the stored
+`upstream_url` (an unclaimed host meant a scene image by elimination); that backfill
+retired with the pre-v1 migration history.
 
-## Schema Version 6 — Manual Data18 References
+## Manual Data18 References
 
 `scenes.data18_also` holds any extra Data18 page IDs, comma-joined; a manual mapping's `"also"`
 list lands here and round-trips through the snapshot as `data18.also`, so image enrichment can walk
@@ -343,7 +345,7 @@ by a scrape, giving the reference three states: blank (no id), filled (scraped) 
 `/metadata` Data18 filter reads it, so hand-made mappings can be listed and exported on their own.
 It round-trips through the snapshot as `data18.manual`, set only when true.
 
-## Schema Version 13 — Accounts, Sessions, and Plex Connections
+## Accounts, Sessions, and Plex Connections
 
 Authentication and Plex pairing move out of the environment and into the database, so the provider
 can serve several people and several Plex servers at once.
@@ -443,7 +445,7 @@ is what keeps a fresh install (and an upgrade that has not configured anything y
 Deleting a user cascades to their sessions and connections, and deleting a connection cascades to
 its client identifiers, so account removal leaves nothing behind.
 
-## Schema Version 14 — Per-User Themes and Enrichment Tokens
+## Per-User Themes and Enrichment Tokens
 
 Three columns join `users`, all defaulting to empty:
 
@@ -460,6 +462,16 @@ user's ThePornDB bearer token, Fernet-encrypted with the same `secret.key` deriv
 as Plex tokens; scrapes resolve it from the requesting user (admin UIs) or the owner
 of the matched Plex connection (provider traffic), falling back to the first
 configured token for background work.
+
+## Client Hits and Daily Request Quotas
+
+`client_hits` keeps one row per `X-Plex-Client-Identifier` the server has ever seen —
+its retained headers (JSON), hit count, first/last seen, and last path — feeding the
+admin Clients tab and surviving restarts. `daily_requests` holds the provider-mount
+quota counters keyed `(scope, key, day)`, where scope is `client` (a Plex client id) or
+`user` (the key's owning account, so regenerating an API key cannot reset a budget);
+rows older than thirty days are pruned opportunistically on write. Both are derived
+state: truncating them costs history, never correctness.
 
 ## Why This Shape
 
@@ -495,30 +507,19 @@ spelling is a deliberate act — `scripts/rename_studio.py "old" "new"` recases 
 the two differ only by capitalisation, and merges when the target already exists. Use it
 after a `title_case` rule change to bring stored names in line.
 
-Installs from before this rule are folded by the v7 migration, which keeps the row that
-scenes actually reference (lowest id when both are used) and repoints every credit onto it.
+Installs from before this rule were folded at migration time (keep the row scenes
+actually reference, repoint every credit onto it) — pre-v1 history now.
 
-A `title_case` rule change can also strand a spelling: once honorifics gained a period,
-`Mz Dani` and `Mz. Dani` were two rows. The v8 migration folds any pair whose names collapse
-to the same string once `title_case` is applied, keeping the canonical spelling, carrying
-`gender` and `iafd_id` onto it when the survivor has neither, and repointing every credit.
-It deliberately will not touch genuine variants — `Glory Hole` and `Gloryhole` both survive
-`title_case` unchanged, so choosing between them stays an editorial decision.
-
-A stranded spelling with no canonical twin used to stay wrong forever: a `Whitney Oc` row
-stored before `title_case` learned the `Whitney OC` correction had nothing to fold into.
-The v11 migration re-runs the v8 fold and then recases the surviving single rows in place
-wherever `title_case` now disagrees with what is stored. Because `title_case` preserves
-capitals it did not introduce, names it has no opinion on are untouched — the sticky-spelling
-rule above still holds for everything else.
-
-For **genres** the canonical authority is `genres.json`'s replace map, not `title_case` —
-its values deliberately keep lowercase gender qualifiers (`Caucasian (female)`), which
-`title_case` would capitalize. v11 got that wrong and recased the gender-qualified genre
-rows away from what the scraper actually emits, so the Plex reconciler reported thousands
-of false "recased" removals. The recase pass now resolves a genre through the replace map
-first (falling back to `title_case` only for free-form tags), and the v12 migration re-runs
-it to restore the mangled rows.
+A `title_case` rule change can strand a spelling: once honorifics gained a period,
+`Mz Dani` and `Mz. Dani` were two rows. The pre-v1 migrations folded any pair whose names
+collapse to the same string under `title_case` (keeping the canonical spelling, carrying
+`gender` and `iafd_id` onto a survivor that had neither) and recased stranded single rows
+in place. Genuine variants are never touched — `Glory Hole` and `Gloryhole` both survive
+`title_case` unchanged, so choosing between them stays an editorial decision. For
+**genres** the canonical authority is `genres.json`'s replace map, not `title_case` — its
+values deliberately keep lowercase gender qualifiers (`Caucasian (female)`), which
+`title_case` would capitalize; the recase logic resolves a genre through the replace map
+first and falls back to `title_case` only for free-form tags.
 
 ### Pruning Unreferenced Names
 
@@ -640,9 +641,9 @@ route. `scene_images` records what the folder holds: classified `kind`, stored U
 Releases up to `1.0.0a124` carried one-time importers that folded the pre-database
 files (per-scene `meta.json`, per-key search JSONs, `queue-state.json`, per-folder
 `.face_crop_log.json`) into these tables at startup and retired each source file with a
-`.migrated` suffix. Those importers were removed once the migration shipped: an install
-upgrading from a pre-database release must run `1.0.0a124` once first (or accept
-starting with an empty scene store). Leftover `.migrated` files are inert rollback
+`.migrated` suffix. Both those importers and the incremental migration path are gone:
+schema v1 is the baseline, and an install from any pre-v1 release starts with a fresh
+database file. Leftover `.migrated` files are inert rollback
 artifacts, deletable whenever the operator is satisfied — `phoenixadult.db` is the only live
 copy of the scene text and must be backed up.
 
