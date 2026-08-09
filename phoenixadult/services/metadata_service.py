@@ -31,16 +31,26 @@ from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 
 def _queue_label(rating_key: str) -> str:
+    from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode
+
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed.get('site_name'):
         return rating_key
     site = canonical_site_display(parsed['site_name'] or '') or parsed['site_name']
     date = parsed.get('release_date')
-    found = search_store.find_title(parsed.get('cur_id') or '')
+    raw_cur = parsed.get('cur_id') or ''
+    subsite: str | None = None
+    try:
+        payload, subsite = split_subsite(b64url_decode(raw_cur))
+        plain_cur = b64url_encode(payload)
+    except ValueError:
+        plain_cur = raw_cur
+    found = search_store.find_title(plain_cur)
     if found:
         title, result_site = found
-        return f'{title} [{result_site or site}] {date}' if date else f'{title} [{result_site or site}]'
-    return f'[{site}] {date}' if date else f'[{site}] {parsed.get("cur_id") or rating_key}'
+        return f'{title} [{result_site or subsite or site}] {date}' if date else f'{title} [{result_site or subsite or site}]'
+    branded = f'[{subsite or site}]'
+    return f'{branded} {date}' if date else f'{branded} {raw_cur or rating_key}'
 
 
 def _log_abandoned(task: asyncio.Task[PlexMetadataResponse | None]) -> None:
