@@ -316,3 +316,70 @@ def test_eta_includes_a_pause(monkeypatch) -> None:
 def test_the_snapshot_exposes_the_eta(monkeypatch) -> None:
     _seed(monkeypatch, [('f1', scrape_queue.FAST)], {scrape_queue.FAST: [10.0]})
     assert scrape_queue.snapshot()['etaSeconds'] == 10
+
+
+async def test_pausing_a_kind_holds_its_jobs_while_the_other_kind_runs() -> None:
+    ran: list[str] = []
+    done = asyncio.Event()
+
+    def job(name: str, last: bool = False):
+        async def _run() -> None:
+            ran.append(name)
+            if last:
+                done.set()
+
+        return _run
+
+    scrape_queue.pause_kind('search')
+    scrape_queue.enqueue('s1', job('s1'), kind='search')
+    scrape_queue.enqueue('u1', job('u1', last=True), kind='update')
+    await asyncio.wait_for(done.wait(), timeout=5)
+    await asyncio.sleep(0.05)
+    assert ran == ['u1'], 'the paused search must hold while the update runs'
+    assert scrape_queue.is_pending('s1'), 'the held job stays queued, not dropped'
+    assert scrape_queue.snapshot()['pausedKinds'] == ['search']
+
+    resumed = asyncio.Event()
+    scrape_queue.enqueue('s2', job('s2'), kind='search')
+
+    def finisher():
+        async def _run() -> None:
+            ran.append('s3')
+            resumed.set()
+
+        return _run
+
+    scrape_queue.enqueue('s3', finisher(), kind='search')
+    scrape_queue.resume_kind('search')
+    await asyncio.wait_for(resumed.wait(), timeout=5)
+    assert ran[1:] == ['s1', 's2', 's3'], 'held jobs resume first and in their original order'
+
+
+async def test_flushing_a_paused_kind_drops_the_held_jobs_too() -> None:
+    async def never() -> None:
+        raise AssertionError('a held job must not run')
+
+    scrape_queue.pause_kind('update')
+    scrape_queue.enqueue('h1', never, kind='update')
+    scrape_queue.enqueue('h2', never, kind='update')
+    await asyncio.sleep(0.05)
+    assert scrape_queue.flush('update') == 2
+    assert not scrape_queue.is_pending('h1') and not scrape_queue.is_pending('h2')
+    scrape_queue.resume_kind('update')
+    await asyncio.sleep(0.05)
+
+
+def test_a_paused_kind_leaves_the_eta_to_the_runnable_work(monkeypatch) -> None:
+    import time
+
+    pending = {
+        'f1': scrape_queue.QueueEntry(key='f1', kind='search', label='f1', queued_at=time.monotonic(), lane=scrape_queue.FAST),
+        'f2': scrape_queue.QueueEntry(key='f2', kind='update', label='f2', queued_at=time.monotonic(), lane=scrape_queue.FAST),
+    }
+    monkeypatch.setattr(scrape_queue, '_pending', pending)
+    monkeypatch.setattr(scrape_queue, '_running', {})
+    scrape_queue._durations[scrape_queue.FAST].clear()
+    scrape_queue._durations[scrape_queue.FAST].append(30.0)
+    scrape_queue.pause_kind('search')
+    assert scrape_queue._estimate_eta(0.0) == 30, 'held work must not inflate the estimate'
+    scrape_queue.resume_kind('search')

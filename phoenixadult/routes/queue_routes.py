@@ -40,7 +40,24 @@ async def flush(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'flushed': scrape_queue.flush(kind), **_state()})
 
 
+@router.post('/api/pause', dependencies=_admin)
+async def pause(request: Request) -> JSONResponse:
+    body = await read_json_body(request)
+    kind = str(body.get('kind') or '')
+    if kind not in ('search', 'update'):
+        return JSONResponse({'error': 'kind must be search or update'}, status_code=400)
+    scrape_queue.pause_kind(kind)
+    return JSONResponse({'ok': True, **_state()})
+
+
 @router.post('/api/resume', dependencies=_admin)
-async def resume() -> JSONResponse:
-    scrape_queue.resume()
+async def resume(request: Request) -> JSONResponse:
+    body = await read_json_body(request)
+    kind = str(body.get('kind') or '')
+    if kind:
+        if kind not in ('search', 'update'):
+            return JSONResponse({'error': 'kind must be search or update'}, status_code=400)
+        scrape_queue.resume_kind(kind)
+    else:
+        scrape_queue.resume()
     return JSONResponse({'ok': True, **_state()})

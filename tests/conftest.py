@@ -154,6 +154,7 @@ def _fresh_queue_pause() -> None:
 
     scrape_queue._paused_until = 0.0
     scrape_queue._pause_reason = ''
+    scrape_queue._kind_paused.clear()
 
 
 @pytest.fixture(autouse=True)

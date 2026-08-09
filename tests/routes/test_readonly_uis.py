@@ -86,6 +86,7 @@ def test_logos_and_queue_hide_their_write_controls(member: TestClient) -> None:
 
     queue = member.get('/queue').text
     assert 'flushKind(' not in queue.split('<script>')[0]
+    assert 'togglePause(' not in queue.split('<script>')[0], 'pause/resume is a write control and hides from non-admins'
     assert 'const IS_ADMIN = false;' in queue
     assert "flushKind('search')" in authed_client().get('/queue').text
 
@@ -109,6 +110,7 @@ def test_write_endpoints_reject_non_admins(member: TestClient) -> None:
         ('/logos/api/purge-all', {}),
         ('/logos/api/rescan', {}),
         ('/queue/api/flush', {'kind': 'search'}),
+        ('/queue/api/pause', {'kind': 'search'}),
         ('/queue/api/resume', {}),
     ]
     for path, body in posts:

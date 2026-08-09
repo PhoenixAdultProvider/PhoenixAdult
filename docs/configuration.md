@@ -87,7 +87,7 @@ the only way in, including from loopback.
   save/reset/reveal/restart/logs endpoints return 403 for non-admins.
 - **The other admin UIs are read-only for non-admins.** `/metadata`, `/people`,
   `/logos`, and `/queue` still open and browse normally, but every write control is
-  gone: no purge (single or bulk), prune, rescan, or flush; no image fetching on
+  gone: no purge (single or bulk), prune, rescan, flush, or queue pause/resume; no image fetching on
   People; the card action reads **View** instead of Edit, and the edit screens show
   locked fields with no add/remove chips, image rotate/remove, or Save, and no
   Refresh All (re-scraping overwrites snapshots). Each write endpoint behind those

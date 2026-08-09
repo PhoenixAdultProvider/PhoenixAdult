@@ -60,6 +60,8 @@ _pause_reason: str = ''
 _revision = 0
 _waiters: list[asyncio.Future[None]] = []
 _durations: dict[str, deque[float]] = {FAST: deque(maxlen=20), PACED: deque(maxlen=20)}
+_kind_paused: set[str] = set()
+_held: dict[str, list[tuple[QueueEntry, Callable[[], Awaitable[object]]]]] = {FAST: [], PACED: []}
 _DEFAULT_RUNTIME = 20.0
 
 
@@ -116,6 +118,32 @@ def resume() -> None:
     logger.info('scrape-queue', 'queue resumed')
 
 
+def pause_kind(kind: str) -> None:
+    _kind_paused.add(kind)
+    _bump()
+    logger.info('scrape-queue', f'{kind} queue paused - queued {kind} jobs hold until resumed')
+
+
+def resume_kind(kind: str) -> None:
+    _kind_paused.discard(kind)
+    for lane, queue in _queues.items():
+        woken = [(e, j) for e, j in _held[lane] if e.kind == kind]
+        if not woken:
+            continue
+        _held[lane] = [(e, j) for e, j in _held[lane] if e.kind != kind]
+        drained: list[tuple[QueueEntry, Callable[[], Awaitable[object]]]] = []
+        while True:
+            try:
+                drained.append(queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        for item in woken + drained:
+            queue.put_nowait(item)
+        _spawn_workers(lane)
+    _bump()
+    logger.info('scrape-queue', f'{kind} queue resumed')
+
+
 def ban_cleared(reason: str) -> None:
     global _paused_until, _pause_reason
     if paused_for() > 0 and _pause_reason == reason:
@@ -132,6 +160,12 @@ def paused_for() -> float:
 def flush(kind: str) -> int:
     global _cycle_total, _cycle_done
     dropped = 0
+    for lane in list(_held):
+        for entry, _job in [(e, j) for e, j in _held[lane] if e.kind == kind]:
+            _pending.pop(entry.key, None)
+            _persist_remove(entry.key)
+            dropped += 1
+        _held[lane] = [(e, j) for e, j in _held[lane] if e.kind != kind]
     for queue in _queues.values():
         kept: list[tuple[QueueEntry, Callable[[], Awaitable[object]]]] = []
         while True:
@@ -165,6 +199,8 @@ def _ensure_loop() -> None:
         _queues = {lane: asyncio.Queue() for lane in _LANE_WORKERS}
         _pending = {}
         _running = {}
+        for lane in _held:
+            _held[lane] = []
         _workers = {lane: [] for lane in _LANE_WORKERS}
         _cycle_total = 0
         _cycle_done = 0
@@ -237,6 +273,7 @@ def snapshot() -> dict[str, object]:
     rows = [row(e) for e in _pending.values() if e.key in _running] + [row(e) for e in _pending.values() if e.key not in _running]
     return {
         'etaSeconds': _estimate_eta(now),
+        'pausedKinds': sorted(_kind_paused),
         'pending': len(_pending),
         'running': len(_running),
         'slots': sum(_LANE_WORKERS.values()),
@@ -266,8 +303,9 @@ def _estimate_eta(now: float) -> int | None:
             return avg(lane)
         return max(0.0, avg(lane) - (now - started))
 
-    fast = [e for e in _pending.values() if e.lane == FAST]
-    paced = [e for e in _pending.values() if e.lane == PACED]
+    runnable = [e for e in _pending.values() if e.kind not in _kind_paused or e.key in _running]
+    fast = [e for e in runnable if e.lane == FAST]
+    paced = [e for e in runnable if e.lane == PACED]
     eta_fast = math.ceil(len(fast) / _LANE_WORKERS[FAST]) * avg(FAST) if fast else 0.0
     per_scene_gap = env.scene_gap + (pacing._GAP_JITTER_MIN + pacing._GAP_JITTER_MAX) / 2
     window_floor = pacing._SCENE_WINDOW / pacing._SCENE_WINDOW_MAX
@@ -294,6 +332,9 @@ async def _run(lane: str) -> None:
             entry, job = queue.get_nowait()
         except asyncio.QueueEmpty:
             return
+        if entry.kind in _kind_paused:
+            _held[lane].append((entry, job))
+            continue
         _running[entry.key] = time.monotonic()
         _bump()
         try:

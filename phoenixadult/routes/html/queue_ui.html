@@ -41,6 +41,9 @@
     .flush-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px;
                  background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; vertical-align: 1px; }
     .flush-btn:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
+    .pause-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-muted-border); border-radius: 5px;
+                 background: var(--button-muted-bg); color: var(--button-muted-text); cursor: pointer; vertical-align: 1px; }
+    .pause-btn:hover { border-color: var(--input-focus-border); }
 
     .progress { margin-bottom: 18px; }
     .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
@@ -86,12 +89,14 @@
   <div class="queues" id="queues" data-active="search">
     <div class="queue-col" id="searches-col">
       <h2>Searches <span class="count-badge" id="search-count"></span>
-{% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
+{% if is_admin() %}      <button type="button" class="pause-btn" id="pause-search" onclick="togglePause('search')">Pause</button>
+      <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
       <div class="list" id="searches"></div>
     </div>
     <div class="queue-col" id="updates-col">
       <h2>Updates <span class="count-badge" id="update-count"></span>
-{% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
+{% if is_admin() %}      <button type="button" class="pause-btn" id="pause-update" onclick="togglePause('update')">Pause</button>
+      <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
       <div class="list" id="updates"></div>
     </div>
   </div>
@@ -162,8 +167,11 @@
 
       for (const [kind, listId, countId] of [['search', 'searches', 'search-count'], ['update', 'updates', 'update-count']]) {
         const rows = (STATE.entries || []).filter((e) => e.kind === kind);
-        document.getElementById(countId).textContent = rows.length + ' queued';
+        const kindPaused = (STATE.pausedKinds || []).includes(kind);
+        document.getElementById(countId).textContent = rows.length + ' queued' + (kindPaused ? ' — paused' : '');
         document.getElementById('tab-' + kind + '-count').textContent = '(' + rows.length + ')';
+        const pauseBtn = document.getElementById('pause-' + kind);
+        if (pauseBtn) pauseBtn.textContent = kindPaused ? 'Resume' : 'Pause';
         document.getElementById(listId).innerHTML = rows.map((e, i) => `
           <div class="item ${e.running ? 'running' : ''}">
             ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
@@ -210,6 +218,11 @@
     }
 
     function resumeQueue() { post('/queue/api/resume'); }
+
+    function togglePause(kind) {
+      const paused = (STATE.pausedKinds || []).includes(kind);
+      post(paused ? '/queue/api/resume' : '/queue/api/pause', { kind });
+    }
 
     function showQueue(kind) {
       document.getElementById('queues').dataset.active = kind;
