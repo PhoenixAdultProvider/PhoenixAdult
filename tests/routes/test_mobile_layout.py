@@ -87,9 +87,15 @@ def test_the_account_sessions_table_labels_its_cells(pages: dict[str, str]) -> N
         assert marker in account, marker
 
 
-def test_the_queue_lists_sit_side_by_side_and_stack_on_phones(pages: dict[str, str]) -> None:
+def test_the_queue_lists_are_columns_on_desktop_and_tabs_on_phones(pages: dict[str, str]) -> None:
     queue = pages['queue']
-    assert '.queues { display: grid; grid-template-columns: 1fr 1fr;' in queue, 'Searches and Updates should be two columns'
+    assert '.queues { display: grid; grid-template-columns: 1fr 1fr;' in queue, 'Searches and Updates should be two columns on desktop'
+    assert '.queue-tabs { display: none; }' in queue, 'the tab bar stays hidden on desktop'
     assert queue.index('id="searches"') < queue.index('id="updates"')
+
     mobile = ''.join(re.findall(r'@media \(max-width:\s*\d+px\)\s*\{(.*?)\n\s{0,6}\}\n', queue, re.DOTALL))
-    assert '.queues { grid-template-columns: 1fr; }' in mobile, 'the columns must stack on phones'
+    assert '.queue-tabs { display: flex;' in mobile, 'phones get the Searches/Updates tab bar'
+    assert ".queues[data-active='search'] #updates-col { display: none; }" in mobile, 'only the active list shows on phones'
+    assert ".queues[data-active='update'] #searches-col { display: none; }" in mobile
+    assert 'data-active="search"' in queue, 'Searches is the default tab'
+    assert "showQueue('update')" in queue and 'function showQueue' in queue

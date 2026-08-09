@@ -22,6 +22,7 @@
     .count-badge { font-size: 12px; color: var(--label-text); font-weight: 400; }
     .queues { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
     .queue-col { min-width: 0; }
+    .queue-tabs { display: none; }
     .eta { font-size: 13px; color: var(--status-warn-text); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
     .list { display: flex; flex-direction: column; gap: 6px; }
     .item { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
@@ -53,6 +54,13 @@
       .pacers { gap: 8px; }
       .pacer { width: 100%; flex-wrap: wrap; gap: 4px 14px; }
       .queues { grid-template-columns: 1fr; }
+      .queue-tabs { display: flex; gap: 8px; margin: 16px 0 4px; }
+      .queue-tab { flex: 1 1 0; padding: 11px 8px; font-size: 14px; border-radius: 8px; cursor: pointer;
+                   background: var(--card-bg); border: 1px solid var(--card-border); color: var(--soft-text); }
+      .queue-tab.active { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
+      .queue-tab .count-badge { color: inherit; opacity: 0.8; }
+      .queues[data-active='search'] #updates-col { display: none; }
+      .queues[data-active='update'] #searches-col { display: none; }
       .item { flex-wrap: wrap; }
       .item .label { flex: 1 1 100%; order: 1; }
       .item .age { margin-left: auto; }
@@ -71,13 +79,17 @@
   </div>
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
-  <div class="queues">
-    <div class="queue-col">
+  <div class="queue-tabs" id="queueTabs">
+    <button type="button" class="queue-tab active" data-kind="search" onclick="showQueue('search')">Searches <span class="count-badge" id="tab-search-count"></span></button>
+    <button type="button" class="queue-tab" data-kind="update" onclick="showQueue('update')">Updates <span class="count-badge" id="tab-update-count"></span></button>
+  </div>
+  <div class="queues" id="queues" data-active="search">
+    <div class="queue-col" id="searches-col">
       <h2>Searches <span class="count-badge" id="search-count"></span>
 {% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
       <div class="list" id="searches"></div>
     </div>
-    <div class="queue-col">
+    <div class="queue-col" id="updates-col">
       <h2>Updates <span class="count-badge" id="update-count"></span>
 {% if is_admin() %}      <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
       <div class="list" id="updates"></div>
@@ -151,6 +163,7 @@
       for (const [kind, listId, countId] of [['search', 'searches', 'search-count'], ['update', 'updates', 'update-count']]) {
         const rows = (STATE.entries || []).filter((e) => e.kind === kind);
         document.getElementById(countId).textContent = rows.length + ' queued';
+        document.getElementById('tab-' + kind + '-count').textContent = '(' + rows.length + ')';
         document.getElementById(listId).innerHTML = rows.map((e, i) => `
           <div class="item ${e.running ? 'running' : ''}">
             ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
@@ -197,6 +210,11 @@
     }
 
     function resumeQueue() { post('/queue/api/resume'); }
+
+    function showQueue(kind) {
+      document.getElementById('queues').dataset.active = kind;
+      document.querySelectorAll('.queue-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.kind === kind));
+    }
 
     render();
     setInterval(render, 1000);
