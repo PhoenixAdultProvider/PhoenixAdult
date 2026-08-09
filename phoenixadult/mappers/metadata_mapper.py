@@ -145,7 +145,7 @@ class MetadataMapper:
         search_sub = search_sub if search_sub and normalize_site_key(search_sub) != normalize_site_key(site_name) else None
         if search_sub and scraper_type:
             canonical = find_site(search_sub)
-            if canonical is not None and canonical.scraper_config.type == scraper_type:
+            if canonical is not None and canonical.scraper_config.type == scraper_type and normalize_site_key(canonical.name) == normalize_site_key(search_sub):
                 site_name = canonical.name
                 search_sub = None
         rating_key = to_rating_key(embed_subsite(raw.cur_id, search_sub), site_name, date)

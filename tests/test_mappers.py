@@ -256,3 +256,23 @@ def test_a_same_named_site_of_another_scraper_never_hijacks_the_key() -> None:
     result = SearchResult(title='X', scene_url='https://example.com/6', cur_id=cur, subsite='Step Siblings Caught')
     mapped = mapper.to_match_result(result, 'Some Other Site', 100, 'tv.plex.test', '2024-01-18', scraper_type='not-nubiles')
     assert 'someothersite' in mapped.ratingKey, 'a type mismatch keeps the key on the searched site'
+
+
+def test_an_alias_subsite_keeps_its_embedding_and_its_tagline_carrier() -> None:
+    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.registry import find_site
+    from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id
+    from phoenixadult.utils.plex.rating_key import parse_rating_key
+
+    resolved = find_site('Big Tits in Uniform')
+    assert resolved is not None and resolved.name == 'Brazzers', 'the premise: this name is an alias, not its own site'
+
+    mapper = MetadataMapper()
+    cur = pack_cur_id(['https://www.brazzers.com/video/x/el-cruce', '2015-09-24'])
+    result = SearchResult(title='El Cruce', scene_url='https://www.brazzers.com/video/x/el-cruce', cur_id=cur, subsite='Big Tits in Uniform')
+    mapped = mapper.to_match_result(result, 'Brazzers', 100, 'tv.plex.test', '2015-09-24', scraper_type=resolved.scraper_config.type)
+    parsed = parse_rating_key(mapped.ratingKey)
+    assert parsed is not None
+    decoded = b64url_decode(parsed['cur_id'] or '')
+    assert '\x1fBig Tits in Uniform' in decoded, 'the alias subsite must stay embedded - it is what carries the tagline to updates'
