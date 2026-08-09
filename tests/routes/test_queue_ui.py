@@ -61,3 +61,13 @@ def test_a_bare_resume_still_lifts_the_global_pause() -> None:
     client = authed_client()
     assert client.post('/queue/api/resume', json={}).status_code == 200
     assert scrape_queue.paused_for() == 0
+
+
+def test_admins_can_remove_a_single_queued_job() -> None:
+    from tests.conftest import authed_client
+
+    client = authed_client()
+    assert client.post('/queue/api/remove', json={'key': 'not-there'}).status_code == 404
+    assert client.post('/queue/api/remove', json={}).status_code == 400
+    body = client.get('/queue').text
+    assert 'item-x' in body and "post('/queue/api/remove'" in body

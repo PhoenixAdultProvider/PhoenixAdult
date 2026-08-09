@@ -157,6 +157,40 @@ def paused_for() -> float:
     return max(0.0, _paused_until - time.monotonic())
 
 
+def remove(key: str) -> bool:
+    global _cycle_total, _cycle_done
+    if key not in _pending or key in _running:
+        return False
+    removed = False
+    for lane, queue in _queues.items():
+        kept: list[tuple[QueueEntry, Callable[[], Awaitable[object]]]] = []
+        while True:
+            try:
+                entry, job = queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            if entry.key == key:
+                removed = True
+            else:
+                kept.append((entry, job))
+        for item in kept:
+            queue.put_nowait(item)
+        before = len(_held[lane])
+        _held[lane] = [(e, j) for e, j in _held[lane] if e.key != key]
+        removed = removed or len(_held[lane]) != before
+    if not removed:
+        return False
+    _pending.pop(key, None)
+    _persist_remove(key)
+    _cycle_total = max(_cycle_done, _cycle_total - 1)
+    if not _pending:
+        _cycle_total = 0
+        _cycle_done = 0
+    _bump()
+    logger.info('scrape-queue', f'removed queued job {key}')
+    return True
+
+
 def flush(kind: str) -> int:
     global _cycle_total, _cycle_done
     dropped = 0

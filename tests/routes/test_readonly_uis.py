@@ -111,6 +111,7 @@ def test_write_endpoints_reject_non_admins(member: TestClient) -> None:
         ('/logos/api/rescan', {}),
         ('/queue/api/flush', {'kind': 'search'}),
         ('/queue/api/pause', {'kind': 'search'}),
+        ('/queue/api/remove', {'key': 'x'}),
         ('/queue/api/resume', {}),
     ]
     for path, body in posts:

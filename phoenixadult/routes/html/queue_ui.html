@@ -44,6 +44,9 @@
     .pause-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-muted-border); border-radius: 5px;
                  background: var(--button-muted-bg); color: var(--button-muted-text); cursor: pointer; vertical-align: 1px; }
     .pause-btn:hover { border-color: var(--input-focus-border); }
+    .item-x { flex: none; width: 26px; height: 26px; padding: 0; border-radius: 5px; border: 1px solid var(--button-muted-border);
+              background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; font-size: 15px; line-height: 1; }
+    .item-x:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); border-color: var(--button-danger-deep-bg); }
 
     .progress { margin-bottom: 18px; }
     .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
@@ -67,6 +70,7 @@
       .item { flex-wrap: wrap; }
       .item .label { flex: 1 1 100%; order: 1; }
       .item .age { margin-left: auto; }
+      .item-x { width: 40px; height: 40px; font-size: 18px; }
       .pause-banner { flex-wrap: wrap; }
     }
   </style>
@@ -104,6 +108,7 @@
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     let STATE = {{ state|tojson }};
+    const LAST_ROWS = { search: [], update: [] };
     let fetchedAt = Date.now();
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
@@ -167,6 +172,7 @@
 
       for (const [kind, listId, countId] of [['search', 'searches', 'search-count'], ['update', 'updates', 'update-count']]) {
         const rows = (STATE.entries || []).filter((e) => e.kind === kind);
+        LAST_ROWS[kind] = rows;
         const kindPaused = (STATE.pausedKinds || []).includes(kind);
         document.getElementById(countId).textContent = rows.length + ' queued' + (kindPaused ? ' — paused' : '');
         document.getElementById('tab-' + kind + '-count').textContent = '(' + rows.length + ')';
@@ -177,6 +183,7 @@
             ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
             <span class="label">${esc(e.label)}</span>
             <span class="age">${e.running ? 'running ' + fmtSecs(e.running_for + drift) : 'waiting ' + fmtSecs(e.waited + drift)}</span>
+            ${IS_ADMIN && !e.running ? `<button type="button" class="item-x" data-kind="${kind}" data-idx="${i}" title="Remove from queue">×</button>` : ''}
           </div>`).join('') || '<div class="empty">nothing queued</div>';
       }
     }
@@ -218,6 +225,15 @@
     }
 
     function resumeQueue() { post('/queue/api/resume'); }
+
+    for (const listId of ['searches', 'updates']) {
+      document.getElementById(listId).addEventListener('click', (ev) => {
+        const btn = ev.target.closest('.item-x');
+        if (!btn) return;
+        const row = (LAST_ROWS[btn.dataset.kind] || [])[Number(btn.dataset.idx)];
+        if (row) post('/queue/api/remove', { key: row.key });
+      });
+    }
 
     function togglePause(kind) {
       const paused = (STATE.pausedKinds || []).includes(kind);

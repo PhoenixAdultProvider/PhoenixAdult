@@ -383,3 +383,47 @@ def test_a_paused_kind_leaves_the_eta_to_the_runnable_work(monkeypatch) -> None:
     scrape_queue.pause_kind('search')
     assert scrape_queue._estimate_eta(0.0) == 30, 'held work must not inflate the estimate'
     scrape_queue.resume_kind('search')
+
+
+async def test_remove_drops_one_pending_job_and_leaves_the_rest() -> None:
+    started = asyncio.Event()
+    release = asyncio.Event()
+    ran: list[str] = []
+
+    async def slow() -> None:
+        started.set()
+        await release.wait()
+
+    def tracked(name: str):
+        async def _run() -> None:
+            ran.append(name)
+
+        return _run
+
+    scrape_queue.enqueue('busy1', slow, paced=True)
+    await asyncio.wait_for(started.wait(), timeout=5)
+    scrape_queue.enqueue('victim', tracked('victim'), paced=True)
+    scrape_queue.enqueue('keeper', tracked('keeper'), paced=True)
+
+    assert scrape_queue.remove('victim') is True
+    assert not scrape_queue.is_pending('victim')
+    assert scrape_queue.is_pending('keeper')
+    assert scrape_queue.remove('busy1') is False, 'a running job cannot be removed'
+    assert scrape_queue.remove('missing') is False
+
+    release.set()
+    await _drain()
+    assert ran == ['keeper'], 'the removed job never runs; the keeper does'
+
+
+async def test_remove_reaches_jobs_held_by_a_paused_kind() -> None:
+    async def never() -> None:
+        raise AssertionError('held jobs must not run')
+
+    scrape_queue.pause_kind('update')
+    scrape_queue.enqueue('held-victim', never, kind='update')
+    await asyncio.sleep(0.05)
+    assert scrape_queue.remove('held-victim') is True
+    scrape_queue.resume_kind('update')
+    await asyncio.sleep(0.05)
+    assert not scrape_queue.is_pending('held-victim')

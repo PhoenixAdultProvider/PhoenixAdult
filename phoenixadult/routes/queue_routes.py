@@ -40,6 +40,16 @@ async def flush(request: Request) -> JSONResponse:
     return JSONResponse({'ok': True, 'flushed': scrape_queue.flush(kind), **_state()})
 
 
+@router.post('/api/remove', dependencies=_admin)
+async def remove(request: Request) -> JSONResponse:
+    body = await read_json_body(request)
+    key = str(body.get('key') or '')
+    if not key:
+        return JSONResponse({'error': 'key is required'}, status_code=400)
+    ok = scrape_queue.remove(key)
+    return JSONResponse({'ok': ok, **_state()}, status_code=200 if ok else 404)
+
+
 @router.post('/api/pause', dependencies=_admin)
 async def pause(request: Request) -> JSONResponse:
     body = await read_json_body(request)
