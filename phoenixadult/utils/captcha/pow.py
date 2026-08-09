@@ -29,6 +29,10 @@ _BASE_HEADERS = {
 }
 
 
+def _same_site(a: str, b: str) -> bool:
+    return a.lower().removeprefix('www.') == b.lower().removeprefix('www.')
+
+
 def solve_pow(challenge: str, difficulty: int) -> int:
     target = 1 << (256 - difficulty)
     nonce = 0
@@ -62,12 +66,14 @@ async def get_verified_cookies(
                     if get_resp.status_code not in (301, 302, 303, 307, 308) or not loc:
                         break
                     nxt = urljoin(gallery_url, loc)
-                    if (urlsplit(nxt).hostname or '').lower() != host.lower():
+                    if not _same_site(urlsplit(nxt).hostname or '', host):
                         break
                     gallery_url = nxt
         except httpx2.HTTPError as err:
             logger.warn('pow', f'GET {gallery_url} failed: {err}')
             return None
+        final = urlsplit(gallery_url)
+        base = f'{final.scheme}://{final.netloc}'
         if get_resp.status_code == 429:
             logger.warn('pow', f'rate-limited on {gallery_url}')
             return None
