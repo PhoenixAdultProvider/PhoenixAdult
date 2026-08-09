@@ -210,3 +210,49 @@ def test_priority_artwork_outranks_larger_images_within_a_kind() -> None:
 
     unranked = build_artwork(valid)
     assert [img.url for img in unranked if img.type == 'coverPoster'][0] == 'https://d18/still-huge.jpg'
+
+
+def test_a_registered_series_reconciles_to_one_rating_key() -> None:
+    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    mapper = MetadataMapper()
+    cur = pack_cur_id(['183626', '2024-01-18'])
+    shared = {'title': 'Stepsister Needs An Orgasm', 'scene_url': 'https://stepsiblingscaught.com/video/watch/183626', 'cur_id': cur}
+
+    via_own_site = mapper.to_match_result(
+        SearchResult(**shared, subsite='Step Siblings Caught'), 'Step Siblings Caught', 100, 'tv.plex.test', '2024-01-18', scraper_type='nubiles'
+    )
+    via_network = mapper.to_match_result(
+        SearchResult(**shared, subsite='Step Siblings Caught'), 'Nubiles Porn', 100, 'tv.plex.test', '2024-01-18', scraper_type='nubiles'
+    )
+    assert via_own_site.ratingKey == via_network.ratingKey, 'the same scene must reconcile no matter which network domain the filename named'
+    assert 'stepsiblingscaught' in via_network.ratingKey
+
+
+def test_an_unregistered_series_still_embeds_the_subsite() -> None:
+    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id
+    from phoenixadult.utils.plex.rating_key import parse_rating_key
+
+    mapper = MetadataMapper()
+    cur = pack_cur_id(['5', '2024-01-18'])
+    result = SearchResult(title='X', scene_url='https://nubiles-porn.com/video/watch/5', cur_id=cur, subsite='Some Unlisted Series')
+    mapped = mapper.to_match_result(result, 'Nubiles Porn', 100, 'tv.plex.test', '2024-01-18', scraper_type='nubiles')
+    assert 'nubilesporn' in mapped.ratingKey
+    parsed = parse_rating_key(mapped.ratingKey)
+    assert parsed is not None and '\x1f' in b64url_decode(parsed['cur_id'] or '')
+
+
+def test_a_same_named_site_of_another_scraper_never_hijacks_the_key() -> None:
+    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    mapper = MetadataMapper()
+    cur = pack_cur_id(['6', '2024-01-18'])
+    result = SearchResult(title='X', scene_url='https://example.com/6', cur_id=cur, subsite='Step Siblings Caught')
+    mapped = mapper.to_match_result(result, 'Some Other Site', 100, 'tv.plex.test', '2024-01-18', scraper_type='not-nubiles')
+    assert 'someothersite' in mapped.ratingKey, 'a type mismatch keeps the key on the searched site'
