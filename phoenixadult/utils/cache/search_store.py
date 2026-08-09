@@ -75,23 +75,24 @@ def load(key: SearchKey) -> list[SearchResult] | None:
 
 def load_similar(key: SearchKey) -> list[SearchResult] | None:
     site, title, date, scene_id, language = key
-    if not date or not title:
+    if not date:
         return None
     rows = (
         db.connect()
-        .execute('SELECT title FROM searches WHERE site = ? AND date = ? AND scene_id = ? AND language = ?', (site, date, scene_id, language))
+        .execute(
+            'SELECT title FROM searches WHERE site = ? AND date = ? AND scene_id = ? AND language = ? ORDER BY saved_at DESC',
+            (site, date, scene_id, language),
+        )
         .fetchall()
     )
-    best: str | None = None
     for row in rows:
         stored_title = str(row['title'])
-        if stored_title == title or not (stored_title in title or title in stored_title):
+        if stored_title == title:
             continue
-        if best is None or len(stored_title) > len(best):
-            best = stored_title
-    if best is None:
-        return None
-    return load((site, best, date, scene_id, language))
+        results = load((site, stored_title, date, scene_id, language))
+        if results:
+            return results
+    return None
 
 
 def find_title(cur_id: str) -> tuple[str, str] | None:

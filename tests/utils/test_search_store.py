@@ -65,7 +65,38 @@ def test_load_similar_requires_same_site_and_date() -> None:
     search_store.save(('Bratty Sis', 'hailey rose', '2024-06-21', '', ''), [SearchResult(title='X', scene_url='https://x/2', cur_id='bs1')])
     assert search_store.load_similar(('Bratty Sis', 'hailey rose extra', '2024-06-22', '', '')) is None
     assert search_store.load_similar(('My Family Pies', 'hailey rose extra', '2024-06-21', '', '')) is None
-    assert search_store.load_similar(('Bratty Sis', 'unrelated title', '2024-06-21', '', '')) is None
+    assert search_store.load_similar(('Bratty Sis', 'hailey rose', '2024-06-21', '555', '')) is None, 'a scene id mismatch is a different search'
+
+
+def test_load_similar_matches_any_rename_on_the_same_date() -> None:
+    search_store.save(('Bratty Sis', 'hailey rose', '2024-06-21', '', ''), [SearchResult(title='X', scene_url='https://x/2', cur_id='bs1')])
+    hit = search_store.load_similar(('Bratty Sis', 'unrelated title', '2024-06-21', '', ''))
+    assert hit is not None and hit[0].cur_id == 'bs1', 'results are keyed by site+date+id; the title only ever scored them'
+
+
+def test_load_similar_survives_word_substitution_and_insertion() -> None:
+    old_fs = ('Family Swap', 'jessica ryan and michelle anthony 4th of july family shootout', '2021-06-27', '', '')
+    search_store.save(old_fs, [SearchResult(title='4th of July Family Shootout', scene_url='https://x/fs', cur_id='fs1')])
+    renamed_fs = ('Family Swap', 'jessica ryan and michelle anthony fourth of july family shootout', '2021-06-27', '', '')
+    hit = search_store.load_similar(renamed_fs)
+    assert hit is not None and hit[0].cur_id == 'fs1', '4th -> fourth is a word substitution, not a substring'
+
+    old_css = ('Cum Swapping Sis', 'molly little and scarlet skies black friday deal', '2022-11-28', '', '')
+    search_store.save(old_css, [SearchResult(title='Black Friday Deal', scene_url='https://x/css', cur_id='css1')])
+    renamed_css = ('Cum Swapping Sis', 'molly little and scarlet skies stepsisters black friday deal', '2022-11-28', '', '')
+    hit = search_store.load_similar(renamed_css)
+    assert hit is not None and hit[0].cur_id == 'css1', 'a mid-title insertion breaks substring containment'
+
+
+def test_load_similar_prefers_the_newest_stored_search(monkeypatch) -> None:
+    import time as _time
+
+    search_store._write(
+        ('Bratty Sis', 'old scrape', '2024-06-21', '', ''), [SearchResult(title='Old', scene_url='https://x/o', cur_id='old')], _time.time() - 500
+    )
+    search_store._write(('Bratty Sis', 'new scrape', '2024-06-21', '', ''), [SearchResult(title='New', scene_url='https://x/n', cur_id='new')], _time.time())
+    hit = search_store.load_similar(('Bratty Sis', 'renamed again', '2024-06-21', '', ''))
+    assert hit is not None and hit[0].cur_id == 'new'
 
 
 def test_find_title_resolves_cur_id_to_stored_result() -> None:
