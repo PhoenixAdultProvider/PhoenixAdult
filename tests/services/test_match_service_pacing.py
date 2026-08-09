@@ -150,3 +150,101 @@ async def test_search_store_survives_a_fresh_service(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(fresh._scraper, 'search', fail_search)
     served = await fresh._search_results(_ctx('Stored  Scene'), PROVIDER)
     assert served is not None and served[0].title == 'Stored Scene'
+
+
+def _stored_ctx(title: str, scene_id: str | None = None) -> SearchContext:
+    return SearchContext(title=title, encoded=title, search_site=SITE.name, site_info=SITE, search_date='2022-10-14', scene_id=scene_id)
+
+
+async def test_stored_results_rescore_live_when_the_filename_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+
+    svc = MatchService()
+    stale = [SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/555', cur_id='abc', score=12.0)]
+    search_store.save((SITE.name, 'emelie winning on date night junk words', '2022-10-14', '', ''), stale)
+
+    async def must_not_scrape(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('the stored search must be reused, not re-scraped')
+
+    monkeypatch.setattr(svc._scraper, 'search', must_not_scrape)
+    results = await svc._search_results(_stored_ctx('winning on date night junk'), PROVIDER)
+    assert results is not None and len(results) == 1
+    assert results[0].score is not None and results[0].score > 12.0, 'the better filename must raise the stored score'
+
+
+async def test_an_exact_title_store_hit_also_carries_a_live_score(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+
+    svc = MatchService()
+    stale = [SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/555', cur_id='abc', score=3.0)]
+    search_store.save((SITE.name, 'winning on date night', '2022-10-14', '', ''), stale)
+
+    async def must_not_scrape(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('exact hits replay from the store')
+
+    monkeypatch.setattr(svc._scraper, 'search', must_not_scrape)
+    results = await svc._search_results(_stored_ctx('winning on date night'), PROVIDER)
+    assert results is not None and results[0].score == 100.0, 'a stale stored score never outlives the live one'
+
+
+async def test_a_scene_id_match_keeps_its_perfect_score(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    svc = MatchService()
+    stored = [
+        SearchResult(
+            title='Totally Different Words', scene_url='https://nubilefilms.com/video/watch/555', cur_id=pack_cur_id(['555', '2022-10-14']), score=100.0
+        ),
+        SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/556', cur_id=pack_cur_id(['556', '2022-10-14']), score=40.0),
+    ]
+    search_store.save((SITE.name, 'winning on date night extra', '2022-10-14', '555', ''), stored)
+
+    async def must_not_scrape(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('stored')
+
+    monkeypatch.setattr(svc._scraper, 'search', must_not_scrape)
+    results = await svc._search_results(_stored_ctx('winning on date night', scene_id='555'), PROVIDER)
+    assert results is not None
+    by_id = {r.cur_id: r for r in results}
+    assert by_id[pack_cur_id(['555', '2022-10-14'])].score == 100.0, 'an exact scene-id match is never downgraded by the title'
+    other = by_id[pack_cur_id(['556', '2022-10-14'])].score
+    assert other is not None and other > 40.0, 'the sibling result is title-rescored'
+
+
+async def test_an_off_date_stored_result_is_scored_by_date_distance(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+    from phoenixadult.utils.helpers.helpers import date_distance_score
+
+    svc = MatchService()
+    stored = [
+        SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/557', cur_id='off', display_date='2022-10-12', score=99.0),
+        SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/558', cur_id='on', display_date='2022-10-14', score=5.0),
+    ]
+    search_store.save((SITE.name, 'winning on date night stale words', '2022-10-14', '', ''), stored)
+
+    async def must_not_scrape(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('stored')
+
+    monkeypatch.setattr(svc._scraper, 'search', must_not_scrape)
+    results = await svc._search_results(_stored_ctx('winning on date night'), PROVIDER)
+    assert results is not None
+    by_id = {r.cur_id: r for r in results}
+    assert by_id['off'].score == float(date_distance_score('2022-10-14', '2022-10-12')), 'a different date scores by date distance'
+    assert by_id['on'].score == 100.0, 'a same-date result falls through to the title, which matches exactly here'
+    assert results[0].cur_id == 'on', 'the rescored order puts the real match first'
+
+
+async def test_results_without_scraper_ids_or_dates_fall_through_to_the_title(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache import search_store
+
+    svc = MatchService()
+    stored = [SearchResult(title='Winning on Date Night', scene_url='https://nubilefilms.com/video/watch/9', cur_id='!!not-packed!!', score=1.0)]
+    search_store.save((SITE.name, 'winning on date night leftover', '2022-10-14', '555', ''), stored)
+
+    async def must_not_scrape(search_data: SearchContext) -> list[SearchResult]:
+        raise AssertionError('stored')
+
+    monkeypatch.setattr(svc._scraper, 'search', must_not_scrape)
+    results = await svc._search_results(_stored_ctx('winning on date night', scene_id='555'), PROVIDER)
+    assert results is not None and results[0].score == 100.0, 'no scraper id and no date means the title decides - and it matches'

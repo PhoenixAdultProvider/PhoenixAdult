@@ -20,7 +20,7 @@ from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score
+from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score, unpack_cur_id
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
 from phoenixadult.utils.logging.logger import logger
@@ -44,6 +44,32 @@ class MatchRequest:
 
 _SEARCH_MEMO_TTL = 900.0
 _SEARCH_MEMO_MAX = 512
+
+
+def _result_scene_id(result: SearchResult) -> str | None:
+    try:
+        return unpack_cur_id(result.cur_id).get('head')
+    except ValueError:
+        return None
+
+
+def _live_score(result: SearchResult, search_data: SearchContext) -> float:
+    from phoenixadult.utils.helpers.helpers import date_distance_score
+    from phoenixadult.utils.processors.actor_strip import best_title_score
+
+    if search_data.scene_id and _result_scene_id(result) == search_data.scene_id:
+        return 100.0
+    if search_data.search_date and result.display_date and result.display_date != search_data.search_date:
+        return float(date_distance_score(search_data.search_date, result.display_date))
+    return float(best_title_score(search_data.title, result.title, search_data.site_info))
+
+
+def _live_scores(results: list[SearchResult], search_data: SearchContext) -> list[SearchResult]:
+    from dataclasses import replace
+
+    rescored = [replace(result, score=_live_score(result, search_data)) for result in results]
+    rescored.sort(key=lambda r: r.score or 0.0, reverse=True)
+    return rescored
 
 
 class MatchService:
@@ -76,13 +102,15 @@ class MatchService:
         paced = self._is_paced(search_data)
         if paced:
             stored = await run_in('store', search_store.load, key)
-            if stored is None:
+            if stored is not None:
+                logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
+                stored = _live_scores(stored, search_data)
+            else:
                 stored = await run_in('store', search_store.load_similar, key)
                 if stored is not None:
-                    await run_in('store', search_store.save, key, stored)
                     logger.info(provider.id, f'search store substring hit for "{search_data.title}" on {search_data.site_info.name} (renamed file)')
-            else:
-                logger.info(provider.id, f'search store hit for "{search_data.title}" on {search_data.site_info.name}')
+                    stored = _live_scores(stored, search_data)
+                    await run_in('store', search_store.save, key, stored)
             if stored is not None:
                 self._search_memo[key] = stored
                 return stored
