@@ -4,7 +4,7 @@
   (function () {
     const MODE_KEY = 'pa-theme';
     const NAME_KEYS = { dark: 'pa-theme-dark', light: 'pa-theme-light' };
-    const THEMES = { dark: ['midnight', 'forest'], light: ['day', 'meadow'] };
+    const THEMES = { dark: ['midnight', 'forest'], light: ['sky', 'meadow'] };
     const SERVER = window.paUserTheme || {};
     const media = matchMedia('(prefers-color-scheme: light)');
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };

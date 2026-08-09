@@ -1,7 +1,7 @@
-/* Day — light theme.
+/* Sky — light theme.
  * Shared element colors first, then per-page overrides: set a variable inside a
  * page block to restyle that element on that page only. */
-:root[data-theme-name="day"], [data-theme-preview="day"] {
+:root[data-theme-name="sky"], [data-theme-preview="sky"] {
   color-scheme: light;
 
   /* ── Page ── */
@@ -196,24 +196,24 @@
 }
 
 /* ── Metadata Page ── */
-[data-theme-name="day"] [data-page="metadata"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="metadata"] {
+[data-theme-name="sky"] [data-page="metadata"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="metadata"] {
 }
 
 /* ── Metadata Edit Page ── */
-[data-theme-name="day"] [data-page="metadata-edit"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="metadata-edit"] {
+[data-theme-name="sky"] [data-page="metadata-edit"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="metadata-edit"] {
 }
 
 /* ── People Page ── */
-[data-theme-name="day"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="people"] {
+[data-theme-name="sky"] [data-page="people"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="people"] {
   --banner-danger-border: #b91c1c;
 }
 
 /* ── People Edit Page ── */
-[data-theme-name="day"] [data-page="people-edit"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="people-edit"] {
+[data-theme-name="sky"] [data-page="people-edit"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="people-edit"] {
 }
 
 /* ── Config Page ── */
-[data-theme-name="day"] [data-page="config"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="config"] {
+[data-theme-name="sky"] [data-page="config"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="config"] {
   --button-primary-bg: #6366f1;
   --button-primary-hover-bg: #4f46e5;
   --input-focus-border: #6366f1;
@@ -222,15 +222,15 @@
 }
 
 /* ── Logos Page ── */
-[data-theme-name="day"] [data-page="logos"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="logos"] {
+[data-theme-name="sky"] [data-page="logos"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="logos"] {
 }
 
 /* ── Queue Page ── */
-[data-theme-name="day"] [data-page="queue"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="queue"] {
+[data-theme-name="sky"] [data-page="queue"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="queue"] {
 }
 
 /* ── Dev Page ── */
-[data-theme-name="day"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="day"][data-page="dev"] {
+[data-theme-name="sky"] [data-page="dev"]:not([data-theme-preview]), [data-theme-preview="sky"][data-page="dev"] {
   --button-primary-bg: #6366f1;
   --button-primary-hover-bg: #4f46e5;
   --input-focus-border: #6366f1;

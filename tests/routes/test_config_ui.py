@@ -202,7 +202,7 @@ def test_metadataapi_tokens_are_per_user(client: TestClient) -> None:
 def test_theme_saves_to_the_calling_user_only(client: TestClient) -> None:
     member = _member_client()
     assert client.post('/config/api/theme', json={'dark': 'forest', 'light': 'meadow'}).status_code == 200
-    assert member.post('/config/api/theme', json={'dark': 'midnight', 'light': 'day'}).status_code == 200
+    assert member.post('/config/api/theme', json={'dark': 'midnight', 'light': 'sky'}).status_code == 200
     assert client.post('/config/api/theme', json={'dark': 'nope'}).status_code == 400
 
     from phoenixadult.utils.auth import user_store
@@ -211,7 +211,7 @@ def test_theme_saves_to_the_calling_user_only(client: TestClient) -> None:
     admin_page = client.get('/config').text
     assert '"dark": "forest"' in admin_page and '"light": "meadow"' in admin_page
     member_page = member.get('/config').text
-    assert '"dark": "midnight"' in member_page and '"light": "day"' in member_page
+    assert '"dark": "midnight"' in member_page and '"light": "sky"' in member_page
     assert rows is not None
 
 

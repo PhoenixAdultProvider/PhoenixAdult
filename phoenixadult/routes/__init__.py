@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from phoenixadult.config.env import env
 
-THEME_NAMES = ('midnight', 'forest', 'day', 'meadow')
+THEME_NAMES = ('midnight', 'forest', 'sky', 'meadow')
 
 _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
     ('metadata', 'Metadata', '/metadata'),

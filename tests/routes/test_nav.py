@@ -67,13 +67,13 @@ def test_every_page_carries_the_theme_loader_and_toggle(client: TestClient) -> N
     assert '<link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">' in body
     assert 'prefers-color-scheme: light' in body
     assert 'localStorage.getItem' in body and 'pa-theme' in body
-    assert "dark: ['midnight', 'forest'], light: ['day', 'meadow']" in body
+    assert "dark: ['midnight', 'forest'], light: ['sky', 'meadow']" in body
     for mode in ('light', 'auto', 'dark'):
         assert f'data-set="{mode}"' in body
 
 
 def test_theme_stylesheets_are_served_and_unknown_names_404(client: TestClient) -> None:
-    for name in ('midnight', 'day', 'forest', 'meadow'):
+    for name in ('midnight', 'sky', 'forest', 'meadow'):
         r = client.get(f'/themes/{name}.css')
         assert r.status_code == 200 and r.headers['content-type'].startswith('text/css')
         assert f'data-theme-name="{name}"' in r.text

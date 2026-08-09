@@ -416,16 +416,24 @@ def close() -> None:
         _discard()
 
 
+_MIGRATIONS: list[str] = [
+    _SCHEMA_V1,
+    """
+    UPDATE users SET theme_dark = 'sky' WHERE theme_dark = 'day';
+    UPDATE users SET theme_light = 'sky' WHERE theme_light = 'day';
+    """,
+]
+
+
 def _migrate(conn: sqlite3.Connection) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
-    if version == 1:
-        return
-    if version != 0:
-        raise RuntimeError(f'this database reports schema v{version}, which predates schema v1 - start with a fresh database file')
-    conn.executescript(_SCHEMA_V1)
-    conn.execute('PRAGMA user_version = 1')
-    conn.commit()
-    logger.info('db', 'phoenixadult.db created at schema v1')
+    if version > len(_MIGRATIONS):
+        raise RuntimeError(f'this database reports schema v{version}, which this build does not know - it predates the v1 baseline or comes from a newer build')
+    for idx, step in enumerate(_MIGRATIONS[version:], start=version + 1):
+        conn.executescript(step)
+        conn.execute(f'PRAGMA user_version = {idx}')
+        conn.commit()
+        logger.info('db', f'phoenixadult.db schema at v{idx}')
 
 
 # ── Shared Helpers ────────────────────────────────────────────────────────────

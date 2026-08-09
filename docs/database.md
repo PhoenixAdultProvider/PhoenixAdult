@@ -40,8 +40,8 @@ schema is created in one shot from `_SCHEMA_V1` in `phoenixadult/utils/db/__init
 and stamped `user_version = 1`. The incremental migration history that produced this
 shape (sixteen steps, folded 2026-08-07) was collapsed once the schema stabilised —
 a database reporting any other version predates v1 and is refused at startup with an
-error naming the fix: start from a fresh file. Future schema changes will append
-migrations on top of v1.
+error naming the fix: start from a fresh file. Later schema changes append
+migrations on top of v1 (v2 renames the stored `day` theme to `sky`).
 
 ## Design Principle
 
