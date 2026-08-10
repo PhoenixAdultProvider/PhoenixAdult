@@ -25,8 +25,8 @@ ENV_TABS: list[tuple[str, list[str]]] = [
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
 
 DEFAULT_SEARCH_TITLE_TRASH = [
-    'RARBG', 'COM', r'\d{3,4}x\d{3,4}', 'HEVC', r'H\d{3}', 'AVC', r'[248]K',
-    r'\d{3,4}p', 'TOWN.AG_', 'MP4', 'KLEENEX', 'SD', 'HD',
+    'RARBG', 'COM', r'\d{3,4}x\d{3,4}', 'HEVC', r'H\d{3}', 'AVC',
+     r'[245678]K', r'\d{3,4}p', 'TOWN.AG_', 'MP4', 'KLEENEX', 'SD', 'HD',
     'KTR', 'IEVA', 'WRB', 'NBQ', 'ForeverAloneDude', r'X\d{3}', 'SoSuMi',
     'sexors', 'gush', '3dh', 'lr', 'int', 'WEBRip', 'BluRay', 'BDRip',
     'HDRip', 'DVDRip', 'AAC', 'DDP', '10bit', 'HDR', 'REMUX', 'AV1',

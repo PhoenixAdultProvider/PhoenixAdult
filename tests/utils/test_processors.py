@@ -495,7 +495,8 @@ def test_search_title_trash_only_strips_real_resolution_tags() -> None:
     assert clean_search_title('movie 2k rip') == 'movie rip'
     assert clean_search_title('clip 8k hdr') == 'clip'
     assert clean_search_title('teenslovemoney 1k pussy') == 'teenslovemoney 1k pussy'
-    assert clean_search_title('5k run') == '5k run'
+    assert clean_search_title('vr scene 5k') == 'vr scene', 'VR rips ship in 5K/6K/7K'
+    assert clean_search_title('immersive 7k pov') == 'immersive pov'
     assert clean_search_title('worth 3k dollars') == 'worth 3k dollars'
 
 
