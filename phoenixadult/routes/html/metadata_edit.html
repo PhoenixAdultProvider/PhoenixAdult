@@ -78,6 +78,14 @@
     .cancel:hover { color: var(--page-text); }
     .status { font-size: 12px; color: var(--label-text); }
 
+    .lock-toggle { margin-left: 6px; padding: 0 6px; font-size: 12px; line-height: 20px; border-radius: 5px; cursor: pointer;
+                   background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--muted-text); vertical-align: 1px; }
+    .lock-toggle.on { color: var(--soft-warn-text); border-color: var(--soft-warn-text); }
+    span.lock-toggle { cursor: default; border: 0; background: none; }
+    input.locked, textarea.locked { border-color: var(--soft-warn-text); }
+    .img .lockbtn { margin-top: 4px; padding: 2px 8px; font-size: 12px; border-radius: 5px; cursor: pointer;
+                    background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--muted-text); }
+    .img .lockbtn.on { color: var(--soft-warn-text); border-color: var(--soft-warn-text); }
     @media (max-width: 720px) {
       body { padding: 14px; }
       .imgs { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
@@ -85,6 +93,7 @@
       .addrow button { width: 100%; padding: 8px 14px; }
       .bar { flex-wrap: wrap; }
       .save, .refresh, .cancel { flex: 1 1 auto; }
+      .lock-toggle, .img .lockbtn { min-height: 40px; min-width: 40px; }
     }
   </style>
 </head>
@@ -181,6 +190,7 @@
     const IS_ADMIN = {{ is_admin()|tojson }};
     let KEY = {{ key|tojson }};
     let MD = {{ metadata|tojson }};
+    let LOCKS = {{ locks|tojson }};
     const MAPPING_SLUG = {{ mapping_slug|tojson }};
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
@@ -204,6 +214,13 @@
     const REFRESH_TIMEOUT_MS = 600000;
     const REFRESH_SETTLE_MS = 6000;
     const KINDS = ['coverPoster', 'background', 'backgroundSquare'];
+    const LOCK_INPUTS = {title: 'f-title', titleSort: 'f-titleSort', originallyAvailableAt: 'f-date', studio: 'f-studio', tagline: 'f-tagline', summary: 'f-summary', data18: 'f-data18Id'};
+    const LOCK_CHIP_FIELDS = ['Genre', 'Collection', 'Role', 'Director', 'Producer'];
+    let lockSet = new Set((LOCKS || {}).fields || []);
+    let imagesLocked = !!(LOCKS || {}).imagesLocked;
+    const dirty = new Set();
+    const lockEls = {};
+    let setLockBtn = null;
     const LISTS = {Genre: [], Collection: [], Role: [], Director: [], Producer: []};
     let images = [];
     let imgRev = Date.now();
@@ -219,6 +236,68 @@
     function leave() { location.href = '/metadata'; }
 
     const PEOPLE_ROLES = {Role: 'actor', Director: 'director', Producer: 'producer'};
+
+    function makeLockEl(field, title) {
+      const el = document.createElement(IS_ADMIN ? 'button' : 'span');
+      el.className = 'lock-toggle';
+      el.title = title;
+      if (IS_ADMIN) {
+        el.type = 'button';
+        el.onclick = () => { lockSet.has(field) ? lockSet.delete(field) : lockSet.add(field); paintLocks(); };
+      }
+      lockEls[field] = el;
+      return el;
+    }
+
+    function installLockUI() {
+      for (const [field, id] of Object.entries(LOCK_INPUTS)) {
+        const input = qs(id);
+        if (!input) continue;
+        const label = input.previousElementSibling;
+        if (label && label.appendChild) label.appendChild(makeLockEl(field, 'Locked values survive Refresh Metadata'));
+        input.addEventListener('input', () => dirty.add(field));
+        input.addEventListener('change', () => dirty.add(field));
+      }
+      const typeSel = qs('f-data18Type');
+      if (typeSel) typeSel.addEventListener('change', () => dirty.add('data18'));
+      for (const field of LOCK_CHIP_FIELDS) {
+        const box = qs('c-' + field);
+        const fs = box && box.closest ? box.closest('fieldset') : null;
+        const legend = fs && fs.querySelector ? fs.querySelector('legend') : null;
+        if (legend && legend.appendChild) legend.appendChild(makeLockEl(field, 'Locked lists survive Refresh Metadata'));
+      }
+      const imgsBox = qs('imgs');
+      const imgFs = imgsBox && imgsBox.closest ? imgsBox.closest('fieldset') : null;
+      const imgLegend = imgFs && imgFs.querySelector ? imgFs.querySelector('legend') : null;
+      if (imgLegend && imgLegend.appendChild) {
+        setLockBtn = document.createElement(IS_ADMIN ? 'button' : 'span');
+        setLockBtn.className = 'lock-toggle';
+        setLockBtn.title = 'Freezes the whole image set: refresh cannot add, remove, or replace anything. Removed images only stay gone while this is on.';
+        if (IS_ADMIN) {
+          setLockBtn.type = 'button';
+          setLockBtn.onclick = () => { imagesLocked = !imagesLocked; paintLocks(); renderImages(); };
+        }
+        imgLegend.appendChild(setLockBtn);
+      }
+      paintLocks();
+    }
+
+    function paintLocks() {
+      for (const [field, el] of Object.entries(lockEls)) {
+        const on = lockSet.has(field);
+        el.textContent = on ? '🔒' : 'UN🔒';
+        el.classList.toggle('on', on);
+        if (!IS_ADMIN) el.style.display = on ? '' : 'none';
+        const inputId = LOCK_INPUTS[field];
+        const input = inputId ? qs(inputId) : null;
+        if (input && input.classList) input.classList.toggle('locked', on);
+      }
+      if (setLockBtn) {
+        setLockBtn.textContent = imagesLocked ? '🔒 Set Locked' : 'UN🔒 Lock Image Set';
+        setLockBtn.classList.toggle('on', imagesLocked);
+        if (!IS_ADMIN) setLockBtn.style.display = imagesLocked ? '' : 'none';
+      }
+    }
 
     function renderChips(field) {
       const box = qs('c-' + field);
@@ -239,7 +318,7 @@
           const drop = document.createElement('button');
           drop.textContent = '×';
           drop.title = 'Remove';
-          drop.onclick = () => { LISTS[field].splice(idx, 1); renderChips(field); };
+          drop.onclick = () => { LISTS[field].splice(idx, 1); dirty.add(field); renderChips(field); };
           chip.appendChild(drop);
         }
         box.appendChild(chip);
@@ -250,6 +329,7 @@
       const value = input.value.trim();
       if (!value || LISTS[field].includes(value)) { input.value = ''; return; }
       LISTS[field].push(value);
+      dirty.add(field);
       input.value = '';
       renderChips(field);
     }
@@ -292,6 +372,20 @@
         badge.textContent = img.rotate ? img.rotate + '°' : '';
         spin.appendChild(badge);
         card.appendChild(spin);
+        if (IS_ADMIN && !imagesLocked) {
+          const lockBtn = document.createElement('button');
+          lockBtn.type = 'button';
+          lockBtn.className = 'lockbtn' + (img.locked ? ' on' : '');
+          lockBtn.textContent = img.locked ? '🔒 Locked' : 'Lock';
+          lockBtn.title = 'A locked image survives Refresh Metadata while the rest of the set updates';
+          lockBtn.onclick = () => { images[idx].locked = !images[idx].locked; renderImages(); };
+          card.appendChild(lockBtn);
+        } else if (img.locked || imagesLocked) {
+          const pin = document.createElement('span');
+          pin.className = 'lockbtn on';
+          pin.textContent = imagesLocked ? '🔒 Set' : '🔒 Locked';
+          card.appendChild(pin);
+        }
         if (IS_ADMIN) {
           const drop = document.createElement('button');
           drop.className = 'drop';
@@ -361,8 +455,9 @@
       LISTS.Director = (MD.Director || []).map(r => r.tag);
       LISTS.Producer = (MD.Producer || []).map(r => r.tag);
       Object.keys(LISTS).forEach(renderChips);
-      images = (MD.Image || []).map(i => ({url: i.url, type: i.type, ...(i.priority ? {priority: true} : {}), rotate: 0}));
+      images = (MD.Image || []).map(i => ({url: i.url, type: i.type, ...(i.priority ? {priority: true} : {}), ...(i.locked ? {locked: true} : {}), rotate: 0}));
       renderImages();
+      paintLocks();
     }
 
     async function save() {
@@ -385,6 +480,8 @@
         Director: LISTS.Director,
         Producer: LISTS.Producer,
         Image: images,
+        lockedFields: [...new Set([...lockSet, ...dirty])],
+        imagesLocked: imagesLocked,
       };
       let payload = {};
       try {
@@ -499,6 +596,7 @@
       showProgress(100, 'Done', false);
       MD = fresh.metadata;
       KEY = fresh.key;
+      if (fresh.locks) { LOCKS = fresh.locks; lockSet = new Set(LOCKS.fields || []); imagesLocked = !!LOCKS.imagesLocked; dirty.clear(); }
       imgRev = Date.now();
       const sub = qs('subKey');
       if (sub) sub.textContent = KEY;
@@ -524,6 +622,7 @@
     qs('f-data18Type').addEventListener('change', renderData18State);
 
     paintSfwToggle();
+    installLockUI();
     load();
   </script>
 </body>

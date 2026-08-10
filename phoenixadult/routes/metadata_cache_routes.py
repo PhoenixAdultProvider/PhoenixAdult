@@ -58,7 +58,11 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
-    return HTMLResponse(render_page('metadata_edit', active='metadata', username=nav_username(request), key=key, mapping_slug=slug, metadata=md[0]))
+    identity = scene_store.identity_for(key)
+    locks = await run_in('store', scene_store.locks, metadata_cache._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
+    return HTMLResponse(
+        render_page('metadata_edit', active='metadata', username=nav_username(request), key=key, mapping_slug=slug, metadata=md[0], locks=locks)
+    )
 
 
 @router.post('/save', dependencies=_admin)
@@ -73,6 +77,10 @@ async def save(request: Request) -> JSONResponse:
             fields[name] = data[name]
     if isinstance(data.get('Image'), list):
         fields['Image'] = [image for image in data['Image'] if isinstance(image, dict)]
+    if isinstance(data.get('lockedFields'), list):
+        fields['lockedFields'] = data['lockedFields']
+    if 'imagesLocked' in data:
+        fields['imagesLocked'] = bool(data['imagesLocked'])
     if not str(fields.get('title', '')).strip():
         return JSONResponse({'ok': False, 'error': 'title is required'}, status_code=400)
     moved = await metadata_cache.save_edits(key, fields)
@@ -148,7 +156,8 @@ async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'not snapshotted'}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, snap['key'])
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
-    return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0]})
+    locks = await run_in('store', scene_store.locks, metadata_cache._hash(site, cur_id))
+    return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0], 'locks': locks})
 
 
 @router.get('/actors')

@@ -41,7 +41,18 @@ and stamped `user_version = 1`. The incremental migration history that produced 
 shape (sixteen steps, folded 2026-08-07) was collapsed once the schema stabilised —
 a database reporting any other version predates v1 and is refused at startup with an
 error naming the fix: start from a fresh file. Later schema changes append
-migrations on top of v1 (v2 renames the stored `day` theme to `sky`).
+migrations on top of v1 (v2 renames the stored `day` theme to `sky`). During the
+alpha, purely additive columns skip migrations entirely: the `_ENSURE_COLUMNS`
+pass in `phoenixadult/utils/db/__init__.py` runs at connect, compares
+`PRAGMA table_info` against the declared list, and `ALTER TABLE ADD COLUMN`s
+whatever is missing — idempotent, no `user_version` churn; the accumulated
+columns fold into the baseline at 1.0. Current ensure-columns:
+`scenes.locked_fields` (JSON list of locked field names),
+`scenes.images_locked`, and `scene_images.locked` — the metadata-lock storage.
+The two `scenes` columns are deliberately absent from `_SCENE_COLUMNS`, so the
+wholesale upsert never clears them (the `force_refresh` pattern);
+`scene_images.locked` survives the delete-and-reinsert by riding the payload
+(`PlexImage.locked`, like `priority`).
 
 ## Design Principle
 

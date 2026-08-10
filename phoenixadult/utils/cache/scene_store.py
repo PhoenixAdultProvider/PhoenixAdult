@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import time
 from typing import Any
@@ -140,8 +141,8 @@ def upsert(
                 continue
             width, height, size = dims.get(url, (None, None, None))
             conn.execute(
-                'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
-                (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority')))),
+                'INSERT INTO scene_images(scene_id, kind, rel_path, width, height, bytes, pos, priority, locked) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (scene_id, str(img.get('type') or ''), url, width, height, size, pos, int(bool(img.get('priority'))), int(bool(img.get('locked')))),
             )
 
 
@@ -172,7 +173,7 @@ def _people_lists(conn: sqlite3.Connection, scene_id: int) -> dict[str, list[dic
 
 
 def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, Any]]:
-    rows = conn.execute('SELECT kind, rel_path, width, height, pos, priority FROM scene_images WHERE scene_id = ? ORDER BY pos', (scene_id,)).fetchall()
+    rows = conn.execute('SELECT kind, rel_path, width, height, pos, priority, locked FROM scene_images WHERE scene_id = ? ORDER BY pos', (scene_id,)).fetchall()
     first_pos: dict[str, int] = {}
     for row in rows:
         first_pos.setdefault(str(row['kind']), int(row['pos']))
@@ -182,6 +183,8 @@ def _image_list(conn: sqlite3.Connection, scene_id: int) -> list[dict[str, Any]]
         img: dict[str, Any] = {'url': str(r['rel_path']), 'type': str(r['kind'])}
         if r['priority']:
             img['priority'] = True
+        if r['locked']:
+            img['locked'] = True
         out.append(img)
     return out
 
@@ -299,6 +302,26 @@ def scrape_target(rel_path: str) -> dict[str, str] | None:
     if row is None or not row['rating_key']:
         return None
     return {'site': str(row['site']), 'cur_id': str(row['cur_id']), 'rating_key': str(row['rating_key'])}
+
+
+def locks(scene_hash: str) -> dict[str, Any]:
+    row = db.connect().execute('SELECT locked_fields, images_locked FROM scenes WHERE hash = ?', (scene_hash,)).fetchone()
+    if row is None:
+        return {'fields': [], 'imagesLocked': False}
+    try:
+        fields = json.loads(str(row['locked_fields']) or '[]')
+    except ValueError:
+        fields = []
+    return {'fields': [str(f) for f in fields if isinstance(f, str)], 'imagesLocked': bool(row['images_locked'])}
+
+
+def set_locks(scene_hash: str, fields: list[str], images_locked: bool) -> None:
+    conn = db.connect()
+    with conn:
+        conn.execute(
+            'UPDATE scenes SET locked_fields = ?, images_locked = ? WHERE hash = ?',
+            (json.dumps(sorted(set(fields))), int(images_locked), scene_hash),
+        )
 
 
 def snapshot_state(site: str, cur_id: str) -> dict[str, str] | None:

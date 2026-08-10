@@ -17,7 +17,7 @@ from phoenixadult.services import scrape_queue
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.cache import search_store
+from phoenixadult.utils.cache import scene_store, search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import split_subsite
@@ -85,7 +85,8 @@ async def refresh_cached_snapshot(
     skip_data18: bool = False,
 ) -> bool:
     changed = metadata_cache.backfill_studio(response, site)
-    if metadata_cache.reapply_text_rules(response, site.scraper_config.type):
+    locks = await run_in('store', scene_store.locks, metadata_cache._hash(site.name, cur_id))
+    if metadata_cache.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
         changed = True
     if metadata_cache.drop_stale_people_thumbs(response, site.name, cur_id):
         changed = True

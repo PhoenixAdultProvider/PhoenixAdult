@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils.cache import scene_store
+
+SITE = 'Lock Studio'
+CUR = 'lock-cur-1'
+
+
+def _payload(**overrides: Any) -> dict[str, Any]:
+    md: dict[str, Any] = {
+        'type': 'movie',
+        'ratingKey': 'rk-lock',
+        'guid': 'g-lock',
+        'title': 'Original Title',
+        'summary': 'Original summary.',
+        'studio': SITE,
+        'tagline': 'Original Tagline',
+        'originallyAvailableAt': '2024-01-01',
+        'Genre': [{'tag': 'Original Genre'}],
+        'Role': [{'tag': 'Original Actor'}],
+        'Image': [
+            {'url': '/cache/scenes/aa/lock/images/img-01.jpg', 'type': 'coverPoster'},
+            {'url': '/cache/scenes/aa/lock/images/img-02.jpg', 'type': 'background'},
+        ],
+        'thumb': '/cache/scenes/aa/lock/images/img-01.jpg',
+        'art': '/cache/scenes/aa/lock/images/img-02.jpg',
+    }
+    md.update(overrides)
+    return {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+
+
+def _seed(**overrides: Any) -> str:
+    scene_hash = metadata_cache._hash(SITE, CUR)
+    scene_store.upsert(SITE, CUR, scene_hash, metadata_cache.bundle_path(scene_hash), _payload(**overrides))
+    return scene_hash
+
+
+def test_locks_survive_a_wholesale_upsert() -> None:
+    scene_hash = _seed()
+    scene_store.set_locks(scene_hash, ['title', 'Genre'], True)
+    scene_store.upsert(SITE, CUR, scene_hash, metadata_cache.bundle_path(scene_hash), _payload(title='Scraped Over'))
+    assert scene_store.locks(scene_hash) == {'fields': ['Genre', 'title'], 'imagesLocked': True}
+
+
+def test_a_locked_image_round_trips_through_the_payload() -> None:
+    scene_hash = _seed()
+    payload = _payload()
+    payload['MediaContainer']['Metadata'][0]['Image'][0]['locked'] = True
+    scene_store.upsert(SITE, CUR, scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    loaded = scene_store.load(scene_hash)
+    images = loaded['MediaContainer']['Metadata'][0]['Image']
+    assert any(i.get('locked') for i in images) and not all(i.get('locked') for i in images)
+
+
+def _fresh_meta() -> dict[str, Any]:
+    return _payload(
+        title='Scraped Title',
+        summary='Scraped summary.',
+        Genre=[{'tag': 'Scraped Genre'}],
+        Image=[{'url': 'https://site/new-poster.jpg', 'type': 'coverPoster'}],
+        thumb='https://site/new-poster.jpg',
+    )['MediaContainer']['Metadata'][0]
+
+
+def test_the_merge_holds_locked_fields_against_a_fresh_scrape() -> None:
+    scene_hash = _seed()
+    previous = scene_store.load(scene_hash)
+    meta = _fresh_meta()
+    held = metadata_cache._apply_locks(meta, previous, {'fields': ['title', 'Genre'], 'imagesLocked': False})
+    assert 'title' in held and 'Genre' in held
+    assert meta['title'] == 'Original Title'
+    assert [g['tag'] for g in meta['Genre']] == ['Original Genre']
+    assert meta['summary'] == 'Scraped summary.', 'unlocked fields still update'
+
+
+def test_the_global_image_lock_freezes_the_exact_set() -> None:
+    scene_hash = _seed()
+    previous = scene_store.load(scene_hash)
+    meta = _fresh_meta()
+    metadata_cache._apply_locks(meta, previous, {'fields': [], 'imagesLocked': True})
+    assert [i['url'] for i in meta['Image']] == ['/cache/scenes/aa/lock/images/img-01.jpg', '/cache/scenes/aa/lock/images/img-02.jpg']
+    assert meta['thumb'] == '/cache/scenes/aa/lock/images/img-01.jpg'
+    assert meta['art'] == '/cache/scenes/aa/lock/images/img-02.jpg'
+
+
+def test_an_individually_locked_image_survives_while_siblings_are_replaced() -> None:
+    scene_hash = metadata_cache._hash(SITE, CUR)
+    payload = _payload()
+    payload['MediaContainer']['Metadata'][0]['Image'][1]['locked'] = True
+    scene_store.upsert(SITE, CUR, scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    previous = scene_store.load(scene_hash)
+    meta = _fresh_meta()
+    metadata_cache._apply_locks(meta, previous, {'fields': [], 'imagesLocked': False})
+    urls = [i['url'] for i in meta['Image']]
+    assert '/cache/scenes/aa/lock/images/img-02.jpg' in urls, 'the locked image is pinned'
+    assert 'https://site/new-poster.jpg' in urls, 'fresh siblings still arrive'
+    assert '/cache/scenes/aa/lock/images/img-01.jpg' not in urls, 'the unlocked sibling is replaced'
+
+
+def test_reapply_text_rules_skips_locked_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.models.metadata import PlexMetadataResponse
+
+    response = PlexMetadataResponse.model_validate(_payload(title='all lower needs recasing'))
+    changed = metadata_cache.reapply_text_rules(response, None, locked={'title'})
+    assert response.MediaContainer.Metadata[0].title == 'all lower needs recasing', 'a locked title is never recased'
+    response2 = PlexMetadataResponse.model_validate(_payload(title='all lower needs recasing'))
+    metadata_cache.reapply_text_rules(response2, None, locked=set())
+    assert response2.MediaContainer.Metadata[0].title != 'all lower needs recasing', 'unlocked titles still recase'
+    assert changed in (True, False)

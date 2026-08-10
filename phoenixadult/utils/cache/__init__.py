@@ -264,6 +264,60 @@ def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None)
     return carried
 
 
+_LOCK_SCALARS = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt')
+_LOCK_LISTS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
+
+
+def _apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
+    if not previous:
+        return []
+    try:
+        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
+    except (AttributeError, IndexError):
+        return []
+    held: list[str] = []
+    fields = set(locks.get('fields') or [])
+    for field in _LOCK_SCALARS:
+        if field not in fields:
+            continue
+        if field in prior:
+            meta[field] = prior[field]
+        else:
+            meta.pop(field, None)
+        held.append(field)
+    if 'data18' in fields:
+        if 'data18' in prior:
+            meta['data18'] = prior['data18']
+        else:
+            meta.pop('data18', None)
+        held.append('data18')
+    for field in _LOCK_LISTS:
+        if field not in fields:
+            continue
+        if prior.get(field):
+            meta[field] = prior[field]
+        else:
+            meta.pop(field, None)
+        held.append(field)
+    prior_images = prior.get('Image') or []
+    if locks.get('imagesLocked'):
+        meta['Image'] = prior_images
+        for key in ('thumb', 'art'):
+            if key in prior:
+                meta[key] = prior[key]
+            else:
+                meta.pop(key, None)
+        held.append('Image(set)')
+    else:
+        pinned = [img for img in prior_images if img.get('locked')]
+        if pinned:
+            pinned_urls = {str(img.get('url')) for img in pinned}
+            fresh = [img for img in meta.get('Image') or [] if str(img.get('url')) not in pinned_urls]
+            meta['Image'] = pinned + fresh
+            held.append(f'Image({len(pinned)})')
+    return held
+
+
 _PROMOTABLE = (('thumb', 'coverPoster'), ('art', 'background'))
 
 
@@ -311,6 +365,9 @@ async def _write_locked(
         previous = await run_in('store', scene_store.load, scene_hash)
         if carried := _carry_emptied_fields(meta, previous):
             logger.warn('meta-cache', f'scrape returned nothing for {", ".join(carried)} on {rel_path} — kept the stored values')
+        locks = await run_in('store', scene_store.locks, scene_hash)
+        if held := _apply_locks(meta, previous, locks):
+            logger.info('meta-cache', f'locks held {", ".join(held)} on {rel_path} — the scrape does not overwrite them')
     base = config.base_url.rstrip('/')
     counter = [0]
     image_meta: dict[str, tuple[int, int, int]] = {}
@@ -655,18 +712,33 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
         setattr(md, attr, kept or None)
     _apply_data18_edit(md, fields)
     if 'Image' in fields:
+        prior_urls = {i.url for i in md.Image or []}
         images = [
             PlexImage(
                 url=str(i.get('url', '')).strip(),
                 type=str(i.get('type', '')).strip() or 'coverPoster',
                 priority=True if i.get('priority') else None,
                 rotate=r if (r := int(i.get('rotate') or 0) % 360) in (90, 180, 270) else None,
+                locked=True if i.get('locked') or (r in (90, 180, 270)) or str(i.get('url', '')).strip() not in prior_urls else None,
             )
             for i in fields['Image'] or []
         ]
         md.Image = [i for i in images if i.url] or None
         md.thumb = next((i.url for i in md.Image or [] if i.type == 'coverPoster'), None)
         md.art = next((i.url for i in md.Image or [] if i.type == 'background'), None)
+
+
+def _lock_snapshot(md: PlexMetadata) -> dict[str, Any]:
+    dump = md.model_dump(by_alias=True, exclude_none=True)
+    view: dict[str, Any] = {field: dump.get(field) for field in _LOCK_SCALARS}
+    view['data18'] = dump.get('data18')
+    for field in _LOCK_LISTS:
+        view[field] = [str(entry.get('tag') or '') for entry in dump.get(field) or []]
+    return view
+
+
+def _changed_lockables(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
+    return {field for field in before if before[field] != after[field]}
 
 
 async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
@@ -680,10 +752,18 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
         md = response.MediaContainer.Metadata[0]
     except (AttributeError, IndexError):
         return None
+    before = _lock_snapshot(md)
     _apply_edits(md, fields)
     if not await write(site_name, cur_id, response, allow_clear=True):
         return None
-    return bundle_path(_hash(site_name, cur_id))
+    scene_hash = _hash(site_name, cur_id)
+    current = await run_in('store', scene_store.locks, scene_hash)
+    requested = fields.get('lockedFields')
+    base = {str(f) for f in requested if isinstance(f, str)} if isinstance(requested, list) else set(current['fields'])
+    auto = _changed_lockables(before, _lock_snapshot(md))
+    images_locked = bool(fields['imagesLocked']) if 'imagesLocked' in fields else bool(current['imagesLocked'])
+    await run_in('store', scene_store.set_locks, scene_hash, sorted(base | auto), images_locked)
+    return bundle_path(scene_hash)
 
 
 def duplicate_entries() -> list[str]:
@@ -989,17 +1069,21 @@ def _realias_people(md: PlexMetadata, studio: str) -> bool:
     return changed
 
 
-def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None) -> bool:
+def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None, locked: set[str] | None = None) -> bool:
+    held = locked or set()
     changed = False
     for md in response.MediaContainer.Metadata:
         studio = md.studio or ''
-        for field_changed in (
-            _recase_title(md, studio, scraper_type),
-            _normalize_summary(md),
-            _recase_studio_tagline(md, studio),
-            _recase_collections(md),
-            _renormalize_genres(md, studio),
-            _realias_people(md, studio),
-        ):
-            changed = field_changed or changed
+        if 'title' not in held:
+            changed = _recase_title(md, studio, scraper_type) or changed
+        if 'summary' not in held:
+            changed = _normalize_summary(md) or changed
+        if not {'studio', 'tagline'} & held:
+            changed = _recase_studio_tagline(md, studio) or changed
+        if 'Collection' not in held:
+            changed = _recase_collections(md) or changed
+        if 'Genre' not in held:
+            changed = _renormalize_genres(md, studio) or changed
+        if not {'Role', 'Director', 'Producer'} & held:
+            changed = _realias_people(md, studio) or changed
     return changed

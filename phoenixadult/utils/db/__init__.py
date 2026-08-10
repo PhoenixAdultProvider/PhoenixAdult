@@ -424,6 +424,25 @@ _MIGRATIONS: list[str] = [
     """,
 ]
 
+_ENSURE_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ('scenes', 'locked_fields', "TEXT NOT NULL DEFAULT '[]'"),
+    ('scenes', 'images_locked', 'INTEGER NOT NULL DEFAULT 0'),
+    ('scene_images', 'locked', 'INTEGER NOT NULL DEFAULT 0'),
+)
+
+
+def _ensure_columns(conn: sqlite3.Connection) -> None:
+    by_table: dict[str, list[tuple[str, str]]] = {}
+    for table, column, decl in _ENSURE_COLUMNS:
+        by_table.setdefault(table, []).append((column, decl))
+    for table, wanted in by_table.items():
+        have = {str(r['name']) for r in conn.execute(f'PRAGMA table_info({table})')}
+        for column, decl in wanted:
+            if column not in have:
+                conn.execute(f'ALTER TABLE {table} ADD COLUMN {column} {decl}')
+                logger.info('db', f'added column {table}.{column}')
+    conn.commit()
+
 
 def _migrate(conn: sqlite3.Connection) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
@@ -434,6 +453,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute(f'PRAGMA user_version = {idx}')
         conn.commit()
         logger.info('db', f'phoenixadult.db schema at v{idx}')
+    _ensure_columns(conn)
 
 
 # ── Shared Helpers ────────────────────────────────────────────────────────────

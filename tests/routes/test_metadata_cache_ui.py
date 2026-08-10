@@ -334,7 +334,7 @@ def test_snapshot_endpoint_tracks_a_moved_key(monkeypatch: pytest.MonkeyPatch) -
     assert client.get('/metadata/snapshot').status_code == 400
 
     j = client.get('/metadata/snapshot', params={'site': 'BaDoinkVR', 'cur_id': 'abc'}).json()
-    assert j == {'ok': True, 'key': 'NewStudio/abc', 'updated_at': '200.0', 'metadata': {'title': 'Renamed'}}
+    assert j == {'ok': True, 'key': 'NewStudio/abc', 'updated_at': '200.0', 'metadata': {'title': 'Renamed'}, 'locks': {'fields': [], 'imagesLocked': False}}
 
 
 def test_refresh_bulk_queues_each_match(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -571,7 +571,7 @@ def test_both_screens_offer_sfw_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "const SFW_KEY = 'metadata-sfw';" in editor.text
     assert 'if (!SFW) {\n          const preview' in editor.text
     assert 'hidden-shot' not in editor.text
-    assert 'paintSfwToggle();\n    load();' in editor.text
+    assert 'paintSfwToggle();\n    installLockUI();\n    load();' in editor.text
 
 
 async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

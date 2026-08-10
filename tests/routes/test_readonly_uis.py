@@ -179,7 +179,7 @@ def test_duplicate_toggles_are_admin_only(member: TestClient) -> None:
 def test_the_viewer_still_populates_and_labels_sfw(member: TestClient) -> None:
     body = member.get(f'/metadata/edit?key={_seed_snapshot()}').text
     assert body.rstrip().endswith('</html>')
-    assert 'paintSfwToggle();\n    load();' in body
+    assert 'paintSfwToggle();\n    installLockUI();\n    load();' in body
     assert "if (qs('a-img'))" in body
 
 

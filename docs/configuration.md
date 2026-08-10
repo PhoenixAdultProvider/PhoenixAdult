@@ -93,6 +93,10 @@ the only way in, including from loopback.
   Refresh All (re-scraping overwrites snapshots). Each write endpoint behind those
   buttons returns 403 as well, so the read-only view cannot be bypassed by
   hand-crafted requests. Browsing, filtering, and Export Mappings stay available.
+- **Metadata locks** — every field on `/metadata/edit` and every image carries a lock
+  toggle (plus a whole-image-set lock). Locked pieces keep their stored values through
+  Refresh Metadata and re-scrapes; editing a field and saving locks it automatically,
+  Plex-style. Removed images only stay gone while the image-set lock is on.
 - **`/searches`** (admin only, linked in the nav for admins) browses the stored-search
   store: every cached search with all its results, filterable by site, with per-search
   purge and re-search, per-site and full purges, and an expired-row sweep. Non-admins

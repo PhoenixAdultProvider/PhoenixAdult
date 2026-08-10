@@ -14,6 +14,7 @@ class PlexImage(_Model):
     type: str
     priority: bool | None = None
     rotate: int | None = None
+    locked: bool | None = None
 
 
 class PlexRole(_Model):

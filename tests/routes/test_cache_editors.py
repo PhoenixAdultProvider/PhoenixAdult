@@ -342,3 +342,66 @@ def test_metadata_edit_page_offers_the_data18_fields(client: TestClient, tmp_pat
     assert 'f-data18Id' in page.text
     assert 'f-data18Type' in page.text
     assert '"333"' in page.text
+
+
+def test_saving_a_changed_field_auto_locks_it(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path)
+    r = client.post('/metadata/save', json={'key': rel, 'title': 'Hand Edited Title'})
+    assert r.status_code == 200
+    locks = scene_store.locks(mc._hash(SITE, CUR_ID))
+    assert 'title' in locks['fields'], 'a field the admin changed must not be undone by the next refresh'
+    assert 'summary' not in locks['fields'], 'untouched fields stay unlocked'
+
+
+def test_explicit_locks_and_unlocks_round_trip(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path)
+    r = client.post('/metadata/save', json={'key': rel, 'title': 'A Cached Scene', 'lockedFields': ['summary', 'Genre'], 'imagesLocked': True})
+    assert r.status_code == 200
+    locks = scene_store.locks(mc._hash(SITE, CUR_ID))
+    assert locks == {'fields': ['Genre', 'summary'], 'imagesLocked': True}
+
+    r = client.post('/metadata/save', json={'key': r.json()['key'], 'title': 'A Cached Scene', 'lockedFields': [], 'imagesLocked': False})
+    assert r.status_code == 200
+    assert scene_store.locks(mc._hash(SITE, CUR_ID)) == {'fields': [], 'imagesLocked': False}
+
+
+def test_a_refresh_write_cannot_overwrite_locked_fields(client: TestClient, tmp_path: Path) -> None:
+    import asyncio
+
+    from phoenixadult.models.metadata import PlexMetadataResponse
+
+    _snapshot(tmp_path)
+    scene_hash = mc._hash(SITE, CUR_ID)
+    scene_store.set_locks(scene_hash, ['title', 'Genre'], False)
+    scraped = {
+        'MediaContainer': {
+            'identifier': 'phoenixadult',
+            'size': 1,
+            'Metadata': [
+                {
+                    'type': 'movie',
+                    'ratingKey': 'scene-brazzers-cur1',
+                    'guid': 'g',
+                    'title': 'Scraper Says Otherwise',
+                    'studio': 'Brazzers',
+                    'tagline': 'Baby Got Boobs',
+                    'summary': 'Fresh scraped summary.',
+                    'Genre': [{'tag': 'Scraped Genre'}],
+                }
+            ],
+        }
+    }
+    response = PlexMetadataResponse.model_validate(scraped)
+    assert asyncio.run(mc.write(SITE, CUR_ID, response)) is True
+    stored = scene_store.load(scene_hash)['MediaContainer']['Metadata'][0]
+    assert stored['title'] == 'A Cached Scene', 'the locked title held against the scrape'
+    assert [g['tag'] for g in stored['Genre']] == ['Anal'], 'the locked genre list held'
+    assert stored['summary'] == 'Fresh scraped summary.', 'unlocked fields updated normally'
+
+
+def test_the_edit_page_carries_lock_state(client: TestClient, tmp_path: Path) -> None:
+    rel = _snapshot(tmp_path)
+    scene_store.set_locks(mc._hash(SITE, CUR_ID), ['title'], True)
+    body = client.get('/metadata/edit', params={'key': rel}).text
+    assert '"fields": ["title"]' in body and '"imagesLocked": true' in body
+    assert 'installLockUI' in body and 'lockedFields' in body
