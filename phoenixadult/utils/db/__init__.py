@@ -418,11 +418,12 @@ def close() -> None:
 
 _MIGRATIONS: list[str] = [
     _SCHEMA_V1,
-    """
-    UPDATE users SET theme_dark = 'sky' WHERE theme_dark = 'day';
-    UPDATE users SET theme_light = 'sky' WHERE theme_light = 'day';
-    """,
 ]
+
+_ENSURE_DATA = (
+    "UPDATE users SET theme_dark = 'sky' WHERE theme_dark = 'day'",
+    "UPDATE users SET theme_light = 'sky' WHERE theme_light = 'day'",
+)
 
 _ENSURE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('scenes', 'locked_fields', "TEXT NOT NULL DEFAULT '[]'"),
@@ -441,11 +442,18 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
             if column not in have:
                 conn.execute(f'ALTER TABLE {table} ADD COLUMN {column} {decl}')
                 logger.info('db', f'added column {table}.{column}')
+    for statement in _ENSURE_DATA:
+        conn.execute(statement)
     conn.commit()
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
+    if version == 2:
+        conn.execute('PRAGMA user_version = 1')
+        conn.commit()
+        version = 1
+        logger.info('db', 'phoenixadult.db restamped to schema v1 - the v2 theme rename folded into the connect-time data pass')
     if version > len(_MIGRATIONS):
         raise RuntimeError(f'this database reports schema v{version}, which this build does not know - it predates the v1 baseline or comes from a newer build')
     for idx, step in enumerate(_MIGRATIONS[version:], start=version + 1):

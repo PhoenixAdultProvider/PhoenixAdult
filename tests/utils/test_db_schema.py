@@ -24,7 +24,7 @@ def test_a_pre_v1_database_is_refused_with_a_clear_error(tmp_path, monkeypatch) 
     db.close()
 
 
-def test_v2_renames_the_stored_day_theme_to_sky() -> None:
+def test_the_connect_pass_renames_the_stored_day_theme_to_sky() -> None:
     from phoenixadult.utils import db
     from phoenixadult.utils.auth import user_store
 
@@ -32,8 +32,17 @@ def test_v2_renames_the_stored_day_theme_to_sky() -> None:
     conn = db.connect()
     with conn:
         conn.execute("UPDATE users SET theme_dark = 'midnight', theme_light = 'day' WHERE id = ?", (uid,))
-        conn.execute('PRAGMA user_version = 1')
     db.close()
     row = db.connect().execute('SELECT theme_dark, theme_light FROM users WHERE id = ?', (uid,)).fetchone()
-    assert row['theme_light'] == 'sky', 'the rename migration rewrites stored day themes'
+    assert row['theme_light'] == 'sky', 'the idempotent connect pass rewrites stored day themes'
     assert row['theme_dark'] == 'midnight', 'other themes are untouched'
+
+
+def test_a_v2_database_restamps_down_to_v1() -> None:
+    from phoenixadult.utils import db
+
+    conn = db.connect()
+    with conn:
+        conn.execute('PRAGMA user_version = 2')
+    db.close()
+    assert db.connect().execute('PRAGMA user_version').fetchone()[0] == 1, 'the folded v2 stamp collapses back to the baseline'
