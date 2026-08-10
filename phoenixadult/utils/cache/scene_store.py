@@ -266,6 +266,10 @@ def has(scene_hash: str) -> bool:
     return db.connect().execute('SELECT 1 FROM scenes WHERE hash = ?', (scene_hash,)).fetchone() is not None
 
 
+def known_hashes() -> set[str]:
+    return {str(r['hash']) for r in db.connect().execute('SELECT hash FROM scenes').fetchall()}
+
+
 def delete(rel_path: str) -> bool:
     conn = db.connect()
     with conn:

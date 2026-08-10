@@ -9,8 +9,8 @@ import pytest
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils import db
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.bundle_sweep import sweep
 from scripts.migrate_snapshot_layout import migrate, orphans
-from scripts.rebuild_from_bundles import restore
 
 
 @pytest.fixture(autouse=True)
@@ -149,9 +149,9 @@ def test_bundles_rebuild_the_scene_rows_after_a_db_loss(_tmp_db: Path) -> None:
         conn.execute('DELETE FROM scenes')
     assert scene_store.has('h1abc') is False
 
-    stats = restore(_tmp_db, overwrite=False)
+    stats = sweep(_tmp_db, overwrite=False)
 
-    assert stats == {'read': 1, 'skipped': 0, 'restored': 1, 'unreadable': 0}
+    assert stats == {'adopted': 1, 'skipped': 0, 'unreadable': 0}
     assert scene_store.identity_for(new_rel) == ('Brazzers', 'cur-1')
     loaded = scene_store.load('h1abc')
     assert loaded is not None
@@ -164,8 +164,8 @@ def test_rebuild_leaves_existing_rows_alone_unless_told_otherwise(_tmp_db: Path)
     _seed_legacy(_tmp_db)
     migrate(_tmp_db, apply=True, prune=False)
 
-    assert restore(_tmp_db, overwrite=False)['skipped'] == 1
-    assert restore(_tmp_db, overwrite=True)['restored'] == 1
+    assert sweep(_tmp_db, overwrite=False)['skipped'] == 1
+    assert sweep(_tmp_db, overwrite=True)['adopted'] == 1
 
 
 def test_a_corrupt_bundle_is_counted_and_skipped(_tmp_db: Path) -> None:
@@ -173,6 +173,6 @@ def test_a_corrupt_bundle_is_counted_and_skipped(_tmp_db: Path) -> None:
     migrate(_tmp_db, apply=True, prune=False)
     (_tmp_db / mc.bundle_path('h1abc') / mc.BUNDLE_FILE).write_text('{not json', encoding='utf-8')
 
-    stats = restore(_tmp_db, overwrite=True)
+    stats = sweep(_tmp_db, overwrite=True)
 
-    assert stats['unreadable'] == 1 and stats['restored'] == 0
+    assert stats['unreadable'] == 1 and stats['adopted'] == 0

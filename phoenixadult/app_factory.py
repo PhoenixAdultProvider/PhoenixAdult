@@ -101,12 +101,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
     from phoenixadult.routes.provider_router import restore_queue
+    from phoenixadult.utils.cache import bundle_sweep
     from phoenixadult.utils.db import maintenance
     from phoenixadult.utils.images import logo_cache
     from phoenixadult.utils.people import cache as people_cache
 
     await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
+    await _try_startup('bundle sweep', bundle_sweep.startup_sweep)
     await _try_startup('plex connection migration', _migrate_plex_env)
     await _try_startup('metadataapi token migration', _migrate_metadataapi_env)
     if people_cache.cache_enabled():

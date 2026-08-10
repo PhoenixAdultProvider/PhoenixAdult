@@ -617,9 +617,13 @@ dimension `UPDATE` and nothing more. The two-character bucket keeps directory wi
 by construction (256 buckets; ~33 folders each at 8k scenes).
 
 `snapshot.json` makes each folder self-describing: the scene's site, `cur_id`, hash, the
-full served response and every image's dimensions. `scripts/rebuild_from_bundles.py`
-restores the `scenes` rows and all their junctions from those files alone, so the tree
-survives a lost database. Installs from before this layout are moved by
+full served response and every image's dimensions. At startup the server sweeps the tree
+and adopts any bundle whose hash the `scenes` table doesn't know, so dropping bundle
+folders into the cache (a restore from backup, a copy from another install) and
+restarting is all it takes to register them. `scripts/rebuild_from_bundles.py` runs the
+same sweep by hand — `--overwrite` re-reads every bundle, rebuilding the rows and all
+their junctions from the files alone, so the tree survives a lost database. Installs
+from before this layout are moved by
 `scripts/migrate_snapshot_layout.py` (dry run by default, `--apply` to migrate,
 `--prune-orphans` to also drop folders and image rows nothing points at); the server logs
 a warning at startup while any snapshot is still on the old layout.
