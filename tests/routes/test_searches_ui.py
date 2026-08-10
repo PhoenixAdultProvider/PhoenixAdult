@@ -92,3 +92,10 @@ def test_research_purges_and_requeues_with_the_stored_query(monkeypatch) -> None
     assert r.json()['totals']['searches'] == 0, 'the stored search is purged before the requeue'
     assert captured and captured[0]['title'] == 'requeue me' and captured[0]['search_site'] == 'Nubile Films'
     assert captured[0]['date'] == '2024-06-21'
+
+
+def test_the_page_offers_a_duplicates_only_filter() -> None:
+    _seed()
+    body = authed_client().get('/searches').text
+    assert 'id="dup-filter"' in body and 'Duplicates only' in body
+    assert 'members.length < 2' in body, 'the filter drops solo groups client-side'

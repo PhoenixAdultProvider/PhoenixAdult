@@ -78,14 +78,16 @@
     .cancel:hover { color: var(--page-text); }
     .status { font-size: 12px; color: var(--label-text); }
 
-    .lock-toggle { margin-left: 6px; padding: 0 6px; font-size: 12px; line-height: 20px; border-radius: 5px; cursor: pointer;
-                   background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--muted-text); vertical-align: 1px; }
-    .lock-toggle.on { color: var(--soft-warn-text); border-color: var(--soft-warn-text); }
+    label.has-lock, legend.has-lock { display: flex; align-items: center; gap: 6px; }
+    legend.has-lock { width: 100%; }
+    .lock-toggle { margin-left: auto; padding: 2px 7px; font-size: 13px; line-height: 1.4; border-radius: 5px; cursor: pointer;
+                   background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); opacity: 0.75; }
+    .lock-toggle.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     span.lock-toggle { cursor: default; border: 0; background: none; }
     input.locked, textarea.locked { border-color: var(--soft-warn-text); }
-    .img .lockbtn { margin-top: 4px; padding: 2px 8px; font-size: 12px; border-radius: 5px; cursor: pointer;
-                    background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--muted-text); }
-    .img .lockbtn.on { color: var(--soft-warn-text); border-color: var(--soft-warn-text); }
+    .img .lockbtn { margin-top: 4px; padding: 2px 8px; font-size: 13px; border-radius: 5px; cursor: pointer;
+                    background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); opacity: 0.75; }
+    .img .lockbtn.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     @media (max-width: 720px) {
       body { padding: 14px; }
       .imgs { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
@@ -93,7 +95,7 @@
       .addrow button { width: 100%; padding: 8px 14px; }
       .bar { flex-wrap: wrap; }
       .save, .refresh, .cancel { flex: 1 1 auto; }
-      .lock-toggle, .img .lockbtn { min-height: 40px; min-width: 40px; }
+      .lock-toggle, .img .lockbtn { padding: 6px 12px; font-size: 16px; }
     }
   </style>
 </head>
@@ -254,7 +256,10 @@
         const input = qs(id);
         if (!input) continue;
         const label = input.previousElementSibling;
-        if (label && label.appendChild) label.appendChild(makeLockEl(field, 'Locked values survive Refresh Metadata'));
+        if (label && label.appendChild) {
+          if (label.classList) label.classList.add('has-lock');
+          label.appendChild(makeLockEl(field, 'Locked values survive Refresh Metadata'));
+        }
         input.addEventListener('input', () => dirty.add(field));
         input.addEventListener('change', () => dirty.add(field));
       }
@@ -264,12 +269,16 @@
         const box = qs('c-' + field);
         const fs = box && box.closest ? box.closest('fieldset') : null;
         const legend = fs && fs.querySelector ? fs.querySelector('legend') : null;
-        if (legend && legend.appendChild) legend.appendChild(makeLockEl(field, 'Locked lists survive Refresh Metadata'));
+        if (legend && legend.appendChild) {
+          if (legend.classList) legend.classList.add('has-lock');
+          legend.appendChild(makeLockEl(field, 'Locked lists survive Refresh Metadata'));
+        }
       }
       const imgsBox = qs('imgs');
       const imgFs = imgsBox && imgsBox.closest ? imgsBox.closest('fieldset') : null;
       const imgLegend = imgFs && imgFs.querySelector ? imgFs.querySelector('legend') : null;
       if (imgLegend && imgLegend.appendChild) {
+        if (imgLegend.classList) imgLegend.classList.add('has-lock');
         setLockBtn = document.createElement(IS_ADMIN ? 'button' : 'span');
         setLockBtn.className = 'lock-toggle';
         setLockBtn.title = 'Freezes the whole image set: refresh cannot add, remove, or replace anything. Removed images only stay gone while this is on.';
@@ -285,7 +294,7 @@
     function paintLocks() {
       for (const [field, el] of Object.entries(lockEls)) {
         const on = lockSet.has(field);
-        el.textContent = on ? '🔒' : 'UN🔒';
+        el.textContent = on ? '🔒' : '🔓';
         el.classList.toggle('on', on);
         if (!IS_ADMIN) el.style.display = on ? '' : 'none';
         const inputId = LOCK_INPUTS[field];
@@ -293,7 +302,7 @@
         if (input && input.classList) input.classList.toggle('locked', on);
       }
       if (setLockBtn) {
-        setLockBtn.textContent = imagesLocked ? '🔒 Set Locked' : 'UN🔒 Lock Image Set';
+        setLockBtn.textContent = imagesLocked ? '🔒' : '🔓';
         setLockBtn.classList.toggle('on', imagesLocked);
         if (!IS_ADMIN) setLockBtn.style.display = imagesLocked ? '' : 'none';
       }
@@ -376,14 +385,14 @@
           const lockBtn = document.createElement('button');
           lockBtn.type = 'button';
           lockBtn.className = 'lockbtn' + (img.locked ? ' on' : '');
-          lockBtn.textContent = img.locked ? '🔒 Locked' : 'Lock';
+          lockBtn.textContent = img.locked ? '🔒' : '🔓';
           lockBtn.title = 'A locked image survives Refresh Metadata while the rest of the set updates';
           lockBtn.onclick = () => { images[idx].locked = !images[idx].locked; renderImages(); };
           card.appendChild(lockBtn);
         } else if (img.locked || imagesLocked) {
           const pin = document.createElement('span');
           pin.className = 'lockbtn on';
-          pin.textContent = imagesLocked ? '🔒 Set' : '🔒 Locked';
+          pin.textContent = '🔒';
           card.appendChild(pin);
         }
         if (IS_ADMIN) {

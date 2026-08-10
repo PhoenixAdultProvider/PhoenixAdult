@@ -24,6 +24,8 @@
     button.secondary { background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--button-muted-text); }
     button.danger { background: var(--button-danger-bg); color: var(--button-text); }
     .count-line { color: var(--label-text); font-size: 12px; margin-bottom: 10px; }
+    .dup-only { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-text); white-space: nowrap; cursor: pointer; }
+    .dup-only input { accent-color: var(--button-primary-bg); width: 16px; height: 16px; }
     .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
     .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
     .dup-badge { background: var(--badge-warning-bg); color: var(--badge-warning-text); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
@@ -49,6 +51,7 @@
     @media (max-width: 720px) {
       body { padding: 14px; }
       .toolbar select, .toolbar input[type=text] { flex: 1 1 100%; font-size: 16px; }
+      .dup-only { flex: 1 1 100%; font-size: 15px; min-height: 40px; }
       .toolbar button { flex: 1 1 auto; padding: 11px 12px; }
       .stats { gap: 6px; }
       .card-actions { margin-left: 0; width: 100%; }
@@ -65,6 +68,7 @@
   <div class="toolbar">
     <select id="site-filter" onchange="render()"></select>
     <input type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
+    <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="render()"> Duplicates only</label>
     <button type="button" class="secondary" onclick="sweepExpired()">Sweep Expired</button>
     <button type="button" class="secondary" onclick="purgeSite()">Purge Site</button>
     <button type="button" class="danger" onclick="purgeAll()">Purge All</button>
@@ -148,15 +152,20 @@
         <span class="stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
 
       const rows = filtered();
-      document.getElementById('count-line').textContent = `${rows.length} of ${(STATE.entries || []).length} stored searches shown`;
       const groups = new Map();
       for (const e of rows) {
         const key = e.date ? `${e.site}|${e.date}|${e.sceneId}` : `solo|${e.keyHash}`;
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(e);
       }
+      const dupOnly = document.getElementById('dup-filter').checked;
+      if (dupOnly) for (const [key, members] of [...groups]) { if (members.length < 2) groups.delete(key); }
+      const shown = [...groups.values()].reduce((n, m) => n + m.length, 0);
+      document.getElementById('count-line').textContent = `${shown} of ${(STATE.entries || []).length} stored searches shown` + (dupOnly ? ' — duplicate groups only' : '');
       let html = '';
+      let any = false;
       for (const members of groups.values()) {
+        any = true;
         if (members.length > 1) {
           html += `<div class="group"><div class="group-head"><span class="dup-badge">${members.length} spellings of one scene</span>
             <span>${esc(members[0].site)} · ${esc(members[0].date)}</span></div>${members.map(card).join('')}</div>`;
@@ -165,7 +174,7 @@
         }
       }
       document.getElementById('list').innerHTML = html;
-      document.getElementById('empty').style.display = rows.length ? 'none' : '';
+      document.getElementById('empty').style.display = any ? 'none' : '';
     }
 
     async function post(path, body) {
