@@ -17,7 +17,7 @@ from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.processors.scene_link import SourceLink, resolve_source_link
+from phoenixadult.utils.processors.scene_link import resolve_source_link
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 _admin = [Depends(admin_auth_guard)]
@@ -52,6 +52,19 @@ async def page(request: Request) -> HTMLResponse:
     )
 
 
+def _source_context(identity: tuple[str, str] | None, md: dict[str, Any]) -> tuple[str | None, str | None, Any]:
+    stored = md.get('source') or {}
+    if stored.get('url') or stored.get('data') is not None:
+        kind = str(stored.get('kind') or ('page' if stored.get('url') else 'json'))
+        kind = 'scene' if kind == 'page' else kind
+        url = stored.get('url') if kind in ('scene', 'listing') else None
+        return kind, url, stored.get('data')
+    if identity is None:
+        return None, None, None
+    source = resolve_source_link(identity[1], find_site(identity[0]))
+    return source.kind, source.url if source.kind in ('scene', 'listing') else None, source.payload
+
+
 @router.get('/edit', response_class=HTMLResponse)
 async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     loaded = await run_in('store', metadata_cache.load_for_edit, key) if '/' in key else None
@@ -63,7 +76,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     identity = scene_store.identity_for(key)
     locks = await run_in('store', scene_store.locks, metadata_cache._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
-    source = resolve_source_link(identity[1], find_site(identity[0])) if identity else SourceLink()
+    source_kind, source_url, source_data = _source_context(identity, md[0])
     return HTMLResponse(
         render_page(
             'metadata_edit',
@@ -73,9 +86,9 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
             mapping_slug=slug,
             metadata=md[0],
             locks=locks,
-            source_kind=source.kind,
-            source_url=source.url if source.kind in ('scene', 'listing') else None,
-            source_json=source.payload,
+            source_kind=source_kind,
+            source_url=source_url,
+            source_json=source_data,
         )
     )
 
@@ -87,6 +100,11 @@ async def source_json(key: str = '') -> JSONResponse:
     identity = await run_in('store', scene_store.identity_for, key)
     if identity is None:
         return JSONResponse({'ok': False, 'error': 'unknown key'}, status_code=404)
+    loaded = await run_in('store', metadata_cache.load_for_edit, key)
+    md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
+    stored = (md[0].get('source') or {}).get('data')
+    if stored is not None:
+        return JSONResponse({'ok': True, 'json': stored})
     site = find_site(identity[0])
     source = resolve_source_link(identity[1], site)
     if source.payload is not None:

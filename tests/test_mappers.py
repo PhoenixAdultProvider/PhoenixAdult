@@ -276,3 +276,34 @@ def test_an_alias_subsite_keeps_its_embedding_and_its_tagline_carrier() -> None:
     assert parsed is not None
     decoded = b64url_decode(parsed['cur_id'] or '')
     assert '\x1fBig Tits in Uniform' in decoded, 'the alias subsite must stay embedded - it is what carries the tagline to updates'
+
+
+async def test_the_source_reference_records_what_the_scraper_fetched() -> None:
+    detail = SceneDetail(title='A Scene', studio='X', scene_url='https://example.com/scene/alpha')
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.source is not None
+    assert (md.source.url, md.source.kind, md.source.data) == ('https://example.com/scene/alpha', 'page', None)
+
+
+async def test_api_urls_and_fetched_json_land_in_the_source() -> None:
+    blob = {'id': 9, 'title': 'A Scene'}
+    detail = SceneDetail(title='A Scene', studio='X', scene_url='https://example.com/api/releases/alpha', source_json=blob)
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.source is not None
+    assert (md.source.url, md.source.kind, md.source.data) == ('https://example.com/api/releases/alpha', 'api', blob)
+
+
+async def test_a_client_authored_kind_wins_and_slugs_store_no_url() -> None:
+    listing = SceneDetail(title='A', studio='X', scene_url='https://example.com/detailed/3', source_kind='listing')
+    md = await MetadataMapper().to_metadata(listing, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.source is not None and md.source.kind == 'listing'
+
+    slug_only = SceneDetail(title='A', studio='X', scene_url='bare-slug')
+    md = await MetadataMapper().to_metadata(slug_only, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.source is None
+
+
+async def test_unserializable_source_json_is_dropped_not_fatal() -> None:
+    detail = SceneDetail(title='A', studio='X', scene_url='https://example.com/api/x', source_json={'bad': object()})
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+    assert md.source is not None and md.source.data is None

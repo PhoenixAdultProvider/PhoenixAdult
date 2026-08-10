@@ -55,6 +55,14 @@ The two `scenes` columns are deliberately absent from `_SCENE_COLUMNS`, so the
 wholesale upsert never clears them (the `force_refresh` pattern);
 `scene_images.locked` survives the delete-and-reinsert by riding the payload
 (`PlexImage.locked`, like `priority`).
+Also ensured: `scenes.source_url`, `scenes.source_kind`, and
+`scenes.source_json` — the scene's source reference (the URL the scraper
+fetched, its kind `page`/`listing`/`api`, and the raw JSON an API client
+returned). These ARE in `_SCENE_COLUMNS`: every scrape or refresh rewrites them,
+which is how existing scenes pick up their source data. They ride the payload as
+`PlexMetadata.source` (the `data18` pattern), so bundles and manual saves carry
+them, and the metadata editor reads them for its Scene/Listing link and Source
+JSON panel — falling back to decoding the cur_id for scenes not yet refreshed.
 
 ## Design Principle
 

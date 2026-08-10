@@ -24,7 +24,7 @@ class SourceLink:
     payload: Any | None = None
 
 
-def _is_api_url(url: str) -> bool:
+def is_api_url(url: str) -> bool:
     parts = urlsplit(url)
     return bool(_API_HOST_RE.search(parts.hostname or '')) or '/api/' in f'{parts.path}/' or '/graphql' in parts.path
 
@@ -62,11 +62,11 @@ def resolve_source_link(cur_id: str, site: SiteInfo | None) -> SourceLink:
     segments = text.split('|')
     head = segments[0].strip()
     if _URL_RE.match(head):
-        return SourceLink('api', head) if _is_api_url(head) else SourceLink('scene', head)
-    for segment in segments[1:]:
-        if _URL_RE.match(segment.strip()):
-            return SourceLink('listing', segment.strip())
+        return SourceLink('api', head) if is_api_url(head) else SourceLink('scene', head)
     template = site.direct_url_template if site else None
     if site and template and '{id}' not in template and head:
         return SourceLink('scene', _fill(template, site, head))
+    for segment in segments[1:]:
+        if _URL_RE.match(segment.strip()):
+            return SourceLink('listing', segment.strip())
     return SourceLink()

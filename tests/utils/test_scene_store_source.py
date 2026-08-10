@@ -1,0 +1,39 @@
+from __future__ import annotations
+
+from typing import Any
+
+from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils.cache import scene_store
+
+
+def _payload(md_extra: dict[str, Any]) -> dict[str, Any]:
+    md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'A Scene', 'studio': 'Studio', **md_extra}
+    return {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+
+
+def _roundtrip(md_extra: dict[str, Any]) -> dict[str, Any]:
+    scene_hash = metadata_cache._hash('Studio', 'cur-src')
+    scene_store.upsert('Studio', 'cur-src', scene_hash, metadata_cache.bundle_path(scene_hash), _payload(md_extra))
+    loaded = scene_store.load(scene_hash)
+    assert loaded is not None
+    return dict(loaded['MediaContainer']['Metadata'][0])
+
+
+def test_the_source_reference_survives_the_store_round_trip() -> None:
+    source = {'url': 'https://example.com/api/releases/alpha', 'kind': 'api', 'data': {'id': 9, 'nested': ['a', 'b']}}
+    assert _roundtrip({'source': source})['source'] == source
+
+
+def test_a_page_source_without_json_round_trips() -> None:
+    source = {'url': 'https://example.com/scene/alpha', 'kind': 'page'}
+    assert _roundtrip({'source': source})['source'] == source
+
+
+def test_scenes_without_a_source_emit_none() -> None:
+    assert 'source' not in _roundtrip({})
+
+
+def test_a_rescrape_replaces_the_stored_source() -> None:
+    _roundtrip({'source': {'url': 'https://example.com/old', 'kind': 'page', 'data': {'v': 1}}})
+    md = _roundtrip({'source': {'url': 'https://example.com/new', 'kind': 'page'}})
+    assert md['source'] == {'url': 'https://example.com/new', 'kind': 'page'}

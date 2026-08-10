@@ -336,15 +336,17 @@ with its kind and a Remove button; a pasted URL is downloaded on save). Notes:
 - **Changing Studio or Tagline moves the snapshot folder** (the layout is derived from them). The
   old directory is removed and the response reports the new key.
 - The title cannot be blank, and the snapshot writer still rejects error-looking titles.
-- **The header links back to the source site** when the scene's identifier decodes to one: a direct
-  scene page shows **Scene ↗**, and sites with no scene pages of their own (DirtyFlix-style) show
-  **Listing ↗**, opening the paginated listing that carries the scene. Slug-only identifiers
-  (Strike3, Nubiles, Naughty America, Stepped Up, ModelCentro) are rebuilt from each site's
-  `direct_url_template`. When the identifier points at a JSON API instead — or is itself an embedded
-  JSON record — the header shows a collapsed **Source JSON** panel: expanding it pretty-prints the
-  payload, fetching API responses server-side through the SSRF guard (`GET /metadata/source-json`).
-  Auth-walled APIs report a fetch error instead of data. Identifiers with nothing recoverable show
-  neither.
+- **The header links back to the source site.** Every scrape records what it fetched as the scene's
+  source reference — URL, kind, and any raw API JSON — and the editor reads that first: a scene
+  page shows **Scene ↗**, sites with no scene pages of their own (DirtyFlix-style) show
+  **Listing ↗**, and API-backed scrapers (Project1Service, FuckYouCash, Unzip VR…) get a collapsed
+  **Source JSON** panel that pretty-prints the stored response instantly — auth is a non-issue
+  because the JSON was captured during the scrape. Scenes not yet re-scraped since this landed fall
+  back to decoding the identifier: browsable payloads still link, slug-only identifiers (Strike3,
+  Reptyle, Nubiles, Naughty America, Stepped Up, ModelCentro) are rebuilt from each site's
+  `direct_url_template`, and API-endpoint payloads fetch into the panel on first expand through the
+  SSRF-guarded `GET /metadata/source-json` proxy. Identifiers with nothing recoverable show neither
+  affordance until their next refresh.
 
 `/people/edit` covers the upstream original URL and cropped status, with the performer's name as the
 heading plus **Copy** and **Search IAFD** buttons. **Fetch From** runs one chosen photo source

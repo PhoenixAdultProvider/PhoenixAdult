@@ -38,6 +38,9 @@ _SCENE_COLUMNS = (
     'data18_id',
     'data18_manual',
     'data18_also',
+    'source_url',
+    'source_kind',
+    'source_json',
     'thumb',
     'art',
     'studio_id',
@@ -83,6 +86,7 @@ def upsert(
         studio_id = db.dim_id(conn, 'studios', str(md.get('studio') or ''))
         tagline_id = db.dim_id(conn, 'taglines', str(md.get('tagline') or ''))
         d18 = md.get('data18') or {}
+        src = md.get('source') or {}
         is_adult = md.get('isAdult')
         conn.execute(
             _UPSERT,
@@ -109,6 +113,9 @@ def upsert(
                 d18.get('id'),
                 int(bool(d18.get('manual'))),
                 ','.join(d18.get('also') or []),
+                src.get('url'),
+                src.get('kind'),
+                json.dumps(src['data']) if src.get('data') is not None else None,
                 md.get('thumb'),
                 md.get('art'),
                 studio_id,
@@ -211,6 +218,18 @@ def load(scene_hash: str) -> dict[str, Any] | None:
             md['data18']['also'] = str(row['data18_also']).split(',')
         if row['data18_manual']:
             md['data18']['manual'] = True
+    source: dict[str, Any] = {}
+    if row['source_url']:
+        source['url'] = row['source_url']
+    if row['source_kind']:
+        source['kind'] = row['source_kind']
+    if row['source_json']:
+        try:
+            source['data'] = json.loads(str(row['source_json']))
+        except ValueError:
+            pass
+    if source:
+        md['source'] = source
     if row['content_rating'] is not None:
         md['contentRating'] = row['content_rating']
     if row['is_adult'] is not None:

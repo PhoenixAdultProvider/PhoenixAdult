@@ -113,6 +113,8 @@ class SceneDetail:
     countries: list[str] | None = None
     rating: float | None = None
     audience_rating: float | None = None
+    source_kind: str | None = None
+    source_json: Any | None = None
 
 
 # ── Loaded Contexts Handed to the Per-Field Hooks ─────────────────────────────
@@ -132,6 +134,7 @@ class LoadedScene:
     art_cookie: str | None = None
     data18_url: str | None = None
     subsite: str | None = None
+    source_kind: str | None = None
     language: str | None = None
 
     def require_sel(self) -> Selector:
@@ -501,6 +504,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             art_referer=scene.art_referer,
             art_cookie=scene.art_cookie,
             data18_url=scene.data18_url,
+            source_kind=scene.source_kind,
+            source_json=scene.extra if isinstance(scene.extra, (dict, list)) else None,
         )
         await self.update(metadata, scene)
 

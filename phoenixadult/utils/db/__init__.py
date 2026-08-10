@@ -429,6 +429,9 @@ _ENSURE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('scenes', 'locked_fields', "TEXT NOT NULL DEFAULT '[]'"),
     ('scenes', 'images_locked', 'INTEGER NOT NULL DEFAULT 0'),
     ('scene_images', 'locked', 'INTEGER NOT NULL DEFAULT 0'),
+    ('scenes', 'source_url', 'TEXT'),
+    ('scenes', 'source_kind', 'TEXT'),
+    ('scenes', 'source_json', 'TEXT'),
 )
 
 

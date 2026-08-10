@@ -26,6 +26,7 @@ def _site(name: str, base_url: str, token_prefixes: tuple[str, ...] = ()) -> Sit
         scraper_type='reptyle',
         data18_enrichment=True,
         token_prefixes=token_prefixes,
+        direct_url_template='{base}/movies/{head}',
     )
 
 

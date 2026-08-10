@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras
@@ -16,6 +17,7 @@ from phoenixadult.models.metadata import (
     PlexMetadata,
     PlexMetadataResponse,
     PlexRole,
+    PlexSource,
 )
 from phoenixadult.registry import ResolvedSiteInfo, find_site, normalize_site_key
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
@@ -27,6 +29,7 @@ from phoenixadult.utils.images.proxy import proxy_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import PeopleManager, to_plex_roles
 from phoenixadult.utils.plex.rating_key import to_guid, to_rating_key
+from phoenixadult.utils.processors.scene_link import is_api_url
 from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.text_normalize import normalize_text
 from phoenixadult.utils.processors.title_case import title_case, title_sort
@@ -36,6 +39,20 @@ _PROBE_CONCURRENCY = 8
 
 def _year_of(date: str | None) -> int | None:
     return int(date[0:4]) if date and date[0:4].isdigit() else None
+
+
+def _source_of(detail: SceneDetail) -> PlexSource | None:
+    url = detail.scene_url if detail.scene_url and detail.scene_url.startswith(('http://', 'https://')) else None
+    data = detail.source_json
+    if data is not None:
+        try:
+            json.dumps(data)
+        except (TypeError, ValueError):
+            data = None
+    if url is None and data is None:
+        return None
+    kind = detail.source_kind or (('api' if is_api_url(url) else 'page') if url else None)
+    return PlexSource(url=url, kind=kind, data=data)
 
 
 def _classify_artwork(valid: list[dict[str, Any]], priority: set[str]) -> tuple[list[PlexImage], set[str]]:
@@ -202,6 +219,7 @@ class MetadataMapper:
             summary=normalize_text(detail.summary) or None,
             tagline=tagline,
             data18=PlexData18.model_validate(ref) if (ref := data18_ref_with_extras(detail.data18_url)) else None,
+            source=_source_of(detail),
             studio=studio,
             contentRating='XXX',
             isAdult=True,

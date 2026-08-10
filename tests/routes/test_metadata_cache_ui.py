@@ -660,7 +660,7 @@ def test_edit_page_labels_a_listing_link(monkeypatch: pytest.MonkeyPatch) -> Non
     from phoenixadult.utils.helpers.helpers import pack_cur_id
 
     cur = pack_cur_id(['someslug', '2019-04-12', 'https://sheisnerdy.com/detailed/3'])
-    page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
+    page = _source_client(monkeypatch, cur, site='She Is Nerdy').get('/metadata/edit?key=studio/abc')
     assert 'Listing ↗' in page.text
     assert 'href="https://sheisnerdy.com/detailed/3"' in page.text
 
@@ -749,3 +749,39 @@ def test_source_json_rejects_a_plain_scene_payload(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://example.com/scene/alpha'])))
     r = authed_client().get('/metadata/source-json?key=studio/abc')
     assert r.status_code == 400 and 'no source payload' in r.json()['error']
+
+
+def _stored_source_client(monkeypatch: pytest.MonkeyPatch, source: dict[str, object]) -> TestClient:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    payload = {'MediaContainer': {'Metadata': [{'title': 'Stored', 'source': source}]}}
+    monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: payload)
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', 'cur1'))
+    return authed_client()
+
+
+def test_the_stored_source_beats_the_cur_id_heuristic(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {'url': 'https://www.teamskeet.com/movies/alpha', 'kind': 'page'}
+    page = _stored_source_client(monkeypatch, source).get('/metadata/edit?key=studio/abc')
+    assert 'href="https://www.teamskeet.com/movies/alpha"' in page.text
+    assert 'Scene ↗' in page.text
+
+
+def test_a_stored_listing_source_keeps_its_label_and_panel(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {'url': 'https://sheisnerdy.com/detailed/3', 'kind': 'listing', 'data': {'title': 'Card'}}
+    page = _stored_source_client(monkeypatch, source).get('/metadata/edit?key=studio/abc')
+    assert 'Listing ↗' in page.text
+    assert 'id="sourcePanel"' in page.text
+
+
+def test_a_stored_api_source_renders_the_panel_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {'url': 'https://example.com/api/releases/alpha', 'kind': 'api', 'data': {'id': 9}}
+    page = _stored_source_client(monkeypatch, source).get('/metadata/edit?key=studio/abc')
+    assert 'id="sourcePanel"' in page.text
+    assert 'id="sourceLink"' not in page.text
+
+
+def test_source_json_prefers_the_stored_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    source = {'url': 'https://example.com/api/releases/alpha', 'kind': 'api', 'data': {'id': 9}}
+    r = _stored_source_client(monkeypatch, source).get('/metadata/source-json?key=studio/abc')
+    assert r.status_code == 200 and r.json() == {'ok': True, 'json': {'id': 9}}

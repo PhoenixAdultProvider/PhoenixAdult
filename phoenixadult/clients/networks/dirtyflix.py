@@ -153,7 +153,7 @@ class DirtyFlixClient(Client):
             return None
 
         extract['scene_id'] = scene_id
-        return LoadedScene(url=page_url, site=site, scene_date=iso or None, capture=ctx.capture if ctx else None, extra=extract)
+        return LoadedScene(url=page_url, site=site, scene_date=iso or None, capture=ctx.capture if ctx else None, extra=extract, source_kind='listing')
 
     async def _try_page(self, url: str, scene_id: str, cfg: dict[str, Any], ctx: SceneContext | None) -> dict[str, Any] | None:
         details_page_elements = await self.fetch_and_load(url, FetchCtx(capture=ctx.capture if ctx else None), f'GET {url}')

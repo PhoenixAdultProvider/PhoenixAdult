@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -44,6 +44,12 @@ class PlexData18(_Model):
     id: str
     manual: bool | None = None
     also: list[str] | None = None
+
+
+class PlexSource(_Model):
+    url: str | None = None
+    kind: str | None = None
+    data: Any = None
 
 
 class PlexCollection(_Model):
@@ -91,6 +97,7 @@ class PlexMetadata(_Model):
     summary: str | None = None
     tagline: str | None = None
     data18: PlexData18 | None = None
+    source: PlexSource | None = None
     contentRating: str | None = None
     isAdult: bool | None = None
     audienceRating: float | None = None

@@ -27,6 +27,13 @@ def test_a_url_in_a_later_segment_is_a_listing_link() -> None:
     assert (reptyle.kind, reptyle.url) == ('listing', 'https://example.com/videos?movie=1234')
 
 
+def test_a_site_template_beats_the_listing_fallback() -> None:
+    site = find_site('TeamSkeet')
+    assert site is not None and site.direct_url_template == '{base}/movies/{head}'
+    link = resolve_source_link(pack_cur_id(['canonical-id', 'scenes', 'https://www.teamskeet.com/movies/canonical-id']), site)
+    assert (link.kind, link.url) == ('scene', 'https://www.teamskeet.com/movies/canonical-id')
+
+
 def test_a_json_blob_with_a_url_key_links_and_carries_the_payload() -> None:
     blob = {'movieURL': 'https://www.adultempire.com/12345/movie.html', 'sceneNum': 2}
     link = resolve_source_link(b64url_encode(json.dumps(blob)), None)
