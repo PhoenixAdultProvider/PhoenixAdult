@@ -13,6 +13,7 @@ from phoenixadult.utils.processors.actor_strip import enabled_for, split_actor_p
 
 STUDIO = '5Kporn'
 _COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w; ageConfirmed=true'
+_MAX_PHOTOSET_PAGES = 20
 
 
 def _cls(name: str) -> str:
@@ -134,15 +135,24 @@ class Network5KPClient(Client):
             if src:
                 metadata.art.append(src)
 
-        for page_num in (1, 2):
+        page_num, last_page = 1, 1
+        while page_num <= min(last_page, _MAX_PHOTOSET_PAGES):
             photo_url = f'{scene_url.rstrip("/")}/photoset?page={page_num}'
             model_page_elements = await self.fetch_and_load(photo_url, FetchCtx(capture=capture), f'GET {photo_url}')
             if not model_page_elements:
-                continue
+                break
+            if page_num == 1:
+                numbers = [
+                    int(text)
+                    for text in model_page_elements['sel'].xpath('//ul[contains(@class,"pagination")]//a[contains(@class,"page-link")]/text()').getall()
+                    if text.strip().isdigit()
+                ]
+                last_page = max(numbers, default=1)
 
             for src in model_page_elements['sel'].xpath('//img[contains(@class,"card-img-top")]/@src').getall():
                 if src and 'full' not in src:
                     metadata.art.append(src)
+            page_num += 1
 
         # Posters from Data18
         await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, tagline), providers=[tagline, STUDIO])
