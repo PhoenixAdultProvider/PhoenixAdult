@@ -6,7 +6,15 @@ from fastapi.testclient import TestClient
 from phoenixadult.routes import render_nav
 from tests.conftest import authed_client
 
-PAGES = (('/metadata', 'Metadata'), ('/people', 'People'), ('/logos', 'Logos'), ('/queue', 'Queue'), ('/dev', 'Dev'), ('/config', 'Config'))
+PAGES = (
+    ('/metadata', 'Metadata'),
+    ('/people', 'People'),
+    ('/logos', 'Logos'),
+    ('/queue', 'Queue'),
+    ('/searches', 'Searches'),
+    ('/dev', 'Dev'),
+    ('/config', 'Config'),
+)
 
 
 @pytest.fixture
@@ -39,9 +47,19 @@ def test_config_sits_at_the_end_of_the_nav(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv('NODE_ENV', 'development')
     labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
     assert [x for x in labels if x != 'Log Out'][:6] == ['Metadata', 'People', 'Logos', 'Queue', 'Dev', 'Config']
+    assert 'Searches' not in labels, 'outside an admin request the Searches link stays hidden'
     monkeypatch.setenv('NODE_ENV', 'production')
     labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
     assert [x for x in labels if x != 'Log Out'][:5] == ['Metadata', 'People', 'Logos', 'Queue', 'Config']
+
+
+def test_admins_get_searches_between_queue_and_config(client: TestClient) -> None:
+    import re
+
+    body = client.get('/metadata').text
+    nav = body.split('class="app-nav"')[1].split('</nav>')[0]
+    labels = [x for x in re.findall(r'>([^<]+)</a>', nav) if x != 'Log Out']
+    assert labels[:7] == ['Metadata', 'People', 'Logos', 'Queue', 'Searches', 'Dev', 'Config']
 
 
 def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:

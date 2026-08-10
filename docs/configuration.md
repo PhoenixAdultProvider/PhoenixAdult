@@ -93,6 +93,10 @@ the only way in, including from loopback.
   Refresh All (re-scraping overwrites snapshots). Each write endpoint behind those
   buttons returns 403 as well, so the read-only view cannot be bypassed by
   hand-crafted requests. Browsing, filtering, and Export Mappings stay available.
+- **`/searches`** (admin only, linked in the nav for admins) browses the stored-search
+  store: every cached search with all its results, filterable by site, with per-search
+  purge and re-search, per-site and full purges, and an expired-row sweep. Non-admins
+  get 403 and never see the nav link.
 - **Clients** (admin tab) records every request that carried an
   `X-Plex-Client-Identifier` — one card per client with its X-Plex headers, hit
   count, and last path — the quickest way to grab an identifier for a connection's

@@ -18,12 +18,16 @@ _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
     ('logos', 'Logos', '/logos'),
     ('queue', 'Queue', '/queue'),
 )
+_NAV_SEARCHES_ITEM = ('searches', 'Searches', '/searches')
 _NAV_DEV_ITEM = ('dev', 'Dev', '/dev')
 _NAV_CONFIG_ITEM = ('config', 'Config', '/config')
 
 
 def nav_items() -> list[tuple[str, str, str]]:
-    return [*_NAV_ITEMS, *(() if env.is_production else (_NAV_DEV_ITEM,)), _NAV_CONFIG_ITEM]
+    from phoenixadult.utils.auth.user_auth import is_admin
+
+    searches = (_NAV_SEARCHES_ITEM,) if is_admin() else ()
+    return [*_NAV_ITEMS, *searches, *(() if env.is_production else (_NAV_DEV_ITEM,)), _NAV_CONFIG_ITEM]
 
 
 from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402

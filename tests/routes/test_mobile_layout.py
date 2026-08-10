@@ -32,6 +32,7 @@ def pages() -> dict[str, str]:
         'people': '/people',
         'logos': '/logos',
         'queue': '/queue',
+        'searches': '/searches',
         'account': '/account',
         'dev': '/dev',
     }

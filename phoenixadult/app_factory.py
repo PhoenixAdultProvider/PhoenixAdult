@@ -12,7 +12,17 @@ from starlette.middleware.gzip import GZipMiddleware
 from phoenixadult.config import base_url_config_warning, config
 from phoenixadult.config.env import env
 from phoenixadult.registry import get_all_providers
-from phoenixadult.routes import dev_routes, env_routes, image_routes, logo_routes, metadata_cache_routes, people_cache_routes, plex_routes, queue_routes
+from phoenixadult.routes import (
+    dev_routes,
+    env_routes,
+    image_routes,
+    logo_routes,
+    metadata_cache_routes,
+    people_cache_routes,
+    plex_routes,
+    queue_routes,
+    search_routes,
+)
 from phoenixadult.routes.provider_router import create_provider_router
 from phoenixadult.utils.concurrency import pools
 from phoenixadult.utils.logging.logger import logger
@@ -175,6 +185,9 @@ def create_app() -> FastAPI:
 
     # ── Background Scrape Queue UI (admin-guarded) ───────────────────────────
     app.include_router(queue_routes.router, prefix='/queue')
+
+    # ── Stored-Search Browser (admin only) ───────────────────────────────────
+    app.include_router(search_routes.router, prefix='/searches')
 
     # ── Plex Server Reconciliation (admin-guarded; no-op until PLEX_* are set) ─
     app.include_router(plex_routes.router, prefix='/plex')

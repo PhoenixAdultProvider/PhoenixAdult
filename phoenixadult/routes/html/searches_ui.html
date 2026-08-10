@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <title>Stored Searches</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 16px; }
+    .stats { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .stat { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+    .stat b { font-variant-numeric: tabular-nums; }
+    .stat.warn b { color: var(--status-warn-text); }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    select, input[type=text] { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
+                               border-radius: 6px; padding: 8px 10px; font-size: 14px; }
+    input[type=text] { flex: 1 1 220px; min-width: 0; }
+    input:focus, select:focus { outline: 0; border-color: var(--input-focus-border); }
+    button { padding: 8px 14px; border: 0; border-radius: 6px; background: var(--button-primary-bg); color: var(--button-text); font-size: 13px; cursor: pointer; }
+    button.secondary { background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--button-muted-text); }
+    button.danger { background: var(--button-danger-bg); color: var(--button-text); }
+    .count-line { color: var(--label-text); font-size: 12px; margin-bottom: 10px; }
+    .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+    .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+    .dup-badge { background: var(--badge-warning-bg); color: var(--badge-warning-text); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .group .card:last-child { margin-bottom: 0; }
+    .card-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
+    .q-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+    .chip { background: var(--badge-info-bg); color: var(--badge-info-text); border-radius: 10px; padding: 1px 8px; font-size: 11px; white-space: nowrap; cursor: pointer; border: 0; }
+    .meta { color: var(--muted-text); font-size: 12px; }
+    .meta.expired { color: var(--status-danger-text); }
+    .card-actions { margin-left: auto; display: flex; gap: 6px; }
+    .card-actions button { padding: 4px 10px; font-size: 12px; }
+    details { margin-top: 8px; }
+    summary { cursor: pointer; font-size: 12px; color: var(--link-text); }
+    .result { display: flex; gap: 8px 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 0 0 12px; font-size: 13px; }
+    .score { font-variant-numeric: tabular-nums; border-radius: 5px; padding: 0 6px; font-size: 12px; background: var(--progress-track); color: var(--soft-text); }
+    .score.hi { background: var(--button-success-bg); color: var(--button-text); }
+    .r-title { overflow-wrap: anywhere; }
+    .r-sub { color: var(--label-text); font-size: 12px; }
+    .r-links a { color: var(--link-text); font-size: 12px; margin-right: 8px; }
+    .empty { color: var(--empty-text); font-size: 13px; padding: 18px; }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      .toolbar select, .toolbar input[type=text] { flex: 1 1 100%; font-size: 16px; }
+      .toolbar button { flex: 1 1 auto; padding: 11px 12px; }
+      .stats { gap: 6px; }
+      .card-actions { margin-left: 0; width: 100%; }
+      .card-actions button { flex: 1 1 auto; padding: 10px; }
+    }
+  </style>
+</head>
+<body data-page="searches">
+  {% include 'nav.html' %}
+  <h1>Stored Searches</h1>
+  <div class="sub">search results cached for paced sites — reused for repeat matches and renamed files, rescored live at every replay</div>
+
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <select id="site-filter" onchange="render()"></select>
+    <input type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
+    <button type="button" class="secondary" onclick="sweepExpired()">Sweep Expired</button>
+    <button type="button" class="secondary" onclick="purgeSite()">Purge Site</button>
+    <button type="button" class="danger" onclick="purgeAll()">Purge All</button>
+  </div>
+  <div class="count-line" id="count-line"></div>
+  <div id="list"></div>
+  <div class="empty" id="empty" style="display:none">no stored searches match</div>
+
+  <script>
+    let STATE = {{ state|tojson }};
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+    function rel(ts) {
+      const s = Math.max(0, (Date.now() / 1000) - ts);
+      if (s < 3600) return Math.round(s / 60) + 'm ago';
+      if (s < 172800) return Math.round(s / 3600) + 'h ago';
+      return Math.round(s / 86400) + 'd ago';
+    }
+
+    function until(ts) {
+      const s = (ts - Date.now() / 1000);
+      if (s <= 0) return 'expired';
+      return 'expires in ' + Math.max(1, Math.round(s / 86400)) + 'd';
+    }
+
+    function siteOptions() {
+      const sel = document.getElementById('site-filter');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All Sites (' + (STATE.totals.searches || 0) + ')</option>' +
+        Object.entries(STATE.sites || {}).map(([site, n]) => `<option value="${esc(site)}">${esc(site)} (${n})</option>`).join('');
+      if ([...sel.options].some((o) => o.value === current)) sel.value = current;
+    }
+
+    function filtered() {
+      const site = document.getElementById('site-filter').value;
+      const text = document.getElementById('text-filter').value.trim().toLowerCase();
+      return (STATE.entries || []).filter((e) => {
+        if (site && e.site !== site) return false;
+        if (!text) return true;
+        if (e.title.toLowerCase().includes(text)) return true;
+        return e.results.some((r) => r.title.toLowerCase().includes(text));
+      });
+    }
+
+    function resultRow(r) {
+      const score = r.score == null ? '' : `<span class="score ${r.score >= 100 ? 'hi' : ''}">${Math.round(r.score)}</span>`;
+      const sub = r.subsite ? `<span class="r-sub">[${esc(r.subsite)}]</span>` : '';
+      const date = r.releaseDate ? `<span class="r-sub">${esc(r.releaseDate)}</span>` : '';
+      const links = [
+        r.snapshotKey ? `<a href="/metadata/edit?${new URLSearchParams({ key: r.snapshotKey })}">Snapshot</a>` : '',
+        r.sceneUrl ? `<a href="${esc(r.sceneUrl)}" target="_blank" rel="noreferrer">Scene ↗</a>` : '',
+      ].join('');
+      return `<div class="result">${score}<span class="r-title">${esc(r.title)}</span>${sub}${date}<span class="r-links">${links}</span></div>`;
+    }
+
+    function card(e) {
+      const expiry = e.expiresAt == null ? '' : ` · <span class="meta ${e.expired ? 'expired' : ''}">${until(e.expiresAt)}</span>`;
+      const bits = [e.date, e.sceneId ? 'id ' + e.sceneId : '', e.language].filter(Boolean).map(esc).join(' · ');
+      return `<div class="card">
+        <div class="card-head">
+          <span class="q-title">${esc(e.title)}</span>
+          <button type="button" class="chip" data-site="${esc(e.site)}">${esc(e.site)}</button>
+          <span class="meta">${bits}${bits ? ' · ' : ''}saved ${rel(e.savedAt)}${expiry}</span>
+          <div class="card-actions">
+            <button type="button" class="secondary" data-research="${esc(e.keyHash)}">Re-search</button>
+            <button type="button" class="danger" data-purge="${esc(e.keyHash)}">Purge</button>
+          </div>
+        </div>
+        <details><summary>${e.results.length} result(s)</summary>${e.results.map(resultRow).join('') || '<div class="result">none stored</div>'}</details>
+      </div>`;
+    }
+
+    function render() {
+      siteOptions();
+      const totals = STATE.totals || {};
+      document.getElementById('stats').innerHTML = `
+        <span class="stat"><b>${totals.searches || 0}</b> searches</span>
+        <span class="stat"><b>${totals.results || 0}</b> results</span>
+        <span class="stat ${totals.expired ? 'warn' : ''}"><b>${totals.expired || 0}</b> expired</span>
+        <span class="stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
+
+      const rows = filtered();
+      document.getElementById('count-line').textContent = `${rows.length} of ${(STATE.entries || []).length} stored searches shown`;
+      const groups = new Map();
+      for (const e of rows) {
+        const key = e.date ? `${e.site}|${e.date}|${e.sceneId}` : `solo|${e.keyHash}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(e);
+      }
+      let html = '';
+      for (const members of groups.values()) {
+        if (members.length > 1) {
+          html += `<div class="group"><div class="group-head"><span class="dup-badge">${members.length} spellings of one scene</span>
+            <span>${esc(members[0].site)} · ${esc(members[0].date)}</span></div>${members.map(card).join('')}</div>`;
+        } else {
+          html += card(members[0]);
+        }
+      }
+      document.getElementById('list').innerHTML = html;
+      document.getElementById('empty').style.display = rows.length ? 'none' : '';
+    }
+
+    async function post(path, body) {
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      if (res.ok) { STATE = await res.json(); render(); }
+      return res.ok;
+    }
+
+    document.getElementById('list').addEventListener('click', (ev) => {
+      const chip = ev.target.closest('.chip');
+      if (chip) {
+        document.getElementById('site-filter').value = chip.dataset.site;
+        render();
+        return;
+      }
+      const purgeBtn = ev.target.closest('[data-purge]');
+      if (purgeBtn) { post('/searches/api/purge', { keyHash: purgeBtn.dataset.purge }); return; }
+      const researchBtn = ev.target.closest('[data-research]');
+      if (researchBtn) post('/searches/api/research', { keyHash: researchBtn.dataset.research });
+    });
+
+    function sweepExpired() { post('/searches/api/sweep'); }
+
+    function purgeSite() {
+      const site = document.getElementById('site-filter').value;
+      if (!site) { alert('Pick a site in the filter first.'); return; }
+      if (!confirm(`Purge every stored search for ${site}?`)) return;
+      post('/searches/api/purge-site', { site });
+    }
+
+    function purgeAll() {
+      if (!confirm('Purge every stored search? Paced sites will re-scrape on their next match.')) return;
+      post('/searches/api/purge-all');
+    }
+
+    render();
+  </script>
+</body>
+</html>

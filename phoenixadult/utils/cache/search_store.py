@@ -111,6 +111,81 @@ def find_title(cur_id: str) -> tuple[str, str] | None:
     return str(row['title']), str(row['subsite'] or row['site'])
 
 
+def purge(key_hash: str) -> bool:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute('DELETE FROM searches WHERE key_hash = ?', (key_hash,))
+    return bool(cur.rowcount)
+
+
+def purge_site(site: str) -> int:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute('DELETE FROM searches WHERE site = ?', (site,))
+    return int(cur.rowcount or 0)
+
+
+def purge_all() -> int:
+    conn = db.connect()
+    with conn:
+        cur = conn.execute('DELETE FROM searches')
+    return int(cur.rowcount or 0)
+
+
+def dump() -> dict[str, object]:
+    conn = db.connect()
+    ttl = _ttl_seconds()
+    now = time.time()
+    snapshot_keys = {str(r['cur_id']): str(r['rel_path']) for r in conn.execute('SELECT cur_id, rel_path FROM scenes')}
+    entries: list[dict[str, object]] = []
+    by_site: dict[str, int] = {}
+    total_results = 0
+    expired = 0
+    result_rows = conn.execute('SELECT key_hash, pos, cur_id, title, subsite, payload FROM search_results ORDER BY key_hash, pos').fetchall()
+    results_by_key: dict[str, list[dict[str, object]]] = {}
+    for r in result_rows:
+        payload = json.loads(str(r['payload']))
+        results_by_key.setdefault(str(r['key_hash']), []).append(
+            {
+                'pos': int(r['pos']),
+                'curId': str(r['cur_id']),
+                'title': str(r['title']),
+                'subsite': str(r['subsite'] or ''),
+                'score': payload.get('score'),
+                'releaseDate': payload.get('release_date'),
+                'sceneUrl': payload.get('scene_url'),
+                'snapshotKey': snapshot_keys.get(str(r['cur_id'])),
+            }
+        )
+    for row in conn.execute('SELECT key_hash, site, title, date, scene_id, language, saved_at FROM searches ORDER BY saved_at DESC'):
+        saved_at = float(row['saved_at'])
+        is_expired = ttl is not None and now - saved_at > ttl
+        expired += 1 if is_expired else 0
+        results = results_by_key.get(str(row['key_hash']), [])
+        total_results += len(results)
+        by_site[str(row['site'])] = by_site.get(str(row['site']), 0) + 1
+        entries.append(
+            {
+                'keyHash': str(row['key_hash']),
+                'site': str(row['site']),
+                'title': str(row['title']),
+                'date': str(row['date'] or ''),
+                'sceneId': str(row['scene_id'] or ''),
+                'language': str(row['language'] or ''),
+                'savedAt': saved_at,
+                'expiresAt': saved_at + ttl if ttl is not None else None,
+                'expired': is_expired,
+                'results': results,
+            }
+        )
+    return {
+        'entries': entries,
+        'totals': {'searches': len(entries), 'results': total_results, 'expired': expired},
+        'sites': dict(sorted(by_site.items())),
+        'ttlDays': env.search_store_ttl_days,
+    }
+
+
 def sweep_expired() -> int:
     ttl = _ttl_seconds()
     if ttl is None:

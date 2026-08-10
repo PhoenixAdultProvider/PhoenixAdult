@@ -114,3 +114,53 @@ def test_sweep_expired_deletes_only_stale_rows(monkeypatch: pytest.MonkeyPatch) 
     db.connect().execute("UPDATE searches SET saved_at = ? WHERE site = 'Bratty Sis'", (time.time() - 8 * 86400,))
     assert search_store.sweep_expired() == 1
     assert search_store.load(KEY) is not None
+
+
+def test_dump_lists_everything_with_totals_and_site_counts() -> None:
+    search_store.save(('Bratty Sis', 'query one', '2024-06-21', '', ''), [SearchResult(title='A', scene_url='https://x/1', cur_id='c1', score=90.0)])
+    search_store.save(
+        ('Nubile Films', 'query two', '2024-06-22', '55', 'en'),
+        [
+            SearchResult(title='B', scene_url='https://x/2', cur_id='c2', score=100.0, subsite='NF Busty'),
+            SearchResult(title='C', scene_url='https://x/3', cur_id='c3'),
+        ],
+    )
+    state = search_store.dump()
+    assert state['totals'] == {'searches': 2, 'results': 3, 'expired': 0}
+    assert state['sites'] == {'Bratty Sis': 1, 'Nubile Films': 2 - 1}
+    newest = state['entries'][0]
+    assert newest['site'] == 'Nubile Films' and newest['sceneId'] == '55' and newest['language'] == 'en'
+    assert newest['expiresAt'] is None, 'no TTL means no expiry'
+    assert [r['title'] for r in newest['results']] == ['B', 'C']
+    assert newest['results'][0]['subsite'] == 'NF Busty' and newest['results'][0]['score'] == 100.0
+
+
+def test_dump_attaches_snapshot_keys_and_expiry(monkeypatch) -> None:
+    from phoenixadult.utils import cache as metadata_cache
+    from phoenixadult.utils.cache import scene_store
+
+    monkeypatch.setenv('SEARCH_STORE_TTL_DAYS', '30')
+    md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
+    payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+    scene_hash = metadata_cache._hash('Bratty Sis', 'snapcur')
+    scene_store.upsert('Bratty Sis', 'snapcur', scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+
+    search_store.save(('Bratty Sis', 'snap query', '2024-06-21', '', ''), [SearchResult(title='S', scene_url='https://x/s', cur_id='snapcur')])
+    state = search_store.dump()
+    entry = state['entries'][0]
+    assert entry['expiresAt'] is not None and entry['expiresAt'] > entry['savedAt']
+    assert entry['results'][0]['snapshotKey'], 'a stored snapshot for the cur_id yields an edit link'
+
+
+def test_purge_variants_cascade_cleanly() -> None:
+    from phoenixadult.utils import db
+
+    for i, site in enumerate(('Bratty Sis', 'Bratty Sis', 'Nubile Films')):
+        search_store.save((site, f'q{i}', '2024-06-21', '', ''), [SearchResult(title='T', scene_url=f'https://x/{i}', cur_id=f'p{i}')])
+    state = search_store.dump()
+    victim = next(e for e in state['entries'] if e['site'] == 'Nubile Films')
+    assert search_store.purge(victim['keyHash']) is True
+    assert search_store.purge(victim['keyHash']) is False, 'already gone'
+    assert search_store.purge_site('Bratty Sis') == 2
+    assert search_store.purge_all() == 0
+    assert db.connect().execute('SELECT COUNT(*) c FROM search_results').fetchone()['c'] == 0, 'cascade leaves no orphan results'

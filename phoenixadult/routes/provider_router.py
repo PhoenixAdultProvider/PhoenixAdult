@@ -26,6 +26,13 @@ def service_for(provider_id: str) -> tuple[ProviderInfo, MetadataService] | None
     return None
 
 
+def match_service_for(provider_id: str) -> tuple[ProviderInfo, MatchService] | None:
+    for provider, match_service, _metadata_service in _SERVICES:
+        if provider.id == provider_id:
+            return provider, match_service
+    return None
+
+
 async def restore_queue() -> None:
     replays = scrape_queue.take_replays()
     restored = 0

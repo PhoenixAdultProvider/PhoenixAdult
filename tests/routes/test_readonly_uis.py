@@ -158,6 +158,7 @@ def test_every_page_script_survives_load_for_both_roles(member: TestClient, tmp_
         slug = path.strip('/').replace('/', '-').split('?')[0]
         _assert_page_scripts_load(member, path, f'member-{slug}', tmp_path)
         _assert_page_scripts_load(admin, path, f'admin-{slug}', tmp_path)
+    _assert_page_scripts_load(admin, '/searches', 'admin-searches', tmp_path)
 
 
 def test_a_lone_view_button_is_centered(member: TestClient) -> None:
