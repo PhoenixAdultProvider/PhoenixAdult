@@ -12,7 +12,10 @@ BASE = 'http://192.0.2.10:32400'
 
 @pytest.fixture(autouse=True)
 def _fresh_progress() -> None:
+    from phoenixadult.services import plex_jobs
+
     plex_reconcile._progress.clear()
+    plex_jobs.reset()
 
 
 def test_requires_auth() -> None:
@@ -93,3 +96,85 @@ def test_reconcile_rejects_a_bad_limit() -> None:
     client = authed_client()
     connection = seed_connection(url=BASE)
     assert client.post(f'/plex/connections/{connection.id}/reconcile?limit=abc').status_code == 400
+
+
+def test_a_running_job_is_refused_and_queryable_across_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    import time
+
+    from phoenixadult.services import plex_jobs
+
+    client = authed_client()
+    connection = seed_connection(name='Home', url=BASE, token='t')
+
+    plex_jobs._jobs[(connection.id, 'reconcile')] = {
+        'active': True,
+        'phase': 'inspecting',
+        'total': 8,
+        'done': 3,
+        'report': None,
+        'error': None,
+        'startedAt': time.time(),
+        'finishedAt': None,
+    }
+
+    assert client.post(f'/plex/connections/{connection.id}/reconcile').status_code == 409, 'no duplicate launch while active'
+
+    jobs = client.get(f'/plex/connections/{connection.id}/jobs').json()['jobs']
+    assert jobs['reconcile'] == {
+        'active': True,
+        'phase': 'inspecting',
+        'total': 8,
+        'done': 3,
+        'report': None,
+        'error': None,
+        'startedAt': jobs['reconcile']['startedAt'],
+        'finishedAt': None,
+    }
+
+
+def test_a_finished_job_retains_its_report_for_the_returning_page() -> None:
+    import time
+
+    from phoenixadult.services import plex_jobs
+
+    client = authed_client()
+    connection = seed_connection(name='Home', url=BASE, token='t')
+    plex_jobs._jobs[(connection.id, 'import')] = {
+        'active': False,
+        'phase': 'done',
+        'total': 0,
+        'done': 0,
+        'report': {'applied': True, 'imported': 5, 'scanned': 9},
+        'error': None,
+        'startedAt': time.time() - 5,
+        'finishedAt': time.time(),
+    }
+    job = client.get(f'/plex/connections/{connection.id}/jobs').json()['jobs']['import']
+    assert job['active'] is False and job['report']['imported'] == 5, 'the report is still there when the page comes back'
+
+
+def test_stale_finished_jobs_drop_out_of_the_status() -> None:
+    import time
+
+    from phoenixadult.services import plex_jobs
+
+    client = authed_client()
+    connection = seed_connection(name='Home', url=BASE, token='t')
+    plex_jobs._jobs[(connection.id, 'reconcile')] = {
+        'active': False,
+        'phase': 'done',
+        'total': 0,
+        'done': 0,
+        'report': {'x': 1},
+        'error': None,
+        'startedAt': 0,
+        'finishedAt': time.time() - (31 * 60),
+    }
+    assert client.get(f'/plex/connections/{connection.id}/jobs').json()['jobs'] == {}, 'a run from an hour ago no longer resurfaces'
+
+
+def test_jobs_endpoint_is_owner_scoped() -> None:
+    client = authed_client()
+    connection = seed_connection(name='Home', url=BASE, token='t')
+    assert client.get(f'/plex/connections/{connection.id}/jobs').json() == {'jobs': {}}
+    assert client.get('/plex/connections/9999/jobs').status_code == 404

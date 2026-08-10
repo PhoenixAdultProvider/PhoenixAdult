@@ -1341,6 +1341,7 @@
       if (imgLabel) imgLabel.textContent = conn.name;
       document.getElementById('plex-update-channel').value = conn.updateChannel || 'plex';
       renderAllowedClients();
+      reattachJobs();
       plexStatus('plex-conn-status', conn.hasToken ? 'Token saved.' : 'No token yet — fetch or paste one.', conn.hasToken ? 'ok' : '');
       const releaseSel = document.getElementById('plex-update-release');
       if (conn.updateRelease && ![...releaseSel.options].some((o) => o.value === conn.updateRelease)) {
@@ -1761,71 +1762,104 @@
       clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
-    let reconcileProgressTimer = null;
+    let jobPollTimer = null;
+    let jobPollConn = null;
 
-    function stopReconcileProgress() {
-      if (reconcileProgressTimer) { clearInterval(reconcileProgressTimer); reconcileProgressTimer = null; }
-      document.getElementById('plex-reconcile-progress').style.display = 'none';
+    function reconcileBar(job) {
+      const wrap = document.getElementById('plex-reconcile-progress');
+      if (!job || !job.active) { if (wrap) wrap.style.display = 'none'; return; }
+      wrap.style.display = 'block';
+      const pct = job.total ? Math.min(100, Math.round((job.done / job.total) * 100)) : 0;
+      document.getElementById('plex-reconcile-progress-label').textContent = job.total ? (job.done + ' of ' + job.total + ' scenes inspected') : 'Collecting library…';
+      document.getElementById('plex-reconcile-progress-pct').textContent = job.total ? pct + '%' : '';
+      document.getElementById('plex-reconcile-progress-fill').style.width = pct + '%';
     }
 
-    function startReconcileProgress() {
-      document.getElementById('plex-reconcile-progress').style.display = 'block';
-      document.getElementById('plex-reconcile-progress-fill').style.width = '0%';
-      document.getElementById('plex-reconcile-progress-label').textContent = 'Collecting library…';
-      document.getElementById('plex-reconcile-progress-pct').textContent = '';
-      reconcileProgressTimer = setInterval(async () => {
-        try {
-          const r = await fetch(api(connPath('/reconcile/progress')));
-          if (!r.ok) return;
-          const p = await r.json();
-          if (!p.total) return;
-          const pct = Math.min(100, Math.round((p.inspected / p.total) * 100));
-          document.getElementById('plex-reconcile-progress-label').textContent = p.inspected + ' of ' + p.total + ' scenes inspected';
-          document.getElementById('plex-reconcile-progress-pct').textContent = pct + '%';
-          document.getElementById('plex-reconcile-progress-fill').style.width = pct + '%';
-        } catch {}
-      }, 600);
+    function applyJob(kind, job) {
+      if (kind === 'reconcile') {
+        reconcileBar(job);
+        if (job.active) plexStatus('plex-reconcile-status', '<span class="spin"></span> Working…');
+        else if (job.error) plexStatus('plex-reconcile-status', esc(job.error), 'err');
+        else if (job.report) { renderReconcile(job.report); plexStatus('plex-reconcile-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
+      } else if (kind === 'import') {
+        if (job.active) plexStatus('plex-import-status', '<span class="spin"></span> Working…');
+        else if (job.error) plexStatus('plex-import-status', esc(job.error), 'err');
+        else if (job.report) { renderImport(job.report); plexStatus('plex-import-status', job.report.applied ? 'Import complete.' : 'Dry run complete.', 'ok'); }
+      } else if (kind === 'collection-logos') {
+        if (job.active) plexStatus('plex-collogo-status', '<span class="spin"></span> Working…');
+        else if (job.error) plexStatus('plex-collogo-status', esc(job.error), 'err');
+        else if (job.report) { renderCollogo(job.report); plexStatus('plex-collogo-status', job.report.applied ? 'Applied.' : 'Dry run complete.', 'ok'); }
+      }
     }
 
-    async function runReconcile(apply) {
-      if (!CONN_ID) { plexStatus('plex-reconcile-status', 'Pick a connection first.', 'err'); return; }
+    async function pollJobsOnce() {
+      if (!CONN_ID) return false;
+      let jobs = {};
+      try {
+        const r = await fetch(api(connPath('/jobs')));
+        if (!r.ok) return false;
+        jobs = (await r.json()).jobs || {};
+      } catch { return false; }
+      for (const kind of ['reconcile', 'import', 'collection-logos']) if (jobs[kind]) applyJob(kind, jobs[kind]);
+      return Object.values(jobs).some(j => j.active);
+    }
+
+    function stopJobPoll() { if (jobPollTimer) { clearInterval(jobPollTimer); jobPollTimer = null; } }
+
+    function startJobPoll() {
+      stopJobPoll();
+      jobPollConn = CONN_ID;
+      jobPollTimer = setInterval(async () => {
+        if (CONN_ID !== jobPollConn) { stopJobPoll(); return; }
+        const anyActive = await pollJobsOnce();
+        if (!anyActive) stopJobPoll();
+      }, 800);
+    }
+
+    async function reattachJobs() {
+      stopJobPoll();
+      reconcileBar(null);
+      if (!CONN_ID) return;
+      const anyActive = await pollJobsOnce();
+      if (anyActive) startJobPoll();
+    }
+
+    async function startJob(kind, path, statusId, working) {
+      if (!CONN_ID) { plexStatus(statusId, 'Pick a connection first.', 'err'); return false; }
+      plexStatus(statusId, '<span class="spin"></span> ' + working);
+      try {
+        const r = await fetch(api(connPath(path)), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+        if (r.status === 409) { const d = await r.json().catch(() => ({})); plexStatus(statusId, d.error || 'Already running.', 'err'); startJobPoll(); return false; }
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || ('HTTP ' + r.status)); }
+      } catch (err) { plexStatus(statusId, esc(err.message), 'err'); return false; }
+      startJobPoll();
+      return true;
+    }
+
+    function runReconcile(apply) {
       if (apply && !confirm('Apply removals to the Plex library? Locked fields are skipped.')) return;
       const limit = document.getElementById('plex-reconcile-limit').value.trim();
       const params = reconFilters();
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      plexStatus('plex-reconcile-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
-      startReconcileProgress();
-      try {
-        const data = await postJSON(api(connPath('/reconcile' + (params.length ? '?' + params.join('&') : ''))), {});
-        renderReconcile(data);
-        plexStatus('plex-reconcile-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
-      } catch (err) {
-        plexStatus('plex-reconcile-status', esc(err.message), 'err');
-      } finally {
-        stopReconcileProgress();
-      }
+      startJob('reconcile', '/reconcile' + (params.length ? '?' + params.join('&') : ''), 'plex-reconcile-status', apply ? 'Applying…' : 'Dry run…');
     }
 
-    async function runCollectionLogos(apply) {
-      if (!CONN_ID) { plexStatus('plex-collogo-status', 'Pick a connection first.', 'err'); return; }
+    function renderCollogo(d) {
+      const out = document.getElementById('plex-collogo-out');
+      const noun = d.applied ? 'set on' : 'would be set on';
+      out.style.display = 'block';
+      out.innerHTML = `<div>${d.collections} collection(s) · ${d.matched} with a logo · <b>${d.pushed}</b> ${noun} · ${d.already} already done</div>`
+        + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:220px;overflow:auto">' + d.items.map(i => `${esc(i.title)} <span style="color:var(--label-text)">← ${esc(i.logo)}</span>`).join('<br>') + '</div>' : '');
+    }
+
+    function runCollectionLogos(apply) {
       if (apply && !confirm('Set clearLogos on matching Plex collections?')) return;
       const limit = document.getElementById('plex-collogo-limit').value.trim();
       const params = [];
       if (apply) params.push('apply=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      plexStatus('plex-collogo-status', '<span class="spin"></span> ' + (apply ? 'Applying…' : 'Dry run…'));
-      const out = document.getElementById('plex-collogo-out');
-      try {
-        const d = await postJSON(api(connPath('/collection-logos' + (params.length ? '?' + params.join('&') : ''))), {});
-        const noun = apply ? 'set on' : 'would be set on';
-        out.style.display = 'block';
-        out.innerHTML = `<div>${d.collections} collection(s) · ${d.matched} with a logo · <b>${d.pushed}</b> ${noun} · ${d.already} already done</div>`
-          + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:220px;overflow:auto">' + d.items.map(i => `${esc(i.title)} <span style="color:var(--label-text)">← ${esc(i.logo)}</span>`).join('<br>') + '</div>' : '');
-        plexStatus('plex-collogo-status', apply ? 'Applied.' : 'Dry run complete.', 'ok');
-      } catch (err) {
-        plexStatus('plex-collogo-status', esc(err.message), 'err');
-      }
+      startJob('collection-logos', '/collection-logos' + (params.length ? '?' + params.join('&') : ''), 'plex-collogo-status', apply ? 'Applying…' : 'Dry run…');
     }
 
     async function loadPlexLibraries() {
@@ -1844,7 +1878,16 @@
       }
     }
 
-    async function runPlexImport(apply) {
+    function renderImport(d) {
+      const out = document.getElementById('plex-import-out');
+      const headline = d.applied ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
+      out.style.display = 'block';
+      out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
+        + (d.itemsTruncated ? `<div class="hint">plus ${d.itemsTruncated} more not listed</div>` : '')
+        + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map(i => `${esc(i.status)} — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>`).join('<br>') + '</div>' : '');
+    }
+
+    function runPlexImport(apply) {
       if (!CONN_ID) { plexStatus('plex-import-status', 'Pick a connection first.', 'err'); return; }
       const section = document.getElementById('plex-import-section').value;
       if (!section) { plexStatus('plex-import-status', 'Pick a library first', 'err'); return; }
@@ -1858,19 +1901,7 @@
       if (apply) params.push('apply=1');
       if (overwrite) params.push('overwrite=1');
       if (limit) params.push('limit=' + encodeURIComponent(limit));
-      plexStatus('plex-import-status', '<span class="spin"></span> ' + (apply ? 'Importing…' : 'Dry run…'));
-      const out = document.getElementById('plex-import-out');
-      try {
-        const d = await postJSON(api(connPath('/import?' + params.join('&'))), {});
-        const headline = apply ? `<b>${d.imported}</b> imported` : `<b>${d.importable}</b> would import`;
-        out.style.display = 'block';
-        out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
-          + (d.itemsTruncated ? `<div class="hint">plus ${d.itemsTruncated} more not listed</div>` : '')
-          + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map(i => `${esc(i.status)} — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>`).join('<br>') + '</div>' : '');
-        plexStatus('plex-import-status', apply ? 'Import complete.' : 'Dry run complete.', 'ok');
-      } catch (err) {
-        plexStatus('plex-import-status', esc(err.message), 'err');
-      }
+      startJob('import', '/import?' + params.join('&'), 'plex-import-status', apply ? 'Importing…' : 'Dry run…');
     }
 
     // ── Session Log ───────────────────────────────────────────────────────────

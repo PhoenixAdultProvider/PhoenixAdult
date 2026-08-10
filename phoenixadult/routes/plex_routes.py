@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from phoenixadult.routes import read_json_body
-from phoenixadult.services import plex_account, plex_connections, plex_import, plex_reconcile
+from phoenixadult.services import plex_account, plex_connections, plex_import, plex_jobs, plex_reconcile
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils.auth.user_auth import csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
@@ -196,14 +196,19 @@ async def reconcile_progress(connection_id: int, request: Request) -> JSONRespon
     return JSONResponse(plex_reconcile.progress(connection_id))
 
 
+@router.get('/connections/{connection_id}/jobs')
+async def jobs(connection_id: int, request: Request) -> JSONResponse:
+    if await _owned(request, connection_id) is None:
+        return JSONResponse({'error': 'No such connection'}, status_code=404)
+    return JSONResponse({'jobs': plex_jobs.status_for(connection_id)})
+
+
 @router.post('/connections/{connection_id}/reconcile')
 async def reconcile(connection_id: int, request: Request) -> JSONResponse:
     resolved = await _with_token(request, connection_id)
     if isinstance(resolved, JSONResponse):
         return resolved
     connection, token = resolved
-    if plex_reconcile.is_running(connection_id):
-        return JSONResponse({'error': 'A reconcile is already running for this connection'}, status_code=409)
 
     limit, error = _limit(request)
     if error is not None:
@@ -213,14 +218,23 @@ async def reconcile(connection_id: int, request: Request) -> JSONResponse:
         raw = (request.query_params.get(name) or '').strip()
         return {v.strip() for v in raw.split(',') if v.strip()} or None if raw else None
 
-    try:
-        report = await plex_reconcile.reconcile(
-            connection, token, apply=_truthy(request.query_params.get('apply')), limit=limit, fields=_csv('fields'), sites=_csv('sites')
+    apply = _truthy(request.query_params.get('apply'))
+    fields, sites = _csv('fields'), _csv('sites')
+
+    def _factory() -> Any:
+        return plex_reconcile.reconcile(
+            connection,
+            token,
+            apply=apply,
+            limit=limit,
+            fields=fields,
+            sites=sites,
+            on_progress=lambda total, done: plex_jobs.set_progress(connection_id, 'reconcile', total=total, done=done, phase='inspecting'),
         )
-    except httpx2.HTTPError as err:
-        logger.warn('plex-reconcile', f'Plex request failed: {err}')
-        return JSONResponse({'error': 'Plex request failed'}, status_code=502)
-    return JSONResponse(report.as_dict())
+
+    if not plex_jobs.launch(connection_id, 'reconcile', _factory):
+        return JSONResponse({'error': 'A reconcile is already running for this connection'}, status_code=409)
+    return JSONResponse({'started': True, 'kind': 'reconcile'})
 
 
 @router.get('/connections/{connection_id}/libraries')
@@ -250,21 +264,15 @@ async def import_library(connection_id: int, request: Request) -> JSONResponse:
     if error is not None:
         return error
 
-    try:
-        report = await plex_import.import_library(
-            connection,
-            token,
-            section,
-            apply=_truthy(request.query_params.get('apply')),
-            limit=limit,
-            overwrite=_truthy(request.query_params.get('overwrite')),
-        )
-    except RuntimeError as err:
-        return JSONResponse({'error': str(err)}, status_code=409)
-    except httpx2.HTTPError as err:
-        logger.warn('plex-import', f'Plex request failed: {err}')
-        return JSONResponse({'error': 'Plex request failed'}, status_code=502)
-    return JSONResponse(report.as_dict())
+    apply = _truthy(request.query_params.get('apply'))
+    overwrite = _truthy(request.query_params.get('overwrite'))
+
+    def _factory() -> Any:
+        return plex_import.import_library(connection, token, section, apply=apply, limit=limit, overwrite=overwrite)
+
+    if not plex_jobs.launch(connection_id, 'import', _factory):
+        return JSONResponse({'error': 'An import is already running for this connection'}, status_code=409)
+    return JSONResponse({'started': True, 'kind': 'import'})
 
 
 @router.post('/connections/{connection_id}/collection-logos')
@@ -277,9 +285,11 @@ async def collection_logos(connection_id: int, request: Request) -> JSONResponse
     if error is not None:
         return error
 
-    try:
-        report = await plex_reconcile.push_collection_logos(connection, token, apply=_truthy(request.query_params.get('apply')), limit=limit)
-    except httpx2.HTTPError as err:
-        logger.warn('plex-reconcile', f'Plex request failed: {err}')
-        return JSONResponse({'error': 'Plex request failed'}, status_code=502)
-    return JSONResponse(report.as_dict())
+    apply = _truthy(request.query_params.get('apply'))
+
+    def _factory() -> Any:
+        return plex_reconcile.push_collection_logos(connection, token, apply=apply, limit=limit)
+
+    if not plex_jobs.launch(connection_id, 'collection-logos', _factory):
+        return JSONResponse({'error': 'A collection-logos run is already active for this connection'}, status_code=409)
+    return JSONResponse({'started': True, 'kind': 'collection-logos'})

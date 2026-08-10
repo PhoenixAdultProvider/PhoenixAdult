@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable
 from typing import Any
 
 import httpx2
@@ -209,7 +210,13 @@ async def _inspect_item(
 
 
 async def reconcile(
-    connection: Connection, token: str, apply: bool = False, limit: int | None = None, fields: set[str] | None = None, sites: set[str] | None = None
+    connection: Connection,
+    token: str,
+    apply: bool = False,
+    limit: int | None = None,
+    fields: set[str] | None = None,
+    sites: set[str] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> ReconcileReport:
     report = ReconcileReport(applied=apply)
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
@@ -234,6 +241,8 @@ async def reconcile(
                 work.append((section, stub, rating_key, site_name))
 
         run_progress.update(active=True, total=len(work), inspected=0)
+        if on_progress:
+            on_progress(len(work), 0)
         sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
         done = False
 
@@ -243,6 +252,8 @@ async def reconcile(
                     return None
                 inspected = await _inspect_item(client, *w, field_filter)
                 run_progress['inspected'] += 1
+                if on_progress:
+                    on_progress(run_progress['total'], run_progress['inspected'])
                 return inspected
 
         tasks = [asyncio.create_task(_guarded(w)) for w in work]

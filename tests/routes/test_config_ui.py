@@ -110,9 +110,16 @@ def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
 def test_reconcile_shows_a_scene_progress_bar(client: TestClient) -> None:
     body = client.get('/config').text
     assert 'id="plex-reconcile-progress"' in body
-    assert "fetch(api(connPath('/reconcile/progress')))" in body
-    assert "' of ' + p.total + ' scenes inspected'" in body
-    assert 'startReconcileProgress();' in body and 'stopReconcileProgress();' in body
+    assert "fetch(api(connPath('/jobs')))" in body, 'progress now rides the shared job poller'
+    assert "' of ' + job.total + ' scenes inspected'" in body
+    assert 'function reattachJobs' in body and 'function pollJobsOnce' in body
+
+
+def test_leaving_and_returning_reattaches_running_operations(client: TestClient) -> None:
+    body = client.get('/config').text
+    assert 'reattachJobs();' in body, 'selecting a connection re-attaches to any in-flight job'
+    assert "startJob('reconcile'" in body and "startJob('import'" in body and "startJob('collection-logos'" in body
+    assert 'renderImport' in body and 'renderCollogo' in body, 'finished-job reports render on return'
 
 
 def test_the_theme_tab_sits_before_logs_with_pickers_and_a_preview(client: TestClient) -> None:
