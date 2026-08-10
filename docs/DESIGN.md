@@ -109,7 +109,7 @@ flowchart LR
 | Account self-service | `GET /account` + `POST /account/api/...` | **session or API key** |
 | Cache / logo / queue review UIs | `GET /people`, `/metadata`, `/logos`, `/queue` | **session or API key** (read-only for non-admins — write controls hidden and their endpoints 403) |
 | Stored-search browser | `GET\|POST /searches/...` | **session or API key, admin only** — page, APIs, and nav link all hidden from non-admins |
-| Cache editors | `GET /metadata/edit` (per-field/per-image/image-set locks: locked pieces survive re-scrapes; editing a field auto-locks it), `/people/edit` | **session or API key**; `POST …/save` and every purge/restore/gender/fetch/rescan/flush endpoint is **admin only** |
+| Cache editors | `GET /metadata/edit` (per-field/per-image/image-set locks: locked pieces survive re-scrapes; editing a field auto-locks it; the header links to the source scene or listing page decoded from the cur_id — `SiteInfo.direct_url_template` rebuilds it for slug-only sites — and JSON/API payloads render in a lazy Source JSON panel via `GET /metadata/source-json`), `/people/edit` | **session or API key**; `POST …/save` and every purge/restore/gender/fetch/rescan/flush endpoint is **admin only** |
 | Snapshot re-scrape | `POST /metadata/refresh`, `/metadata/refresh-bulk` | **session or API key, admin only** (re-scraping rewrites snapshots); `GET /metadata/snapshot` stays readable |
 | Cast autocomplete | `GET /metadata/actors?q=` | **session or API key** |
 | Plex connections | `GET\|POST /plex/connections/...` | **session or API key; each connection is scoped to its owner** |
@@ -231,6 +231,7 @@ classDiagram
     +image_referers: list[str]
     +image_cookies: list[str]
     +use_bypass: bool
+    +direct_url_template: str | None
     +scraper_config: ScraperConfig
   }
   class ResolvedSiteInfo {

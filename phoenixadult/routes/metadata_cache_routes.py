@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from phoenixadult.clients import get_client
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
 from phoenixadult.routes import nav_username, read_json_body, render_page
@@ -14,7 +15,9 @@ from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
+from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.processors.scene_link import SourceLink, resolve_source_link
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 _admin = [Depends(admin_auth_guard)]
@@ -60,9 +63,45 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     identity = scene_store.identity_for(key)
     locks = await run_in('store', scene_store.locks, metadata_cache._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
+    source = resolve_source_link(identity[1], find_site(identity[0])) if identity else SourceLink()
     return HTMLResponse(
-        render_page('metadata_edit', active='metadata', username=nav_username(request), key=key, mapping_slug=slug, metadata=md[0], locks=locks)
+        render_page(
+            'metadata_edit',
+            active='metadata',
+            username=nav_username(request),
+            key=key,
+            mapping_slug=slug,
+            metadata=md[0],
+            locks=locks,
+            source_kind=source.kind,
+            source_url=source.url if source.kind in ('scene', 'listing') else None,
+            source_json=source.payload,
+        )
     )
+
+
+@router.get('/source-json')
+async def source_json(key: str = '') -> JSONResponse:
+    if '/' not in key:
+        return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
+    identity = await run_in('store', scene_store.identity_for, key)
+    if identity is None:
+        return JSONResponse({'ok': False, 'error': 'unknown key'}, status_code=404)
+    site = find_site(identity[0])
+    source = resolve_source_link(identity[1], site)
+    if source.payload is not None:
+        return JSONResponse({'ok': True, 'json': source.payload})
+    if source.kind != 'api' or not source.url:
+        return JSONResponse({'ok': False, 'error': 'no source payload for this scene'}, status_code=400)
+    try:
+        await ensure_fetchable_url(source.url)
+    except ValueError as err:
+        return JSONResponse({'ok': False, 'error': str(err)}, status_code=400)
+    client = get_client(site.scraper_config.type) if site else None
+    data = await client.fetch_json(source.url) if client else None
+    if data is None:
+        return JSONResponse({'ok': False, 'error': 'the source API did not return JSON (it may need auth or be rate-limited)'}, status_code=502)
+    return JSONResponse({'ok': True, 'json': data})
 
 
 @router.post('/save', dependencies=_admin)

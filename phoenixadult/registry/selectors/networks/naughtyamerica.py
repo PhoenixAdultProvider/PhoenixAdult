@@ -115,6 +115,7 @@ def _site(name: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='naughtyamerica',
         data18_enrichment=True,
+        direct_url_template='{base}/{head}',
     )
 
 

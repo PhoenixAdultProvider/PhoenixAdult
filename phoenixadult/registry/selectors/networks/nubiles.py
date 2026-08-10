@@ -25,6 +25,7 @@ def _site(name: str, base_url: str, *, search_path: str = '/video/gallery/', dat
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='nubiles',
         data18_enrichment=data18,
+        direct_url_template='{base}/video/watch/{head}',
     )
 
 

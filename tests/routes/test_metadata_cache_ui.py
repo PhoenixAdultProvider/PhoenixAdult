@@ -635,3 +635,117 @@ async def test_entries_endpoint_filters_potential_duplicates(tmp_path: Path, mon
     dups = client.get('/metadata/entries?dups=2').json()
     assert dups['total'] == 2
     assert {e['title'] for e in dups['entries']} == {'Twin Peaks!', 'twin peaks'}
+
+
+def _source_client(monkeypatch: pytest.MonkeyPatch, cur_id: str, site: str = 'Vixen') -> TestClient:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: {'MediaContainer': {'Metadata': [{'title': 'Scene ' + key}]}})
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: (site, cur_id))
+    return authed_client()
+
+
+def test_edit_page_links_to_the_source_scene(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    cur = pack_cur_id(['https://example.com/scene/alpha', '2024-01-01'])
+    page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
+    assert 'id="sourceLink"' in page.text
+    assert 'href="https://example.com/scene/alpha"' in page.text
+    assert 'Scene ↗' in page.text
+    assert 'id="sourcePanel"' not in page.text
+
+
+def test_edit_page_labels_a_listing_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    cur = pack_cur_id(['someslug', '2019-04-12', 'https://sheisnerdy.com/detailed/3'])
+    page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
+    assert 'Listing ↗' in page.text
+    assert 'href="https://sheisnerdy.com/detailed/3"' in page.text
+
+
+def test_edit_page_shows_the_source_json_panel(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    from phoenixadult.utils.helpers.helpers import b64url_encode
+
+    cur = b64url_encode(json.dumps({'title': 'Embedded', 'summary': 'words'}))
+    page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
+    assert 'id="sourcePanel"' in page.text
+    assert 'Source JSON' in page.text
+    assert 'const SOURCE_JSON' in page.text
+    assert 'id="sourceLink"' not in page.text
+
+
+def test_edit_page_links_and_panels_a_blob_with_a_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    from phoenixadult.utils.helpers.helpers import b64url_encode
+
+    cur = b64url_encode(json.dumps({'movieURL': 'https://www.adultempire.com/1/m.html', 'sceneNum': 2}))
+    page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
+    assert 'id="sourceLink"' in page.text and 'id="sourcePanel"' in page.text
+
+
+def test_edit_page_hides_source_ui_for_an_undecodable_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    page = _source_client(monkeypatch, 'cur1').get('/metadata/edit?key=studio/abc')
+    assert 'id="sourceLink"' not in page.text and 'id="sourcePanel"' not in page.text
+
+
+def test_source_json_validates_the_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+
+    client = authed_client()
+    assert client.get('/metadata/source-json?key=nope').status_code == 400
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: None)
+    assert client.get('/metadata/source-json?key=studio/gone').status_code == 404
+
+
+def test_source_json_serves_an_embedded_blob_without_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.utils.helpers.helpers import b64url_encode
+
+    blob = {'title': 'Embedded', 'poster': '/img/x.jpg'}
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', b64url_encode(json.dumps(blob))))
+    r = authed_client().get('/metadata/source-json?key=studio/abc')
+    assert r.status_code == 200 and r.json() == {'ok': True, 'json': blob}
+
+
+def test_source_json_proxies_an_api_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://api.example.com/scenes/1'])))
+
+    async def _ok(url: str) -> str:
+        return url
+
+    class _Stub:
+        async def fetch_json(self, url: str) -> dict[str, int]:
+            return {'a': 1}
+
+    monkeypatch.setattr(mcr, 'ensure_fetchable_url', _ok)
+    monkeypatch.setattr(mcr, 'get_client', lambda scraper_type: _Stub())
+    r = authed_client().get('/metadata/source-json?key=studio/abc')
+    assert r.status_code == 200 and r.json() == {'ok': True, 'json': {'a': 1}}
+
+
+def test_source_json_refuses_a_blocked_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://127.0.0.1/api/x'])))
+    r = authed_client().get('/metadata/source-json?key=studio/abc')
+    assert r.status_code == 400 and r.json()['ok'] is False
+
+
+def test_source_json_rejects_a_plain_scene_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.metadata_cache_routes as mcr
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://example.com/scene/alpha'])))
+    r = authed_client().get('/metadata/source-json?key=studio/abc')
+    assert r.status_code == 400 and 'no source payload' in r.json()['error']

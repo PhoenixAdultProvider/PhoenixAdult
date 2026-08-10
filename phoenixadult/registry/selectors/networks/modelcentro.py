@@ -19,6 +19,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='modelcentro',
+        direct_url_template='{base}/scene/{id}/',
     )
 
 

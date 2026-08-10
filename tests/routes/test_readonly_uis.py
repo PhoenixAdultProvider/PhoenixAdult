@@ -123,15 +123,26 @@ def test_read_only_pages_still_load_for_non_admins(member: TestClient) -> None:
         assert member.get(path).status_code == 200, path
 
 
+def test_members_can_read_the_source_json(member: TestClient) -> None:
+    key = _seed_snapshot()
+    r = member.get(f'/metadata/source-json?key={key}')
+    assert r.status_code == 200
+    assert r.json() == {'ok': True, 'json': {'title': 'Scene', 'poster': '/img/x.jpg'}}
+
+
 def _seed_snapshot() -> str:
+    import json
+
     from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
+    from phoenixadult.utils.helpers.helpers import b64url_encode
 
+    cur_id = b64url_encode(json.dumps({'title': 'Scene', 'poster': '/img/x.jpg'}))
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_hash = metadata_cache._hash('Studio', 'cur1')
-    scene_store.upsert('Studio', 'cur1', scene_hash, metadata_cache.bundle_path(scene_hash), payload)
-    return str(scene_store.snapshot_state('Studio', 'cur1')['key'])
+    scene_hash = metadata_cache._hash('Studio', cur_id)
+    scene_store.upsert('Studio', cur_id, scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    return str(scene_store.snapshot_state('Studio', cur_id)['key'])
 
 
 _HARNESS = Path(__file__).parent / '_js' / 'page_load_harness.js'

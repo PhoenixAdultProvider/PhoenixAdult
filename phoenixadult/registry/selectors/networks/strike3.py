@@ -20,6 +20,7 @@ def _site(name: str, host: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='strike3',
         data18_enrichment=True,
+        direct_url_template='{base}/videos/{head}',
     )
 
 

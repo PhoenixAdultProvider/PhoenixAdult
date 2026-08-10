@@ -12,6 +12,11 @@
     h1 { font-size: 20px; margin: 0 0 4px; }
     .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
     .sub code { color: var(--soft-text); }
+    .sub a.srclink { color: var(--link-text); text-decoration: none; margin-left: 10px; }
+    .sub a.srclink:hover { text-decoration: underline; }
+    .sub details { margin-top: 8px; }
+    .sub summary { cursor: pointer; }
+    .sub pre { background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px; max-height: 320px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
     h1, .sub, .cols, .bar { max-width: 1100px; margin-inline: auto; }
     fieldset { border: 1px solid var(--input-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); min-width: 0; }
     legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
@@ -102,7 +107,8 @@
 <body data-page="metadata-edit">
   {% include 'nav.html' %}
   <h1>Edit Snapshot</h1>
-  <div class="sub"><code id="subKey">{{ key }}</code></div>
+  <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}
+  {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
 
   <div class="cols">
       <fieldset>
@@ -194,6 +200,7 @@
     let MD = {{ metadata|tojson }};
     let LOCKS = {{ locks|tojson }};
     const MAPPING_SLUG = {{ mapping_slug|tojson }};
+    const SOURCE_JSON = {{ source_json|tojson }};
     const SFW_KEY = 'metadata-sfw';
     let SFW = false;
     try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
@@ -629,6 +636,26 @@
     if (qs('a-img')) qs('a-img').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); qs('addImg').click(); } });
     qs('f-data18Id').addEventListener('input', renderData18State);
     qs('f-data18Type').addEventListener('change', renderData18State);
+
+    function installSourcePanel() {
+      const panel = qs('sourcePanel');
+      if (!panel) return;
+      let loaded = false;
+      panel.addEventListener('toggle', async () => {
+        if (!panel.open || loaded) return;
+        loaded = true;
+        const pre = qs('sourceJson');
+        if (SOURCE_JSON !== null) { pre.textContent = JSON.stringify(SOURCE_JSON, null, 2); return; }
+        try {
+          const r = await fetch('/metadata/source-json?' + new URLSearchParams({key: KEY}));
+          const j = await r.json();
+          pre.textContent = j.ok ? JSON.stringify(j.json, null, 2) : 'Fetch failed: ' + (j.error || 'unknown error');
+        } catch (err) {
+          pre.textContent = 'Fetch failed: ' + err;
+        }
+      });
+    }
+    installSourcePanel();
 
     paintSfwToggle();
     installLockUI();
