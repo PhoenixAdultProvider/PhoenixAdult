@@ -53,7 +53,7 @@ async def page(request: Request) -> HTMLResponse:
 
 
 def _source_context(identity: tuple[str, str] | None, md: dict[str, Any]) -> tuple[str | None, str | None, Any]:
-    stored = md.get('source') or {}
+    stored = md.get('sourceRef') or {}
     if stored.get('url') or stored.get('data') is not None:
         kind = str(stored.get('kind') or ('page' if stored.get('url') else 'json'))
         kind = 'scene' if kind == 'page' else kind
@@ -102,7 +102,7 @@ async def source_json(key: str = '') -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'unknown key'}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, key)
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
-    stored = (md[0].get('source') or {}).get('data')
+    stored = (md[0].get('sourceRef') or {}).get('data')
     if stored is not None:
         return JSONResponse({'ok': True, 'json': stored})
     site = find_site(identity[0])

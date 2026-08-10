@@ -86,7 +86,7 @@ def upsert(
         studio_id = db.dim_id(conn, 'studios', str(md.get('studio') or ''))
         tagline_id = db.dim_id(conn, 'taglines', str(md.get('tagline') or ''))
         d18 = md.get('data18') or {}
-        src = md.get('source') or {}
+        src = md.get('sourceRef') or {}
         is_adult = md.get('isAdult')
         conn.execute(
             _UPSERT,
@@ -229,7 +229,7 @@ def load(scene_hash: str) -> dict[str, Any] | None:
         except ValueError:
             pass
     if source:
-        md['source'] = source
+        md['sourceRef'] = source
     if row['content_rating'] is not None:
         md['contentRating'] = row['content_rating']
     if row['is_adult'] is not None:

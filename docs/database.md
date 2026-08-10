@@ -60,7 +60,9 @@ Also ensured: `scenes.source_url`, `scenes.source_kind`, and
 fetched, its kind `page`/`listing`/`api`, and the raw JSON an API client
 returned). These ARE in `_SCENE_COLUMNS`: every scrape or refresh rewrites them,
 which is how existing scenes pick up their source data. They ride the payload as
-`PlexMetadata.source` (the `data18` pattern), so bundles and manual saves carry
+`PlexMetadata.sourceRef` (the `data18` pattern; the bare name `source` is
+reserved in the Plex schema as a string, and an object there makes Plex reject
+the whole response), so bundles and manual saves carry
 them, and the metadata editor reads them for its Scene/Listing link and Source
 JSON panel — falling back to decoding the cur_id for scenes not yet refreshed.
 

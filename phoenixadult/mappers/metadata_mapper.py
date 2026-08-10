@@ -219,7 +219,7 @@ class MetadataMapper:
             summary=normalize_text(detail.summary) or None,
             tagline=tagline,
             data18=PlexData18.model_validate(ref) if (ref := data18_ref_with_extras(detail.data18_url)) else None,
-            source=_source_of(detail),
+            sourceRef=_source_of(detail),
             studio=studio,
             contentRating='XXX',
             isAdult=True,

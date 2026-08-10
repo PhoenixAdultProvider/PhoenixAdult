@@ -754,7 +754,7 @@ def test_source_json_rejects_a_plain_scene_payload(monkeypatch: pytest.MonkeyPat
 def _stored_source_client(monkeypatch: pytest.MonkeyPatch, source: dict[str, object]) -> TestClient:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    payload = {'MediaContainer': {'Metadata': [{'title': 'Stored', 'source': source}]}}
+    payload = {'MediaContainer': {'Metadata': [{'title': 'Stored', 'sourceRef': source}]}}
     monkeypatch.setattr(mcr.metadata_cache, 'load_for_edit', lambda key: payload)
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', 'cur1'))
     return authed_client()

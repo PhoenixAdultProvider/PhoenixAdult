@@ -281,29 +281,29 @@ def test_an_alias_subsite_keeps_its_embedding_and_its_tagline_carrier() -> None:
 async def test_the_source_reference_records_what_the_scraper_fetched() -> None:
     detail = SceneDetail(title='A Scene', studio='X', scene_url='https://example.com/scene/alpha')
     md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    assert md.source is not None
-    assert (md.source.url, md.source.kind, md.source.data) == ('https://example.com/scene/alpha', 'page', None)
+    assert md.sourceRef is not None
+    assert (md.sourceRef.url, md.sourceRef.kind, md.sourceRef.data) == ('https://example.com/scene/alpha', 'page', None)
 
 
 async def test_api_urls_and_fetched_json_land_in_the_source() -> None:
     blob = {'id': 9, 'title': 'A Scene'}
     detail = SceneDetail(title='A Scene', studio='X', scene_url='https://example.com/api/releases/alpha', source_json=blob)
     md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    assert md.source is not None
-    assert (md.source.url, md.source.kind, md.source.data) == ('https://example.com/api/releases/alpha', 'api', blob)
+    assert md.sourceRef is not None
+    assert (md.sourceRef.url, md.sourceRef.kind, md.sourceRef.data) == ('https://example.com/api/releases/alpha', 'api', blob)
 
 
 async def test_a_client_authored_kind_wins_and_slugs_store_no_url() -> None:
     listing = SceneDetail(title='A', studio='X', scene_url='https://example.com/detailed/3', source_kind='listing')
     md = await MetadataMapper().to_metadata(listing, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    assert md.source is not None and md.source.kind == 'listing'
+    assert md.sourceRef is not None and md.sourceRef.kind == 'listing'
 
     slug_only = SceneDetail(title='A', studio='X', scene_url='bare-slug')
     md = await MetadataMapper().to_metadata(slug_only, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    assert md.source is None
+    assert md.sourceRef is None
 
 
 async def test_unserializable_source_json_is_dropped_not_fatal() -> None:
     detail = SceneDetail(title='A', studio='X', scene_url='https://example.com/api/x', source_json={'bad': object()})
     md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
-    assert md.source is not None and md.source.data is None
+    assert md.sourceRef is not None and md.sourceRef.data is None

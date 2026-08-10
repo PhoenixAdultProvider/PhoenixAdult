@@ -97,7 +97,7 @@ class PlexMetadata(_Model):
     summary: str | None = None
     tagline: str | None = None
     data18: PlexData18 | None = None
-    source: PlexSource | None = None
+    sourceRef: PlexSource | None = None
     contentRating: str | None = None
     isAdult: bool | None = None
     audienceRating: float | None = None
