@@ -29,7 +29,15 @@ def test_resolve_prefers_our_own_rating_key() -> None:
     from phoenixadult.registry import PROVIDER_DEFINITIONS
 
     guid = f'{PROVIDER_DEFINITIONS[0].plex_identifier}://movie/scene-brazzers-abc123.20240115'
-    assert plex_import._resolve(guid, 'Ignored Studio') == ('brazzers', 'abc123')
+    assert plex_import._resolve(guid, 'Ignored Studio') == ('Brazzers', 'abc123')
+
+
+def test_resolve_canonicalizes_the_rating_key_site_token() -> None:
+    from phoenixadult.registry import PROVIDER_DEFINITIONS
+
+    guid = f'{PROVIDER_DEFINITIONS[0].plex_identifier}://movie/scene-fit18-abc123.20240115'
+    resolved = plex_import._resolve(guid, '')
+    assert resolved == ('Fit18', 'abc123'), 'the archive search matches on the canonical site name, not the key token'
 
 
 def test_resolve_falls_back_to_studio_when_legacy_id_is_unknown() -> None:

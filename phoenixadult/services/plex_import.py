@@ -75,7 +75,8 @@ def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
     if rating_key := _our_rating_key(guid):
         parsed = parse_rating_key(rating_key)
         if parsed and parsed['site_name'] and parsed['cur_id']:
-            return str(parsed['site_name']), str(parsed['cur_id'])
+            site = find_site(str(parsed['site_name']))
+            return (site.name if site else str(parsed['site_name'])), str(parsed['cur_id'])
     if decoded := legacy_guid.decode(guid):
         return decoded
     site = find_site(studio) if studio else None
