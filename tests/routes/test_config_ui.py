@@ -264,3 +264,11 @@ def test_production_locks_the_redaction_flags_out_of_the_ui(monkeypatch: pytest.
     monkeypatch.setenv('NODE_ENV', 'production')
     prod_keys = {v['key'] for g in authed_client().get('/config/api/state').json()['groups'] for v in g['vars']}
     assert 'LOG_REDACT_HOSTS' not in prod_keys and 'LOG_REDACT_TOKEN' not in prod_keys, 'production always redacts; the switches disappear'
+
+
+def test_dry_run_rows_offer_a_single_scene_import(client: TestClient) -> None:
+    body = client.get('/config').text
+    assert 'data-import-rk=' in body
+    assert "connPath('/import-item?'" in body
+    assert 'function importOneClicked' in body
+    assert "i.status === 'importable' || i.status === 'skipped'" in body

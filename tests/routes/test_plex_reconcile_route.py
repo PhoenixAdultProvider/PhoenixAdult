@@ -178,3 +178,27 @@ def test_jobs_endpoint_is_owner_scoped() -> None:
     connection = seed_connection(name='Home', url=BASE, token='t')
     assert client.get(f'/plex/connections/{connection.id}/jobs').json() == {'jobs': {}}
     assert client.get('/plex/connections/9999/jobs').status_code == 404
+
+
+def test_import_item_route_imports_one_scene(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.routes import plex_routes
+    from phoenixadult.services.plex_import import ItemReport
+
+    async def _fake(connection: object, token: str, rating_key: str, overwrite: bool = False) -> ItemReport:
+        return ItemReport(rating_key=rating_key, title='One Scene', status='imported', site='Fit18', cur_id='abc', detail='4 images')
+
+    monkeypatch.setattr(plex_routes.plex_import, 'import_item', _fake)
+    client = authed_client()
+    connection = seed_connection(url=BASE)
+
+    assert client.post(f'/plex/connections/{connection.id}/import-item').status_code == 400
+    body = client.post(f'/plex/connections/{connection.id}/import-item?ratingKey=42').json()
+    assert body['item']['status'] == 'imported'
+    assert body['item']['ratingKey'] == '42'
+    assert body['item']['detail'] == '4 images'
+
+
+def test_import_item_route_requires_a_configured_connection() -> None:
+    client = authed_client()
+    cid = client.post('/plex/connections', json={'name': 'Bare'}).json()['id']
+    assert client.post(f'/plex/connections/{cid}/import-item?ratingKey=1').status_code == 409

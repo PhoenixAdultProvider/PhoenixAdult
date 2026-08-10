@@ -252,6 +252,24 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
             shutil.rmtree(staging, ignore_errors=True)
 
 
+async def import_item(connection: Connection, token: str, rating_key: str, overwrite: bool = False) -> ItemReport:
+    if not metadata_cache.enabled():
+        raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
+    report = ImportReport(applied=True)
+    client = PlexClient(connection.server_url, token)
+    try:
+        item = await client.item(rating_key)
+        if not item:
+            return ItemReport(rating_key=rating_key, title='', status='failed', detail='item not found in Plex')
+        stub = {'ratingKey': rating_key, 'title': item.get('title'), 'guid': item.get('guid'), 'studio': item.get('studio')}
+        await _import_one(client, stub, report, apply=True, overwrite=overwrite)
+    finally:
+        await client.aclose()
+    entry = report.items[0]
+    logger.info(_TAG, f'single import {rating_key} ("{entry.title}"): {entry.status}{f" - {entry.detail}" if entry.detail else ""}')
+    return entry
+
+
 async def libraries(connection: Connection, token: str) -> list[dict[str, str]]:
     client = PlexClient(connection.server_url, token)
     try:

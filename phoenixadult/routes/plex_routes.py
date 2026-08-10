@@ -275,6 +275,25 @@ async def import_library(connection_id: int, request: Request) -> JSONResponse:
     return JSONResponse({'started': True, 'kind': 'import'})
 
 
+@router.post('/connections/{connection_id}/import-item')
+async def import_item(connection_id: int, request: Request) -> JSONResponse:
+    resolved = await _with_token(request, connection_id)
+    if isinstance(resolved, JSONResponse):
+        return resolved
+    connection, token = resolved
+
+    rating_key = (request.query_params.get('ratingKey') or '').strip()
+    if not rating_key:
+        return JSONResponse({'error': 'ratingKey is required'}, status_code=400)
+    overwrite = _truthy(request.query_params.get('overwrite'))
+    try:
+        item = await plex_import.import_item(connection, token, rating_key, overwrite=overwrite)
+    except httpx2.HTTPError as err:
+        logger.warn('plex-import', f'single import failed for {rating_key}: {err}')
+        return JSONResponse({'error': 'Could not fetch the item from Plex'}, status_code=502)
+    return JSONResponse({'item': item.as_dict()})
+
+
 @router.post('/connections/{connection_id}/collection-logos')
 async def collection_logos(connection_id: int, request: Request) -> JSONResponse:
     resolved = await _with_token(request, connection_id)

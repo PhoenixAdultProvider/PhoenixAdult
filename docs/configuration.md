@@ -444,6 +444,7 @@ POST /plex/import?section=27                  # dry run: reports what it would i
 POST /plex/import?section=27&apply=1          # writes the snapshots
 POST /plex/import?section=27&apply=1&limit=50
 POST /plex/import?section=27&apply=1&overwrite=1   # replace cached scenes too
+POST /plex/import-item?ratingKey=51767             # import one scene (dry-run row button)
 ```
 
 Pick the library and run it from the **Plex tab** of `/config` ("Import a Library Into the Cache").
@@ -451,6 +452,9 @@ Pick the library and run it from the **Plex tab** of `/config` ("Import a Librar
 Notes:
 
 - **Dry run by default.** Nothing is written without `apply=1`.
+- **Single scenes import from the dry-run report**: each `importable` (and `skipped`) row carries an
+  **Import** button that writes just that scene via `POST …/import-item?ratingKey=…`, honoring the
+  Overwrite checkbox — cherry-pick a few scenes without applying the whole library.
 - **Scenes already cached are skipped**, so a stored fresh scrape is never overwritten by Plex's
   older copy. Pass `overwrite=1` (or tick "Overwrite Cached Scenes") to replace them instead — use
   it to re-run an import after a fix rather than purging by hand.

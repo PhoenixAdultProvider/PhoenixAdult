@@ -1884,7 +1884,35 @@
       out.style.display = 'block';
       out.innerHTML = `<div>${esc(d.library || d.section)}: ${d.scanned} scanned · ${headline} · ${d.skippedExisting} already cached · ${d.unresolved} unresolved · ${d.failed} failed</div>`
         + (d.itemsTruncated ? `<div class="hint">plus ${d.itemsTruncated} more not listed</div>` : '')
-        + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map(i => `${esc(i.status)} — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>`).join('<br>') + '</div>' : '');
+        + (d.items && d.items.length ? '<div style="margin-top:6px;max-height:260px;overflow:auto">' + d.items.map((i, n) => {
+          const canImport = !d.applied && (i.status === 'importable' || i.status === 'skipped') && i.ratingKey;
+          const btn = canImport ? ` <button type="button" class="secondary" data-import-rk="${esc(i.ratingKey)}" data-row="imp-row-${n}">Import</button>` : '';
+          return `<span id="imp-row-${n}">${esc(i.status)}</span> — ${esc(i.title)} <span style="color:var(--label-text)">${esc(i.site)}${i.detail ? ' · ' + esc(i.detail) : ''}</span>${btn}`;
+        }).join('<br>') + '</div>' : '');
+      out.onclick = importOneClicked;
+    }
+
+    async function importOneClicked(e) {
+      const btn = e.target.closest('[data-import-rk]');
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = 'Importing…';
+      const params = ['ratingKey=' + encodeURIComponent(btn.dataset.importRk)];
+      if (document.getElementById('plex-import-overwrite').checked) params.push('overwrite=1');
+      try {
+        const d = await postJSON(api(connPath('/import-item?' + params.join('&'))), {});
+        const item = d.item || {};
+        const row = document.getElementById(btn.dataset.row);
+        if (row) {
+          row.textContent = item.status || 'done';
+          if (item.detail) row.title = item.detail;
+        }
+        btn.remove();
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Import';
+        plexStatus('plex-import-status', esc(err.message), 'err');
+      }
     }
 
     function runPlexImport(apply) {

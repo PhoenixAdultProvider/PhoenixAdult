@@ -316,3 +316,38 @@ def test_report_caps_its_item_list() -> None:
         report.add(plex_import.ItemReport(rating_key=str(i), title='x', status='importable'))
     assert len(report.items) == plex_import._MAX_ITEMS
     assert report.items_truncated == 25
+
+
+class _OneItemClient:
+    def __init__(self, base: str, token: str) -> None:
+        self.closed = False
+
+    async def item(self, rating_key: str) -> dict[str, Any]:
+        return {'title': 'One Scene', 'guid': _LEGACY, 'studio': 'Fit18'} if rating_key == '42' else {}
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+@pytest.mark.asyncio
+async def test_import_item_imports_exactly_one_scene(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.conftest import seed_connection
+
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setattr(plex_import, 'PlexClient', _OneItemClient)
+    monkeypatch.setattr(plex_import.scene_store, 'has', lambda scene_hash: True)
+    entry = await plex_import.import_item(seed_connection(), 'tok', '42')
+    assert entry.status == 'skipped'
+    assert entry.site == 'Fit18'
+    assert entry.detail == 'already cached'
+
+
+@pytest.mark.asyncio
+async def test_import_item_reports_a_vanished_item(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.conftest import seed_connection
+
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setattr(plex_import, 'PlexClient', _OneItemClient)
+    entry = await plex_import.import_item(seed_connection(), 'tok', '999')
+    assert entry.status == 'failed'
+    assert 'not found' in entry.detail
