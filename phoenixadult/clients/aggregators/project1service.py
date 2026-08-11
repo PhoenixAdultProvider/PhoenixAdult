@@ -221,7 +221,7 @@ class Project1ServiceClient(Client):
             return None
 
         extra: _SceneExtra = {'detail': releases[0], 'headers': headers}
-        return LoadedScene(url=url, site=site, capture=capture, extra=extra, subsite=ctx.subsite if ctx else None)
+        return LoadedScene(url=url, site=site, capture=capture, extra=extra, subsite=ctx.subsite if ctx else None, source_json=releases[0])
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
         site = scene.site

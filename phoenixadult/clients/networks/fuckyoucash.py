@@ -82,7 +82,14 @@ class FuckYouCashClient(Client):
             return None
 
         return LoadedScene(
-            url=f'{base}/api/releases/{slug}', site=site, scene_date=scene_date or None, capture=ctx.capture if ctx else None, sel=None, html='', extra=release
+            url=f'{base}/api/releases/{slug}',
+            site=site,
+            scene_date=scene_date or None,
+            capture=ctx.capture if ctx else None,
+            sel=None,
+            html='',
+            extra=release,
+            source_json=release,
         )
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────

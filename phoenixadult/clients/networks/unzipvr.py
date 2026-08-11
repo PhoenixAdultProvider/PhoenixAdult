@@ -44,7 +44,9 @@ class UnzipVRClient(Client):
         if not isinstance(item, dict):
             return None
 
-        return LoadedScene(url=f'{base}/api/content/v1/videos/{payload}', site=site, capture=ctx.capture if ctx else None, sel=None, html='', extra=item)
+        return LoadedScene(
+            url=f'{base}/api/content/v1/videos/{payload}', site=site, capture=ctx.capture if ctx else None, sel=None, html='', extra=item, source_json=item
+        )
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 

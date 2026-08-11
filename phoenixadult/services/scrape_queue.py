@@ -12,7 +12,7 @@ from typing import Any
 from phoenixadult.utils import db
 from phoenixadult.utils.logging.logger import logger
 
-_MAX_PENDING = 500
+_MAX_PENDING = 10_000
 
 
 def _persist_add(key: str, replay: dict[str, Any]) -> None:

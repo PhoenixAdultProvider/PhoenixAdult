@@ -135,6 +135,7 @@ class LoadedScene:
     data18_url: str | None = None
     subsite: str | None = None
     source_kind: str | None = None
+    source_json: Any | None = None
     language: str | None = None
 
     def require_sel(self) -> Selector:
@@ -505,7 +506,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             art_cookie=scene.art_cookie,
             data18_url=scene.data18_url,
             source_kind=scene.source_kind,
-            source_json=scene.extra if isinstance(scene.extra, (dict, list)) else None,
+            source_json=scene.source_json,
         )
         await self.update(metadata, scene)
 

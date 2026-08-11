@@ -80,7 +80,14 @@ class SteppedUpClient(Client):
             return None
 
         return LoadedScene(
-            url=f'{base}/scenes/{slug}', site=site, scene_date=scene_date or None, capture=ctx.capture if ctx else None, sel=None, html='', extra=content
+            url=f'{base}/scenes/{slug}',
+            site=site,
+            scene_date=scene_date or None,
+            capture=ctx.capture if ctx else None,
+            sel=None,
+            html='',
+            extra=content,
+            source_json=content,
         )
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
