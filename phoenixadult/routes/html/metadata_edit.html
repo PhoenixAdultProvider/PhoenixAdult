@@ -90,7 +90,7 @@
     .lock-toggle.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     span.lock-toggle { cursor: default; border: 0; background: none; }
     input.locked, textarea.locked { border-color: var(--soft-warn-text); }
-    .img .lockbtn { margin-top: 4px; padding: 2px 8px; font-size: 13px; border-radius: 5px; cursor: pointer;
+    .img .lockbtn { flex: 0 0 auto; padding: 2px 8px; font-size: 13px; border-radius: 5px; cursor: pointer;
                     background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); opacity: 0.75; }
     .img .lockbtn.on { opacity: 1; border-color: var(--soft-warn-text); background: var(--badge-warning-bg); }
     @media (max-width: 720px) {
@@ -387,7 +387,6 @@
         const badge = document.createElement('span');
         badge.textContent = img.rotate ? img.rotate + '°' : '';
         spin.appendChild(badge);
-        card.appendChild(spin);
         if (IS_ADMIN && !imagesLocked) {
           const lockBtn = document.createElement('button');
           lockBtn.type = 'button';
@@ -395,13 +394,14 @@
           lockBtn.textContent = img.locked ? '🔒' : '🔓';
           lockBtn.title = 'A locked image survives Refresh Metadata while the rest of the set updates';
           lockBtn.onclick = () => { images[idx].locked = !images[idx].locked; renderImages(); };
-          card.appendChild(lockBtn);
+          spin.appendChild(lockBtn);
         } else if (img.locked || imagesLocked) {
           const pin = document.createElement('span');
           pin.className = 'lockbtn on';
           pin.textContent = '🔒';
-          card.appendChild(pin);
+          spin.appendChild(pin);
         }
+        card.appendChild(spin);
         if (IS_ADMIN) {
           const drop = document.createElement('button');
           drop.className = 'drop';
