@@ -46,7 +46,7 @@ class QueueEntry:
 
 FAST = 'fast'
 PACED = 'paced'
-_LANE_WORKERS = {FAST: 3, PACED: 1}
+_LANE_WORKERS = {FAST: 5, PACED: 1}
 
 _queues: dict[str, asyncio.Queue[tuple[QueueEntry, Callable[[], Awaitable[object]]]]] = {}
 _pending: dict[str, QueueEntry] = {}

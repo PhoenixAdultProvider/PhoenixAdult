@@ -10,7 +10,7 @@ from phoenixadult.utils.http import rate_limit_helper
 from phoenixadult.utils.http.rate_limit_helper import FastGate, PacingDeferredError
 
 
-async def test_gate_runs_at_most_three_concurrently() -> None:
+async def test_gate_runs_at_most_five_concurrently() -> None:
     gate = FastGate()
     running = 0
     peak = 0
@@ -24,8 +24,8 @@ async def test_gate_runs_at_most_three_concurrently() -> None:
             running -= 1
 
     await asyncio.gather(*(job() for _ in range(8)))
-    assert peak == 3
-    assert gate.state() == {'busy': 0, 'slots': 3, 'waiting': 0}
+    assert peak == 5
+    assert gate.state() == {'busy': 0, 'slots': 5, 'waiting': 0}
 
 
 async def test_sync_turn_defers_when_slots_stay_full(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -37,9 +37,9 @@ async def test_sync_turn_defers_when_slots_stay_full(monkeypatch: pytest.MonkeyP
         async with gate.turn(True):
             await release.wait()
 
-    holders = [asyncio.create_task(hold()) for _ in range(3)]
+    holders = [asyncio.create_task(hold()) for _ in range(5)]
     await asyncio.sleep(0.01)
-    assert gate.state()['busy'] == 3
+    assert gate.state()['busy'] == 5
     with pytest.raises(PacingDeferredError):
         async with gate.turn(False):
             pass
@@ -84,10 +84,10 @@ async def test_unpaced_scene_detail_defers_through_the_shared_gate(monkeypatch: 
     client = _StubClient()
     site: Any = None
 
-    inline = [asyncio.create_task(client.fetch_scene_detail(f'u{i}', site)) for i in range(3)]
+    inline = [asyncio.create_task(client.fetch_scene_detail(f'u{i}', site)) for i in range(5)]
     await asyncio.sleep(0.01)
     with pytest.raises(PacingDeferredError):
         await client.fetch_scene_detail('overflow', site)
     background = await client.fetch_scene_detail('slow-lane', site, SceneContext(allow_slow=True))
     assert background is not None and background.scene_url == 'slow-lane'
-    assert [d.scene_url for d in await asyncio.gather(*inline) if d] == ['u0', 'u1', 'u2']
+    assert [d.scene_url for d in await asyncio.gather(*inline) if d] == ['u0', 'u1', 'u2', 'u3', 'u4']

@@ -52,7 +52,7 @@ class PacingDeferredError(Exception):
         self.wait_seconds = wait_seconds
 
 
-_FAST_SLOTS = 3
+_FAST_SLOTS = 5
 _FAST_SYNC_WAIT_BUDGET = 60.0
 _fast_slot_held: ContextVar[bool] = ContextVar('fast_slot_held', default=False)
 

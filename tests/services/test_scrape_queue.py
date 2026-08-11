@@ -50,7 +50,7 @@ async def _drain(timeout: float = 5.0) -> None:
 
 
 async def test_snapshot_reports_running_before_pending() -> None:
-    started = [asyncio.Event() for _ in range(4)]
+    started = [asyncio.Event() for _ in range(6)]
     release = asyncio.Event()
 
     def slow(i: int):  # noqa: ANN202
@@ -60,18 +60,18 @@ async def test_snapshot_reports_running_before_pending() -> None:
 
         return _run
 
-    for i in range(4):
+    for i in range(6):
         scrape_queue.enqueue(f'j{i}', slow(i), kind='search', label=f'job {i}')
-    await asyncio.wait_for(asyncio.gather(*(started[i].wait() for i in range(3))), timeout=5)
+    await asyncio.wait_for(asyncio.gather(*(started[i].wait() for i in range(5))), timeout=5)
 
     snap = scrape_queue.snapshot()
-    assert snap['pending'] == 4
-    assert snap['running'] == 3
+    assert snap['pending'] == 6
+    assert snap['running'] == 5
     entries = snap['entries']
     assert isinstance(entries, list)
-    assert [e['running'] for e in entries] == [True, True, True, False]
-    assert entries[3]['key'] == 'j3' and entries[3]['kind'] == 'search'
-    assert not started[3].is_set()
+    assert [e['running'] for e in entries] == [True, True, True, True, True, False]
+    assert entries[5]['key'] == 'j5' and entries[5]['kind'] == 'search'
+    assert not started[5].is_set()
 
     release.set()
     await _drain()
@@ -79,7 +79,7 @@ async def test_snapshot_reports_running_before_pending() -> None:
     assert snap['pending'] == 0 and snap['entries'] == [] and snap['paused'] is False
 
 
-async def test_the_fast_lane_runs_three_at_a_time() -> None:
+async def test_the_fast_lane_runs_five_at_a_time() -> None:
     live = 0
     peak = 0
     release = asyncio.Event()
@@ -91,14 +91,14 @@ async def test_the_fast_lane_runs_three_at_a_time() -> None:
         await release.wait()
         live -= 1
 
-    for i in range(6):
+    for i in range(8):
         scrape_queue.enqueue(f'f{i}', job)
     await asyncio.sleep(0.05)
-    assert peak == 3
+    assert peak == 5
 
     release.set()
     await _drain()
-    assert peak == 3
+    assert peak == 5
 
 
 async def test_the_paced_lane_runs_one_at_a_time() -> None:

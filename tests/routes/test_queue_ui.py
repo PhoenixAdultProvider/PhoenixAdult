@@ -24,7 +24,7 @@ def test_requires_auth_and_serves_page_and_state(client: TestClient) -> None:
     assert any(p['tag'] == 'Nubiles:pace' for p in data['pacers'])
     for pacer in data['pacers']:
         assert {'tag', 'wait', 'gap', 'window_used', 'window_max', 'busy'} <= set(pacer)
-    assert data['fastLane'] == {'busy': 0, 'slots': 3, 'waiting': 0}
+    assert data['fastLane'] == {'busy': 0, 'slots': 5, 'waiting': 0}
 
 
 def test_state_returns_at_once_when_the_watched_revision_is_stale(client: TestClient) -> None:
