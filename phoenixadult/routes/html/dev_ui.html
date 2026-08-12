@@ -193,6 +193,7 @@
 </head>
 <body data-page="dev">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <div class="art-bg" id="artBg"></div>
 
   <h1>🎬 Provider Dev UI</h1>
@@ -301,11 +302,6 @@
   </div>
 
   <script>
-    function esc(str) {
-      return String(str ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
 
     const NARROW = window.matchMedia('(max-width: 720px)');
     function apiUrl(path) { return path; }

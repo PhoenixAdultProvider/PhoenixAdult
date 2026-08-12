@@ -1,0 +1,16 @@
+<script>
+  function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function qs(id) { return document.getElementById(id); }
+  function hdrs() { return {'Content-Type': 'application/json'}; }
+
+  const SFW_KEY = 'metadata-sfw';
+  function readSfw() { try { return localStorage.getItem(SFW_KEY) === '1'; } catch { return false; } }
+  function persistSfw(on) { try { localStorage.setItem(SFW_KEY, on ? '1' : '0'); } catch {} }
+  function paintSfwButton(on, titleOn, titleOff) {
+    const btn = qs('sfwToggle');
+    if (!btn) return;
+    btn.textContent = on ? 'SFW Mode: On' : 'SFW Mode: Off';
+    btn.classList.toggle('on', on);
+    if (titleOn) btn.title = on ? titleOn : titleOff;
+  }
+</script>

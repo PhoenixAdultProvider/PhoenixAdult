@@ -107,6 +107,7 @@
 </head>
 <body data-page="metadata-edit">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>Edit Snapshot</h1>
   <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}
   {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
@@ -202,20 +203,15 @@
     let LOCKS = {{ locks|tojson }};
     const MAPPING_SLUG = {{ mapping_slug|tojson }};
     const SOURCE_JSON = {{ source_json|tojson }};
-    const SFW_KEY = 'metadata-sfw';
-    let SFW = false;
-    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+    let SFW = readSfw();
 
     function paintSfwToggle() {
-      const btn = qs('sfwToggle');
-      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
-      btn.classList.toggle('on', SFW);
-      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide every image preview';
+      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
     }
 
     function toggleSfw() {
       SFW = !SFW;
-      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      persistSfw(SFW);
       paintSfwToggle();
       renderImages();
     }
@@ -240,8 +236,6 @@
       return url + (url.includes('?') ? '&' : '?') + 'v=' + imgRev;
     }
 
-    function hdrs() { return {'Content-Type': 'application/json'}; }
-    function qs(id) { return document.getElementById(id); }
 
     function leave() { location.href = '/metadata'; }
 

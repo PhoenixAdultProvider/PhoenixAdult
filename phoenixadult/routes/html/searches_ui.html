@@ -61,6 +61,7 @@
 </head>
 <body data-page="searches">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>Stored Searches</h1>
   <div class="sub">search results cached for paced sites — reused for repeat matches and renamed files, rescored live at every replay</div>
 
@@ -80,7 +81,6 @@
   <script>
     let STATE = {{ state|tojson }};
 
-    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
     function rel(ts) {
       const s = Math.max(0, (Date.now() / 1000) - ts);

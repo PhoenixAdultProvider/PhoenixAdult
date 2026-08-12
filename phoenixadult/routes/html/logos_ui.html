@@ -48,6 +48,7 @@
 </head>
 <body data-page="logos">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
     Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.{% endif %}</div>
@@ -72,7 +73,6 @@
       return fetch(path, opts);
     }
 
-    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
     function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
 

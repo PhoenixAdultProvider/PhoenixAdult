@@ -69,6 +69,7 @@
 </head>
 <body data-page="people-edit">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1><span id="actorName">{{ actor_name }}</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
   <div class="sub">{{ role }} · <code>{{ relpath }}</code> · from {{ origin }}</div>
 
@@ -119,12 +120,8 @@
     const CROP_AVAILABLE = {{ crop_available|tojson }};
     const RECORDED_SOURCES = {{ recorded_sources|tojson }};
     const UNCROPPED_SOURCES = ['IAFD'];
-    const SFW_KEY = 'metadata-sfw';
-    let SFW = false;
-    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+    let SFW = readSfw();
 
-    function hdrs() { return {'Content-Type': 'application/json'}; }
-    function qs(id) { return document.getElementById(id); }
     function leave() { location.href = '/people#' + ENTRY.type; }
 
     const fetched = {url: '', source: ''};
@@ -216,10 +213,7 @@
 
     function paintSfw() {
       document.body.classList.toggle('sfw', SFW);
-      const btn = qs('sfwToggle');
-      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
-      btn.classList.toggle('on', SFW);
-      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide the preview images';
+      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide the preview images');
       const cached = qs('cachedImg');
       if (SFW) {
         cached.removeAttribute('src');
@@ -232,7 +226,7 @@
 
     function toggleSfw() {
       SFW = !SFW;
-      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      persistSfw(SFW);
       paintSfw();
     }
 

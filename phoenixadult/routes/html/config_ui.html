@@ -295,6 +295,7 @@
 </head>
 <body data-page="config">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>⚙️ PhoenixAdult Config</h1>
   <p class="sub" id="ovSub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
@@ -523,11 +524,6 @@
 
     function api(path) { return path; }
 
-    function esc(s) {
-      return String(s ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
     function allVars() { return STATE.groups.flatMap((g) => g.vars); }
     function specOf(key) { return allVars().find((v) => v.key === key) || null; }
     function inputFor(key) { return document.querySelector('[data-key="' + key + '"]'); }

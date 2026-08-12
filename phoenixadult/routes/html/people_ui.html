@@ -83,6 +83,7 @@
       }
     </style></head><body data-page="people">
     {% include 'nav.html' %}
+  {% include 'common.html' %}
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
@@ -113,7 +114,6 @@
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {% if not entries %}<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>{% endif %}
     <script>
-      function hdrs(){ return {'Content-Type':'application/json'}; }
       async function post(url, body){
         const r = await fetch(url, {method:'POST', headers:hdrs(), body:JSON.stringify(body)});
         return r.json().catch(()=>({ok:false}));
@@ -135,22 +135,18 @@
         location.href = '/people/edit?' + new URLSearchParams({filename}).toString();
       }
       const STORE_KEY = 'people-cache-filters';
-      const SFW_KEY = 'metadata-sfw';
-      let SFW = false;
-      try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+      let SFW = readSfw();
       function paintImages(){
         document.body.classList.toggle('sfw', SFW);
         document.querySelectorAll('.imgs img').forEach(img => {
           if(SFW) img.removeAttribute('src');
           else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
         });
-        const btn = document.getElementById('sfwToggle');
-        btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
-        btn.classList.toggle('on', SFW);
+        paintSfwButton(SFW);
       }
       function toggleSfw(){
         SFW = !SFW;
-        try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+        persistSfw(SFW);
         paintImages();
       }
       function resetFilters(){

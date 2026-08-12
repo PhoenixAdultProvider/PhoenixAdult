@@ -77,6 +77,7 @@
 </head>
 <body data-page="queue">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>Scrape Queue</h1>
   <div class="sub">background searches and metadata updates deferred by pacing; unpaced sites share three scrape slots (overflow queues here), paced sites run one at a time, oldest first</div>
   <div class="eta" id="eta" style="display:none"></div>
@@ -111,7 +112,6 @@
     const LAST_ROWS = { search: [], update: [] };
     let fetchedAt = Date.now();
 
-    function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
 
     function fmtSecs(s) {
       if (s == null || s < 0) s = 0;

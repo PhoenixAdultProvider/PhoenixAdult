@@ -148,6 +148,7 @@
 </head>
 <body data-page="metadata">
   {% include 'nav.html' %}
+  {% include 'common.html' %}
   <h1>Snapshot Metadata Cache</h1>
   <div class="sub">Status: {{ status }}</div>
 
@@ -282,20 +283,15 @@
     let showDupsOnly = false;
     let showPotential = false;
     const STORE_KEY = 'metadata-cache-filters';
-    const SFW_KEY = 'metadata-sfw';
-    let SFW = false;
-    try { SFW = localStorage.getItem(SFW_KEY) === '1'; } catch {}
+    let SFW = readSfw();
 
     function paintSfwToggle() {
-      const btn = document.getElementById('sfwToggle');
-      btn.textContent = SFW ? 'SFW Mode: On' : 'SFW Mode: Off';
-      btn.classList.toggle('on', SFW);
-      btn.title = SFW ? 'Previews are hidden and never downloaded' : 'Hide every image preview';
+      paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
     }
 
     function toggleSfw() {
       SFW = !SFW;
-      try { localStorage.setItem(SFW_KEY, SFW ? '1' : '0'); } catch {}
+      persistSfw(SFW);
       paintSfwToggle();
       render();
     }
@@ -517,9 +513,6 @@
       refreshEntries();
     }
 
-    function esc(s) {
-      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
 
     function render() {
       saveFilters();
