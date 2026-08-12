@@ -67,8 +67,9 @@ async def login(request: Request) -> Response:
             return HTMLResponse(_login_html(fields['next'], message), status_code=status, headers=headers)
         return JSONResponse({'error': message}, status_code=status, headers=headers)
 
-    scope, key = 'login', f'{_client_ip(request)}|{username.casefold()}'
-    wait = rate_limit.retry_after(scope, key)
+    ip = _client_ip(request)
+    scope, key = 'login', f'{ip}|{username.casefold()}'
+    wait = max(rate_limit.retry_after(scope, key), rate_limit.retry_after(scope, ip))
     if wait > 0:
         return fail(f'Too many attempts — wait {int(wait) + 1}s.', 429, {'Retry-After': str(int(wait) + 1)})
     if not username or not password:
@@ -76,6 +77,7 @@ async def login(request: Request) -> Response:
     user = await run_in('store', user_store.verify_login, username, password)
     if user is None:
         rate_limit.record_failure(scope, key)
+        rate_limit.record_failure(scope, ip)
         return fail('Invalid username or password.', 401)
     rate_limit.record_success(scope, key)
     token = await run_in('store', user_store.create_session, user.id, request.headers.get('user-agent', ''))
