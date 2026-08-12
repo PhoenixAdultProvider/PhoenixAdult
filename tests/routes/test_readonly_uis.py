@@ -123,9 +123,11 @@ def test_read_only_pages_still_load_for_non_admins(member: TestClient) -> None:
         assert member.get(path).status_code == 200, path
 
 
-def test_members_can_read_the_source_json(member: TestClient) -> None:
+def test_source_json_is_admin_only(member: TestClient) -> None:
     key = _seed_snapshot()
-    r = member.get(f'/metadata/source-json?key={key}')
+    assert member.get(f'/metadata/source-json?key={key}').status_code == 403
+    admin = authed_client()
+    r = admin.get(f'/metadata/source-json?key={key}')
     assert r.status_code == 200
     assert r.json() == {'ok': True, 'json': {'title': 'Scene', 'poster': '/img/x.jpg'}}
 

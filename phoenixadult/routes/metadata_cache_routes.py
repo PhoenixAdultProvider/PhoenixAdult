@@ -93,7 +93,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     )
 
 
-@router.get('/source-json')
+@router.get('/source-json', dependencies=_admin)
 async def source_json(key: str = '') -> JSONResponse:
     if '/' not in key:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)

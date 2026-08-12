@@ -17,7 +17,7 @@ from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.services.metadata_service import refresh_cached_snapshot
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.auth.user_auth import csrf_guard, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import embed_subsite, split_subsite, title_distance_score
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
@@ -36,7 +36,7 @@ from phoenixadult.utils.processors.filename_parser import get_site_name_from_reg
 from phoenixadult.utils.processors.search_query import build_search_pieces
 from phoenixadult.utils.processors.title_case import title_case
 
-router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard), Depends(admin_auth_guard)])
 
 scraper = ScraperRouter()
 mapper = MetadataMapper()
