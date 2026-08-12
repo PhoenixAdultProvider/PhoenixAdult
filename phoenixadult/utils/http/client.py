@@ -6,6 +6,7 @@ import httpx2
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.http.connectivity import note_transport_failure
+from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
 
@@ -24,6 +25,15 @@ async def _log_request(request: httpx2.Request) -> None:
         logger.info(phase, line)
     else:
         logger.http(line)
+
+
+async def _guard_redirect(response: httpx2.Response) -> None:
+    if response.has_redirect_location:
+        location = response.headers.get('location', '')
+        if location:
+            host = response.url.join(location).host
+            if host and is_blocked_hostname(host):
+                raise ValueError(f'blocked redirect to {host}')
 
 
 class _WatchedTransport(httpx2.AsyncHTTPTransport):
@@ -45,6 +55,8 @@ def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> 
         'event_hooks': {'request': [_log_request]},
     }
     opts.update(overrides)
+    if opts.get('follow_redirects', True):
+        opts['event_hooks'].setdefault('response', []).append(_guard_redirect)
     if 'transport' not in opts:
         transport_opts = {'verify': opts.pop('verify'), 'proxy': opts.pop('proxy')}
         if 'limits' in opts:
