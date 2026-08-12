@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import httpx
+import pytest
+import respx
+
+from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname, is_private_address
 
 
@@ -13,13 +18,6 @@ def test_ssrf_guard_blocks_private() -> None:
 def test_ssrf_guard_blocks_hostnames() -> None:
     assert is_blocked_hostname('localhost')
     assert not is_blocked_hostname('example.com')
-
-
-import httpx
-import pytest
-import respx
-
-from phoenixadult.utils.http.client import make_http
 
 
 @respx.mock
