@@ -1,5 +1,7 @@
-<!doctype html><html><head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><title>People Cache</title>
+{% extends 'base.html' %}
+{% block title %}People Cache{% endblock %}
+{% block page %}people{% endblock %}
+{% block head %}
     <style>
       body{font-family:system-ui,sans-serif;background:var(--page-bg);color:var(--page-text);margin:0;padding:24px}
       h1{font-size:20px} .sub{color:var(--muted-text);font-size:13px;margin-bottom:20px}
@@ -81,9 +83,9 @@
         body.filters-open .search>#bulkStatus{display:block}
         body.filters-open .search>.progress[hidden]{display:none}
       }
-    </style></head><body data-page="people">
-    {% include 'nav.html' %}
-  {% include 'common.html' %}
+    </style>
+{% endblock %}
+{% block content %}
     <h1>People Cache</h1>
     <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
@@ -113,7 +115,10 @@
 {% endfor %}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>
     {% if not entries %}<p class="empty">No cached people yet. Enable <code>PEOPLE_CACHE_ENABLE</code>, then refresh a scene.</p>{% endif %}
-    <script>
+    
+{% endblock %}
+{% block scripts %}
+  <script>
       async function post(url, body){
         const r = await fetch(url, {method:'POST', headers:hdrs(), body:JSON.stringify(body)});
         return r.json().catch(()=>({ok:false}));
@@ -341,4 +346,5 @@
       restoreFilters();
       paintImages();
       showTab(_tabs.has(_hash) ? _hash : {{ default_tab|tojson }});
-    </script></body></html>
+    </script>
+{% endblock %}

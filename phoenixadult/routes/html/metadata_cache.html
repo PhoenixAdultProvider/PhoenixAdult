@@ -1,11 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>Metadata Cache</title>
+{% extends 'base.html' %}
+{% block title %}Metadata Cache{% endblock %}
+{% block page %}metadata{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
@@ -145,10 +141,8 @@
       .c-actions button { font-size: 15px; padding: 11px 12px; }
     }
   </style>
-</head>
-<body data-page="metadata">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <h1>Snapshot Metadata Cache</h1>
   <div class="sub">Status: {{ status }}</div>
 
@@ -272,6 +266,9 @@
   <div class="cards" id="cards"></div>
   <p class="empty" id="empty" style="display:none">No snapshots match the current filters.</p>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     const DUP_KEYS = {{ dup_keys|tojson }};
@@ -812,5 +809,4 @@
     setInterval(pollState, 4000);
     queueState().then(s => { if (s && s.total) trackQueue(); });
   </script>
-</body>
-</html>
+{% endblock %}

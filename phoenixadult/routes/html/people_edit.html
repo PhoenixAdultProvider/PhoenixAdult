@@ -1,11 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>Edit Headshot</title>
+{% extends 'base.html' %}
+{% block title %}Edit Headshot{% endblock %}
+{% block page %}people-edit{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
@@ -66,10 +62,8 @@
       .save, .cancel { flex: 1 1 auto; }
     }
   </style>
-</head>
-<body data-page="people-edit">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <h1><span id="actorName">{{ actor_name }}</span><button class="copy" id="copyName" title="Copy Name">Copy</button><a class="copy iafd" id="iafdLink" target="_blank" rel="noopener noreferrer">Search IAFD</a><button class="copy" id="sfwToggle" onclick="toggleSfw()"></button></h1>
   <div class="sub">{{ role }} · <code>{{ relpath }}</code> · from {{ origin }}</div>
 
@@ -113,6 +107,9 @@
     </div>
   </div>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
     const FILENAME = {{ filename|tojson }};
     const ENTRY = {{ entry|tojson }};
@@ -252,5 +249,4 @@
       setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 1200);
     };
   </script>
-</body>
-</html>
+{% endblock %}

@@ -1,11 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>Edit Snapshot</title>
+{% extends 'base.html' %}
+{% block title %}Edit Snapshot{% endblock %}
+{% block page %}metadata-edit{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
@@ -104,10 +100,8 @@
       .lock-toggle, .img .lockbtn { padding: 6px 12px; font-size: 16px; }
     }
   </style>
-</head>
-<body data-page="metadata-edit">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <h1>Edit Snapshot</h1>
   <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}
   {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
@@ -196,6 +190,9 @@
     <span class="status" id="status"></span>
   </div>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     let KEY = {{ key|tojson }};
@@ -656,5 +653,4 @@
     installLockUI();
     load();
   </script>
-</body>
-</html>
+{% endblock %}

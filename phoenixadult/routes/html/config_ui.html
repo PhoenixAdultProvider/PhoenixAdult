@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>PhoenixAdult Config</title>
+{% extends 'base.html' %}
+{% block title %}PhoenixAdult Config{% endblock %}
+{% block page %}config{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); min-height: 100vh; padding: 2rem; }
@@ -292,10 +288,8 @@
       #tab-users .plex-row label.hint { flex: 1 1 100%; }
     }
   </style>
-</head>
-<body data-page="config">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <h1>⚙️ PhoenixAdult Config</h1>
   <p class="sub" id="ovSub">Overrides apply immediately without a restart and persist to <code id="ovPath"></code>.</p>
 
@@ -515,6 +509,9 @@
     <div id="themePreview"></div>
   </div>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
     const STATE = {{ state|tojson }};
     let plexLibrariesLoaded = false;
@@ -2126,5 +2123,4 @@
     const startTab = location.hash.slice(1);
     showTab(tabIds().includes(startTab) ? startTab : tabIds()[0]);
   </script>
-</body>
-</html>
+{% endblock %}

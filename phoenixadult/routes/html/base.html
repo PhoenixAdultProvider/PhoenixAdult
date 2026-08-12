@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <title>{% block title %}PhoenixAdult{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+<body data-page="{% block page %}{% endblock %}">
+  {% block chrome %}{% include 'nav.html' %}
+  {% include 'common.html' %}{% endblock %}
+  {% block content %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

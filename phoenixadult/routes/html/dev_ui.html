@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>Provider Dev UI</title>
+{% extends 'base.html' %}
+{% block title %}Provider Dev UI{% endblock %}
+{% block page %}dev{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); min-height: 100vh; padding: 2rem; max-width: 1100px; margin: 0 auto; }
@@ -190,10 +186,8 @@
       .alias-chip { white-space: normal; overflow-wrap: anywhere; }
     }
   </style>
-</head>
-<body data-page="dev">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <div class="art-bg" id="artBg"></div>
 
   <h1>🎬 Provider Dev UI</h1>
@@ -301,6 +295,9 @@
     </table>
   </div>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
 
     const NARROW = window.matchMedia('(max-width: 720px)');
@@ -708,5 +705,4 @@
       return '<div class="meta-tags">' + arr.map(t => `<span class="meta-tag">${esc(t)}</span>`).join('') + '</div>';
     }
   </script>
-</body>
-</html>
+{% endblock %}

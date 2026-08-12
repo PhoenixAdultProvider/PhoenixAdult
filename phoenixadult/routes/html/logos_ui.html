@@ -1,11 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="alternate icon" href="/favicon.ico">
-  <title>Logo Cache</title>
+{% extends 'base.html' %}
+{% block title %}Logo Cache{% endblock %}
+{% block page %}logos{% endblock %}
+{% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: var(--page-bg); color: var(--page-text); margin: 0; padding: 24px; }
@@ -45,10 +41,8 @@
       .empty { padding: 24px 12px; }
     }
   </style>
-</head>
-<body data-page="logos">
-  {% include 'nav.html' %}
-  {% include 'common.html' %}
+{% endblock %}
+{% block content %}
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
     Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.{% endif %}</div>
@@ -65,6 +59,9 @@
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
 
+  
+{% endblock %}
+{% block scripts %}
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     let STATE = {{ state|tojson }};
@@ -131,5 +128,4 @@
 
     render();
   </script>
-</body>
-</html>
+{% endblock %}
