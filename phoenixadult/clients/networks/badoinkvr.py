@@ -30,6 +30,8 @@ def _title_clean_lower(title: str) -> str:
 
 __testing__ = {'mangle': _mangle, 'title_clean_lower': _title_clean_lower}
 
+_MAX_GALLERY_IMAGES = 600
+
 
 class BadoinkVrClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -186,7 +188,7 @@ class BadoinkVrClient(Client):
 
         zip_info = details_page_elements.xpath('(//span[contains(@class,"gallery-zip-info")])[1]').xpath('string(.)').get() or ''
         m = re.search(r'(\d+)\s*photos', zip_info, re.IGNORECASE)
-        count = int(m.group(1)) if m else 0
+        count = min(int(m.group(1)), _MAX_GALLERY_IMAGES) if m else 0
 
         candidates: list[str] = []
         gallery_big = gallery_imgs[0] if gallery_imgs else ''

@@ -31,6 +31,7 @@ _BASE = 'https://www.data18.com'
 _PROBE_CONCURRENCY = 8
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
+_MAX_GALLERY_IMAGES = 600
 _TITLE_XP = '(//h1)[1]'
 
 
@@ -570,7 +571,7 @@ class Data18Client(Client):
                     seed = _clean_thumb(viewer.xpath('//img[contains(@src,"th8")]/@src').get() or '')
                     start_num = int(seed.split('/')[-1].split('.')[0])
                     total_text = viewer.xpath('normalize-space(//div[@id="primaryphoto"]//div//b[1])').get() or ''
-                    total = int(total_text.split('of')[-1].strip())
+                    total = min(int(total_text.split('of')[-1].strip()), _MAX_GALLERY_IMAGES)
                     end_num = start_num + (total * 2 if gallery_id == 1101 else total)
                     for idx in range(start_num, end_num):
                         padded = str(idx).zfill(2)

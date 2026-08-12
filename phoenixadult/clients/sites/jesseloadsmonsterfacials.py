@@ -15,6 +15,7 @@ from phoenixadult.utils.processors.title_case import title_case
 _ACTORS: dict[str, list[str]] = load_data(__file__, 'jesseloads_actors')
 _WS_RE = re.compile(r'\s+')
 _NUM_RE = re.compile(r'(\d+)')
+_MAX_TOUR_PAGES = 50
 
 
 def _resolve_actors(raw: str) -> list[str]:
@@ -28,7 +29,7 @@ def _last_tour_page(sel: Selector) -> int:
 
     text = values[-1].xpath('normalize-space(.)').get() or ''
     m = _NUM_RE.search(text)
-    return max(int(m.group(1)), 1) if m else 1
+    return min(max(int(m.group(1)), 1), _MAX_TOUR_PAGES) if m else 1
 
 
 class JesseLoadsMonsterFacialsClient(Client):
