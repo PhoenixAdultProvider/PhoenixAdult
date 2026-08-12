@@ -76,14 +76,16 @@ async def verify_server(url: str, token: str) -> dict[str, Any]:
             container = res.json().get('MediaContainer') or {}
             identity = {'ok': True, 'machineIdentifier': container.get('machineIdentifier') or '', 'version': container.get('version') or ''}
         except (httpx2.HTTPError, ValueError) as err:
-            identity['error'] = str(err)
+            logger.warn('plex-auth', f'verify identity failed for {base}: {err}')
+            identity['error'] = 'Could not reach the server'
         try:
             res = await http.get(f'{base}/library/sections', headers={'X-Plex-Token': token})
             res.raise_for_status()
             sections = (res.json().get('MediaContainer') or {}).get('Directory') or []
             auth = {'ok': True, 'sections': len(sections)}
         except (httpx2.HTTPError, ValueError) as err:
-            auth['error'] = str(err)
+            logger.warn('plex-auth', f'verify auth failed for {base}: {err}')
+            auth['error'] = 'Server unreachable or token rejected'
     return {'identity': identity, 'auth': auth}
 
 
