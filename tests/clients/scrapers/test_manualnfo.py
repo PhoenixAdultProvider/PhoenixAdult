@@ -397,3 +397,22 @@ async def test_a_miss_walks_the_tree_once(tmp_path: Path, monkeypatch: pytest.Mo
     await ManualNfoClient().search(results, _ctx('absent.basename'))
     assert results == []
     assert builds == 1
+
+
+async def test_search_tolerates_a_resolution_suffix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    _write_folder(tmp_path, 'assparade.22.10.10.julianna.vega')
+    for query in ('assparade.22.10.10.julianna.vega.4k', 'assparade.22.10.10.julianna.vega.1080p'):
+        results: list[SearchResult] = []
+        await ManualNfoClient().search(results, _ctx(query))
+        assert len(results) == 1, query
+        assert results[0].title == 'Naughty Fantasy'
+
+
+async def test_exact_match_still_wins_over_normalized(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
+    _write_folder(tmp_path, 'scene.a.4k', nfo=SAMPLE_NFO.replace('Naughty Fantasy', 'Exact Four K'))
+    _write_folder(tmp_path, 'scene.a', nfo=SAMPLE_NFO.replace('Naughty Fantasy', 'Bare'))
+    results: list[SearchResult] = []
+    await ManualNfoClient().search(results, _ctx('scene.a.4k'))
+    assert len(results) == 1 and results[0].title == 'Exact Four K'

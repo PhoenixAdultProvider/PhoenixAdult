@@ -20,6 +20,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.processors.filename_parser import clean_search_title
 
 _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
 _INDEX_TTL_S = 60.0
@@ -61,8 +62,13 @@ class NfoData:
 @dataclass
 class _CachedIndex:
     by_basename: dict[str, LocatedNfo]
+    by_normalized: dict[str, LocatedNfo]
     root: str
     built_at: float
+
+
+def _normalize_basename(basename: str) -> str:
+    return clean_search_title(basename).strip(' ._-').casefold()
 
 
 _cached_index: _CachedIndex | None = None
@@ -100,7 +106,20 @@ def _build_index(root: str) -> _CachedIndex:
         if not existing or existing[1] > depth:
             winners[file_base] = (entry, depth)
 
-    return _CachedIndex({k: v[0] for k, v in winners.items()}, root, time.monotonic())
+    by_basename = {k: v[0] for k, v in winners.items()}
+    by_normalized: dict[str, LocatedNfo] = {}
+    ambiguous: set[str] = set()
+    for base, entry in by_basename.items():
+        key = _normalize_basename(base)
+        if not key or key in ambiguous:
+            continue
+        prior = by_normalized.get(key)
+        if prior is not None and prior.basename != base:
+            del by_normalized[key]
+            ambiguous.add(key)
+        else:
+            by_normalized[key] = entry
+    return _CachedIndex(by_basename, by_normalized, root, time.monotonic())
 
 
 def _get_index(root: str, force_refresh: bool = False) -> _CachedIndex:
@@ -115,10 +134,18 @@ def _get_index(root: str, force_refresh: bool = False) -> _CachedIndex:
         return _cached_index
 
 
+def _lookup(index: _CachedIndex, basename: str) -> LocatedNfo | None:
+    hit = index.by_basename.get(basename)
+    if hit:
+        return hit
+    key = _normalize_basename(basename)
+    return index.by_normalized.get(key) if key else None
+
+
 def _locate_nfo(basename: str) -> LocatedNfo | None:
     root = _manual_nfo_root()
     index = _get_index(root)
-    hit = index.by_basename.get(basename)
+    hit = _lookup(index, basename)
     if hit:
         return hit
 
@@ -126,7 +153,7 @@ def _locate_nfo(basename: str) -> LocatedNfo | None:
         return None
 
     index = _get_index(root, force_refresh=True)
-    return index.by_basename.get(basename)
+    return _lookup(index, basename)
 
 
 def _reset_index_cache() -> None:
