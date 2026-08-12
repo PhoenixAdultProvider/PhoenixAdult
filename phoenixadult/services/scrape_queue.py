@@ -245,7 +245,7 @@ def _ensure_loop() -> None:
 def _spawn_workers(lane: str) -> None:
     loop = asyncio.get_running_loop()
     alive = [task for task in _workers[lane] if not task.done()]
-    want = min(_LANE_WORKERS[lane], _queues[lane].qsize())
+    want = min(_LANE_WORKERS[lane], len(alive) + _queues[lane].qsize())
     while len(alive) < want:
         alive.append(loop.create_task(_run(lane)))
     _workers[lane] = alive

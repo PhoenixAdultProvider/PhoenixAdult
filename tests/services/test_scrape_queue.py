@@ -101,6 +101,28 @@ async def test_the_fast_lane_runs_five_at_a_time() -> None:
     assert peak == 5
 
 
+async def test_the_fast_lane_scales_up_under_drip_arrivals() -> None:
+    live = 0
+    peak = 0
+    release = asyncio.Event()
+
+    async def job() -> None:
+        nonlocal live, peak
+        live += 1
+        peak = max(peak, live)
+        await release.wait()
+        live -= 1
+
+    for i in range(5):
+        scrape_queue.enqueue(f'd{i}', job)
+        await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
+    assert peak == 5
+
+    release.set()
+    await _drain()
+
+
 async def test_the_paced_lane_runs_one_at_a_time() -> None:
     live = 0
     peak = 0
