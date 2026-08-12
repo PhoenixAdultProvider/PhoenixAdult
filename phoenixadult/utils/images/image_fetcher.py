@@ -13,6 +13,7 @@ from cachetools import LRUCache, TLRUCache, TTLCache
 from PIL import Image, ImageFile
 
 from phoenixadult.config.env import env
+from phoenixadult.config.env_catalog import parse_bytes
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import DEFAULT_UA, make_http
@@ -26,6 +27,9 @@ from phoenixadult.utils.logging.logger import logger
 _DEFAULT_MAX_BYTES = 20 * 1024 * 1024
 _CACHE_TTL = 60 * 60
 _CACHE_MAX_TOTAL_BYTES = 256 * 1024 * 1024
+_MAX_IMAGE_PIXELS = 80 * 1024 * 1024
+
+Image.MAX_IMAGE_PIXELS = _MAX_IMAGE_PIXELS
 
 _PROBE_TIMEOUT = 4.0
 _PROBE_HEAD_BYTES = 64 * 1024
@@ -85,11 +89,11 @@ def _cache_put(url: str, entry: ImageEntry) -> None:
 
 
 def _max_bytes() -> int:
-    try:
-        raw = int(env.image_max_bytes_raw or '')
-    except ValueError:
+    parsed = parse_bytes(env.image_max_bytes_raw or '')
+    if parsed is None:
         return _DEFAULT_MAX_BYTES
-    return raw if raw > 0 else _DEFAULT_MAX_BYTES
+    n = int(parsed)
+    return n if n > 0 else _DEFAULT_MAX_BYTES
 
 
 def _is_data18_host(url: str) -> bool:
@@ -115,13 +119,25 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
     if cookie:
         headers['Cookie'] = sanitize_header(cookie)
 
-    resp = await client.get(url, headers=headers)
-    for redirect in resp.history:
-        loc = redirect.headers.get('location', '')
-        host = urlsplit(loc).hostname
-        if host and is_blocked_hostname(host):
-            raise ValueError(f'blocked redirect to {host}')
-    return _accept_image_response(resp, url)
+    cap = _max_bytes()
+    async with client.stream('GET', url, headers=headers) as resp:
+        resp.raise_for_status()
+        for redirect in resp.history:
+            loc = redirect.headers.get('location', '')
+            host = urlsplit(loc).hostname
+            if host and is_blocked_hostname(host):
+                raise ValueError(f'blocked redirect to {host}')
+        content_type = resp.headers.get('content-type', '')
+        if not is_image_content_type(content_type):
+            raise ValueError(f'non-image content-type "{content_type}" from {url}')
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in resp.aiter_bytes():
+            total += len(chunk)
+            if total > cap:
+                raise ValueError(f'image too large (> {cap} bytes) at {url}')
+            chunks.append(chunk)
+    return b''.join(chunks), content_type
 
 
 def _accept_image_response(resp: httpx2.Response, url: str) -> tuple[bytes, str]:
