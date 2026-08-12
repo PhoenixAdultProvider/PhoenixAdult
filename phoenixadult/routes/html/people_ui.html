@@ -106,8 +106,8 @@
     <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
       <div class="hd"><span class="role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="badge crop">cropped</span>{% else %}<span class="badge orig">original</span>{% endif %}{% if e.source %}<span class="badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
       <div class="imgs">
-        <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{{ e.local_src }}" loading="lazy"></figure>
-        {% if e.upstream_url %}<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={{ e.upstream_quoted }}" loading="lazy"></figure>{% endif %}
+        <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{{ e.local_src }}" loading="lazy" decoding="async"></figure>
+        {% if e.upstream_url %}<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={{ e.upstream_quoted }}" loading="lazy" decoding="async"></figure>{% endif %}
       </div>
       <div class="gender"><span>Gender:</span>{% for key, css, label in genders %}<button class="g {{ css }}{% if key == e.gender_norm %} active{% endif %}" data-g="{{ key }}"{% if key == e.gender_norm or not is_admin() %} disabled{% endif %}>{{ label }}</button>{% endfor %}</div>
       <div class="actions">{% if is_admin() %}{% if e.upstream_url %}{% if e.cropped %}<button class="restore">Use Original</button>{% else %}<button class="restore" disabled>Original Kept</button>{% endif %}{% else %}<button class="restore" disabled>No Upstream Recorded</button>{% endif %}{% endif %}<button class="edit">{{ 'Edit' if is_admin() else 'View' }}</button>{% if is_admin() %}<button class="purge">Purge</button>{% endif %}</div>

@@ -1,4 +1,8 @@
 <link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">
+<style>
+  @view-transition { navigation: auto; }
+  @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+</style>
 {% if user_theme().dark or user_theme().light %}<script>window.paUserTheme = {{ user_theme()|tojson }};</script>{% endif %}
 <script>
   (function () {

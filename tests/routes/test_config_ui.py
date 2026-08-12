@@ -272,3 +272,12 @@ def test_dry_run_rows_offer_a_single_scene_import(client: TestClient) -> None:
     assert "connPath('/import-item?'" in body
     assert 'function importOneClicked' in body
     assert "i.status === 'importable' || i.status === 'skipped'" in body
+
+
+def test_route_transitions_are_enhanced(client: TestClient) -> None:
+    body = client.get('/config').text
+    assert '@view-transition { navigation: auto; }' in body
+    assert 'prefers-reduced-motion: reduce' in body
+    assert 'view-transition-name: app-nav' in body
+    assert 'type="speculationrules"' in body and '"prerender"' in body
+    assert '.app-nav a' in body
