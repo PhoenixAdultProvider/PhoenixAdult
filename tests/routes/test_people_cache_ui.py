@@ -174,7 +174,7 @@ def test_people_list_is_paged_like_the_metadata_cache() -> None:
     page = authed_client().get('/people')
     assert 'id="pager"' in page.text
     assert 'id="prevBtn"' in page.text and 'id="nextBtn"' in page.text and 'id="pageInfo"' in page.text
-    assert 'const PAGE_SIZE = 100;' in page.text
+    assert 'const PAGE_SIZE = 500;' in page.text
     assert 'function prevPage()' in page.text and 'function nextPage()' in page.text
 
 
