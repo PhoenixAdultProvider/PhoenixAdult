@@ -170,6 +170,28 @@ def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPa
     assert 'id="cropToggle"' in page.text
 
 
+def test_people_list_is_paged_like_the_metadata_cache() -> None:
+    page = authed_client().get('/people')
+    assert 'id="pager"' in page.text
+    assert 'id="prevBtn"' in page.text and 'id="nextBtn"' in page.text and 'id="pageInfo"' in page.text
+    assert 'const PAGE_SIZE = 100;' in page.text
+    assert 'function prevPage()' in page.text and 'function nextPage()' in page.text
+
+
+def test_only_the_current_page_of_people_images_is_hydrated() -> None:
+    page = authed_client().get('/people')
+    assert "const shown = card.style.display === 'block';" in page.text
+    assert "if(SFW || !shown) img.removeAttribute('src');" in page.text
+
+
+def test_people_paging_reset_and_sfw_stay_visible_on_mobile() -> None:
+    page = authed_client().get('/people')
+    mobile = page.text.split('@media (max-width:720px)')[1]
+    assert '#pager{width:100%;justify-content:space-between}' in mobile
+    hide_rule = next(line for line in mobile.splitlines() if '.search>select' in line)
+    assert '#sfwToggle' not in hide_rule and '#resetBtn' not in hide_rule and '#pager' not in hide_rule
+
+
 def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
     page = authed_client().get('/people')
     assert 'filtersToggle' in page.text

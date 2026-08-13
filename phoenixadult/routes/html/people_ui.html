@@ -65,6 +65,7 @@
       .genericonly.on{background:var(--badge-violet-deep-bg);color:var(--badge-violet-deep-text);border-color:var(--badge-violet-border)}
       .singleonly.on{background:var(--badge-teal-bg);color:var(--badge-teal-text);border-color:var(--badge-teal-border)}
       .tab .cnt{opacity:.65;font-size:11px}
+      #pager{display:none;gap:8px;align-items:center}
       @media (max-width:720px){
         body{padding:14px}
         .grid{grid-template-columns:1fr}
@@ -77,6 +78,7 @@
         .tab{width:100%} .croptoggle{margin-left:0}
         .search{gap:10px}
         .search input{width:100%;flex:1 1 100%}
+        #pager{width:100%;justify-content:space-between}
         .search>select,.search>button.bulk,.search>.progress,.search>#bulkStatus{display:none}
         body.filters-open .search>select,body.filters-open .search>button.bulk{display:block;width:100%;max-width:none}
         body.filters-open .search>.progress{display:block;max-width:none;flex:1 1 100%}
@@ -101,6 +103,11 @@
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
 {% endif %}      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
       <button class="tab" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
+      <span id="pager">
+        <button class="tab" id="prevBtn" onclick="prevPage()">Previous</button>
+        <span class="cnt" id="pageInfo"></span>
+        <button class="tab" id="nextBtn" onclick="nextPage()">Next</button>
+      </span>
 {% if is_admin() %}      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>{% endif %}</div>
     <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
@@ -143,9 +150,14 @@
       let SFW = readSfw();
       function paintImages(){
         document.body.classList.toggle('sfw', SFW);
-        document.querySelectorAll('.imgs img').forEach(img => {
-          if(SFW) img.removeAttribute('src');
-          else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+        // Only the cards on the current page get a src, so a big library never
+        // hydrates thousands of images at once.
+        document.querySelectorAll('.card').forEach(card => {
+          const shown = card.style.display === 'block';
+          card.querySelectorAll('.imgs img').forEach(img => {
+            if(SFW || !shown) img.removeAttribute('src');
+            else if(img.dataset.src && img.getAttribute('src') !== img.dataset.src) img.src = img.dataset.src;
+          });
         });
         paintSfwButton(SFW);
       }
@@ -172,6 +184,21 @@
       let genericOnly = false;
       let singleOnly = false;
       let curTab = '';
+      const PAGE_SIZE = 100;
+      let offset = 0;
+      let matched = [];
+      function prevPage(){ if(offset > 0){ offset = Math.max(0, offset - PAGE_SIZE); applyPage(); } }
+      function nextPage(){ if(offset + PAGE_SIZE < matched.length){ offset += PAGE_SIZE; applyPage(); } }
+      function applyPage(){
+        matched.forEach((c, i) => { c.style.display = (i >= offset && i < offset + PAGE_SIZE) ? 'block' : 'none'; });
+        const pages = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
+        const page = Math.floor(offset / PAGE_SIZE) + 1;
+        document.getElementById('pager').style.display = pages > 1 ? 'inline-flex' : 'none';
+        document.getElementById('pageInfo').textContent = 'Page ' + page + ' of ' + pages;
+        document.getElementById('prevBtn').disabled = offset <= 0;
+        document.getElementById('nextBtn').disabled = offset + PAGE_SIZE >= matched.length;
+        paintImages();
+      }
       function saveFilters(){
         const search = document.getElementById('nameSearch').value;
         const source = document.getElementById('sourceFilter').value;
@@ -216,15 +243,18 @@
         refreshSourceOptions(t);
         const needle = (document.getElementById('nameSearch').value || '').trim().toLowerCase();
         const wanted = document.getElementById('sourceFilter').value;
-        let n=0;
+        matched = [];
         document.querySelectorAll('.card').forEach(c=>{
           const src = c.dataset.source || '';
           const sourceOk = !wanted || (wanted === '__blank__' ? !src : src === wanted);
           const m = c.dataset.type===t && (!croppedOnly || c.dataset.cropped==='1') && (!noUpstreamOnly || c.dataset.upstream==='0')
             && (!genericOnly || src === 'Generic') && (!singleOnly || c.dataset.single === '1') && sourceOk
             && (!needle || (c.dataset.name||'').includes(needle));
-          c.style.display=m?'block':'none'; if(m)n++;
+          if(m) matched.push(c); else c.style.display='none';
         });
+        const n = matched.length;
+        offset = 0;
+        applyPage();
         document.getElementById('searchCount').textContent = needle ? n+' match'+(n===1?'':'es') : '';
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
         updateFiltersToggle();
@@ -246,10 +276,7 @@
       document.getElementById('nameSearch').addEventListener('input', () => showTab(curTab));
       document.getElementById('sourceFilter').addEventListener('change', () => showTab(curTab));
       function shownFilenames(){
-        return Array.from(document.querySelectorAll('.card'))
-          .filter(c => c.style.display !== 'none')
-          .map(c => c.dataset.fn)
-          .filter(Boolean);
+        return matched.map(c => c.dataset.fn).filter(Boolean);
       }
       function setProgress(done, total){
         const bar = document.getElementById('bulkProgress');
