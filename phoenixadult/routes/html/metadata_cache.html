@@ -129,10 +129,16 @@
         border-radius: 6px; background: var(--input-bg); color: var(--soft-text); font-size: 13px; cursor: pointer;
       }
       .filters-toggle.on { border-color: var(--button-primary-bg); color: var(--page-text); }
-      .controls { display: none; }
-      .controls.open { display: block; }
-      .filters { grid-template-columns: 1fr; }
+      /* Paging, Reset and SFW stay reachable; only the filter grid and the
+         bulk actions fold away behind the Filters button. */
+      .controls { display: block; }
+      .filters { display: none; grid-template-columns: 1fr; }
+      .controls.open .filters { display: grid; }
       .toolbar > button { width: 100%; }
+      .toolbar > button:not(.reset-btn):not(.sfw-toggle) { display: none; }
+      .controls.open .toolbar > button { display: block; }
+      .toolbar > .count-badge { display: none; }
+      .controls.open .toolbar > .count-badge { display: inline-block; }
       .toolbar .spacer { display: none; }
       #pager { width: 100%; justify-content: space-between; }
 
