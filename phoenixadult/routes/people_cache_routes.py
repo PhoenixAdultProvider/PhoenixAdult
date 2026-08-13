@@ -25,6 +25,7 @@ from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.localStorage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
+from phoenixadult.utils.processors.title_case import title_case
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 _admin = [Depends(admin_auth_guard)]
@@ -50,7 +51,7 @@ def _parse_filename(filename: str) -> tuple[str, str, str] | None:
     role, slug, gender = parse_person_filename(filename)
     if role not in _ROLES or not slug:
         return None
-    return role, slug.replace('-', ' ').title(), gender
+    return role, title_case(slug.replace('-', ' '), type='name'), gender
 
 
 def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | None:
