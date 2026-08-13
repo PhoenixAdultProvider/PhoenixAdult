@@ -432,17 +432,6 @@ def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPat
     assert "getElementById('controls').classList.toggle('open')" in page.text
 
 
-def test_paging_reset_and_sfw_stay_visible_on_mobile() -> None:
-    page = authed_client().get('/metadata')
-    mobile = page.text.split('@media (max-width: 720px)')[1]
-    assert '.controls { display: block; }' in mobile
-    assert '.filters { display: none; grid-template-columns: 1fr; }' in mobile
-    assert '.toolbar > button:not(.pa-btn) { display: none; }' in mobile
-    assert '#pager { width: 100%; justify-content: space-between; }' in mobile
-    assert '>Reset Filters</button>' in page.text
-    assert page.text.index('id="resetBtn"') < page.text.index('id="sfwToggle"')
-
-
 def test_genre_filter_splits_tagged_from_untagged(monkeypatch: pytest.MonkeyPatch) -> None:
     _seed_cast('Brazzers', 'g1', 'Has Genres', ['Jane Doe'], ['Anal', 'MILF'])
     _seed_cast('Brazzers', 'g2', 'Bare Scene', ['Jane Doe'], [])

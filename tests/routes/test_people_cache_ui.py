@@ -184,11 +184,14 @@ def test_only_the_current_page_of_people_images_is_hydrated() -> None:
     assert "if(SFW || !shown) img.removeAttribute('src');" in page.text
 
 
-def test_people_paging_reset_and_sfw_stay_visible_on_mobile() -> None:
-    page = authed_client().get('/people')
-    assert '@media (max-width:720px){ #pager{width:100%;justify-content:space-between} }' in page.text
-    hide_rule = next(line for line in page.text.splitlines() if '.search>select' in line)
-    assert '#sfwToggle' not in hide_rule and '#resetBtn' not in hide_rule and '#pager' not in hide_rule
+def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
+    client = authed_client()
+    for path in ('/people', '/metadata'):
+        shared = client.get(path).text.split('Shared top-of-page skeleton')[1]
+        assert '.controls { display: block; }' in shared
+        assert '.filters { display: none; grid-template-columns: 1fr; }' in shared
+        assert '.toolbar > button:not(.pa-btn) { display: none; }' in shared
+        assert '#pager { width: 100%; justify-content: space-between; }' in shared
 
 
 def test_the_shared_toolbar_partial_is_the_only_implementation() -> None:
@@ -205,9 +208,10 @@ def test_the_shared_toolbar_partial_is_the_only_implementation() -> None:
 def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.MonkeyPatch) -> None:
     page = authed_client().get('/people')
     assert 'filtersToggle' in page.text
-    assert 'body.filters-open .tabs' in page.text
+    assert '<div class="controls" id="controls">' in page.text
+    assert '.controls.open .filters { display: grid; }' in page.text
+    assert "getElementById('controls').classList.toggle('open')" in page.text
     assert 'updateFiltersToggle()' in page.text
-    assert '@media (max-width:720px)' in page.text
 
 
 def test_people_page_offers_sfw_mode_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:

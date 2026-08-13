@@ -41,14 +41,6 @@
       button.edit{background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--soft-text);flex:0 0 80px}
       button.edit:hover{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}
       button.purge{background:var(--button-danger-bg);flex:0 0 90px}
-      .search{margin-bottom:16px}
-      .search input{width:320px;max-width:100%;background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
-        padding:7px 10px;border-radius:6px;font-size:13px}
-      .search input:focus{outline:0;border-color:var(--input-focus-border)}
-      .search .cnt{color:var(--label-text);font-size:12px;margin-left:10px}
-      .search{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-      .search select{background:var(--input-bg);border:1px solid var(--input-border);color:var(--input-text);
-        padding:7px 10px;border-radius:6px;font-size:13px}
       button.bulk{width:auto;margin:0;padding:7px 16px;background:var(--button-secondary-bg);
         border:1px solid var(--button-secondary-border);color:var(--soft-text)}
       button.bulk:hover{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}
@@ -56,8 +48,8 @@
       .progress{flex:1 1 220px;max-width:320px;height:8px;background:var(--progress-track);border:1px solid var(--panel-border);
         border-radius:6px;overflow:hidden}
       .progress .fill{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}
-      .filters-toggle{display:none}
-      .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+      .tabs{display:flex;flex-wrap:wrap;gap:8px}
+      .filters .tabs{grid-column:1/-1}
       .tab{width:auto;margin:0;padding:6px 12px;background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--muted-text)}
       .tab.active{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}
       .croptoggle{margin-left:auto} .croptoggle.on{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}
@@ -69,19 +61,8 @@
         body{padding:14px}
         .grid{grid-template-columns:1fr}
         .actions{flex-wrap:wrap} button.edit,button.purge{flex:1 1 auto}
-        .filters-toggle{display:block;width:100%;margin:0 0 12px;padding:9px;border:1px solid var(--button-secondary-border);
-          border-radius:6px;background:var(--button-secondary-bg);color:var(--soft-text);font-size:13px;cursor:pointer}
-        .filters-toggle.on{border-color:var(--button-primary-bg);color:var(--page-text)}
-        .tabs{display:none;flex-direction:column;gap:6px}
-        body.filters-open .tabs{display:flex}
+        .tabs{flex-direction:column;gap:6px}
         .tab{width:100%} .croptoggle{margin-left:0}
-        .search{gap:10px}
-        .search input{width:100%;flex:1 1 100%}
-        .search>select,.search>button.bulk,.search>.progress,.search>#bulkStatus{display:none}
-        body.filters-open .search>select,body.filters-open .search>button.bulk{display:block;width:100%;max-width:none}
-        body.filters-open .search>.progress{display:block;max-width:none;flex:1 1 100%}
-        body.filters-open .search>#bulkStatus{display:block}
-        body.filters-open .search>.progress[hidden]{display:none}
       }
     </style>
 {{ toolbar.styles() }}
@@ -91,19 +72,28 @@
     <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
     {% if not crop_available %}<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>{% endif %}
-    <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false"></button>
-    <div class="tabs">{% for t, label in tabs %}<button class="tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
-      <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
-      <button class="tab genericonly" id="genericToggle">Generic Only</button>
-      <button class="tab singleonly" id="singleToggle">Single Name</button></div>
-    <div class="search"><input type="text" id="nameSearch" placeholder="Search names…" autocomplete="off"><span class="cnt" id="searchCount"></span>
-      <select id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
-{% if is_admin() %}      <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
-      <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
-{% endif %}      {{ toolbar.controls() }}
-    {{ toolbar.pager() }}
-{% if is_admin() %}      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
-      <span class="cnt" id="bulkStatus"></span>{% endif %}</div>
+    {{ toolbar.search_row('nameSearch', 'Search names…') }}
+  <div class="controls" id="controls">
+    <div class="filters">
+      <div class="filter-group">
+        <label for="sourceFilter">Source</label>
+        <select id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+      </div>
+{% if is_admin() %}      <div class="filter-group">
+        <label for="bulkSource">Bulk Fetch Source</label>
+        <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+      </div>
+{% endif %}      <div class="tabs">{% for t, label in tabs %}<button class="tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
+        <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
+        <button class="tab genericonly" id="genericToggle">Generic Only</button>
+        <button class="tab singleonly" id="singleToggle">Single Name</button></div>
+    </div>
+    {% call toolbar.bar('searchCount') %}
+{% if is_admin() %}    <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
+    <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
+    <span class="cnt" id="bulkStatus"></span>
+{% endif %}    {% endcall %}
+  </div>
     <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
       <div class="hd"><span class="role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="badge crop">cropped</span>{% else %}<span class="badge orig">original</span>{% endif %}{% if e.source %}<span class="badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
       <div class="imgs">
@@ -255,7 +245,7 @@
         saveFilters();
       }
       function toggleFilters(){
-        const open = document.body.classList.toggle('filters-open');
+        const open = document.getElementById('controls').classList.toggle('open');
         document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
       }
       function updateFiltersToggle(){
