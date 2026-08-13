@@ -277,7 +277,8 @@ class _TitleCaseEngine:
                 continue
             prev = tokens[idx - 1] if idx else None
             after_dot = prev is not None and prev.kind == 'punct' and prev.text == '.'
-            token.normalized = self._normalize_word(token.text, after_dot=after_dot)
+            after_apostrophe = prev is not None and prev.kind == 'symbol' and prev.text == "'"
+            token.normalized = self._normalize_word(token.text, after_dot=after_dot, after_apostrophe=after_apostrophe)
             if self._starts_hyphen_compound(tokens, idx) and token.normalized == token.normalized.lower():
                 token.normalized = _capitalize(token.normalized)
         self._capitalize_first_word(tokens)
@@ -287,12 +288,15 @@ class _TitleCaseEngine:
             return False
         return idx + 2 < len(tokens) and tokens[idx + 1].kind == 'punct' and tokens[idx + 1].text == '-' and tokens[idx + 2].kind == 'word'
 
-    def _normalize_word(self, word: str, *, after_dot: bool = False) -> str:
+    def _normalize_word(self, word: str, *, after_dot: bool = False, after_apostrophe: bool = False) -> str:
         clean_word = _strip_non_word(word)
         clean_lower = clean_word.lower()
 
         if self.clean_site and clean_lower == self.clean_site:
             return self._manual_word_fix(self.site_name)
+
+        if after_apostrophe and clean_lower in _CONTRACTIONS:
+            return self._manual_word_fix(word.lower())
 
         if "'" in word:
             return self._manual_word_fix(self._handle_contraction_word(word))

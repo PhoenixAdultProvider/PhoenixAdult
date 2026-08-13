@@ -148,6 +148,16 @@ def test_title_case_skips_contractions_for_person_names() -> None:
     assert title_case('Cant Jones', type='name') == 'Cant Jones'
 
 
+def test_title_case_keeps_a_possessive_after_an_abbreviation_lowercase() -> None:
+    assert title_case("A.J.'s Fantasy Anal Sex") == "A.J.'s Fantasy Anal Sex"
+    assert title_case("Dr.'s Orders") == "Dr.'s Orders"
+    assert title_case("My Prof.'s Filthy Mouth") == "My Prof.'s Filthy Mouth"
+    assert title_case("A.J.'ll Do It") == "A.J.'ll Do It"
+    assert title_case("Jane's Room") == "Jane's Room"
+    assert title_case('Size S Panties') == 'Size S Panties'
+    assert title_case('an xl surprise') == 'An XL Surprise'
+
+
 def test_title_case_keeps_a_lowercase_brand_initial_anywhere() -> None:
     assert title_case('ICock') == 'iCock'
     assert title_case('icock') == 'iCock'
