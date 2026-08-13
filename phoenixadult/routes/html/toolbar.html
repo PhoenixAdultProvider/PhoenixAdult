@@ -1,0 +1,19 @@
+{% macro styles() %}
+    <style>
+      .pa-btn{width:auto;margin:0;padding:0 12px;height:32px;border:1px solid var(--input-border);border-radius:6px;
+        background:var(--input-bg);color:var(--muted-text);font-size:12px;white-space:nowrap;cursor:pointer}
+      .pa-btn:hover{color:var(--page-text);border-color:var(--hint-text)}
+      .pa-btn:disabled{color:var(--hint-text);border-color:var(--input-bg);cursor:not-allowed}
+      .pa-btn.on{background:var(--button-success-bg);border-color:var(--button-success-bg);color:var(--button-text)}
+      #pager{display:none;gap:8px;align-items:center}
+      #pager .pa-page{font-size:12px;color:var(--label-text);align-self:center}
+      @media (max-width:720px){ #pager{width:100%;justify-content:space-between} }
+    </style>
+{% endmacro %}
+{% macro controls() %}<button class="pa-btn" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
+    <button class="pa-btn" id="sfwToggle" onclick="toggleSfw()"></button>{% endmacro %}
+{% macro pager() %}<span id="pager">
+      <button class="pa-btn" id="prevBtn" onclick="prevPage()">Previous</button>
+      <span class="pa-page" id="pageInfo"></span>
+      <button class="pa-btn" id="nextBtn" onclick="nextPage()">Next</button>
+    </span>{% endmacro %}

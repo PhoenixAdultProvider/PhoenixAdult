@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import 'toolbar.html' as toolbar %}
 {% block title %}People Cache{% endblock %}
 {% block page %}people{% endblock %}
 {% block head %}
@@ -26,7 +27,6 @@
       figcaption{font-size:11px;color:var(--muted-text);margin-bottom:4px}
       img{width:100%;height:170px;object-fit:contain;background:var(--image-well-bg);border-radius:6px}
       body.sfw .imgs{display:none}
-      .sfwtoggle.on{background:var(--button-success-bg);border-color:var(--button-success-bg);color:var(--button-text)}
       .gender{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted-text)}
       .gender .g{flex:1;margin:0;padding:5px;font-size:12px}
       .g.gf.active{background:var(--female)} .g.gm.active{background:var(--button-primary-bg)}
@@ -65,7 +65,6 @@
       .genericonly.on{background:var(--badge-violet-deep-bg);color:var(--badge-violet-deep-text);border-color:var(--badge-violet-border)}
       .singleonly.on{background:var(--badge-teal-bg);color:var(--badge-teal-text);border-color:var(--badge-teal-border)}
       .tab .cnt{opacity:.65;font-size:11px}
-      #pager{display:none;gap:8px;align-items:center}
       @media (max-width:720px){
         body{padding:14px}
         .grid{grid-template-columns:1fr}
@@ -78,7 +77,6 @@
         .tab{width:100%} .croptoggle{margin-left:0}
         .search{gap:10px}
         .search input{width:100%;flex:1 1 100%}
-        #pager{width:100%;justify-content:space-between}
         .search>select,.search>button.bulk,.search>.progress,.search>#bulkStatus{display:none}
         body.filters-open .search>select,body.filters-open .search>button.bulk{display:block;width:100%;max-width:none}
         body.filters-open .search>.progress{display:block;max-width:none;flex:1 1 100%}
@@ -86,6 +84,7 @@
         body.filters-open .search>.progress[hidden]{display:none}
       }
     </style>
+{{ toolbar.styles() }}
 {% endblock %}
 {% block content %}
     <h1>People Cache</h1>
@@ -101,13 +100,8 @@
       <select id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
 {% if is_admin() %}      <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
-{% endif %}      <button class="tab sfwtoggle" id="sfwToggle" onclick="toggleSfw()"></button>
-      <button class="tab" id="resetBtn" onclick="resetFilters()">Reset Filters</button>
-      <span id="pager">
-        <button class="tab" id="prevBtn" onclick="prevPage()">Previous</button>
-        <span class="cnt" id="pageInfo"></span>
-        <button class="tab" id="nextBtn" onclick="nextPage()">Next</button>
-      </span>
+{% endif %}      {{ toolbar.controls() }}
+    {{ toolbar.pager() }}
 {% if is_admin() %}      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>{% endif %}</div>
     <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
