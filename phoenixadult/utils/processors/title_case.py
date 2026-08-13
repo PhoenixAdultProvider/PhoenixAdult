@@ -50,6 +50,17 @@ _MANUAL_CORRECTIONS: dict[str, str] = {
     'nino': 'Niño', 'que': 'Qué', 'mccoy': 'McCoy'
 }
 
+_BRAND_NUMBER_RE = re.compile(r'([a-z]+)(\d+)')
+
+
+def _brand_number_correction(clean: str) -> str | None:
+    m = _BRAND_NUMBER_RE.fullmatch(clean)
+    if not m:
+        return None
+    base = _MANUAL_CORRECTIONS.get(m.group(1))
+    return base + m.group(2) if base and any(c.isupper() for c in base[1:]) else None
+
+
 _KEEP_LOWER_FIRST = sorted(v for v in _MANUAL_CORRECTIONS.values() if v[:1].islower() and any(c.isupper() for c in v[1:]))
 _KEEP_LOWER_RE = re.compile(r'\b(' + '|'.join(re.escape(v) for v in _KEEP_LOWER_FIRST) + r')\b', re.IGNORECASE) if _KEEP_LOWER_FIRST else None
 _KEEP_LOWER_BY_KEY = {v.lower(): v for v in _KEEP_LOWER_FIRST}
@@ -340,7 +351,7 @@ class _TitleCaseEngine:
         if cached is not None:
             return cached
         clean = _strip_non_word(word).lower()
-        correction = _MANUAL_CORRECTIONS.get(clean)
+        correction = _MANUAL_CORRECTIONS.get(clean) or _brand_number_correction(clean)
         if correction:
             fixed = re.sub(re.escape(clean), lambda _m: correction, word, count=1, flags=re.IGNORECASE)
             self._manual_cache[word] = fixed

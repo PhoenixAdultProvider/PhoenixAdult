@@ -88,6 +88,13 @@ def test_title_case_manual_correction() -> None:
     assert title_case('escandalo') == 'Escándalo'
 
 
+def test_title_case_brand_correction_reaches_through_a_trailing_number() -> None:
+    assert title_case('lasirena69', type='name') == 'LaSirena69'
+    assert title_case('bangbros18') == 'BangBros18'
+    assert title_case('LaSirena69', type='name') == 'LaSirena69'
+    assert title_case('vip4k', type='name') == 'Vip4k'
+
+
 def test_title_case_keeps_a_lowercase_brand_initial_anywhere() -> None:
     assert title_case('ICock') == 'iCock'
     assert title_case('icock') == 'iCock'
