@@ -28,6 +28,12 @@ def test_title_distance_score_matches_spelled_out_ordinals() -> None:
     assert title_distance_score('Big Tits in History: Episode 3', 'Big Tits in History: Episode 3') == 100
 
 
+def test_title_distance_score_ignores_restored_apostrophes() -> None:
+    assert title_distance_score('Lets Play', "Let's Play") == 100
+    assert title_distance_score('Its Been a While', "It's Been a While") == 100
+    assert title_distance_score('Lets Her Hair Down', 'Rachel Lets Her Hair Down') == title_distance_score("Let's Her Hair Down", 'Rachel Lets Her Hair Down')
+
+
 def test_title_distance_score_keeps_distinct_ordinals_apart() -> None:
     assert title_distance_score('Big Tits in History: Part Three', 'Big Tits in History: Part 4') < 100
     assert title_distance_score('Big Tits in History: Part 3', 'Big Tits in History: Part 4') < 100

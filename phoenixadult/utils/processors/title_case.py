@@ -39,16 +39,31 @@ _NAME_EXCEPTION_SITES = frozenset({'JavBus', 'JavLibrary', 'TeamSkeet X JavHub',
 
 # ── Corrections ───────────────────────────────────────────────────────────────
 _MANUAL_CORRECTIONS: dict[str, str] = {
-    'im': "I'm", 'theyll': "They'll", 'cant': "Can't", 'ive': "I've", 'shes': "She's", 'theyre': "They're",
-    'tshirt': 'T-Shirt', 'dont': "Don't", 'wasnt': "Wasn't", 'youre': "You're", 'ill': "I'll", 'whats': "What's",
-    'didnt': "Didn't", 'isnt': "Isn't", 'senor': 'Señor', 'senorita': 'Señorita', 'thats': "That's",
+    'tshirt': 'T-Shirt', 'senor': 'Señor', 'senorita': 'Señorita',
     'gstring': 'G-String', 'milfs': 'MILFs', 'oreilly': "O'Reilly", 'bangbros': 'BangBros', 'bday': 'B-Day',
-    'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy', 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't",
-    'lasirena': 'LaSirena', 'espanol': 'Español', 'jmac': 'J-Mac', 'youd': "You'd", 'redwolf': 'RedWolf',
-    'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy', 'coachs': "Coach's",
-    'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'weve': "We've", 'icock': 'iCock', 'youve': "You've", 'creme': "Crème",
+    'dms': 'DMs', 'bffs': 'BFFs', 'ohmy': 'OhMy',
+    'lasirena': 'LaSirena', 'espanol': 'Español', 'jmac': 'J-Mac', 'redwolf': 'RedWolf',
+    'mccray': 'McCray', 'mccullough': 'McCullough', 'mccall': 'McCall', 'mccarthy': 'McCarthy',
+    'escandalo': 'Escándalo', 'desilva': 'DeSilva', 'icock': 'iCock', 'creme': "Crème",
     'nino': 'Niño', 'que': 'Qué', 'mccoy': 'McCoy'
 }
+
+_CONTRACTION_CORRECTIONS: dict[str, str] = {
+    'im': "I'm", 'theyll': "They'll", 'cant': "Can't", 'ive': "I've", 'shes': "She's", 'theyre': "They're",
+    'dont': "Don't", 'wasnt': "Wasn't", 'youre': "You're", 'whats': "What's", 'didnt': "Didn't", 'isnt': "Isn't",
+    'thats': "That's", 'wont': "Won't", 'whos': "Who's", 'shouldnt': "Shouldn't", 'youd': "You'd",
+    'coachs': "Coach's", 'weve': "We've", 'youve': "You've",
+    'theres': "There's", 'wheres': "Where's", 'doesnt': "Doesn't", 'youll': "You'll", 'aint': "Ain't",
+    'couldnt': "Couldn't", 'wouldnt': "Wouldn't", 'hasnt': "Hasn't", 'havent': "Haven't", 'hadnt': "Hadn't",
+    'arent': "Aren't", 'werent': "Weren't", 'itll': "It'll", 'thatll': "That'll", 'hes': "He's",
+    'couldve': "Could've", 'wouldve': "Would've", 'shouldve': "Should've",
+}
+
+_START_CONTRACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r'(^\W*|[,:;]\s+)Lets(?=\s)', re.IGNORECASE), r"\g<1>Let's"),
+    (re.compile(r'(^\W*|[,:;]\s+)Its(?=\s)', re.IGNORECASE), r"\g<1>It's"),
+    (re.compile(r'(^\W*|[,:;]\s+)Were(?=\s+[A-Za-z]+ing\b)', re.IGNORECASE), r"\g<1>We're"),
+)
 
 _BRAND_NUMBER_RE = re.compile(r'([a-z]+)(\d+)')
 
@@ -351,7 +366,7 @@ class _TitleCaseEngine:
         if cached is not None:
             return cached
         clean = _strip_non_word(word).lower()
-        correction = _MANUAL_CORRECTIONS.get(clean) or _brand_number_correction(clean)
+        correction = _MANUAL_CORRECTIONS.get(clean) or (None if self.type == 'name' else _CONTRACTION_CORRECTIONS.get(clean)) or _brand_number_correction(clean)
         if correction:
             fixed = re.sub(re.escape(clean), lambda _m: correction, word, count=1, flags=re.IGNORECASE)
             self._manual_cache[word] = fixed
@@ -414,6 +429,8 @@ class _TitleCaseEngine:
         if self.type == 'title':
             output = normalize_sequence_separator(output)
             output = _PARTICLE_LA_RE.sub(r'\1\2la', output)
+            for start_re, start_sub in _START_CONTRACTIONS:
+                output = start_re.sub(start_sub, output)
         output = expand_initial_pairs(output)
         output = re.sub(r'(?<![A-Za-z])W/', 'w/', output)
         for phrase, replacement in _PHRASE_CORRECTIONS.items():

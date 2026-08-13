@@ -95,6 +95,59 @@ def test_title_case_brand_correction_reaches_through_a_trailing_number() -> None
     assert title_case('vip4k', type='name') == 'Vip4k'
 
 
+def test_title_case_restores_lets_only_at_a_clause_start() -> None:
+    assert title_case('lets play') == "Let's Play"
+    assert title_case('Lets Make a Deal') == "Let's Make a Deal"
+    assert title_case('LETS PLAY') == "Let's PLAY"
+    assert title_case('Surprise, Lets FUCK!') == "Surprise, Let's FUCK!"
+    assert title_case('Rachel Lets Her Hair Down') == 'Rachel Lets Her Hair Down'
+    assert title_case('Stepmom Lets Me Join In') == 'Stepmom Lets Me Join In'
+
+
+def test_title_case_restores_its_only_at_a_clause_start() -> None:
+    assert title_case('Its Been a While') == "It's Been a While"
+    assert title_case('its my turn') == "It's My Turn"
+    assert title_case('If You Lose, Its That Simple') == "If You Lose, It's That Simple"
+    assert title_case('Spying Has Its Consequences') == 'Spying Has Its Consequences'
+
+
+def test_title_case_restores_were_only_before_a_gerund() -> None:
+    assert title_case('Were Recording') == "We're Recording"
+    assert title_case('Were You There') == 'Were You There'
+    assert title_case('They Were Ready') == 'They Were Ready'
+
+
+def test_title_case_start_contractions_survive_leading_punctuation() -> None:
+    assert title_case('(Its Time)') == "(It's Time)"
+    assert title_case('[Lets Go]') == "[Let's Go]"
+
+
+def test_title_case_start_contractions_are_idempotent() -> None:
+    assert title_case(title_case('lets play')) == "Let's Play"
+    assert title_case("It's Been a While") == "It's Been a While"
+    assert title_case("We're Recording") == "We're Recording"
+
+
+def test_title_case_restores_unambiguous_contractions_anywhere() -> None:
+    assert title_case('theres a first time') == "There's a First Time"
+    assert title_case('she doesnt know') == "She Doesn't Know"
+    assert title_case('youll never guess') == "You'll Never Guess"
+    assert title_case('wheres my stepmom') == "Where's My Stepmom"
+    assert title_case('i aint got no panties on') == "I Ain't Got No Panties On"
+    assert title_case('i couldnt resist') == "I Couldn't Resist"
+
+
+def test_title_case_leaves_the_adjective_ill_alone() -> None:
+    assert title_case('Ill Intentions') == 'Ill Intentions'
+    assert title_case('a woman of ill repute') == 'A Woman of Ill Repute'
+
+
+def test_title_case_skips_contractions_for_person_names() -> None:
+    assert title_case('Its Cleo', type='name') == 'Its Cleo'
+    assert title_case('Ive Nilsen', type='name') == 'Ive Nilsen'
+    assert title_case('Cant Jones', type='name') == 'Cant Jones'
+
+
 def test_title_case_keeps_a_lowercase_brand_initial_anywhere() -> None:
     assert title_case('ICock') == 'iCock'
     assert title_case('icock') == 'iCock'
@@ -243,7 +296,7 @@ def test_title_case_strap_on_keeps_both_halves_capitalised() -> None:
 def test_title_case_a_game_is_a_grade_after_a_possessive() -> None:
     assert title_case('Bringing Her A Game') == 'Bringing Her A Game'
     assert title_case('bringing his a game') == 'Bringing His A Game'
-    assert title_case('Lets Play a Game Stepdad') == 'Lets Play a Game Stepdad'
+    assert title_case('Lets Play a Game Stepdad') == "Let's Play a Game Stepdad"
     assert title_case('Valentina and Her Husband Have A Game') == 'Valentina and Her Husband Have a Game'
 
 

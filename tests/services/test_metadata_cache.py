@@ -143,6 +143,19 @@ def test_reapply_text_rules_strips_the_episode_tag(scraper: str, tagged: str, cl
     assert mc.reapply_text_rules(resp, scraper) is False
 
 
+def test_reapply_text_rules_restores_a_title_apostrophe_once() -> None:
+    resp = _tagged_response('Lets Play')
+    assert mc.reapply_text_rules(resp) is True
+    assert resp.MediaContainer.Metadata[0].title == "Let's Play"
+    assert mc.reapply_text_rules(resp) is False
+
+
+def test_reapply_text_rules_leaves_a_third_person_lets_alone() -> None:
+    resp = _tagged_response('Rachel Lets Her Hair Down')
+    assert mc.reapply_text_rules(resp) is False
+    assert resp.MediaContainer.Metadata[0].title == 'Rachel Lets Her Hair Down'
+
+
 def test_reapply_text_rules_leaves_other_scrapers_tags_alone() -> None:
     untouched = _tagged_response('Stepmom Wants to Move In - S2:E1')
     assert mc.reapply_text_rules(untouched) is False

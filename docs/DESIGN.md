@@ -840,7 +840,7 @@ The post-process stage runs six named passes in order (`_post_process`):
 3. `_capitalize_boundaries` — capitalize after sentence/bracket boundaries, before a spaced dash (segment-final, so `… Move In - Part Two` cases hold), and the final word.
 4. `_normalize_initials` — collapse spaced initialisms (`J. J.` → `J.J.`), apply `collapse_initial_pairs`, normalize `vs.`.
 5. `_fix_grammar` — `s's`→`s'` possessives, a/an agreement (with `u`-sound exceptions), honorifics get their period (skipped for `type='name'`).
-6. `_finish_by_type` — titles get `normalize_sequence_separator`; then `expand_initial_pairs`, `W/`→`w/`, and per-scraper phrase corrections (`SCRAPER_PHRASE_CORRECTIONS`).
+6. `_finish_by_type` — titles get `normalize_sequence_separator` and `START_CONTRACTIONS`; then `expand_initial_pairs`, `W/`→`w/`, and per-scraper phrase corrections (`SCRAPER_PHRASE_CORRECTIONS`).
 
 ### A.2 Per-Word Decision Cascade (`normalize_word`)
 
@@ -893,7 +893,9 @@ flowchart TB
 | `HONORIFICS` / `ROMAN_NUMERALS` | grammar-pass period fix / sequence-number detection | mr, dr / ii, iv, xii |
 | `INITIAL_PAIRS` | two-letter stage names kept as initials | AJ → A.J., TJ → T.J. |
 | `SYMBOL_RULES` | how `- / . + '` split + rejoin | `.`→initials/acronym, `'`→contraction |
-| `MANUAL_CORRECTIONS` | exact restylings | dont→Don't, mccray→McCray, milfs→MILFs |
+| `MANUAL_CORRECTIONS` | exact restylings | mccray→McCray, milfs→MILFs, espanol→Español |
+| `CONTRACTION_CORRECTIONS` | apostrophe restoration, skipped for `type='name'` | dont→Don't, doesnt→Doesn't, aint→Ain't |
+| `START_CONTRACTIONS` | clause-initial only, where the word is ambiguous mid-title | Lets Play→Let's Play, Its Been→It's Been |
 | `SCRAPER_PHRASE_CORRECTIONS` | per-scraper phrase restylings | strike3: a game→A Game |
 | `NAME_EXCEPTION_SITES` | site-specific name casing | JavBus, JAVDatabase |
 
