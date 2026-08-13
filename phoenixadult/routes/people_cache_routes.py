@@ -60,8 +60,9 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
     if not parsed:
         return None
     role, name, gender = parsed
+    log_name = str(log.get('name') or '').strip()
     return {
-        'name': log.get('name') or name,
+        'name': title_case(log_name, type='name') if log_name else name,
         'filename': filename,
         'relpath': relpath,
         'type': subpath.replace('/', '-'),

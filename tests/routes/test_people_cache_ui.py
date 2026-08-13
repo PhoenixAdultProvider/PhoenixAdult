@@ -105,10 +105,37 @@ def test_folder_derived_names_use_title_case_not_naive_title(monkeypatch: pytest
     d.mkdir(parents=True)
     (d / 'actor.ashley-mccoy_female.jpg').write_bytes(b'x')
     (d / 'actor.whitney-oc_female.jpg').write_bytes(b'x')
+    (d / 'actor.lasirena69_female.jpg').write_bytes(b'x')
 
     by_file = {e['filename']: e for e in pcr._list_people(str(root))}
     assert by_file['actor.ashley-mccoy_female.jpg']['name'] == 'Ashley McCoy'
     assert by_file['actor.whitney-oc_female.jpg']['name'] == 'Whitney OC'
+    assert by_file['actor.lasirena69_female.jpg']['name'] == 'LaSirena69'
+
+
+def test_a_stored_crop_log_name_is_recased_for_display(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
+    from pathlib import Path
+
+    from phoenixadult.routes import people_cache_routes as pcr
+    from phoenixadult.utils.images import face_crop_log
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    root = Path(str(tmp_path)) / 'people'
+    d = root / 'actors' / 'female'
+    d.mkdir(parents=True)
+    (d / 'actor.whitney-oc_female.jpg').write_bytes(b'x')
+    face_crop_log.record(
+        str(d),
+        name='Whitney Oc',
+        filename='actor.whitney-oc_female.jpg',
+        base='actor.whitney-oc_female',
+        orig_ext='.jpg',
+        upstream_url='https://u/x.jpg',
+        cropped=False,
+    )
+
+    entry = next(e for e in pcr._list_people(str(root)) if e['filename'] == 'actor.whitney-oc_female.jpg')
+    assert entry['name'] == 'Whitney OC'
 
 
 def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
