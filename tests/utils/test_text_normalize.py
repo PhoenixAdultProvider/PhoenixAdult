@@ -70,3 +70,25 @@ def test_normalize_text_handles_empty() -> None:
 def test_normalize_text_on_the_real_summary() -> None:
     raw = 'Jimmy Michaels gets a new pair of x-ray specs. . . just in time for his roommate’s girlfriend.'
     assert normalize_text(raw) == "Jimmy Michaels gets a new pair of x-ray specs... just in time for his roommate's girlfriend."
+
+
+def test_normalize_text_maps_word_private_use_glyphs_to_real_characters() -> None:
+    assert normalize_text('making this tape for you! \uf04a') == 'making this tape for you! \u263a'
+    assert normalize_text('bullet \uf0b7 point') == 'bullet \u2022 point'
+    assert normalize_text('done \uf0fc') == 'done \u2714'
+
+
+def test_normalize_text_drops_private_use_glyphs_with_no_equivalent() -> None:
+    assert normalize_text('nothing renders \ue123here') == 'nothing renders here'
+
+
+def test_normalize_text_repairs_mojibake_ftfy_cannot_match() -> None:
+    assert normalize_text('themâ€"they are') == 'them—they are'
+    assert normalize_text('work for us.Â') == 'work for us.'
+    assert normalize_text('Âme is a real word') == 'Âme is a real word'
+
+
+def test_normalize_text_restores_an_apostrophe_lost_to_a_bad_byte() -> None:
+    assert normalize_text('money she�s made') == "money she's made"
+    assert normalize_text('her tight 5�5 frame') == "her tight 5'5 frame"
+    assert normalize_text('caf�') == 'caf'
