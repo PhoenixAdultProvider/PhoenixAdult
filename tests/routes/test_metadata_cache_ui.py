@@ -803,3 +803,16 @@ def test_the_empty_thumbnail_is_a_centred_well() -> None:
     assert 'checkerboard-a' in rule
     assert '.card .noimg::before' not in page.text
     assert '>No image<' in page.text
+
+
+def test_every_action_button_uses_the_shared_button_system() -> None:
+    import re
+
+    page = authed_client().get('/metadata').text
+    for bespoke in ('edit-btn', 'purge-btn', 'export-btn', 'refresh-btn', 'dup-toggle', 'dup-btn', 'prune-btn'):
+        assert bespoke not in page, f'{bespoke} should be a .pa-btn modifier now'
+    ids = dict(re.findall(r'<button[^>]*class="([^"]+)"[^>]*id="([^"]+)"', page))
+    for classes, button_id in ids.items():
+        if button_id in ('filtersToggle',):
+            continue
+        assert classes.startswith('pa-btn'), f'{button_id} is not on the shared button system'

@@ -49,24 +49,6 @@
     .blank { color: var(--blank-text); }
     .manual { font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--badge-violet-solid-bg); color: var(--button-text); vertical-align: middle; }
     .cached-ts { color: var(--muted-text); white-space: nowrap; }
-    .edit-btn { padding: 8px 16px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--soft-text); cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
-    .edit-btn:hover { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
-    .purge-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--button-danger-bg); color: var(--button-text); cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
-    .purge-btn:hover { background: var(--button-danger-hover-bg); }
-    .purge-btn:disabled { background: var(--input-border); color: var(--label-text); cursor: not-allowed; }
-    .export-btn { padding: 8px 16px; border: 1px solid var(--button-primary-bg); border-radius: 6px; background: var(--button-outline-bg); color: var(--link-text); cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
-    .export-btn:hover { background: var(--button-outline-border); color: var(--button-text); }
-    .export-btn:disabled { border-color: var(--input-border); background: var(--button-outline-bg); color: var(--label-text); cursor: not-allowed; }
-    .refresh-btn { padding: 8px 16px; border: 1px solid var(--button-outline-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--button-outline-text); cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
-    .refresh-btn:hover { background: var(--button-outline-border); color: var(--button-text); }
-    .refresh-btn:disabled { border-color: var(--input-border); background: var(--button-outline-bg); color: var(--label-text); cursor: not-allowed; }
-    .dup-toggle { padding: 8px 16px; border: 1px solid var(--warn-solid-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--warn-solid-border); font-size: 14px; white-space: nowrap; font-weight: 500; cursor: pointer; }
-    .dup-toggle.on { background: var(--warn-solid-bg); color: var(--button-text); }
-    .dup-btn { padding: 8px 16px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--label-text); font-size: 14px; white-space: nowrap; font-weight: 500; cursor: not-allowed; }
-    .dup-btn.active { background: var(--warn-solid-bg); border-color: var(--warn-solid-border); color: var(--button-text); cursor: pointer; }
-    .dup-btn.active:hover { background: var(--warn-solid-hover-bg); }
-    .prune-btn { padding: 8px 16px; border: 1px solid var(--hint-text); border-radius: 6px; background: var(--button-outline-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; white-space: nowrap; font-weight: 500; }
-    .prune-btn:hover { background: var(--input-border); color: var(--page-text); }
     .empty { color: var(--muted-text); margin-top: 24px; }
 
     /* ── Progress ── */
@@ -196,13 +178,13 @@
   </div>
 
   {% call toolbar.bar('count') %}
-{% if is_admin() %}    <button class="dup-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
-    <button class="dup-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
-{% if is_admin() %}    <button class="dup-btn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
-    <button class="prune-btn" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
-{% endif %}    <button class="export-btn" id="exportBtn" onclick="exportShown()" disabled></button>
-{% if is_admin() %}    <button class="refresh-btn" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
-    <button class="purge-btn" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
+    <button class="pa-btn pa-btn--lg pa-btn--warn" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+    <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
+{% endif %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="exportBtn" onclick="exportShown()" disabled></button>
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
+    <button class="pa-btn pa-btn--lg pa-btn--danger" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
   {% endcall %}
   </div>
 
@@ -524,8 +506,8 @@
           <div class="c-row c-data18" data-label="Data18">${data18}</div>
           <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
           <div class="c-actions">
-            <button class="edit-btn" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
-            ${IS_ADMIN ? `<button class="purge-btn" onclick="purge(${key})">Purge</button>` : ''}
+            <button class="pa-btn pa-btn--lg" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
+            ${IS_ADMIN ? `<button class="pa-btn pa-btn--lg pa-btn--danger" onclick="purge(${key})">Purge</button>` : ''}
           </div>
         </div>`;
       }).join('');
