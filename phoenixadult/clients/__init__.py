@@ -4,6 +4,7 @@ from phoenixadult.clients.aggregators.archive import ArchiveClient
 from phoenixadult.clients.aggregators.data18empire import Data18EmpireClient
 from phoenixadult.clients.aggregators.data18movies import Data18MoviesClient
 from phoenixadult.clients.aggregators.data18scenes import Data18ScenesClient
+from phoenixadult.clients.aggregators.iafd import IAFDClient
 from phoenixadult.clients.aggregators.javbus import JavBusClient
 from phoenixadult.clients.aggregators.javdatabase import JAVDatabaseClient
 from phoenixadult.clients.aggregators.javlibrary import JavLibraryClient
@@ -262,6 +263,7 @@ CLIENT_REGISTRY: dict[str, Client] = {
     'data18empire': Data18EmpireClient(),
     'data18movies': Data18MoviesClient(),
     'data18scenes': Data18ScenesClient(),
+    'iafd': IAFDClient(),
     'javbus': JavBusClient(),
     'javdatabase': JAVDatabaseClient(),
     'javlibrary': JavLibraryClient(),

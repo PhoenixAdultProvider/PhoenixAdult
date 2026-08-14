@@ -689,6 +689,8 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### HoloGirlsVR | ✅
 + #### HotwifeXXX | ✅
 + #### HuCows | ✅
++ #### IAFD | ✅
+  - Black Patrol
 + #### InterracialPass | ✅
   - Backroom Casting Couch
   - BBC Surprise

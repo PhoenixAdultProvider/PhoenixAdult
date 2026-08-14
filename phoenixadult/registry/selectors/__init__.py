@@ -4,6 +4,7 @@ from __future__ import annotations
 from phoenixadult.registry.selectors.aggregators.data18empire import DATA18EMPIRE_SITES
 from phoenixadult.registry.selectors.aggregators.data18movies import DATA18MOVIES_SITES
 from phoenixadult.registry.selectors.aggregators.data18scenes import DATA18SCENES_SITES
+from phoenixadult.registry.selectors.aggregators.iafd import IAFD_SITES
 from phoenixadult.registry.selectors.aggregators.javbus import JAVBUS_SITES
 from phoenixadult.registry.selectors.aggregators.javdatabase import JAVDATABASE_SITES
 from phoenixadult.registry.selectors.aggregators.javlibrary import JAVLIBRARY_SITES

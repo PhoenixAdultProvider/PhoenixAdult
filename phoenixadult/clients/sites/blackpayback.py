@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from phoenixadult.clients.aggregators import iafd
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
+from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
 
 _TITLE_FIXES: dict[str, str] = {'ARIA CARSON 2': 'Birfday Bitch'}
 
@@ -68,7 +69,7 @@ class BlackPayBackClient(Client):
 
         title = _TITLE_FIXES.get(title, title)
 
-        release_date, actors = await self._iafd_lookup(title, fetch_ctx, site)
+        release_date, actors = await iafd.supplement(self, _IAFD_STUDIO_URL, title, fetch_ctx, f'[{site.name}]')
         return LoadedScene(
             url=payload,
             site=site,
@@ -77,38 +78,6 @@ class BlackPayBackClient(Client):
             html=main_page_elements['html'],
             extra=_BpbExtra(title=title, release_date=release_date, actors=actors),
         )
-
-    async def _iafd_lookup(self, title: str, fetch_ctx: FetchCtx, site: ResolvedSiteInfo) -> tuple[str | None, list[ActorResult]]:
-        studio_page_elements = await self.fetch_and_load(_IAFD_STUDIO_URL, fetch_ctx, f'[{site.name}] IAFD studio')
-        if not studio_page_elements:
-            return None, []
-
-        iafd_href = ''
-        for row in studio_page_elements['sel'].xpath('//table[@id="studio"]/tbody/tr'):
-            row_title = (row.xpath('(.//a)[1]/text()').get() or '').split('(')[0].strip()
-            if row_title.lower() == title.lower():
-                iafd_href = first_attr(row, '(.//a/@href)[1]')
-                break
-
-        if not iafd_href:
-            return None, []
-
-        iafd_page_elements = await self.fetch_and_load(f'https://www.iafd.com{iafd_href}', fetch_ctx, f'[{site.name}] IAFD scene')
-        if not iafd_page_elements:
-            return None, []
-
-        raw_date = first_text(iafd_page_elements['sel'], '//p[contains(.,"Release Date")]/following-sibling::p[contains(@class,"biodata")][1]')
-        release_date = (iso_date(raw_date, '%b %d, %Y') or iso_date(raw_date)) if raw_date else None
-        actors: list[ActorResult] = []
-        for a in iafd_page_elements['sel'].xpath('//div[contains(@class,"castbox")]//a'):
-            name = first_attr(a, 'normalize-space(.)')
-            if not name:
-                continue
-
-            photo = first_attr(a, '(.//img/@src)[1]')
-            actors.append(ActorResult(name=name, photo_url=photo))
-
-        return release_date, actors
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
