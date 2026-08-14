@@ -49,7 +49,7 @@ class InterracialPassClient(Client):
                     )
                 )
 
-        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.title.strip().replace(' ', '+'))
+        search_url = search_data.search_url(search_data.title.strip().replace(' ', '+'))
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if search_results:
             for search_result in search_results['sel'].xpath('//div[contains(@class,"item-video")]'):

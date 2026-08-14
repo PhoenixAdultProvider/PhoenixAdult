@@ -15,8 +15,7 @@ class SinXClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
-        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        url = search_data.search_url()
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
             return None

@@ -24,10 +24,9 @@ class _FemjoyExtra:
 
 class FemjoyClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         query = search_data.title
         effective_date = search_data.search_date or ''
-        search_url = base + search_data.site_info.search_path.replace('{query}', quote(query))
+        search_url = search_data.search_url(quote(query))
 
         search_results = await self.fetch_json(search_url, FetchCtx(capture=search_data.capture), label=f'GET {search_url}')
         for r in (search_results or {}).get('results', []):

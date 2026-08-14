@@ -12,8 +12,7 @@ _LI_XP = '//div[contains(@class,"videoContent")]//ul/li'
 
 class MeanaWolfClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        url = search_data.search_url()
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
         if not search_results:
             return

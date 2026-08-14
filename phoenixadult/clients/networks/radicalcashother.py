@@ -49,8 +49,7 @@ class RadicalCashOtherClient(Client):
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
-        raw_path = search_data.site_info.search_path.replace('{query}', search_data.title.strip().lower())
-        search_url = raw_path if re.match(r'^https?://', raw_path, re.IGNORECASE) else f'{base}{raw_path}'
+        search_url = search_data.search_url(search_data.title.strip().lower())
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if search_results:
             for search_result in search_results['sel'].xpath(f'//{p["search_results"]}'):

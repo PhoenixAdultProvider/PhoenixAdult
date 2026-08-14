@@ -20,7 +20,7 @@ class DickDrainersClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         onsite_query = re.sub(r'\s+', '+', search_data.title.strip().lower())
-        onsite_url = base + search_data.site_info.search_path.replace('{query}', onsite_query)
+        onsite_url = search_data.search_url(onsite_query)
 
         onsite_hrefs: set[str] = set()
 

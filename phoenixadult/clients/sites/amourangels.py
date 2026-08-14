@@ -19,8 +19,7 @@ def _strip_video_label(s: str) -> str:
 
 class AmourAngelsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        scene_url = base + search_data.site_info.search_path.replace('{query}', search_data.title.strip())
+        scene_url = search_data.search_url(search_data.title.strip())
         direct_page_elements = await self.fetch_and_load(
             scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
         )

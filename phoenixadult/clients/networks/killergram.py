@@ -32,8 +32,7 @@ class KillergramClient(Client):
         if not scene_id:
             return
 
-        base = search_data.site_info.base_url.rstrip('/')
-        scene_url = base + search_data.site_info.search_path.replace('{query}', scene_id)
+        scene_url = search_data.search_url(scene_id)
         search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] sceneID {scene_id}')
         if not search_results:
             return
@@ -59,7 +58,7 @@ class KillergramClient(Client):
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
         scene_id = payload.split('|')[0]
-        url = site.base_url.rstrip('/') + site.search_path.replace('{query}', scene_id)
+        url = site.search_url(scene_id)
         details_page_elements = await self.fetch_and_load(
             url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] detail {url}'
         )

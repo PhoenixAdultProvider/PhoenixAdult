@@ -61,9 +61,7 @@ class PornboxClient(Client):
             if isinstance(direct_page_elements, dict) and direct_page_elements.get('scene_name'):
                 push(direct_page_elements, source_id, 100)
 
-        search_results = await self.fetch_json(
-            f'{base}{search_data.site_info.search_path.replace("{query}", search_data.encoded)}', FetchCtx(capture=search_data.capture)
-        )
+        search_results = await self.fetch_json(search_data.search_url(), FetchCtx(capture=search_data.capture))
         contents = ((search_results or {}).get('content') or {}).get('contents') or [] if isinstance(search_results, dict) else []
         for search_result in contents:
             title = search_result.get('scene_name') or ''

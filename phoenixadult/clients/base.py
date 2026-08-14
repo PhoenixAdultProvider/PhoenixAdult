@@ -56,6 +56,9 @@ class SearchContext:
     full_title: str | None = None
     allow_slow: bool = False
 
+    def search_url(self, query: str | None = None) -> str:
+        return self.site_info.search_url(self.encoded if query is None else query)
+
 
 @dataclass
 class SceneContext:

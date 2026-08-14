@@ -48,7 +48,7 @@ class FemdomEmpireClient(Client):
                 )
 
         advanced_search_results = await self.fetch_and_load(
-            base + search_data.site_info.search_path.replace('{query}', search_data.encoded),
+            search_data.search_url(),
             FetchCtx(capture=search_data.capture),
             f'[{search_data.site_info.name}] advanced',
         )

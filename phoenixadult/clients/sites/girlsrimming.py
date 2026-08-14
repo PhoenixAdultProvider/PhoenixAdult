@@ -16,8 +16,7 @@ def _py_title(s: str) -> str:
 
 class GirlsRimmingClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        direct = base + search_data.site_info.search_path.replace('{query}', slugify(search_data.title))
+        direct = search_data.search_url(slugify(search_data.title))
         candidates = [direct]
         for u in await web_search_urls(search_data.title, search_data.site_info, include=['/trailers/']):
             lc = u.lower()

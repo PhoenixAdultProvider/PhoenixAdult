@@ -61,7 +61,7 @@ class JAVDatabaseClient(Client):
 
         search_javid = f'{tokens[0]}-{tokens[1]}' if len(tokens) > 1 and re.fullmatch(r'\d+', tokens[1]) else None
         encoded = search_javid or search_data.encoded
-        url = f'{base}{search_data.site_info.search_path.replace("{query}", encoded)}'
+        url = search_data.search_url(encoded)
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
             return None

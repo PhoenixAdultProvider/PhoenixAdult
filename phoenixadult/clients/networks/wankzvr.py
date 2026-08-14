@@ -44,7 +44,7 @@ class WankzVRClient(Client):
             )
             return
 
-        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded.replace('%20', '+'))
+        search_url = search_data.search_url(search_data.encoded.replace('%20', '+'))
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if not search_results:
             return

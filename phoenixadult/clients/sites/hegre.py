@@ -14,7 +14,7 @@ class HegreClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
-        direct = base + search_data.site_info.search_path.replace('{query}', slugify(search_data.title))
+        direct = search_data.search_url(slugify(search_data.title))
         direct_page_elements = await self.fetch_and_load(direct, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {direct}')
         if direct_page_elements:
             title = first_text(direct_page_elements['sel'], '//h1')

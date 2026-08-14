@@ -32,10 +32,9 @@ class SpizooClient(Client):
         return _PROFILES[_PROFILE_KEYS.get(site_name, 'default')]
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         p = self._profile(search_data.site_info.name)
         quoted = quote(f'"{search_data.title}"', safe='')
-        search_url = base + search_data.site_info.search_path.replace('{query}', quoted)
+        search_url = search_data.search_url(quoted)
         search_results = await self.fetch_and_load(
             search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"'
         )

@@ -30,10 +30,9 @@ __testing__ = {'parse_caramel_date': _parse_caramel_date}
 
 class CaramelCashClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = []
         if search_data.scene_id:
-            candidates.append(base + search_data.site_info.search_path.replace('{query}', search_data.scene_id))
+            candidates.append(search_data.search_url(search_data.scene_id))
 
         for u in await web_search_urls(search_data.title, search_data.site_info, include=['video/', 'videos/'], exclude=['/page/']):
             clean = strip_query(u)

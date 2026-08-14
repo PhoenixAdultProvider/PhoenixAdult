@@ -27,8 +27,7 @@ class WoodmanCastingXClient(Client):
         return retried_page_elements or first_page_elements
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_url = search_data.search_url()
         data = await self._get_site_data(search_url, f'[{search_data.site_info.name}] search "{search_data.title}"')
         if not data:
             return

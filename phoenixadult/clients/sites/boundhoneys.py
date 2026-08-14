@@ -17,8 +17,7 @@ class BoundHoneysClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
-        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title, safe=''))
+        url = search_data.search_url(quote(search_data.title, safe=''))
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
         if not search_results:
             return None

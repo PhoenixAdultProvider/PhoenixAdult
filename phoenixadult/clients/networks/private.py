@@ -34,8 +34,7 @@ class PrivateClient(Client):
         return {'sel': Selector(text=r.text), 'html': r.text}
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        search_url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        search_url = search_data.search_url()
         loaded = await self._fetch_localized(search_url, search_data.language, search_data.capture, f'[{search_data.site_info.name}] search {search_url}')
         if not loaded:
             return

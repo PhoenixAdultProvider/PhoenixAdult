@@ -64,7 +64,7 @@ class JavLibraryClient(Client):
                 )
             )
 
-        search_url = f'{base}{search_data.site_info.search_path.replace("{query}", encoded)}'
+        search_url = search_data.search_url(encoded)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if search_results:
             cards = search_results['sel'].xpath('//div[contains(@class,"video")]')

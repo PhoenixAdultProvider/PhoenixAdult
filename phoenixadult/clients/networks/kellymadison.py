@@ -38,7 +38,6 @@ class KellyMadisonClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         scene_id = search_data.scene_id or ''
         if not scene_id and search_data.full_title:
             first_tok = search_data.full_title.strip().split()[0] if search_data.full_title.strip() else ''
@@ -46,7 +45,7 @@ class KellyMadisonClient(Client):
             if stripped and stripped.isdigit():
                 scene_id = stripped
 
-        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title.strip()))
+        url = search_data.search_url(quote(search_data.title.strip()))
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
             return None

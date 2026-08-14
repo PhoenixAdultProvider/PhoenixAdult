@@ -17,10 +17,9 @@ class TeenMegaWorldClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         sources: list[Any] = []
         for p in range(1, _SEARCH_PAGES + 1):
-            url = f'{base}{search_data.site_info.search_path.replace("{query}", search_data.encoded)}&page={p}'
+            url = f'{search_data.search_url()}&page={p}'
             search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
             if search_results:
                 sources.extend(search_results['sel'].xpath('//div[contains(@class,"thumb") and contains(@class,"thumb-video")]'))

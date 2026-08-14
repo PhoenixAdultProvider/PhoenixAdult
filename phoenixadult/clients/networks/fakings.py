@@ -21,11 +21,9 @@ class _SceneExtra(TypedDict):
 
 class FAKingsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         encoded = _WS_RE.sub('-', search_data.title.strip())
-        en_path = search_data.site_info.search_path.replace('{query}', encoded)
-        es_path = en_path.replace('/en/', '/')
-        search_urls = [base + en_path, base + es_path]
+        en_url = search_data.search_url(encoded)
+        search_urls = [en_url, en_url.replace('/en/', '/')]
 
         seen: set[str] = set()
         for _search_url, search_results in await self.fetch_candidate_pages(

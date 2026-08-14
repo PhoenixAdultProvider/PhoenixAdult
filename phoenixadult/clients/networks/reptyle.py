@@ -106,7 +106,7 @@ class ReptyleClient(Client):
             return
 
         site = search_data.site_info
-        search_page_url = site.base_url.rstrip('/') + site.search_path.replace('{query}', slug)
+        search_page_url = site.search_url(slug)
         state = await self._fetch_initial_state(search_page_url, search_data.capture)
         picked = self._pick_scene(state) if state else None
         await self._search_model_page(results, search_data)
@@ -115,7 +115,7 @@ class ReptyleClient(Client):
 
         cur, scene_type, scene_json = picked
         canonical = str(scene_json.get('id') or cur)
-        result_url = site.base_url.rstrip('/') + site.search_path.replace('{query}', canonical) if canonical != cur else search_page_url
+        result_url = site.search_url(canonical) if canonical != cur else search_page_url
         self._add_result(results, search_data, scene_json, scene_type, canonical, result_url)
 
     async def _search_model_page(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -140,7 +140,7 @@ class ReptyleClient(Client):
 
                 movie_id = str(movie['id'])
                 scene_type = 'videosContent' if movie.get('type') == 'video' else 'moviesContent'
-                self._add_result(results, search_data, movie, scene_type, movie_id, base + site.search_path.replace('{query}', movie_id))
+                self._add_result(results, search_data, movie, scene_type, movie_id, site.search_url(movie_id))
 
             return
 

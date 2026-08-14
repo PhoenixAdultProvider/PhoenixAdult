@@ -14,9 +14,8 @@ _TRAILING_ID_RE = re.compile(r'-(\d+)$')
 
 class CzechAVClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         slug = quote(search_data.title.strip(), safe='')
-        search_url = base + search_data.site_info.search_path.replace('{query}', slug)
+        search_url = search_data.search_url(slug)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if not search_results:
             return

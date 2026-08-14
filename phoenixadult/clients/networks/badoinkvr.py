@@ -60,7 +60,7 @@ class BadoinkVrClient(Client):
 
         query_clean_lower = cleaned.lower()
         enc = quote(cleaned, safe='')
-        search_url = base + search_data.site_info.search_path.replace('{query}', enc)
+        search_url = search_data.search_url(enc)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'GET {search_url}')
         if not search_results:
             return

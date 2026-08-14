@@ -18,9 +18,8 @@ _STUDIO_XP = f'//a[contains(@class,"{_STUDIO_CLASS}")]'
 
 class SexLikeRealClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         slug = '-'.join(search_data.title.strip().lower().split())
-        direct_url = base + search_data.site_info.search_path.replace('{query}', slug)
+        direct_url = search_data.search_url(slug)
 
         seen = {direct_url}
         candidates = [direct_url]

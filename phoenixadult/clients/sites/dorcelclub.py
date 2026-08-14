@@ -38,8 +38,7 @@ def _clean_srcset_image(raw: str) -> str:
 
 class DorcelClubClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        url = base + search_data.site_info.search_path.replace('{query}', quote(search_data.title))
+        url = search_data.search_url(quote(search_data.title))
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
         if not search_results:
             return

@@ -28,9 +28,8 @@ class BlurredMediaClient(Client):
     # ── Search Field Hooks ──────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         slug = re.sub(r'\s+', '+', search_data.title.strip())
-        url = base + search_data.site_info.search_path.replace('{query}', slug)
+        url = search_data.search_url(slug)
         cookie = await self._session_cookie(search_data.site_info)
         headers = {'Cookie': cookie} if cookie else None
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture, headers=headers), f'[{search_data.site_info.name}] search {url}')

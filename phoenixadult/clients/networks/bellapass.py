@@ -48,7 +48,7 @@ class BellaPassClient(Client):
         candidates: list[str] = [f'{base}/trailers/{slugify(search_data.title)}.html']
 
         enc = search_data.encoded.replace('%20', '-').lower()
-        search_url = base + search_data.site_info.search_path.replace('{query}', enc)
+        search_url = search_data.search_url(enc)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'GET {search_url}')
         if search_results:
             for search_result in search_results['sel'].xpath('//div[contains(@class,"item-video")]'):
@@ -182,7 +182,7 @@ class BellaPassClient(Client):
         title = self._title_of(scene)
         if set_id and title:
             enc = quote(title, safe='').replace('%20', '+')
-            search_page = base + scene.site.search_path.replace('{query}', enc)
+            search_page = scene.site.search_url(enc)
             search_results = await self.fetch_and_load(search_page, None, 'photoset search')
             if search_results:
                 cnt_raw = search_results['sel'].xpath(f'(//img[@id="{set_id}"])[1]/@cnt').get() or '0'

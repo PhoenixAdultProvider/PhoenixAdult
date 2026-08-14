@@ -36,9 +36,8 @@ def _date_from_clock(node: Any) -> str | None:
 
 class StraponCumClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         slug = _WS_RE.sub('-', search_data.title.strip())
-        scene_url = base + search_data.site_info.search_path.replace('{query}', slug)
+        scene_url = search_data.search_url(slug)
         search_results = await self.fetch_and_load(scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] direct-URL {slug}')
         if not search_results:
             return

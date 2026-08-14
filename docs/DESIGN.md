@@ -235,6 +235,7 @@ classDiagram
     +use_bypass: bool
     +direct_url_template: str | None
     +scraper_config: ScraperConfig
+    +search_url(query) str
   }
   class ResolvedSiteInfo {
     +provider_id: str

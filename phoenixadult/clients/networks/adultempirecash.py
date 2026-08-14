@@ -78,7 +78,7 @@ class AdultEmpireCashClient(Client):
                 if title:
                     results.append(build_search_result(site=search_data.site_info, title=title, scene_url=direct_url, query=search_data.title, score=100))
 
-        url = base + search_data.site_info.search_path.replace('{query}', search_data.encoded)
+        url = search_data.search_url()
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'GET {url}')
         if search_results:
             rows = search_results['sel'].xpath('//div[contains(@class,"item-grid")]/div[contains(concat(" ",normalize-space(@class)," ")," grid-item ")]')

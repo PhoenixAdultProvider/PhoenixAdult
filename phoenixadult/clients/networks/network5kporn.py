@@ -27,7 +27,7 @@ class Network5KPClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         actor_query = split_actor_prefix(search_data.title)[0] if enabled_for(search_data.site_info) else search_data.title
 
-        url = search_data.site_info.base_url.rstrip('/') + search_data.site_info.search_path.replace('{query}', quote(actor_query))
+        url = search_data.search_url(quote(actor_query))
         try:
             r = await self.http.get(url)
         except Exception:  # noqa: BLE001 - upstream failure yields no results

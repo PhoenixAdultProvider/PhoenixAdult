@@ -18,8 +18,7 @@ class StasyQClient(Client):
         if not scene_id:
             return
 
-        base = search_data.site_info.base_url.rstrip('/')
-        scene_url = base + search_data.site_info.search_path.replace('{query}', scene_id)
+        scene_url = search_data.search_url(scene_id)
         search_results = await self.fetch_and_load(
             scene_url, FetchCtx(capture=search_data.capture, headers=_COOKIE), f'[{search_data.site_info.name}] sceneID {scene_id}'
         )

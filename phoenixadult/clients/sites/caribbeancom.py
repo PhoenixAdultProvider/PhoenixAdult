@@ -14,9 +14,8 @@ class CaribbeancomClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         scene_id = (search_data.full_title or search_data.title).replace(' ', '-')
-        scene_url = base + search_data.site_info.search_path.replace('{query}', scene_id)
+        scene_url = search_data.search_url(scene_id)
         direct_page_elements = await self.fetch_and_load(
             scene_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] directScene {scene_url}'
         )

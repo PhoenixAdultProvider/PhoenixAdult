@@ -29,6 +29,10 @@ class SiteInfo:
     use_bypass: bool = False
     token_prefixes: tuple[str, ...] = ()
 
+    def search_url(self, query: str) -> str:
+        path = self.search_path.replace('{query}', query)
+        return path if path.startswith(('http://', 'https://')) else self.base_url.rstrip('/') + path
+
 
 @dataclass(frozen=True)
 class ResolvedSiteInfo(SiteInfo):

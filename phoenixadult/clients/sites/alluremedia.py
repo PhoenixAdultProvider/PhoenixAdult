@@ -22,7 +22,7 @@ _GALLERY_RE = re.compile(r'(.*/contentthumbs/)(\d+)/(\d+)/(\d+)-\d+x\.jpg', re.I
 
 
 def _search_url_for(site: ResolvedSiteInfo, query: str) -> str:
-    return site.base_url.rstrip('/') + site.search_path.replace('{query}', quote(query))
+    return site.search_url(quote(query))
 
 
 def _ptx_srcs(script: str, key: str) -> list[str]:

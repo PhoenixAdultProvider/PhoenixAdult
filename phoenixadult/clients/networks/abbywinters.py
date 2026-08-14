@@ -40,9 +40,8 @@ __testing__ = {
 
 class AbbyWintersClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         encoded = search_data.encoded.replace('%20', '+')
-        search_url = base + search_data.site_info.search_path.replace('{query}', encoded)
+        search_url = search_data.search_url(encoded)
 
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'GET {search_url}')
         if not search_results:

@@ -15,9 +15,8 @@ class NewSensationsOtherClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         encoded = search_data.title.strip().lower().replace(' ', '+')
-        url = base + search_data.site_info.search_path.replace('{query}', encoded)
+        url = search_data.search_url(encoded)
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
         if not search_results:
             return None

@@ -18,12 +18,11 @@ class PervCityClient(Client):
         super().__init__({'Cookie': 'warning_cookie=1'})
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
         if (search_data.site_info.search_path or '').strip():
             slug = slugify(search_data.title).replace('-', '+')
-            url = base + search_data.site_info.search_path.replace('{query}', slug)
+            url = search_data.search_url(slug)
             search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
             if search_results:
                 for search_result in search_results['sel'].xpath('//div[@class="videoBlock"]'):

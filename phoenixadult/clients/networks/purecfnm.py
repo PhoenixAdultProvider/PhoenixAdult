@@ -14,14 +14,13 @@ _GENRES: dict[str, list[str]] = load_data(__file__, 'purecfnm_genres')
 
 class PureCFNMClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         words = search_data.title.strip().split()
         model_id = '-'.join(words[:2])
         scene_title = ' '.join(words[2:])
         if not model_id:
             return
 
-        search_url = base + search_data.site_info.search_path.replace('{query}', model_id)
+        search_url = search_data.search_url(model_id)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {search_url}')
         if not search_results:
             return

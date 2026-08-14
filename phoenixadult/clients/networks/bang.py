@@ -47,7 +47,6 @@ __testing__ = {'bangify': _bangify, 'strip_html': _strip_html, 'find_video_ld': 
 
 class BangClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
 
         found = await web_search_urls(search_data.title, search_data.site_info)
@@ -84,7 +83,7 @@ class BangClient(Client):
             )
 
         enc = quote(search_data.title, safe='').replace('%20', '+')
-        search_url = base + search_data.site_info.search_path.replace('{query}', enc)
+        search_url = search_data.search_url(enc)
         search_results = await self.fetch_and_load(search_url, FetchCtx(capture=search_data.capture), f'GET {search_url}')
         if search_results:
             for search_result in search_results['sel'].xpath('//div[contains(@class,"movie-preview") or contains(@class,"video_container")]'):

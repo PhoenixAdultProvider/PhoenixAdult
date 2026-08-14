@@ -22,11 +22,10 @@ class CherryPimpsClient(Client):
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        base = search_data.site_info.base_url.rstrip('/')
         slug = '+'.join(search_data.title.split())
         sources: list[Any] = []
         for p in range(1, _SEARCH_PAGES + 1):
-            url = base + search_data.site_info.search_path.replace('{query}', slug) + f'&page={p}'
+            url = search_data.search_url(slug) + f'&page={p}'
             search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
             if not search_results:
                 continue
