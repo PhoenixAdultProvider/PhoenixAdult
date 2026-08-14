@@ -215,3 +215,18 @@ def test_every_template_stylesheet_has_balanced_braces() -> None:
                 depth += line.count('{') - line.count('}')
                 assert depth >= 0, f'{path.name}: stray closing brace at {line.strip()!r}'
             assert depth == 0, f'{path.name}: unbalanced braces (net {depth})'
+
+
+def test_page_headings_share_one_position_and_spacing() -> None:
+    import re
+
+    client = authed_client()
+    canonical = 'h1 { font-size: 20px; margin: 0 0 4px; }'
+    for path in ('/metadata', '/people', '/logos', '/queue', '/searches', '/account'):
+        css = ' '.join(re.findall(r'<style>(.*?)</style>', client.get(path).text, re.S))
+        assert canonical in css, f'{path} does not use the shared heading metrics'
+        assert re.search(r'body\s*\{[^}]*padding:\s*24px', css), f'{path} uses a different body padding'
+
+    for path in ('/metadata', '/people', '/logos', '/queue', '/searches'):
+        css = ' '.join(re.findall(r'<style>(.*?)</style>', client.get(path).text, re.S))
+        assert re.findall(r'h1\s*\{[^}]*\}', css) == [canonical], f'{path} restates the shared heading rule'
