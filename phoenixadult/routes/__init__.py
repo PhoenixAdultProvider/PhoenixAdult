@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from phoenixadult.config.env import env
 
 THEME_NAMES = ('midnight', 'forest', 'sky', 'meadow')
+FONT_NAMES = ('archivo-latin', 'jetbrains-mono-latin')
 
 _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
     ('metadata', 'Metadata', '/metadata'),

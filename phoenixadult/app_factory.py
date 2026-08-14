@@ -239,13 +239,20 @@ def create_app() -> FastAPI:
         return FileResponse(_html_dir / 'favicon.svg', media_type='image/svg+xml')
 
     # ── Theme Stylesheets (public — colors only, needed before any auth) ─────
-    from phoenixadult.routes import THEME_NAMES
+    from phoenixadult.routes import FONT_NAMES, THEME_NAMES
 
     @app.get('/themes/{name}.css', include_in_schema=False)
     async def theme_css(name: str) -> FileResponse:
         if name not in THEME_NAMES:
             raise HTTPException(status_code=404, detail='unknown theme')
         return FileResponse(_html_dir / 'themes' / f'{name}.css', media_type='text/css')
+
+    # ── Self-Hosted Fonts (public — the pages need them before any auth) ─────
+    @app.get('/fonts/{name}.woff2', include_in_schema=False)
+    async def font_file(name: str) -> FileResponse:
+        if name not in FONT_NAMES:
+            raise HTTPException(status_code=404, detail='unknown font')
+        return FileResponse(_html_dir / 'fonts' / f'{name}.woff2', media_type='font/woff2', headers={'Cache-Control': 'public, max-age=31536000, immutable'})
 
     return app
 

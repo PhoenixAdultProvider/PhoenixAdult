@@ -67,7 +67,7 @@ impersonate = [
 include = ["phoenixadult*"]
 
 [tool.setuptools.package-data]
-phoenixadult = ["**/*.html", "**/*.css", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.LICENSE"]
+phoenixadult = ["**/*.html", "**/*.css", "**/*.json", "**/*.svg", "**/*.ico", "**/*.onnx", "**/*.woff2", "**/*.LICENSE"]
 
 [tool.ruff]
 line-length = 160
