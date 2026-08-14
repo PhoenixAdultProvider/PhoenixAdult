@@ -5,7 +5,7 @@
   <style>
     body {padding: 24px; }
     .stats { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
-    .stat { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+    .stat { font-size: var(--text-sm); }
     .stat b { font-variant-numeric: tabular-nums; }
     .stat.warn b { color: var(--status-warn-text); }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
@@ -13,24 +13,20 @@
                                border-radius: 6px; padding: 8px 10px; font-size: 14px; }
     input[type=text] { flex: 1 1 220px; min-width: 0; }
     input:focus, select:focus { outline: 0; border-color: var(--input-focus-border); }
-    button { padding: 8px 14px; border: 0; border-radius: 6px; background: var(--button-primary-bg); color: var(--button-text); font-size: 13px; cursor: pointer; }
-    button.secondary { background: var(--button-muted-bg); border: 1px solid var(--button-muted-border); color: var(--button-muted-text); }
-    button.danger { background: var(--button-danger-bg); color: var(--button-text); }
     .count-line { color: var(--label-text); font-size: 12px; margin-bottom: 10px; }
     .dup-only { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-text); white-space: nowrap; cursor: pointer; }
     .dup-only input { accent-color: var(--button-primary-bg); width: 16px; height: 16px; }
     .group { border: 1px solid var(--panel-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
     .group-head { font-size: 12px; color: var(--label-text); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
-    .dup-badge { background: var(--badge-warning-bg); color: var(--badge-warning-text); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+    .dup-badge { background: var(--badge-warning-bg); color: var(--badge-warning-text); }
+    .card { margin-bottom: var(--space-2); }
     .group .card:last-child { margin-bottom: 0; }
     .card-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
     .q-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-    .chip { background: var(--badge-info-bg); color: var(--badge-info-text); border-radius: 10px; padding: 1px 8px; font-size: 11px; white-space: nowrap; cursor: pointer; border: 0; }
+    .chip { background: var(--badge-info-bg); color: var(--badge-info-text); cursor: pointer; border: 0; }
     .meta { color: var(--muted-text); font-size: 12px; }
     .meta.expired { color: var(--status-danger-text); }
     .card-actions { margin-left: auto; display: flex; gap: 6px; }
-    .card-actions button { padding: 4px 10px; font-size: 12px; }
     details { margin-top: 8px; }
     summary { cursor: pointer; font-size: 12px; color: var(--link-text); }
     .result { display: flex; gap: 8px 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 0 0 12px; font-size: 13px; }
@@ -45,10 +41,10 @@
       body { padding: 14px; }
       .toolbar select, .toolbar input[type=text] { flex: 1 1 100%; font-size: 16px; }
       .dup-only { flex: 1 1 100%; font-size: 15px; min-height: 40px; }
-      .toolbar button { flex: 1 1 auto; padding: 11px 12px; }
+      .toolbar .pa-btn { flex: 1 1 auto; height: 40px; }
       .stats { gap: 6px; }
       .card-actions { margin-left: 0; width: 100%; }
-      .card-actions button { flex: 1 1 auto; padding: 10px; }
+      .card-actions .pa-btn { flex: 1 1 auto; height: 36px; }
     }
   </style>
 {% endblock %}
@@ -61,9 +57,9 @@
     <select id="site-filter" onchange="render()"></select>
     <input type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
     <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="render()"> Duplicates only</label>
-    <button type="button" class="secondary" onclick="sweepExpired()">Sweep Expired</button>
-    <button type="button" class="secondary" onclick="purgeSite()">Purge Site</button>
-    <button type="button" class="danger" onclick="purgeAll()">Purge All</button>
+    <button type="button" class="pa-btn" onclick="sweepExpired()">Sweep Expired</button>
+    <button type="button" class="pa-btn" onclick="purgeSite()">Purge Site</button>
+    <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>
   </div>
   <div class="count-line" id="count-line"></div>
   <div id="list"></div>
@@ -122,14 +118,14 @@
     function card(e) {
       const expiry = e.expiresAt == null ? '' : ` · <span class="meta ${e.expired ? 'expired' : ''}">${until(e.expiresAt)}</span>`;
       const bits = [e.date, e.sceneId ? 'id ' + e.sceneId : '', e.language].filter(Boolean).map(esc).join(' · ');
-      return `<div class="card">
+      return `<div class="pa-card card">
         <div class="card-head">
           <span class="q-title">${esc(e.title)}</span>
-          <button type="button" class="chip" data-site="${esc(e.site)}">${esc(e.site)}</button>
+          <button type="button" class="pa-badge chip" data-site="${esc(e.site)}">${esc(e.site)}</button>
           <span class="meta">${bits}${bits ? ' · ' : ''}saved ${rel(e.savedAt)}${expiry}</span>
           <div class="card-actions">
-            <button type="button" class="secondary" data-research="${esc(e.keyHash)}">Re-search</button>
-            <button type="button" class="danger" data-purge="${esc(e.keyHash)}">Purge</button>
+            <button type="button" class="pa-btn pa-btn--sm" data-research="${esc(e.keyHash)}">Re-search</button>
+            <button type="button" class="pa-btn pa-btn--sm pa-btn--danger" data-purge="${esc(e.keyHash)}">Purge</button>
           </div>
         </div>
         <details><summary>${e.results.length} result(s)</summary>${e.results.map(resultRow).join('') || '<div class="result">none stored</div>'}</details>
@@ -140,10 +136,10 @@
       siteOptions();
       const totals = STATE.totals || {};
       document.getElementById('stats').innerHTML = `
-        <span class="stat"><b>${totals.searches || 0}</b> searches</span>
-        <span class="stat"><b>${totals.results || 0}</b> results</span>
-        <span class="stat ${totals.expired ? 'warn' : ''}"><b>${totals.expired || 0}</b> expired</span>
-        <span class="stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
+        <span class="pa-card pa-card--tight stat"><b>${totals.searches || 0}</b> searches</span>
+        <span class="pa-card pa-card--tight stat"><b>${totals.results || 0}</b> results</span>
+        <span class="pa-card pa-card--tight stat ${totals.expired ? 'warn' : ''}"><b>${totals.expired || 0}</b> expired</span>
+        <span class="pa-card pa-card--tight stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
 
       const rows = filtered();
       const groups = new Map();
@@ -161,7 +157,7 @@
       for (const members of groups.values()) {
         any = true;
         if (members.length > 1) {
-          html += `<div class="group"><div class="group-head"><span class="dup-badge">${members.length} spellings of one scene</span>
+          html += `<div class="group"><div class="group-head"><span class="pa-badge dup-badge">${members.length} spellings of one scene</span>
             <span>${esc(members[0].site)} · ${esc(members[0].date)}</span></div>${members.map(card).join('')}</div>`;
         } else {
           html += card(members[0]);

@@ -8,18 +8,17 @@
 .warn{background:var(--banner-danger-bg);border:1px solid var(--banner-danger-border);padding:8px 12px;border-radius:6px}
       .empty{color:var(--muted-text)}
       .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px}
-      .card{background:var(--card-bg);border:1px solid var(--card-border);border-left:5px solid var(--card-stripe);
-        border-radius:8px;padding:12px;display:none}
+      .card{border-left:5px solid var(--card-stripe);display:none}
       .card.gf{border-left-color:var(--female);background:var(--female-card-bg)}
       .card.gm{border-left-color:var(--button-primary-bg);background:var(--male-card-bg)}
       .card.gt{border-left-color:var(--trans);background:var(--trans-card-bg)}
       .card.gn{border-left-color:var(--gender-none)}
       .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
       .hd b{white-space:nowrap} .ts{margin-left:auto;color:var(--label-text);font-size:12px}
-      .badge{font-size:11px;padding:1px 7px;border-radius:10px} .badge.crop{background:var(--badge-info-bg)}
+      .badge.crop{background:var(--badge-info-bg)}
       .badge.orig{background:var(--badge-neutral-bg)}
       .badge.src{background:var(--badge-muted-bg);border:1px solid var(--badge-muted-border);color:var(--badge-muted-text)}
-      .role{font-size:11px;padding:1px 7px;border-radius:10px;text-transform:capitalize;background:var(--role-badge-bg);color:var(--role-badge-text)}
+      .role{text-transform:capitalize;background:var(--role-badge-bg);color:var(--role-badge-text)}
       .role.r-actor{background:var(--role-actor-bg)} .role.r-director{background:var(--role-director-bg)}
       .role.r-producer{background:var(--role-producer-bg)}
       .imgs{display:flex;gap:10px} figure{margin:0;flex:1;text-align:center}
@@ -27,29 +26,19 @@
       img{width:100%;height:170px;object-fit:contain;background:var(--image-well-bg);border-radius:6px}
       body.sfw .imgs{display:none}
       .gender{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--muted-text)}
-      .gender .g{flex:1;margin:0;padding:5px;font-size:12px}
       .g.gf.active{background:var(--female)} .g.gm.active{background:var(--button-primary-bg)}
       .g.gt.active{background:var(--trans)} .g.gn.active{background:var(--gender-none)}
-      button{margin-top:10px;width:100%;padding:7px;border:0;border-radius:6px;background:var(--button-primary-bg);color:var(--button-text);cursor:pointer}
-      button:disabled{cursor:default;opacity:.7}
-      .actions{display:flex;gap:8px}
+      .restore{flex:1;min-width:0} .gender .g{flex:1;min-width:0}
+      .g.active{color:var(--button-text)}
+      .actions{display:flex;gap:8px;margin-top:10px}
       .actions:has(> button:only-child){justify-content:center}
-      .actions > button.edit:only-child{flex:0 0 160px}
-      button.restore{background:var(--button-primary-bg);flex:1}
-      button.restore:disabled{background:var(--button-disabled-bg);color:var(--button-disabled-text);opacity:1}
-      button.edit{background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--soft-text);flex:0 0 80px}
-      button.edit:hover{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}
-      button.purge{background:var(--button-danger-bg);flex:0 0 90px}
-      button.bulk{width:auto;margin:0;padding:7px 16px;background:var(--button-secondary-bg);
-        border:1px solid var(--button-secondary-border);color:var(--soft-text)}
-      button.bulk:hover{background:var(--button-primary-bg);border-color:var(--button-primary-bg);color:var(--button-text)}
-      button.bulk:disabled{background:var(--button-secondary-bg);color:var(--label-text)}
+      .actions > .edit:only-child{flex:0 0 160px}
+      .edit{flex:0 0 80px} .purge{flex:0 0 90px}
       .progress{flex:1 1 220px;max-width:320px;height:8px;background:var(--progress-track);border:1px solid var(--panel-border);
         border-radius:6px;overflow:hidden}
       .progress .fill{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}
       .tabs{display:flex;flex-wrap:wrap;gap:8px}
       .filters .tabs{grid-column:1/-1}
-      .tab{width:auto;margin:0;padding:6px 12px;background:var(--button-secondary-bg);border:1px solid var(--button-secondary-border);color:var(--muted-text)}
       .tab.active{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}
       .croptoggle{margin-left:auto} .croptoggle.on{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}
       .noupstream.on{background:var(--badge-warning-bg);color:var(--badge-warning-text);border-color:var(--badge-warning-border)}
@@ -59,7 +48,7 @@
       @media (max-width:720px){
         body{padding:14px}
         .grid{grid-template-columns:1fr}
-        .actions{flex-wrap:wrap} button.edit,button.purge{flex:1 1 auto}
+        .actions{flex-wrap:wrap} .edit,.purge{flex:1 1 auto}
         .tabs{flex-direction:column;gap:6px}
         .tab{width:100%} .croptoggle{margin-left:0}
       }
@@ -82,25 +71,25 @@
         <label for="bulkSource">Bulk Fetch Source</label>
         <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
-{% endif %}      <div class="tabs">{% for t, label in tabs %}<button class="tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="tab croptoggle" id="cropToggle">Cropped Only</button>
-        <button class="tab noupstream" id="upstreamToggle">No Upstream</button>
-        <button class="tab genericonly" id="genericToggle">Generic Only</button>
-        <button class="tab singleonly" id="singleToggle">Single Name</button></div>
+{% endif %}      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn tab croptoggle" id="cropToggle">Cropped Only</button>
+        <button class="pa-btn tab noupstream" id="upstreamToggle">No Upstream</button>
+        <button class="pa-btn tab genericonly" id="genericToggle">Generic Only</button>
+        <button class="pa-btn tab singleonly" id="singleToggle">Single Name</button></div>
     </div>
     {% call toolbar.bar('searchCount') %}
-{% if is_admin() %}    <button class="bulk" id="bulkBtn">Fetch Images for Shown</button>
+{% if is_admin() %}    <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
     <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
     <span class="cnt" id="bulkStatus"></span>
 {% endif %}    {% endcall %}
   </div>
-    <div class="grid">{% for e in entries %}<div class="card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
-      <div class="hd"><span class="role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="badge crop">cropped</span>{% else %}<span class="badge orig">original</span>{% endif %}{% if e.source %}<span class="badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
+    <div class="grid">{% for e in entries %}<div class="pa-card card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
+      <div class="hd"><span class="pa-badge role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="pa-badge badge crop">cropped</span>{% else %}<span class="pa-badge badge orig">original</span>{% endif %}{% if e.source %}<span class="pa-badge badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
       <div class="imgs">
         <figure><figcaption>Cached (Shown in Plex)</figcaption><img data-src="{{ e.local_src }}" loading="lazy" decoding="async"></figure>
         {% if e.upstream_url %}<figure><figcaption>Upstream Original</figcaption><img data-src="/images/proxy?url={{ e.upstream_quoted }}" loading="lazy" decoding="async"></figure>{% endif %}
       </div>
-      <div class="gender"><span>Gender:</span>{% for key, css, label in genders %}<button class="g {{ css }}{% if key == e.gender_norm %} active{% endif %}" data-g="{{ key }}"{% if key == e.gender_norm or not is_admin() %} disabled{% endif %}>{{ label }}</button>{% endfor %}</div>
-      <div class="actions">{% if is_admin() %}{% if e.upstream_url %}{% if e.cropped %}<button class="restore">Use Original</button>{% else %}<button class="restore" disabled>Original Kept</button>{% endif %}{% else %}<button class="restore" disabled>No Upstream Recorded</button>{% endif %}{% endif %}<button class="edit">{{ 'Edit' if is_admin() else 'View' }}</button>{% if is_admin() %}<button class="purge">Purge</button>{% endif %}</div>
+      <div class="gender"><span>Gender:</span>{% for key, css, label in genders %}<button class="pa-btn pa-btn--sm g {{ css }}{% if key == e.gender_norm %} active{% endif %}" data-g="{{ key }}"{% if key == e.gender_norm or not is_admin() %} disabled{% endif %}>{{ label }}</button>{% endfor %}</div>
+      <div class="actions">{% if is_admin() %}{% if e.upstream_url %}{% if e.cropped %}<button class="pa-btn pa-btn--primary restore">Use Original</button>{% else %}<button class="pa-btn pa-btn--primary restore" disabled>Original Kept</button>{% endif %}{% else %}<button class="pa-btn pa-btn--primary restore" disabled>No Upstream Recorded</button>{% endif %}{% endif %}<button class="pa-btn pa-btn--outline edit">{{ 'Edit' if is_admin() else 'View' }}</button>{% if is_admin() %}<button class="pa-btn pa-btn--danger purge">Purge</button>{% endif %}</div>
     </div>
 {% endfor %}</div>
     <p class="empty viewempty" style="display:none">No images in this category.</p>

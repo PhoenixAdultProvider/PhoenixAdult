@@ -20,22 +20,13 @@
       .toolbar .spacer { flex: 1 1 auto; }
       .count-badge { font-size: 12px; color: var(--label-text); align-self: center; }
       .filters-toggle { display: none; }
-      .pa-btn{width:auto;margin:0;padding:0 12px;height:32px;border:1px solid var(--input-border);border-radius:6px;
-        background:var(--input-bg);color:var(--muted-text);font-size:12px;white-space:nowrap;cursor:pointer}
-      .pa-btn:hover{color:var(--page-text);border-color:var(--hint-text)}
-      .pa-btn:disabled{color:var(--hint-text);border-color:var(--input-bg);cursor:not-allowed}
-      .pa-btn.on{background:var(--button-success-bg);border-color:var(--button-success-bg);color:var(--button-text)}
       #pager{display:none;gap:8px;align-items:center}
       #pager .pa-page{font-size:12px;color:var(--label-text);align-self:center}
 
       @media (max-width: 720px) {
         .searchbar { flex-wrap: wrap; }
         .searchbar .filter-group { max-width: none; }
-        .filters-toggle {
-          display: block; width: 100%; height: 32px; padding: 0 8px; border: 1px solid var(--input-border);
-          border-radius: 6px; background: var(--input-bg); color: var(--soft-text); font-size: 13px; cursor: pointer;
-        }
-        .filters-toggle.on { border-color: var(--button-primary-bg); color: var(--page-text); }
+        .filters-toggle { display: flex; width: 100%; }
         /* Paging, Reset and SFW stay reachable; only the filter grid and the
            bulk actions fold away behind the Filters button. */
         .controls { display: block; }
@@ -69,5 +60,5 @@
       <label for="{{ input_id }}">{{ label }}</label>
       <input type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
     </div>
-    <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
+    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
   </div>{% endmacro %}

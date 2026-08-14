@@ -10,14 +10,10 @@
     .bar input[type=text] { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text); padding: 6px 10px; border-radius: 6px; font-size: 13px; width: 260px; }
     .bar input[type=text]::placeholder { color: var(--input-placeholder-text); }
     .count-badge { font-size: 12px; color: var(--label-text); }
-    .rescan-btn { margin-left: auto; padding: 8px 16px; border: 1px solid var(--button-outline-border); border-radius: 6px; background: var(--button-outline-bg); color: var(--button-outline-text); cursor: pointer; font-size: 13px; font-weight: 500; }
-    .rescan-btn:hover { background: var(--button-outline-hover-bg); color: var(--button-text); }
-    .rescan-btn:disabled { border-color: var(--button-disabled-bg); color: var(--button-disabled-text); cursor: default; }
+    .rescan-btn { margin-left: auto; }
     .rescan-status { font-size: 12px; color: var(--label-text); }
-    .purge-all-btn { padding: 8px 16px; border: 0; border-radius: 6px; background: var(--button-danger-bg); color: var(--button-text); cursor: pointer; font-size: 13px; font-weight: 500; }
-    .purge-all-btn:hover { background: var(--button-danger-hover-bg); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .card { display: flex; flex-direction: column; gap: var(--space-2); }
     .logo-box { background: repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
     .site { font-size: 14px; font-weight: 600; }
@@ -32,7 +28,7 @@
       .bar { gap: 8px; }
       .bar input[type=text] { width: 100%; flex: 1 1 100%; font-size: 16px; }
       .rescan-btn { margin-left: 0; }
-      .rescan-btn, .purge-all-btn { flex: 1 1 auto; }
+      .bar .pa-btn { flex: 1 1 auto; }
       .grid { grid-template-columns: 1fr; }
       .empty { padding: 24px 12px; }
     }
@@ -48,9 +44,9 @@
       <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
     </label>
     <span class="count-badge" id="count"></span>
-{% if is_admin() %}    <button type="button" class="rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+{% if is_admin() %}    <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
     <span class="rescan-status" id="rescan-status"></span>
-    <button type="button" class="purge-all-btn" onclick="purgeAll()">Purge All</button>{% endif %}
+    <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
   </div>
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" style="display:none">no logos cached — drop an image or SVG into a studio folder and click Rescan</div>
@@ -81,7 +77,7 @@
       document.getElementById('count').textContent = `${rows.length} / ${STATE.logos.length} logos · ${noMatch} unmatched`;
       document.getElementById('empty').style.display = STATE.logos.length ? 'none' : 'block';
       document.getElementById('grid').innerHTML = rows.map((l) => `
-        <div class="card">
+        <div class="pa-card card">
           <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--empty-text);font-weight:400">· ${esc(l.slug)}</span></div>
           <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>

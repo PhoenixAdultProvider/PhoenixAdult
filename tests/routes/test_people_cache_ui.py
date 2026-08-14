@@ -202,7 +202,8 @@ def test_the_shared_toolbar_partial_is_the_only_implementation() -> None:
         assert cluster in body
         assert body.index('id="resetBtn"') < body.index('id="sfwToggle"')
         assert '<button class="pa-btn" id="prevBtn" onclick="prevPage()">Previous</button>' in body
-        assert '.pa-btn{width:auto;margin:0;padding:0 12px;height:32px' in body
+        assert body.count('    .pa-btn {\n') == 1, '.pa-btn belongs to base.html alone'
+        assert 'height: 32px;' in body.split('    .pa-btn {\n')[1].split('}')[0]
 
 
 def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.MonkeyPatch) -> None:

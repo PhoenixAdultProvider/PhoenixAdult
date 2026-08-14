@@ -7,7 +7,7 @@
     h2 { font-size: 15px; margin: 22px 0 10px; color: var(--soft-text); }
     h2 .count-badge { margin-left: 8px; }
     .pacers { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-    .pacer { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; gap: 14px; align-items: baseline; }
+    .pacer { font-size: var(--text-sm); display: flex; gap: 14px; align-items: baseline; }
     .pacer .tag { font-weight: 600; }
     .pacer .cd { font-variant-numeric: tabular-nums; color: var(--status-warn-text); }
     .pacer .cd.ready { color: var(--status-ok-text); }
@@ -18,7 +18,7 @@
     .queue-tabs { display: none; }
     .eta { font-size: 13px; color: var(--status-warn-text); margin-bottom: 12px; font-variant-numeric: tabular-nums; }
     .list { display: flex; flex-direction: column; gap: 6px; }
-    .item { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px 12px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .item { font-size: var(--text-sm); display: flex; align-items: center; gap: 10px; }
     .item.running { border-color: var(--running-item-border); background: var(--running-item-bg); }
     .item .label { flex: 1; word-break: break-all; }
     .item .age { color: var(--label-text); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -29,17 +29,11 @@
     .cd.banned { color: var(--status-danger-text); font-weight: 700; }
     .pause-banner { background: var(--banner-danger-bg); color: var(--banner-danger-text); border-radius: 6px; padding: 8px 14px; font-size: 13px;
                     margin-bottom: 12px; display: flex; gap: 12px; align-items: center; }
-    .pause-banner button { padding: 3px 10px; font-size: 12px; border: 1px solid var(--banner-danger-border); border-radius: 5px;
-                           background: transparent; color: var(--banner-danger-text); cursor: pointer; }
-    .flush-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px;
-                 background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; vertical-align: 1px; }
-    .flush-btn:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
-    .pause-btn { margin-left: 8px; padding: 2px 10px; font-size: 11px; border: 1px solid var(--button-muted-border); border-radius: 5px;
-                 background: var(--button-muted-bg); color: var(--button-muted-text); cursor: pointer; vertical-align: 1px; }
-    .pause-btn:hover { border-color: var(--input-focus-border); }
-    .item-x { flex: none; width: 26px; height: 26px; padding: 0; border-radius: 5px; border: 1px solid var(--button-muted-border);
-              background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; font-size: 15px; line-height: 1; }
-    .item-x:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); border-color: var(--button-danger-deep-bg); }
+    .pause-banner .pa-btn { background: transparent; border-color: var(--banner-danger-border); color: var(--banner-danger-text); }
+    .pause-banner .pa-btn:hover { background: var(--banner-danger-border); color: var(--banner-danger-bg); }
+    .flush-btn { margin-left: 8px; vertical-align: 1px; }
+    .pause-btn { margin-left: 8px; vertical-align: 1px; }
+    .item-x { flex: none; width: 26px; padding: 0; font-size: var(--text-lg); }
 
     .progress { margin-bottom: 18px; }
     .progress-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted-text); margin-bottom: 5px; }
@@ -54,8 +48,7 @@
       .pacer { width: 100%; flex-wrap: wrap; gap: 4px 14px; }
       .queues { grid-template-columns: 1fr; }
       .queue-tabs { display: flex; gap: 8px; margin: 16px 0 4px; }
-      .queue-tab { flex: 1 1 0; padding: 11px 8px; font-size: 14px; border-radius: 8px; cursor: pointer;
-                   background: var(--card-bg); border: 1px solid var(--card-border); color: var(--soft-text); }
+      .queue-tab { flex: 1 1 0; height: 42px; border-radius: var(--radius-md); }
       .queue-tab.active { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
       .queue-tab .count-badge { color: inherit; opacity: 0.8; }
       .queues[data-active='search'] #updates-col { display: none; }
@@ -79,20 +72,20 @@
   <div class="pacers" id="pacers"></div>
   <div class="pause-banner" id="pause-banner" style="display:none"></div>
   <div class="queue-tabs" id="queueTabs">
-    <button type="button" class="queue-tab active" data-kind="search" onclick="showQueue('search')">Searches <span class="count-badge" id="tab-search-count"></span></button>
-    <button type="button" class="queue-tab" data-kind="update" onclick="showQueue('update')">Updates <span class="count-badge" id="tab-update-count"></span></button>
+    <button type="button" class="pa-btn queue-tab active" data-kind="search" onclick="showQueue('search')">Searches <span class="count-badge" id="tab-search-count"></span></button>
+    <button type="button" class="pa-btn queue-tab" data-kind="update" onclick="showQueue('update')">Updates <span class="count-badge" id="tab-update-count"></span></button>
   </div>
   <div class="queues" id="queues" data-active="search">
     <div class="queue-col" id="searches-col">
       <h2>Searches <span class="count-badge" id="search-count"></span>
-{% if is_admin() %}      <button type="button" class="pause-btn" id="pause-search" onclick="togglePause('search')">Pause</button>
-      <button type="button" class="flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
+{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-search" onclick="togglePause('search')">Pause</button>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
       <div class="list" id="searches"></div>
     </div>
     <div class="queue-col" id="updates-col">
       <h2>Updates <span class="count-badge" id="update-count"></span>
-{% if is_admin() %}      <button type="button" class="pause-btn" id="pause-update" onclick="togglePause('update')">Pause</button>
-      <button type="button" class="flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
+{% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-update" onclick="togglePause('update')">Pause</button>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
       <div class="list" id="updates"></div>
     </div>
   </div>
@@ -122,7 +115,7 @@
     function render() {
       const drift = (Date.now() - fetchedAt) / 1000;
       const fl = STATE.fastLane;
-      const flTile = !fl ? '' : `<div class="pacer"><span class="tag">unpaced sites</span>` +
+      const flTile = !fl ? '' : `<div class="pa-card pa-card--tight pacer"><span class="tag">unpaced sites</span>` +
         `<span class="cd ${fl.busy < fl.slots ? 'ready' : ''}">${fl.busy}/${fl.slots} slots busy</span>` +
         (fl.waiting ? `<span class="win">${fl.waiting} waiting for a slot</span>` : '') + '</div>';
       document.getElementById('pacers').innerHTML = flTile + (STATE.pacers || []).map((p) => {
@@ -131,7 +124,7 @@
         const ready = wait <= 0 && !p.busy;
         const status = ban > 0 ? `<span class="cd banned">BANNED — ${fmtSecs(ban)}</span>`
           : `<span class="cd ${ready ? 'ready' : ''}">${p.busy ? 'working…' : ready ? 'ready' : 'next turn in ' + fmtSecs(wait)}</span>`;
-        return `<div class="pacer"><span class="tag">${esc(p.tag)}</span>` + status +
+        return `<div class="pa-card pa-card--tight pacer"><span class="tag">${esc(p.tag)}</span>` + status +
           `<span class="win">scenes ${p.window_used}/${p.window_max} per 10 min</span></div>`;
       }).join('') || '<div class="empty">no paced scrapers registered</div>';
 
@@ -158,7 +151,7 @@
       if (STATE.paused) {
         const left = Math.max(0, (STATE.resumeIn || 0) - drift);
         banner.innerHTML = `Queue paused — ${esc(STATE.pauseReason || 'ban detected')} · auto-resumes in ${fmtSecs(left)} ` +
-          (IS_ADMIN ? '<button type="button" onclick="resumeQueue()">Resume Now</button>' : '');
+          (IS_ADMIN ? '<button type="button" class="pa-btn pa-btn--sm" onclick="resumeQueue()">Resume Now</button>' : '');
         banner.style.display = 'flex';
       } else {
         banner.style.display = 'none';
@@ -173,11 +166,11 @@
         const pauseBtn = document.getElementById('pause-' + kind);
         if (pauseBtn) pauseBtn.textContent = kindPaused ? 'Resume' : 'Pause';
         document.getElementById(listId).innerHTML = rows.map((e, i) => `
-          <div class="item ${e.running ? 'running' : ''}">
+          <div class="pa-card pa-card--tight item ${e.running ? 'running' : ''}">
             ${e.running ? '<div class="spinner"></div>' : `<span class="pos">#${i + 1}</span>`}
             <span class="label">${esc(e.label)}</span>
             <span class="age">${e.running ? 'running ' + fmtSecs(e.running_for + drift) : 'waiting ' + fmtSecs(e.waited + drift)}</span>
-            ${IS_ADMIN && !e.running ? `<button type="button" class="item-x" data-kind="${kind}" data-idx="${i}" title="Remove from queue">×</button>` : ''}
+            ${IS_ADMIN && !e.running ? `<button type="button" class="pa-btn pa-btn--sm pa-btn--danger item-x" data-kind="${kind}" data-idx="${i}" title="Remove from queue">×</button>` : ''}
           </div>`).join('') || '<div class="empty">nothing queued</div>';
       }
     }
