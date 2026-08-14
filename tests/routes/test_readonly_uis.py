@@ -201,3 +201,17 @@ def test_the_nav_logout_button_cannot_stretch(member: TestClient) -> None:
     nav_css = body.split('.nav-logout {')[1].split('}')[0]
     assert 'width: auto' in nav_css
     assert 'flex: none' in nav_css
+
+
+def test_every_template_stylesheet_has_balanced_braces() -> None:
+    import re
+    from pathlib import Path
+
+    html_dir = Path(__file__).resolve().parents[2] / 'phoenixadult' / 'routes' / 'html'
+    for path in sorted(html_dir.glob('*.html')):
+        for block in re.findall(r'<style>(.*?)</style>', path.read_text(encoding='utf-8'), re.S):
+            depth = 0
+            for line in block.splitlines():
+                depth += line.count('{') - line.count('}')
+                assert depth >= 0, f'{path.name}: stray closing brace at {line.strip()!r}'
+            assert depth == 0, f'{path.name}: unbalanced braces (net {depth})'
