@@ -13,6 +13,10 @@
       background: var(--card-bg); border: 1px solid var(--divider); border-radius: 8px;
     }
     .card:hover { border-color: var(--input-border); }
+    @supports (grid-template-rows: subgrid) {
+      .card { display: grid; grid-template-rows: subgrid; grid-row: span 9; row-gap: 6px; }
+      .cards.sfw .card { grid-row: span 8; }
+    }
     .card img, .card .noimg { width: 100%; height: 190px; border-radius: 4px; background: var(--image-well-bg); display: block; }
     .card img { object-fit: contain; }
     .card .noimg {
@@ -22,7 +26,11 @@
       background-image: repeating-linear-gradient(135deg, var(--checkerboard-a) 0 7px, var(--checkerboard-b) 7px 14px);
       border: 1px dashed var(--card-border);
     }
-    .c-title { font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--card-title-text); overflow-wrap: anywhere; }
+    .c-title {
+      font-size: 18px; font-weight: 600; line-height: 1.3; text-align: center;
+      color: var(--card-title-text); overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+    }
     .c-studio { font-size: 13px; color: var(--muted-text); overflow-wrap: anywhere; }
     .c-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; overflow-wrap: anywhere; }
     .c-row::before {
@@ -476,6 +484,7 @@
       const empty = document.getElementById('empty');
       if (!rows.length) { cards.innerHTML = ''; empty.style.display = ''; return; }
       empty.style.display = 'none';
+      cards.classList.toggle('sfw', SFW);
 
       cards.innerHTML = rows.map(e => {
         const thumb = SFW
@@ -487,18 +496,19 @@
           : '<span class="blank">—</span>';
         const cast = e.actors || [];
         const castLink = a => `<a href="${esc(personLink(a))}">${esc(a)}</a>`;
-        const actors = cast.length
-          ? `<div class="c-actors" data-label="Actors">${cast.slice(0, 2).map(castLink).join(', ')}${
-              cast.length > 2
+        const actors = `<div class="c-actors" data-label="Actors">${
+          cast.length
+            ? cast.slice(0, 2).map(castLink).join(', ') +
+              (cast.length > 2
                 ? `<span class="c-rest" hidden>, ${cast.slice(2).map(castLink).join(', ')}</span>` +
                   `<button type="button" class="c-more" aria-expanded="false" title="Show ${cast.length - 2} more">…</button>`
-                : ''
-            }</div>`
-          : '';
+                : '')
+            : '<span class="blank">—</span>'
+        }</div>`;
         const key = esc(JSON.stringify(e.key));
         return `<div class="card">
           ${thumb}
-          <div class="c-title">${esc(e.title)}</div>
+          <div class="c-title" title="${esc(e.title)}">${esc(e.title)}</div>
           <div class="c-studio">${esc(heading)}</div>
           <div class="c-row c-date" data-label="Date">${e.date ? esc(e.date) : '<span class="blank">—</span>'}</div>
           <div class="c-row c-genres" data-label="Genres">${e.genres || 0}</div>
@@ -506,7 +516,7 @@
           <div class="c-row c-data18" data-label="Data18">${data18}</div>
           <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
           <div class="c-actions">
-            <button class="pa-btn pa-btn--lg" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
+            <button class="pa-btn pa-btn--lg pa-btn--outline" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
             ${IS_ADMIN ? `<button class="pa-btn pa-btn--lg pa-btn--danger" onclick="purge(${key})">Purge</button>` : ''}
           </div>
         </div>`;

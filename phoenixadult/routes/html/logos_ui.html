@@ -23,8 +23,7 @@
     .site { font-size: 14px; font-weight: 600; }
     .site .unknown { color: var(--label-text); font-weight: 400; font-style: italic; }
     .meta { font-size: 11px; color: var(--label-text); word-break: break-all; }
-    .purge-btn { align-self: flex-start; padding: 4px 12px; border: 1px solid var(--button-danger-deep-bg); border-radius: 5px; background: var(--button-muted-bg); color: var(--soft-danger-text); cursor: pointer; font-size: 12px; }
-    .purge-btn:hover { background: var(--button-danger-deep-bg); color: var(--banner-danger-text); }
+    .purge-btn { align-self: flex-start; }
     .empty { color: var(--empty-text); font-size: 14px; padding: 40px; text-align: center; }
 
     @media (max-width: 720px) {
@@ -86,7 +85,7 @@
           <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--empty-text);font-weight:400">· ${esc(l.slug)}</span></div>
           <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
-          ${IS_ADMIN ? `<button type="button" class="purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
+          ${IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--danger purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
         </div>`).join('');
     }
 

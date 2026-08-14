@@ -805,6 +805,18 @@ def test_the_empty_thumbnail_is_a_centred_well() -> None:
     assert '>No image<' in page.text
 
 
+def test_the_card_subgrid_span_matches_its_row_count() -> None:
+    import re
+
+    page = authed_client().get('/metadata').text
+    block = page.split('return `<div class="card">')[1].split('</div>`;')[0]
+    rows = len([ln for ln in block.split('\n') if re.match(r'^ {10}(<div|\$\{)', ln)])
+    assert f'grid-row: span {rows};' in page
+    assert f'.cards.sfw .card {{ grid-row: span {rows - 1}; }}' in page
+    assert "cards.classList.toggle('sfw', SFW);" in page
+    assert 'const actors = `<div class="c-actors"' in page
+
+
 def test_every_action_button_uses_the_shared_button_system() -> None:
     import re
 
