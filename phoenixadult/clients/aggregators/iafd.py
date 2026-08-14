@@ -78,17 +78,17 @@ def parse_scene(sel: Selector) -> IafdScene:
     )
 
 
-def bypass_ctx(fetch_ctx: FetchCtx | None) -> FetchCtx:
-    return FetchCtx(capture=fetch_ctx.capture if fetch_ctx else None, use_bypass=True, headers=fetch_ctx.headers if fetch_ctx else None)
+def _iafd_ctx(fetch_ctx: FetchCtx) -> FetchCtx:
+    return FetchCtx(capture=fetch_ctx.capture, use_bypass=True, headers=fetch_ctx.headers)
 
 
 async def fetch_listing(client: Client, listing_url: str, fetch_ctx: FetchCtx, label: str) -> list[IafdEntry]:
-    listing_page_elements = await client.fetch_and_load(listing_url, bypass_ctx(fetch_ctx), f'{label} IAFD listing')
+    listing_page_elements = await client.fetch_and_load(listing_url, _iafd_ctx(fetch_ctx), f'{label} IAFD listing')
     return listing_entries(listing_page_elements['sel']) if listing_page_elements else []
 
 
 async def fetch_scene(client: Client, url: str, fetch_ctx: FetchCtx, label: str) -> IafdScene | None:
-    scene_page_elements = await client.fetch_and_load(url, bypass_ctx(fetch_ctx), f'{label} IAFD scene')
+    scene_page_elements = await client.fetch_and_load(url, _iafd_ctx(fetch_ctx), f'{label} IAFD scene')
     return parse_scene(scene_page_elements['sel']) if scene_page_elements else None
 
 
@@ -104,7 +104,7 @@ async def supplement(client: Client, listing_url: str, title: str, fetch_ctx: Fe
 
 class IAFDClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        fetch_ctx = bypass_ctx(FetchCtx(capture=search_data.capture))
+        fetch_ctx = FetchCtx(capture=search_data.capture, use_bypass=search_data.site_info.use_bypass)
         label = f'[{search_data.site_info.name}]'
 
         if search_data.scene_id:
@@ -143,7 +143,7 @@ class IAFDClient(Client):
             )
 
     async def load_scene_context(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> LoadedScene | None:
-        fetch_ctx = bypass_ctx(FetchCtx(capture=ctx.capture if ctx else None))
+        fetch_ctx = FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass)
         scene_page_elements = await self.fetch_and_load(payload, fetch_ctx, f'[{site.name}] detail {payload}')
         if not scene_page_elements:
             return None
