@@ -92,3 +92,11 @@ def test_normalize_text_restores_an_apostrophe_lost_to_a_bad_byte() -> None:
     assert normalize_text('money she�s made') == "money she's made"
     assert normalize_text('her tight 5�5 frame') == "her tight 5'5 frame"
     assert normalize_text('caf�') == 'caf'
+
+
+def test_normalize_text_restores_an_apostrophe_written_as_a_double_quote() -> None:
+    assert normalize_text('It ain"t my fault') == "It ain't my fault"
+    assert normalize_text('Shit I"d do it again') == "Shit I'd do it again"
+    assert normalize_text('if we can"t have it') == "if we can't have it"
+    assert normalize_text('open for Carmela"s boobs') == "open for Carmela's boobs"
+    assert normalize_text('She is 5"6 and a 24" monitor') == 'She is 5"6 and a 24" monitor'
