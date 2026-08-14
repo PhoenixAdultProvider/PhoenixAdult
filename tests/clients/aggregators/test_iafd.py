@@ -113,3 +113,21 @@ async def test_supplement_is_quiet_when_the_title_is_not_listed() -> None:
     respx.get(studio_url).mock(return_value=httpx.Response(200, text=LISTING_HTML.replace('distable', 'studio')))
 
     assert await supplement(IAFDClient(), studio_url, 'Not On The List', FetchCtx(), '[test]') == (None, [])
+
+
+@respx.mock
+async def test_every_iafd_request_goes_through_the_bypass() -> None:
+    studio_url = 'https://www.iafd.com/studio.rme/studio=9856/blackpayback.com.htm'
+    respx.get(studio_url).mock(return_value=httpx.Response(200, text=LISTING_HTML.replace('distable', 'studio')))
+    respx.get(SCENE_URL).mock(return_value=httpx.Response(200, text=SCENE_HTML))
+
+    seen: list[bool] = []
+
+    class SpyClient(IAFDClient):
+        async def fetch_and_load(self, url, ctx=None, label=''):  # type: ignore[no-untyped-def, override]
+            seen.append(bool(ctx and ctx.use_bypass))
+            return await super().fetch_and_load(url, ctx, label)
+
+    await supplement(SpyClient(), studio_url, 'Black Artistry Denied', FetchCtx(use_bypass=False), '[test]')
+
+    assert seen == [True, True]
