@@ -785,3 +785,21 @@ def test_source_json_prefers_the_stored_data(monkeypatch: pytest.MonkeyPatch) ->
     source = {'url': 'https://example.com/api/releases/alpha', 'kind': 'api', 'data': {'id': 9}}
     r = _stored_source_client(monkeypatch, source).get('/metadata/source-json?key=studio/abc')
     assert r.status_code == 200 and r.json() == {'ok': True, 'json': {'id': 9}}
+
+
+def test_cards_show_two_actors_and_expand_the_rest() -> None:
+    page = authed_client().get('/metadata')
+    assert 'cast.slice(0, 2)' in page.text
+    assert 'class="c-rest" hidden' in page.text
+    assert 'class="c-more" aria-expanded="false"' in page.text
+    assert "const more = e.target.closest('.c-more');" in page.text
+
+
+def test_the_empty_thumbnail_is_a_centred_well() -> None:
+    page = authed_client().get('/metadata')
+    rule = page.text.split('\n    .card .noimg {')[1].split('}')[0]
+    assert 'place-content: center' in rule
+    assert 'font-size: var(--text-sm)' in rule
+    assert 'checkerboard-a' in rule
+    assert '.card .noimg::before' not in page.text
+    assert '>No image<' in page.text
