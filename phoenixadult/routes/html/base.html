@@ -7,8 +7,35 @@
   <link rel="alternate icon" href="/favicon.ico">
   <title>{% block title %}PhoenixAdult{% endblock %}</title>
   <style>
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    .sub { color: var(--muted-text); font-size: 13px; margin-bottom: 20px; }
+    :root {
+      --font-ui: 'Archivo', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --text-2xs: 11px;
+      --text-xs: 12px;
+      --text-sm: 13px;
+      --text-base: 14px;
+      --text-lg: 16px;
+      --text-xl: 20px;
+      --text-2xl: 26px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --shadow-sticky: 0 6px 16px -12px rgb(0 0 0 / 0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: var(--font-ui); background: var(--page-bg); color: var(--page-text); margin: 0; }
+    h1 { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.01em; color: var(--heading-text); margin: 0 0 4px; }
+    .sub { color: var(--muted-text); font-size: var(--text-sm); margin-bottom: 20px; }
+    :where(button, input, select, textarea) { font-family: inherit; }
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+      outline: 2px solid var(--focus-ring); outline-offset: 2px;
+    }
   </style>
   {% block head %}{% endblock %}
 </head>

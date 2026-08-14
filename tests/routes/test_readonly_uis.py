@@ -221,12 +221,13 @@ def test_page_headings_share_one_position_and_spacing() -> None:
     import re
 
     client = authed_client()
-    canonical = 'h1 { font-size: 20px; margin: 0 0 4px; }'
-    for path in ('/metadata', '/people', '/logos', '/queue', '/searches', '/account'):
-        css = ' '.join(re.findall(r'<style>(.*?)</style>', client.get(path).text, re.S))
-        assert canonical in css, f'{path} does not use the shared heading metrics'
-        assert re.search(r'body\s*\{[^}]*padding:\s*24px', css), f'{path} uses a different body padding'
+    canonical = 'h1 { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.01em; color: var(--heading-text); margin: 0 0 4px; }'
 
     for path in ('/metadata', '/people', '/logos', '/queue', '/searches'):
         css = ' '.join(re.findall(r'<style>(.*?)</style>', client.get(path).text, re.S))
+        assert canonical in css, f'{path} does not use the shared heading rule'
         assert re.findall(r'h1\s*\{[^}]*\}', css) == [canonical], f'{path} restates the shared heading rule'
+        assert re.search(r'body\s*\{[^}]*padding:\s*24px', css), f'{path} uses a different body padding'
+
+    account = ' '.join(re.findall(r'<style>(.*?)</style>', client.get('/account').text, re.S))
+    assert 'h1 { font-size: 20px; margin: 0 0 4px; }' in account, 'account is standalone and keeps the same metrics literally'

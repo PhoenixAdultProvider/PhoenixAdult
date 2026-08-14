@@ -122,6 +122,7 @@ def test_every_template_variable_is_defined_in_every_theme() -> None:
     for f in [*html_dir.glob('*.html'), Path(routes.__file__).parent / 'people_cache_routes.py']:
         refs.update(re.findall(r'var\((--[a-z0-9-]+)\)', f.read_text(encoding='utf-8')))
     refs.discard('--app-nav-h')
+    refs -= set(re.findall(r'^\s*(--[a-z0-9-]+):', (html_dir / 'base.html').read_text(encoding='utf-8'), re.M))
     themes = list((html_dir / 'themes').glob('*.css'))
     assert len(themes) == 4
     for theme in themes:
