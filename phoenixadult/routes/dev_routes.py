@@ -5,10 +5,11 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.clients.base import RawCaptureEntry, SceneContext, SceneDetail, SearchContext
+from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.models.provider_info import ProviderInfo
@@ -36,7 +37,13 @@ from phoenixadult.utils.processors.filename_parser import get_site_name_from_reg
 from phoenixadult.utils.processors.search_query import build_search_pieces
 from phoenixadult.utils.processors.title_case import title_case
 
-router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard), Depends(admin_auth_guard)])
+
+async def dev_ui_guard() -> None:
+    if not env.dev_ui_enabled:
+        raise HTTPException(status_code=404, detail='Not Found')
+
+
+router = APIRouter(dependencies=[Depends(dev_ui_guard), Depends(user_auth_guard), Depends(csrf_guard), Depends(admin_auth_guard)])
 
 scraper = ScraperRouter()
 mapper = MetadataMapper()

@@ -19,7 +19,7 @@ PAGES = (
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv('NODE_ENV', 'development')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
     return authed_client()
 
 
@@ -44,11 +44,11 @@ def test_edit_subpages_highlight_their_parent(client: TestClient) -> None:
 def test_config_sits_at_the_end_of_the_nav(monkeypatch: pytest.MonkeyPatch) -> None:
     import re
 
-    monkeypatch.setenv('NODE_ENV', 'development')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
     labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
     assert [x for x in labels if x != 'Log Out'][:6] == ['Metadata', 'People', 'Logos', 'Queue', 'Dev', 'Config']
     assert 'Searches' not in labels, 'outside an admin request the Searches link stays hidden'
-    monkeypatch.setenv('NODE_ENV', 'production')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'false')
     labels = re.findall(r'>([^<]+)</a>', render_nav('metadata'))
     assert [x for x in labels if x != 'Log Out'][:5] == ['Metadata', 'People', 'Logos', 'Queue', 'Config']
 
@@ -62,8 +62,8 @@ def test_admins_get_searches_between_queue_and_config(client: TestClient) -> Non
     assert labels[:7] == ['Metadata', 'People', 'Logos', 'Queue', 'Searches', 'Dev', 'Config']
 
 
-def test_dev_link_hidden_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('NODE_ENV', 'production')
+def test_dev_link_hidden_unless_the_dev_ui_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('DEV_UI_ENABLE', 'false')
     nav = render_nav('config')
     assert '>Dev</a>' not in nav and '>Config</a>' in nav
 

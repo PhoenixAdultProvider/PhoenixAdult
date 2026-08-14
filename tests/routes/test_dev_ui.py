@@ -18,12 +18,12 @@ TOKEN = 'devtoken'
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv('NODE_ENV', 'development')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
     return authed_client()
 
 
 def test_dev_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('NODE_ENV', 'development')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
     assert TestClient(create_app()).get('/dev', headers={'accept': 'application/json'}).status_code == 401
 
 
@@ -154,3 +154,36 @@ def test_dev_page_has_a_mobile_layout(client: TestClient) -> None:
     assert 'data-label="Content Type"' in r.text
     assert 'class="c-site"' in r.text
     assert 'style="flex:0' not in r.text
+
+
+def test_dev_ui_is_off_until_the_config_turns_it_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('DEV_UI_ENABLE', raising=False)
+    monkeypatch.setenv('NODE_ENV', 'development')
+    assert authed_client().get('/dev').status_code == 404
+
+
+def test_dev_ui_serves_in_production_once_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('NODE_ENV', 'production')
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
+    assert authed_client().get('/dev').status_code == 200
+
+
+def test_dev_ui_stays_admin_only_when_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.auth import user_store
+
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
+    user_store.create_user('boss', 'pw-boss', is_admin=True)
+    uid = user_store.create_user('member', 'pw-member', is_admin=False)
+    client = TestClient(create_app())
+    client.cookies.set('pa_session', user_store.create_session(uid, 'pytest'))
+
+    assert client.get('/dev').status_code == 403
+
+
+def test_dev_ui_is_a_documented_config_toggle() -> None:
+    from phoenixadult.config.env_catalog import ENV_CATALOG, GROUP_TAB
+
+    spec = next(entry for entry in ENV_CATALOG if entry.key == 'DEV_UI_ENABLE')
+    assert spec.kind == 'boolean'
+    assert spec.default_value == 'false'
+    assert GROUP_TAB[spec.group] == 'System'

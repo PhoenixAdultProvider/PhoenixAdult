@@ -27,7 +27,7 @@ def nav_items() -> list[tuple[str, str, str]]:
     from phoenixadult.utils.auth.user_auth import is_admin
 
     searches = (_NAV_SEARCHES_ITEM,) if is_admin() else ()
-    return [*_NAV_ITEMS, *searches, *(() if env.is_production else (_NAV_DEV_ITEM,)), _NAV_CONFIG_ITEM]
+    return [*_NAV_ITEMS, *searches, *((_NAV_DEV_ITEM,) if env.dev_ui_enabled else ()), _NAV_CONFIG_ITEM]
 
 
 from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402

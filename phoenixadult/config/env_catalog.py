@@ -19,7 +19,7 @@ ENV_TABS: list[tuple[str, list[str]]] = [
     ('Enrichment', ['Data18 Enrichment', 'Manual NFO']),
     ('People', ['People Cache & Sources', 'Gender Handling']),
     ('Images', ['Images']),
-    ('System', ['Logging', 'Metadata Cache']),
+    ('System', ['Logging', 'Metadata Cache', 'Developer']),
     ('Security', ['Provider Access', 'Log Redaction']),
 ]
 GROUP_TAB = {group: tab for tab, tab_groups in ENV_TABS for group in tab_groups}
@@ -153,6 +153,14 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Manual NFO',
         'string',
         default_value='manual',
+    ),
+    EnvVarSpec(
+        'DEV_UI_ENABLE',
+        'Enable the Dev and Test UI',
+        'Serves the scraper test bench at /dev. Admin-only either way; off means the routes answer 404.',
+        'Developer',
+        'boolean',
+        default_value='false',
     ),
     EnvVarSpec(
         'PEOPLE_CACHE_ENABLE',

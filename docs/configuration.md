@@ -60,7 +60,8 @@ _Read from the environment at startup; not editable in the Config UI._
 | --- | --- | --- |
 | `PORT` | `3000` | TCP port the HTTP server binds to. |
 | `PHOENIX_BASE_URL` | `http://localhost:3000` | Public base URL the provider advertises to Plex. Behind a reverse proxy or Cloudflare tunnel, set this to the externally reachable URL — it's the base for served image/poster links (see `IMAGE_BASE_URL` for local images specifically). |
-| `NODE_ENV` | `production` | `production` enables prod behavior (host redaction defaults on, no auto-reload, `/dev` disabled). Set `development` (or `dev`/`test`/`local`) for local work and the `/dev` UI. |
+| `NODE_ENV` | `production` | `production` enables prod behavior (host redaction defaults on, no auto-reload). Set `development` (or `dev`/`test`/`local`) for local work. |
+| `DEV_UI_ENABLE` | `false` | Serves the developer UI at `/dev`. Off everywhere until you turn it on, in any `NODE_ENV`; the routes answer 404 while off and stay admin-only when on. |
 
 ### User Accounts And API Keys
 

@@ -18,6 +18,10 @@ class _Env:
         return os.environ.get('NODE_ENV', 'production').strip().lower() not in {'development', 'dev', 'test', 'local'}
 
     @property
+    def dev_ui_enabled(self) -> bool:
+        return _flag('DEV_UI_ENABLE', 'false') == 'true'
+
+    @property
     def log_dir(self) -> str:
         return os.environ.get('LOG_DIR') or str(_cwd() / 'logs')
 

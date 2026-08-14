@@ -21,7 +21,8 @@ def _snapshot_key() -> str:
 
 
 @pytest.fixture
-def pages() -> dict[str, str]:
+def pages(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+    monkeypatch.setenv('DEV_UI_ENABLE', 'true')
     rendered = {'setup': TestClient(create_app()).get('/setup').text}
     client = authed_client()
     key = _snapshot_key()

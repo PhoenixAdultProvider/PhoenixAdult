@@ -194,9 +194,8 @@ def create_app() -> FastAPI:
     # ── Plex Server Reconciliation (admin-guarded; no-op until PLEX_* are set) ─
     app.include_router(plex_routes.router, prefix='/plex')
 
-    # ── Dev / Test UI (non-production only, admin-guarded) ───────────────────
-    if not env.is_production:
-        app.include_router(dev_routes.router, prefix='/dev')
+    # ── Dev / Test UI (off unless DEV_UI_ENABLE, admin-guarded) ──────────────
+    app.include_router(dev_routes.router, prefix='/dev')
 
     # ── Image Guard 403 (HTML page for browsers, JSON for API callers) ───────
     from phoenixadult.utils.auth.image_guard import FORBIDDEN_PAGE, ImageAccessDenied

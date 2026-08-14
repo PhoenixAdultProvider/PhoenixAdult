@@ -6,10 +6,12 @@ pipeline run end-to-end — every parsed token, every upstream HTTP request, eve
 XPath selector hit. It's also where you build fixture entries for
 `tests/health/fixtures.json`.
 
-The `/dev` surface is **admin-guarded and non-production**: it's mounted only
-outside production and its pipeline endpoints (`POST /dev/test`, `POST /dev/metadata`)
-require a signed-in session or an API key, the same guard as `/config` (see `phoenixadult/utils/auth/user_auth.py`).
-In a real deployment the route disappears.
+The `/dev` surface is **opt-in and admin-guarded**: it answers 404 until
+`DEV_UI_ENABLE` is turned on (Config -> System -> Developer), whatever `NODE_ENV`
+says, and its pipeline endpoints (`POST /dev/test`, `POST /dev/metadata`) require a
+signed-in session or an API key, the same guard as `/config` (see
+`phoenixadult/utils/auth/user_auth.py`). A non-admin gets 403 even while it is on,
+and the nav link only appears once it is enabled.
 
 ## Getting Started
 
