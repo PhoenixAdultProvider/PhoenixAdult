@@ -440,7 +440,7 @@ def scene_keys() -> list[tuple[str, str, str]]:
 
 
 _SUMMARY_SELECT = (
-    'SELECT s.id, s.rel_path, s.site, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, s.data18_also, '
+    'SELECT s.id, s.rel_path, s.site, s.cur_id, s.title, s.release_date, s.thumb, s.updated_at, s.data18_type, s.data18_id, s.data18_manual, s.data18_also, '
     'st.name AS studio, tl.name AS tagline, COUNT(si.id) AS images, '
     '(SELECT COUNT(*) FROM scene_genres sg WHERE sg.scene_id = s.id) AS genres '
 )
@@ -460,6 +460,7 @@ def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]], actors: dict
     return {
         'rel_path': str(r['rel_path']),
         'site': str(r['site']),
+        'cur_id': str(r['cur_id']),
         'title': str(r['title']),
         'studio': str(r['studio'] or ''),
         'tagline': str(r['tagline'] or ''),

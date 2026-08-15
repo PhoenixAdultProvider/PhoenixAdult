@@ -65,11 +65,11 @@
     <div class="filters">
       <div class="filter-group">
         <label for="sourceFilter">Source</label>
-        <select id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+        <select class="pa-input" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
 {% if is_admin() %}      <div class="filter-group">
         <label for="bulkSource">Bulk Fetch Source</label>
-        <select id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+        <select class="pa-input" id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
 {% endif %}      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn tab croptoggle" id="cropToggle">Cropped Only</button>
         <button class="pa-btn tab noupstream" id="upstreamToggle">No Upstream</button>

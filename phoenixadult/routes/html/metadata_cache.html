@@ -14,8 +14,8 @@
     }
     .card:hover { border-color: var(--input-border); }
     @supports (grid-template-rows: subgrid) {
-      .card { display: grid; grid-template-rows: subgrid; grid-row: span 9; row-gap: 6px; }
-      .cards.sfw .card { grid-row: span 8; }
+      .card { display: grid; grid-template-rows: subgrid; grid-row: span 10; row-gap: 6px; }
+      .cards.sfw .card { grid-row: span 9; }
     }
     .card img, .card .noimg { width: 100%; height: 190px; border-radius: 4px; background: var(--image-well-bg); display: block; }
     .card img { object-fit: contain; }
@@ -49,6 +49,11 @@
       content: attr(data-label); display: block; color: var(--label-text);
       font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
     }
+    .c-record { display: flex; gap: 5px; align-items: baseline; min-width: 0; }
+    .c-record span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .c-record .rec-id { flex: 1 1 auto; min-width: 0; }
+    .c-record .rec-hash { flex: 0 0 auto; color: var(--blank-text); }
+    .card:hover .c-record .rec-hash { color: var(--label-text); }
     .c-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 4px; }
     .c-actions:has(> button:only-child) { grid-template-columns: minmax(0, 160px); justify-content: center; }
     .c-actions button { width: 100%; }
@@ -68,16 +73,7 @@
     /* ── Sort bar ── */
     .sortbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
     .sortbar label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
-    .sortbar select {
-      min-width: 180px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
-      padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
-    }
-    .sortbar button {
-      flex: 0 0 auto; height: 32px; padding: 0 12px; border: 1px solid var(--input-border);
-      border-radius: 6px; background: var(--input-bg); color: var(--soft-text); font-size: 13px;
-      white-space: nowrap; cursor: pointer;
-    }
-    .sortbar button:hover { color: var(--page-text); border-color: var(--hint-text); }
+    .sortbar select { min-width: 180px; width: auto; }
 
     /* ── Mobile ── */
 
@@ -85,12 +81,12 @@
       body { padding: 14px; }
 
       .cards { grid-template-columns: 1fr; }
-      .sortbar select { flex: 1; min-width: 0; }
+      .sortbar select { flex: 1; min-width: 0; width: 100%; }
 
 
       .c-title { font-size: 20px; }
       .c-cached .cached-ts { white-space: normal; }
-      .c-actions button { font-size: 15px; padding: 11px 12px; }
+      .c-actions .pa-btn { font-size: 15px; height: 42px; }
     }
   </style>
 {{ toolbar.styles() }}
@@ -102,37 +98,37 @@
   <div class="searchbar">
     <div class="filter-group">
       <label for="q">Search</label>
-      <input type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
+      <input class="pa-input" type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
     </div>
-    <button class="filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
+    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
   </div>
 
   <div class="controls" id="controls">
   <div class="filters">
     <div class="filter-group">
       <label for="f-actor">Actor</label>
-      <input type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="start typing a name…" oninput="actorChanged()">
+      <input class="pa-input" type="text" id="f-actor" list="actor-options" autocomplete="off" placeholder="start typing a name…" oninput="actorChanged()">
       <datalist id="actor-options"></datalist>
     </div>
     <div class="filter-group">
       <label>Provider</label>
-      <select id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-provider" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Studio</label>
-      <select id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-studio" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Tagline</label>
-      <select id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-tagline" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Collection</label>
-      <select id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-collection" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Genres</label>
-      <select id="f-genre" onchange="facetChanged()">
+      <select class="pa-input" id="f-genre" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Untagged</option>
         <option value="__set__">Tagged</option>
@@ -140,7 +136,7 @@
     </div>
     <div class="filter-group">
       <label>Cast</label>
-      <select id="f-cast" onchange="facetChanged()">
+      <select class="pa-input" id="f-cast" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
         <option value="__set__">Credited</option>
@@ -148,7 +144,7 @@
     </div>
     <div class="filter-group">
       <label>Directors</label>
-      <select id="f-director" onchange="facetChanged()">
+      <select class="pa-input" id="f-director" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
         <option value="__set__">Credited</option>
@@ -156,7 +152,7 @@
     </div>
     <div class="filter-group">
       <label>Producers</label>
-      <select id="f-producer" onchange="facetChanged()">
+      <select class="pa-input" id="f-producer" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__blank__">Uncredited</option>
         <option value="__set__">Credited</option>
@@ -164,7 +160,7 @@
     </div>
     <div class="filter-group">
       <label>Data18</label>
-      <select id="f-data18" onchange="facetChanged()">
+      <select class="pa-input" id="f-data18" onchange="facetChanged()">
         <option value="">All</option>
         <option value="__set__">Filled</option>
         <option value="__manual__">Manual</option>
@@ -173,15 +169,15 @@
     </div>
     <div class="filter-group">
       <label>Year</label>
-      <select id="f-year" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-year" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Month</label>
-      <select id="f-month" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-month" onchange="facetChanged()"><option value="">All</option></select>
     </div>
     <div class="filter-group">
       <label>Day</label>
-      <select id="f-day" onchange="facetChanged()"><option value="">All</option></select>
+      <select class="pa-input" id="f-day" onchange="facetChanged()"><option value="">All</option></select>
     </div>
   </div>
 
@@ -189,7 +185,7 @@
 {% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
     <button class="pa-btn pa-btn--lg pa-btn--warn" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
 {% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
-    <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Prune Unused Names</button>
+    <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Purge Unused Names</button>
 {% endif %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="exportBtn" onclick="exportShown()" disabled></button>
 {% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
     <button class="pa-btn pa-btn--lg pa-btn--danger" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
@@ -203,8 +199,8 @@
 
   <div class="sortbar">
     <label for="mobileSort">Sort By</label>
-    <select id="mobileSort" onchange="mobileSortChanged()"></select>
-    <button id="sortDirBtn" onclick="toggleSortDir()" title="Reverse Sort Order"></button>
+    <select class="pa-input" id="mobileSort" onchange="mobileSortChanged()"></select>
+    <button class="pa-btn" id="sortDirBtn" onclick="toggleSortDir()" title="Reverse Sort Order"></button>
   </div>
 
   <div class="cards" id="cards"></div>
@@ -515,6 +511,7 @@
           ${actors}
           <div class="c-row c-data18" data-label="Data18">${data18}</div>
           <div class="c-row c-cached" data-label="Cached"><span class="cached-ts">${esc(e.cached_display || '—')}</span></div>
+          <div class="pa-mono c-record" title="${esc(e.site)} · ${esc(e.cur_id)} · ${esc(e.hash)}"><span class="rec-site">${esc(e.site)}</span>·<span class="rec-id">${esc(e.cur_id)}</span>·<span class="rec-hash">${esc(String(e.hash).slice(0, 12))}</span></div>
           <div class="c-actions">
             <button class="pa-btn pa-btn--lg pa-btn--outline" onclick="edit(${key})">${IS_ADMIN ? 'Edit' : 'View'}</button>
             ${IS_ADMIN ? `<button class="pa-btn pa-btn--lg pa-btn--danger" onclick="purge(${key})">Purge</button>` : ''}

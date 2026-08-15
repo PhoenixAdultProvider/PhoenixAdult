@@ -79,13 +79,13 @@
     <div class="queue-col" id="searches-col">
       <h2>Searches <span class="count-badge" id="search-count"></span>
 {% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-search" onclick="togglePause('search')">Pause</button>
-      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('search')">Flush</button>{% endif %}</h2>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('search')">Purge</button>{% endif %}</h2>
       <div class="list" id="searches"></div>
     </div>
     <div class="queue-col" id="updates-col">
       <h2>Updates <span class="count-badge" id="update-count"></span>
 {% if is_admin() %}      <button type="button" class="pa-btn pa-btn--sm pause-btn" id="pause-update" onclick="togglePause('update')">Pause</button>
-      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('update')">Flush</button>{% endif %}</h2>
+      <button type="button" class="pa-btn pa-btn--sm pa-btn--danger flush-btn" onclick="flushKind('update')">Purge</button>{% endif %}</h2>
       <div class="list" id="updates"></div>
     </div>
   </div>

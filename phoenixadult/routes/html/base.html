@@ -26,6 +26,7 @@
       --radius-sm: 6px;
       --radius-md: 8px;
       --radius-lg: 12px;
+      --page-max: 1600px;
       --shadow-sticky: 0 6px 16px -12px rgb(0 0 0 / 0.55);
     }
     *, *::before, *::after { box-sizing: border-box; }
@@ -61,6 +62,8 @@
     .pa-btn--warn.active:hover { background: var(--warn-solid-hover-bg); border-color: var(--warn-solid-border); color: var(--button-text); }
     .pa-btn.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
 
+    .pa-page { max-width: var(--page-max); margin-inline: auto; }
+
     .pa-input {
       width: 100%; min-width: 0; height: 32px; padding: 0 var(--space-3);
       background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
@@ -86,7 +89,7 @@
 <body data-page="{% block page %}{% endblock %}">
   {% block chrome %}{% include 'nav.html' %}
   {% include 'common.html' %}{% endblock %}
-  {% block content %}{% endblock %}
+  <main class="pa-page">{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}
 </body>
 </html>

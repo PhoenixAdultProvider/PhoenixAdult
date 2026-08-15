@@ -100,14 +100,14 @@ def test_session_cookie_is_httponly_and_lax() -> None:
 def test_the_credential_pages_reveal_outside_the_password_manager_overlay() -> None:
     c = _remote()
     setup = c.get('/setup').text
-    for marker in ('class="reveal" data-for="password"', 'class="reveal" data-for="confirm"', 'input[type=password], input.revealed { padding-right:'):
+    for marker in ('reveal" data-for="password"', 'reveal" data-for="confirm"', 'input[type=password].pa-input, input.revealed { padding-right:'):
         assert marker in setup
     assert 'uppercase letter, a number, and a special character' in setup
 
     c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
     login = _remote().get('/login').text
-    assert 'class="reveal" data-for="password"' in login
-    assert 'input[type=password], input.revealed { padding-right:' in login
+    assert 'reveal" data-for="password"' in login
+    assert 'input[type=password].pa-input, input.revealed { padding-right:' in login
 
 
 def test_setup_compares_the_confirm_field_not_the_window_global() -> None:

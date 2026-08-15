@@ -510,6 +510,8 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     return {
         'key': rel,
         'provider': provider_name_for(row['site']) or row['site'],
+        'site': row['site'],
+        'cur_id': row['cur_id'],
         'hash': rel.rsplit('/', 1)[-1],
         'title': row['title'],
         'studio': row['studio'],
