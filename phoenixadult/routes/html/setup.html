@@ -18,7 +18,8 @@
           padding: 11px 12px; border-radius: 7px; font-size: 16px; }
   /* Room at the right edge for password-manager icons, which overlay the field itself. */
   input[type=password], input.revealed { padding-right: 44px; }
-  input:focus { outline: 0; border-color: var(--input-focus-border); }
+  input:focus { border-color: var(--input-focus-border); }
+  input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
   input::-ms-reveal, input::-webkit-credentials-auto-fill-button { display: none; }
   .reveal { width: auto; min-height: 32px; margin: 0; padding: 0 4px; background: none; border: 0; color: var(--link-text); font-size: 12px;
             text-transform: uppercase; letter-spacing: .04em; cursor: pointer; }

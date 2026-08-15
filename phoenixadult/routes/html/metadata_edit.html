@@ -14,18 +14,12 @@
     fieldset { border: 1px solid var(--input-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); min-width: 0; }
     legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
     label { display: block; font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    input[type=text], input[type=date], textarea {
-      width: 100%; max-width: 100%; min-width: 0; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
-      padding: 7px 10px; border-radius: 6px; font-size: 13px; font-family: inherit;
-    }
-    select { width: 100%; max-width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
     input[type=date] { -webkit-appearance: none; appearance: none; }
     .state { text-transform: uppercase; letter-spacing: .04em; font-size: 10px; padding: 1px 7px; border-radius: 10px; background: var(--badge-neutral-bg); color: var(--badge-neutral-text); }
     .state.manual { background: var(--badge-violet-solid-bg); color: var(--button-text); }
     .state.filled { background: var(--badge-info-bg); color: var(--badge-info-text); }
     input[type=date]::-webkit-calendar-picker-indicator { filter: var(--invert-icon); cursor: pointer; }
-    textarea { min-height: 110px; resize: vertical; }
-    input:focus, textarea:focus { outline: 0; border-color: var(--input-focus-border); }
+    textarea.pa-input { min-height: 110px; resize: vertical; }
     .hint { font-size: 11px; color: var(--hint-text); margin-top: 3px; }
     .slugrow { display: flex; align-items: center; gap: 8px; }
     .slugrow code { flex: 1 1 auto; font-size: 12px; color: var(--link-text); background: var(--code-bg); border: 1px solid var(--panel-border); border-radius: 4px; padding: 5px 8px; overflow-x: auto; white-space: nowrap; }
@@ -107,26 +101,26 @@
       <fieldset>
         <legend>Scene</legend>
         <label for="f-title">Title</label>
-        <input type="text" id="f-title"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="text" id="f-title"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-titleSort">Sort Title</label>
-        <input type="text" id="f-titleSort"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="text" id="f-titleSort"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-date">Date</label>
-        <input type="date" id="f-date"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="date" id="f-date"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-studio">Studio</label>
-        <input type="text" id="f-studio"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="text" id="f-studio"{% if not is_admin() %} readonly{% endif %}>
         <div class="hint">Changing Studio or Tagline moves the snapshot folder.</div>
         <label for="f-tagline">Tagline</label>
-        <input type="text" id="f-tagline"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="text" id="f-tagline"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-summary">Summary</label>
-        <textarea id="f-summary"{% if not is_admin() %} readonly{% endif %}></textarea>
+        <textarea class="pa-input" id="f-summary"{% if not is_admin() %} readonly{% endif %}></textarea>
       </fieldset>
 
       <fieldset>
         <legend>Data18</legend>
         <label for="f-data18Id">Data18 ID</label>
-        <input type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated"{% if not is_admin() %} readonly{% endif %}>
+        <input class="pa-input" type="text" id="f-data18Id" placeholder="e.g. 123456 — extra page IDs may follow, space or comma separated"{% if not is_admin() %} readonly{% endif %}>
         <label for="f-data18Type">Data18 Type</label>
-        <select id="f-data18Type">
+        <select class="pa-input" id="f-data18Type">
           <option value="scene">scene</option>
           <option value="movie">movie</option>
         </select>
@@ -139,38 +133,38 @@
       <fieldset>
         <legend>Genres</legend>
         <div class="chips" id="c-Genre"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Genre" placeholder="Add a genre…"><button data-add="Genre">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Genre" placeholder="Add a genre…"><button data-add="Genre">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Collections</legend>
         <div class="chips" id="c-Collection"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Collection" placeholder="Add a collection…"><button data-add="Collection">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Actors</legend>
         <div class="chips" id="c-Role"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Role" placeholder="Add an actor…"><button data-add="Role">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Role" placeholder="Add an actor…"><button data-add="Role">Add</button></div>{% endif %}
         <div class="hint">A removed name loses its cached headshot link; a new one resolves on the next serve.</div>
       </fieldset>
 
       <fieldset>
         <legend>Directors</legend>
         <div class="chips" id="c-Director"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Director" placeholder="Add a director…"><button data-add="Director">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Director" placeholder="Add a director…"><button data-add="Director">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Producers</legend>
         <div class="chips" id="c-Producer"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-Producer" placeholder="Add a producer…"><button data-add="Producer">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-Producer" placeholder="Add a producer…"><button data-add="Producer">Add</button></div>{% endif %}
       </fieldset>
 
       <fieldset>
         <legend>Images</legend>
         <div class="imgs" id="imgs"></div>
-        {% if is_admin() %}<div class="addrow"><input type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>{% endif %}
+        {% if is_admin() %}<div class="addrow"><input class="pa-input" type="text" id="a-img" placeholder="https://… (downloaded on save)"><button id="addImg">Add</button></div>{% endif %}
         <div class="hint">Removed images are deleted from disk when the snapshot is rewritten.</div>
       </fieldset>
   </div>

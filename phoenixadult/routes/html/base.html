@@ -61,6 +61,16 @@
     .pa-btn--warn.active:hover { background: var(--warn-solid-hover-bg); border-color: var(--warn-solid-border); color: var(--button-text); }
     .pa-btn.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
 
+    .pa-input {
+      width: 100%; min-width: 0; height: 32px; padding: 0 var(--space-3);
+      background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
+      border-radius: var(--radius-sm); font-size: var(--text-sm);
+    }
+    .pa-input::placeholder { color: var(--hint-text); }
+    .pa-input:focus { border-color: var(--input-focus-border); }
+    textarea.pa-input { height: auto; padding: var(--space-2) var(--space-3); line-height: 1.45; }
+    @media (max-width: 720px) { .pa-input { font-size: 16px; } }
+
     .pa-card {
       background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: var(--space-3);
     }

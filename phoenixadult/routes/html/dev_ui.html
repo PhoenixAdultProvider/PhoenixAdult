@@ -9,16 +9,9 @@
     h2 { font-size: 0.8rem; font-weight: 600; color: var(--section-heading-text); margin: 1.5rem 0 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; }
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
     label { display: block; font-size: 0.85rem; color: var(--muted-text); margin-bottom: 0.4rem; }
-    input[type=text] { width: 100%; padding: 0.6rem 0.75rem; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px; color: var(--input-text); font-size: 0.95rem; outline: none; }
-    input[type=text]:focus { border-color: var(--input-focus-border); }
     .row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
     .row > div { flex: 1; min-width: 200px; }
-    button { padding: 0.6rem 1.25rem; background: var(--button-primary-bg); color: var(--button-text); border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; white-space: nowrap; }
-    button:hover { background: var(--button-primary-hover-bg); }
-    button:disabled { background: var(--button-disabled-bg); cursor: not-allowed; color: var(--button-disabled-text); }
     .examples { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
-    .example-btn { background: none; border: 1px solid var(--panel-border); border-radius: 4px; color: var(--muted-text); font-size: 0.75rem; padding: 0.2rem 0.5rem; cursor: pointer; }
-    .example-btn:hover { border-color: var(--focus-ring); color: var(--highlight-text); background: none; }
     code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.78rem; color: var(--code-text); }
     .row > .field-year { flex: 0; min-width: 6rem; }
     .row > .field-tight { flex: 0; }
@@ -46,13 +39,7 @@
     .capture-label    { flex: 1; font-size: 0.78rem; color: var(--soft-text); word-break: break-all; }
     .capture-url      { color: var(--link-text); text-decoration: none; }
     .capture-url:hover { color: var(--link-hover-text); text-decoration: underline; }
-    .copy-btn {
-      padding: 0.18rem 0.5rem; font-size: 0.7rem; font-weight: 600;
-      color: var(--button-muted-text); background: var(--button-muted-bg); border: 1px solid var(--button-muted-border);
-      border-radius: 4px; cursor: pointer; transition: background 0.12s, color 0.12s;
-      flex-shrink: 0;
-    }
-    .copy-btn:hover  { background: var(--button-muted-hover-bg); color: var(--heading-text); }
+    .copy-btn { flex-shrink: 0; }
     .copy-btn.copied { background: var(--badge-success-bg); color: var(--badge-success-text); border-color: var(--badge-success-border); }
     .capture-size     { font-size: 0.7rem; color: var(--label-text); }
     .capture-body     { display: none; }
@@ -140,12 +127,11 @@
       h1 { font-size: 1.25rem; }
       h2 { margin: 1.1rem 0 0.5rem; }
       .card { padding: 0.9rem; }
-      input[type=text] { font-size: 16px; }
 
       .row { gap: 0.6rem; }
       .row > div, .row > .field-year, .row > .field-tight { flex: 1 1 100%; min-width: 0; }
       .pipeline-toggle { margin: 0.2rem 0 0; white-space: normal; }
-      .run-btn { margin-top: 0.2rem; width: 100%; padding: 0.75rem 1rem; }
+      .run-btn { margin-top: 0.2rem; width: 100%; height: 42px; }
 
       .step-header { flex-wrap: wrap; gap: 0.35rem 0.6rem; padding: 0.7rem 0.8rem; }
       .step-header .badge { order: 1; }
@@ -197,16 +183,16 @@
     <div class="row" style="align-items:flex-start">
       <div>
         <label for="filename">Filename</label>
-        <input type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
+        <input class="pa-input" type="text" id="filename" placeholder="sitename.24.03.15.scene.name.mp4" autocomplete="off" />
         <div class="examples">
           <span style="font-size:0.72rem;color:var(--hint-text);align-self:center">Examples:</span>
-          <button class="example-btn" onclick="setExample('sitename.24.03.15.scene.name.mp4')">Date Short</button>
-          <button class="example-btn" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
+          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.24.03.15.scene.name.mp4')">Date Short</button>
+          <button class="pa-btn pa-btn--sm" onclick="setExample('sitename.2024.03.15.scene.name.mp4')">Date Long</button>
         </div>
       </div>
       <div class="field-year">
         <label for="year-override">Year (Override)</label>
-        <input type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
+        <input class="pa-input" type="text" id="year-override" placeholder="YYYY" maxlength="4" pattern="\d{4}" inputmode="numeric" autocomplete="off" />
       </div>
       <div class="field-tight">
         <label class="pipeline-toggle">
@@ -214,7 +200,7 @@
         </label>
       </div>
       <div class="field-tight">
-        <button id="runBtn" class="run-btn" onclick="runSearch()">▶ Search</button>
+        <button id="runBtn" class="pa-btn pa-btn--primary run-btn" onclick="runSearch()">▶ Search</button>
       </div>
     </div>
   </div>
@@ -256,7 +242,7 @@
         <div class="capture-header">
           <span class="badge json" onclick="toggle('roundtrip-body')">JSON</span>
           <span class="capture-label" id="roundtrip-note" onclick="toggle('roundtrip-body')"></span>
-          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">Copy</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'roundtrip-pre', event)">Copy</button>
         </div>
         <div class="capture-body" id="roundtrip-body"><pre id="roundtrip-pre"></pre></div>
       </div>
@@ -268,8 +254,8 @@
         <div class="capture-header">
           <span class="badge json">JSON</span>
           <span class="capture-label" style="cursor:default">Suggested fixture for this result</span>
-          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
-          <button class="copy-btn" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy One-Liner</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre', event)">Copy</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, 'fixture-pre-oneline', event)">Copy One-Liner</button>
         </div>
         <div class="capture-body open"><pre id="fixture-pre"></pre></div>
         <pre id="fixture-pre-oneline" style="display:none"></pre>
@@ -344,7 +330,7 @@
       }
 
       const copyUrlBtn = url
-        ? '<button class="copy-btn" type="button" data-url="' + esc(url)
+        ? '<button class="pa-btn pa-btn--sm" type="button" data-url="' + esc(url)
           + '" onclick="copyText(this, event)">Copy URL</button>'
         : '';
 
@@ -354,7 +340,7 @@
           <span class="capture-label" onclick="toggle('${id}')">${labelHtml}</span>
           <span class="capture-size">${sizeHint}</span>
           ${copyUrlBtn}
-          <button class="copy-btn" type="button" onclick="copyFromPre(this, '${id}-pre', event)">Copy Body</button>
+          <button class="pa-btn pa-btn--sm" type="button" onclick="copyFromPre(this, '${id}-pre', event)">Copy Body</button>
         </div>
         <div class="capture-body" id="${id}"><pre id="${id}-pre">${esc(body)}</pre></div>
       </div>`;
@@ -625,7 +611,7 @@
       }
 
       const fields = [];
-      const refreshBtn = ' <button onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot" '
+      const refreshBtn = ' <button class="pa-btn pa-btn--primary" onclick="selectResult(selectedIdx, true)" title="Re-scrape upstream, bypassing the snapshot" '
         + 'style="cursor:pointer;background:var(--badge-info-bg);color:var(--badge-info-text);border:1px solid var(--badge-info-border);border-radius:5px;padding:2px 8px;font-size:0.75rem;font-weight:700">🔄 Fetch Upstream</button>';
       if (meta.servedFrom === 'snapshot') {
         fields.push(field('Source', '<span class="meta-tag" style="background:var(--badge-success-bg);color:var(--badge-success-text);border-color:var(--badge-success-border);font-weight:700">📦 SERVED FROM SNAPSHOT (cache, source not touched)</span>' + refreshBtn));

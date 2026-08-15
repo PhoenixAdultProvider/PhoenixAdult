@@ -100,3 +100,23 @@ def test_normalize_text_restores_an_apostrophe_written_as_a_double_quote() -> No
     assert normalize_text('if we can"t have it') == "if we can't have it"
     assert normalize_text('open for Carmela"s boobs') == "open for Carmela's boobs"
     assert normalize_text('She is 5"6 and a 24" monitor') == 'She is 5"6 and a 24" monitor'
+
+
+def test_normalize_text_closes_the_gap_beside_a_quote() -> None:
+    assert normalize_text('You say " hi" to me') == 'You say "hi" to me'
+    assert normalize_text('Hi "Mr Man " person') == 'Hi "Mr Man" person'
+    assert normalize_text('The " quoted " phrase') == 'The "quoted" phrase'
+    assert normalize_text('“ smart quotes ” too') == '"smart quotes" too'
+
+
+def test_normalize_text_treats_an_unclosed_quote_as_an_opening_one() -> None:
+    assert normalize_text('Hat " gone now') == 'Hat "gone now'
+    assert normalize_text('" leading quote at start') == '"leading quote at start'
+
+
+def test_normalize_text_leaves_a_quote_that_is_wedged_against_a_word() -> None:
+    assert normalize_text('a huge 12" cock and') == 'a huge 12" cock and'
+    assert normalize_text('She is 5\'1" and 95 lbs') == 'She is 5\'1" and 95 lbs'
+    assert normalize_text('an interview" before convincing') == 'an interview" before convincing'
+    assert normalize_text('that "challenge accepted" look') == 'that "challenge accepted" look'
+    assert normalize_text('He said "Hello there" loudly') == 'He said "Hello there" loudly'

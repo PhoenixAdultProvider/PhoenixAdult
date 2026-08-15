@@ -14,12 +14,10 @@
     fieldset { border: 1px solid var(--button-secondary-border); border-radius: 8px; padding: 14px 16px 18px; margin: 0 0 20px; background: var(--card-bg); }
     legend { font-size: 12px; color: var(--muted-text); text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; }
     label { display: block; font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 3px; }
-    input[type=text] { width: 100%; max-width: 100%; min-width: 0; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    input[type=text]:focus { outline: 0; border-color: var(--button-primary-bg); }
     .hint { font-size: 11px; color: var(--hint-text); margin-top: 4px; }
     .fetchrow { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-    .fetchrow select { flex: 1 1 180px; min-width: 0; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .fetch { flex: 0 0 auto; padding: 7px 16px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--soft-text); cursor: pointer; font-size: 13px; font-family: inherit; }
+    .fetchrow select { flex: 1 1 180px; }
+    .fetch { flex: 0 0 auto; }
     .fetch:hover { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
     .fetch:disabled { color: var(--label-text); cursor: not-allowed; background: var(--button-secondary-bg); }
     .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--soft-text); }
@@ -35,8 +33,6 @@
     .cancel { padding: 9px 18px; border: 1px solid var(--button-secondary-border); border-radius: 6px; background: var(--button-secondary-bg); color: var(--muted-text); cursor: pointer; font-size: 14px; }
     .cancel:hover { color: var(--page-text); }
     .status { font-size: 12px; color: var(--label-text); }
-    .recorded { width: 100%; background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); color: var(--page-text); padding: 7px 10px; border-radius: 6px; font-size: 13px; }
-    .recorded:focus { outline: 0; border-color: var(--button-primary-bg); }
     #sfwToggle.on { background: var(--button-success-bg); border-color: var(--button-success-bg); color: var(--button-text); }
     body.sfw #previewCard { display: none; }
     .scenewrap { max-height: 340px; overflow: auto; border-radius: 6px; }
@@ -69,9 +65,9 @@
     <fieldset>
       <legend>Source</legend>
       <label for="f-upstream">Upstream Original URL</label>
-      <input type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
+      <input class="pa-input" type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
 {% if is_admin() %}      <div class="fetchrow">
-        <select id="f-source"></select>
+        <select class="pa-input" id="f-source"></select>
         <button class="fetch" id="fetchBtn">Fetch From</button>
         <span class="status" id="fetchStatus"></span>
       </div>
@@ -79,7 +75,7 @@
 {% endif %}      <div class="toggle"><input type="checkbox" id="f-cropped"{% if not is_admin() %} disabled{% endif %}><label for="f-cropped" style="margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--soft-text)">Cropped Status — face-crop the image</label></div>
       <div class="hint" id="cropHint"></div>
       <label for="f-recorded">Recorded Source</label>
-      <select id="f-recorded" class="recorded"{% if not is_admin() %} disabled{% endif %}></select>
+      <select id="f-recorded" class="pa-input recorded"{% if not is_admin() %} disabled{% endif %}></select>
 {% if is_admin() %}      <div class="hint">Where this headshot came from. Correcting it only relabels the entry — the image is left alone.</div>{% endif %}
     </fieldset>
 

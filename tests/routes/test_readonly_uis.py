@@ -129,10 +129,11 @@ def test_base_html_is_the_only_place_the_components_are_declared() -> None:
     admin = authed_client()
     for path in ('/metadata', '/people', '/logos', '/queue', '/searches'):
         body = admin.get(path).text
-        for component in ('pa-btn', 'pa-card', 'pa-badge'):
+        for component in ('pa-btn', 'pa-card', 'pa-badge', 'pa-input'):
             hits = re.findall(rf'^\s*\.{component}\s*\{{', body, re.M)
             assert len(hits) == 1, f'{path} declares .{component} {len(hits)} times; base.html owns it'
         assert not re.search(r'^\s*button\s*\{', body, re.M), f'{path} styles bare <button>, which every component then has to undo'
+        assert not re.search(r'outline:\s*(0|none)', body), f'{path} cancels the keyboard focus ring'
 
 
 def test_source_json_is_admin_only(member: TestClient) -> None:

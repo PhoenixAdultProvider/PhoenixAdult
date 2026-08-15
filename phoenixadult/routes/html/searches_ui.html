@@ -9,10 +9,8 @@
     .stat b { font-variant-numeric: tabular-nums; }
     .stat.warn b { color: var(--status-warn-text); }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-    select, input[type=text] { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
-                               border-radius: 6px; padding: 8px 10px; font-size: 14px; }
-    input[type=text] { flex: 1 1 220px; min-width: 0; }
-    input:focus, select:focus { outline: 0; border-color: var(--input-focus-border); }
+    input[type=text].pa-input { flex: 1 1 220px; }
+    select.pa-input { width: auto; }
     .count-line { color: var(--label-text); font-size: 12px; margin-bottom: 10px; }
     .dup-only { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-text); white-space: nowrap; cursor: pointer; }
     .dup-only input { accent-color: var(--button-primary-bg); width: 16px; height: 16px; }
@@ -39,7 +37,7 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
-      .toolbar select, .toolbar input[type=text] { flex: 1 1 100%; font-size: 16px; }
+      .toolbar .pa-input { flex: 1 1 100%; }
       .dup-only { flex: 1 1 100%; font-size: 15px; min-height: 40px; }
       .toolbar .pa-btn { flex: 1 1 auto; height: 40px; }
       .stats { gap: 6px; }
@@ -54,8 +52,8 @@
 
   <div class="stats" id="stats"></div>
   <div class="toolbar">
-    <select id="site-filter" onchange="render()"></select>
-    <input type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
+    <select class="pa-input" id="site-filter" onchange="render()"></select>
+    <input class="pa-input" type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
     <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="render()"> Duplicates only</label>
     <button type="button" class="pa-btn" onclick="sweepExpired()">Sweep Expired</button>
     <button type="button" class="pa-btn" onclick="purgeSite()">Purge Site</button>

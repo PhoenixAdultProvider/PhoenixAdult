@@ -7,12 +7,6 @@
       .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; margin-bottom: 12px; }
       .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
       .filter-group label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
-      .filter-group input[type=text],
-      .filter-group select {
-        width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--page-text);
-        padding: 6px 10px; border-radius: 6px; font-size: 13px; height: 32px;
-      }
-      .filter-group input[type=text]::placeholder { color: var(--hint-text); }
       .toolbar {
         display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
         padding-top: 12px; margin-bottom: 18px; border-top: 1px solid var(--divider);
@@ -58,7 +52,7 @@
 {% macro search_row(input_id, placeholder, label='Search') %}<div class="searchbar">
     <div class="filter-group">
       <label for="{{ input_id }}">{{ label }}</label>
-      <input type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
+      <input class="pa-input" type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
     </div>
     <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
   </div>{% endmacro %}
