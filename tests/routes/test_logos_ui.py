@@ -148,3 +148,54 @@ def test_add_url_falls_back_to_the_impersonate_bypass(tmp_path: Path, monkeypatc
     assert r.status_code == 200 and r.json()['ok'] is True, r.json()
     assert seen == ['https://blocked.example/logo.png'], 'a blocked host must reach the bypass backend'
     assert r.json()['rel'] == 'vixen/logo.vixen.png'
+
+
+def test_the_studio_list_is_the_whole_sitelist_not_just_scraped_studios() -> None:
+    from phoenixadult.routes.logo_routes import _site_catalog
+
+    catalog = _site_catalog()
+    assert len(catalog) > 100, 'every supported site should be offered, not only studios with metadata'
+    assert 'Naughty America' in catalog
+    assert '2 Chicks Same Time' in catalog['Naughty America']
+
+    page = authed_client().get('/logos/add').text
+    assert '"Naughty America"' in page, 'the registry studio is offered without any cached scene'
+
+
+def _fake_catalog(monkeypatch: pytest.MonkeyPatch, catalog: dict[str, list[str]]) -> None:
+    import phoenixadult.routes.logo_routes as lr
+
+    monkeypatch.setattr(lr, '_site_catalog', lambda: catalog)
+
+
+def test_sub_sites_that_already_have_a_logo_drop_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    _fake_catalog(monkeypatch, {'Vixen': ['Blacked', 'Tushy', 'Deeper']})
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    client = authed_client()
+    client.post('/logos/api/add-upload', data={'studio': 'Vixen', 'alias': 'Tushy'}, files={'file': ('a.png', src.read_bytes(), 'image/png')})
+
+    j = client.get('/logos/api/aliases', params={'studio': 'Vixen'}).json()
+    assert j['aliases'] == ['Blacked', 'Deeper'], 'Tushy already has a logo'
+    assert j['studioTaken'] is False
+    assert 'Vixen' in client.get('/logos/add').text
+
+
+def test_a_studio_drops_out_once_it_and_every_sub_site_are_covered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    _fake_catalog(monkeypatch, {'Vixen': ['Tushy'], 'Bang': ['Bang Confessions']})
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    client = authed_client()
+    for alias in ('', 'Tushy'):
+        client.post('/logos/api/add-upload', data={'studio': 'Vixen', 'alias': alias}, files={'file': ('a.png', src.read_bytes(), 'image/png')})
+
+    from phoenixadult.routes.logo_routes import _add_state
+
+    studios = _add_state()['studios']
+    assert 'Vixen' not in studios, 'the studio and its only sub-site are both covered'
+    assert 'Bang' in studios
+
+    j = client.get('/logos/api/aliases', params={'studio': 'Bang'}).json()
+    assert j['studioTaken'] is False and j['aliases'] == ['Bang Confessions']

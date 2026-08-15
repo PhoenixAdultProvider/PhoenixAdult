@@ -59,10 +59,33 @@ async def rescan() -> JSONResponse:
     return JSONResponse({'ok': True, 'count': await run_in('fs', logo_cache.rescan)})
 
 
-def _add_state() -> dict[str, object]:
-    from phoenixadult.utils import cache as metadata_cache
+def _site_catalog() -> dict[str, list[str]]:
+    from phoenixadult.registry import get_all_providers, get_sites_for_provider
 
-    return {'studios': metadata_cache.studios(), 'folders': logo_cache.folders()}
+    groups: dict[str, set[str]] = {}
+    for provider in get_all_providers():
+        for site in get_sites_for_provider(provider.id):
+            studio = (site.provider_name or '').strip() or site.name
+            names = groups.setdefault(studio, set())
+            names.add(site.name)
+            sub = (site.sub_group or '').strip()
+            if sub:
+                names.add(sub)
+    return {studio: sorted(names - {studio}, key=str.casefold) for studio, names in groups.items()}
+
+
+def _taken_slugs() -> set[str]:
+    return {str(e['slug']) for e in logo_cache.entries()}
+
+
+def _missing_for(studio: str, subs: list[str], taken: set[str]) -> list[str]:
+    return [s for s in subs if logo_cache.logo_slug(s) not in taken]
+
+
+def _add_state() -> dict[str, object]:
+    taken = _taken_slugs()
+    studios = [studio for studio, subs in _site_catalog().items() if logo_cache.logo_slug(studio) not in taken or _missing_for(studio, subs, taken)]
+    return {'studios': sorted(studios, key=str.casefold)}
 
 
 @router.get('/add', response_class=HTMLResponse, dependencies=_admin)
@@ -72,13 +95,14 @@ async def add_page(request: Request) -> HTMLResponse:
 
 @router.get('/api/aliases', dependencies=_admin)
 async def aliases(studio: str = '') -> JSONResponse:
-    from phoenixadult.utils import cache as metadata_cache
+    def _read() -> dict[str, object]:
+        if not studio:
+            return {'aliases': [], 'studioTaken': False}
+        taken = _taken_slugs()
+        subs = _site_catalog().get(studio, [])
+        return {'aliases': _missing_for(studio, subs, taken), 'studioTaken': logo_cache.logo_slug(studio) in taken}
 
-    def _read() -> list[str]:
-        values = metadata_cache.facets(studio=studio) if studio else {}
-        return [str(t) for t in (values.get('taglines') or []) if str(t) and str(t) != studio]
-
-    return JSONResponse({'aliases': await run_in('store', _read)})
+    return JSONResponse(await run_in('store', _read))
 
 
 def _slugs(studio: str, alias: str) -> tuple[str, str]:

@@ -32,7 +32,7 @@
 {% endblock %}
 {% block content %}
   <h1>Add Logo</h1>
-  <div class="sub">Pick the studio the logo belongs to. Choosing a sub-site files it under that name instead, which is what Plex matches on first.</div>
+  <div class="sub">Every supported site is listed. Anything that already has a logo is left out, so what you see is what is still missing.</div>
 
   <div class="pa-card">
     <div class="field">
@@ -42,7 +42,7 @@
     <div class="field">
       <label for="alias">Sub-Site</label>
       <select class="pa-input" id="alias" onchange="paintTarget()"><option value="">Whole studio</option></select>
-      <span class="hint">Leave on "Whole studio" unless this logo is for one sub-site.</span>
+      <span class="hint" id="aliasHint">Leave on "Whole studio" unless this logo is for one sub-site.</span>
     </div>
     <div class="target" id="target"></div>
   </div>
@@ -94,7 +94,11 @@
       if (!studio) return;
       const r = await fetch('/logos/api/aliases?studio=' + encodeURIComponent(studio));
       const j = await r.json();
-      sel.innerHTML = '<option value="">Whole studio</option>' + (j.aliases || []).map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+      const whole = j.studioTaken ? '' : '<option value="">Whole studio</option>';
+      sel.innerHTML = whole + (j.aliases || []).map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+      document.getElementById('aliasHint').textContent = j.studioTaken
+        ? 'This studio already has its own logo, so pick the sub-site this one is for.'
+        : 'Leave on "Whole studio" unless this logo is for one sub-site.';
       paintTarget();
     }
 
