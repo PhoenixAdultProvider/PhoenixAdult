@@ -13,24 +13,30 @@
       }
       .toolbar .spacer { flex: 1 1 auto; }
       .count-badge { font-size: 12px; color: var(--label-text); align-self: center; }
-      .filters-toggle { display: none; }
+      .filters-toggle, .actions-toggle { display: none; }
+      .tb-actions { display: contents; }
       #pager{display:none;gap:8px;align-items:center}
       #pager .pa-page{font-size:12px;color:var(--label-text);align-self:center}
 
       @media (max-width: 720px) {
+        /* Four controls stay on screen: Filters, Actions, Reset and SFW.
+           Filter toggles fold behind Filters, bulk actions behind Actions. */
         .searchbar { flex-wrap: wrap; }
-        .searchbar .filter-group { max-width: none; }
-        .filters-toggle { display: flex; width: 100%; }
-        /* Paging, Reset and SFW stay reachable; only the filter grid and the
-           bulk actions fold away behind the Filters button. */
+        .searchbar .filter-group { max-width: none; flex: 1 1 100%; }
+        .filters-toggle, .actions-toggle { display: flex; flex: 1 1 0; min-width: 0; }
         .controls { display: block; }
         .filters { display: none; grid-template-columns: 1fr; }
         .controls.open .filters { display: grid; }
-        .toolbar > button { width: 100%; }
-        .toolbar > button:not(.pa-btn) { display: none; }
-        .controls.open .toolbar > button { display: block; }
+        .toolbar { row-gap: 8px; }
+        .toolbar > .pa-btn { flex: 1 1 0; min-width: 0; }
+        .toolbar > .tb-filter-toggle { display: none; order: -1; flex: 1 1 calc(50% - 4px); }
+        .controls.open .toolbar > .tb-filter-toggle { display: flex; }
+        .tb-actions { display: none; }
+        .controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }
+        .tb-actions .pa-btn { width: 100%; }
         .toolbar > .count-badge { display: none; }
-        .controls.open .toolbar > .count-badge { display: inline-block; }
+        .controls.open .toolbar > .count-badge,
+        .controls.actions-open .toolbar > .count-badge { display: inline-block; }
         .toolbar .spacer { display: none; }
         #pager { width: 100%; justify-content: space-between; }
       }
@@ -54,5 +60,17 @@
       <label for="{{ input_id }}">{{ label }}</label>
       <input class="pa-input" type="text" id="{{ input_id }}" placeholder="{{ placeholder }}" autocomplete="off">
     </div>
-    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
+    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
+    <button class="pa-btn actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">Actions</button>
   </div>{% endmacro %}
+{% macro script() %}
+    <script>
+      function paDisclosure(cls, id) {
+        const open = document.getElementById('controls').classList.toggle(cls);
+        document.getElementById(id).setAttribute('aria-expanded', open ? 'true' : 'false');
+        return open;
+      }
+      function toggleFilters() { return paDisclosure('open', 'filtersToggle'); }
+      function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }
+    </script>
+{% endmacro %}

@@ -190,7 +190,9 @@ def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
         shared = client.get(path).text.split('Shared top-of-page skeleton')[1]
         assert '.controls { display: block; }' in shared
         assert '.filters { display: none; grid-template-columns: 1fr; }' in shared
-        assert '.toolbar > button:not(.pa-btn) { display: none; }' in shared
+        assert '.tb-actions { display: none; }' in shared
+        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }' in shared
+        assert '.controls.open .toolbar > .tb-filter-toggle { display: flex; }' in shared
         assert '#pager { width: 100%; justify-content: space-between; }' in shared
 
 
@@ -211,7 +213,8 @@ def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.Monke
     assert 'filtersToggle' in page.text
     assert '<div class="controls" id="controls">' in page.text
     assert '.controls.open .filters { display: grid; }' in page.text
-    assert "getElementById('controls').classList.toggle('open')" in page.text
+    assert "getElementById('controls').classList.toggle(cls)" in page.text
+    assert "function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }" in page.text
     assert 'updateFiltersToggle()' in page.text
 
 
@@ -460,3 +463,25 @@ def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.Monkey
     assert 'function refreshSourceOptions(t)' in body
     assert 'refreshSourceOptions(t);' in body
     assert "if(cur && cur.hidden) picker.value = '';" in body
+
+
+def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> None:
+    for path in ('/people', '/metadata'):
+        page = authed_client().get(path).text
+        assert 'id="filtersToggle"' in page and 'id="actionsToggle"' in page
+        assert '<div class="tb-actions">' in page, f'{path} does not group its bulk actions'
+        assert '.tb-actions { display: contents; }' in page, f'{path} would reflow on desktop'
+        assert '.tb-actions { display: none; }' in page
+        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }' in page
+        assert "function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }" in page
+
+    metadata = authed_client().get('/metadata').text
+    for button_id in ('dupToggle', 'potToggle'):
+        rendered = metadata.split(f'id="{button_id}"')[0].rsplit('<button', 1)[1]
+        assert 'tb-filter-toggle' in rendered, f'{button_id} should fold behind Filters, not Actions'
+    for button_id in ('dupBtn', 'pruneBtn', 'exportBtn', 'refreshAllBtn', 'purgeAllBtn'):
+        assert button_id in metadata.split('<div class="tb-actions">')[1].split('</div>')[0]
+
+    people = authed_client().get('/people').text
+    actions = people.split('<div class="tb-actions">')[1].split('{% endif %}')[0]
+    assert 'id="bulkSource"' in actions and 'id="bulkBtn"' in actions

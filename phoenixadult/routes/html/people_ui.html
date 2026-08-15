@@ -39,6 +39,8 @@
       .progress .fill{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}
       .tabs{display:flex;flex-wrap:wrap;gap:8px}
       .filters .tabs{grid-column:1/-1}
+      .bulk-source{flex:0 0 auto;min-width:170px}
+      .bulk-source label{margin:0}
       .tab.active{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}
       .croptoggle{margin-left:auto} .croptoggle.on{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}
       .noupstream.on{background:var(--badge-warning-bg);color:var(--badge-warning-text);border-color:var(--badge-warning-border)}
@@ -67,20 +69,22 @@
         <label for="sourceFilter">Source</label>
         <select class="pa-input" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
-{% if is_admin() %}      <div class="filter-group">
-        <label for="bulkSource">Bulk Fetch Source</label>
-        <select class="pa-input" id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
-      </div>
-{% endif %}      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn tab croptoggle" id="cropToggle">Cropped Only</button>
+      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn tab croptoggle" id="cropToggle">Cropped Only</button>
         <button class="pa-btn tab noupstream" id="upstreamToggle">No Upstream</button>
         <button class="pa-btn tab genericonly" id="genericToggle">Generic Only</button>
         <button class="pa-btn tab singleonly" id="singleToggle">Single Name</button></div>
     </div>
     {% call toolbar.bar('searchCount') %}
-{% if is_admin() %}    <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
-    <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
-    <span class="cnt" id="bulkStatus"></span>
-{% endif %}    {% endcall %}
+    <div class="tb-actions">
+{% if is_admin() %}      <div class="filter-group bulk-source">
+        <label for="bulkSource">Bulk Fetch Source</label>
+        <select class="pa-input" id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
+      </div>
+      <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
+      <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
+      <span class="cnt" id="bulkStatus"></span>
+{% endif %}    </div>
+    {% endcall %}
   </div>
     <div class="grid">{% for e in entries %}<div class="pa-card card {{ e.gcss }}" data-type="{{ e.type }}" data-fn="{{ e.filename }}" data-cropped="{{ 1 if e.cropped else 0 }}" data-name="{{ e.search_key }}" data-upstream="{{ 1 if e.upstream_url else 0 }}" data-source="{{ e.source }}" data-single="{{ 1 if e.single else 0 }}">
       <div class="hd"><span class="pa-badge role {{ e.role_css }}">{{ e.role }}</span><b>{{ e.name }}</b> {% if e.cropped %}<span class="pa-badge badge crop">cropped</span>{% else %}<span class="pa-badge badge orig">original</span>{% endif %}{% if e.source %}<span class="pa-badge badge src">{{ e.source }}</span>{% endif %}<span class="ts">{{ e.ts }}</span></div>
@@ -97,6 +101,7 @@
     
 {% endblock %}
 {% block scripts %}
+{{ toolbar.script() }}
   <script>
       async function post(url, body){
         const r = await fetch(url, {method:'POST', headers:hdrs(), body:JSON.stringify(body)});
@@ -231,10 +236,6 @@
         const ve=document.querySelector('.viewempty'); if(ve) ve.style.display=n?'none':'';
         updateFiltersToggle();
         saveFilters();
-      }
-      function toggleFilters(){
-        const open = document.getElementById('controls').classList.toggle('open');
-        document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
       }
       function updateFiltersToggle(){
         const active = (croppedOnly?1:0) + (noUpstreamOnly?1:0) + (genericOnly?1:0) + (singleOnly?1:0)

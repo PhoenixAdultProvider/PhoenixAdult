@@ -429,7 +429,8 @@ def test_top_bar_splits_search_filters_and_actions(monkeypatch: pytest.MonkeyPat
     assert '<div class="toolbar">' in page.text
     assert 'repeat(auto-fit, minmax(150px, 1fr))' in page.text
     assert '.controls.open .filters { display: grid; }' in page.text
-    assert "getElementById('controls').classList.toggle('open')" in page.text
+    assert "getElementById('controls').classList.toggle(cls)" in page.text
+    assert "function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }" in page.text
 
 
 def test_genre_filter_splits_tagged_from_untagged(monkeypatch: pytest.MonkeyPatch) -> None:

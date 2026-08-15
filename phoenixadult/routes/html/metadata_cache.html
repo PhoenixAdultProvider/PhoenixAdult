@@ -81,6 +81,8 @@
       body { padding: 14px; }
 
       .cards { grid-template-columns: 1fr; }
+      .sortbar { display: none; }
+      .controls.open ~ .sortbar { display: flex; }
       .sortbar select { flex: 1; min-width: 0; width: 100%; }
 
 
@@ -100,7 +102,8 @@
       <label for="q">Search</label>
       <input class="pa-input" type="text" id="q" placeholder="title, studio, tagline…" oninput="queryChanged()">
     </div>
-    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()">Filters</button>
+    <button class="pa-btn filters-toggle" id="filtersToggle" onclick="toggleFilters()" aria-expanded="false">Filters</button>
+    <button class="pa-btn actions-toggle" id="actionsToggle" onclick="toggleActions()" aria-expanded="false">Actions</button>
   </div>
 
   <div class="controls" id="controls">
@@ -182,13 +185,15 @@
   </div>
 
   {% call toolbar.bar('count') %}
-{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
-    <button class="pa-btn pa-btn--lg pa-btn--warn" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
-{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
-    <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Purge Unused Names</button>
-{% endif %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="exportBtn" onclick="exportShown()" disabled></button>
-{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
-    <button class="pa-btn pa-btn--lg pa-btn--danger" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
+{% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
+    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
+    <div class="tb-actions">
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
+      <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Purge Unused Names</button>
+{% endif %}      <button class="pa-btn pa-btn--lg pa-btn--outline" id="exportBtn" onclick="exportShown()" disabled></button>
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--outline" id="refreshAllBtn" onclick="refreshShown()" disabled></button>
+      <button class="pa-btn pa-btn--lg pa-btn--danger" id="purgeAllBtn" onclick="purgeShown()" disabled></button>{% endif %}
+    </div>
   {% endcall %}
   </div>
 
@@ -209,6 +214,7 @@
   
 {% endblock %}
 {% block scripts %}
+{{ toolbar.script() }}
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     const DUP_KEYS = {{ dup_keys|tojson }};
@@ -425,11 +431,6 @@
       applySortIndicators();
       offset = 0;
       refreshEntries();
-    }
-
-    function toggleFilters() {
-      const open = document.getElementById('controls').classList.toggle('open');
-      document.getElementById('filtersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
     function updateFilterToggle() {
