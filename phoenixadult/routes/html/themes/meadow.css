@@ -149,6 +149,10 @@
 
   /* ── Images & Placeholders ── */
   --image-well-bg: #e2ede5;
+  --logo-proof-dark-a: #202024;
+  --logo-proof-dark-b: #2a2a30;
+  --logo-proof-light-a: #f0f0f2;
+  --logo-proof-light-b: #e2e2e6;
   --checkerboard-a: #d7e3da;
   --checkerboard-b: #e2ede5;
   --placeholder-bg: #dfece3;

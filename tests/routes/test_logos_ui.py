@@ -48,3 +48,78 @@ def test_local_route_serves_logo_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_
     r = client.get('/images/local/logos/brazzers/logo.brazzers.png')
     assert r.status_code == 200 and r.content == b'pngbytes'
     assert client.get('/images/local/logos/../secrets.png').status_code in (400, 404)
+
+
+def _logo(path: Path, ink: tuple[int, int, int]) -> None:
+    from PIL import Image, ImageDraw
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    im = Image.new('RGBA', (300, 100), (0, 0, 0, 0))
+    ImageDraw.Draw(im).text((14, 40), 'BRAND', fill=(*ink, 255))
+    im.save(path)
+
+
+def test_the_well_contrasts_with_the_logos_own_ink(tmp_path: Path) -> None:
+    from phoenixadult.utils.images.logo_cache import ink_is_light
+
+    for ink, expected in (((255, 255, 255), True), ((245, 240, 225), True), ((18, 18, 20), False), ((200, 60, 60), False)):
+        f = tmp_path / f'logo.{ink[0]}.png'
+        _logo(f, ink)
+        st = f.stat()
+        assert ink_is_light(f, st.st_mtime, st.st_size) is expected, f'{ink} landed on the wrong well'
+
+
+def test_downscaling_never_discards_every_pixel(tmp_path: Path) -> None:
+    from phoenixadult.utils.images.logo_cache import ink_is_light
+
+    f = tmp_path / 'logo.wide.png'
+    _logo(f, (255, 255, 255))
+    st = f.stat()
+    assert ink_is_light(f, st.st_mtime, st.st_size) is True, 'alpha averaging must not blank the sample'
+
+
+def test_cards_drop_the_slug_and_the_file_details() -> None:
+    page = authed_client().get('/logos').text
+    assert 'fmtSize' not in page, 'the file size line is gone'
+    assert 'class="meta"' not in page
+    assert 'text-align: center' in page.split('.site {')[1].split('}')[0]
+    assert '.purge-btn { align-self: center; margin-top: auto; }' in page
+    assert 'id="bgBtn"' in page and 'Backdrop: Auto' in page
+
+
+def test_add_page_is_admin_only_and_offers_both_sources() -> None:
+    from phoenixadult.utils.auth import user_store
+
+    user_store.create_user('boss', 'pw-boss', is_admin=True)
+    uid = user_store.create_user('member', 'pw-member', is_admin=False)
+    member = TestClient(create_app())
+    member.cookies.set('pa_session', user_store.create_session(uid, 'pytest'))
+    assert member.get('/logos/add').status_code == 403
+    page = authed_client().get('/logos/add').text
+    assert 'id="studio"' in page and 'id="alias"' in page
+    assert 'id="drop"' in page and "addEventListener('drop'" in page
+    assert 'add-upload' in page and 'add-url' in page
+
+
+def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    client = authed_client()
+
+    r = client.post('/logos/api/add-upload', data={'studio': 'Naughty America', 'alias': ''}, files={'file': ('brand.png', src.read_bytes(), 'image/png')})
+    assert r.status_code == 200 and r.json()['ok'] is True
+    assert r.json()['rel'] == 'naughty-america/logo.naughty-america.png'
+
+    r = client.post(
+        '/logos/api/add-upload', data={'studio': 'Naughty America', 'alias': '2 Chicks Same Time'}, files={'file': ('b.png', src.read_bytes(), 'image/png')}
+    )
+    assert r.json()['rel'] == 'naughty-america/logo.2-chicks-same-time.png'
+
+    r = client.post('/logos/api/add-upload', data={'studio': '', 'alias': ''}, files={'file': ('b.png', src.read_bytes(), 'image/png')})
+    assert r.status_code == 400 and 'studio' in r.json()['error'].lower()
+
+
+def test_add_url_rejects_a_non_http_address() -> None:
+    r = authed_client().post('/logos/api/add-url', json={'studio': 'Vixen', 'url': 'ftp://x/y.png'})
+    assert r.status_code == 400 and 'http' in r.json()['error']

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a387"
+version = "1.0.0a388"
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -19,6 +19,7 @@ dependencies = [
     "parsel>=1.9",
     "Pillow>=11.0",
     "python-dotenv>=1.0",
+    "python-multipart>=0.0.20",
     "python-slugify>=8.0",
     "rapidfuzz>=3.10",
     "text-unidecode>=1.3",

@@ -193,6 +193,64 @@ def local_url(path: Path, mtime: float | None = None) -> str | None:
     return f'/images/local/logos/{quoted}{bust}'
 
 
+_INK_CACHE: dict[tuple[str, float, int], bool] = {}
+
+
+def ink_is_light(path: Path, mtime: float, size: int) -> bool:
+    key = (path.as_posix(), mtime, size)
+    cached = _INK_CACHE.get(key)
+    if cached is not None:
+        return cached
+    light = False
+    try:
+        from PIL import Image
+        from PIL.Image import Resampling
+
+        with Image.open(path) as im:
+            im = im.convert('RGBA')
+            im.thumbnail((96, 96), Resampling.NEAREST)
+            data = list(im.getdata())
+        pixels = [(r, g, b) for r, g, b, a in data if a > 128] or [(r, g, b) for r, g, b, a in data if a > 0]
+        if pixels:
+            mean = sum(0.2126 * r + 0.7152 * g + 0.0722 * b for r, g, b in pixels) / len(pixels)
+            light = mean > 140
+    except Exception:  # noqa: BLE001 - an unreadable logo just falls back to the dark well
+        light = False
+    _INK_CACHE[key] = light
+    return light
+
+
+def folders() -> list[str]:
+    root = cache_dir()
+    if not root.exists():
+        return []
+    return sorted(d.name for d in root.iterdir() if d.is_dir())
+
+
+def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str:
+    if not name_slug:
+        raise ValueError('a logo needs a name')
+    suffix = suffix.lower()
+    if suffix not in (*_RASTER_EXTS, '.svg'):
+        raise ValueError(f'unsupported logo type {suffix}')
+    root = cache_dir()
+    target_dir = root / folder_slug if folder_slug else root
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for existing in target_dir.glob(f'logo.{name_slug}.*'):
+        existing.unlink(missing_ok=True)
+    target = target_dir / f'logo.{name_slug}{suffix}'
+    target.write_bytes(data)
+    if suffix == '.svg':
+        converted = convert_svg(target)
+        if converted is None:
+            target.unlink(missing_ok=True)
+            raise ValueError('could not convert that SVG; install rsvg-convert, cairosvg or ImageMagick')
+        target = converted
+    invalidate()
+    reconcile()
+    return rel_to(target, root) or target.name
+
+
 def entries() -> list[dict[str, Any]]:
     conn = _conn()
     rows = conn.execute('SELECT name_slug, MIN(rel_path) AS rel_path FROM logos GROUP BY name_slug ORDER BY name_slug').fetchall()
@@ -211,6 +269,7 @@ def entries() -> list[dict[str, Any]]:
                 'rel': rel,
                 'url': local_url(path, stat.st_mtime),
                 'sizeBytes': stat.st_size,
+                'lightInk': ink_is_light(path, stat.st_mtime, stat.st_size),
                 'folder': rel.split('/')[0] if '/' in rel else '',
             }
         )

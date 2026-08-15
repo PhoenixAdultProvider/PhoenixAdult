@@ -9,16 +9,19 @@
     .bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
     .bar .pa-input { width: 260px; }
     .count-badge { font-size: 12px; color: var(--label-text); }
-    .rescan-btn { margin-left: auto; }
+    .add-btn { margin-left: auto; text-decoration: none; }
     .rescan-status { font-size: 12px; color: var(--label-text); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
     .card { display: flex; flex-direction: column; gap: var(--space-2); }
-    .logo-box { background: repeating-conic-gradient(var(--checkerboard-a) 0% 25%, var(--checkerboard-b) 0% 50%) 0 0 / 20px 20px; border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+    .purge-btn { align-self: center; margin-top: auto; }
+    .logo-box { border-radius: 6px; height: 110px; display: flex; align-items: center; justify-content: center; padding: 10px;
+                background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
+    .logo-box.on-light { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
+    .grid.force-light .logo-box { background: repeating-conic-gradient(var(--logo-proof-light-a) 0% 25%, var(--logo-proof-light-b) 0% 50%) 0 0 / 20px 20px; }
+    .grid.force-dark .logo-box { background: repeating-conic-gradient(var(--logo-proof-dark-a) 0% 25%, var(--logo-proof-dark-b) 0% 50%) 0 0 / 20px 20px; }
     .logo-box img { max-height: 90px; max-width: 100%; object-fit: contain; }
-    .site { font-size: 14px; font-weight: 600; }
+    .site { font-size: 14px; font-weight: 600; text-align: center; overflow-wrap: anywhere; }
     .site .unknown { color: var(--label-text); font-weight: 400; font-style: italic; }
-    .meta { font-size: 11px; color: var(--label-text); word-break: break-all; }
-    .purge-btn { align-self: flex-start; }
     .empty { color: var(--empty-text); font-size: 14px; padding: 40px; text-align: center; }
 
     @media (max-width: 720px) {
@@ -26,7 +29,7 @@
       .sub code { overflow-wrap: anywhere; }
       .bar { gap: 8px; }
       .bar .pa-input { width: 100%; flex: 1 1 100%; }
-      .rescan-btn { margin-left: 0; }
+      .add-btn { margin-left: 0; }
       .bar .pa-btn { flex: 1 1 auto; }
       .grid { grid-template-columns: 1fr; }
       .empty { padding: 24px 12px; }
@@ -36,14 +39,16 @@
 {% block content %}
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
-    Drop an image or SVG into a studio folder there and click Rescan — SVGs are converted to PNG and the file is renamed to <code>logo.&lt;slug&gt;.png</code>.{% endif %}</div>
+Add one below, or drop a file into a studio folder there and click Rescan.{% endif %}</div>
   <div class="bar">
     <input class="pa-input" type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
     <label style="font-size:13px;color:var(--muted-text);display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
     </label>
+    <button type="button" class="pa-btn" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
     <span class="count-badge" id="count"></span>
-{% if is_admin() %}    <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+{% if is_admin() %}    <a class="pa-btn pa-btn--primary add-btn" href="/logos/add">Add Logo</a>
+    <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
     <span class="rescan-status" id="rescan-status"></span>
     <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
   </div>
@@ -62,7 +67,22 @@
     }
 
 
-    function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+    const BACKDROPS = ['auto', 'light', 'dark'];
+    let backdrop = localStorage.getItem('pa-logo-backdrop') || 'auto';
+
+    function paintBackdrop() {
+      const grid = document.getElementById('grid');
+      grid.classList.toggle('force-light', backdrop === 'light');
+      grid.classList.toggle('force-dark', backdrop === 'dark');
+      document.getElementById('bgBtn').textContent =
+        backdrop === 'auto' ? 'Backdrop: Auto' : backdrop === 'light' ? 'Backdrop: Light' : 'Backdrop: Dark';
+    }
+
+    function cycleBackdrop() {
+      backdrop = BACKDROPS[(BACKDROPS.indexOf(backdrop) + 1) % BACKDROPS.length];
+      localStorage.setItem('pa-logo-backdrop', backdrop);
+      paintBackdrop();
+    }
 
     function render() {
       document.getElementById('dir').textContent = STATE.dir;
@@ -75,11 +95,11 @@
       const noMatch = STATE.logos.filter((l) => !l.site).length;
       document.getElementById('count').textContent = `${rows.length} / ${STATE.logos.length} logos · ${noMatch} unmatched`;
       document.getElementById('empty').style.display = STATE.logos.length ? 'none' : 'block';
+      paintBackdrop();
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="pa-card card">
-          <div class="logo-box"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
-          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'} <span style="color:var(--empty-text);font-weight:400">· ${esc(l.slug)}</span></div>
-          <div class="meta">${esc(l.rel)} · ${fmtSize(l.sizeBytes)}</div>
+          <div class="logo-box${l.lightInk ? '' : ' on-light'}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
+          <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'}</div>
           ${IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--danger purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
         </div>`).join('');
     }
