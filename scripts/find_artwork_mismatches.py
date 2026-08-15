@@ -55,7 +55,7 @@ def scene_mismatches() -> tuple[list[dict[str, str]], list[dict[str, str]]]:
             continue
         file_class, solid = inspected
         if solid:
-            reasons.add('solid-colour image (blank artwork)')
+            reasons.add('solid-color image (blank artwork)')
         if file_class == 'coverPoster':
             scene['has_portrait'] = True
             if row['kind'] == 'background':

@@ -39,8 +39,6 @@
       .progress .fill{height:100%;width:0;background:var(--progress-fill);transition:width .15s linear}
       .tabs{display:flex;flex-wrap:wrap;gap:8px}
       .filters .tabs{grid-column:1/-1}
-      .bulk-source{flex:0 0 auto;min-width:170px}
-      .bulk-source label{margin:0}
       .tab.active{background:var(--button-primary-bg);color:var(--button-text);border-color:var(--button-primary-bg)}
       .croptoggle{margin-left:auto} .croptoggle.on{background:var(--badge-info-bg);color:var(--badge-info-text);border-color:var(--badge-info-border)}
       .noupstream.on{background:var(--badge-warning-bg);color:var(--badge-warning-text);border-color:var(--badge-warning-border)}
@@ -76,11 +74,7 @@
     </div>
     {% call toolbar.bar('searchCount') %}
     <div class="tb-actions">
-{% if is_admin() %}      <div class="filter-group bulk-source">
-        <label for="bulkSource">Bulk Fetch Source</label>
-        <select class="pa-input" id="bulkSource">{% for name in fetchable_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
-      </div>
-      <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
+{% if is_admin() %}      <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
       <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>
 {% endif %}    </div>
@@ -162,6 +156,7 @@
       let singleOnly = false;
       let curTab = '';
       const PAGE_SIZE = 500;
+      const BULK_SOURCE = {{ (fetchable_sources[0] if fetchable_sources else "")|tojson }};
       let offset = 0;
       let matched = [];
       function prevPage(){ if(offset > 0){ offset = Math.max(0, offset - PAGE_SIZE); applyPage(); } }
@@ -275,7 +270,7 @@
       if (document.getElementById('bulkBtn')) document.getElementById('bulkBtn').addEventListener('click', async () => {
         const btn = document.getElementById('bulkBtn');
         const status = document.getElementById('bulkStatus');
-        const source = document.getElementById('bulkSource').value;
+        const source = BULK_SOURCE;
         const filenames = shownFilenames();
         if(!filenames.length){ status.textContent = 'Nothing shown to fetch'; return; }
         if(!confirm('Replace the cached image for '+filenames.length+' shown '+(filenames.length===1?'person':'people')+' using '+source+'?')) return;

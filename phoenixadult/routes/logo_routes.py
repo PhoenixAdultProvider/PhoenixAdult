@@ -116,16 +116,12 @@ async def add_url(request: Request) -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'Pick a studio first.'}, status_code=400)
     if not url.startswith(('http://', 'https://')):
         return JSONResponse({'ok': False, 'error': 'Enter a http:// or https:// address.'}, status_code=400)
-    got = None
-    last: Exception | None = None
-    for pinned in (False, True):
-        try:
-            got = await fetch_image(url, pinned=pinned)
-            break
-        except Exception as err:  # noqa: BLE001 - a blocked host retries pinned, then gives up with the reason
-            last = err
-    if got is None or not got.data:
-        return JSONResponse({'ok': False, 'error': f'Could not fetch that URL, including a pinned retry: {last}'}, status_code=502)
+    try:
+        got = await fetch_image(url)
+    except Exception as err:  # noqa: BLE001 - report why the whole chain gave up
+        return JSONResponse({'ok': False, 'error': f'Could not fetch that URL: {err}'}, status_code=502)
+    if not got.data:
+        return JSONResponse({'ok': False, 'error': 'That URL returned an empty image.'}, status_code=502)
     suffix = Path(urlsplit(url).path).suffix.lower() or _SUFFIX_BY_TYPE.get(got.content_type.split(';')[0].strip(), '')
     try:
         rel = await run_in('store', logo_cache.save_logo, folder, name, got.data, suffix)

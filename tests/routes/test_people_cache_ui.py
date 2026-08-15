@@ -484,4 +484,4 @@ def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> No
 
     people = authed_client().get('/people').text
     actions = people.split('<div class="tb-actions">')[1].split('{% endif %}')[0]
-    assert 'id="bulkSource"' in actions and 'id="bulkBtn"' in actions
+    assert 'id="bulkBtn"' in actions

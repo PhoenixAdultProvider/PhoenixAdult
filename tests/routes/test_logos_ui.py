@@ -123,3 +123,28 @@ def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkey
 def test_add_url_rejects_a_non_http_address() -> None:
     r = authed_client().post('/logos/api/add-url', json={'studio': 'Vixen', 'url': 'ftp://x/y.png'})
     assert r.status_code == 400 and 'http' in r.json()['error']
+
+
+def test_add_url_falls_back_to_the_impersonate_bypass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.utils.images.image_fetcher as fetcher
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    seen: list[str] = []
+
+    async def blocked(*_a: object, **_kw: object) -> tuple[bytes, str]:
+        raise ValueError('403 Forbidden')
+
+    async def impersonated(url: str, headers: object = None, **_kw: object) -> tuple[bytes, str]:
+        seen.append(url)
+        return src.read_bytes(), 'image/png'
+
+    monkeypatch.setattr(fetcher, '_get_once', blocked)
+    monkeypatch.setattr(fetcher, '_get_once_pinned', blocked)
+    monkeypatch.setattr(fetcher, 'impersonate_get_bytes', impersonated)
+
+    r = authed_client().post('/logos/api/add-url', json={'studio': 'Vixen', 'alias': '', 'url': 'https://blocked.example/logo.png'})
+    assert r.status_code == 200 and r.json()['ok'] is True, r.json()
+    assert seen == ['https://blocked.example/logo.png'], 'a blocked host must reach the bypass backend'
+    assert r.json()['rel'] == 'vixen/logo.vixen.png'

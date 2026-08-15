@@ -165,7 +165,7 @@ optional. A file that isn't well-formed XML is repaired rather than dropped:
 | unclosed or mis-nested tags | salvaged where possible |
 
 Each repair logs a warning naming the file and quoting the offending line. Writing valid XML
-(`&amp;`, `&lt;`) is still preferred — the repair pass is a safety net, not a licence.
+(`&amp;`, `&lt;`) is still preferred — the repair pass is a safety net, not a license.
 
 ### Pinning the Data18 Scene
 

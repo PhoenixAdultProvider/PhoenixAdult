@@ -648,7 +648,7 @@ route. `scene_images` records what the folder holds: classified `kind`, stored U
 - **At snapshot write**, dimensions come free from the image fetcher. A rewrite keeps
   images already inside the snapshot tree in place — same names, same bytes, dimensions
   re-probed locally — so backfill rewrites never re-download or renumber artwork.
-- **Solid-colour images are dropped, never stored.** Sites sometimes serve a flat black or
+- **Solid-color images are dropped, never stored.** Sites sometimes serve a flat black or
   white placeholder in place of real artwork. The fetcher measures each image's channel
   extrema on a drafted decode and flags anything whose spread is ≤ 4 as solid; the snapshot
   write skips it, and a rewrite deletes one that a previous version had already stored.

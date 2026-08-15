@@ -429,7 +429,7 @@ async def _write_locked(
                 if (kept := await run_in('fs', _keep, *hit, rotations.get(url, 0))) is not None:
                     local, probed, solid = kept
                     if solid:
-                        logger.info('meta-cache', f'dropped a solid-colour image from {rel_path}: {hit[1]}')
+                        logger.info('meta-cache', f'dropped a solid-color image from {rel_path}: {hit[1]}')
                         return None
                     if probed:
                         image_meta[local] = probed
@@ -444,7 +444,7 @@ async def _write_locked(
                 async with sem:
                     entry = await fetch_image(target, referers or None, cookies or None)
                 if entry.solid:
-                    logger.info('meta-cache', f'skipped a solid-colour image for {rel_path}: {target}')
+                    logger.info('meta-cache', f'skipped a solid-color image for {rel_path}: {target}')
                     return None
                 payload, width, height = entry.data, entry.width, entry.height
                 if turn := rotations.get(url, 0):

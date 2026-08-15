@@ -45,7 +45,7 @@ def test_flags_swapped_kinds_and_ignores_promoted_and_upstream(tmp_path: Path, m
         assert 'portrait poster stored as background' in flagged['corrupt-scene']
         assert 'landscape image stored as coverPoster despite a real portrait poster' in flagged['corrupt-scene']
         assert 'dead local image link' in flagged['gone-scene']
-        assert 'solid-colour image (blank artwork)' in flagged['blank-scene']
+        assert 'solid-color image (blank artwork)' in flagged['blank-scene']
         assert 'promoted-scene' not in flagged
         assert 'upstream-scene' not in flagged
         assert [m['rel_path'] for m in unlocalized] == ['upstream-scene']

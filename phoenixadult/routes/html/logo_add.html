@@ -48,7 +48,7 @@
   </div>
 
   <div class="pa-card">
-    <h2>Upload A File</h2>
+    <h2>Upload a File</h2>
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose or drop a logo file">
       <span class="big">Drop a logo here</span>
       <span>or click to choose &middot; PNG, JPG, WEBP or SVG</span>
@@ -57,12 +57,11 @@
   </div>
 
   <div class="pa-card">
-    <h2>Fetch From A URL</h2>
+    <h2>Fetch From a URL</h2>
     <div class="row">
       <input class="pa-input" type="text" id="url" placeholder="https://example.com/logo.png" autocomplete="off">
       <button type="button" class="pa-btn pa-btn--primary" id="urlBtn" onclick="fromUrl()">Fetch</button>
     </div>
-    <span class="hint">Retries through the bypass chain when a site blocks a plain request.</span>
     <div class="status" id="status"></div>
   </div>
 {% endblock %}
@@ -132,7 +131,7 @@
       if (!url) return say('Enter a URL to fetch.', 'err');
       const btn = document.getElementById('urlBtn');
       btn.disabled = true;
-      say('Fetching — this retries through the bypass chain and can take a moment…');
+      say('Fetching — a blocked host is retried through the bypass chain, so this can take a moment…');
       await send(null, {
         path: 'add-url',
         init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studio, alias, url }) },

@@ -1,4 +1,4 @@
-# Revisions to skip in git blame (bulk reformatting / line-ending normalisation).
+# Revisions to skip in git blame (bulk reformatting / line-ending normalization).
 # Local use: git config blame.ignoreRevsFile .git-blame-ignore-revs
 # Line endings alone are better handled with: git blame -w
 
