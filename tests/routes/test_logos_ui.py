@@ -233,3 +233,31 @@ def test_a_studio_drops_out_once_it_and_every_sub_site_are_covered(tmp_path: Pat
 
     j = client.get('/logos/api/aliases', params={'studio': 'Bang'}).json()
     assert j['studioTaken'] is False and j['aliases'] == ['Bang Confessions']
+
+
+def test_state_groups_logos_by_studio_with_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.routes.logo_routes import _state
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    root = tmp_path / 'images' / 'logos'
+    for folder, names in (('naughty-america', ('the-spa', 'anal-college')), ('vixen', ('tushy',))):
+        (root / folder).mkdir(parents=True)
+        for n in names:
+            _logo(root / folder / f'logo.{n}.png', (255, 255, 255))
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+
+    state = _state()
+    assert [s['name'] for s in state['studios']] == ['Naughty America', 'Vixen'], 'folders resolve to studio names'
+    assert {s['name']: s['count'] for s in state['studios']} == {'Naughty America': 2, 'Vixen': 1}
+    assert {e['studio'] for e in state['logos']} == {'Naughty America', 'Vixen'}
+
+
+def test_the_logo_page_has_a_studio_rail_that_survives_a_refresh() -> None:
+    page = authed_client().get('/logos').text
+    assert '<nav class="studios" id="studios"' in page
+    assert "const STUDIO_KEY = 'pa-logo-studio';" in page
+    assert 'localStorage.getItem(STUDIO_KEY)' in page and 'localStorage.setItem(STUDIO_KEY, name)' in page
+    assert "[{ name: '', count: total }].concat(list)" in page, 'All sits at the top of the rail'
+    assert 'if (studio && l.studio !== studio) return false;' in page
+    assert "if (studio && !list.some((s) => s.name === studio)) studio = '';" in page, 'a vanished studio falls back to All'

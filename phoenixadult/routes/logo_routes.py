@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -12,6 +13,7 @@ from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import logo_cache
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.processors.title_case import title_case
 
 _UPLOAD = File(...)
 _SUFFIX_BY_TYPE = {'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/svg+xml': '.svg'}
@@ -22,9 +24,15 @@ _admin = [Depends(admin_auth_guard)]
 
 def _state() -> dict[str, object]:
     entries = logo_cache.entries()
+    by_folder = {logo_cache.logo_slug(studio): studio for studio in _site_catalog()}
+    counts: Counter[str] = Counter()
     for e in entries:
         e['site'] = canonical_site_display(str(e['slug'])) or ''
-    return {'dir': str(logo_cache.cache_dir()), 'logos': entries}
+        folder = str(e['folder'])
+        e['studio'] = by_folder.get(folder) or (title_case(folder.replace('-', ' ')) if folder else 'Loose Files')
+        counts[str(e['studio'])] += 1
+    studios = [{'name': name, 'count': counts[name]} for name in sorted(counts, key=str.casefold)]
+    return {'dir': str(logo_cache.cache_dir()), 'logos': entries, 'studios': studios}
 
 
 @router.get('', response_class=HTMLResponse)
