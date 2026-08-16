@@ -34,7 +34,6 @@ _NAMES = [
     'Latin Adultery',
     'Latina Stepmom',
     'Lesbian Girl on Girl',
-    'Live Gym',
     'Live Gym Cam',
     'Live Naughty MILF',
     'Live Naughty Nurse',

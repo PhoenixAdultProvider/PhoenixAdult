@@ -27,12 +27,13 @@
         .controls { display: block; }
         .filters { display: none; grid-template-columns: 1fr; }
         .controls.open .filters { display: grid; }
-        .toolbar { row-gap: 8px; }
+        .toolbar { row-gap: 8px; border-top: 0; padding-top: 0; }
+        .toolbar::before { content: ""; flex: 1 1 100%; order: -1; border-top: 1px solid var(--divider); margin-top: 4px; }
         .toolbar > .pa-btn { flex: 1 1 0; min-width: 0; }
-        .toolbar > .tb-filter-toggle { display: none; order: -1; flex: 1 1 calc(50% - 4px); }
+        .toolbar > .tb-filter-toggle { display: none; order: -2; flex: 1 1 calc(50% - 4px); }
         .controls.open .toolbar > .tb-filter-toggle { display: flex; }
         .tb-actions { display: none; }
-        .controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }
+        .controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; order: -3; }
         .tb-actions .pa-btn { width: 100%; }
         .toolbar > .count-badge { display: none; }
         .controls.open .toolbar > .count-badge,
@@ -66,7 +67,12 @@
 {% macro script() %}
     <script>
       function paDisclosure(cls, id) {
-        const open = document.getElementById('controls').classList.toggle(cls);
+        const controls = document.getElementById('controls');
+        const other = cls === 'open' ? 'actions-open' : 'open';
+        const otherToggle = document.getElementById(cls === 'open' ? 'actionsToggle' : 'filtersToggle');
+        controls.classList.remove(other);
+        if (otherToggle) otherToggle.setAttribute('aria-expanded', 'false');
+        const open = controls.classList.toggle(cls);
         document.getElementById(id).setAttribute('aria-expanded', open ? 'true' : 'false');
         return open;
       }

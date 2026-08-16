@@ -869,7 +869,6 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Latin Adultery
   - Latina Stepmom
   - Lesbian Girl on Girl
-  - Live Gym
   - Live Gym Cam
   - Live Naughty MILF
   - Live Naughty Nurse

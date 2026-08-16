@@ -191,7 +191,8 @@ def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
         assert '.controls { display: block; }' in shared
         assert '.filters { display: none; grid-template-columns: 1fr; }' in shared
         assert '.tb-actions { display: none; }' in shared
-        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }' in shared
+        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; order: -3; }' in shared
+        assert '.toolbar::before { content: ""; flex: 1 1 100%; order: -1;' in shared, 'the divider sits below both panels'
         assert '.controls.open .toolbar > .tb-filter-toggle { display: flex; }' in shared
         assert '#pager { width: 100%; justify-content: space-between; }' in shared
 
@@ -213,7 +214,8 @@ def test_page_folds_tabs_and_filters_behind_one_toggle(monkeypatch: pytest.Monke
     assert 'filtersToggle' in page.text
     assert '<div class="controls" id="controls">' in page.text
     assert '.controls.open .filters { display: grid; }' in page.text
-    assert "getElementById('controls').classList.toggle(cls)" in page.text
+    assert 'controls.classList.toggle(cls)' in page.text
+    assert 'controls.classList.remove(other);' in page.text, 'one panel at a time'
     assert "function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }" in page.text
     assert 'updateFiltersToggle()' in page.text
 
@@ -472,7 +474,7 @@ def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> No
         assert '<div class="tb-actions">' in page, f'{path} does not group its bulk actions'
         assert '.tb-actions { display: contents; }' in page, f'{path} would reflow on desktop'
         assert '.tb-actions { display: none; }' in page
-        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; }' in page
+        assert '.controls.actions-open .tb-actions { display: grid; gap: 8px; width: 100%; order: -3; }' in page
         assert "function toggleActions() { return paDisclosure('actions-open', 'actionsToggle'); }" in page
 
     metadata = authed_client().get('/metadata').text

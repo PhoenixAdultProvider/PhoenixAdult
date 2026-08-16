@@ -38,12 +38,12 @@ _ROLES = ('actor', 'director', 'producer')
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
 _TABS = [
-    ('directors', 'Directors'),
-    ('producers', 'Producers'),
     ('actors-female', 'Female Actors'),
     ('actors-male', 'Male Actors'),
     ('actors-trans', 'Trans Actors'),
     ('actors-unknown', 'Unknown Actors'),
+    ('directors', 'Directors'),
+    ('producers', 'Producers'),
 ]
 
 
