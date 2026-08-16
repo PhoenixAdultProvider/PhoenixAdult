@@ -7,7 +7,7 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
 from phoenixadult.registry import find_site
 
-STANDARD = find_site('Conor Coxxx')
+STANDARD = find_site('18 Lust')
 IMGFLUID = find_site('Jays POV')
 SCENEP = find_site('SINematica')
 ELEGANT = find_site('Elegant Angel')
@@ -20,7 +20,7 @@ def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext
 
 @respx.mock
 async def test_search_standard_variant() -> None:
-    url = 'https://conorcoxxx.com/MemberSceneSearch?q=cool+scene'
+    url = f'{STANDARD.base_url}/MemberSceneSearch?q=cool+scene'
     respx.get(url).mock(
         return_value=httpx.Response(
             200,
@@ -34,7 +34,7 @@ async def test_search_standard_variant() -> None:
     await AdultEmpireCashClient().search(results, _ctx(STANDARD, search_date='2020-08-27'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
-    assert results[0].scene_url == 'https://conorcoxxx.com/123/cool-scene.html'
+    assert results[0].scene_url == f'{STANDARD.base_url}/123/cool-scene.html'
     assert results[0].display_date == '2020-08-27'
 
 
@@ -75,9 +75,9 @@ async def test_search_scenetitlep_variant() -> None:
 
 @respx.mock
 async def test_search_direct_scene_id() -> None:
-    direct = 'https://conorcoxxx.com/555/cool-scene.html'
+    direct = f'{STANDARD.base_url}/555/cool-scene.html'
     respx.get(direct).mock(return_value=httpx.Response(200, text='<h1 class="description">Cool Scene</h1>'))
-    respx.get('https://conorcoxxx.com/MemberSceneSearch?q=cool+scene').mock(return_value=httpx.Response(200, text='<div></div>'))
+    respx.get(f'{STANDARD.base_url}/MemberSceneSearch?q=cool+scene').mock(return_value=httpx.Response(200, text='<div></div>'))
     results: list[SearchResult] = []
     await AdultEmpireCashClient().search(results, _ctx(STANDARD, scene_id='555'))
     assert results[0].scene_url == direct
@@ -86,7 +86,7 @@ async def test_search_direct_scene_id() -> None:
 
 @respx.mock
 async def test_detail_fields() -> None:
-    url = 'https://conorcoxxx.com/123/cool-scene.html'
+    url = f'{STANDARD.base_url}/123/cool-scene.html'
     respx.get(url).mock(
         return_value=httpx.Response(
             200,
@@ -147,6 +147,6 @@ def test_name_keyed_lookups() -> None:
     studio_for = __testing__['studio_for']
     assert variant_for('Jays POV') == 'imgFullFluid'
     assert variant_for('SINematica') == 'sceneTitleP'
-    assert variant_for('Conor Coxxx') == 'standard'
+    assert variant_for('18 Lust') == 'standard'
     assert studio_for('Horny Household') == 'Horny Household'
-    assert studio_for('Conor Coxxx') == 'Adult Empire Cash'
+    assert studio_for('18 Lust') == 'Adult Empire Cash'

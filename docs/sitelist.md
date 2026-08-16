@@ -60,6 +60,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Adult Prime Originals
   - BBvideo
   - Beauty and the Senior
+  - Blast From the Past 18
   - Bondagettes
   - Bound Men Wanked
   - BrasilBimbos
@@ -90,6 +91,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Group Mams
   - Group Sex Games
   - Hollandsche Passie
+  - Home Grown Europe
   - Interraced
   - Jim Slip
   - Laras Playground
@@ -101,8 +103,9 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Mature Van
   - My MILFz
   - My Sexy Kittens
+  - Nylon Flix
   - OldieX
-  - Peep Leek
+  - Peep Leak
   - Perfect 18
   - Plumperd
   - Pornstar Classics
@@ -121,13 +124,14 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Southern Sins
   - Submissed
   - Summer Sinners
+  - Sweet Femdom
   - Swhores
   - Teenrs
   - The Pain Files
   - Tranny Bizarre
   - UK Flashers
   - Vintage Classic Porn
-  - VR Teens
+  - VR Teenrs
   - Young Busty
 + #### Allure Media | ✓
   - Amateur Allure
