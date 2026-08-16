@@ -98,7 +98,7 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       paintBackdrop();
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="pa-card card">
-          <div class="logo-box${l.lightInk ? '' : ' on-light'}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
+          <div class="logo-box${l.well === 'light' ? ' on-light' : ''}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'}</div>
           ${IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--danger purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
         </div>`).join('');

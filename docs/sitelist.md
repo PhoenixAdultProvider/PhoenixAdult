@@ -9,8 +9,7 @@ If the site is not listed below &mdash; i.e. the site is not yet supported &mdas
 To update the site list run `python -m scripts.generate_sitelist`
 ## All Supported Networks and Sites
 
-+ #### 5K Porn | ✓
-  - 5Kporn
++ #### 5Kporn | ✓
   - 5Kteens
 + #### Abby Winters | ✅ - **Actor only**
   - Abby Winters Behind the Scenes

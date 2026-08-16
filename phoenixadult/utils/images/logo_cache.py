@@ -193,15 +193,34 @@ def local_url(path: Path, mtime: float | None = None) -> str | None:
     return f'/images/local/logos/{quoted}{bust}'
 
 
-_INK_CACHE: dict[tuple[str, float, int], bool] = {}
+_WELL_CACHE: dict[tuple[str, float, int], str] = {}
+LIGHT_WELL_RGB = (0xF0, 0xF0, 0xF2)
+DARK_WELL_RGB = (0x20, 0x20, 0x24)
+_INVISIBLE_CONTRAST = 1.5
 
 
-def ink_is_light(path: Path, mtime: float, size: int) -> bool:
+def _channel(value: int) -> float:
+    c = value / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+_CHANNEL = [_channel(v) for v in range(256)]
+
+
+def _luminance(r: int, g: int, b: int) -> float:
+    return 0.2126 * _CHANNEL[r] + 0.7152 * _CHANNEL[g] + 0.0722 * _CHANNEL[b]
+
+
+def _contrast(a: float, b: float) -> float:
+    return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+
+
+def preferred_well(path: Path, mtime: float, size: int) -> str:
     key = (path.as_posix(), mtime, size)
-    cached = _INK_CACHE.get(key)
+    cached = _WELL_CACHE.get(key)
     if cached is not None:
         return cached
-    light = False
+    well = 'dark'
     try:
         from PIL import Image
         from PIL.Image import Resampling
@@ -210,14 +229,17 @@ def ink_is_light(path: Path, mtime: float, size: int) -> bool:
             im = im.convert('RGBA')
             im.thumbnail((96, 96), Resampling.NEAREST)
             data = list(im.getdata())
-        pixels = [(r, g, b) for r, g, b, a in data if a > 128] or [(r, g, b) for r, g, b, a in data if a > 0]
-        if pixels:
-            mean = sum(0.2126 * r + 0.7152 * g + 0.0722 * b for r, g, b in pixels) / len(pixels)
-            light = mean > 140
-    except Exception:  # noqa: BLE001 - an unreadable logo just falls back to the dark well
-        light = False
-    _INK_CACHE[key] = light
-    return light
+        ink = [(r, g, b) for r, g, b, a in data if a > 128] or [(r, g, b) for r, g, b, a in data if a > 0]
+        if ink:
+            light_well, dark_well = _luminance(*LIGHT_WELL_RGB), _luminance(*DARK_WELL_RGB)
+            lums = [_luminance(*pixel) for pixel in ink]
+            lost_on_light = sum(1 for v in lums if _contrast(v, light_well) < _INVISIBLE_CONTRAST)
+            lost_on_dark = sum(1 for v in lums if _contrast(v, dark_well) < _INVISIBLE_CONTRAST)
+            well = 'dark' if lost_on_dark <= lost_on_light else 'light'
+    except Exception:  # noqa: BLE001 - an unreadable logo falls back to the dark well
+        well = 'dark'
+    _WELL_CACHE[key] = well
+    return well
 
 
 def folders() -> list[str]:
@@ -269,7 +291,7 @@ def entries() -> list[dict[str, Any]]:
                 'rel': rel,
                 'url': local_url(path, stat.st_mtime),
                 'sizeBytes': stat.st_size,
-                'lightInk': ink_is_light(path, stat.st_mtime, stat.st_size),
+                'well': preferred_well(path, stat.st_mtime, stat.st_size),
                 'folder': rel.split('/')[0] if '/' in rel else '',
             }
         )

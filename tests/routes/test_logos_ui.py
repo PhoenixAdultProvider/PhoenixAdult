@@ -59,23 +59,49 @@ def _logo(path: Path, ink: tuple[int, int, int]) -> None:
     im.save(path)
 
 
-def test_the_well_contrasts_with_the_logos_own_ink(tmp_path: Path) -> None:
-    from phoenixadult.utils.images.logo_cache import ink_is_light
+def _well(path: Path) -> str:
+    from phoenixadult.utils.images.logo_cache import preferred_well
 
-    for ink, expected in (((255, 255, 255), True), ((245, 240, 225), True), ((18, 18, 20), False), ((200, 60, 60), False)):
-        f = tmp_path / f'logo.{ink[0]}.png'
+    st = path.stat()
+    return preferred_well(path, st.st_mtime, st.st_size)
+
+
+def test_the_well_is_the_one_that_keeps_the_ink_visible(tmp_path: Path) -> None:
+    for ink, expected in (((255, 255, 255), 'dark'), ((245, 240, 225), 'dark'), ((18, 18, 20), 'light'), ((20, 30, 90), 'light')):
+        f = tmp_path / f'logo.{ink[0]}-{ink[2]}.png'
         _logo(f, ink)
-        st = f.stat()
-        assert ink_is_light(f, st.st_mtime, st.st_size) is expected, f'{ink} landed on the wrong well'
+        assert _well(f) == expected, f'{ink} landed on the wrong well'
+
+
+def test_a_dim_mid_tone_never_outvotes_ink_that_would_vanish(tmp_path: Path) -> None:
+    from PIL import Image, ImageDraw
+
+    f = tmp_path / 'logo.mixed.png'
+    im = Image.new('RGBA', (300, 100), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(im)
+    draw.rectangle((0, 0, 299, 60), fill=(150, 90, 140, 255))
+    draw.text((14, 70), 'BRAND', fill=(255, 255, 255, 255))
+    im.save(f)
+    assert _well(f) == 'dark', 'white text vanishes on light; the mid-tone block is only dim on dark'
 
 
 def test_downscaling_never_discards_every_pixel(tmp_path: Path) -> None:
-    from phoenixadult.utils.images.logo_cache import ink_is_light
-
     f = tmp_path / 'logo.wide.png'
     _logo(f, (255, 255, 255))
-    st = f.stat()
-    assert ink_is_light(f, st.st_mtime, st.st_size) is True, 'alpha averaging must not blank the sample'
+    assert _well(f) == 'dark', 'alpha averaging must not blank the sample'
+
+
+def test_the_well_colors_match_the_stylesheet() -> None:
+    import re
+
+    from phoenixadult.routes import __file__ as routes_file
+    from phoenixadult.utils.images.logo_cache import DARK_WELL_RGB, LIGHT_WELL_RGB
+
+    theme = (Path(routes_file).parent / 'html' / 'themes' / 'midnight.css').read_text(encoding='utf-8')
+    for token, rgb in (('logo-proof-light-a', LIGHT_WELL_RGB), ('logo-proof-dark-a', DARK_WELL_RGB)):
+        found = re.search(rf'--{token}:\s*#([0-9a-fA-F]{{6}})', theme)
+        assert found, f'{token} is missing from the theme'
+        assert tuple(int(found.group(1)[i : i + 2], 16) for i in (0, 2, 4)) == rgb, f'{token} drifted from the Python constant'
 
 
 def test_cards_drop_the_slug_and_the_file_details() -> None:
