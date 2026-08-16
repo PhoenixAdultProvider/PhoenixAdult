@@ -27,7 +27,7 @@ def test_requires_auth_and_lists_with_site_names(_cache: Path) -> None:
     assert page.status_code == 200 and 'Logo Cache' in page.text
 
     data = client.get('/logos/api/list').json()
-    assert data['logos'][0]['slug'] == 'baby-got-boobs'
+    assert data['logos'][0]['slug'] == 'babygotboobs'
     assert data['logos'][0]['site'] == 'Baby Got Boobs'
     assert data['logos'][0]['url'].startswith('/images/local/logos/brazzers/logo.baby-got-boobs.png?v=')
 
@@ -143,12 +143,12 @@ def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkey
 
     r = client.post('/logos/api/add-upload', data={'studio': 'Naughty America', 'alias': ''}, files={'file': ('brand.png', src.read_bytes(), 'image/png')})
     assert r.status_code == 200 and r.json()['ok'] is True
-    assert r.json()['rel'] == 'naughty-america/logo.naughty-america.png'
+    assert r.json()['rel'] == 'naughtyamerica/logo.naughtyamerica.png'
 
     r = client.post(
         '/logos/api/add-upload', data={'studio': 'Naughty America', 'alias': '2 Chicks Same Time'}, files={'file': ('b.png', src.read_bytes(), 'image/png')}
     )
-    assert r.json()['rel'] == 'naughty-america/logo.2-chicks-same-time.png'
+    assert r.json()['rel'] == 'naughtyamerica/logo.2chickssametime.png'
 
     r = client.post('/logos/api/add-upload', data={'studio': '', 'alias': ''}, files={'file': ('b.png', src.read_bytes(), 'image/png')})
     assert r.status_code == 400 and 'studio' in r.json()['error'].lower()
@@ -261,3 +261,40 @@ def test_the_logo_page_has_a_studio_rail_that_survives_a_refresh() -> None:
     assert "[{ name: '', count: total }].concat(list)" in page, 'All sits at the top of the rail'
     assert 'if (studio && l.studio !== studio) return false;' in page
     assert "if (studio && !list.some((s) => s.name === studio)) studio = '';" in page, 'a vanished studio falls back to All'
+
+
+def test_hyphens_and_casing_never_split_a_logo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    root = tmp_path / 'images' / 'logos'
+    (root / 'caramel-cash').mkdir(parents=True)
+    _logo(root / 'caramel-cash' / 'logo.vr-pmv-bay.png', (255, 255, 255))
+    (root / 'blurredmedia').mkdir(parents=True)
+    _logo(root / 'blurredmedia' / 'logo.bi-guys-fuck.png', (255, 255, 255))
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+
+    for spelling in ('VR PMV Bay', 'vr-pmv-bay', 'vrpmvbay', 'VRPMVBay', 'Vr Pmv Bay'):
+        assert logo_cache.find_logo(spelling, None) is not None, f'{spelling} should find the same logo'
+    for spelling in ('Bi Guys Fuck', 'bi-guys-fuck', 'biguysfuck'):
+        assert logo_cache.find_logo(spelling, None) is not None, f'{spelling} should find the same logo'
+
+
+def test_a_folder_resolves_however_it_is_punctuated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    root = tmp_path / 'images' / 'logos'
+    (root / 'blurred-media').mkdir(parents=True)
+    _logo(root / 'blurred-media' / 'logo.biguysfuck.png', (255, 255, 255))
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+
+    assert logo_cache._folder_dir('blurredmedia') == root / 'blurred-media'
+    assert logo_cache.find_logo(None, 'Bi Guys Fuck') is not None
+
+
+def test_saving_writes_a_squashed_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    client = authed_client()
+    r = client.post('/logos/api/add-upload', data={'studio': 'Caramel Cash', 'alias': 'VR PMV Bay'}, files={'file': ('a.png', src.read_bytes(), 'image/png')})
+    assert r.json()['rel'] == 'caramelcash/logo.vrpmvbay.png'

@@ -23,7 +23,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
 
 
 CARAMELCASH_SITES: list[SiteInfo] = [
-    _site('VrpmvBay', 'vrpmvbay.com', '/video'),
-    _site('CuckoldWish', 'cuckoldwish.com', '/videos'),
+    _site('VR PMV Bay', 'vrpmvbay.com', '/video'),
+    _site('Cuckold Wish', 'cuckoldwish.com', '/videos'),
     _site('Alex Legend', 'alexlegend.com', '/video'),
 ]

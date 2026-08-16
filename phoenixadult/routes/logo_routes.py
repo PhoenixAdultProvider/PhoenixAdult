@@ -29,7 +29,7 @@ def _state() -> dict[str, object]:
     for e in entries:
         e['site'] = canonical_site_display(str(e['slug'])) or ''
         folder = str(e['folder'])
-        e['studio'] = by_folder.get(folder) or (title_case(folder.replace('-', ' ')) if folder else 'Loose Files')
+        e['studio'] = by_folder.get(logo_cache.logo_slug(folder)) or (title_case(folder.replace('-', ' ')) if folder else 'Loose Files')
         counts[str(e['studio'])] += 1
     studios = [{'name': name, 'count': counts[name]} for name in sorted(counts, key=str.casefold)]
     return {'dir': str(logo_cache.cache_dir()), 'logos': entries, 'studios': studios}

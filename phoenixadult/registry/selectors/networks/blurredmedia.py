@@ -3,7 +3,7 @@ from __future__ import annotations
 from phoenixadult.registry.selectors._factory import make_site
 from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
 
-PROVIDER_NAME = 'BlurredMedia'
+PROVIDER_NAME = 'Blurred Media'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = ''

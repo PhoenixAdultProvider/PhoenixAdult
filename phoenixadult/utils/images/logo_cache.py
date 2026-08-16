@@ -21,8 +21,7 @@ def cache_dir() -> Path:
 
 
 def logo_slug(name: str) -> str:
-    cleaned = re.sub(r'[^a-z0-9 ]', '', name.lower())
-    return re.sub(r'\s+', '-', cleaned.strip())
+    return re.sub(r'[^a-z0-9]', '', name.lower())
 
 
 def _find_bin(name: str) -> str | None:
@@ -99,7 +98,7 @@ def _conn() -> sqlite3.Connection:
 
 
 def _row_for(f: Path, root: Path) -> tuple[str, str, str, float] | None:
-    name_slug = f.name[len('logo.') : -len(f.suffix)].lower()
+    name_slug = logo_slug(f.name[len('logo.') : -len(f.suffix)])
     if not name_slug:
         return None
     rel = f.relative_to(root).as_posix()
@@ -131,10 +130,20 @@ def _rebuild(conn: sqlite3.Connection) -> None:
         conn.executemany('INSERT OR IGNORE INTO logos(studio_slug, name_slug, rel_path, mtime) VALUES(?, ?, ?, ?)', rows)
 
 
+def _folder_dir(folder_slug: str) -> Path | None:
+    root = cache_dir()
+    if not folder_slug or not root.is_dir():
+        return None
+    direct = root / folder_slug
+    if direct.is_dir():
+        return direct
+    return next((d for d in sorted(root.iterdir()) if d.is_dir() and logo_slug(d.name) == folder_slug), None)
+
+
 def _scan_folder(conn: sqlite3.Connection, folder_slug: str) -> None:
     root = cache_dir()
-    folder = root / folder_slug
-    if not folder_slug or not folder.is_dir():
+    folder = _folder_dir(folder_slug)
+    if folder is None:
         return
     for f in sorted(folder.iterdir()):
         if not f.is_file() or not f.name.startswith('logo.'):
@@ -256,7 +265,7 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
     if suffix not in (*_RASTER_EXTS, '.svg'):
         raise ValueError(f'unsupported logo type {suffix}')
     root = cache_dir()
-    target_dir = root / folder_slug if folder_slug else root
+    target_dir = (_folder_dir(folder_slug) or root / folder_slug) if folder_slug else root
     target_dir.mkdir(parents=True, exist_ok=True)
     for existing in target_dir.glob(f'logo.{name_slug}.*'):
         existing.unlink(missing_ok=True)

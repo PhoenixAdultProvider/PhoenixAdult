@@ -219,7 +219,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Bellesa Films
   - Bellesa House
 + #### Black PayBack | ✓
-+ #### BlurredMedia | ✅
++ #### Blurred Media | ✅
   - Bi Guys Fuck
   - Gay Hoopla
   - Hot Guys Fuck
@@ -228,8 +228,8 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Brand New Amateurs | ✓ - **Actor Name**
 + #### Caramel Cash | ❌ - **Scene ID**
   - Alex Legend
-  - CuckoldWish
-  - VrpmvBay
+  - Cuckold Wish
+  - VR PMV Bay
 + #### Caribbeancom | ❌ - **SceneID**
 + #### Cherry Pimps | ✅
   - BCM.XXX

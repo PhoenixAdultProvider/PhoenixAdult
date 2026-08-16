@@ -25,10 +25,17 @@ def _put(root: Path, folder: str, name: str, data: bytes = b'png') -> Path:
 
 
 def test_logo_slug_transforms() -> None:
-    assert logo_cache.logo_slug('Baby Got Boobs') == 'baby-got-boobs'
+    assert logo_cache.logo_slug('Baby Got Boobs') == 'babygotboobs'
     assert logo_cache.logo_slug('Nubiles.net') == 'nubilesnet'
-    assert logo_cache.logo_slug("Daddy's Lil Angel") == 'daddys-lil-angel'
-    assert logo_cache.logo_slug('Casting Couch-X') == 'casting-couchx'
+    assert logo_cache.logo_slug("Daddy's Lil Angel") == 'daddyslilangel'
+    assert logo_cache.logo_slug('Casting Couch-X') == 'castingcouchx'
+
+
+def test_logo_slug_ignores_spacing_and_casing() -> None:
+    for spelling in ('VR PMV Bay', 'vr-pmv-bay', 'vrpmvbay', 'VRPMVBay', 'Vr  Pmv  Bay'):
+        assert logo_cache.logo_slug(spelling) == 'vrpmvbay'
+    for spelling in ('Blurred Media', 'blurred-media', 'blurredmedia', 'BlurredMedia'):
+        assert logo_cache.logo_slug(spelling) == 'blurredmedia'
 
 
 def test_find_logo_tagline_beats_studio(logo_dir: Path) -> None:
@@ -111,7 +118,7 @@ def test_rescan_adopts_and_converts_manual_drops(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(logo_cache, 'convert_svg', fake_convert)
     assert logo_cache.rescan() == 2
-    assert (logo_dir / 'badoinkvr' / 'logo.badoinkvr-logo.png').exists()
+    assert (logo_dir / 'badoinkvr' / 'logo.badoinkvrlogo.png').exists()
     assert logo_cache.find_logo(None, 'Brazzers') == logo_dir / 'brazzers' / 'logo.brazzers.png'
 
 
