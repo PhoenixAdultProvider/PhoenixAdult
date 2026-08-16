@@ -9,7 +9,7 @@ from phoenixadult.registry import find_site
 
 STANDARD = find_site('Conor Coxxx')
 IMGFLUID = find_site('Jays POV')
-SCENEP = find_site('Bizarre Entertainment')
+SCENEP = find_site('SINematica')
 ELEGANT = find_site('Elegant Angel')
 assert STANDARD is not None and IMGFLUID is not None and SCENEP is not None and ELEGANT is not None
 
@@ -58,19 +58,19 @@ async def test_search_imgfullfluid_variant() -> None:
 
 @respx.mock
 async def test_search_scenetitlep_variant() -> None:
-    url = 'https://www.bizarrevideo.com/MemberSceneSearch?q=cool+scene'
+    url = f'{SCENEP.base_url}/MemberSceneSearch?q=cool+scene'
     respx.get(url).mock(
         return_value=httpx.Response(
             200,
             text="""<div class="item-grid"><div class="grid-item">
-              <a class="scene-title" href="/7/y.html"><p>Cool Scene | Bizarre</p></a>
+              <a class="scene-title" href="/7/y.html"><p>Cool Scene | SINematica</p></a>
             </div></div>""",
         )
     )
     results: list[SearchResult] = []
     await AdultEmpireCashClient().search(results, _ctx(SCENEP))
     assert [r.title for r in results] == ['Cool Scene']
-    assert results[0].scene_url == 'https://www.bizarrevideo.com/7/y.html'
+    assert results[0].scene_url == f'{SCENEP.base_url}/7/y.html'
 
 
 @respx.mock
@@ -146,7 +146,7 @@ def test_name_keyed_lookups() -> None:
     variant_for = __testing__['variant_for']
     studio_for = __testing__['studio_for']
     assert variant_for('Jays POV') == 'imgFullFluid'
-    assert variant_for('Bizarre Entertainment') == 'sceneTitleP'
+    assert variant_for('SINematica') == 'sceneTitleP'
     assert variant_for('Conor Coxxx') == 'standard'
     assert studio_for('Horny Household') == 'Horny Household'
     assert studio_for('Conor Coxxx') == 'Adult Empire Cash'

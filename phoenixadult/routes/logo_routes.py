@@ -111,6 +111,15 @@ def _slugs(studio: str, alias: str) -> tuple[str, str]:
     return folder, name
 
 
+def _saved(rel: str) -> dict[str, object]:
+    path = logo_cache.cache_dir() / rel
+    try:
+        url = logo_cache.local_url(path, path.stat().st_mtime) or ''
+    except OSError:
+        url = ''
+    return {'ok': True, 'rel': rel, 'url': url}
+
+
 @router.post('/api/add-upload', dependencies=_admin)
 async def add_upload(studio: str = Form(''), alias: str = Form(''), file: UploadFile = _UPLOAD) -> JSONResponse:
     folder, name = _slugs(studio, alias)
@@ -125,7 +134,7 @@ async def add_upload(studio: str = Form(''), alias: str = Form(''), file: Upload
     except ValueError as err:
         return JSONResponse({'ok': False, 'error': str(err)}, status_code=400)
     logger.info('logo-cache', f'added {rel} from an upload')
-    return JSONResponse({'ok': True, 'rel': rel})
+    return JSONResponse(_saved(rel))
 
 
 @router.post('/api/add-url', dependencies=_admin)
@@ -152,4 +161,4 @@ async def add_url(request: Request) -> JSONResponse:
     except ValueError as err:
         return JSONResponse({'ok': False, 'error': str(err)}, status_code=400)
     logger.info('logo-cache', f'added {rel} from {url}')
-    return JSONResponse({'ok': True, 'rel': rel})
+    return JSONResponse(_saved(rel))

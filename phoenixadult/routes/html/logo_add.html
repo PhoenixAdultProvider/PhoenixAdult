@@ -4,29 +4,41 @@
 {% block head %}
   <style>
     body { padding: 24px; }
-    h1, .sub, .pa-card { max-width: 640px; margin-inline: auto; }
+    h1, .sub, .pa-card { max-width: 1040px; margin-inline: auto; }
     .pa-card { margin: 0 auto 16px; }
-    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
     .field label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
-    .field .hint { font-size: 12px; color: var(--hint-text); }
-    .target { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--label-text); }
-    .drop {
-      display: grid; place-content: center; gap: 6px; text-align: center;
-      min-height: 150px; padding: 18px; border: 1px dashed var(--card-border); border-radius: var(--radius-md);
-      background: var(--image-well-bg); color: var(--muted-text); font-size: var(--text-sm); cursor: pointer;
+    .head { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .head .field { flex: 1 1 280px; }
+    .tally { font-size: 12px; color: var(--label-text); align-self: center; }
+
+    .rows { display: flex; flex-direction: column; gap: 6px; }
+    .lrow {
+      display: grid; grid-template-columns: minmax(150px, 1fr) minmax(220px, 2.2fr) auto auto;
+      gap: 8px; align-items: center; padding: 6px 8px; border-radius: var(--radius-sm);
     }
-    .drop.over { border-color: var(--button-primary-bg); color: var(--page-text); }
-    .drop .big { font-size: var(--text-base); font-weight: 600; color: var(--page-text); }
-    .row { display: flex; gap: 8px; align-items: center; }
-    .row .pa-input { flex: 1 1 auto; }
-    .status { margin-top: 12px; font-size: 13px; color: var(--muted-text); min-height: 1em; }
-    .status.ok { color: var(--status-ok-text); }
-    .status.err { color: var(--status-danger-text); }
-    h2 { font-size: 15px; margin: 0 0 12px; }
+    .lrow:nth-child(odd) { background: var(--input-bg); }
+    .lrow.done { opacity: .55; }
+    .lname { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+    .lname .whole { color: var(--link-text); }
+    .ldrop {
+      display: grid; place-content: center; height: 32px; padding: 0 10px; white-space: nowrap;
+      border: 1px dashed var(--card-border); border-radius: var(--radius-sm);
+      background: var(--image-well-bg); color: var(--muted-text); font-size: var(--text-2xs); cursor: pointer;
+    }
+    .ldrop.over { border-color: var(--button-primary-bg); color: var(--page-text); }
+    .lstate { grid-column: 1 / -1; font-size: 12px; color: var(--muted-text); }
+    .lstate:empty { display: none; }
+    .lstate.err { color: var(--status-danger-text); }
+    .lstate.ok { color: var(--status-ok-text); display: flex; align-items: center; gap: 8px; }
+    .lstate img { height: 26px; max-width: 120px; object-fit: contain; }
+    .empty { color: var(--empty-text); font-size: 13px; padding: 18px; text-align: center; }
+
     @media (max-width: 720px) {
       body { padding: 14px; }
-      .row { flex-wrap: wrap; }
-      .row .pa-btn { width: 100%; }
+      .lrow { grid-template-columns: 1fr 1fr; }
+      .lname { grid-column: 1 / -1; }
+      .lrow .pa-input { grid-column: 1 / -1; }
     }
   </style>
 {% endblock %}
@@ -35,125 +47,159 @@
   <div class="sub">Every supported site is listed. Anything that already has a logo is left out, so what you see is what is still missing.</div>
 
   <div class="pa-card">
-    <div class="field">
-      <label for="studio">Studio</label>
-      <select class="pa-input" id="studio" onchange="studioChanged()"></select>
+    <div class="head">
+      <div class="field">
+        <label for="studio">Studio</label>
+        <select class="pa-input" id="studio" onchange="studioChanged()"></select>
+      </div>
+      <button type="button" class="pa-btn pa-btn--primary" id="fetchAll" onclick="fetchAll()">Fetch Every URL</button>
+      <span class="tally" id="tally"></span>
     </div>
-    <div class="field">
-      <label for="alias">Sub-Site</label>
-      <select class="pa-input" id="alias" onchange="paintTarget()"><option value="">Whole studio</option></select>
-      <span class="hint" id="aliasHint">Leave on "Whole studio" unless this logo is for one sub-site.</span>
-    </div>
-    <div class="target" id="target"></div>
   </div>
 
   <div class="pa-card">
-    <h2>Upload a File</h2>
-    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose or drop a logo file">
-      <span class="big">Drop a logo here</span>
-      <span>or click to choose &middot; PNG, JPG, WEBP or SVG</span>
-    </div>
-    <input type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
+    <div class="rows" id="rows"></div>
+    <div class="empty" id="empty">Pick a studio to list what still needs a logo.</div>
   </div>
-
-  <div class="pa-card">
-    <h2>Fetch From a URL</h2>
-    <div class="row">
-      <input class="pa-input" type="text" id="url" placeholder="https://example.com/logo.png" autocomplete="off">
-      <button type="button" class="pa-btn pa-btn--primary" id="urlBtn" onclick="fromUrl()">Fetch</button>
-    </div>
-    <div class="status" id="status"></div>
-  </div>
+  <input type="file" id="picker" accept=".png,.jpg,.jpeg,.webp,.svg" hidden>
 {% endblock %}
 {% block scripts %}
   <script>
     const STATE = {{ state|tojson }};
+    let ROWS = [];
+    let pending = null;
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-    function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().replace(/\s+/g, '-'); }
+    function studio() { return document.getElementById('studio').value; }
+    function rowFor(alias) { return document.querySelector(`.lrow[data-alias="${CSS.escape(alias)}"]`); }
 
-    function say(msg, kind) {
-      const el = document.getElementById('status');
-      el.textContent = msg;
-      el.className = 'status' + (kind ? ' ' + kind : '');
+    function state(alias, msg, kind, url) {
+      const el = rowFor(alias).querySelector('.lstate');
+      el.className = 'lstate' + (kind ? ' ' + kind : '');
+      el.innerHTML = url ? `<img src="${esc(url)}" alt=""><span>${esc(msg)}</span>` : esc(msg);
     }
 
-    function paintTarget() {
-      const studio = document.getElementById('studio').value;
-      const alias = document.getElementById('alias').value;
-      const folder = slug(studio);
-      const name = slug(alias || studio);
-      document.getElementById('target').textContent = name ? `saves as ${folder}/logo.${name}.<ext>` : '';
+    function paintTally() {
+      const left = ROWS.filter((r) => !r.done).length;
+      document.getElementById('tally').textContent = ROWS.length ? `${left} of ${ROWS.length} still missing a logo` : '';
+      document.getElementById('fetchAll').disabled = !left;
+    }
+
+    function render() {
+      document.getElementById('empty').style.display = ROWS.length ? 'none' : 'block';
+      document.getElementById('rows').innerHTML = ROWS.map((r) => `
+        <div class="lrow" data-alias="${esc(r.alias)}">
+          <div class="lname">${r.alias ? esc(r.alias) : '<span class="whole">Whole studio</span>'}</div>
+          <input class="pa-input" type="text" placeholder="https://example.com/logo.png" autocomplete="off" data-url>
+          <button type="button" class="pa-btn" data-fetch>Fetch</button>
+          <div class="ldrop" data-drop tabindex="0" role="button" aria-label="Drop or Choose a file">Drop / Choose</div>
+          <div class="lstate"></div>
+        </div>`).join('');
+      paintTally();
     }
 
     async function studioChanged() {
-      const studio = document.getElementById('studio').value;
-      const sel = document.getElementById('alias');
-      sel.innerHTML = '<option value="">Whole studio</option>';
-      paintTarget();
-      if (!studio) return;
-      const r = await fetch('/logos/api/aliases?studio=' + encodeURIComponent(studio));
+      ROWS = [];
+      render();
+      if (!studio()) { document.getElementById('empty').textContent = 'Pick a studio to list what still needs a logo.'; return; }
+      const r = await fetch('/logos/api/aliases?studio=' + encodeURIComponent(studio()));
       const j = await r.json();
-      const whole = j.studioTaken ? '' : '<option value="">Whole studio</option>';
-      sel.innerHTML = whole + (j.aliases || []).map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
-      document.getElementById('aliasHint').textContent = j.studioTaken
-        ? 'This studio already has its own logo, so pick the sub-site this one is for.'
-        : 'Leave on "Whole studio" unless this logo is for one sub-site.';
-      paintTarget();
+      ROWS = (j.studioTaken ? [] : [{ alias: '', done: false }]).concat((j.aliases || []).map((a) => ({ alias: a, done: false })));
+      document.getElementById('empty').textContent = 'Every site under this studio already has a logo.';
+      render();
     }
 
-    function selected() {
-      return { studio: document.getElementById('studio').value, alias: document.getElementById('alias').value };
+    function markDone(alias, url, how) {
+      const row = ROWS.find((r) => r.alias === alias);
+      if (row) row.done = true;
+      const el = rowFor(alias);
+      el.classList.add('done');
+      el.querySelectorAll('input, button, .ldrop').forEach((n) => { n.disabled = true; n.style.pointerEvents = 'none'; });
+      state(alias, `Added from ${how}`, 'ok', url);
+      paintTally();
     }
 
-    async function send(body, opts) {
-      const r = await fetch('/logos/api/' + opts.path, opts.init);
+    async function send(alias, path, init, how) {
+      state(alias, how === 'a URL' ? 'Fetching — a blocked host is retried through the bypass chain…' : 'Uploading…');
+      const r = await fetch('/logos/api/' + path, init);
       const j = await r.json().catch(() => ({}));
-      if (j.ok) {
-        say(`Added ${j.rel}. Returning to the logo cache…`, 'ok');
-        setTimeout(() => { window.location.href = '/logos'; }, 900);
-      } else {
-        say(j.error || 'That did not work. Check the logs and try again.', 'err');
-      }
+      if (j.ok) markDone(alias, j.url, how);
+      else state(alias, j.error || 'That did not work. Check the logs and try again.', 'err');
+      return !!j.ok;
     }
 
-    async function upload(file) {
-      const { studio, alias } = selected();
-      if (!studio) return say('Pick a studio first.', 'err');
+    function fromUrl(alias) {
+      const url = rowFor(alias).querySelector('[data-url]').value.trim();
+      if (!url) { state(alias, 'Enter a URL first.', 'err'); return Promise.resolve(false); }
+      return send(alias, 'add-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studio: studio(), alias, url }),
+      }, 'a URL');
+    }
+
+    function upload(alias, file) {
       const form = new FormData();
-      form.append('studio', studio);
+      form.append('studio', studio());
       form.append('alias', alias);
       form.append('file', file, file.name);
-      say(`Uploading ${file.name}…`);
-      await send(null, { path: 'add-upload', init: { method: 'POST', body: form } });
+      return send(alias, 'add-upload', { method: 'POST', body: form }, file.name);
     }
 
-    async function fromUrl() {
-      const { studio, alias } = selected();
-      const url = document.getElementById('url').value.trim();
-      if (!studio) return say('Pick a studio first.', 'err');
-      if (!url) return say('Enter a URL to fetch.', 'err');
-      const btn = document.getElementById('urlBtn');
-      btn.disabled = true;
-      say('Fetching — a blocked host is retried through the bypass chain, so this can take a moment…');
-      await send(null, {
-        path: 'add-url',
-        init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studio, alias, url }) },
-      });
-      btn.disabled = false;
+    async function fetchAll() {
+      document.getElementById('fetchAll').disabled = true;
+      const queued = ROWS.filter((r) => !r.done && rowFor(r.alias).querySelector('[data-url]').value.trim());
+      for (const r of queued) await fromUrl(r.alias);
+      paintTally();
     }
 
-    const drop = document.getElementById('drop');
-    const picker = document.getElementById('file');
-    drop.addEventListener('click', () => picker.click());
-    drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picker.click(); } });
-    picker.addEventListener('change', () => { if (picker.files[0]) upload(picker.files[0]); });
-    ['dragenter', 'dragover'].forEach((n) => drop.addEventListener(n, (e) => { e.preventDefault(); drop.classList.add('over'); }));
-    ['dragleave', 'drop'].forEach((n) => drop.addEventListener(n, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
-    drop.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) upload(f); });
+    const rows = document.getElementById('rows');
+    const picker = document.getElementById('picker');
+
+    rows.addEventListener('click', (e) => {
+      const row = e.target.closest('.lrow');
+      if (!row) return;
+      if (e.target.closest('[data-fetch]')) fromUrl(row.dataset.alias);
+      else if (e.target.closest('[data-drop]')) { pending = row.dataset.alias; picker.click(); }
+    });
+
+    rows.addEventListener('keydown', (e) => {
+      const row = e.target.closest('.lrow');
+      if (!row) return;
+      if (e.key === 'Enter' && e.target.matches('[data-url]')) { e.preventDefault(); fromUrl(row.dataset.alias); }
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-drop]')) {
+        e.preventDefault();
+        pending = row.dataset.alias;
+        picker.click();
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach((n) => rows.addEventListener(n, (e) => {
+      const zone = e.target.closest('[data-drop]');
+      if (!zone) return;
+      e.preventDefault();
+      zone.classList.add('over');
+    }));
+    ['dragleave', 'drop'].forEach((n) => rows.addEventListener(n, (e) => {
+      const zone = e.target.closest('[data-drop]');
+      if (zone) zone.classList.remove('over');
+    }));
+    rows.addEventListener('drop', (e) => {
+      const zone = e.target.closest('[data-drop]');
+      if (!zone) return;
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) upload(zone.closest('.lrow').dataset.alias, file);
+    });
+
+    picker.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && pending !== null) upload(pending, file);
+      e.target.value = '';
+      pending = null;
+    });
 
     document.getElementById('studio').innerHTML =
       '<option value="">Choose a studio…</option>' + (STATE.studios || []).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    paintTarget();
+    render();
   </script>
 {% endblock %}

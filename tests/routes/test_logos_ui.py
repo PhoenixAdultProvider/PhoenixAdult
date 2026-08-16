@@ -122,9 +122,17 @@ def test_add_page_is_admin_only_and_offers_both_sources() -> None:
     member.cookies.set('pa_session', user_store.create_session(uid, 'pytest'))
     assert member.get('/logos/add').status_code == 403
     page = authed_client().get('/logos/add').text
-    assert 'id="studio"' in page and 'id="alias"' in page
-    assert 'id="drop"' in page and "addEventListener('drop'" in page
+    assert 'id="studio"' in page
+    assert 'data-drop' in page and "addEventListener('drop'" in page, 'each row takes a dropped file'
+    assert 'data-url' in page and 'data-fetch' in page, 'each row has its own URL field and button'
     assert 'add-upload' in page and 'add-url' in page
+
+
+def test_the_add_page_stays_put_and_works_a_studio_at_a_time() -> None:
+    page = authed_client().get('/logos/add').text
+    assert 'window.location.href' not in page, 'adding a logo must not navigate away'
+    assert 'id="fetchAll"' in page and 'for (const r of queued) await fromUrl(r.alias);' in page
+    assert 'markDone(alias, j.url, how)' in page, 'a finished row shows what landed'
 
 
 def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -27,11 +27,9 @@ To update the site list run `python -m scripts.generate_sitelist`
 + #### Adult Empire | ✅
 + #### Adult Empire Cash | ✅ - **DVDs not supported**
   - 18 Lust
-  - Bizarre Entertainment
   - Black Massive Cocks
   - Brutha's Inc
   - Concoxxxion
-  - Conor Coxxx
   - Darkside Entertainment
   - Digital Video Vision
   - Elegant Angel
@@ -39,27 +37,24 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Forbidden Fruits Films
   - Horny Household
   - Hot Wife Fun
-  - Hot Wives Cheating
   - Jays POV
   - Joanna Angel
   - Jodi West
   - Jonathan Jordan XXX
   - Kaiia Eve
   - Kings of Fetish
-  - LeWood
+  - Le Wood
   - Only 3x
-  - Pornstar Stroker
+  - Porn Video Database
   - Reagan Foxx
   - Real Girls Fuck
   - Severe Sex Films
   - SINematica
-  - Smut Factor
   - SpankMonster
   - Star Strokers
   - Step House XXX
   - Vouyer Media
   - West Coast Productions
-  - Whorecraft VR
 + #### Adult Prime | ✅
   - 4K CFNM
   - Adult Prime Originals
