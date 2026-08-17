@@ -60,21 +60,22 @@
     <div class="sub">Cached cast &amp; crew headshots ({{ summary }}). Newest first.{% if is_admin() %}
       "Use Original" restores the preserved pre-crop original (Plex may need a refresh).{% endif %}</div>
     {% if not crop_available %}<p class="warn">⚠ opencv-python-headless is not installed — face cropping is a no-op until you install it.</p>{% endif %}
-    {{ toolbar.search_row('nameSearch', 'Search names…') }}
-  <div class="controls" id="controls">
-    <div class="filters">
-      <div class="filter-group">
+    {% call toolbar.search_row('nameSearch', 'Search names…') %}
+      <div class="filter-group sr-aux">
         <label for="sourceFilter">Source</label>
         <select class="pa-input" id="sourceFilter"><option value="">Any Source</option>{% if has_unrecorded %}<option value="__blank__">Unrecorded</option>{% endif %}{% for name in present_sources %}<option value="{{ name }}">{{ name }}</option>{% endfor %}</select>
       </div>
-      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn tab croptoggle" id="cropToggle">Cropped Only</button>
-        <button class="pa-btn tab noupstream" id="upstreamToggle">No Upstream</button>
-        <button class="pa-btn tab genericonly" id="genericToggle">Generic Only</button>
-        <button class="pa-btn tab singleonly" id="singleToggle">Single Name</button></div>
+    {% endcall %}
+  <div class="controls" id="controls">
+    <div class="filters">
+      <div class="tabs">{% for t, label in tabs %}<button class="pa-btn pa-btn--lg tab" data-t="{{ t }}" data-label="{{ label }}" onclick="showTab('{{ t }}')">{{ label }} <span class="cnt">{{ type_counts[t] }}</span></button>{% endfor %}<button class="pa-btn pa-btn--lg tab croptoggle" id="cropToggle">Cropped Only</button>
+        <button class="pa-btn pa-btn--lg tab noupstream" id="upstreamToggle">No Upstream</button>
+        <button class="pa-btn pa-btn--lg tab genericonly" id="genericToggle">Generic Only</button>
+        <button class="pa-btn pa-btn--lg tab singleonly" id="singleToggle">Single Name</button></div>
     </div>
     {% call toolbar.bar('searchCount') %}
     <div class="tb-actions">
-{% if is_admin() %}      <button class="pa-btn bulk" id="bulkBtn">Fetch Images for Shown</button>
+{% if is_admin() %}      <button class="pa-btn pa-btn--lg bulk" id="bulkBtn">Fetch Images for Shown</button>
       <div class="progress" id="bulkProgress" hidden><div class="fill" id="bulkFill"></div></div>
       <span class="cnt" id="bulkStatus"></span>
 {% endif %}    </div>

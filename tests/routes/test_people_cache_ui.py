@@ -200,11 +200,11 @@ def test_paging_reset_and_sfw_stay_visible_on_mobile_on_both_pages() -> None:
 def test_the_shared_toolbar_partial_is_the_only_implementation() -> None:
     people = authed_client().get('/people').text
     metadata = authed_client().get('/metadata').text
-    cluster = '<button class="pa-btn" id="resetBtn" onclick="resetFilters()">Reset Filters</button>'
+    cluster = '<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">Reset Filters</button>'
     for body in (people, metadata):
         assert cluster in body
         assert body.index('id="resetBtn"') < body.index('id="sfwToggle"')
-        assert '<button class="pa-btn" id="prevBtn" onclick="prevPage()">Previous</button>' in body
+        assert '<button class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">Previous</button>' in body
         assert body.count('    .pa-btn {\n') == 1, '.pa-btn belongs to base.html alone'
         assert 'height: 32px;' in body.split('    .pa-btn {\n')[1].split('}')[0]
 
@@ -487,3 +487,24 @@ def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> No
     people = authed_client().get('/people').text
     actions = people.split('<div class="tb-actions">')[1].split('{% endif %}')[0]
     assert 'id="bulkBtn"' in actions
+
+
+def test_the_control_strip_is_one_button_size() -> None:
+    import re
+
+    for path in ('/metadata', '/people', '/logos'):
+        body = authed_client().get(path).text
+        strip = body.split('<div class="toolbar">')[1].split('</div>\n  </div>')[0]
+        plain = [m for m in re.findall(r'class="(pa-btn[^"]*)"', strip) if 'pa-btn--lg' not in m and 'pa-btn--sm' not in m]
+        assert not plain, f'{path} still has small control buttons: {plain}'
+
+
+def test_the_search_row_can_carry_its_own_filters() -> None:
+    people = authed_client().get('/people').text
+    row = people.split('<div class="searchbar">')[1].split('</div>\n  <div class="controls"')[0]
+    assert 'id="sourceFilter"' in row, 'Source sits beside the search box'
+
+    logos = authed_client().get('/logos').text
+    row = logos.split('<div class="searchbar">')[1].split('<div class="controls"')[0]
+    assert 'id="unmatched"' in row and 'id="bgBtn"' in row, 'Registry and Backdrop sit beside the search box'
+    assert '.searchbar .sr-aux .pa-input { width: auto; min-width: 150px; }' in logos, 'aux controls size to content'

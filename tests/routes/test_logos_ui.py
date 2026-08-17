@@ -309,7 +309,7 @@ def test_sfw_mode_keeps_the_logo_artwork_off_the_page() -> None:
 
 def test_the_logo_page_uses_the_shared_toolbar_with_a_reset() -> None:
     page = authed_client().get('/logos').text
-    assert '<button class="pa-btn" id="resetBtn" onclick="resetFilters()">Reset Filters</button>' in page
+    assert '<button class="pa-btn pa-btn--lg" id="resetBtn" onclick="resetFilters()">Reset Filters</button>' in page
     assert 'id="sfwToggle"' in page
     assert '<div class="controls" id="controls">' in page and '<div class="toolbar">' in page
     assert 'id="filtersToggle"' in page and 'id="actionsToggle"' in page

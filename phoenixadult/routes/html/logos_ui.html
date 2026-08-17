@@ -47,25 +47,25 @@
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
 Add one below, or drop a file into a studio folder there and click Rescan.{% endif %}</div>
-  {{ toolbar.search_row('filter', 'site, slug or path…') }}
+  {% call toolbar.search_row('filter', 'site, slug or path…') %}
+    <div class="filter-group sr-aux">
+      <label for="unmatched">Registry</label>
+      <select class="pa-input" id="unmatched"><option value="">All</option><option value="1">Unmatched</option></select>
+    </div>
+    <div class="filter-group sr-aux">
+      <label for="bgBtn">Backdrop</label>
+      <button type="button" class="pa-btn pa-btn--lg" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
+    </div>
+  {% endcall %}
 
   <div class="controls" id="controls">
-    <div class="filters">
-      <div class="filter-group">
-        <label for="unmatched">Registry</label>
-        <select class="pa-input" id="unmatched"><option value="">All logos</option><option value="1">No registry match only</option></select>
-      </div>
-      <div class="filter-group">
-        <label for="bgBtn">Backdrop</label>
-        <button type="button" class="pa-btn" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
-      </div>
-    </div>
+    <div class="filters"></div>
     {% call toolbar.bar('count') %}
     <div class="tb-actions">
-{% if is_admin() %}      <a class="pa-btn add-btn" href="/logos/add">Add Logo</a>
-      <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+{% if is_admin() %}      <a class="pa-btn pa-btn--lg add-btn" href="/logos/add">Add Logo</a>
+      <button type="button" class="pa-btn pa-btn--lg pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
       <span class="rescan-status" id="rescan-status"></span>
-      <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
+      <button type="button" class="pa-btn pa-btn--lg pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
     </div>
     {% endcall %}
   </div>
