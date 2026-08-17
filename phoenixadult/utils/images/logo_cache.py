@@ -416,13 +416,23 @@ def _adopt_manual_drops() -> int:
         if target.exists():
             continue
         f.rename(target)
-        if target.suffix.lower() in _RASTER_EXTS:
-            trim(target)
         adopted += 1
     return adopted
 
 
+def _trim_stored() -> int:
+    root = cache_dir()
+    if not root.exists():
+        return 0
+    trimmed = 0
+    for f in sorted(root.rglob('logo.*')):
+        if f.is_file() and f.suffix.lower() in _RASTER_EXTS and trim(f) is not None:
+            trimmed += 1
+    return trimmed
+
+
 def rescan() -> int:
     _adopt_manual_drops()
+    _trim_stored()
     reconcile()
     return len(entries())

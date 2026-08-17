@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -65,9 +66,12 @@ def main() -> int:
     for f, _, _, _ in hits:
         if logo_trim.trim(f) is not None:
             trimmed += 1
-    logo_cache.invalidate()
-    logo_cache.reconcile()
     print(f'trimmed {trimmed} logos')
+    try:
+        logo_cache.invalidate()
+        logo_cache.reconcile()
+    except (OSError, RuntimeError, sqlite3.Error) as exc:
+        print(f'index not rebuilt ({exc}); the files are trimmed — use Rescan Folder on /logos')
     return 0
 
 

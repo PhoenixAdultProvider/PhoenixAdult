@@ -108,3 +108,11 @@ def test_adopting_a_manual_drop_trims_it(logo_dir: Path, tmp_path: Path) -> None
     _padded(folder / 'Blacked Raw.png', (240, 160), (60, 40, 180, 120), (0, 0, 0, 0))
     logo_cache.rescan()
     assert _size(folder / 'logo.blackedraw.png') == (120, 80)
+
+
+def test_rescan_trims_a_drop_that_was_already_named_correctly(logo_dir: Path) -> None:
+    folder = logo_dir / 'couplescinema'
+    folder.mkdir()
+    dropped = _padded(folder / 'logo.sexschool.png', (360, 240), (0, 186, 360, 240), (0, 0, 0, 0))
+    logo_cache.rescan()
+    assert _size(dropped) == (360, 54)
