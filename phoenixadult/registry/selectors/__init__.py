@@ -100,7 +100,6 @@ from phoenixadult.registry.selectors.sites.boundhoneys import BOUNDHONEYS_SITES
 from phoenixadult.registry.selectors.sites.brandnewamateurs import BRANDNEWAMATEURS_SITES
 from phoenixadult.registry.selectors.sites.caribbeancom import CARIBBEANCOM_SITES
 from phoenixadult.registry.selectors.sites.clips4sale import CLIPS4SALE_SITES
-from phoenixadult.registry.selectors.sites.clubfilly import CLUBFILLY_SITES
 from phoenixadult.registry.selectors.sites.colette import COLETTE_SITES
 from phoenixadult.registry.selectors.sites.cumbizz import CUMBIZZ_SITES
 from phoenixadult.registry.selectors.sites.cumlouder import CUMLOUDER_SITES

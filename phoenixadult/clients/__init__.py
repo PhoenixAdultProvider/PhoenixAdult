@@ -99,7 +99,6 @@ from phoenixadult.clients.sites.boundhoneys import BoundHoneysClient
 from phoenixadult.clients.sites.brandnewamateurs import BrandNewAmateursClient
 from phoenixadult.clients.sites.caribbeancom import CaribbeancomClient
 from phoenixadult.clients.sites.clips4sale import Clips4SaleClient
-from phoenixadult.clients.sites.clubfilly import ClubFillyClient
 from phoenixadult.clients.sites.colette import ColetteClient
 from phoenixadult.clients.sites.cumbizz import CumbizzClient
 from phoenixadult.clients.sites.cumlouder import CumLouderClient
@@ -280,7 +279,6 @@ CLIENT_REGISTRY: dict[str, Client] = {
     'brandnewamateurs': BrandNewAmateursClient(),
     'caribbeancom': CaribbeancomClient(),
     'clips4sale': Clips4SaleClient(),
-    'clubfilly': ClubFillyClient(),
     'colette': ColetteClient(),
     'darkroomvr': DarkRoomVRClient(),
     'desperateamateurs': DesperateAmateursClient(),

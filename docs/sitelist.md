@@ -161,6 +161,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Bryci
   - Cali Carter
   - Cece September
+  - ClubFilly
   - Cosplay Channel PornPortal
   - Czech AR
   - Dirty Sluts and Studs
@@ -249,7 +250,6 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Taboo
   - Wild on Cam
 + #### Clips4Sale | ❌ - **StudioID with Title Search**
-+ #### ClubFilly | ❌ - **SceneID, DVDs not supported**
 + #### Colette | ✅
 + #### Couples Cinema | ✅ - **Title or Scene ID**
   - Common Sensual

@@ -361,13 +361,13 @@ classDiagram
     #fetch_and_load(url, ctx) parsel.Selector  bypass-aware
     #fetch_json(url, ctx) Any  bypass-aware
   }
-  class sites["phoenixadult/clients/sites/* (93)"] {
+  class sites["phoenixadult/clients/sites/* (92)"] {
     «per-site XPath flow»
   }
   class networks["phoenixadult/clients/networks/* (76)"] {
     «per-network flow»
   }
-  class aggregators["phoenixadult/clients/aggregators/* (11)"] {
+  class aggregators["phoenixadult/clients/aggregators/* (12)"] {
     «Data18 / JavBus / MetadataAPI / …»
   }
 
@@ -776,7 +776,7 @@ phoenixadult/
                              #   plex_reconcile, plex_account, plex_import
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + 180 dedicated clients:
-                             #   sites/ (93), networks/ (76), aggregators/ (11)
+                             #   sites/ (92), networks/ (76), aggregators/ (12)
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider

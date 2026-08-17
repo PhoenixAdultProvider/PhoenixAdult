@@ -188,7 +188,6 @@ When iterating on a scraper it's often fastest to watch it live:
 | ⬜ | Caribbeancom | exact | |
 | ⬜ | Cherry Pimps | enhanced | |
 | ⬜ | Clips4Sale | exact | |
-| ⬜ | ClubFilly | exact | |
 | ⬜ | Colette | enhanced | |
 | ⬜ | Couples Cinema | enhanced | |
 | ⬜ | Cumbizz | exact | |
