@@ -315,3 +315,50 @@ def test_the_logo_page_uses_the_shared_toolbar_with_a_reset() -> None:
     assert 'id="filtersToggle"' in page and 'id="actionsToggle"' in page
     assert "document.getElementById('filter').value = '';" in page
     assert "pickStudio('');" in page, 'reset returns the studio rail to All'
+
+
+def test_the_backdrop_verdict_survives_a_restart(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'pa.db'))
+    root = tmp_path / 'images' / 'logos' / 'studio'
+    for name, ink in (('white', (255, 255, 255)), ('black', (18, 18, 20))):
+        _logo(root / f'logo.{name}.png', ink)
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+
+    first = {e['rel']: e['well'] for e in logo_cache.entries()}
+    assert set(first.values()) == {'dark', 'light'}
+    store = logo_cache._well_store()
+    assert store.exists(), 'the verdict must outlive the process or every restart rescans every logo'
+    assert len(json.loads(store.read_text(encoding='utf-8'))) == 2
+
+    logo_cache._WELL_CACHE.clear()
+    logo_cache._WELL_LOADED = False
+
+    import PIL.Image
+
+    def _no_decoding(*_a: object, **_kw: object) -> object:
+        raise AssertionError('a cached logo must not be opened and rescanned')
+
+    monkeypatch.setattr(PIL.Image, 'open', _no_decoding)
+    assert {e['rel']: e['well'] for e in logo_cache.entries()} == first, 'a restart must read the stored verdicts'
+
+
+def test_a_changed_logo_is_rescanned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'pa.db'))
+    root = tmp_path / 'images' / 'logos' / 'studio'
+    _logo(root / 'logo.brand.png', (255, 255, 255))
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+    assert [e['well'] for e in logo_cache.entries()] == ['dark']
+
+    _logo(root / 'logo.brand.png', (18, 18, 20))
+    logo_cache.invalidate()
+    logo_cache.reconcile()
+    assert [e['well'] for e in logo_cache.entries()] == ['light'], 'a repainted logo must not keep the old verdict'
+    assert len(json.loads(logo_cache._well_store().read_text(encoding='utf-8'))) == 1, 'stale keys must be pruned'

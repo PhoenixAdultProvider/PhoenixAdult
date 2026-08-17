@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import sqlite3
@@ -202,7 +203,47 @@ def local_url(path: Path, mtime: float | None = None) -> str | None:
     return f'/images/local/logos/{quoted}{bust}'
 
 
-_WELL_CACHE: dict[tuple[str, float, int], str] = {}
+_WELL_CACHE: dict[str, str] = {}
+_WELL_LOADED = False
+_WELL_DIRTY = False
+
+
+def _well_store() -> Path:
+    return Path(env.state_db_path).parent / 'logo-wells.json'
+
+
+def _well_key(rel: str, mtime: float, size: int) -> str:
+    return f'{rel}|{int(mtime)}|{size}'
+
+
+def _load_wells() -> None:
+    global _WELL_LOADED
+    if _WELL_LOADED:
+        return
+    _WELL_LOADED = True
+    try:
+        stored = json.loads(_well_store().read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return
+    if isinstance(stored, dict):
+        _WELL_CACHE.update({str(k): str(v) for k, v in stored.items() if v in ('dark', 'light')})
+
+
+def _save_wells() -> None:
+    global _WELL_DIRTY
+    if not _WELL_DIRTY:
+        return
+    _WELL_DIRTY = False
+    target = _well_store()
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix('.json.tmp')
+        tmp.write_text(json.dumps(_WELL_CACHE, separators=(',', ':')), encoding='utf-8')
+        tmp.replace(target)
+    except OSError as err:
+        logger.warn('logo-cache', f'could not persist the backdrop cache: {err}')
+
+
 LIGHT_WELL_RGB = (0xF0, 0xF0, 0xF2)
 DARK_WELL_RGB = (0x20, 0x20, 0x24)
 _INVISIBLE_CONTRAST = 1.5
@@ -224,8 +265,11 @@ def _contrast(a: float, b: float) -> float:
     return (max(a, b) + 0.05) / (min(a, b) + 0.05)
 
 
-def preferred_well(path: Path, mtime: float, size: int) -> str:
-    key = (path.as_posix(), mtime, size)
+def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
+    global _WELL_DIRTY
+
+    _load_wells()
+    key = _well_key(rel or path.as_posix(), mtime, size)
     cached = _WELL_CACHE.get(key)
     if cached is not None:
         return cached
@@ -248,6 +292,7 @@ def preferred_well(path: Path, mtime: float, size: int) -> str:
     except Exception:  # noqa: BLE001 - an unreadable logo falls back to the dark well
         well = 'dark'
     _WELL_CACHE[key] = well
+    _WELL_DIRTY = True
     return well
 
 
@@ -282,6 +327,24 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
     return rel_to(target, root) or target.name
 
 
+def _mtime_of(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _prune_wells(live: set[str]) -> None:
+    global _WELL_DIRTY
+
+    stale = set(_WELL_CACHE) - live
+    if not stale:
+        return
+    for key in stale:
+        _WELL_CACHE.pop(key, None)
+    _WELL_DIRTY = True
+
+
 def entries() -> list[dict[str, Any]]:
     conn = _conn()
     rows = conn.execute('SELECT name_slug, MIN(rel_path) AS rel_path FROM logos GROUP BY name_slug ORDER BY name_slug').fetchall()
@@ -300,10 +363,12 @@ def entries() -> list[dict[str, Any]]:
                 'rel': rel,
                 'url': local_url(path, stat.st_mtime),
                 'sizeBytes': stat.st_size,
-                'well': preferred_well(path, stat.st_mtime, stat.st_size),
+                'well': preferred_well(path, stat.st_mtime, stat.st_size, rel),
                 'folder': rel.split('/')[0] if '/' in rel else '',
             }
         )
+    _prune_wells({_well_key(str(e['rel']), _mtime_of(root / str(e['rel'])), int(e['sizeBytes'])) for e in out})
+    _save_wells()
     return out
 
 
