@@ -52,14 +52,19 @@
 
   <div class="stats" id="stats"></div>
   <div class="toolbar">
-    <select class="pa-input" id="site-filter" onchange="render()"></select>
-    <input class="pa-input" type="text" id="text-filter" placeholder="filter query and result titles" oninput="render()">
-    <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="render()"> Duplicates only</label>
+    <select class="pa-input" id="site-filter" onchange="reloadFirst()"></select>
+    <input class="pa-input" type="text" id="text-filter" placeholder="filter query and result titles" oninput="reloadFirst()">
+    <label class="dup-only"><input type="checkbox" id="dup-filter" onchange="reloadFirst()"> Duplicates only</label>
     <button type="button" class="pa-btn" onclick="sweepExpired()">Purge Expired</button>
     <button type="button" class="pa-btn" onclick="purgeSite()">Purge Site</button>
     <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>
   </div>
   <div class="count-line" id="count-line"></div>
+  <span id="pager" style="display:none;gap:8px;align-items:center;margin-bottom:10px">
+    <button type="button" class="pa-btn pa-btn--lg" id="prevBtn" onclick="prevPage()">Previous</button>
+    <span class="pa-page" id="pageInfo" style="font-size:12px;color:var(--label-text)"></span>
+    <button type="button" class="pa-btn pa-btn--lg" id="nextBtn" onclick="nextPage()">Next</button>
+  </span>
   <div id="list"></div>
   <div class="empty" id="empty" style="display:none">no stored searches match</div>
 
@@ -91,15 +96,24 @@
       if ([...sel.options].some((o) => o.value === current)) sel.value = current;
     }
 
-    function filtered() {
-      const site = document.getElementById('site-filter').value;
-      const text = document.getElementById('text-filter').value.trim().toLowerCase();
-      return (STATE.entries || []).filter((e) => {
-        if (site && e.site !== site) return false;
-        if (!text) return true;
-        if (e.title.toLowerCase().includes(text)) return true;
-        return e.results.some((r) => r.title.toLowerCase().includes(text));
+    let offset = 0;
+    const PAGE_SIZE = {{ page_size|tojson }};
+
+    async function reload() {
+      const params = new URLSearchParams({
+        site: document.getElementById('site-filter').value,
+        q: document.getElementById('text-filter').value.trim(),
+        offset: String(offset),
+        limit: String(PAGE_SIZE),
       });
+      if (document.getElementById('dup-filter').checked) params.set('dupes', '1');
+      STATE = await (await fetch('/searches/api/entries?' + params.toString())).json();
+      render();
+    }
+
+    function reloadFirst() {
+      offset = 0;
+      reload();
     }
 
     function resultRow(r) {
@@ -130,6 +144,32 @@
       </div>`;
     }
 
+    function paintPager() {
+      const total = STATE.groupTotal || 0;
+      const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      const page = Math.floor(offset / PAGE_SIZE) + 1;
+      const bar = document.getElementById('pager');
+      if (!bar) return;
+      bar.style.display = pages > 1 ? 'inline-flex' : 'none';
+      document.getElementById('pageInfo').textContent = 'Page ' + page + ' of ' + pages;
+      document.getElementById('prevBtn').disabled = offset <= 0;
+      document.getElementById('nextBtn').disabled = offset + PAGE_SIZE >= total;
+    }
+
+    function prevPage() {
+      if (offset > 0) {
+        offset = Math.max(0, offset - PAGE_SIZE);
+        reload();
+      }
+    }
+
+    function nextPage() {
+      if (offset + PAGE_SIZE < (STATE.groupTotal || 0)) {
+        offset += PAGE_SIZE;
+        reload();
+      }
+    }
+
     function render() {
       siteOptions();
       const totals = STATE.totals || {};
@@ -139,21 +179,13 @@
         <span class="pa-card pa-card--tight stat ${totals.expired ? 'warn' : ''}"><b>${totals.expired || 0}</b> expired</span>
         <span class="pa-card pa-card--tight stat">TTL: <b>${STATE.ttlDays ? STATE.ttlDays + 'd' : 'off'}</b></span>`;
 
-      const rows = filtered();
-      const groups = new Map();
-      for (const e of rows) {
-        const key = e.date ? `${e.site}|${e.date}|${e.sceneId}` : `solo|${e.keyHash}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(e);
-      }
+      const groups = STATE.groups || [];
       const dupOnly = document.getElementById('dup-filter').checked;
-      if (dupOnly) for (const [key, members] of [...groups]) { if (members.length < 2) groups.delete(key); }
-      const shown = [...groups.values()].reduce((n, m) => n + m.length, 0);
-      document.getElementById('count-line').textContent = `${shown} of ${(STATE.entries || []).length} stored searches shown` + (dupOnly ? ' — duplicate groups only' : '');
+      const shown = groups.reduce((n, m) => n + m.length, 0);
+      document.getElementById('count-line').textContent =
+        `${shown} of ${STATE.matched || 0} matching searches shown` + (dupOnly ? ' — duplicate groups only' : '');
       let html = '';
-      let any = false;
-      for (const members of groups.values()) {
-        any = true;
+      for (const members of groups) {
         if (members.length > 1) {
           html += `<div class="group"><div class="group-head"><span class="pa-badge dup-badge">${members.length} spellings of one scene</span>
             <span>${esc(members[0].site)} · ${esc(members[0].date)}</span></div>${members.map(card).join('')}</div>`;
@@ -162,12 +194,13 @@
         }
       }
       document.getElementById('list').innerHTML = html;
-      document.getElementById('empty').style.display = any ? 'none' : '';
+      document.getElementById('empty').style.display = groups.length ? 'none' : '';
+      paintPager();
     }
 
     async function post(path, body) {
       const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
-      if (res.ok) { STATE = await res.json(); render(); }
+      if (res.ok) await reload();
       return res.ok;
     }
 
@@ -175,7 +208,7 @@
       const chip = ev.target.closest('.chip');
       if (chip) {
         document.getElementById('site-filter').value = chip.dataset.site;
-        render();
+        reloadFirst();
         return;
       }
       const purgeBtn = ev.target.closest('[data-purge]');

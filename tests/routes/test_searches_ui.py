@@ -96,6 +96,13 @@ def test_research_purges_and_requeues_with_the_stored_query(monkeypatch) -> None
 
 def test_the_page_offers_a_duplicates_only_filter() -> None:
     _seed()
-    body = authed_client().get('/searches').text
+    client = authed_client()
+    body = client.get('/searches').text
     assert 'id="dup-filter"' in body and 'Duplicates only' in body
-    assert 'members.length < 2' in body, 'the filter drops solo groups client-side'
+    assert "params.set('dupes', '1')" in body, 'the filter is applied server-side so totals stay right'
+
+    everything = client.get('/searches/api/entries').json()
+    only_dupes = client.get('/searches/api/entries', params={'dupes': '1'}).json()
+    assert all(len(group) > 1 for group in only_dupes['groups']), 'solo searches must drop out'
+    assert only_dupes['matched'] <= everything['matched']
+    assert only_dupes['totals'] == everything['totals'], 'the headline totals count the whole store, not the page'

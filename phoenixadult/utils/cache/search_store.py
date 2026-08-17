@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Mapping
 from dataclasses import asdict
+from typing import Any
 
 from phoenixadult.clients.base import SearchResult
 from phoenixadult.config.env import env
@@ -183,6 +185,100 @@ def dump() -> dict[str, object]:
         'totals': {'searches': len(entries), 'results': total_results, 'expired': expired},
         'sites': dict(sorted(by_site.items())),
         'ttlDays': env.search_store_ttl_days,
+    }
+
+
+def _group_key(row: Mapping[str, Any]) -> str:
+    date = str(row['date'] or '')
+    return f'{row["site"]}|{date}|{row["sceneId"]}' if date else f'solo|{row["keyHash"]}'
+
+
+def dump_page(site: str = '', needle: str = '', dupes_only: bool = False, offset: int = 0, limit: int = 50) -> dict[str, object]:
+    conn = db.connect()
+    ttl = _ttl_seconds()
+    now = time.time()
+
+    totals_row = conn.execute('SELECT COUNT(*) AS n FROM searches').fetchone()
+    results_row = conn.execute('SELECT COUNT(*) AS n FROM search_results').fetchone()
+    by_site = {str(r['site']): int(r['n']) for r in conn.execute('SELECT site, COUNT(*) AS n FROM searches GROUP BY site ORDER BY site')}
+    expired_total = 0
+    if ttl is not None:
+        cut = now - ttl
+        expired_total = int(conn.execute('SELECT COUNT(*) AS n FROM searches WHERE saved_at < ?', (cut,)).fetchone()['n'])
+
+    where: list[str] = []
+    params: list[object] = []
+    if site:
+        where.append('site = ?')
+        params.append(site)
+    if needle:
+        like = f'%{needle}%'
+        where.append('(LOWER(title) LIKE ? OR key_hash IN (SELECT key_hash FROM search_results WHERE LOWER(title) LIKE ?))')
+        params.extend([like, like])
+    clause = f' WHERE {" AND ".join(where)}' if where else ''
+
+    light: list[dict[str, Any]] = [
+        {
+            'keyHash': str(r['key_hash']),
+            'site': str(r['site']),
+            'title': str(r['title']),
+            'date': str(r['date'] or ''),
+            'sceneId': str(r['scene_id'] or ''),
+            'language': str(r['language'] or ''),
+            'savedAt': float(r['saved_at']),
+            'expiresAt': float(r['saved_at']) + ttl if ttl is not None else None,
+            'expired': ttl is not None and now - float(r['saved_at']) > ttl,
+        }
+        for r in conn.execute(f'SELECT key_hash, site, title, date, scene_id, language, saved_at FROM searches{clause} ORDER BY saved_at DESC', params)
+    ]
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in light:
+        grouped.setdefault(_group_key(row), []).append(row)
+    groups = [members for members in grouped.values() if not dupes_only or len(members) > 1]
+    matched = sum(len(m) for m in groups)
+    page = groups[offset : offset + limit]
+
+    wanted = [str(row['keyHash']) for members in page for row in members]
+    by_key: dict[str, list[dict[str, Any]]] = {}
+    if wanted:
+        marks = ','.join('?' * len(wanted))
+        rows = conn.execute(
+            f'SELECT key_hash, pos, cur_id, title, subsite, payload FROM search_results WHERE key_hash IN ({marks}) ORDER BY key_hash, pos', wanted
+        ).fetchall()
+        cur_ids = {str(r['cur_id']) for r in rows}
+        snapshot_keys: dict[str, str] = {}
+        if cur_ids:
+            id_marks = ','.join('?' * len(cur_ids))
+            snapshot_keys = {
+                str(r['cur_id']): str(r['rel_path']) for r in conn.execute(f'SELECT cur_id, rel_path FROM scenes WHERE cur_id IN ({id_marks})', list(cur_ids))
+            }
+        for r in rows:
+            payload = json.loads(str(r['payload']))
+            by_key.setdefault(str(r['key_hash']), []).append(
+                {
+                    'pos': int(r['pos']),
+                    'curId': str(r['cur_id']),
+                    'title': str(r['title']),
+                    'subsite': str(r['subsite'] or ''),
+                    'score': payload.get('score'),
+                    'releaseDate': payload.get('release_date'),
+                    'sceneUrl': payload.get('scene_url'),
+                    'snapshotKey': snapshot_keys.get(str(r['cur_id'])),
+                }
+            )
+    for members in page:
+        for row in members:
+            row['results'] = by_key.get(str(row['keyHash']), [])
+
+    return {
+        'groups': page,
+        'matched': matched,
+        'groupTotal': len(groups),
+        'totals': {'searches': int(totals_row['n']), 'results': int(results_row['n']), 'expired': expired_total},
+        'sites': by_site,
+        'ttlDays': env.search_store_ttl_days,
+        'pageSize': limit,
     }
 
 

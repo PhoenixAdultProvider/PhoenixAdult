@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.routes import nav_username, read_json_body, render_page
@@ -11,16 +11,26 @@ from phoenixadult.utils.concurrency.pools import run_in
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard), Depends(admin_auth_guard)])
 
 
+PAGE_SIZE = 50
+
+
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    state = await run_in('store', search_store.dump)
-    return HTMLResponse(render_page('searches_ui', active='searches', username=nav_username(request), state=state))
+    state = await run_in('store', search_store.dump_page, '', '', False, 0, PAGE_SIZE)
+    return HTMLResponse(render_page('searches_ui', active='searches', username=nav_username(request), state=state, page_size=PAGE_SIZE))
 
 
 @router.get('/api/list')
 async def list_state() -> JSONResponse:
     return JSONResponse(await run_in('store', search_store.dump))
+
+
+@router.get('/api/entries')
+async def entries_json(
+    site: str = '', q: str = '', dupes: bool = False, offset: int = Query(0, ge=0), limit: int = Query(PAGE_SIZE, ge=1, le=200)
+) -> JSONResponse:
+    return JSONResponse(await run_in('store', search_store.dump_page, site, q.strip().casefold(), dupes, offset, limit))
 
 
 @router.post('/api/purge')
