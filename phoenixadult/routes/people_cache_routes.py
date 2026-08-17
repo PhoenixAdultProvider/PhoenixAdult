@@ -4,11 +4,12 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 
 from phoenixadult.config import image_base_url
@@ -47,11 +48,16 @@ _TABS = [
 ]
 
 
+@lru_cache(maxsize=8192)
+def _display_name(text: str) -> str:
+    return title_case(text, type='name')
+
+
 def _parse_filename(filename: str) -> tuple[str, str, str] | None:
     role, slug, gender = parse_person_filename(filename)
     if role not in _ROLES or not slug:
         return None
-    return role, title_case(slug.replace('-', ' '), type='name'), gender
+    return role, _display_name(slug.replace('-', ' ')), gender
 
 
 def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | None:
@@ -62,7 +68,7 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
     role, name, gender = parsed
     log_name = str(log.get('name') or '').strip()
     return {
-        'name': title_case(log_name, type='name') if log_name else name,
+        'name': _display_name(log_name) if log_name else name,
         'filename': filename,
         'relpath': relpath,
         'type': subpath.replace('/', '-'),
@@ -137,30 +143,101 @@ def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+PAGE_SIZE = 200
+
+
+def _matches(entry: dict[str, Any], needle: str, source: str, cropped: bool, noupstream: bool, generic: bool, single: bool) -> bool:
+    have = str(entry.get('source') or '')
+    if source == '__blank__' and have:
+        return False
+    if source and source != '__blank__' and have != source:
+        return False
+    if cropped and not entry.get('cropped'):
+        return False
+    if noupstream and entry.get('upstream_url'):
+        return False
+    if generic and have != 'Generic':
+        return False
+    name = str(entry.get('name') or '')
+    if single and len(name.split()) != 1:
+        return False
+    return not needle or needle in name.casefold()
+
+
+def _listing(
+    tab: str = '',
+    needle: str = '',
+    source: str = '',
+    cropped: bool = False,
+    noupstream: bool = False,
+    generic: bool = False,
+    single: bool = False,
+    offset: int = 0,
+    limit: int = PAGE_SIZE,
+    pick_default: bool = False,
+) -> dict[str, Any]:
+    everything = _list_people(people_cache_dir())
+    counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
+    if pick_default:
+        tab = next((t for t, _ in _TABS if counts[t]), _TABS[0][0])
+    in_tab = [e for e in everything if not tab or e['type'] == tab]
+    hits = [e for e in in_tab if _matches(e, needle, source, cropped, noupstream, generic, single)]
+    return {
+        'entries': [_display_entry(e) for e in hits[offset : offset + limit]],
+        'total': len(hits),
+        'counts': counts,
+        'tab': tab,
+        'sources': sorted({str(e['source']) for e in in_tab if e['source']}, key=str.casefold),
+        'has_unrecorded': any(not e['source'] for e in in_tab),
+        'library': len(everything),
+        'pageSize': limit,
+    }
+
+
+@router.get('/api/entries')
+async def entries_json(
+    type: str = '',
+    q: str = '',
+    source: str = '',
+    cropped: bool = False,
+    noupstream: bool = False,
+    generic: bool = False,
+    single: bool = False,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(PAGE_SIZE, ge=1, le=500),
+) -> JSONResponse:
+    tab = type if any(t == type for t, _ in _TABS) else ''
+    payload = await run_in('store', _listing, tab, q.strip().casefold(), source, cropped, noupstream, generic, single, offset, limit)
+    return JSONResponse(payload)
+
+
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    entries = await run_in('store', _list_people, people_cache_dir())
-    type_counts = {t: sum(1 for e in entries if e['type'] == t) for t, _ in _TABS}
-    default_tab = next((t for t, _ in _TABS if type_counts[t]), _TABS[0][0])
+    first = await run_in('store', _listing, '', '', '', False, False, False, False, 0, PAGE_SIZE, True)
+    type_counts = dict(first['counts'])
+    default_tab = str(first['tab'])
     summary = ' · '.join(f'{type_counts[t]} {label.lower()}' for t, label in _TABS if type_counts[t]) or 'none yet'
     return HTMLResponse(
         render_page(
             'people_ui',
             active='people',
             username=nav_username(request),
-            entries=[_display_entry(e) for e in entries],
+            entries=first['entries'],
             tabs=_TABS,
             type_counts=type_counts,
             default_tab=default_tab,
             summary=summary,
+            total=first['total'],
+            page_size=PAGE_SIZE,
+            library=first['library'],
             img_base=image_base_url(),
             img_opt=env.image_base_url_raw,
             crop_available=face_crop.available(),
             genders=_GENDERS,
             fetchable_sources=[s.name for s in FETCHABLE_SOURCES],
-            present_sources=sorted({str(e['source']) for e in entries if e['source']}, key=str.casefold),
-            has_unrecorded=any(not e['source'] for e in entries),
+            present_sources=first['sources'],
+            has_unrecorded=first['has_unrecorded'],
         )
     )
 

@@ -64,16 +64,16 @@ def _one_cached_person(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_people_hides_writes_and_the_serving_line(member: TestClient, _one_cached_person: None) -> None:
     body = member.get('/people').text
-    assert 'class="pa-card card' in body, 'the fixture person should render a card to assert against'
+    assert member.get('/people/api/entries').json()['total'] == 1, 'the fixture person should be listed'
+    assert 'const IS_ADMIN = false;' in body
     assert 'id="bulkBtn"' not in body
     assert 'id="bulkSource"' not in body
     assert 'Serving people images via' not in body
-    assert '>View</button>' in body and '>Edit</button>' not in body
-    assert 'pa-btn--danger purge"' not in body
-    assert 'pa-btn--primary restore"' not in body
+    assert "(IS_ADMIN ? 'Edit' : 'View')" in body, 'the card builder decides Edit vs View from IS_ADMIN'
+    assert 'purgeBtn = IS_ADMIN ?' in body and 'if (IS_ADMIN) {' in body, 'purge and restore are admin-gated'
 
     admin_body = authed_client().get('/people').text
-    assert '>Edit</button>' in admin_body and 'pa-btn--danger purge"' in admin_body
+    assert 'const IS_ADMIN = true;' in admin_body
 
 
 def test_logos_and_queue_hide_their_write_controls(member: TestClient) -> None:

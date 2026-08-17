@@ -36,10 +36,12 @@ def test_apostrophe_filename_renders_safe_buttons(monkeypatch: pytest.MonkeyPatc
     d.mkdir(parents=True)
     (d / "actor.april-o'neil_female.jpg").write_bytes(b'x')
 
-    page = authed_client().get('/people')
+    client = authed_client()
+    page = client.get('/people')
     assert page.status_code == 200
-    assert 'data-fn="actor.april-o&#39;neil_female.jpg"' in page.text
-    assert 'data-fn="actor.april-o\'neil' not in page.text
+    rows = client.get('/people/api/entries', params={'type': 'actors-female'}).json()['entries']
+    assert rows[0]['filename'] == "actor.april-o'neil_female.jpg"
+    assert 'data-fn="' + "' + esc(e.filename)" in page.text, 'the card builder must escape the filename'
     assert 'onclick="purge(' not in page.text
     assert 'onclick="restore(' not in page.text
     assert 'onclick="setGender(' not in page.text
@@ -166,7 +168,7 @@ def test_cards_carry_cropped_flag_and_toggle_exists(monkeypatch: pytest.MonkeyPa
     (d / 'actor.jane-doe_female.jpg').write_bytes(b'x')
 
     page = authed_client().get('/people')
-    assert 'data-cropped="0"' in page.text
+    assert authed_client().get('/people/api/entries').json()['entries'][0]['cropped'] is False
     assert 'id="cropToggle"' in page.text
 
 
@@ -174,7 +176,7 @@ def test_people_list_is_paged_like_the_metadata_cache() -> None:
     page = authed_client().get('/people')
     assert 'id="pager"' in page.text
     assert 'id="prevBtn"' in page.text and 'id="nextBtn"' in page.text and 'id="pageInfo"' in page.text
-    assert 'const PAGE_SIZE = 500;' in page.text
+    assert 'const PAGE_SIZE = 200;' in page.text
     assert 'function prevPage()' in page.text and 'function nextPage()' in page.text
 
 
@@ -353,15 +355,18 @@ def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> Non
     assert 'id="sourceFilter"' in body
     assert '<option value="IAFD">IAFD</option>' in body
     assert '<option value="">Any Source</option>' in body
-    assert 'data-source="IAFD"' in body
-    assert "const wanted = document.getElementById('sourceFilter').value;" in body
+    listed = authed_client().get('/people/api/entries', params={'source': 'IAFD'}).json()
+    assert listed['total'] == 1 and listed['entries'][0]['source'] == 'IAFD'
+    assert 'IAFD' in authed_client().get('/people/api/entries').json()['sources']
 
 
 def test_the_list_offers_a_generic_only_toggle(_person_cache: None) -> None:
     body = authed_client().get('/people').text
     assert 'id="genericToggle">Generic Only</button>' in body
-    assert "src === 'Generic'" in body
+    assert "params.set('generic', '1')" in body
     assert 'genericOnly' in body
+    listed = authed_client().get('/people/api/entries', params={'generic': '1'}).json()
+    assert all(e['source'] == 'Generic' for e in listed['entries'])
 
 
 def test_the_edit_page_hides_its_previews_in_sfw_mode(_person_cache: None) -> None:
@@ -445,9 +450,11 @@ def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> 
     body = authed_client().get('/people').text
 
     assert 'id="singleToggle">Single Name</button>' in body
-    assert "c.dataset.single === '1'" in body
-    assert body.count('data-single="1"') == 2
-    assert body.count('data-single="0"') == 2
+    assert "params.set('single', '1')" in body
+    client = authed_client()
+    assert client.get('/people/api/entries', params={'single': '1'}).json()['total'] == 2
+    everyone = client.get('/people/api/entries').json()['entries']
+    assert sum(1 for e in everyone if not e['single']) == 2
 
 
 def test_every_filter_toggle_has_an_active_style(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:
@@ -462,9 +469,9 @@ def test_source_filter_is_narrowed_to_the_visible_tab(monkeypatch: pytest.Monkey
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     body = authed_client().get('/people').text
 
-    assert 'function refreshSourceOptions(t)' in body
-    assert 'refreshSourceOptions(t);' in body
-    assert "if(cur && cur.hidden) picker.value = '';" in body
+    assert 'function paintSourceOptions(present, blank)' in body
+    assert 'paintSourceOptions(j.sources || [], !!j.has_unrecorded);' in body
+    assert "if (cur && cur.hidden) picker.value = '';" in body
 
 
 def test_mobile_shows_four_controls_with_the_rest_behind_two_disclosures() -> None:
