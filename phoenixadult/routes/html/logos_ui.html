@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import 'toolbar.html' as toolbar %}
 {% block title %}Logo Cache{% endblock %}
 {% block page %}logos{% endblock %}
 {% block head %}
@@ -6,10 +7,9 @@
     body {padding: 24px; }
     .sub code { color: var(--soft-text); }
     .off-banner { background: var(--banner-warning-bg); color: var(--banner-warning-text); border-radius: 6px; padding: 8px 14px; font-size: 13px; margin-bottom: 16px; }
-    .bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
-    .bar .pa-input { width: 260px; }
     .count-badge { font-size: 12px; color: var(--label-text); }
-    .add-btn { margin-left: auto; text-decoration: none; }
+    .add-btn { text-decoration: none; }
+    .filters .pa-btn { align-self: flex-start; }
     .rescan-status { font-size: 12px; color: var(--label-text); }
     .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
     .studios { position: sticky; top: 12px; max-height: calc(100vh - 120px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
@@ -34,10 +34,6 @@
     @media (max-width: 720px) {
       body { padding: 14px; }
       .sub code { overflow-wrap: anywhere; }
-      .bar { gap: 8px; }
-      .bar .pa-input { width: 100%; flex: 1 1 100%; }
-      .add-btn { margin-left: 0; }
-      .bar .pa-btn { flex: 1 1 auto; }
       .layout { grid-template-columns: 1fr; }
       .studios { position: static; max-height: none; flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
       .studios .st { width: auto; flex: 0 0 auto; }
@@ -45,22 +41,33 @@
       .empty { padding: 24px 12px; }
     }
   </style>
+{{ toolbar.styles() }}
 {% endblock %}
 {% block content %}
   <h1>Logo Cache</h1>
   <div class="sub">clearLogos served per site (tagline first, then studio) from <code id="dir"></code>.{% if is_admin() %}
 Add one below, or drop a file into a studio folder there and click Rescan.{% endif %}</div>
-  <div class="bar">
-    <input class="pa-input" type="text" id="filter" placeholder="filter by site / slug / path…" oninput="render()">
-    <label style="font-size:13px;color:var(--muted-text);display:flex;align-items:center;gap:6px;cursor:pointer">
-      <input type="checkbox" id="unmatched" onchange="render()"> No registry match only
-    </label>
-    <button type="button" class="pa-btn" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
-    <span class="count-badge" id="count"></span>
-{% if is_admin() %}    <a class="pa-btn pa-btn--primary add-btn" href="/logos/add">Add Logo</a>
-    <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
-    <span class="rescan-status" id="rescan-status"></span>
-    <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
+  {{ toolbar.search_row('filter', 'site, slug or path…') }}
+
+  <div class="controls" id="controls">
+    <div class="filters">
+      <div class="filter-group">
+        <label for="unmatched">Registry</label>
+        <select class="pa-input" id="unmatched"><option value="">All logos</option><option value="1">No registry match only</option></select>
+      </div>
+      <div class="filter-group">
+        <label for="bgBtn">Backdrop</label>
+        <button type="button" class="pa-btn" id="bgBtn" onclick="cycleBackdrop()" title="Proof the artwork against a light or dark backdrop"></button>
+      </div>
+    </div>
+    {% call toolbar.bar('count') %}
+    <div class="tb-actions">
+{% if is_admin() %}      <a class="pa-btn add-btn" href="/logos/add">Add Logo</a>
+      <button type="button" class="pa-btn pa-btn--outline rescan-btn" id="rescanBtn" onclick="rescan()">Rescan Folder</button>
+      <span class="rescan-status" id="rescan-status"></span>
+      <button type="button" class="pa-btn pa-btn--danger" onclick="purgeAll()">Purge All</button>{% endif %}
+    </div>
+    {% endcall %}
   </div>
   <div class="layout">
     <nav class="studios" id="studios" aria-label="Studios"></nav>
@@ -73,6 +80,7 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
   
 {% endblock %}
 {% block scripts %}
+{{ toolbar.script() }}
   <script>
     const IS_ADMIN = {{ is_admin()|tojson }};
     let STATE = {{ state|tojson }};
@@ -81,6 +89,25 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       return fetch(path, opts);
     }
 
+
+    let SFW = readSfw();
+
+    function paintSfwToggle() {
+      paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded', 'Hide every logo preview');
+    }
+
+    function toggleSfw() {
+      SFW = !SFW;
+      persistSfw(SFW);
+      paintSfwToggle();
+      render();
+    }
+
+    function resetFilters() {
+      document.getElementById('filter').value = '';
+      document.getElementById('unmatched').value = '';
+      pickStudio('');
+    }
 
     const BACKDROPS = ['auto', 'light', 'dark'];
     let backdrop = localStorage.getItem('pa-logo-backdrop') || 'auto';
@@ -124,7 +151,7 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       document.getElementById('dir').textContent = STATE.dir;
       paintStudios();
       const q = document.getElementById('filter').value.trim().toLowerCase();
-      const unmatchedOnly = document.getElementById('unmatched').checked;
+      const unmatchedOnly = document.getElementById('unmatched').value === '1';
       const rows = STATE.logos.filter((l) => {
         if (studio && l.studio !== studio) return false;
         if (unmatchedOnly && l.site) return false;
@@ -136,11 +163,14 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       paintBackdrop();
       document.getElementById('grid').innerHTML = rows.map((l) => `
         <div class="pa-card card">
-          <div class="logo-box${l.well === 'light' ? ' on-light' : ''}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>
+          ${SFW ? '' : `<div class="logo-box${l.well === 'light' ? ' on-light' : ''}"><img src="${esc(l.url)}" loading="lazy" onerror="this.style.opacity='0.2'"></div>`}
           <div class="site">${l.site ? esc(l.site) : '<span class="unknown">no registry match</span>'}</div>
           ${IS_ADMIN ? `<button type="button" class="pa-btn pa-btn--danger purge-btn" onclick="purgeOne('${esc(l.rel)}')">Purge</button>` : ''}
         </div>`).join('');
     }
+
+    document.getElementById('filter').addEventListener('input', render);
+    document.getElementById('unmatched').addEventListener('change', render);
 
     document.getElementById('studios').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-studio]');
@@ -180,6 +210,7 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       }
     }
 
+    paintSfwToggle();
     render();
   </script>
 {% endblock %}

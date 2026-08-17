@@ -298,3 +298,20 @@ def test_saving_writes_a_squashed_name(tmp_path: Path, monkeypatch: pytest.Monke
     client = authed_client()
     r = client.post('/logos/api/add-upload', data={'studio': 'Caramel Cash', 'alias': 'VR PMV Bay'}, files={'file': ('a.png', src.read_bytes(), 'image/png')})
     assert r.json()['rel'] == 'caramelcash/logo.vrpmvbay.png'
+
+
+def test_sfw_mode_keeps_the_logo_artwork_off_the_page() -> None:
+    page = authed_client().get('/logos').text
+    assert 'let SFW = readSfw();' in page
+    assert "${SFW ? '' : `<div class=\"logo-box" in page, 'SFW must skip the img entirely, not just hide it'
+    assert "paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded'" in page
+
+
+def test_the_logo_page_uses_the_shared_toolbar_with_a_reset() -> None:
+    page = authed_client().get('/logos').text
+    assert '<button class="pa-btn" id="resetBtn" onclick="resetFilters()">Reset Filters</button>' in page
+    assert 'id="sfwToggle"' in page
+    assert '<div class="controls" id="controls">' in page and '<div class="toolbar">' in page
+    assert 'id="filtersToggle"' in page and 'id="actionsToggle"' in page
+    assert "document.getElementById('filter').value = '';" in page
+    assert "pickStudio('');" in page, 'reset returns the studio rail to All'
