@@ -12,6 +12,7 @@ from urllib.parse import quote
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import rel_to
+from phoenixadult.utils.images.logo_trim import trim
 from phoenixadult.utils.logging.logger import logger
 
 _RASTER_EXTS = ('.png', '.jpg', '.jpeg', '.webp')
@@ -324,6 +325,7 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
             target.unlink(missing_ok=True)
             raise ValueError('could not convert that SVG; install rsvg-convert, cairosvg or ImageMagick')
         target = converted
+    trim(target)
     invalidate()
     reconcile()
     return rel_to(target, root) or target.name
@@ -414,6 +416,8 @@ def _adopt_manual_drops() -> int:
         if target.exists():
             continue
         f.rename(target)
+        if target.suffix.lower() in _RASTER_EXTS:
+            trim(target)
         adopted += 1
     return adopted
 
