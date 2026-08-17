@@ -95,13 +95,14 @@ def test_every_page_carries_the_theme_loader_and_toggle(client: TestClient) -> N
 def test_the_theme_link_never_needs_a_swap_after_paint(client: TestClient) -> None:
     head = client.get('/queue').text.split('</head>')[0]
     assert 'media="(prefers-color-scheme: dark)"' in head and 'media="(prefers-color-scheme: light)"' in head
-    assert 'href="/themes/midnight.css"' in head and 'href="/themes/sky.css"' in head
+    assert 'href="/themes/midnight.css?v=' in head and 'href="/themes/sky.css?v=' in head
     assert 'content="dark light"' in head
 
     client.cookies.set('pa_view', 'light.meadow')
     body = client.get('/queue').text
     head = body.split('</head>')[0]
     assert head.count('rel="stylesheet" href="/themes/') == 1, 'a known view needs exactly one sheet'
+    assert '.css?v=' in head, 'the version query is what makes an immutable cache safe'
     assert 'data-theme-file="meadow"' in head and 'content="light"' in head
     assert '<html lang="en" data-theme="light" data-theme-name="meadow">' in body
     assert "setAttribute('href'" not in body, 'the href rewrite is what caused the flash'
@@ -161,3 +162,30 @@ def test_every_template_variable_is_defined_in_every_theme() -> None:
         defined = set(re.findall(r'^\s*(--[a-z0-9-]+):', theme.read_text(encoding='utf-8'), re.M))
         missing = sorted(refs - defined)
         assert not missing, f'{theme.name} is missing: {missing}'
+
+
+def test_theme_css_is_cacheable_and_can_answer_304(client: TestClient) -> None:
+    from phoenixadult.routes import theme_version
+
+    version = theme_version('midnight')
+    plain = client.get('/themes/midnight.css')
+    assert plain.headers['cache-control'] == 'public, max-age=60', 'an unversioned URL must never be pinned'
+    assert plain.headers['etag'] == f'"{version}"'
+
+    pinned = client.get(f'/themes/midnight.css?v={version}')
+    assert pinned.headers['cache-control'] == 'public, max-age=31536000, immutable'
+
+    fresh = client.get('/themes/midnight.css', headers={'If-None-Match': f'"{version}"'})
+    assert fresh.status_code == 304 and not fresh.content
+
+    stale = client.get('/themes/midnight.css?v=deadbeef')
+    assert stale.status_code == 200 and stale.headers['cache-control'] == 'public, max-age=60'
+
+
+def test_the_nav_styles_itself_from_the_head(client: TestClient) -> None:
+    body = client.get('/queue').text
+    head = body.split('</head>')[0]
+    assert '.app-nav {' in head, 'nav CSS in the body flashes the most visible element on the page'
+    assert 'view-transition-name: app-nav' in head
+    assert body.count('.app-nav {') == 1
+    assert '<style>' not in body.split('<body')[1].split('<main>')[0], 'the chrome carries no body stylesheet'

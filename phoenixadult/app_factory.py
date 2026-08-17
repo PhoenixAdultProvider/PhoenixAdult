@@ -230,22 +230,24 @@ def create_app() -> FastAPI:
     # ── Favicon (silences the browser's /favicon.ico request) ────────────────
     _html_dir = Path(__file__).parent / 'routes' / 'html'
 
+    from phoenixadult.routes import assets
+
     @app.get('/favicon.ico', include_in_schema=False)
-    async def favicon_ico() -> FileResponse:
-        return FileResponse(_html_dir / 'favicon.ico', media_type='image/x-icon')
+    async def favicon_ico(request: Request) -> Response:
+        return assets.css_response(_html_dir / 'favicon.ico', request, '', media_type='image/x-icon')
 
     @app.get('/favicon.svg', include_in_schema=False)
-    async def favicon_svg() -> FileResponse:
-        return FileResponse(_html_dir / 'favicon.svg', media_type='image/svg+xml')
+    async def favicon_svg(request: Request) -> Response:
+        return assets.css_response(_html_dir / 'favicon.svg', request, '', media_type='image/svg+xml')
 
     # ── Theme Stylesheets (public — colors only, needed before any auth) ─────
     from phoenixadult.routes import FONT_NAMES, THEME_NAMES
 
     @app.get('/themes/{name}.css', include_in_schema=False)
-    async def theme_css(name: str) -> FileResponse:
+    async def theme_css(name: str, request: Request, v: str = '') -> Response:
         if name not in THEME_NAMES:
             raise HTTPException(status_code=404, detail='unknown theme')
-        return FileResponse(_html_dir / 'themes' / f'{name}.css', media_type='text/css')
+        return assets.css_response(_html_dir / 'themes' / f'{name}.css', request, v)
 
     # ── Self-Hosted Fonts (public — the pages need them before any auth) ─────
     @app.get('/fonts/{name}.woff2', include_in_schema=False)

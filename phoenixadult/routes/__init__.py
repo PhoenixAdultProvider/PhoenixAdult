@@ -34,10 +34,23 @@ def nav_items() -> list[tuple[str, str, str]]:
 
 from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402
 
-_jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True)
+
+def theme_version(name: str) -> str:
+    from phoenixadult.routes.assets import asset_version
+
+    return asset_version(Path(__file__).parent / 'html' / 'themes' / f'{name}.css')
+
+
+def theme_versions() -> dict[str, str]:
+    return {name: theme_version(name) for name in THEME_NAMES}
+
+
+_jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True, auto_reload=not env.is_production)
 _jinja.globals['nav_items'] = nav_items
 _jinja.globals['user_theme'] = user_theme
 _jinja.globals['theme_view'] = theme_view
+_jinja.globals['theme_version'] = theme_version
+_jinja.globals['theme_versions'] = theme_versions
 _jinja.globals['is_admin'] = is_admin
 
 

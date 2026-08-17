@@ -1,8 +1,8 @@
 {% set tv = theme_view() %}{% if tv.mode %}<meta name="color-scheme" content="{{ tv.mode }}">
-<link id="pa-theme-css" data-theme-file="{{ tv.name }}" rel="stylesheet" href="/themes/{{ tv.name }}.css">
+<link id="pa-theme-css" data-theme-file="{{ tv.name }}" rel="stylesheet" href="/themes/{{ tv.name }}.css?v={{ theme_version(tv.name) }}">
 {% else %}<meta name="color-scheme" content="dark light">
-<link id="pa-theme-css" data-theme-file="{{ tv.dark }}" rel="stylesheet" href="/themes/{{ tv.dark }}.css" media="(prefers-color-scheme: dark)">
-<link id="pa-theme-css-alt" data-theme-file="{{ tv.light }}" rel="stylesheet" href="/themes/{{ tv.light }}.css" media="(prefers-color-scheme: light)">
+<link id="pa-theme-css" data-theme-file="{{ tv.dark }}" rel="stylesheet" href="/themes/{{ tv.dark }}.css?v={{ theme_version(tv.dark) }}" media="(prefers-color-scheme: dark)">
+<link id="pa-theme-css-alt" data-theme-file="{{ tv.light }}" rel="stylesheet" href="/themes/{{ tv.light }}.css?v={{ theme_version(tv.light) }}" media="(prefers-color-scheme: light)">
 {% endif %}<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   @font-face {
@@ -23,6 +23,7 @@
   @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
 </style>
 {% if user_theme().dark or user_theme().light %}<script>window.paUserTheme = {{ user_theme()|tojson }};</script>{% endif %}
+<script>window.paThemeVersions = {{ theme_versions()|tojson }};</script>
 <script>
   (function () {
     const MODE_KEY = 'pa-theme';
@@ -58,7 +59,7 @@
       const link = document.createElement('link');
       link.dataset.themeFile = name;
       link.rel = 'stylesheet';
-      link.href = '/themes/' + name + '.css';
+      link.href = '/themes/' + name + '.css?v=' + ((window.paThemeVersions || {})[name] || '');
       document.head.appendChild(link);
     }
 
