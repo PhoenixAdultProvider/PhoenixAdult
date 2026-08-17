@@ -286,7 +286,7 @@
 {% block scripts %}
   <script>
 
-    const NARROW = window.matchMedia('(max-width: 720px)');
+    var NARROW = window.matchMedia('(max-width: 720px)');
     function apiUrl(path) { return path; }
 
     function setExample(val) {
@@ -477,8 +477,8 @@
       }).join('');
     }
 
-    let lastResults = [];
-    let selectedIdx = null;
+    var lastResults = [];
+    var selectedIdx = null;
 
     async function runSearch() {
       const filename = document.getElementById('filename').value.trim();

@@ -255,7 +255,7 @@ def test_people_page_offers_bulk_fetch(client: TestClient) -> None:
     page = client.get('/people')
     assert page.status_code == 200
     assert 'Fetch Images for Shown' in page.text
-    assert 'const BULK_SOURCE = "IAFD";' in page.text, 'the fetch source is fixed, not a control'
+    assert 'var BULK_SOURCE = "IAFD";' in page.text, 'the fetch source is fixed, not a control'
     assert 'bulkSource' not in page.text
     assert 'Local Storage' not in page.text
 

@@ -65,9 +65,9 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    const STATE = {{ state|tojson }};
-    let ROWS = [];
-    let pending = null;
+    var STATE = {{ state|tojson }};
+    var ROWS = [];
+    var pending = null;
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function studio() { return document.getElementById('studio').value; }
@@ -152,8 +152,8 @@
       paintTally();
     }
 
-    const rows = document.getElementById('rows');
-    const picker = document.getElementById('picker');
+    var rows = document.getElementById('rows');
+    var picker = document.getElementById('picker');
 
     rows.addEventListener('click', (e) => {
       const row = e.target.closest('.lrow');

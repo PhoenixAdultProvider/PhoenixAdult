@@ -97,14 +97,14 @@ def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
     page = authed_client().get('/metadata')
-    assert 'const DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
+    assert 'var DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
     assert 'Show Duplicates' in page.text
 
 
 def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> None:
     page = authed_client().get('/metadata')
-    assert 'let TOTAL = 0;' in page.text
-    assert 'let STUDIOS = [];' in page.text
+    assert 'var TOTAL = 0;' in page.text
+    assert 'var STUDIOS = [];' in page.text
     assert 'serverQuery(PAGE_SIZE, true)' in page.text
     assert '>Previous<' in page.text and '>Next<' in page.text
 
@@ -676,7 +676,7 @@ def test_edit_page_shows_the_source_json_panel(monkeypatch: pytest.MonkeyPatch) 
     page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
     assert 'id="sourcePanel"' in page.text
     assert 'Source JSON' in page.text
-    assert 'const SOURCE_JSON' in page.text
+    assert 'var SOURCE_JSON' in page.text
     assert 'id="sourceLink"' not in page.text
 
 

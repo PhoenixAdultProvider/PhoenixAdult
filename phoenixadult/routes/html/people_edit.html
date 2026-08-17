@@ -105,17 +105,17 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    const FILENAME = {{ filename|tojson }};
-    const ENTRY = {{ entry|tojson }};
-    const SOURCES = {{ sources|tojson }};
-    const CROP_AVAILABLE = {{ crop_available|tojson }};
-    const RECORDED_SOURCES = {{ recorded_sources|tojson }};
-    const UNCROPPED_SOURCES = ['IAFD'];
-    let SFW = readSfw();
+    var FILENAME = {{ filename|tojson }};
+    var ENTRY = {{ entry|tojson }};
+    var SOURCES = {{ sources|tojson }};
+    var CROP_AVAILABLE = {{ crop_available|tojson }};
+    var RECORDED_SOURCES = {{ recorded_sources|tojson }};
+    var UNCROPPED_SOURCES = ['IAFD'];
+    var SFW = readSfw();
 
     function leave() { location.href = '/people#' + ENTRY.type; }
 
-    const fetched = {url: '', source: ''};
+    var fetched = {url: '', source: ''};
 
     function proxied(url) { return url ? '/images/proxy?url=' + encodeURIComponent(url) : ''; }
 

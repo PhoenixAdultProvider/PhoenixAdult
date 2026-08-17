@@ -83,11 +83,13 @@
     }
     .pa-mono { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--label-text); letter-spacing: -0.01em; }
   </style>
+  <meta name="pa-head" content="page">
   {% block head %}{% endblock %}
 </head>
 <body data-page="{% block page %}{% endblock %}">
   {% block chrome %}{% include 'nav.html' %}
-  {% include 'common.html' %}{% endblock %}
+  {% include 'common.html' %}
+  {% include 'nav_swap.html' %}{% endblock %}
   <main>{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}
 </body>

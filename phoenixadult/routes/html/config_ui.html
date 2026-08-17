@@ -494,11 +494,11 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    const STATE = {{ state|tojson }};
-    let plexLibrariesLoaded = false;
-    const LISTS = {};                 // key → ordered array (list controls)
-    const PREVIEW_PREFIX = 'phoenixcfg:img:';
-    const imgDebounce = {};
+    var STATE = {{ state|tojson }};
+    var plexLibrariesLoaded = false;
+    var LISTS = {};                 // key → ordered array (list controls)
+    var PREVIEW_PREFIX = 'phoenixcfg:img:';
+    var imgDebounce = {};
 
     function api(path) { return path; }
 
@@ -508,13 +508,13 @@
 
     // ── Render ────────────────────────────────────────────────────────────────
 
-    const PLEX_GROUP = 'Plex Server';
-    const PLEX_TAB = 'Plex';
-    const USERS_TAB = 'Users';
-    const CLIENTS_TAB = 'Clients';
-    const LOGS_TAB = 'Logs';
-    const THEME_TAB = 'Theme';
-    const ENRICHMENT_TAB = 'Enrichment';
+    var PLEX_GROUP = 'Plex Server';
+    var PLEX_TAB = 'Plex';
+    var USERS_TAB = 'Users';
+    var CLIENTS_TAB = 'Clients';
+    var LOGS_TAB = 'Logs';
+    var THEME_TAB = 'Theme';
+    var ENRICHMENT_TAB = 'Enrichment';
 
     function isAdmin() { return !!(STATE.user && STATE.user.isAdmin); }
     function tabSlug(name) { return name.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
@@ -676,9 +676,9 @@
       }
     }
 
-    const PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
-    const METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-    let meterTimer = 0;
+    var PASSWORD_RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+    var METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+    var meterTimer = 0;
 
     document.getElementById('new-password').addEventListener('input', (e) => {
       clearTimeout(meterTimer);
@@ -734,9 +734,9 @@
 
     // ── Theme Tab ─────────────────────────────────────────────────────────────
 
-    let themeTabReady = false;
+    var themeTabReady = false;
 
-    const PREVIEW_PAGES = [
+    var PREVIEW_PAGES = [
       ['', 'Shared Elements'], ['metadata', 'Metadata'], ['metadata-edit', 'Metadata Edit'], ['people', 'People'],
       ['people-edit', 'People Edit'], ['config', 'Config'], ['logos', 'Logos'], ['queue', 'Queue'], ['dev', 'Dev'],
     ];
@@ -1279,8 +1279,8 @@
       return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
 
-    let CONNECTIONS = [];
-    let CONN_ID = null;
+    var CONNECTIONS = [];
+    var CONN_ID = null;
 
     function currentConnection() {
       return CONNECTIONS.find((c) => c.id === CONN_ID) || null;
@@ -1526,7 +1526,7 @@
       }
     }
 
-    const RECON_FIELDS = ['Collection', 'Genre', 'Role', 'Director', 'Producer'];
+    var RECON_FIELDS = ['Collection', 'Genre', 'Role', 'Director', 'Producer'];
 
     function initReconFields() {
       document.getElementById('plex-reconcile-fields').innerHTML =
@@ -1619,7 +1619,7 @@
       document.getElementById('plex-reconcile-view').style.display = 'block';
     }
 
-    let RECASES = [];
+    var RECASES = [];
 
     function collectRecases(data) {
       const seen = {};
@@ -1736,8 +1736,8 @@
       clipboardCopy(text).then(() => ackCopy(btn)).catch(() => { btn.textContent = 'Copy failed'; });
     }
 
-    let jobPollTimer = null;
-    let jobPollConn = null;
+    var jobPollTimer = null;
+    var jobPollConn = null;
 
     function reconcileBar(job) {
       const wrap = document.getElementById('plex-reconcile-progress');
@@ -1908,18 +1908,18 @@
 
     // ── Session Log ───────────────────────────────────────────────────────────
 
-    const LOG_POLL_MS = 3000;
-    const LOG_BOTTOM_SLACK = 24;
-    const LOG_URL_RE = /https?:\/\/[^\s<>"']+/g;
-    const LOG_URL_TRAIL = /[.,;:!?)\]}>'"]+$/;
-    const LOG_CHOICES = [50, 100, 200, 500, 1000];
-    let logSeq = 0;
-    let logMax = 200;
-    let logTimer = null;
-    let logBusy = false;
-    let logPaused = false;
-    let logLoaded = false;
-    let logNeedle = '';
+    var LOG_POLL_MS = 3000;
+    var LOG_BOTTOM_SLACK = 24;
+    var LOG_URL_RE = /https?:\/\/[^\s<>"']+/g;
+    var LOG_URL_TRAIL = /[.,;:!?)\]}>'"]+$/;
+    var LOG_CHOICES = [50, 100, 200, 500, 1000];
+    var logSeq = 0;
+    var logMax = 200;
+    var logTimer = null;
+    var logBusy = false;
+    var logPaused = false;
+    var logLoaded = false;
+    var logNeedle = '';
 
     function logView() { return document.getElementById('logView'); }
     function logRows() { return logView().querySelectorAll('.ln:not(.empty)'); }
@@ -2021,7 +2021,7 @@
       if (logTimer) { clearInterval(logTimer); logTimer = null; }
     }
 
-    const LOG_MIN_HEIGHT = 200;
+    var LOG_MIN_HEIGHT = 200;
 
     function logFill() {
       const view = logView();
@@ -2101,7 +2101,7 @@
 
     render();
     initReconFields();
-    const startTab = location.hash.slice(1);
+    var startTab = location.hash.slice(1);
     showTab(tabIds().includes(startTab) ? startTab : tabIds()[0]);
   </script>
 {% endblock %}

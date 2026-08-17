@@ -72,7 +72,7 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    let STATE = {{ state|tojson }};
+    var STATE = {{ state|tojson }};
 
 
     function rel(ts) {
@@ -96,8 +96,8 @@
       if ([...sel.options].some((o) => o.value === current)) sel.value = current;
     }
 
-    let offset = 0;
-    const PAGE_SIZE = {{ page_size|tojson }};
+    var offset = 0;
+    var PAGE_SIZE = {{ page_size|tojson }};
 
     async function reload() {
       const params = new URLSearchParams({

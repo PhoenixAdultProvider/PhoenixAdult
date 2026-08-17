@@ -114,10 +114,10 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    const hdr = { 'Content-Type': 'application/json' };
-    const HOOK_PREFIX = {{ hook_prefix | tojson }};
-    const MOUNT_PATH = {{ mount_path | tojson }};
-    const TOKEN_AUTH = {{ token_auth }};
+    var hdr = { 'Content-Type': 'application/json' };
+    var HOOK_PREFIX = {{ hook_prefix | tojson }};
+    var MOUNT_PATH = {{ mount_path | tojson }};
+    var TOKEN_AUTH = {{ token_auth }};
 
     async function copyText(sourceId, statusId) {
       const text = document.getElementById(sourceId).textContent.trim();
@@ -135,7 +135,7 @@
     function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
     function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
 
-    const RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
+    var RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
 
     document.querySelectorAll('.reveal').forEach((toggle) => {
       toggle.addEventListener('click', () => {
@@ -152,8 +152,8 @@
       return ok ? '' : RULE;
     }
 
-    const METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-    let meterTimer = 0;
+    var METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+    var meterTimer = 0;
     document.getElementById('newPw').addEventListener('input', (e) => {
       clearTimeout(meterTimer);
       const value = e.target.value;

@@ -25,14 +25,14 @@ def member() -> TestClient:
 
 def test_metadata_hides_purge_and_says_view(member: TestClient) -> None:
     body = member.get('/metadata').text
-    assert 'const IS_ADMIN = false;' in body
+    assert 'var IS_ADMIN = false;' in body
     assert 'id="purgeAllBtn"' not in body
     assert 'id="dupBtn"' not in body
     assert 'id="pruneBtn"' not in body
     assert 'id="refreshAllBtn"' not in body
     assert 'id="exportBtn"' in body, 'export is read-only and stays available'
     admin_body = authed_client().get('/metadata').text
-    assert 'id="purgeAllBtn"' in admin_body and 'const IS_ADMIN = true;' in admin_body
+    assert 'id="purgeAllBtn"' in admin_body and 'var IS_ADMIN = true;' in admin_body
     assert 'id="refreshAllBtn"' in admin_body
 
 
@@ -65,7 +65,7 @@ def _one_cached_person(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_people_hides_writes_and_the_serving_line(member: TestClient, _one_cached_person: None) -> None:
     body = member.get('/people').text
     assert member.get('/people/api/entries').json()['total'] == 1, 'the fixture person should be listed'
-    assert 'const IS_ADMIN = false;' in body
+    assert 'var IS_ADMIN = false;' in body
     assert 'id="bulkBtn"' not in body
     assert 'id="bulkSource"' not in body
     assert 'Serving people images via' not in body
@@ -73,7 +73,7 @@ def test_people_hides_writes_and_the_serving_line(member: TestClient, _one_cache
     assert 'purgeBtn = IS_ADMIN ?' in body and 'if (IS_ADMIN) {' in body, 'purge and restore are admin-gated'
 
     admin_body = authed_client().get('/people').text
-    assert 'const IS_ADMIN = true;' in admin_body
+    assert 'var IS_ADMIN = true;' in admin_body
 
 
 def test_logos_and_queue_hide_their_write_controls(member: TestClient) -> None:
@@ -81,13 +81,13 @@ def test_logos_and_queue_hide_their_write_controls(member: TestClient) -> None:
     logos_markup = logos.split('<script>')[0]
     assert 'id="rescanBtn"' not in logos_markup
     assert 'onclick="purgeAll()"' not in logos_markup
-    assert 'const IS_ADMIN = false;' in logos
+    assert 'var IS_ADMIN = false;' in logos
     assert 'onclick="purgeAll()"' in authed_client().get('/logos').text
 
     queue = member.get('/queue').text
     assert 'flushKind(' not in queue.split('<script>')[0]
     assert 'togglePause(' not in queue.split('<script>')[0], 'pause/resume is a write control and hides from non-admins'
-    assert 'const IS_ADMIN = false;' in queue
+    assert 'var IS_ADMIN = false;' in queue
     assert "flushKind('search')" in authed_client().get('/queue').text
 
 

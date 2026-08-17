@@ -189,3 +189,37 @@ def test_the_nav_styles_itself_from_the_head(client: TestClient) -> None:
     assert 'view-transition-name: app-nav' in head
     assert body.count('.app-nav {') == 1
     assert '<style>' not in body.split('<body')[1].split('<main>')[0], 'the chrome carries no body stylesheet'
+
+
+def test_nav_clicks_swap_the_content_instead_of_reloading(client: TestClient) -> None:
+    body = client.get('/queue').text
+    assert "realAdd('click', function (ev) {" in body, 'the swap listener must survive its own teardown'
+    assert "link = ev.target.closest('.app-nav a')" in body
+    assert 'history.pushState({ paSwap: true }' in body and "window.addEventListener('popstate'" in body
+    assert 'location.href = url;' in body, 'any failure must fall back to a real navigation'
+    assert '<meta name="pa-head" content="page">' in body, 'the swap needs a marker to know which head nodes are the page'
+
+
+def test_a_swap_cannot_leave_the_old_page_polling(client: TestClient) -> None:
+    body = client.get('/queue').text
+    assert 'window.setInterval = function (fn, ms)' in body, 'intervals are tracked so a stale page stops polling'
+    assert 'if (t.epoch < epoch) clearInterval(t.id);' in body
+    assert 'if (l.epoch < epoch) realRemove(l.type, l.fn, l.opts);' in body
+
+
+def test_page_scripts_can_run_twice_in_one_document() -> None:
+    import re
+    from pathlib import Path
+
+    import phoenixadult.routes as routes
+
+    html_dir = Path(routes.__file__).parent / 'html'
+    pages = ('metadata_cache', 'people_ui', 'logos_ui', 'queue_ui', 'searches_ui', 'config_ui', 'dev_ui', 'account', 'logo_add', 'metadata_edit', 'people_edit')
+    for name in pages:
+        for block in re.findall(r'<script>(.*?)</script>', (html_dir / f'{name}.html').read_text(encoding='utf-8'), re.S):
+            lines = [ln for ln in block.split('\n') if ln.strip()]
+            if not lines:
+                continue
+            base = min(len(ln) - len(ln.lstrip()) for ln in lines)
+            top = [ln.strip() for ln in lines if len(ln) - len(ln.lstrip()) == base and re.match(r'(const|let)\s', ln.strip())]
+            assert not top, f'{name}.html declares {top[:2]} at top level; re-running the script would throw'

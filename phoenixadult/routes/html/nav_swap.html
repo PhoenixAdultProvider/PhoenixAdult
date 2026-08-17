@@ -1,0 +1,131 @@
+<script>
+  (function () {
+    if (!window.history.pushState || !window.DOMParser) return;
+
+    var HEAD_MARK = 'meta[name="pa-head"]';
+    var epoch = 0;
+    var timers = [];
+    var docListeners = [];
+
+    var realInterval = window.setInterval;
+    window.setInterval = function (fn, ms) {
+      var id = realInterval(fn, ms);
+      timers.push({ id: id, epoch: epoch });
+      return id;
+    };
+
+    var realAdd = document.addEventListener.bind(document);
+    var realRemove = document.removeEventListener.bind(document);
+    document.addEventListener = function (type, fn, opts) {
+      docListeners.push({ type: type, fn: fn, opts: opts, epoch: epoch });
+      return realAdd(type, fn, opts);
+    };
+
+    function teardown() {
+      timers = timers.filter(function (t) {
+        if (t.epoch < epoch) clearInterval(t.id);
+        return t.epoch >= epoch;
+      });
+      docListeners = docListeners.filter(function (l) {
+        if (l.epoch < epoch) realRemove(l.type, l.fn, l.opts);
+        return l.epoch >= epoch;
+      });
+    }
+
+    function pageHead() {
+      var out = [];
+      var node = document.head.querySelector(HEAD_MARK);
+      for (node = node && node.nextElementSibling; node; node = node.nextElementSibling) out.push(node);
+      return out;
+    }
+
+    function swapHead(doc) {
+      pageHead().forEach(function (node) { node.remove(); });
+      var mark = document.head.querySelector(HEAD_MARK);
+      var incoming = doc.head.querySelector(HEAD_MARK);
+      for (var node = incoming && incoming.nextElementSibling; node; node = node.nextElementSibling) {
+        document.head.appendChild(document.importNode(node, true));
+      }
+      return mark;
+    }
+
+    function pageScripts(doc) {
+      var main = doc.querySelector('main');
+      if (!main) return [];
+      return Array.prototype.filter.call(doc.querySelectorAll('script'), function (s) {
+        return main.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING;
+      });
+    }
+
+    function runScripts(doc) {
+      pageScripts(doc).forEach(function (old) {
+        var s = document.createElement('script');
+        if (old.src) s.src = old.src;
+        else s.textContent = old.textContent;
+        document.body.appendChild(s);
+        s.remove();
+      });
+    }
+
+    function markActive(url) {
+      var path = new URL(url, location.origin).pathname;
+      document.querySelectorAll('.app-nav a').forEach(function (a) {
+        var mine = new URL(a.getAttribute('href'), location.origin).pathname === path;
+        a.classList.toggle('active', mine);
+        if (mine) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
+    }
+
+    var busy = false;
+
+    async function go(url, push) {
+      if (busy) return;
+      busy = true;
+      document.documentElement.classList.add('pa-swapping');
+      try {
+        var res = await fetch(url, { headers: { 'X-Pa-Swap': '1' }, credentials: 'same-origin' });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('text/html')) throw new Error('not swappable');
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var main = doc.querySelector('main');
+        var here = document.querySelector('main');
+        if (!main || !here || !doc.querySelector('.app-nav')) throw new Error('not an admin page');
+
+        epoch += 1;
+        teardown();
+        document.title = doc.title;
+        document.body.dataset.page = (doc.body.dataset && doc.body.dataset.page) || '';
+        swapHead(doc);
+        here.replaceWith(document.importNode(main, true));
+        markActive(res.url || url);
+        if (push) history.pushState({ paSwap: true }, '', res.url || url);
+        runScripts(doc);
+        window.scrollTo(0, 0);
+      } catch (err) {
+        location.href = url;
+        return;
+      } finally {
+        busy = false;
+        document.documentElement.classList.remove('pa-swapping');
+      }
+    }
+
+    realAdd('click', function (ev) {
+      if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      var link = ev.target.closest('.app-nav a');
+      if (!link || link.target || link.hasAttribute('download')) return;
+      var url = new URL(link.getAttribute('href'), location.origin);
+      if (url.origin !== location.origin) return;
+      if (url.pathname === location.pathname) return;
+      ev.preventDefault();
+      go(url.pathname + url.search, true);
+    });
+
+    window.addEventListener('popstate', function (ev) {
+      if (!ev.state || !ev.state.paSwap) return;
+      go(location.pathname + location.search, false);
+    });
+
+    history.replaceState({ paSwap: true }, '', location.href);
+  })();
+</script>

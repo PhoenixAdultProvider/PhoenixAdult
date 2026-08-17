@@ -89,7 +89,7 @@
 {% block scripts %}
 {{ toolbar.script() }}
   <script>
-      const IS_ADMIN = {{ is_admin()|tojson }};
+      var IS_ADMIN = {{ is_admin()|tojson }};
       async function post(url, body){
         const r = await fetch(url, {method:'POST', headers:hdrs(), body:JSON.stringify(body)});
         return r.json().catch(()=>({ok:false}));
@@ -110,8 +110,8 @@
       function edit(filename){
         location.href = '/people/edit?' + new URLSearchParams({filename}).toString();
       }
-      const STORE_KEY = 'people-cache-filters';
-      let SFW = readSfw();
+      var STORE_KEY = 'people-cache-filters';
+      var SFW = readSfw();
       function paintImages(){
         document.body.classList.toggle('sfw', SFW);
         // Only the cards on the current page get a src, so a big library never
@@ -143,17 +143,17 @@
         document.getElementById('singleToggle').classList.remove('on');
         showTab(curTab);
       }
-      let croppedOnly = false;
-      let noUpstreamOnly = false;
-      let genericOnly = false;
-      let singleOnly = false;
-      let curTab = '';
-      const PAGE_SIZE = {{ page_size|tojson }};
-      const BULK_SOURCE = {{ (fetchable_sources[0] if fetchable_sources else "")|tojson }};
-      const GENDERS = {{ genders|tojson }};
-      let ROWS = {{ entries|tojson }};
-      let TOTAL = {{ total|tojson }};
-      let offset = 0;
+      var croppedOnly = false;
+      var noUpstreamOnly = false;
+      var genericOnly = false;
+      var singleOnly = false;
+      var curTab = '';
+      var PAGE_SIZE = {{ page_size|tojson }};
+      var BULK_SOURCE = {{ (fetchable_sources[0] if fetchable_sources else "")|tojson }};
+      var GENDERS = {{ genders|tojson }};
+      var ROWS = {{ entries|tojson }};
+      var TOTAL = {{ total|tojson }};
+      var offset = 0;
       function prevPage(){ if(offset > 0){ offset = Math.max(0, offset - PAGE_SIZE); refresh(); } }
       function nextPage(){ if(offset + PAGE_SIZE < TOTAL){ offset += PAGE_SIZE; refresh(); } }
       function cardHtml(e){
@@ -363,8 +363,8 @@
         else if (b.classList.contains('restore')) restore(fn);
         else if (b.classList.contains('g')) setGender(fn, b.dataset.g);
       });
-      const _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
-      const _hash=decodeURIComponent(location.hash.replace(/^#/,''));
+      var _tabs=new Set(Array.from(document.querySelectorAll('.tab')).map(b=>b.dataset.t));
+      var _hash=decodeURIComponent(location.hash.replace(/^#/,''));
       restoreFilters();
       paintImages();
       showTab(_tabs.has(_hash) ? _hash : {{ default_tab|tojson }});

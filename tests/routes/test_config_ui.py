@@ -24,7 +24,7 @@ def test_config_page_renders_styled(client: TestClient) -> None:
     body = r.text
     assert 'PhoenixAdult Config' in body
     assert 'class="toolbar"' in body
-    assert 'const STATE =' in body
+    assert 'var STATE =' in body
     assert '__STATE_JSON__' not in body
 
 
@@ -96,7 +96,7 @@ def test_logs_endpoint_requires_auth_and_serves_the_session(client: TestClient) 
 
 def test_logs_tab_is_last_and_never_wraps(client: TestClient) -> None:
     body = client.get('/config').text
-    assert "const LOGS_TAB = 'Logs';" in body
+    assert "var LOGS_TAB = 'Logs';" in body
     assert "'theme', ...(isAdmin() ? ['logs'] : [])];" in body
     assert 'THEME_TAB, ...(isAdmin() ? [LOGS_TAB] : [])];' in body
     assert '[...tabNames(), ...extraTabs()]' in body
@@ -124,7 +124,7 @@ def test_leaving_and_returning_reattaches_running_operations(client: TestClient)
 
 def test_the_theme_tab_sits_before_logs_with_pickers_and_a_preview(client: TestClient) -> None:
     body = client.get('/config').text
-    assert "const THEME_TAB = 'Theme';" in body
+    assert "var THEME_TAB = 'Theme';" in body
     assert 'id="tab-theme"' in body
     assert 'id="themeDark"' in body and 'id="themeLight"' in body
     assert 'Element Preview' in body
@@ -138,7 +138,7 @@ def test_the_log_toolbar_offers_every_control(client: TestClient) -> None:
     body = client.get('/config').text
     for marker in ('id="logFilter"', 'id="logMaxSel"', 'id="logPauseBtn"', 'onclick="logClear()"', 'onclick="copyLog(this)"'):
         assert marker in body
-    assert 'const LOG_CHOICES = [50, 100, 200, 500, 1000];' in body
+    assert 'var LOG_CHOICES = [50, 100, 200, 500, 1000];' in body
     assert 'The last 200 lines this server has logged' not in body
 
 

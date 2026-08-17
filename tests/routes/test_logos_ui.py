@@ -256,7 +256,7 @@ def test_state_groups_logos_by_studio_with_counts(tmp_path: Path, monkeypatch: p
 def test_the_logo_page_has_a_studio_rail_that_survives_a_refresh() -> None:
     page = authed_client().get('/logos').text
     assert '<nav class="studios" id="studios"' in page
-    assert "const STUDIO_KEY = 'pa-logo-studio';" in page
+    assert "var STUDIO_KEY = 'pa-logo-studio';" in page
     assert 'localStorage.getItem(STUDIO_KEY)' in page and 'localStorage.setItem(STUDIO_KEY, name)' in page
     assert "[{ name: '', count: total }].concat(list)" in page, 'All sits at the top of the rail'
     assert 'if (studio && l.studio !== studio) return false;' in page
@@ -302,7 +302,7 @@ def test_saving_writes_a_squashed_name(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_sfw_mode_keeps_the_logo_artwork_off_the_page() -> None:
     page = authed_client().get('/logos').text
-    assert 'let SFW = readSfw();' in page
+    assert 'var SFW = readSfw();' in page
     assert "${SFW ? '' : `<div class=\"logo-box" in page, 'SFW must skip the img entirely, not just hide it'
     assert "paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded'" in page
 

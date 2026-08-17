@@ -94,10 +94,10 @@
 {% endblock %}
 {% block scripts %}
   <script>
-    const IS_ADMIN = {{ is_admin()|tojson }};
-    let STATE = {{ state|tojson }};
-    const LAST_ROWS = { search: [], update: [] };
-    let fetchedAt = Date.now();
+    var IS_ADMIN = {{ is_admin()|tojson }};
+    var STATE = {{ state|tojson }};
+    var LAST_ROWS = { search: [], update: [] };
+    var fetchedAt = Date.now();
 
 
     function fmtSecs(s) {
@@ -175,7 +175,7 @@
       }
     }
 
-    const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+    var sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
     async function refresh(since) {
       let ok = false;

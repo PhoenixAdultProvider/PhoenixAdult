@@ -83,11 +83,11 @@ def test_the_provider_url_shows_a_key_slot_when_token_auth_is_on(monkeypatch: py
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
     body = authed_client().get('/account').text
     assert '/api/hook/YOUR_API_KEY/phoenixadult/movies' in body
-    assert 'const TOKEN_AUTH = true;' in body, 'regenerating a key should fill the URL in'
+    assert 'var TOKEN_AUTH = true;' in body, 'regenerating a key should fill the URL in'
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'false')
     off = authed_client().get('/account').text
     assert 'YOUR_API_KEY' not in off, 'with token auth off the plain URL is what Plex needs'
-    assert 'const TOKEN_AUTH = false;' in off
+    assert 'var TOKEN_AUTH = false;' in off
 
 
 def test_the_page_scripts_are_valid_javascript() -> None:

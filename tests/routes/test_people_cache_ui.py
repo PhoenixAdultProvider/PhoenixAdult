@@ -176,7 +176,7 @@ def test_people_list_is_paged_like_the_metadata_cache() -> None:
     page = authed_client().get('/people')
     assert 'id="pager"' in page.text
     assert 'id="prevBtn"' in page.text and 'id="nextBtn"' in page.text and 'id="pageInfo"' in page.text
-    assert 'const PAGE_SIZE = 200;' in page.text
+    assert 'var PAGE_SIZE = 200;' in page.text
     assert 'function prevPage()' in page.text and 'function nextPage()' in page.text
 
 
@@ -385,7 +385,7 @@ def test_the_edit_page_offers_every_known_source(_person_cache: None) -> None:
 
     assert 'id="f-recorded"' in body
     assert all(f'"{name}"' in body for name in KNOWN_SOURCES)
-    assert "const UNCROPPED_SOURCES = ['IAFD'];" in body
+    assert "var UNCROPPED_SOURCES = ['IAFD'];" in body
     assert "qs('f-cropped').checked = false;" in body
 
 

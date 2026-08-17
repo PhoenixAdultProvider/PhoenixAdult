@@ -82,15 +82,15 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
 {% block scripts %}
 {{ toolbar.script() }}
   <script>
-    const IS_ADMIN = {{ is_admin()|tojson }};
-    let STATE = {{ state|tojson }};
+    var IS_ADMIN = {{ is_admin()|tojson }};
+    var STATE = {{ state|tojson }};
 
     function api(path, opts = {}) {
       return fetch(path, opts);
     }
 
 
-    let SFW = readSfw();
+    var SFW = readSfw();
 
     function paintSfwToggle() {
       paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded', 'Hide every logo preview');
@@ -109,8 +109,8 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       pickStudio('');
     }
 
-    const BACKDROPS = ['auto', 'light', 'dark'];
-    let backdrop = localStorage.getItem('pa-logo-backdrop') || 'auto';
+    var BACKDROPS = ['auto', 'light', 'dark'];
+    var backdrop = localStorage.getItem('pa-logo-backdrop') || 'auto';
 
     function paintBackdrop() {
       const grid = document.getElementById('grid');
@@ -126,8 +126,8 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
       paintBackdrop();
     }
 
-    const STUDIO_KEY = 'pa-logo-studio';
-    let studio = '';
+    var STUDIO_KEY = 'pa-logo-studio';
+    var studio = '';
     try { studio = localStorage.getItem(STUDIO_KEY) || ''; } catch {}
 
     function pickStudio(name) {

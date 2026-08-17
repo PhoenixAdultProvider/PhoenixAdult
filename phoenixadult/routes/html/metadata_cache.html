@@ -216,17 +216,17 @@
 {% block scripts %}
 {{ toolbar.script() }}
   <script>
-    const IS_ADMIN = {{ is_admin()|tojson }};
-    const DUP_KEYS = {{ dup_keys|tojson }};
-    let ALL = {{ entries|tojson }};
-    let TOTAL = {{ total|tojson }};
-    let STUDIOS = {{ studios|tojson }};
-    let FACET_VALUES = {{ facets|tojson }};
-    let DUP_SET = new Set(DUP_KEYS);
-    let showDupsOnly = false;
-    let showPotential = false;
-    const STORE_KEY = 'metadata-cache-filters';
-    let SFW = readSfw();
+    var IS_ADMIN = {{ is_admin()|tojson }};
+    var DUP_KEYS = {{ dup_keys|tojson }};
+    var ALL = {{ entries|tojson }};
+    var TOTAL = {{ total|tojson }};
+    var STUDIOS = {{ studios|tojson }};
+    var FACET_VALUES = {{ facets|tojson }};
+    var DUP_SET = new Set(DUP_KEYS);
+    var showDupsOnly = false;
+    var showPotential = false;
+    var STORE_KEY = 'metadata-cache-filters';
+    var SFW = readSfw();
 
     function paintSfwToggle() {
       paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
@@ -238,8 +238,8 @@
       paintSfwToggle();
       render();
     }
-    const FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-cast', 'f-director', 'f-producer', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
-    const SORT_FIELDS = [
+    var FILTER_IDS = ['q', 'f-actor', 'f-genre', 'f-cast', 'f-director', 'f-producer', 'f-provider', 'f-studio', 'f-year', 'f-month', 'f-day', 'f-tagline', 'f-collection', 'f-data18'];
+    var SORT_FIELDS = [
       {key: 'mtime', label: 'Cached'},
       {key: 'date', label: 'Date'},
       {key: 'studio', label: 'Studio'},
@@ -250,10 +250,10 @@
     ];
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
-    const PAGE_SIZE = 500;
-    let offset = 0;
-    const SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
-    const FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-cast': 'cast', 'f-director': 'director', 'f-producer': 'producer', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
+    var PAGE_SIZE = 500;
+    var offset = 0;
+    var SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
+    var FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-cast': 'cast', 'f-director': 'director', 'f-producer': 'producer', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
     function filterParams() {
       const p = new URLSearchParams();
@@ -279,7 +279,7 @@
       return p.toString();
     }
 
-    let qTimer = null;
+    var qTimer = null;
     function queryChanged() {
       clearTimeout(qTimer);
       qTimer = setTimeout(() => { offset = 0; refreshEntries(); }, 300);
@@ -287,8 +287,8 @@
 
     function facetChanged() { offset = 0; refreshEntries(); }
 
-    let actorTimer = null;
-    let actorSuggestedFor = null;
+    var actorTimer = null;
+    var actorSuggestedFor = null;
 
     async function loadActorOptions(prefix) {
       if (actorSuggestedFor === prefix) return;
@@ -340,7 +340,7 @@
       });
     }
 
-    const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     function ensureOption(sel, value) {
       if (value && ![...sel.options].some(o => o.value === value)) {
@@ -377,11 +377,11 @@
       }
     }
 
-    const DEFAULT_SORT_KEY = 'mtime';
-    const DEFAULT_SORT_DIR = -1; // newest first
+    var DEFAULT_SORT_KEY = 'mtime';
+    var DEFAULT_SORT_DIR = -1; // newest first
 
-    let sortKey = DEFAULT_SORT_KEY;
-    let sortDir = DEFAULT_SORT_DIR;
+    var sortKey = DEFAULT_SORT_KEY;
+    var sortDir = DEFAULT_SORT_DIR;
 
     function saveFilters() {
       const facets = {};
@@ -583,7 +583,7 @@
       trackQueue();
     }
 
-    let queueTimer = null;
+    var queueTimer = null;
 
     async function queueState() {
       try {
@@ -701,7 +701,7 @@
     }
 
     // ── Live refresh: poll a cheap change token; refetch entries only when it moves ──
-    let stateToken = null;
+    var stateToken = null;
 
     async function refreshEntries() {
       try {
@@ -761,7 +761,7 @@
     });
 
     buildSortOptions();
-    const DEFAULT_QUERY = serverQuery(PAGE_SIZE, true);
+    var DEFAULT_QUERY = serverQuery(PAGE_SIZE, true);
     restoreFilters();
     updateDupButtons();
     applySortIndicators();
