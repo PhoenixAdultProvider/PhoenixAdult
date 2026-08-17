@@ -194,13 +194,15 @@ def find_logo(tagline: str | None, studio: str | None) -> Path | None:
     return None
 
 
-def local_url(path: Path, mtime: float | None = None) -> str | None:
-    rel = rel_to(path, cache_dir())
-    if rel is None:
-        return None
+def _url_for_rel(rel: str, mtime: float | None = None) -> str:
     quoted = '/'.join(quote(part) for part in rel.split('/'))
     bust = f'?v={int(mtime)}' if mtime else ''
     return f'/images/local/logos/{quoted}{bust}'
+
+
+def local_url(path: Path, mtime: float | None = None) -> str | None:
+    rel = rel_to(path, cache_dir())
+    return None if rel is None else _url_for_rel(rel, mtime)
 
 
 _WELL_CACHE: dict[str, str] = {}
@@ -327,13 +329,6 @@ def save_logo(folder_slug: str, name_slug: str, data: bytes, suffix: str) -> str
     return rel_to(target, root) or target.name
 
 
-def _mtime_of(path: Path) -> float:
-    try:
-        return path.stat().st_mtime
-    except OSError:
-        return 0.0
-
-
 def _prune_wells(live: set[str]) -> None:
     global _WELL_DIRTY
 
@@ -350,6 +345,7 @@ def entries() -> list[dict[str, Any]]:
     rows = conn.execute('SELECT name_slug, MIN(rel_path) AS rel_path FROM logos GROUP BY name_slug ORDER BY name_slug').fetchall()
     root = cache_dir()
     out: list[dict[str, Any]] = []
+    live_keys: set[str] = set()
     for row in rows:
         rel = str(row['rel_path'])
         path = root / rel
@@ -357,17 +353,18 @@ def entries() -> list[dict[str, Any]]:
             stat = path.stat()
         except OSError:
             continue
+        live_keys.add(_well_key(rel, stat.st_mtime, stat.st_size))
         out.append(
             {
                 'slug': str(row['name_slug']),
                 'rel': rel,
-                'url': local_url(path, stat.st_mtime),
+                'url': _url_for_rel(rel, stat.st_mtime),
                 'sizeBytes': stat.st_size,
                 'well': preferred_well(path, stat.st_mtime, stat.st_size, rel),
                 'folder': rel.split('/')[0] if '/' in rel else '',
             }
         )
-    _prune_wells({_well_key(str(e['rel']), _mtime_of(root / str(e['rel'])), int(e['sizeBytes'])) for e in out})
+    _prune_wells(live_keys)
     _save_wells()
     return out
 
