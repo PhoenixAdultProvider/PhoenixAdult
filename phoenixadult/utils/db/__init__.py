@@ -404,7 +404,7 @@ def connect() -> sqlite3.Connection:
         conn.execute('PRAGMA synchronous=NORMAL')
         conn.execute('PRAGMA foreign_keys=ON')
         if not _migrated:
-            _migrate(conn)
+            _migrate(conn, key[0])
             _migrated = True
         _open.append(conn)
     _local.conn, _local.key = conn, key
@@ -450,7 +450,7 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _migrate(conn: sqlite3.Connection) -> None:
+def _migrate(conn: sqlite3.Connection, path: str) -> None:
     version = int(conn.execute('PRAGMA user_version').fetchone()[0])
     if version == 2:
         conn.execute('PRAGMA user_version = 1')
@@ -458,7 +458,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
         version = 1
         logger.info('db', 'phoenixadult.db restamped to schema v1 - the v2 theme rename folded into the connect-time data pass')
     if version > len(_MIGRATIONS):
-        raise RuntimeError(f'this database reports schema v{version}, which this build does not know - it predates the v1 baseline or comes from a newer build')
+        raise RuntimeError(
+            f'{path} reports schema v{version}, which this build does not know - it predates the v1 baseline or comes from a newer build. '
+            'Check STATE_DB_PATH points at the database you meant'
+        )
     for idx, step in enumerate(_MIGRATIONS[version:], start=version + 1):
         conn.executescript(step)
         conn.execute(f'PRAGMA user_version = {idx}')
