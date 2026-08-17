@@ -1,6 +1,6 @@
 # PhoenixAdult Provider (FastAPI)
 
-This FastAPI metadata agent helps fill Plex with information for your adult videos, connecting to Plex as a Metadata Provider. It is an evolution of the legacy [PhoenixAdult.bundle](https://github.com/PAhelper/PhoenixAdult.bundle) Plex agent, ported onto Plex's newer Metadata Provider API. Please note porting the existing scrapers will take some time. This is currently in alpha, and is co-authored with Claude, to migrate to the new Metadata API framework.
+This FastAPI metadata agent helps fill Plex with information for your adult videos, connecting to Plex as a Metadata Provider. It is an evolution of the legacy [PhoenixAdult.bundle](https://github.com/PAhelper/PhoenixAdult.bundle) Plex agent, ported onto Plex's newer Metadata Provider API. Please note porting the existing scrapers will take some time. It is currently in alpha and is co-authored with Claude to migrate the bundle to the new Metadata API framework.
 
 ## Disclaimer
 

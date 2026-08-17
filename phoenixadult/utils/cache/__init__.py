@@ -561,7 +561,7 @@ def entries_page(
     dup_paths: list[str] | None = None,
     sort: str = 'updated_at',
     direction: str = 'desc',
-    limit: int = 500,
+    limit: int = 200,
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
     rows, total = scene_store.query_entry_rows(

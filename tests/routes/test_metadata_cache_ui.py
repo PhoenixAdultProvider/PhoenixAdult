@@ -105,6 +105,7 @@ def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> Non
     page = authed_client().get('/metadata')
     assert 'var TOTAL = 0;' in page.text
     assert 'var STUDIOS = [];' in page.text
+    assert 'var PAGE_SIZE = 200;' in page.text
     assert 'serverQuery(PAGE_SIZE, true)' in page.text
     assert '>Previous<' in page.text and '>Next<' in page.text
 

@@ -250,7 +250,7 @@
     ];
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
-    var PAGE_SIZE = 500;
+    var PAGE_SIZE = {{ page_size|tojson }};
     var offset = 0;
     var SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
     var FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-cast': 'cast', 'f-director': 'director', 'f-producer': 'producer', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};

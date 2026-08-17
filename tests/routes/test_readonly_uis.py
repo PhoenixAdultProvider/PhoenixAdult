@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -243,19 +244,63 @@ def test_page_headings_share_one_position_and_spacing() -> None:
         assert re.search(r'body\s*\{[^}]*padding:\s*24px', css), f'{path} uses a different body padding'
 
 
-def test_every_page_closes_the_script_tags_it_opens() -> None:
-    import re
+_VOID = frozenset({'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'})
+_OPTIONAL_END = frozenset({'dd', 'dt', 'li', 'optgroup', 'option', 'p', 'rp', 'rt', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr'})
 
+
+class _TagBalance(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[tuple[str, int]] = []
+        self.problems: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: object) -> None:
+        if tag not in _VOID:
+            self.stack.append((tag, self.getpos()[0]))
+
+    def handle_startendtag(self, tag: str, attrs: object) -> None:
+        return
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _VOID:
+            return
+        for depth in range(len(self.stack) - 1, -1, -1):
+            if self.stack[depth][0] == tag:
+                for open_tag, line in self.stack[depth + 1 :]:
+                    if open_tag not in _OPTIONAL_END:
+                        self.problems.append(f'<{open_tag}> opened on line {line} is still open at </{tag}>')
+                del self.stack[depth:]
+                return
+        self.problems.append(f'</{tag}> on line {self.getpos()[0]} closes a tag that was never opened')
+
+    def unclosed(self) -> list[str]:
+        return [f'<{tag}> opened on line {line} is never closed' for tag, line in self.stack if tag not in _OPTIONAL_END]
+
+
+def _structure_problems(html: str) -> list[str]:
+    parser = _TagBalance()
+    parser.feed(html)
+    parser.close()
+    return parser.problems + parser.unclosed()
+
+
+def test_every_page_is_structurally_balanced() -> None:
     from fastapi.testclient import TestClient as _Client
 
     from phoenixadult.app_factory import create_app as _create
 
     admin = authed_client()
     anon = _Client(_create())
-    pages = [(admin, p) for p in ('/metadata', '/people', '/logos', '/queue', '/searches', '/config', '/account')]
-    pages += [(anon, '/login')]
+    pages = [(admin, p) for p in ('/metadata', '/people', '/logos', '/logos/add', '/queue', '/searches', '/config', '/account')]
+    pages += [(anon, '/login'), (anon, '/setup')]
     for client, path in pages:
-        body = client.get(path).text
-        opens = len(re.findall(r'<script\b', body))
-        closes = len(re.findall(r'</script>', body))
-        assert opens == closes, f'{path} opens {opens} script tags and closes {closes}; the rest of the page is swallowed'
+        problems = _structure_problems(client.get(path).text)
+        assert not problems, f'{path} is malformed:\n  ' + '\n  '.join(problems[:6])
+
+
+def test_the_balance_check_catches_a_stray_tag() -> None:
+    good = '<html><body><main><div class="x">hi</div></main><script>if (1 < 2) {}</script></body></html>'
+    assert _structure_problems(good) == []
+    assert _structure_problems(good.replace('<main>', '<main><script>')), 'an unclosed script must be reported'
+    assert _structure_problems('<html><body><div><span>x</div></body></html>'), 'a crossed tag must be reported'
+    assert _structure_problems('<html><body></div></body></html>'), 'an orphan close must be reported'

@@ -22,6 +22,8 @@ from phoenixadult.utils.processors.scene_link import resolve_source_link
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
 _admin = [Depends(admin_auth_guard)]
 
+PAGE_SIZE = 200
+
 _SORT_KEYS = ('title', 'studio', 'tagline', 'release_date', 'data18_id', 'updated_at')
 _EDIT_TEXT = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt', 'data18_id', 'data18_type')
 _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
@@ -31,7 +33,7 @@ _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
     (entries, total), dup_keys, studios, facets = await asyncio.gather(
-        run_in('store', metadata_cache.entries_page),
+        run_in('store', metadata_cache.entries_page, limit=PAGE_SIZE),
         run_in('store', metadata_cache.stale_duplicate_entries),
         run_in('store', metadata_cache.studios),
         run_in('store', metadata_cache.facets),
@@ -48,6 +50,7 @@ async def page(request: Request) -> HTMLResponse:
             studios=studios,
             facets=facets,
             dup_keys=dup_keys,
+            page_size=PAGE_SIZE,
         )
     )
 
@@ -246,7 +249,7 @@ async def entries_json(
     dups: int = Query(0, ge=0, le=2),
     sort: str = 'updated_at',
     direction: str = Query('desc', alias='dir'),
-    limit: int = Query(500, ge=0, le=1000),
+    limit: int = Query(PAGE_SIZE, ge=0, le=1000),
     offset: int = Query(0, ge=0),
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
