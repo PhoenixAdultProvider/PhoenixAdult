@@ -9,8 +9,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from phoenixadult.config.env import env
+from phoenixadult.routes.theme_view import THEMES_BY_MODE, theme_view
 
-THEME_NAMES = ('midnight', 'forest', 'sky', 'meadow')
+THEME_NAMES = tuple(name for names in THEMES_BY_MODE.values() for name in names)
 FONT_NAMES = ('archivo-latin', 'jetbrains-mono-latin')
 
 _NAV_ITEMS: tuple[tuple[str, str, str], ...] = (
@@ -36,6 +37,7 @@ from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402
 _jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(Path(__file__).parent / 'html'), autoescape=True)
 _jinja.globals['nav_items'] = nav_items
 _jinja.globals['user_theme'] = user_theme
+_jinja.globals['theme_view'] = theme_view
 _jinja.globals['is_admin'] = is_admin
 
 

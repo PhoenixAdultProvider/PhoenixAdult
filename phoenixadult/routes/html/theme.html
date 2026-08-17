@@ -1,5 +1,9 @@
-<link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">
-<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+{% set tv = theme_view() %}{% if tv.mode %}<meta name="color-scheme" content="{{ tv.mode }}">
+<link id="pa-theme-css" data-theme-file="{{ tv.name }}" rel="stylesheet" href="/themes/{{ tv.name }}.css">
+{% else %}<meta name="color-scheme" content="dark light">
+<link id="pa-theme-css" data-theme-file="{{ tv.dark }}" rel="stylesheet" href="/themes/{{ tv.dark }}.css" media="(prefers-color-scheme: dark)">
+<link id="pa-theme-css-alt" data-theme-file="{{ tv.light }}" rel="stylesheet" href="/themes/{{ tv.light }}.css" media="(prefers-color-scheme: light)">
+{% endif %}<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   @font-face {
     font-family: 'Archivo';
@@ -25,6 +29,7 @@
     const NAME_KEYS = { dark: 'pa-theme-dark', light: 'pa-theme-light' };
     const THEMES = { dark: ['midnight', 'forest'], light: ['sky', 'meadow'] };
     const SERVER = window.paUserTheme || {};
+    const VIEW_COOKIE = 'pa_view';
     const media = matchMedia('(prefers-color-scheme: light)');
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
     const write = (key, value) => { try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} };
@@ -34,21 +39,43 @@
       return pref === 'light' || pref === 'dark' ? pref : (media.matches ? 'light' : 'dark');
     }
 
+    function readView() {
+      const found = document.cookie.match(/(?:^|;\s*)pa_view=([a-z]+)\.([a-z0-9]+)/);
+      return found && THEMES[found[1]] && THEMES[found[1]].includes(found[2]) ? { mode: found[1], name: found[2] } : null;
+    }
+
     function themeName(mode) {
       const server = SERVER[mode];
       if (THEMES[mode].includes(server)) return server;
       const stored = read(NAME_KEYS[mode]);
-      return THEMES[mode].includes(stored) ? stored : THEMES[mode][0];
+      if (THEMES[mode].includes(stored)) return stored;
+      const view = readView();
+      return view && view.mode === mode ? view.name : THEMES[mode][0];
+    }
+
+    function ensureLoaded(name) {
+      if (document.querySelector('link[data-theme-file="' + name + '"]:not([media])')) return;
+      const link = document.createElement('link');
+      link.dataset.themeFile = name;
+      link.rel = 'stylesheet';
+      link.href = '/themes/' + name + '.css';
+      document.head.appendChild(link);
+    }
+
+    function writeView(mode, name) {
+      const value = mode + '.' + name;
+      if (document.cookie.indexOf(VIEW_COOKIE + '=' + value) !== -1) return;
+      document.cookie = VIEW_COOKIE + '=' + value + ';path=/;max-age=31536000;samesite=lax';
     }
 
     function apply() {
       const mode = resolvedMode();
       const name = themeName(mode);
-      document.documentElement.dataset.theme = mode;
-      document.documentElement.dataset.themeName = name;
-      const link = document.getElementById('pa-theme-css');
-      const href = '/themes/' + name + '.css';
-      if (link.getAttribute('href') !== href) link.setAttribute('href', href);
+      const root = document.documentElement;
+      if (root.dataset.theme !== mode) root.dataset.theme = mode;
+      if (root.dataset.themeName !== name) root.dataset.themeName = name;
+      ensureLoaded(name);
+      writeView(mode, name);
       document.dispatchEvent(new CustomEvent('pa-theme-change'));
     }
 
@@ -60,15 +87,7 @@
       themeName,
       set(pref) { write(MODE_KEY, pref === 'auto' ? null : pref); apply(); },
       setThemeName(mode, name) { if (THEMES[mode].includes(name)) { SERVER[mode] = name; write(NAME_KEYS[mode], name); apply(); } },
-      ensureLoaded(name) {
-        const id = 'pa-theme-css-' + name;
-        if (document.getElementById(id)) return;
-        const link = document.createElement('link');
-        link.id = id;
-        link.rel = 'stylesheet';
-        link.href = '/themes/' + name + '.css';
-        document.head.appendChild(link);
-      },
+      ensureLoaded,
     };
     apply();
   })();

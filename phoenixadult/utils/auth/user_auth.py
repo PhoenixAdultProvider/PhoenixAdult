@@ -49,6 +49,9 @@ async def resolve_user(request: Request) -> AuthedUser | None:
     if cached != 'unset':
         return cached  # type: ignore[return-value]
 
+    from phoenixadult.routes.theme_view import adopt as adopt_theme_view
+
+    adopt_theme_view(request)
     user: AuthedUser | None = None
     cookie = request.cookies.get(SESSION_COOKIE)
     if cookie:

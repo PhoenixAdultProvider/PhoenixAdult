@@ -82,12 +82,44 @@ def test_nav_without_a_username_has_no_user_menu() -> None:
 
 def test_every_page_carries_the_theme_loader_and_toggle(client: TestClient) -> None:
     body = client.get('/queue').text
-    assert '<link id="pa-theme-css" rel="stylesheet" href="/themes/midnight.css">' in body
+    head = body.split('</head>')[0]
+    assert body.count('id="pa-theme-css"') == 1, 'theme.html must be included once, from base.html'
+    assert 'id="pa-theme-css"' in head, 'a theme stylesheet in the body flashes on every load'
     assert 'prefers-color-scheme: light' in body
     assert 'localStorage.getItem' in body and 'pa-theme' in body
     assert "dark: ['midnight', 'forest'], light: ['sky', 'meadow']" in body
     for mode in ('light', 'auto', 'dark'):
         assert f'data-set="{mode}"' in body
+
+
+def test_the_theme_link_never_needs_a_swap_after_paint(client: TestClient) -> None:
+    head = client.get('/queue').text.split('</head>')[0]
+    assert 'media="(prefers-color-scheme: dark)"' in head and 'media="(prefers-color-scheme: light)"' in head
+    assert 'href="/themes/midnight.css"' in head and 'href="/themes/sky.css"' in head
+    assert 'content="dark light"' in head
+
+    client.cookies.set('pa_view', 'light.meadow')
+    body = client.get('/queue').text
+    head = body.split('</head>')[0]
+    assert head.count('rel="stylesheet" href="/themes/') == 1, 'a known view needs exactly one sheet'
+    assert 'data-theme-file="meadow"' in head and 'content="light"' in head
+    assert '<html lang="en" data-theme="light" data-theme-name="meadow">' in body
+    assert "setAttribute('href'" not in body, 'the href rewrite is what caused the flash'
+    client.cookies.delete('pa_view')
+
+
+def test_the_theme_table_matches_the_server() -> None:
+    import re
+    from pathlib import Path as _Path
+
+    import phoenixadult.routes as routes
+    from phoenixadult.routes.theme_view import THEMES_BY_MODE
+
+    text = (_Path(routes.__file__).parent / 'html' / 'theme.html').read_text(encoding='utf-8')
+    found = re.search(r'const THEMES = \{ dark: \[([^\]]*)\], light: \[([^\]]*)\] \}', text)
+    assert found, 'the JS theme table moved; keep it in step with THEMES_BY_MODE'
+    parsed = {mode: tuple(n.strip().strip("'") for n in found.group(i).split(',')) for i, mode in ((1, 'dark'), (2, 'light'))}
+    assert parsed == THEMES_BY_MODE, 'the JS and Python theme tables have drifted'
 
 
 def test_theme_stylesheets_are_served_and_unknown_names_404(client: TestClient) -> None:

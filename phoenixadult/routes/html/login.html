@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Sign In — PhoenixAdult{% endblock %}
 {% block page %}login{% endblock %}
-{% block head %}{% include 'theme.html' %}
+{% block head %}
 <style>
   body { min-height: 100svh; display: flex; align-items: center; justify-content: center;
          padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
@@ -26,7 +26,6 @@
     body { align-items: flex-start; padding-top: max(32px, env(safe-area-inset-top)); }
   }
 </style>
-</head>
 {% endblock %}
 {% block chrome %}{% endblock %}
 {% block content %}
