@@ -1,6 +1,6 @@
 # PhoenixAdult Provider (FastAPI)
 
-This FastAPI metadata agent helps fill Plex with information for your adult videos, connecting to Plex as a Metadata Provider. It is an evolution of the legacy [PhoenixAdult.bundle](https://github.com/PAhelper/PhoenixAdult.bundle) Plex agent, ported onto Plex's newer Metadata Provider API. Please note porting the existing scrapers will take some time. This is currently a proof of concept co-authored with Claude for seeing how to migrate to the new Metadata API framework.
+This FastAPI metadata agent helps fill Plex with information for your adult videos, connecting to Plex as a Metadata Provider. It is an evolution of the legacy [PhoenixAdult.bundle](https://github.com/PAhelper/PhoenixAdult.bundle) Plex agent, ported onto Plex's newer Metadata Provider API. Please note porting the existing scrapers will take some time. This is currently in alpha, and is co-authored with Claude, to migrate to the new Metadata API framework.
 
 ## Disclaimer
 
@@ -13,18 +13,18 @@ Users self-host the provider on their own hardware to enrich Plex libraries with
 Contributors who repeatedly include media content in issues will be blocked. The project complies with the acceptable-use policies of the hosts it's published on (e.g. GitHub's [Acceptable Use Policies](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies)) regarding sexually obscene content — content of that kind is explicitly **out of scope** for this repository.
 
 ## File Naming
-The agent will try to match your file automatically, usually based on the filename. You can assist it by renaming your video appropriately.
-If the video is not successfully matched, you can try to manually match it using the [Match...] function in Plex. See the [manual searching document](./docs/manualsearch.md) for more information.
-Best practice for each site is listed in the [sitelist document](./docs/sitelist.md).
+The agent matches your file automatically, usually from the filename, so renaming a video to the expected pattern is the single best thing you can do to help it.
+If a video does not match, match it by hand with Plex's [Match…] function — see the [manual searching document](./docs/manualsearch.md).
+The naming each site expects is listed in the [sitelist document](./docs/sitelist.md).
 
 Specific filename patterns and examples are available in the [file naming document](./docs/file-naming.md)
 
 ## Supported Networks
-To view the full list of supported sites, [check out the sitelist doc](./docs/sitelist.md). Requesting New sites is not currently being supported at this time and issues are currently disabled, so that time can be given to port, integrate and test all the exisitng scrapers. Any sites/networks that are currently broken on the main scraper will be skipped in this scraper if they cannot be fixed. For the current status of which sites have been tested please see the [Scraper Test Plan](./docs/scraper-test-plan.md) (note some sites may already be working).
+To view the full list of supported sites, [check out the sitelist doc](./docs/sitelist.md). New site requests are closed for now, and issues are disabled with them, so the time goes into porting, integrating and testing the scrapers that already exist. A site that is broken in the legacy bundle is skipped here too unless it can be fixed. For which sites have been tested so far, see the [Scraper Test Plan](./docs/scraper-test-plan.md) — some not yet listed may already work.
 
 ## Develop
 
-### Enviroment Setup
+### Environment Setup
 
 ```bash
 python -m venv .venv
@@ -42,11 +42,14 @@ NODE_ENV=development python -m phoenixadult.main
 - Sign in: `GET /login`; account and API key: `GET /account`
 - Config UI: `GET /config` (signed in)
 - Dev UI: `GET /dev` (non-production, signed in)
-- People-cache review: `GET /people-cache` — browse/manage cached cast & crew headshots (actors, directors, producers) and gender tags (needs `PEOPLE_CACHE_ENABLE`)
-- Metadata-cache review: `GET /metadata-cache` — sortable/filterable table of frozen scene snapshots, with per-row purge (needs `METADATA_CACHE_ENABLE`)
+- People cache: `GET /people` — browse and manage cached cast & crew headshots (actors, directors, producers) and gender tags (needs `PEOPLE_CACHE_ENABLE`)
+- Metadata cache: `GET /metadata` — filterable view of frozen scene snapshots, with per-scene purge and refresh (needs `METADATA_CACHE_ENABLE`)
+- Logo cache: `GET /logos` — the clearLogo wall, with `GET /logos/add` to file a new one
+- Scrape queue: `GET /queue` — background searches and metadata updates deferred by pacing
+- Stored searches: `GET /searches` — cached search results, with duplicate spellings grouped
 - Plex agent mount: `/<provider>/movies` (e.g. `/phoenixadult/movies`)
 
-The two cache surfaces are guarded the same way as `/config` and `/dev` — a signed-in session or an API key. They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
+These surfaces are guarded the same way as `/config` and `/dev` — a signed-in session or an API key. They're optional, off by default, and enabled via their `*_ENABLE` env vars in the Config UI.
 
 See the [configuration document](./docs/configuration.md) for every environment variable — with defaults and detailed usage — and the two ways to set them (`.env` at boot vs the runtime Config UI).
 

@@ -241,3 +241,21 @@ def test_page_headings_share_one_position_and_spacing() -> None:
         assert canonical in css, f'{path} does not use the shared heading rule'
         assert re.findall(r'h1\s*\{[^}]*\}', css) == [canonical], f'{path} restates the shared heading rule'
         assert re.search(r'body\s*\{[^}]*padding:\s*24px', css), f'{path} uses a different body padding'
+
+
+def test_every_page_closes_the_script_tags_it_opens() -> None:
+    import re
+
+    from fastapi.testclient import TestClient as _Client
+
+    from phoenixadult.app_factory import create_app as _create
+
+    admin = authed_client()
+    anon = _Client(_create())
+    pages = [(admin, p) for p in ('/metadata', '/people', '/logos', '/queue', '/searches', '/config', '/account')]
+    pages += [(anon, '/login')]
+    for client, path in pages:
+        body = client.get(path).text
+        opens = len(re.findall(r'<script\b', body))
+        closes = len(re.findall(r'</script>', body))
+        assert opens == closes, f'{path} opens {opens} script tags and closes {closes}; the rest of the page is swallowed'
