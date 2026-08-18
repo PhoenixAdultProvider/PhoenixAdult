@@ -121,6 +121,7 @@ def test_add_page_is_admin_only_and_offers_both_sources() -> None:
     member = TestClient(create_app())
     member.cookies.set('pa_session', user_store.create_session(uid, 'pytest'))
     assert member.get('/logos/add').status_code == 403
+    assert member.get('/logos/api/expand', params={'studio': 'Vixen', 'template': 'https://x/y.png'}).status_code == 403
     page = authed_client().get('/logos/add').text
     assert 'id="studio"' in page
     assert 'data-drop' in page and "addEventListener('drop'" in page, 'each row takes a dropped file'
@@ -362,3 +363,77 @@ def test_a_changed_logo_is_rescanned(tmp_path: Path, monkeypatch: pytest.MonkeyP
     logo_cache.reconcile()
     assert [e['well'] for e in logo_cache.entries()] == ['light'], 'a repainted logo must not keep the old verdict'
     assert len(json.loads(logo_cache._well_store().read_text(encoding='utf-8'))) == 1, 'stale keys must be pruned'
+
+
+def test_expand_fills_every_missing_sub_site_but_never_the_whole_studio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets', 'Czech Casting']})
+    params = {'studio': 'Czech AV', 'template': 'https://static.hqmediago.com/media/{subsiteclean}.com/images/site-logo.svg'}
+
+    rows = authed_client().get('/logos/api/expand', params=params).json()['rows']
+    assert [r['alias'] for r in rows] == ['Czech Streets', 'Czech Casting'], 'the whole-studio row must be left out'
+    assert rows[0]['urls'] == ['https://static.hqmediago.com/media/czechstreets.com/images/site-logo.svg']
+
+
+def test_expand_names_a_placeholder_it_does_not_know(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets']})
+    r = authed_client().get('/logos/api/expand', params={'studio': 'Czech AV', 'template': 'https://x/{subsitclean}.png'})
+    assert r.status_code == 400 and '{subsitclean}' in r.json()['error']
+
+
+def test_expand_asks_for_a_studio_and_a_template() -> None:
+    client = authed_client()
+    assert client.get('/logos/api/expand', params={'template': 'https://x/y.png'}).status_code == 400
+    assert client.get('/logos/api/expand', params={'studio': 'Vixen', 'template': '  '}).status_code == 400
+
+
+def test_a_working_template_is_remembered_and_offered_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'phoenixadult.db'))
+    _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets']})
+    client = authed_client()
+    assert client.get('/logos/api/aliases', params={'studio': 'Czech AV'}).json()['template'] == ''
+
+    client.post('/logos/api/template', json={'studio': 'Czech AV', 'template': 'https://cdn/{domain}/logo.svg'})
+    assert client.get('/logos/api/aliases', params={'studio': 'Czech AV'}).json()['template'] == 'https://cdn/{domain}/logo.svg'
+
+
+def test_add_url_walks_the_candidates_until_one_is_an_image(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.utils.images.image_fetcher as fetcher
+
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
+    src = tmp_path / 'src.png'
+    _logo(src, (255, 255, 255))
+    tried: list[str] = []
+
+    async def only_png(*args: object, **_kw: object) -> tuple[bytes, str]:
+        url = next(a for a in args if isinstance(a, str) and a.startswith('http'))
+        tried.append(url)
+        if not url.endswith('.png'):
+            raise ValueError('404 Not Found')
+        return src.read_bytes(), 'image/png'
+
+    monkeypatch.setattr(fetcher, '_get_once', only_png)
+    monkeypatch.setattr(fetcher, '_get_once_pinned', only_png)
+    monkeypatch.setattr(fetcher, 'impersonate_get_bytes', only_png)
+
+    urls = ['https://cdn.example/logo.svg', 'https://cdn.example/logo.png', 'https://cdn.example/logo.webp']
+    r = authed_client().post('/logos/api/add-url', json={'studio': 'Vixen', 'alias': '', 'urls': urls})
+    assert r.status_code == 200 and r.json()['rel'] == 'vixen/logo.vixen.png', r.json()
+    assert tried[0].endswith('.svg') and tried[-1].endswith('.png'), 'candidates are tried in order and stop at the winner'
+    assert not any(u.endswith('.webp') for u in tried), 'the walk stops once one succeeds'
+
+
+def test_add_url_refuses_to_reach_a_private_host() -> None:
+    r = authed_client().post('/logos/api/add-url', json={'studio': 'Vixen', 'alias': '', 'url': 'http://10.0.0.1/logo.png'})
+    assert r.status_code == 502 and 'blocked host' in r.json()['error']
+
+
+def test_the_add_page_advertises_the_placeholders_it_supports() -> None:
+    from phoenixadult.utils.images.logo_template import PLACEHOLDERS
+
+    page = authed_client().get('/logos/add').text
+    for token, _note in PLACEHOLDERS:
+        assert f'>{token}</code>' in page, f'{token} is supported but never offered on the page'
+    assert 'Try All Subsites' in page

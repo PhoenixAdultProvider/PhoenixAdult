@@ -110,6 +110,7 @@ def test_write_endpoints_reject_non_admins(member: TestClient) -> None:
         ('/logos/api/purge', {'rel': 'x.png'}),
         ('/logos/api/purge-all', {}),
         ('/logos/api/rescan', {}),
+        ('/logos/api/template', {'studio': 'Vixen', 'template': 'https://x/y.png'}),
         ('/queue/api/flush', {'kind': 'search'}),
         ('/queue/api/pause', {'kind': 'search'}),
         ('/queue/api/remove', {'key': 'x'}),
@@ -186,6 +187,7 @@ def test_every_page_script_survives_load_for_both_roles(member: TestClient, tmp_
         _assert_page_scripts_load(member, path, f'member-{slug}', tmp_path)
         _assert_page_scripts_load(admin, path, f'admin-{slug}', tmp_path)
     _assert_page_scripts_load(admin, '/searches', 'admin-searches', tmp_path)
+    _assert_page_scripts_load(admin, '/logos/add', 'admin-logos-add', tmp_path)
 
 
 def test_a_lone_view_button_is_centered(member: TestClient) -> None:

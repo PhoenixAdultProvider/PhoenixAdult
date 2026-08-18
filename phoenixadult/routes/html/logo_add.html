@@ -10,7 +10,12 @@
     .field label { font-size: 11px; color: var(--label-text); text-transform: uppercase; letter-spacing: .04em; }
     .head { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
     .head .field { flex: 1 1 280px; }
+    .head .field.wide { flex: 1 1 100%; }
     .tally { font-size: 12px; color: var(--label-text); align-self: center; }
+    .tally.err { color: var(--status-danger-text); }
+    .tally.ok { color: var(--status-ok-text); }
+    .hint { font-size: var(--text-2xs); color: var(--hint-text); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .hint code { font-family: var(--font-mono); cursor: help; }
 
     .rows { display: flex; flex-direction: column; gap: 6px; }
     .lrow {
@@ -36,6 +41,7 @@
 
     @media (max-width: 720px) {
       body { padding: 14px; }
+      .head .field { flex: 1 1 100%; }
       .lrow { grid-template-columns: 1fr 1fr; }
       .lname { grid-column: 1 / -1; }
       .lrow .pa-input { grid-column: 1 / -1; }
@@ -54,6 +60,16 @@
       </div>
       <button type="button" class="pa-btn pa-btn--primary" id="fetchAll" onclick="fetchAll()">Fetch Every URL</button>
       <span class="tally" id="tally"></span>
+      <div class="field wide">
+        <label for="template">Logo URL Template</label>
+        <input class="pa-input" type="text" id="template" autocomplete="off"
+               placeholder="https://static.example.com/media/{domain}/images/site-logo.svg">
+        <div class="hint">
+          {%- for p in state.placeholders %}<code title="{{ p.note }}">{{ p.token }}</code>{% endfor %}
+        </div>
+      </div>
+      <button type="button" class="pa-btn" id="tryAll" onclick="tryAllSubsites()">Try All Subsites</button>
+      <span class="tally" id="tstate"></span>
     </div>
   </div>
 
@@ -68,6 +84,13 @@
     var STATE = {{ state|tojson }};
     var ROWS = [];
     var pending = null;
+
+    function template() { return document.getElementById('template').value.trim(); }
+    function tstate(msg, kind) {
+      var el = document.getElementById('tstate');
+      el.textContent = msg;
+      el.className = 'tally' + (kind ? ' ' + kind : '');
+    }
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function studio() { return document.getElementById('studio').value; }
@@ -105,6 +128,8 @@
       const r = await fetch('/logos/api/aliases?studio=' + encodeURIComponent(studio()));
       const j = await r.json();
       ROWS = (j.studioTaken ? [] : [{ alias: '', done: false }]).concat((j.aliases || []).map((a) => ({ alias: a, done: false })));
+      document.getElementById('template').value = j.template || '';
+      tstate('');
       document.getElementById('empty').textContent = 'Every site under this studio already has a logo.';
       render();
     }
@@ -131,9 +156,11 @@
     function fromUrl(alias) {
       const url = rowFor(alias).querySelector('[data-url]').value.trim();
       if (!url) { state(alias, 'Enter a URL first.', 'err'); return Promise.resolve(false); }
+      const row = ROWS.find((r) => r.alias === alias);
+      const urls = row && row.urls && row.urls[0] === url ? row.urls : [url];
       return send(alias, 'add-url', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studio: studio(), alias, url }),
+        body: JSON.stringify({ studio: studio(), alias, urls }),
       }, 'a URL');
     }
 
@@ -143,6 +170,36 @@
       form.append('alias', alias);
       form.append('file', file, file.name);
       return send(alias, 'add-upload', { method: 'POST', body: form }, file.name);
+    }
+
+    async function tryAllSubsites() {
+      const tpl = template();
+      if (!studio()) { tstate('Pick a studio first.', 'err'); return; }
+      if (!tpl) { tstate('Enter a template first.', 'err'); return; }
+      document.getElementById('tryAll').disabled = true;
+      try {
+        const r = await fetch(`/logos/api/expand?studio=${encodeURIComponent(studio())}&template=${encodeURIComponent(tpl)}`);
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { tstate(j.error || 'That template could not be expanded.', 'err'); return; }
+        const rows = (j.rows || []).filter((e) => rowFor(e.alias) && !ROWS.find((x) => x.alias === e.alias).done);
+        if (!rows.length) { tstate('Nothing left to fill in.'); return; }
+        rows.forEach((e) => {
+          ROWS.find((x) => x.alias === e.alias).urls = e.urls;
+          rowFor(e.alias).querySelector('[data-url]').value = e.urls[0];
+        });
+        tstate(`Filled ${rows.length} sub-site(s), fetching…`);
+        await fetchAll();
+        const won = rows.filter((e) => ROWS.find((x) => x.alias === e.alias).done).length;
+        tstate(`${won} of ${rows.length} sub-site(s) fetched`, won ? 'ok' : 'err');
+        if (won) {
+          await fetch('/logos/api/template', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studio: studio(), template: tpl }),
+          });
+        }
+      } finally {
+        document.getElementById('tryAll').disabled = false;
+      }
     }
 
     async function fetchAll() {
