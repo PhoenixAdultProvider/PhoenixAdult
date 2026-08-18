@@ -26,8 +26,8 @@ body:
     id: site
     attributes:
       label: Site
-      description: Which site / sub-site is affected? Use the name as it appears in the registry, e.g. `CzechVR` or `Trick Your GF`.
-      placeholder: CzechVR
+      description: Which site / sub-site is affected? Use the name as it appears in the registry, e.g. `Czech VR` or `Trick Your GF`.
+      placeholder: Czech VR
     validations:
       required: true
 
@@ -75,9 +75,9 @@ body:
         Paste the agent's log for this match attempt. **Redact** anything sensitive (your username, FQDNs, API keys, IP addresses).
       render: text
       placeholder: |
-        [CzechVR] search query="..." searchDate=2021-12-31
-        [CzechVR] keyword search → https://...
-        [CzechVR] ... 0 result(s)
+        [Czech VR] search query="..." searchDate=2021-12-31
+        [Czech VR] keyword search → https://...
+        [Czech VR] ... 0 result(s)
     validations:
       required: false
 

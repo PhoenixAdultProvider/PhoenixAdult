@@ -7,7 +7,7 @@ from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.czechvr import CzechVRClient, __testing__
 from phoenixadult.registry import find_site
 
-SITE = find_site('CzechVR')
+SITE = find_site('Czech VR')
 assert SITE is not None
 
 
@@ -60,8 +60,8 @@ async def test_detail() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
-    assert detail.studio == 'CzechVR'
-    assert detail.tagline == 'CzechVR'
+    assert detail.studio == 'Czech VR'
+    assert detail.tagline == 'Czech VR'
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['vr', '180']
     assert [a.name for a in detail.actors] == ['Jane Doe']

@@ -308,10 +308,10 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Czech Toilets
   - Czech Twins
   - Czech Wife Swap
-+ #### CzechVR | ✅
-  - CzechVR Casting
-  - CzechVR Fetish
-  - CzechVR Network
++ #### Czech VR | ✅
+  - Czech VR Casting
+  - Czech VR Fetish
+  - Czech VR Network
 + #### DarkRoomVR | ✓ - **Title only**
 + #### Data18 Porn Database | ✅
   - Data18 Empire

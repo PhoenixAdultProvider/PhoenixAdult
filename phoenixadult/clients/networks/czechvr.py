@@ -8,7 +8,7 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, sceneid_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
-STUDIO = 'CzechVR'
+STUDIO = 'Czech VR'
 _DATE_FMT = '%b %d, %Y'
 _BRAND_SUFFIXES = ['Czech VR Network', ' - Czech VR Fetish Porn Videos', 'Czech VR Fetish', 'Czech VR Casting', 'Czech VR']
 _CDN_RE = re.compile(r'/cdn-cgi/image/[^/]*/')
