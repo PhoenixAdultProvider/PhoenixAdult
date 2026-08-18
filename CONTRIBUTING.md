@@ -3,7 +3,7 @@
 ## Commit message format
 
 Commits should follow the [Conventional Commits](https://www.conventionalcommits.org/) spec.
-This keeps the history readable and lets the version in `pyproject.toml` be bumped
+This keeps the history readable and lets the version in `phoenixadult/__init__.py` be bumped
 in a predictable way (feat → minor, fix → patch, `!`/`BREAKING CHANGE` → major).
 The convention isn't enforced by a git hook — please follow it by hand.
 
@@ -84,6 +84,17 @@ fixture-driven test; see [docs/scraper-test-plan.md](./docs/scraper-test-plan.md
 
 ## Versioning
 
-The project version lives in `pyproject.toml`. There is no automated release
-tooling yet — bump the version by hand when cutting a release, choosing the bump
-(major/minor/patch) from the Conventional Commit types since the last one.
+The project version is written in exactly one place, `__version__` in
+`phoenixadult/__init__.py`. Everything else derives from it: `pyproject.toml`
+declares `dynamic = ["version"]` and reads that attribute, and the version Plex is
+told (`PROVIDER_DEFINITIONS[0].version`) comes from `provider_version()`, which
+spells the PEP 440 form out for display — `1.0.0a412` becomes `1.0.0-alpha.412`.
+`tests/test_version.py` fails if any of those are re-hardcoded, because the Plex
+version silently drifted 29 releases behind the package once already.
+
+Note this means `grep '^version' pyproject.toml` no longer returns anything — read
+`phoenixadult/__init__.py` instead, or `python -c "import phoenixadult; print(phoenixadult.__version__)"`.
+
+There is no automated release tooling yet — bump the version by hand when cutting a
+release, choosing the bump (major/minor/patch) from the Conventional Commit types
+since the last one.

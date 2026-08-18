@@ -98,7 +98,7 @@ body:
     id: version
     attributes:
       label: Agent version / commit
-      description: From `pyproject.toml` `version` or the commit SHA you're running.
+      description: From `phoenixadult/__init__.py` `__version__` or the commit SHA you're running.
       placeholder: 1.0.0
     validations:
       required: true

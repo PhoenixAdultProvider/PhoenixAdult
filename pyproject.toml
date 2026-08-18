@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phoenixadult"
-version = "1.0.0a411"
+dynamic = ["version"]
 description = "Plex Metadata Provider for scene videos from multiple adult sites (FastAPI port)"
 license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13"
@@ -63,6 +63,9 @@ playwright = [
 impersonate = [
     "curl_cffi>=0.7",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "phoenixadult.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["phoenixadult*"]

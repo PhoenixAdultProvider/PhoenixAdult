@@ -5,6 +5,7 @@ import re
 
 from text_unidecode import unidecode
 
+from phoenixadult import provider_version
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
 from phoenixadult.registry.selectors.aggregators.archive import ARCHIVE_SITES as _ARCHIVE_SITES
@@ -32,7 +33,7 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
         id='phoenixadult',
         plex_identifier='tv.plex.agents.custom.phoenixadult',
         title='PhoenixAdult',
-        version='1.0.0-alpha.382',
+        version=provider_version(),
         media_type='movie',
     ),
 ]
