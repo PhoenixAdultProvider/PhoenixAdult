@@ -28,4 +28,6 @@ CZECHVR_SITES: list[SiteInfo] = [
     _site('Czech VR Fetish', 'czechvrfetish.com'),
     _site('Czech VR Casting', 'czechvrcasting.com'),
     _site('Czech VR Network', 'czechvrnetwork.com'),
+    _site('VR Intimacy', 'vrintimacy.com'),
+    _site('Czech AR', 'czechar.com'),
 ]

@@ -163,7 +163,6 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Cece September
   - ClubFilly
   - Cosplay Channel PornPortal
-  - Czech AR
   - Dirty Sluts and Studs
   - Ebony Channel PornPortal
   - Fit18
@@ -309,9 +308,11 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Czech Twins
   - Czech Wife Swap
 + #### Czech VR | ✅
+  - Czech AR
   - Czech VR Casting
   - Czech VR Fetish
   - Czech VR Network
+  - VR Intimacy
 + #### DarkRoomVR | ✓ - **Title only**
 + #### Data18 Porn Database | ✅
   - Data18 Empire
