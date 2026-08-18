@@ -313,7 +313,7 @@ To update the site list run `python -m scripts.generate_sitelist`
   - Czech VR Fetish
   - Czech VR Network
   - VR Intimacy
-+ #### DarkRoomVR | ✓ - **Title only**
++ #### Dark Room VR | ✓ - **Title only**
 + #### Data18 Porn Database | ✅
   - Data18 Empire
   - Data18 Movie Scene
