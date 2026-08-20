@@ -142,7 +142,7 @@ def create_app() -> FastAPI:
     async def plex_client_middleware(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
         client_id = request.headers.get('x-plex-client-identifier')
         if client_id:
-            client_hits.record(client_id, request.headers, request.url.path)
+            await asyncio.to_thread(client_hits.record, client_id, request.headers, request.url.path)
             owner = await asyncio.to_thread(plex_connections.owner_for_client, client_id)
             if owner is not None:
                 token = await asyncio.to_thread(user_tokens.token_for_user, owner)
