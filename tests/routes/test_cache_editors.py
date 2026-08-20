@@ -405,3 +405,25 @@ def test_the_edit_page_carries_lock_state(client: TestClient, tmp_path: Path) ->
     body = client.get('/metadata/edit', params={'key': rel}).text
     assert '"fields": ["title"]' in body and '"imagesLocked": true' in body
     assert 'installLockUI' in body and 'lockedFields' in body
+
+
+def test_bulk_fetch_never_claims_success_when_an_item_raises(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.routes.people_cache_routes as pcr
+
+    async def boom(source: Any, filename: str, entry: Any) -> tuple[str, str]:
+        if filename.endswith('-1.jpg'):
+            raise RuntimeError('cache_photo exploded')
+        return 'missed', filename
+
+    monkeypatch.setattr(pcr, '_fetch_into_cache', boom)
+    names = [f'actor.nobody-{n}.jpg' for n in range(3)]
+    r = client.post('/people/bulk-fetch', json={'source': 'IAFD', 'filenames': names})
+    assert r.status_code == 200
+    lines = _ndjson(r.text)
+    summary = lines[-1]
+
+    progress = [line for line in lines[1:-1] if 'done' in line]
+    assert len(progress) == 3, 'every person must be accounted for even when one blows up'
+    assert summary['updated'] + summary['missed'] + summary['failed'] == 3, 'the tally must add up to the batch size'
+    assert summary['errors'] == 1, 'an unexpected exception must be counted, not swallowed'
+    assert summary['ok'] is False, 'a batch that hit an unexpected error must not report success'

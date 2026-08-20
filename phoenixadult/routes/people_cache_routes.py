@@ -361,17 +361,24 @@ async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[s
     total = len(filenames)
     sem = asyncio.Semaphore(_BULK_CONCURRENCY)
     tally = {'updated': 0, 'missed': 0, 'failed': 0}
+    errors = 0
     queue: asyncio.Queue[tuple[str, str] | None] = asyncio.Queue()
 
     async def _one(filename: str) -> None:
-        async with sem:
-            outcome, name = await _fetch_into_cache(source, filename, known.get(filename))
+        nonlocal errors
+        try:
+            async with sem:
+                outcome, name = await _fetch_into_cache(source, filename, known.get(filename))
+        except Exception as err:  # noqa: BLE001 - one person must not truncate the batch or fake a clean finish
+            logger.warn('people-cache', f'{source.name} raised for {filename}: {err!r}')
+            errors += 1
+            outcome, name = 'failed', filename
         tally[outcome] += 1
         await queue.put((outcome, name))
 
     async def _run() -> None:
         try:
-            await asyncio.gather(*(_one(f) for f in filenames))
+            await asyncio.gather(*(_one(f) for f in filenames), return_exceptions=True)
         finally:
             await queue.put(None)
 
@@ -384,8 +391,10 @@ async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[s
             yield json.dumps({'done': done, 'total': total, 'outcome': item[0], 'name': item[1]}) + '\n'
     finally:
         runner.cancel()
-    logger.info('people-cache', f'bulk fetch from {source.name}: {tally["updated"]} updated, {tally["missed"]} not found, {tally["failed"]} failed')
-    yield json.dumps({'ok': True, 'source': source.name, **tally, 'truncated': truncated}) + '\n'
+    logger.info(
+        'people-cache', f'bulk fetch from {source.name}: {tally["updated"]} updated, {tally["missed"]} not found, {tally["failed"]} failed, {errors} errored'
+    )
+    yield json.dumps({'ok': errors == 0, 'source': source.name, **tally, 'errors': errors, 'truncated': truncated}) + '\n'
 
 
 def _relabel_source(entry: dict[str, Any], source: str) -> bool:
