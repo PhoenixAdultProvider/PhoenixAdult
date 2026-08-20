@@ -31,7 +31,7 @@ def client_id_or_new(existing: str = '') -> str:
 
 
 async def create_pin(client_id: str) -> dict[str, Any]:
-    async with make_http(_headers(client_id), timeout=15.0) as http:
+    async with make_http(_headers(client_id), timeout=15.0, verify=True) as http:
         res = await http.post(f'{_PLEX_TV}/api/v2/pins', params={'strong': 'true'})
         res.raise_for_status()
         pin = res.json()
@@ -40,14 +40,14 @@ async def create_pin(client_id: str) -> dict[str, Any]:
 
 
 async def check_pin(pin_id: int, client_id: str) -> str | None:
-    async with make_http(_headers(client_id), timeout=15.0) as http:
+    async with make_http(_headers(client_id), timeout=15.0, verify=True) as http:
         res = await http.get(f'{_PLEX_TV}/api/v2/pins/{pin_id}')
         res.raise_for_status()
         return res.json().get('authToken') or None
 
 
 async def list_servers(token: str, client_id: str) -> list[dict[str, Any]]:
-    async with make_http(_headers(client_id, token), timeout=20.0) as http:
+    async with make_http(_headers(client_id, token), timeout=20.0, verify=True) as http:
         res = await http.get(f'{_PLEX_TV}/api/v2/resources', params={'includeHttps': '1', 'includeRelay': '0'})
         res.raise_for_status()
         resources = res.json()
@@ -69,7 +69,7 @@ async def verify_server(url: str, token: str) -> dict[str, Any]:
     base = url.rstrip('/')
     identity: dict[str, Any] = {'ok': False}
     auth: dict[str, Any] = {'ok': False}
-    async with make_http({'Accept': 'application/json'}, timeout=15.0) as http:
+    async with make_http({'Accept': 'application/json'}, timeout=15.0, verify=True) as http:
         try:
             res = await http.get(f'{base}/identity')
             res.raise_for_status()
@@ -123,7 +123,7 @@ async def update_status(connection: Connection, token: str, force: bool = False)
         return {'error': 'This connection needs a server URL and a token first'}
 
     base = connection.server_url.rstrip('/')
-    async with make_http({'Accept': 'application/json'}, timeout=20.0) as http:
+    async with make_http({'Accept': 'application/json'}, timeout=20.0, verify=True) as http:
         res = await http.get(f'{base}/', headers={'X-Plex-Token': token})
         res.raise_for_status()
         container = res.json().get('MediaContainer') or {}

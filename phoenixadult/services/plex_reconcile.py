@@ -99,6 +99,7 @@ class PlexClient:
         self.http: httpx2.AsyncClient = make_http(
             {'X-Plex-Token': token, 'Accept': 'application/json'},
             timeout=30.0,
+            verify=True,
             limits=httpx2.Limits(max_connections=32, max_keepalive_connections=16, keepalive_expiry=120.0),
         )
 
