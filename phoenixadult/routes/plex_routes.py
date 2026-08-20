@@ -9,11 +9,12 @@ from fastapi.responses import JSONResponse
 from phoenixadult.routes import read_json_body
 from phoenixadult.services import plex_account, plex_connections, plex_import, plex_jobs, plex_reconcile
 from phoenixadult.services.plex_connections import Connection
-from phoenixadult.utils.auth.user_auth import csrf_guard, resolve_user, user_auth_guard
+from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
+_admin = [Depends(admin_auth_guard)]
 
 
 def _truthy(value: str | None) -> bool:
@@ -163,7 +164,7 @@ async def servers(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse({'error': 'Could not list servers from plex.tv'}, status_code=502)
 
 
-@router.post('/connections/{connection_id}/verify')
+@router.post('/connections/{connection_id}/verify', dependencies=_admin)
 async def verify(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
@@ -250,7 +251,7 @@ async def libraries(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse({'error': 'Could not list libraries from Plex'}, status_code=502)
 
 
-@router.post('/connections/{connection_id}/import')
+@router.post('/connections/{connection_id}/import', dependencies=_admin)
 async def import_library(connection_id: int, request: Request) -> JSONResponse:
     resolved = await _with_token(request, connection_id)
     if isinstance(resolved, JSONResponse):
@@ -275,7 +276,7 @@ async def import_library(connection_id: int, request: Request) -> JSONResponse:
     return JSONResponse({'started': True, 'kind': 'import'})
 
 
-@router.post('/connections/{connection_id}/import-item')
+@router.post('/connections/{connection_id}/import-item', dependencies=_admin)
 async def import_item(connection_id: int, request: Request) -> JSONResponse:
     resolved = await _with_token(request, connection_id)
     if isinstance(resolved, JSONResponse):

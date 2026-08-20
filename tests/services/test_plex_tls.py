@@ -21,6 +21,5 @@ def test_every_plex_client_verifies_certificates(filename: str) -> None:
     for call in calls:
         verify = next((kw.value for kw in call.keywords if kw.arg == 'verify'), None)
         assert isinstance(verify, ast.Constant) and verify.value is True, (
-            f'{filename}:{call.lineno} calls make_http without verify=True. '
-            'These clients carry the Plex account token, and make_http defaults to verify=False.'
+            f'{filename}:{call.lineno} calls make_http without verify=True. These clients carry the Plex account token, and make_http defaults to verify=False.'
         )
