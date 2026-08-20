@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import uuid
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx2
 
@@ -63,6 +63,17 @@ async def list_servers(token: str, client_id: str) -> list[dict[str, Any]]:
         ]
         servers.append({'name': r.get('name') or '', 'product': r.get('product') or '', 'version': r.get('productVersion') or '', 'connections': connections})
     return servers
+
+
+async def advertised_hosts(token: str, client_id: str) -> set[str]:
+    hosts: set[str] = set()
+    for server in await list_servers(token, client_id):
+        for conn in server['connections']:
+            for value in (conn.get('uri') or '', conn.get('address') or ''):
+                host = urlsplit(value).hostname if '//' in value else value
+                if host:
+                    hosts.add(host.strip('[]').lower())
+    return hosts
 
 
 async def verify_server(url: str, token: str) -> dict[str, Any]:

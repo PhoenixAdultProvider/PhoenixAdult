@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx2
 from fastapi import APIRouter, Depends, Request
@@ -164,16 +165,30 @@ async def servers(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse({'error': 'Could not list servers from plex.tv'}, status_code=502)
 
 
+async def _advertised(url: str, token: str, client_id: str) -> bool:
+    host = (urlsplit(url).hostname or '').strip('[]').lower()
+    if not host or not token:
+        return False
+    try:
+        return host in await plex_account.advertised_hosts(token, client_id)
+    except (httpx2.HTTPError, ValueError) as err:
+        logger.warn('plex-auth', f'could not list advertised servers: {err}')
+        return False
+
+
 @router.post('/connections/{connection_id}/verify', dependencies=_admin)
 async def verify(connection_id: int, request: Request) -> JSONResponse:
     connection = await _owned(request, connection_id)
     if connection is None:
         return JSONResponse({'error': 'No such connection'}, status_code=404)
     body = await read_json_body(request)
-    url = str(body.get('url') or '') or connection.server_url
+    override = str(body.get('url') or '').strip()
+    url = override or connection.server_url
     if not url:
         return JSONResponse({'error': 'This connection has no server URL'}, status_code=400)
     token = await run_in('store', plex_connections.token_for, connection_id) or ''
+    if override and override.rstrip('/') != connection.server_url.rstrip('/') and not await _advertised(override, token, connection.client_id):
+        return JSONResponse({'error': 'That address is not one your Plex account advertises for this server'}, status_code=400)
     return JSONResponse(await plex_account.verify_server(url, token))
 
 

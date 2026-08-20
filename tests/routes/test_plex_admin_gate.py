@@ -37,3 +37,40 @@ def test_an_admin_is_not_blocked_by_the_new_gate() -> None:
     admin = authed_client()
     for path in _SHARED_STATE:
         assert admin.post(path, json={}).status_code != 403, f'{path} must stay open to admins'
+
+
+def _connection(client: TestClient) -> int:
+    made = client.post('/plex/connections', json={'name': 'Home'})
+    assert made.status_code == 200, made.text
+    cid = int(made.json()['id'])
+    set_url = client.post(f'/plex/connections/{cid}', json={'serverUrl': 'https://plex.example:32400'})
+    assert set_url.status_code == 200, set_url.text
+    return cid
+
+
+def test_verify_refuses_an_address_plex_never_advertised(monkeypatch: pytest.MonkeyPatch) -> None:
+    import phoenixadult.services.plex_account as pa
+    import phoenixadult.services.plex_connections as pc
+
+    admin = authed_client()
+    cid = _connection(admin)
+    monkeypatch.setattr(pc, 'token_for', lambda _cid: 'tok')
+
+    reached: list[str] = []
+
+    async def never_called(url: str, token: str) -> dict[str, object]:
+        reached.append(url)
+        return {}
+
+    async def advertised(token: str, client_id: str) -> set[str]:
+        return {'plex.example'}
+
+    monkeypatch.setattr(pa, 'verify_server', never_called)
+    monkeypatch.setattr(pa, 'advertised_hosts', advertised)
+
+    blocked = admin.post(f'/plex/connections/{cid}/verify', json={'url': 'http://169.254.169.254/latest/meta-data'})
+    assert blocked.status_code == 400 and 'advertises' in blocked.json()['error']
+    assert reached == [], 'the refused address must not reach the fetcher at all'
+
+    allowed = admin.post(f'/plex/connections/{cid}/verify', json={'url': 'https://plex.example:32400/'})
+    assert allowed.status_code == 200
