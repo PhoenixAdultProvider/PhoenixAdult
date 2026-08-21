@@ -1,4 +1,4 @@
-__version__ = '1.0.0a433'
+__version__ = '1.0.0a434'
 
 
 def provider_version() -> str:

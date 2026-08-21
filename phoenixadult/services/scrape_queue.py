@@ -361,7 +361,7 @@ async def _run(lane: str) -> None:
     queue = _queues[lane]
     while True:
         while (wait := paused_for()) > 0:
-            await asyncio.sleep(min(wait, 5.0))
+            await wait_for_change(_revision, min(wait, 5.0))
         try:
             entry, job = queue.get_nowait()
         except asyncio.QueueEmpty:

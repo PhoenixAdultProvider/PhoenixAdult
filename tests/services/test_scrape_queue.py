@@ -202,7 +202,7 @@ async def test_pause_holds_the_worker_until_resume() -> None:
         assert not ran.is_set()
         assert scrape_queue.snapshot()['paused'] is True
         scrape_queue.resume()
-        await asyncio.wait_for(ran.wait(), timeout=5)
+        await asyncio.wait_for(ran.wait(), timeout=1)
     finally:
         scrape_queue.resume()
 
