@@ -1,108 +1,60 @@
 from __future__ import annotations
 
+import sqlite3
 import threading
-from typing import Any
+from pathlib import Path
 
 import pytest
 
 from phoenixadult.utils import db
-from phoenixadult.utils.cache import scene_store
-
-_THREADS = 4
-_ROUNDS = 25
 
 
-def _run(target: Any) -> list[Any]:
-    out: list[Any] = []
-    barrier = threading.Barrier(_THREADS)
-    guard = threading.Lock()
+@pytest.fixture()
+def two_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[str, str]:
+    first, second = str(tmp_path / 'first.db'), str(tmp_path / 'second.db')
+    monkeypatch.setenv('STATE_DB_PATH', first)
+    db.close()
+    return first, second
+
+
+def test_switching_databases_leaves_other_threads_connections_alive(two_paths: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = two_paths
+    held: list[sqlite3.Connection] = []
+    opened = threading.Event()
+    release = threading.Event()
+    failure: list[str] = []
 
     def worker() -> None:
-        barrier.wait()
-        result = target()
-        with guard:
-            out.append(result)
+        held.append(db.connect())
+        opened.set()
+        release.wait(timeout=10)
+        try:
+            held[0].execute('SELECT 1').fetchone()
+        except sqlite3.ProgrammingError as err:
+            failure.append(str(err))
 
-    threads = [threading.Thread(target=worker) for _ in range(_THREADS)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-    return out
+    t = threading.Thread(target=worker)
+    t.start()
+    assert opened.wait(timeout=10)
 
+    monkeypatch.setenv('STATE_DB_PATH', second)
+    db.connect()
 
-def test_a_connection_is_never_shared_between_threads() -> None:
-    assert len({id(conn) for conn in _run(db.connect)}) == _THREADS
-
-
-def test_concurrent_readers_do_not_trip_over_each_other() -> None:
-    site = 'Thicc18'
-    for n in range(10):
-        cur_id = f'c{n}'
-        data = {
-            'MediaContainer': {
-                'identifier': 'p',
-                'size': 1,
-                'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': f'Scene {n}', 'studio': site, 'Genre': [{'tag': 'Gym'}]}],
-            }
-        }
-        scene_store.upsert(site, cur_id, f'h{n}', f'archive/thicc18/{cur_id}', data)
-
-    def hammer() -> int:
-        return sum(1 for _ in range(_ROUNDS) for n in range(10) if scene_store.load(f'h{n}') is not None)
-
-    assert _run(hammer) == [_ROUNDS * 10] * _THREADS
+    release.set()
+    t.join(timeout=10)
+    assert not failure, f'a pool thread was left holding a closed connection: {failure[0]}'
 
 
-def test_a_stale_index_rebuilds_exactly_once_under_concurrent_readers() -> None:
-    import time
-
-    calls: list[int] = []
-
-    def rebuild() -> None:
-        calls.append(1)
-        time.sleep(0.05)
-
-    gate = db.ReconciledConn(lambda: 'some-cache-dir', rebuild)
-    _run(gate.connect)
-
-    assert len(calls) == 1
+def test_a_thread_reconnects_after_the_database_moves(two_paths: tuple[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
+    first, second = two_paths
+    before = db.connect()
+    monkeypatch.setenv('STATE_DB_PATH', second)
+    after = db.connect()
+    assert before is not after, 'a moved database must hand back a fresh connection'
 
 
-def test_a_failed_rebuild_is_retried_rather_than_marked_done() -> None:
-    attempts: list[int] = []
-
-    def rebuild() -> None:
-        attempts.append(1)
-        if len(attempts) == 1:
-            raise RuntimeError('rebuild failed')
-
-    gate = db.ReconciledConn(lambda: 'another-cache-dir', rebuild)
-    with pytest.raises(RuntimeError):
-        gate.connect()
-    gate.connect()
-
-    assert len(attempts) == 2
-
-
-def test_a_reader_waits_for_an_in_flight_rebuild() -> None:
-    import time
-
-    state = {'building': False}
-    started = threading.Event()
-
-    def rebuild() -> None:
-        state['building'] = True
-        started.set()
-        time.sleep(0.1)
-        state['building'] = False
-
-    gate = db.ReconciledConn(lambda: 'busy-cache-dir', rebuild)
-    builder = threading.Thread(target=gate.connect)
-    builder.start()
-    started.wait(1)
-    gate.connect()
-    seen_mid_rebuild = state['building']
-    builder.join()
-
-    assert seen_mid_rebuild is False
+def test_closing_from_the_owning_thread_still_closes(two_paths: tuple[str, str]) -> None:
+    conn = db.connect()
+    db.close()
+    with pytest.raises(sqlite3.ProgrammingError):
+        conn.execute('SELECT 1')

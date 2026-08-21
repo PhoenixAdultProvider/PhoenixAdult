@@ -364,7 +364,7 @@ _SCHEMA_V1 = """
 """
 
 _local = threading.local()
-_open: list[sqlite3.Connection] = []
+_open: list[tuple[int, sqlite3.Connection]] = []
 _lock = threading.Lock()
 _current: tuple[str, int] = ('', 0)
 _migrated = False
@@ -372,8 +372,10 @@ _migrated = False
 
 def _discard() -> None:
     global _current, _migrated
-    for conn in _open:
-        conn.close()
+    mine = threading.get_ident()
+    for owner, conn in _open:
+        if owner == mine:
+            conn.close()
     _open.clear()
     _migrated = False
     _current = (_current[0], _current[1] + 1)
@@ -406,7 +408,7 @@ def connect() -> sqlite3.Connection:
         if not _migrated:
             _migrate(conn, key[0])
             _migrated = True
-        _open.append(conn)
+        _open.append((threading.get_ident(), conn))
     _local.conn, _local.key = conn, key
     return conn
 
