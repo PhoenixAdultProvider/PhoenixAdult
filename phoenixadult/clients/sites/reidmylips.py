@@ -8,6 +8,8 @@ from phoenixadult.utils.helpers.html_helpers import first_text
 
 
 class ReidMyLipsClient(Client):
+    genres_xpath = '//span[contains(@class,"update_tags")]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -62,15 +64,6 @@ class ReidMyLipsClient(Client):
         date = first_text(details_page_elements, '//span[contains(@class,"availdate")]')
 
         metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = [ActorResult(name='Riley Reid')]

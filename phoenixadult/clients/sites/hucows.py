@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
@@ -11,6 +11,9 @@ _FIXED_GENRES: list[str] = ['BDSM', 'Breast Torture', 'Breasts', 'Fetish', 'HuCo
 
 class HucowsClient(Client):
     search_url_xpath = '(.//a/@href)[2]'
+    summary_xpath = '//article//div[contains(@class,"entry-content")]//p'
+    actors_xpath = '//a[@rel="tag"]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -44,11 +47,6 @@ class HucowsClient(Client):
 
         metadata.title = raw or ''
 
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//article//div[contains(@class,"entry-content")]//p') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'HuCows'
 
@@ -72,13 +70,6 @@ class HucowsClient(Client):
                 genres.append(genre_name)
 
         metadata.genres = genres
-
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        entries = [ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '') for actor_link in details_page_elements.xpath('//a[@rel="tag"]')]
-
-        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

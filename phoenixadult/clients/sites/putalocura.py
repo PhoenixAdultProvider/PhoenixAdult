@@ -32,6 +32,8 @@ def _parsed_title(sel: Selector) -> str:
 
 
 class PutalocuraClient(Client):
+    genres_xpath = '//div[contains(@class,"categories")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         found: list[str] = []
         with best_effort(search_data.site_info.name, 'webSearch'):
@@ -120,15 +122,6 @@ class PutalocuraClient(Client):
         date = first_text(details_page_elements, '//div[contains(@class,"released-views")]//span')
 
         metadata.release_date = (iso_date(date, '%d/%m/%Y') if date else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"categories")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

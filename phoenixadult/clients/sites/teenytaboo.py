@@ -21,6 +21,8 @@ def _normalize_web_url(raw: str) -> str:
 
 
 class TeenyTabooClient(Client):
+    summary_xpath = '//h2[contains(@class,"customhcolor2")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         slug = _slugify(search_data.title)
         direct_url = search_data.search_url(slug)
@@ -67,11 +69,6 @@ class TeenyTabooClient(Client):
         raw = first_text(details_page_elements, '//h1[contains(@class,"customhcolor")]')
 
         metadata.title = raw.replace('-', ' ') if raw else ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//h2[contains(@class,"customhcolor2")]') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

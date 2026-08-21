@@ -57,6 +57,8 @@ def _release_date(sel: Any) -> str | None:
 
 
 class Data18EmpireClient(Client):
+    genres_xpath = '//div[contains(@class,"categories")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = data18_scene_id(search_data.scene_id)
@@ -209,15 +211,6 @@ class Data18EmpireClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.release_date = _release_date(details_page_elements)
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"categories")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

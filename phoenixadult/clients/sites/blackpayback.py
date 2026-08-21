@@ -24,6 +24,8 @@ class _BpbExtra:
 
 
 class BlackPayBackClient(Client):
+    genres_xpath = '//div[contains(@class,"featuring") and contains(@class,"clear")]//li[.//a]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         text = _LEADING_NUM_RE.sub('', search_data.title).strip()
@@ -100,16 +102,6 @@ class BlackPayBackClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = self._extra(scene).release_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//div[contains(@class,"featuring") and contains(@class,"clear")]//li[.//a]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = self._extra(scene).actors

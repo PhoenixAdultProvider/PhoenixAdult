@@ -13,6 +13,8 @@ _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling:
 
 class XSinsVRClient(Client):
     search_url_xpath = '(.//a[contains(@class,"tn-video-media")]/@href)[1]'
+    genres_xpath = '//div[contains(@class,"tags-item")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -60,15 +62,6 @@ class XSinsVRClient(Client):
 
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tags-item")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, relative_iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class CumLouderClient(Client):
     search_url_xpath = '@href'
+    title_xpath = '//h1'
+    summary_xpath = '//div[@id="content-more-less"]/p'
+    actors_xpath = '//a[contains(@class,"pornstar-link")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -24,16 +28,6 @@ class CumLouderClient(Client):
         return first_text(source, './/h2')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[@id="content-more-less"]/p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'CumLouder'
@@ -62,16 +56,6 @@ class CumLouderClient(Client):
             genres.append(group)
 
         metadata.genres = genres
-
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        entries = [
-            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
-            for actor_link in details_page_elements.xpath('//a[contains(@class,"pornstar-link")]')
-        ]
-
-        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

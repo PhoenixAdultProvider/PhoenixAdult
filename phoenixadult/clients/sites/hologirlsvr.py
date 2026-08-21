@@ -8,6 +8,9 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class HoloGirlsVRClient(Client):
+    title_xpath = '//div[contains(@class,"video-title")]//h3'
+    genres_xpath = '//div[contains(@class,"videopage-tags")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = search_data.scene_id
@@ -65,11 +68,6 @@ class HoloGirlsVRClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"video-title")]//h3') or ''
-
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
@@ -81,15 +79,6 @@ class HoloGirlsVRClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"videopage-tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

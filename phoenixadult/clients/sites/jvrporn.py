@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 
 
 class JVRPornClient(Client):
+    title_xpath = '//h1'
+    summary_xpath = '//pre'
+    genres_xpath = '//td[contains(@class,"tags")]//span'
+    actors_xpath = '//a[contains(@class,"actress")]//span'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_id = search_data.scene_id
@@ -48,35 +53,11 @@ class JVRPornClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//pre') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'JVR Porn'
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['JVR Porn']
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [s.xpath('normalize-space(.)').get() for s in details_page_elements.xpath('//td[contains(@class,"tags")]//span')]
-
-        metadata.genres = self.dedup_strings(values)
-
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        entries = [ActorResult(name=s.xpath('normalize-space(.)').get() or '') for s in details_page_elements.xpath('//a[contains(@class,"actress")]//span')]
-
-        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

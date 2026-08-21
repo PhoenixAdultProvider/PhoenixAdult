@@ -14,6 +14,9 @@ def _title_or_text(node: Any) -> str:
 
 
 class VRLatinaClient(Client):
+    title_xpath = '//h2'
+    summary_xpath = '//div[contains(@class,"content-desc")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = search_data.title.replace(' ', '-').lower()
@@ -51,16 +54,6 @@ class VRLatinaClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h2') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc")]') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

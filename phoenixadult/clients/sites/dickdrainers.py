@@ -17,6 +17,8 @@ _SLUG_RE = re.compile(r'/s/([^/]+)\.html$')
 
 
 class DickDrainersClient(Client):
+    title_xpath = '//h3'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         onsite_query = re.sub(r'\s+', '+', search_data.title.strip().lower())
@@ -74,11 +76,6 @@ class DickDrainersClient(Client):
         )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h3') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

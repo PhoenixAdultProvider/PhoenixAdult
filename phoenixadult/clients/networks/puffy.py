@@ -13,6 +13,8 @@ _SEARCH_CARD = '//div[@style="position:relative; background:black;"]'
 
 
 class PuffyClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -26,10 +28,6 @@ class PuffyClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//a)[1]/@title')
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return loaded.ctx.search_date

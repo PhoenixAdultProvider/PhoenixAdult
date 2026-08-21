@@ -14,6 +14,10 @@ _ADDED_PREFIX = re.compile(r'^Added:\s*', re.IGNORECASE)
 
 
 class DesperateAmateursClient(Client):
+    title_xpath = '//div[contains(@class,"title_bar")]'
+    summary_xpath = '//div[contains(@class,"gallery_description")]'
+    genres_xpath = '//a[starts-with(@href,"category")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -42,16 +46,6 @@ class DesperateAmateursClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"title_bar")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"gallery_description")]') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Desperate Amateurs'
 
@@ -71,15 +65,6 @@ class DesperateAmateursClient(Client):
         after = date.split('Added:')[-1].strip()
 
         metadata.release_date = iso_date(after) if after else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[starts-with(@href,"category")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

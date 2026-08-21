@@ -14,6 +14,8 @@ _ACTORS: set[str] = set(load_data(__file__, 'momcomesfirst_actors'))
 
 class MomComesFirstClient(Client):
     search_url_xpath = '(.//h2//a/@href)[1]'
+    title_xpath = '//h1'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -35,11 +37,6 @@ class MomComesFirstClient(Client):
         return iso_date(first_text(source, './/p//span'), '%b %d, %Y')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

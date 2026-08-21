@@ -19,6 +19,8 @@ def _date_of(raw: str) -> str | None:
 
 
 class HotwifeXXXClient(Client):
+    title_xpath = '//div[contains(@class,"trailerInfo")]//h2'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         found = await web_search_urls(search_data.title, search_data.site_info)
 
@@ -53,11 +55,6 @@ class HotwifeXXXClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"trailerInfo")]//h2') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

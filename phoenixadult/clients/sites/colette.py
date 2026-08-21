@@ -21,6 +21,8 @@ def _parse_interchange(raw: str) -> str:
 
 
 class ColetteClient(Client):
+    summary_xpath = '(//div[contains(@class,"info")]//p)[2]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': '_warning=True'})
 
@@ -61,11 +63,6 @@ class ColetteClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = first_text(details_page_elements, _TITLE_XP) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '(//div[contains(@class,"info")]//p)[2]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Colette'

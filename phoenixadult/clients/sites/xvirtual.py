@@ -9,6 +9,8 @@ from phoenixadult.utils.helpers.html_helpers import first_text, meta_content
 
 class XVirtualClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    genres_xpath = '//ul[contains(@class,"tags")]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -43,15 +45,6 @@ class XVirtualClient(Client):
             return
 
         metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//ul[contains(@class,"tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = []

@@ -21,6 +21,8 @@ def _url_from_style(style: str) -> str:
 
 
 class VRPFilmsClient(Client):
+    summary_xpath = '//div[contains(@class,"col-md-8") and contains(@class,"text-justify")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         slug = _slugify(search_data.title)
         if not slug:
@@ -55,11 +57,6 @@ class VRPFilmsClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = first_text(details_page_elements, _HERO_TITLE_XP) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"col-md-8") and contains(@class,"text-justify")]') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

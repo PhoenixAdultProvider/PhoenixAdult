@@ -6,6 +6,8 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_
 
 
 class MeloneChallengeClient(Client):
+    title_xpath = '//a[contains(@class,"dark")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         found = await web_search_urls(search_data.title, search_data.site_info)
 
@@ -33,11 +35,6 @@ class MeloneChallengeClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//a[contains(@class,"dark")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Melone Challenge'

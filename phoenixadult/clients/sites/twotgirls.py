@@ -9,6 +9,9 @@ from phoenixadult.utils.logging.logger import logger
 
 
 class TwoTGirlsClient(Client):
+    title_xpath = '//h1'
+    summary_xpath = '//div[contains(@class,"shadow") and contains(@class,"video-details")]//p'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = search_data.title.replace(' ', '-')
@@ -70,16 +73,6 @@ class TwoTGirlsClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"shadow") and contains(@class,"video-details")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

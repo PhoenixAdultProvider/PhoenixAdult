@@ -38,6 +38,8 @@ def _cleanup_title(raw: str, actor_names: list[str]) -> str:
 
 class SexMexClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    summary_xpath = '//div[contains(@class,"panel-body")]//p'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -78,11 +80,6 @@ class SexMexClient(Client):
             return
 
         metadata.title = _cleanup_title(raw, self._actor_names(scene)) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"panel-body")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name or ''

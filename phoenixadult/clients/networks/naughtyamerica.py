@@ -31,6 +31,8 @@ def _scene_path(href: str) -> str:
 
 
 class NaughtyAmericaClient(Client):
+    genres_xpath = '//div[contains(@class,"categories") and contains(@class,"grey-text")]//a'
+
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         super().__init__(extra_headers)
         self.pacer: ScenePacer = ScenePacer(_PACE_TAG, pace_seconds=_PACE_SECONDS, pace_jitter=_PACE_JITTER, cooldown_seconds=_SCENE_COOLDOWN)
@@ -185,16 +187,6 @@ class NaughtyAmericaClient(Client):
         ).strip()
 
         metadata.release_date = iso_date(date) or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//div[contains(@class,"categories") and contains(@class,"grey-text")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

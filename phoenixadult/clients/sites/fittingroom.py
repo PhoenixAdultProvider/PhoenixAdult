@@ -26,6 +26,8 @@ def _extract_title(sel: Selector) -> str:
 
 
 class FittingRoomClient(Client):
+    summary_xpath = '//div/div[contains(.,"Description")]/em'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         scene_id = search_data.title.strip().split()[0] if search_data.title.strip() else ''
         if not scene_id:
@@ -62,11 +64,6 @@ class FittingRoomClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _extract_title(details_page_elements) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div/div[contains(.,"Description")]/em') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

@@ -27,6 +27,8 @@ def _iso_date_obj(raw: str) -> date | None:
 
 
 class PornWorldClient(Client):
+    genres_xpath = '//div[contains(@class,"genres-list")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -195,15 +197,6 @@ class PornWorldClient(Client):
             return
 
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"genres-list")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

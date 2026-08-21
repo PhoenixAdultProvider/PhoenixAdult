@@ -19,6 +19,9 @@ def _parse_date(raw: str) -> str | None:
 
 
 class SwallowBayClient(Client):
+    summary_xpath = '//div[contains(@class,"content-desc") and contains(@class,"more-desc")]'
+    genres_xpath = '//div[contains(@class,"box")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         slug = _SLUG_RE.sub('-', search_data.title.strip().lower())
         scene_url = search_data.search_url(slug)
@@ -61,11 +64,6 @@ class SwallowBayClient(Client):
 
         metadata.title = meta_content(details_page_elements, 'twitter:image:alt') or ''
 
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc") and contains(@class,"more-desc")]') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
 
@@ -78,15 +76,6 @@ class SwallowBayClient(Client):
         date = _DATE_PREFIX_RE.sub('', first_text(details_page_elements, '//div[contains(@class,"content-date")]'))
 
         metadata.release_date = _parse_date(date) if date else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"box")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

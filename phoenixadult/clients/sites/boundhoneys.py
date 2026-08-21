@@ -14,6 +14,9 @@ _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " u
 
 class BoundHoneysClient(Client):
     search_url_xpath = '(.//div[contains(@class,"updateTitle")]//a/@href)[1]'
+    title_xpath = '//div[contains(@class,"updateVideoTitle")]'
+    summary_xpath = '//div[contains(@class,"updateDescription")]//b'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -49,16 +52,6 @@ class BoundHoneysClient(Client):
         return await self.resolve_actor_photos(refs, extract_photo, capture=scene.capture, label='actor')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"updateVideoTitle")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"updateDescription")]//b') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Bound Honeys'

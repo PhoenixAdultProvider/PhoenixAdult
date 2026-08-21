@@ -8,6 +8,8 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 
 
 class WankzVRClient(Client):
+    genres_xpath = '//div[contains(@class,"tag-list")]//a'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': 'sst=ulang-en'})
 
@@ -92,15 +94,6 @@ class WankzVRClient(Client):
         date = (details_page_elements.xpath('(//span[contains(@class,"detail__date")])[1]').xpath('string(.)').get() or '').strip()
 
         metadata.release_date = iso_date(date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tag-list")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

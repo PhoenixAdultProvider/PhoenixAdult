@@ -11,6 +11,9 @@ STUDIO = 'Wankz'
 
 
 class WankzClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+    genres_xpath = '//a[contains(@class,"cat")] | //p[@style]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -24,10 +27,6 @@ class WankzClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//div[contains(@class,"title-wrapper")]//a[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
         title = (source.xpath('(.//div[contains(@class,"title-wrapper")]//a[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
@@ -66,15 +65,6 @@ class WankzClient(Client):
             return
 
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"cat")] | //p[@style]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

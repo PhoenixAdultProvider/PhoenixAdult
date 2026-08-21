@@ -71,6 +71,8 @@ def _extract_detail(loaded: Any, url: str) -> tuple[str, str, str] | None:
 
 
 class Data18MoviesClient(Client):
+    genres_xpath = '//p[./b[contains(.,"Categories")]]//a'
+
     def __init__(self) -> None:
         super().__init__()
         self._data18 = Data18Client()
@@ -143,15 +145,6 @@ class Data18MoviesClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.release_date = _release_date(details_page_elements) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//p[./b[contains(.,"Categories")]]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

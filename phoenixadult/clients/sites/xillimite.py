@@ -7,13 +7,15 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import iso_date, join_url
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 
 
 class XillimiteClient(Client):
     search_url_xpath = '@href'
+    title_xpath = '//h1'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -29,11 +31,6 @@ class XillimiteClient(Client):
         return first_attr(source, '(.//img/@alt)[1]')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

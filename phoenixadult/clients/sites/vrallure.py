@@ -14,6 +14,9 @@ _ACTOR_PHOTO_XP = '//img[@id="model-thumbnail"]/@src'
 
 
 class VRAllureClient(Client):
+    summary_xpath = '//p[contains(@class,"desc")]//span'
+    genres_xpath = '//a[contains(@class,"label") and contains(@class,"label-tag")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = search_data.title.replace(' ', '_')
@@ -54,11 +57,6 @@ class VRAllureClient(Client):
 
         metadata.title = first_text(details_page_elements, _TITLE_XP) or ''
 
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//p[contains(@class,"desc")]//span') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
 
@@ -80,16 +78,6 @@ class VRAllureClient(Client):
 
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//a[contains(@class,"label") and contains(@class,"label-tag")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

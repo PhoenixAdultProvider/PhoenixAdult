@@ -11,6 +11,9 @@ _LI_XP = '//div[contains(@class,"videoContent")]//ul/li'
 
 
 class MeanaWolfClient(Client):
+    title_xpath = '//div[contains(@class,"trailerArea")]//h3'
+    summary_xpath = '//div[contains(@class,"trailerContent")]//p'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         url = search_data.search_url()
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
@@ -44,16 +47,6 @@ class MeanaWolfClient(Client):
         return await self.load_scene_with_extra_tail(payload, site, ctx, 'poster')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"trailerArea")]//h3') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"trailerContent")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Meana Wolf'

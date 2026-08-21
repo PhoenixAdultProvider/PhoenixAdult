@@ -9,6 +9,10 @@ _AVAILDATE_XP = '(//span[contains(@class,"availdate")]/text())[1]'
 
 
 class XevUnleashedClient(Client):
+    title_xpath = '//span[contains(@class,"update_title")]'
+    summary_xpath = '//span[contains(@class,"latest_update_description")]'
+    genres_xpath = '//span[contains(@class,"update_tags")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
@@ -71,16 +75,6 @@ class XevUnleashedClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//span[contains(@class,"update_title")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//span[contains(@class,"latest_update_description")]') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
 
@@ -99,15 +93,6 @@ class XevUnleashedClient(Client):
 
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -14,6 +14,8 @@ _NON_WORD_RE = re.compile(r'\W')
 
 
 class PervCityClient(Client):
+    genres_xpath = '//div[@class="tagcats"]/a'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': 'warning_cookie=1'})
 
@@ -200,13 +202,6 @@ class PervCityClient(Client):
             return
 
         metadata.release_date = (scene.extra or {}).get('crawled_date')
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[@class="tagcats"]/a')]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.actors = (scene.extra or {}).get('actors') or []

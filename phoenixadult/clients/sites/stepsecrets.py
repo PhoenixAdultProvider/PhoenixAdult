@@ -14,6 +14,9 @@ _FIXED_GENRES: list[str] = ['European', 'Glamcore', 'Taboo']
 
 class StepSecretsClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    title_xpath = '//h1[contains(@class,"font-cond")]'
+    summary_xpath = '//div[contains(@class,"descripton")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -29,16 +32,6 @@ class StepSecretsClient(Client):
         return first_text(source, './/a[contains(@class,"color-title")]')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1[contains(@class,"font-cond")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"descripton")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.helpers import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
 STUDIO = 'Romero Multimedia'
@@ -26,6 +26,8 @@ def _clean_detail_title(raw: str) -> str:
 
 
 class RomeroClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -39,10 +41,6 @@ class RomeroClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h2)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         h2s = source.xpath('.//h2')

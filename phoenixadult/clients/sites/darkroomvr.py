@@ -14,6 +14,9 @@ _READ_LESS_RE = re.compile(r'\s*Read less\s*$', re.IGNORECASE)
 
 class DarkRoomVRClient(Client):
     search_url_xpath = '@href'
+    title_xpath = '//h1'
+    genres_xpath = '//a[contains(@class,"tags__item")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -29,11 +32,6 @@ class DarkRoomVRClient(Client):
         return first_text(source, './/div[contains(@class,"video-card__title")]')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -63,15 +61,6 @@ class DarkRoomVRClient(Client):
         after = date.split(' • ')[-1].strip()
 
         metadata.release_date = iso_date(after) or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"tags__item")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

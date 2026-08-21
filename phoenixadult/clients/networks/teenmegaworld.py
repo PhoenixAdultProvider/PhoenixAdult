@@ -14,6 +14,8 @@ _SEARCH_PAGES = 2
 
 
 class TeenMegaWorldClient(Client):
+    genres_xpath = '//a[contains(@class,"video-tag-link")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -75,15 +77,6 @@ class TeenMegaWorldClient(Client):
             return
 
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[contains(@class,"video-tag-link")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

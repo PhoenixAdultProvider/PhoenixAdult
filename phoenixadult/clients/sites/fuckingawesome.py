@@ -13,6 +13,9 @@ _ACTOR_XP = '//div[contains(@class,"pornstarnames")]//ul//li//a[contains(@href,"
 
 class FuckingAwesomeClient(Client):
     search_url_xpath = '(.//div[contains(@class,"video-title") and contains(@class,"truncate")]/a/@href)[1]'
+    title_xpath = '//h1'
+    summary_xpath = '//div[contains(@class,"more") and contains(@class,"text-justify")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -32,16 +35,6 @@ class FuckingAwesomeClient(Client):
         return iso_date(raw) if raw else None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"more") and contains(@class,"text-justify")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

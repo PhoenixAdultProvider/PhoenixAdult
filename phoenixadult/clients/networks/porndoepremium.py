@@ -11,6 +11,8 @@ _TITLE_SEL = './/div[@class="-g-vc-item-title"]//a'
 
 
 class PorndoePremiumClient(Client):
+    genres_xpath = '//span[@class="-mvd-list-item"]/a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -69,15 +71,6 @@ class PorndoePremiumClient(Client):
         date = stats.split('•')[-1].strip() if stats else ''
 
         metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//span[@class="-mvd-list-item"]/a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

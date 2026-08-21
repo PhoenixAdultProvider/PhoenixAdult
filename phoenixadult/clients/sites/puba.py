@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
@@ -9,6 +9,9 @@ _TITLE_XP = '//div[@id="body-player-container"]//div//div[contains(@class,"tour-
 
 
 class PubaClient(Client):
+    genres_xpath = '//center//div//a[contains(@class,"btn-outline-secondary")]'
+    actors_xpath = '//center//div//a[contains(@class,"btn-secondary")]'
+
     def __init__(self) -> None:
         super().__init__({'Referer': 'https://www.puba.com/pornstarnetwork/index.php', 'Cookie': 'PHPSESSID=rvo9ieo5bhoh81knnmu88c3lf3'})
 
@@ -55,26 +58,6 @@ class PubaClient(Client):
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//center//div//a[contains(@class,"btn-outline-secondary")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
-
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        entries = [
-            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
-            for actor_link in details_page_elements.xpath('//center//div//a[contains(@class,"btn-secondary")]')
-        ]
-
-        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

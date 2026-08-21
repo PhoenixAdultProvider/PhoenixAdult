@@ -14,6 +14,8 @@ _GENRES_LIST_FIRST_A = '//div[contains(@class,"genres-list")]//a'
 
 
 class AnalVidsClient(Client):
+    genres_xpath = '//div[contains(@class,"genres-list")]//a[contains(@href,"/genre/")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         m = _LEADING_ID_RE.match(search_data.title.strip())
@@ -81,16 +83,6 @@ class AnalVidsClient(Client):
         date = first_text(details_page_elements, '//i[contains(@class,"bi-calendar3")]')
 
         metadata.release_date = iso_date(date) or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//div[contains(@class,"genres-list")]//a[contains(@href,"/genre/")]')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

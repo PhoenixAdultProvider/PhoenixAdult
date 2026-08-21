@@ -9,6 +9,10 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class BrandNewAmateursClient(Client):
+    title_xpath = '//h3'
+    summary_xpath = '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p'
+    genres_xpath = '//ul[li[contains(.,"Tags:")]]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         actor_url = f'{base}/models/{search_data.title.replace(" ", "")}.html'
@@ -65,27 +69,8 @@ class BrandNewAmateursClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h3') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p') or ''
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//ul[li[contains(.,"Tags:")]]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actor_url = scene.extra if isinstance(scene.extra, str) else ''

@@ -11,6 +11,8 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 class PJGirlsClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    genres_xpath = '//div[contains(@class,"detailTagy") and contains(@class,"clear")]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -55,16 +57,6 @@ class PJGirlsClient(Client):
         date = first_text(details_page_elements, '(//div[contains(@class,"info")]/h3)[1]')
 
         metadata.release_date = (iso_date(date, '%B %d, %Y') if date else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//div[contains(@class,"detailTagy") and contains(@class,"clear")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -9,6 +9,8 @@ _PAYWALL_HOST = 'join.hollyrandall.com'
 
 
 class HollyRandallClient(Client):
+    genres_xpath = '//ul[contains(@class,"tags")]//li//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         url = search_data.search_url()
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
@@ -90,15 +92,6 @@ class HollyRandallClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//ul[contains(@class,"tags")]//li//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

@@ -14,6 +14,8 @@ _MODELS_XP = '//ul[contains(.,"Models:")]//li//a'
 
 class FirstAnalQuestClient(Client):
     search_url_xpath = '(.//a[contains(@class,"thumb-img")]/@href)[1]'
+    summary_xpath = '//div[contains(@class,"text-desc")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -40,11 +42,6 @@ class FirstAnalQuestClient(Client):
         xp = '//div[contains(@class,"container") and contains(@class,"content")]//div[contains(@class,"page-header")]//span[contains(@class,"title")]'
 
         metadata.title = first_text(details_page_elements, xp) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"text-desc")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Pioneer'

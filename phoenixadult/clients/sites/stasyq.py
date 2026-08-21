@@ -12,6 +12,10 @@ _DIGITS_RE = re.compile(r'^\d+$')
 
 
 class StasyQClient(Client):
+    title_xpath = '//h1'
+    summary_xpath = '//div[contains(@class,"about-section__text")]/p'
+    genres_xpath = '//section[contains(@class,"about-section")]//div[contains(@class,"tags")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         tokens = (search_data.full_title or search_data.title).split()
         scene_id = next((t for t in tokens if _DIGITS_RE.match(t)), None)
@@ -63,31 +67,11 @@ class StasyQClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"about-section__text")]/p') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//section[contains(@class,"about-section")]//div[contains(@class,"tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

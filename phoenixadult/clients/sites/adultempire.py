@@ -115,6 +115,8 @@ def _fmt_split_display(movie_title: str, scene_num: int, scene_title: str, actor
 
 
 class AdultEmpireClient(Client):
+    genres_xpath = '//li//a[@label="Category"]'
+
     def __init__(self) -> None:
         super().__init__({'Referer': _REFERER})
         self._age_confirmed = False
@@ -359,13 +361,6 @@ class AdultEmpireClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.release_date = _release_date(details_page_elements)
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//li//a[@label="Category"]')]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

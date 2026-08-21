@@ -18,6 +18,8 @@ _IGNORE_LIST: list[str] = _TABLES['ignoreList']
 
 
 class JavLibraryClient(Client):
+    genres_xpath = '//a[@rel="category tag"]'
+
     async def _web_search_vjav(self, query: str, base_url: str) -> list[str]:
         host = urlsplit(base_url).hostname or ''
         found = await web_search(SearchOptions(query=query, site=host, num=10))
@@ -166,13 +168,6 @@ class JavLibraryClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = self._release_date(scene)
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[@rel="category tag"]')]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

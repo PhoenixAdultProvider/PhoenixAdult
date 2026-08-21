@@ -11,6 +11,9 @@ _UPLOAD_DATE_RE = re.compile(r'(\d{4})/(\d{2})/(\d{2})')
 
 
 class CaribbeancomClient(Client):
+    title_xpath = '//title'
+    genres_xpath = '//a[@itemprop="genre"]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -38,11 +41,6 @@ class CaribbeancomClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//title') or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'caribbeancom'
 
@@ -59,13 +57,6 @@ class CaribbeancomClient(Client):
         m = _UPLOAD_DATE_RE.search(date)
 
         metadata.release_date = f'{m.group(1)}-{m.group(2)}-{m.group(3)}' if m else None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//a[@itemprop="genre"]')]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

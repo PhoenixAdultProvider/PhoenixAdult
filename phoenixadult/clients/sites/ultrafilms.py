@@ -3,10 +3,13 @@ from __future__ import annotations
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
 
 class UltrafilmsClient(Client):
+    title_xpath = '(//h1[contains(@class,"entry-title")])[last()]'
+    summary_xpath = '//div[contains(@class,"video-description")]//div[contains(@class,"desc")]//p'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
@@ -70,16 +73,6 @@ class UltrafilmsClient(Client):
         )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '(//h1[contains(@class,"entry-title")])[last()]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"video-description")]//div[contains(@class,"desc")]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name or ''

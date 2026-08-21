@@ -15,6 +15,8 @@ _SEARCH_CARD_XP = '//div[4]/div/div[3]/div/div'
 
 class SinsLifeClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    title_xpath = '//div[contains(@class,"section")]//h1'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -30,11 +32,6 @@ class SinsLifeClient(Client):
         return first_attr(source, '(.//a/@title)[1]')
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"section")]//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

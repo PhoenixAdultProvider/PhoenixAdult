@@ -13,7 +13,7 @@ from parsel import Selector
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.http.bypass import bypass_get
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, ScenePacer
@@ -612,11 +612,18 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             extra={extra_key: tail},
         )
 
+    title_xpath: str | None = None
+    summary_xpath: str | None = None
+    genres_xpath: str | None = None
+    actors_xpath: str | None = None
+
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
+        if self.title_xpath:
+            metadata.title = first_text(scene.require_sel(), self.title_xpath) or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
+        if self.summary_xpath:
+            metadata.summary = first_text(scene.require_sel(), self.summary_xpath) or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None
@@ -631,10 +638,16 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
+        if not self.genres_xpath:
+            return
+        values: list[str | None] = [node.xpath('normalize-space(.)').get() for node in scene.require_sel().xpath(self.genres_xpath)]
+        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
+        if not self.actors_xpath:
+            return
+        entries = [ActorResult(name=node.xpath('normalize-space(.)').get() or '') for node in scene.require_sel().xpath(self.actors_xpath)]
+        metadata.actors = self.dedup_people(entries)
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None

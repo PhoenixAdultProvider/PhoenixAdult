@@ -12,6 +12,8 @@ STUDIO = 'New Sensations'
 
 
 class NewSensationsOtherClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -26,10 +28,6 @@ class NewSensationsOtherClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//a)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         tok = (source.xpath('(.//div[@class="date_small"])[1]').xpath('string(.)').get() or '').split(':')[-1].strip()

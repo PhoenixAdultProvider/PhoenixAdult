@@ -19,6 +19,8 @@ def _page_studio_override(scene: LoadedScene) -> str:
 
 
 class DorcelVisionClient(Client):
+    title_xpath = '//h1'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         url = search_data.search_url(quote(search_data.title))
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
@@ -45,11 +47,6 @@ class DorcelVisionClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

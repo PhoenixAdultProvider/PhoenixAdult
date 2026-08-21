@@ -37,6 +37,9 @@ def _clean_srcset_image(raw: str) -> str:
 
 
 class DorcelClubClient(Client):
+    title_xpath = '//h1'
+    summary_xpath = '//span[contains(@class,"full")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         url = search_data.search_url(quote(search_data.title))
         search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
@@ -92,16 +95,6 @@ class DorcelClubClient(Client):
                 results.append(card_result(scene_title, scene_url))
 
     # ── Update Field Hooks (branch on movie vs scene URL) ─────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//span[contains(@class,"full")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -22,6 +22,8 @@ def _https(src: str) -> str:
 
 
 class TonightsGirlfriendClient(Client):
+    summary_xpath = '//p[contains(@class,"scene-description")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         slug = search_data.title.lower().split('and ')[0].strip().replace(' ', '-')
         if not slug:
@@ -89,11 +91,6 @@ class TonightsGirlfriendClient(Client):
         names = self._linked_actor_names(scene)
 
         metadata.title = ', '.join(names) if names else ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//p[contains(@class,"scene-description")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

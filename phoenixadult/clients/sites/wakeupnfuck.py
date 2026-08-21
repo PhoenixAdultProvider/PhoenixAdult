@@ -13,6 +13,9 @@ _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')
 
 class WakeUpNFuckClient(Client):
     search_url_xpath = '@href'
+    title_xpath = '//div[contains(@class,"block")]//h2'
+    genres_xpath = '//div[contains(@class,"tags")]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -34,11 +37,6 @@ class WakeUpNFuckClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//div[contains(@class,"block")]//h2') or ''
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
@@ -57,15 +55,6 @@ class WakeUpNFuckClient(Client):
 
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tags")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

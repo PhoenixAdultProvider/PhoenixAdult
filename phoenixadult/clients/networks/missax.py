@@ -15,6 +15,9 @@ _CAST_XP = '//div[contains(@class,"update_block")]/span[@class="tour_update_mode
 
 
 class MissaXClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+    genres_xpath = '//span[contains(@class,"update_tags")]//a | //p[@class="dvd-scenes__data"][2]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -28,10 +31,6 @@ class MissaXClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//h4//a | .//p[@class="thumb-title"] | ./a[./preceding-sibling::a])[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         return iso_date((source.xpath(f'({_SEARCH_DATE_XP})[1]').xpath('string(.)').get() or '').strip())
@@ -96,16 +95,6 @@ class MissaXClient(Client):
         dvd = parts[1].replace('Added:', '').strip() if len(parts) > 1 else ''
 
         metadata.release_date = (iso_date(dvd) if dvd else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get()
-            for genre_link in details_page_elements.xpath('//span[contains(@class,"update_tags")]//a | //p[@class="dvd-scenes__data"][2]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

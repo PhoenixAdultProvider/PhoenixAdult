@@ -26,6 +26,8 @@ __testing__ = {'strip_brand': _strip_brand}
 
 
 class CzechVRClient(Client):
+    search_url_xpath = '(.//a)[1]/@href'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -41,10 +43,6 @@ class CzechVRClient(Client):
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return (source.xpath('(.//div[contains(@class,"nazev")]//h2//a)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
-        href = first_attr(source, '(.//a)[1]/@href')
-        return absolute_url(href, loaded.site.base_url) if href else ''
 
     async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
         raw = (source.xpath('(.//div[contains(@class,"datum")])[1]').xpath('string(.)').get() or '').strip()

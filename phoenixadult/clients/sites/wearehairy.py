@@ -11,6 +11,9 @@ _FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 
 class WeAreHairyClient(Client):
     search_url_xpath = '(.//div[contains(@class,"top")]//p//a/@href)[1]'
+    title_xpath = '//title'
+    summary_xpath = '//div[contains(@class,"desc")]/div[1]//p'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -30,16 +33,6 @@ class WeAreHairyClient(Client):
         return iso_date(raw) if raw else None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//title') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//div[contains(@class,"desc")]/div[1]//p') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

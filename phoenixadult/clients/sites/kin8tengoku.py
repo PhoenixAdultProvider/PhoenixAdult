@@ -20,6 +20,8 @@ def _title_of(sel: Selector) -> str:
 
 
 class Kin8tengokuClient(Client):
+    genres_xpath = '//tr[contains(.,"Category")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
@@ -92,15 +94,6 @@ class Kin8tengokuClient(Client):
         date = _table_value(details_page_elements, 'Date')
 
         metadata.release_date = (iso_date(date, '%Y-%m-%d') if date else None) or scene.scene_date or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//tr[contains(.,"Category")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

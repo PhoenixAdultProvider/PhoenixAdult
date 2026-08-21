@@ -10,6 +10,8 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PornstarPlatinumClient(Client):
+    genres_xpath = '//div[contains(@class,"tagcloud")]//a'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -95,15 +97,6 @@ class PornstarPlatinumClient(Client):
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = self._data(scene).get('releaseDate') or None
-
-    async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        values: list[str | None] = [
-            genre_link.xpath('normalize-space(.)').get() for genre_link in details_page_elements.xpath('//div[contains(@class,"tagcloud")]//a')
-        ]
-
-        metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actor_name = (self._data(scene).get('actor') or '').strip()

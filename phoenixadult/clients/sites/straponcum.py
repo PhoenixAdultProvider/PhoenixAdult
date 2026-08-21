@@ -35,6 +35,9 @@ def _date_from_clock(node: Any) -> str | None:
 
 
 class StraponCumClient(Client):
+    title_xpath = '//h1[contains(@class,"card-title")]'
+    summary_xpath = '//p[contains(@class,"card-text") and contains(@class,"mb-2")]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         slug = _WS_RE.sub('-', search_data.title.strip())
         scene_url = search_data.search_url(slug)
@@ -76,16 +79,6 @@ class StraponCumClient(Client):
         return LoadedScene(url=url, site=site, capture=ctx.capture if ctx else None, sel=details_page_elements['sel'], html=details_page_elements['html'])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = first_text(details_page_elements, '//h1[contains(@class,"card-title")]') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = first_text(details_page_elements, '//p[contains(@class,"card-text") and contains(@class,"mb-2")]') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

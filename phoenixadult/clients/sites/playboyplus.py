@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class PlayboyPlusClient(Client):
+    actors_xpath = '//p[contains(@class,"contributorName")]//a'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_url = f'{base}{search_data.site_info.search_path}/{search_data.encoded}'
@@ -72,16 +74,6 @@ class PlayboyPlusClient(Client):
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['Glamour']
-
-    async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        entries = [
-            ActorResult(name=actor_link.xpath('normalize-space(.)').get() or '')
-            for actor_link in details_page_elements.xpath('//p[contains(@class,"contributorName")]//a')
-        ]
-
-        metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
