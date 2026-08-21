@@ -6,10 +6,8 @@ import re
 import shutil
 import sqlite3
 import weakref
-from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
-from urllib.parse import unquote
+from typing import Any, Literal
 
 import httpx2
 from PIL import Image as PILImage
@@ -17,25 +15,60 @@ from PIL import Image as PILImage
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
-from phoenixadult.registry import ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
+from phoenixadult.models.site_info import ResolvedSiteInfo
+from phoenixadult.registry import find_site
 from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.duplicates import content_duplicate_entries as content_duplicate_entries
+from phoenixadult.utils.cache.duplicates import duplicate_entries as duplicate_entries
+from phoenixadult.utils.cache.duplicates import stale_duplicate_entries as stale_duplicate_entries
+from phoenixadult.utils.cache.layout import (
+    BUNDLE_FILE as BUNDLE_FILE,
+)
+from phoenixadult.utils.cache.layout import (
+    BUNDLE_ROOT as BUNDLE_ROOT,
+)
+from phoenixadult.utils.cache.layout import (
+    BUNDLE_VERSION as BUNDLE_VERSION,
+)
+from phoenixadult.utils.cache.layout import (
+    _hash as _hash,
+)
+from phoenixadult.utils.cache.layout import (
+    bundle_path as bundle_path,
+)
+from phoenixadult.utils.cache.layout import (
+    bundle_payload as bundle_payload,
+)
+from phoenixadult.utils.cache.layout import (
+    cache_dir as cache_dir,
+)
+from phoenixadult.utils.cache.layout import (
+    enabled as enabled,
+)
+from phoenixadult.utils.cache.layout import (
+    is_legacy_path as is_legacy_path,
+)
+from phoenixadult.utils.cache.listing import UiEntry as UiEntry
+from phoenixadult.utils.cache.listing import actor_suggestions as actor_suggestions
+from phoenixadult.utils.cache.listing import change_token as change_token
+from phoenixadult.utils.cache.listing import entries as entries
+from phoenixadult.utils.cache.listing import entries_page as entries_page
+from phoenixadult.utils.cache.listing import facets as facets
+from phoenixadult.utils.cache.listing import purge as purge
+from phoenixadult.utils.cache.listing import purge_duplicates as purge_duplicates
+from phoenixadult.utils.cache.listing import studios as studios
 from phoenixadult.utils.cache.locks import _apply_locks, _carry_emptied_fields, _changed_lockables, _lock_snapshot, _reconcile_dropped_images
+from phoenixadult.utils.cache.people_backfill import backfill_metadata_attrs as backfill_metadata_attrs
+from phoenixadult.utils.cache.people_backfill import backfill_people_images as backfill_people_images
 from phoenixadult.utils.cache.text_rules import reapply_text_rules as reapply_text_rules
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
-from phoenixadult.utils.helpers.helpers import hash_key, slugify
 from phoenixadult.utils.images.ext import ext_from
 from phoenixadult.utils.images.image_fetcher import fetch_image, rotate_image_bytes
 from phoenixadult.utils.images.proxy import proxy_params
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people import PeopleManager, to_plex_roles
-from phoenixadult.utils.plex.rating_key import parse_rating_key
 from phoenixadult.utils.processors.studio_name import normalize_studio
-from phoenixadult.utils.processors.title_case import title_sort
-
-if TYPE_CHECKING:
-    from phoenixadult.clients.base import SceneDetail
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
@@ -53,47 +86,6 @@ def _image_gate() -> asyncio.Semaphore:
 
 
 _write_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
-
-
-def enabled() -> bool:
-    return env.metadata_cache_enabled
-
-
-def cache_dir() -> str:
-    return env.metadata_cache_dir
-
-
-BUNDLE_ROOT = 'scenes'
-BUNDLE_FILE = 'snapshot.json'
-BUNDLE_VERSION = 1
-_FANOUT = 2
-
-
-def _hash(site_name: str, cur_id: str) -> str:
-    site = find_site(site_name)
-    base = site.name if site else site_name
-    return hash_key(slugify(base), cur_id, sep='\n', length=12)
-
-
-def bundle_path(scene_hash: str) -> str:
-    return f'{BUNDLE_ROOT}/{scene_hash[:_FANOUT]}/{scene_hash}'
-
-
-def is_legacy_path(rel_path: str) -> bool:
-    return not rel_path.startswith(f'{BUNDLE_ROOT}/')
-
-
-def bundle_payload(
-    site_name: str, cur_id: str, scene_hash: str, data: dict[str, Any], image_meta: dict[str, tuple[int, int, int]] | None = None
-) -> dict[str, Any]:
-    return {
-        'version': BUNDLE_VERSION,
-        'site': site_name,
-        'cur_id': cur_id,
-        'hash': scene_hash,
-        'images': {url: list(dims) for url, dims in (image_meta or {}).items()},
-        'response': data,
-    }
 
 
 # ── Data18 Manual-Mapping Change Detection ────────────────────────────────────
@@ -407,150 +399,6 @@ async def _write_locked(
 # ── Management (UI) ──────────────────────────────────────────────────────────
 
 
-class UiEntry(TypedDict):
-    key: str
-    provider: str
-    site: str
-    cur_id: str
-    hash: str
-    title: str
-    studio: str
-    tagline: str
-    collections: list[str]
-    actors: list[str]
-    genres: int
-    date: str
-    thumb: str
-    images: int
-    mtime: float
-    data18_id: str
-    data18_type: str
-    data18_manual: bool
-    data18_also: str
-    mapping_slug: str
-
-
-def _ui_entry(row: scene_store.SceneRow) -> UiEntry:
-    from phoenixadult.clients.aggregators.data18 import mapping_slug
-
-    rel = row['rel_path']
-    return {
-        'key': rel,
-        'provider': provider_name_for(row['site']) or row['site'],
-        'site': row['site'],
-        'cur_id': row['cur_id'],
-        'hash': rel.rsplit('/', 1)[-1],
-        'title': row['title'],
-        'studio': row['studio'],
-        'tagline': row['tagline'],
-        'collections': row['collections'],
-        'actors': row['actors'],
-        'genres': row['genres'],
-        'date': row['release_date'],
-        'thumb': row['thumb'],
-        'images': row['images'],
-        'mtime': row['updated_at'],
-        'data18_id': row['data18_id'],
-        'data18_type': row['data18_type'],
-        'data18_manual': row['data18_manual'],
-        'data18_also': row['data18_also'],
-        'mapping_slug': mapping_slug(row['title'], row['tagline'] or row['studio'] or None) or '',
-    }
-
-
-def entries() -> list[UiEntry]:
-    rows, _total = scene_store.query_entry_rows(limit=-1)
-    return [_ui_entry(row) for row in rows]
-
-
-def _provider_sites(provider: str) -> list[str]:
-    tokens = provider_name_tokens(provider)
-    return tokens if tokens or find_site(provider) else [provider]
-
-
-def entries_page(
-    *,
-    studio: str = '',
-    query: str = '',
-    year: str = '',
-    month: str = '',
-    day: str = '',
-    tagline: str = '',
-    collection: str = '',
-    data18: str = '',
-    actor: str = '',
-    genre: str = '',
-    cast: str = '',
-    director: str = '',
-    producer: str = '',
-    provider: str = '',
-    dups_only: bool = False,
-    dup_paths: list[str] | None = None,
-    sort: str = 'updated_at',
-    direction: str = 'desc',
-    limit: int = 200,
-    offset: int = 0,
-) -> tuple[list[UiEntry], int]:
-    rows, total = scene_store.query_entry_rows(
-        studio=studio,
-        query=query,
-        year=year,
-        month=month,
-        day=day,
-        tagline=tagline,
-        collection=collection,
-        data18=data18,
-        actor=actor,
-        genre=genre,
-        cast=cast,
-        director=director,
-        producer=producer,
-        provider_sites=_provider_sites(provider) if provider else None,
-        dup_paths=(duplicate_entries() if dup_paths is None else dup_paths) if dups_only else None,
-        sort=sort,
-        direction=direction,
-        limit=limit,
-        offset=offset,
-    )
-    return [_ui_entry(row) for row in rows], total
-
-
-def _facet_scope(active: dict[str, Any]) -> dict[str, Any]:
-    scope = {k: v for k, v in active.items() if k != 'provider'}
-    provider = str(active.get('provider') or '')
-    scope['provider_sites'] = _provider_sites(provider) if provider else None
-    return scope
-
-
-def studios(**active: Any) -> list[str]:
-    return scene_store.studio_names(**_facet_scope(active))
-
-
-def actor_suggestions(query: str = '', limit: int = 50) -> list[str]:
-    return scene_store.actor_names(query, limit)
-
-
-def facets(**active: Any) -> dict[str, Any]:
-    values = scene_store.facet_values(**_facet_scope(active))
-    sites = values.pop('sites', [])
-    values['providers'] = sorted({provider_name_for(site) or site for site in sites}, key=str.casefold)
-    return values
-
-
-def change_token() -> str:
-    return scene_store.change_token()
-
-
-def purge(key: str) -> bool:
-    if not scene_store.delete(key):
-        return False
-    target = safe_join(cache_dir(), key)
-    if target is not None:
-        shutil.rmtree(target, ignore_errors=True)
-    logger.info('meta-cache', f'purged snapshot {key}')
-    return True
-
-
 _EDITABLE_TAGS = {'Genre': PlexGenre, 'Collection': PlexCollection, 'Country': PlexCountry}
 _EDITABLE_ROLES = ('Role', 'Director', 'Producer')
 
@@ -681,236 +529,4 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     return bundle_path(scene_hash)
 
 
-_SCAN_MEMO: dict[str, tuple[str, Any]] = {}
-
-
-def _by_change[T](key: str, build: Callable[[], T]) -> T:
-    token = f'{env.state_db_path}|{scene_store.change_token()}'
-    cached = _SCAN_MEMO.get(key)
-    if cached is not None and cached[0] == token:
-        return cached[1]  # type: ignore[no-any-return]
-    value = build()
-    _SCAN_MEMO[key] = (token, value)
-    return value
-
-
-def duplicate_entries() -> list[str]:
-    return list(_by_change('duplicate_entries', _duplicate_entries))
-
-
-def _duplicate_entries() -> list[str]:
-    from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
-
-    keys = scene_store.scene_keys()
-    by_hash = {scene_hash: rel for scene_hash, rel, _rating_key in keys}
-    stale: set[str] = set()
-    for _scene_hash, rel, rating_key in keys:
-        parsed = parse_rating_key(rating_key)
-        if not parsed or not parsed['cur_id'] or not parsed['site_name']:
-            continue
-        try:
-            payload, subsite = split_subsite(b64url_decode(parsed['cur_id']))
-        except ValueError:
-            continue
-        if not subsite:
-            continue
-        old_rel = by_hash.get(_hash(parsed['site_name'], b64url_encode(payload)))
-        if old_rel and old_rel != rel:
-            stale.add(old_rel)
-    return sorted(stale)
-
-
-_CONTENT_NORM_RE = re.compile(r'[^a-z0-9]+')
-
-
-def _content_norm(value: object) -> str:
-    return _CONTENT_NORM_RE.sub('', str(value or '').lower())
-
-
-def _content_duplicate_groups() -> list[list[tuple[str, float]]]:
-    return _by_change('content_groups', _build_content_groups)
-
-
-def _build_content_groups() -> list[list[tuple[str, float]]]:
-    groups: dict[str, list[tuple[str, float]]] = {}
-    for row in scene_store.dup_candidate_rows():
-        title = _content_norm(row['title'])
-        if not title:
-            continue
-        key = '|'.join((title, _content_norm(row['release_date']), _content_norm(row['studio_name']), _content_norm(row['tagline_name'])))
-        groups.setdefault(key, []).append((str(row['rel_path']), float(row['updated_at'] or 0)))
-    return [members for members in groups.values() if len(members) > 1]
-
-
-def content_duplicate_entries() -> list[str]:
-    matched = {rel for members in _content_duplicate_groups() for rel, _ in members}
-    return sorted(matched | set(duplicate_entries()))
-
-
-_STALE_DUP_CACHE: tuple[str, list[str] | None] = ('', None)
-
-
-def stale_duplicate_entries() -> list[str]:
-    global _STALE_DUP_CACHE
-    token = f'{env.state_db_path}|{scene_store.change_token()}'
-    cached_token, cached_value = _STALE_DUP_CACHE
-    if cached_token == token and cached_value is not None:
-        return list(cached_value)
-    stale = set(duplicate_entries())
-    for members in _content_duplicate_groups():
-        keep = max(members, key=lambda m: (m[1], m[0]))[0]
-        stale.update(rel for rel, _ in members if rel != keep)
-    result = sorted(stale)
-    _STALE_DUP_CACHE = (token, result)
-    return list(result)
-
-
-def purge_duplicates() -> int:
-    return sum(1 for rel in stale_duplicate_entries() if purge(rel))
-
-
 # ── People-Image Backfill ─────────────────────────────────────────────────────
-
-
-def _is_stale_local_thumb(thumb: str) -> bool:
-    marker = '/images/local/'
-    if marker not in thumb:
-        return False
-    relpath = unquote(thumb.rsplit(marker, 1)[1].split('?')[0])
-    if not relpath:
-        return False
-    target = safe_join(env.people_cache_dir, relpath)
-    return target is None or not target.exists()
-
-
-async def _resolve_and_fill(
-    people: PeopleManager,
-    fill_groups: list[tuple[list[PlexRole], str]],
-    *,
-    studio: str,
-    site_name: str,
-    referers: list[str] | None = None,
-    cookies: list[str] | None = None,
-) -> bool:
-    try:
-        resolved = await people.resolve_all(studio=studio, site_name=site_name, referers=referers, cookies=cookies)
-    except Exception as err:  # noqa: BLE001 — backfill must never break the serve
-        logger.warn('meta-cache', f'people-image backfill resolve failed: {err}')
-        return False
-    changed = False
-    for entries, key in fill_groups:
-        roles = to_plex_roles(resolved[key], image_base_url(), referers or [], cookies or [])
-        by_tag = {p.tag: p for p in roles if p.thumb}
-        for r in entries:
-            if not r.thumb and r.tag and r.tag in by_tag:
-                r.thumb = by_tag[r.tag].thumb
-                r.gender = r.gender or by_tag[r.tag].gender
-                changed = True
-    return changed
-
-
-async def backfill_people_images(
-    response: PlexMetadataResponse,
-    site_name: str,
-    *,
-    fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
-) -> bool:
-    try:
-        md = response.MediaContainer.Metadata[0]
-    except (AttributeError, IndexError):
-        return False
-
-    groups: list[tuple[list[PlexRole], str, str]] = [
-        (md.Role or [], 'actor', 'actors'),
-        (md.Director or [], 'director', 'directors'),
-        (md.Producer or [], 'producer', 'producers'),
-    ]
-
-    missing: list[str] = []
-    stale_cleared = False
-    for entries, _role, key in groups:
-        for r in entries:
-            if not r.tag:
-                continue
-            if r.thumb and _is_stale_local_thumb(r.thumb):
-                r.thumb = None
-                stale_cleared = True
-            if not r.thumb:
-                missing.append(f'{key}:{r.tag}')
-    if not missing:
-        logger.debug('meta-cache', f'backfill skip "{md.title}": all cast/crew already have thumbs')
-        return False
-    logger.debug('meta-cache', f'backfill "{md.title}" ({site_name}): {len(missing)} imageless -> {", ".join(missing)}')
-
-    fill_groups = [(entries, key) for entries, _role, key in groups]
-    changed = stale_cleared
-
-    if fetch_detail is not None:
-        try:
-            detail = await fetch_detail()
-        except Exception as err:  # noqa: BLE001 — a failed re-fetch just means sources-only
-            logger.warn('meta-cache', f'backfill scene re-fetch failed: {err}')
-            detail = None
-        if detail is not None:
-            scene = PeopleManager()
-            for a in detail.actors or []:
-                if a.name:
-                    scene.add_actor(a.name, a.photo_url or '', a.gender or '')  # type: ignore[arg-type]
-            for d in detail.directors or []:
-                if d.name:
-                    scene.add_director(d.name, d.photo_url or '')
-            for pr in detail.producers or []:
-                if pr.name:
-                    scene.add_producer(pr.name, pr.photo_url or '')
-            refs = [detail.art_referer] if detail.art_referer else []
-            cks = [detail.art_cookie] if detail.art_cookie else []
-            if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
-                changed = True
-
-    sources = PeopleManager()
-    enqueued = False
-    for entries, role, _key in groups:
-        for r in entries:
-            if r.thumb or not r.tag:
-                continue
-            if role == 'actor':
-                sources.add_actor(r.tag, '', r.gender or '')  # type: ignore[arg-type]
-            elif role == 'director':
-                sources.add_director(r.tag, '')
-            else:
-                sources.add_producer(r.tag, '')
-            enqueued = True
-    if enqueued and await _resolve_and_fill(sources, fill_groups, studio=md.studio or '', site_name=site_name):
-        changed = True
-
-    logger.debug('meta-cache', f'backfill "{md.title}": changed={changed}')
-    return changed
-
-
-def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
-    from phoenixadult.registry import PROVIDER_DEFINITIONS
-    from phoenixadult.utils.plex.rating_key import to_guid
-
-    changed = False
-    for md in response.MediaContainer.Metadata:
-        if md.ratingKey:
-            guid = to_guid(md.ratingKey, PROVIDER_DEFINITIONS[0].plex_identifier)
-            if md.guid != guid:
-                md.guid = guid
-                changed = True
-        if md.contentRating is None:
-            md.contentRating = 'XXX'
-            changed = True
-        if md.isAdult is None:
-            md.isAdult = True
-            changed = True
-        if (sort := title_sort(md.title)) and md.titleSort != sort:
-            md.titleSort = sort
-            changed = True
-        for attr in ('Role', 'Director', 'Producer'):
-            roles: list[PlexRole] | None = getattr(md, attr)
-            for idx, r in enumerate(roles or []):
-                if r.order is None:
-                    r.order = idx
-                    changed = True
-    return changed

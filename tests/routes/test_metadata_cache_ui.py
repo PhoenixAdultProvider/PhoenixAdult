@@ -49,7 +49,7 @@ def test_purge_bulk_validates_and_counts(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'purgeShown()' in page.text
@@ -64,7 +64,7 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
     monkeypatch.setattr(mcr.metadata_cache, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
-    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['studio/abc'])
+    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: ['studio/abc'])
     monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda **_kw: ['Studio'])
     monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda **_kw: {'taglines': ['T']})
     assert TestClient(create_app()).get('/metadata/state', headers={'accept': 'application/json'}).status_code == 401
@@ -82,7 +82,7 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'metadata-cache-filters' in page.text
@@ -94,7 +94,7 @@ def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
+    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
     monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'var DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
@@ -380,7 +380,7 @@ def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatc
         return [], 0
 
     monkeypatch.setattr(mcr.metadata_cache, 'entries_page', fake_page)
-    monkeypatch.setattr(mcr.metadata_cache, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
     client = authed_client()
     client.get('/metadata/entries', params={'actor': 'Jane Doe'})
     assert seen['actor'] == 'Jane Doe'
