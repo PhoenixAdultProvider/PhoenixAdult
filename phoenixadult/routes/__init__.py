@@ -35,6 +35,12 @@ def nav_items() -> list[tuple[str, str, str]]:
 from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402
 
 
+def app_version() -> str:
+    from phoenixadult import __version__
+
+    return __version__
+
+
 def theme_version(name: str) -> str:
     from phoenixadult.routes.assets import asset_version
 
@@ -52,6 +58,7 @@ _jinja.globals['theme_view'] = theme_view
 _jinja.globals['theme_version'] = theme_version
 _jinja.globals['theme_versions'] = theme_versions
 _jinja.globals['is_admin'] = is_admin
+_jinja.globals['app_version'] = app_version
 
 
 def render_page(name: str, **context: Any) -> str:
