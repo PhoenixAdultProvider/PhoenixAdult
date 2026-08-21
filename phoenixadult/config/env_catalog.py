@@ -141,7 +141,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
         'Serve images only to signed URLs, Plex, image fetchers, loopback, admin token, and the admin UIs — a typed-in URL gets a 403.',
         'Images',
         'boolean',
-        default_value='false',
+        default_value='true',
     ),
     EnvVarSpec(
         'MANUAL_NFO_PATH', 'Manual NFO Folder', 'Root folder served by the "Manual NFO" scraper.', 'Manual NFO', 'string', default_value='./local/manual'

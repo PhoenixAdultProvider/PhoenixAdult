@@ -142,7 +142,7 @@ class _Env:
 
     @property
     def image_guard_enabled(self) -> bool:
-        return _flag('IMAGE_GUARD_ENABLE', '') == 'true'
+        return _flag('IMAGE_GUARD_ENABLE', 'true') != 'false'
 
     @property
     def token_based_auth(self) -> bool:

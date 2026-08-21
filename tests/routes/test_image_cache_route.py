@@ -5,13 +5,15 @@ from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
 
+_IMAGE_FETCH = {'user-agent': 'Plex/Cloud', 'accept': 'image/webp,image/*'}
+
 
 def test_cache_route_serves_and_images_prefix_is_gone(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     images = tmp_path / 'brazzers' / 'baby-got-boobs' / 'abc' / 'images'  # type: ignore[operator]
     images.mkdir(parents=True)
     (images / 'poster-00.jpg').write_bytes(b'IMG')
-    client = TestClient(create_app())
+    client = TestClient(create_app(), headers=_IMAGE_FETCH)
 
     ok = client.get('/cache/brazzers/baby-got-boobs/abc/images/poster-00.jpg')
     assert ok.status_code == 200 and ok.content == b'IMG'
@@ -25,7 +27,7 @@ def test_versioned_local_images_are_cached_immutably(tmp_path: pytest.TempPathFa
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.delenv('ADMIN_TOKEN', raising=False)
     (tmp_path / 'poster.jpg').write_bytes(b'\xff\xd8\xff\xe0JPEG')
-    client = TestClient(create_app())
+    client = TestClient(create_app(), headers=_IMAGE_FETCH)
 
     versioned = client.get('/images/local/poster.jpg', params={'v': 'abc123'})
     assert versioned.status_code == 200
@@ -38,7 +40,7 @@ def test_versioned_local_images_are_cached_immutably(tmp_path: pytest.TempPathFa
 
 def test_a_rejected_proxy_url_is_logged_with_its_reason(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     monkeypatch.delenv('ADMIN_TOKEN', raising=False)
-    client = TestClient(create_app())
+    client = TestClient(create_app(), headers=_IMAGE_FETCH)
 
     with caplog.at_level('WARNING'):
         r = client.get('/images/proxy', params={'url': 'ftp://example.com/x.jpg'})

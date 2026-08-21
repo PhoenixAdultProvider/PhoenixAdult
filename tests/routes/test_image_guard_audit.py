@@ -47,7 +47,11 @@ async def test_the_guard_denies_once_enabled(monkeypatch: pytest.MonkeyPatch) ->
         await ig.image_guard(_request({'user-agent': 'curl/8'}))
 
 
-async def test_a_bare_client_would_be_denied_if_the_guard_were_on() -> None:
+async def test_the_guard_is_on_out_of_the_box() -> None:
+    assert ig.env.image_guard_enabled is True
+
+
+async def test_a_bare_client_is_denied() -> None:
     assert await ig._admitted_by(_request({})) is None
     assert await ig._admitted_by(_request({'user-agent': 'curl/8', 'accept': '*/*'})) is None
 

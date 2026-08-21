@@ -80,9 +80,18 @@ def test_api_key_is_served(client: TestClient) -> None:
     assert client.get('/images/local/pic.jpg', headers={**BROWSER_NAV, 'x-api-key': key}).status_code == 200
 
 
-def test_guard_defaults_off(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_guard_defaults_on(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.delenv('IMAGE_GUARD_ENABLE', raising=False)
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     (tmp_path / 'pic.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 16)
     client = TestClient(create_app(), client=('203.0.113.9', 51234))
-    assert client.get('/images/local/pic.jpg', headers=BROWSER_NAV).status_code == 200
+    assert client.get('/images/local/pic.jpg', headers=BROWSER_NAV).status_code == 403, 'a typed-in URL is refused out of the box'
+
+
+def test_an_image_fetcher_still_works_with_the_default_guard(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.delenv('IMAGE_GUARD_ENABLE', raising=False)
+    monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
+    (tmp_path / 'pic.jpg').write_bytes(bytes.fromhex('ffd8ffdb') + b'0' * 16)
+    client = TestClient(create_app(), client=('203.0.113.9', 51234))
+    assert client.get('/images/local/pic.jpg', headers={'user-agent': 'PlexMediaServer/1.40'}).status_code == 200
+    assert client.get('/images/local/pic.jpg', headers={'user-agent': 'x', 'accept': 'image/webp,image/*'}).status_code == 200
