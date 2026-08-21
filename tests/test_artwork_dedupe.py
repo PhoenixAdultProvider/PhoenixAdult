@@ -74,3 +74,44 @@ async def test_without_cached_bytes_nothing_is_deduped() -> None:
 
     kept = await _dedupe_artwork(probed)
     assert len(kept) == 2
+
+
+def _entry(url: str, width: int, height: int) -> dict[str, object]:
+    return {'url': url, 'dims': {'width': width, 'height': height}, 'image_class': 'poster'}
+
+
+def test_only_images_sharing_a_shape_are_worth_a_pixel_comparison() -> None:
+    from phoenixadult.mappers.metadata_mapper import needs_pixel_check
+
+    entries = [_entry('a', 1920, 1080), _entry('b', 1920, 1080), _entry('c', 800, 1200)]
+    assert needs_pixel_check(entries) == [True, True, False], 'a unique shape cannot be a pixel duplicate'
+
+
+def test_a_single_image_never_triggers_a_pixel_fetch() -> None:
+    from phoenixadult.mappers.metadata_mapper import needs_pixel_check
+
+    assert needs_pixel_check([_entry('a', 100, 100)]) == [False]
+    assert needs_pixel_check([]) == []
+
+
+def test_pixel_keys_are_scoped_to_the_shape() -> None:
+    from phoenixadult.mappers.metadata_mapper import pixel_keys
+
+    entries = [_entry('a', 1920, 1080), _entry('b', 800, 1200)]
+    assert pixel_keys(entries, ['deadbeef', 'deadbeef']) == ['1920x1080:deadbeef', '800x1200:deadbeef'], (
+        'the same pixels at different sizes are different images'
+    )
+
+
+def test_a_missing_digest_never_dedupes() -> None:
+    from phoenixadult.mappers.metadata_mapper import pixel_keys
+
+    assert pixel_keys([_entry('a', 10, 10)], [None]) == [None], 'an unreadable image must be kept, not silently dropped'
+
+
+def test_first_wins_when_keys_collide() -> None:
+    from phoenixadult.mappers.metadata_mapper import _keep_first_by
+
+    entries = [_entry('first', 10, 10), _entry('second', 10, 10), _entry('third', 20, 20)]
+    kept = _keep_first_by(entries, ['same', 'same', 'other'])
+    assert [e['url'] for e in kept] == ['first', 'third']

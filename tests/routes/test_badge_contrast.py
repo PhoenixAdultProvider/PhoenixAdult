@@ -16,8 +16,8 @@ def _token(theme: str, name: str) -> str:
     return found.group(1)
 
 
-def _relative_luminance(hex_colour: str) -> float:
-    parts = [int(hex_colour[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+def _relative_luminance(hex_color: str) -> float:
+    parts = [int(hex_color[i : i + 2], 16) / 255 for i in (1, 3, 5)]
     linear = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in parts]
     return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
 
@@ -36,7 +36,7 @@ def test_badge_text_is_legible_on_its_own_background(theme: str) -> None:
 
 
 @pytest.mark.parametrize('theme', ['midnight', 'forest', 'sky', 'meadow'])
-def test_the_muted_label_colour_is_not_used_on_a_filled_badge(theme: str) -> None:
+def test_the_muted_label_color_is_not_used_on_a_filled_badge(theme: str) -> None:
     background = _token(theme, '--badge-neutral-bg')
     label = _token(theme, '--label-text')
     assert _contrast(background, label) < _AA, (
@@ -48,4 +48,4 @@ def test_the_muted_label_colour_is_not_used_on_a_filled_badge(theme: str) -> Non
 def test_the_version_chip_uses_the_paired_token() -> None:
     page = (_THEMES.parent / 'config_ui.html').read_text(encoding='utf-8')
     rule = re.search(r'\.ver \{[^}]*\}', page)
-    assert rule and 'var(--badge-neutral-text)' in rule.group(0), 'the version chip must take the badge text colour'
+    assert rule and 'var(--badge-neutral-text)' in rule.group(0), 'the version chip must take the badge text color'

@@ -11,7 +11,7 @@ from phoenixadult.clients import is_paced
 from phoenixadult.clients.base import PacingDeferredError, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
-from phoenixadult.models.metadata import PlexMatchResponse
+from phoenixadult.models.metadata import PlexMatchResponse, PlexMatchResult
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.registry import canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
@@ -70,6 +70,20 @@ def _live_scores(results: list[SearchResult], search_data: SearchContext) -> lis
     rescored = [replace(result, score=_live_score(result, search_data)) for result in results]
     rescored.sort(key=lambda r: r.score or 0.0, reverse=True)
     return rescored
+
+
+AUTO_MATCH_SCORE = 100
+
+
+def auto_match(results: list[PlexMatchResult]) -> tuple[PlexMatchResult | None, str]:
+    perfect = [r for r in results if (r.score or 0) >= AUTO_MATCH_SCORE]
+    if not perfect:
+        return None, f'no perfect (>={AUTO_MATCH_SCORE}) result — returning empty'
+    top = perfect[0].score or 0
+    tied = [r for r in perfect if (r.score or 0) == top]
+    if len(tied) > 1:
+        return None, f'{len(tied)} results tied at {top} — ambiguous, returning empty'
+    return tied[0], f'serving "{tied[0].title}" (score={top})'
 
 
 class MatchService:
@@ -294,17 +308,11 @@ class MatchService:
             logger.debug(provider.id, f'result score={r.score} ratingKey={r.ratingKey} "{r.title}"')
 
         if not is_manual:
-            perfect = [r for r in results if (r.score or 0) >= 100]
-            if not perfect:
-                logger.info(provider.id, 'Auto match: no perfect (>=100) result — returning empty')
+            chosen, why = auto_match(results)
+            logger.info(provider.id, f'Auto match: {why}')
+            if chosen is None:
                 return self._empty(provider)
-            top = perfect[0].score or 0
-            tied = [r for r in perfect if (r.score or 0) == top]
-            if len(tied) > 1:
-                logger.info(provider.id, f'Auto match: {len(tied)} results tied at {top} — ambiguous, returning empty')
-                return self._empty(provider)
-            results = tied
-            logger.info(provider.id, f'Auto match: serving "{results[0].title}" (score={top})')
+            results = [chosen]
 
         response = PlexMatchResponse.model_validate(media_container(provider.plex_identifier, results))
         logger.debug(provider.id, f'match response -> {response.model_dump_json(by_alias=True, exclude_none=True)}')

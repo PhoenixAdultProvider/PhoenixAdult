@@ -117,22 +117,34 @@ def _keep_first_by(probed: list[dict[str, Any]], keys: list[str | None]) -> list
     return kept
 
 
+def _shape(entry: dict[str, Any]) -> tuple[int, int]:
+    return int(entry['dims']['width']), int(entry['dims']['height'])
+
+
+def needs_pixel_check(entries: list[dict[str, Any]]) -> list[bool]:
+    counts: dict[tuple[int, int], int] = {}
+    for entry in entries:
+        counts[_shape(entry)] = counts.get(_shape(entry), 0) + 1
+    return [counts[_shape(entry)] > 1 for entry in entries]
+
+
+def pixel_keys(entries: list[dict[str, Any]], digests: list[str | None]) -> list[str | None]:
+    keys: list[str | None] = []
+    for entry, digest in zip(entries, digests, strict=True):
+        width, height = _shape(entry)
+        keys.append(f'{width}x{height}:{digest}' if digest else None)
+    return keys
+
+
 async def _dedupe_artwork(probed: list[dict[str, Any]]) -> list[dict[str, Any]]:
     kept = _keep_first_by(probed, list(await asyncio.gather(*(content_digest(p['url']) for p in probed))))
 
-    groups: dict[tuple[int, int], int] = {}
-    for entry in kept:
-        shape = (entry['dims']['width'], entry['dims']['height'])
-        groups[shape] = groups.get(shape, 0) + 1
+    async def digest_if_ambiguous(entry: dict[str, Any], ambiguous: bool) -> str | None:
+        return await pixel_digest(entry['url']) if ambiguous else None
 
-    async def pixel_key(entry: dict[str, Any]) -> str | None:
-        shape = (entry['dims']['width'], entry['dims']['height'])
-        if groups[shape] < 2:
-            return None
-        digest = await pixel_digest(entry['url'])
-        return f'{shape[0]}x{shape[1]}:{digest}' if digest else None
-
-    kept = _keep_first_by(kept, list(await asyncio.gather(*(pixel_key(p) for p in kept))))
+    wanted = needs_pixel_check(kept)
+    digests = list(await asyncio.gather(*(digest_if_ambiguous(entry, ambiguous) for entry, ambiguous in zip(kept, wanted, strict=True))))
+    kept = _keep_first_by(kept, pixel_keys(kept, digests))
 
     if dropped := len(probed) - len(kept):
         logger.info(f'Dropped {dropped} duplicate image(s) of {len(probed)}')
