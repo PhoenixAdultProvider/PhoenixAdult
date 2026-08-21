@@ -9,13 +9,14 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Literal
 
-PoolName = Literal['store', 'image', 'fs']
+PoolName = Literal['store', 'image', 'fs', 'auth']
 
 _CPU = os.cpu_count() or 4
 _SIZES: dict[str, int] = {
-    'store': 4,
+    'store': max(8, min(32, _CPU + 4)),
     'image': max(2, min(8, _CPU // 2)),
     'fs': 4,
+    'auth': 4,
 }
 
 _pools: dict[str, ThreadPoolExecutor] = {}

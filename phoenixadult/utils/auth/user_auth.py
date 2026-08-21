@@ -55,14 +55,14 @@ async def resolve_user(request: Request) -> AuthedUser | None:
     user: AuthedUser | None = None
     cookie = request.cookies.get(SESSION_COOKIE)
     if cookie:
-        user = await run_in('store', user_store.session_user, hash_token(cookie), time.time())
+        user = await run_in('auth', user_store.session_user, hash_token(cookie), time.time())
     if user is None and (key := presented_api_key(request)):
-        user = await run_in('store', user_store.user_for_api_key, key)
+        user = await run_in('auth', user_store.user_for_api_key, key)
     request.state.user = user
     current_user_is_admin.set(bool(user and user.is_admin))
     if user is not None:
         current_user_theme.set({'dark': user.theme_dark, 'light': user.theme_light})
-        token = await run_in('store', user_tokens.token_for_user, user.id)
+        token = await run_in('auth', user_tokens.token_for_user, user.id)
         user_tokens.current_metadataapi_token.set(token)
     return user
 

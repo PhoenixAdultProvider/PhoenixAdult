@@ -5,7 +5,6 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_the_image_gate_is_shared_across_scene_writes() -> None:
-    """The cap must be global: per-scene semaphores meant N writes gave 6N concurrent fetches."""
     from phoenixadult.utils import cache as mc
 
     first = mc._image_gate()

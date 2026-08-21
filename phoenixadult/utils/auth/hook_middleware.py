@@ -49,7 +49,7 @@ class HookPathMiddleware:
 
         token, _, rest = scope['path'][len(HOOK_PREFIX) :].partition('/')
         rest = f'/{rest}'
-        user = await run_in('store', user_store.user_for_api_key, token) if token else None
+        user = await run_in('auth', user_store.user_for_api_key, token) if token else None
         if user is None:
             rate_limit.record_failure('hook', origin)
             logger.warn('auth', f'refused {scope.get("method", "GET")} {scope["path"]} from {origin} - the hook token matches no user API key.')

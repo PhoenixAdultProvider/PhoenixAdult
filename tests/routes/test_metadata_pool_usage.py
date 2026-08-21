@@ -23,7 +23,6 @@ def store_calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 
 def test_the_page_takes_one_store_worker_not_four(store_calls: list[str]) -> None:
-    """The store pool has few workers, and auth needs it 2-3x per request."""
     assert authed_client().get('/metadata').status_code == 200
     assert store_calls.count('store') == 1, f'one page load occupied {store_calls.count("store")} store workers'
 
