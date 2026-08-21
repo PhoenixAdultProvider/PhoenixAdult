@@ -332,7 +332,7 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
         with Image.open(path) as im:
             converted: Image.Image = im.convert('RGBA')
             converted.thumbnail((96, 96), Resampling.NEAREST)
-            raw = converted.get_flattened_data()
+            raw = converted.get_flattened_data() if hasattr(converted, 'get_flattened_data') else converted.getdata()
             data = list(cast(Iterable[tuple[int, int, int, int]], raw))
         ink = [(r, g, b) for r, g, b, a in data if a > 128] or [(r, g, b) for r, g, b, a in data if a > 0]
         if ink:
@@ -341,7 +341,8 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
             lost_on_light = sum(1 for v in lums if _contrast(v, light_well) < _INVISIBLE_CONTRAST)
             lost_on_dark = sum(1 for v in lums if _contrast(v, dark_well) < _INVISIBLE_CONTRAST)
             well = 'dark' if lost_on_dark <= lost_on_light else 'light'
-    except Exception:  # noqa: BLE001 - an unreadable logo falls back to the dark well
+    except Exception as err:  # noqa: BLE001 - an unreadable logo falls back to the dark well
+        logger.debug(f'logo-cache: could not read the ink of {path.name}, defaulting to the dark well: {err!r}')
         well = 'dark'
     _WELL_CACHE[key] = well
     _WELL_DIRTY = True

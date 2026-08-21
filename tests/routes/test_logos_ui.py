@@ -73,6 +73,16 @@ def test_the_well_is_the_one_that_keeps_the_ink_visible(tmp_path: Path) -> None:
         assert _well(f) == expected, f'{ink} landed on the wrong well'
 
 
+def test_the_ink_is_read_on_pillow_11_too(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from PIL import Image
+
+    monkeypatch.delattr(Image.Image, 'get_flattened_data', raising=False)
+    for ink, expected in (((255, 255, 255), 'dark'), ((18, 18, 20), 'light')):
+        f = tmp_path / f'logo.p11.{ink[0]}.png'
+        _logo(f, ink)
+        assert _well(f) == expected, 'get_flattened_data arrived in Pillow 12; the 11.x path must still read the ink'
+
+
 def test_a_dim_mid_tone_never_outvotes_ink_that_would_vanish(tmp_path: Path) -> None:
     from PIL import Image, ImageDraw
 
