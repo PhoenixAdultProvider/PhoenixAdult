@@ -125,17 +125,9 @@ class GammaEntOtherClient(Client):
             extra=extra,
         )
 
-    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
-        site = scene.site
-        base_lower = site.base_url.lower()
-        extra: _SceneExtra = scene.extra
-        d = extra['d']
-        scene_list = extra['scene_list']
-        scene_id = extra['scene_id']
-        scene_type = extra['scene_type']
-        api_key = extra['api_key']
-        url_title = d.get('url_title') or ''
-
+    def _fill_title(
+        self, metadata: SceneDetail, d: dict[str, Any], *, base_lower: str, scene_type: str, scene_id: str, scene_list: list[dict[str, Any]]
+    ) -> None:
         # Title
         title = ''
         if 'dogfart' in base_lower:
@@ -150,9 +142,7 @@ class GammaEntOtherClient(Client):
 
         metadata.title = title
 
-        # Summary
-        metadata.summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
-
+    def _fill_labels(self, metadata: SceneDetail, d: dict[str, Any], site: ResolvedSiteInfo, *, base_lower: str, scene_list: list[dict[str, Any]]) -> None:
         if not d.get('network_name'):
             if 'filthykings' in base_lower:
                 studio = normalize_studio(d.get('sitename_pretty') or '', site.name)
@@ -196,7 +186,7 @@ class GammaEntOtherClient(Client):
         metadata.tagline = tagline or ''
         metadata.collections = collections or None
 
-        # Genres
+    def _fill_genres(self, metadata: SceneDetail, d: dict[str, Any], *, scene_type: str, scene_list: list[dict[str, Any]]) -> None:
         genres: list[str] = []
 
         def add_genre(genre_name: str | None) -> None:
@@ -213,7 +203,7 @@ class GammaEntOtherClient(Client):
 
         metadata.genres = genres
 
-        # Actor(s)
+    async def _fill_actors(self, metadata: SceneDetail, d: dict[str, Any], site: ResolvedSiteInfo, *, api_key: str, scene_id: str) -> None:
         female: list[ActorResult] = []
         male: list[ActorResult] = []
         for a in d.get('actors') or []:
@@ -234,7 +224,7 @@ class GammaEntOtherClient(Client):
 
         metadata.actors = [*female, *male, *_actor_overrides(scene_id)]
 
-        # Posters
+    def _fill_art(self, metadata: SceneDetail, d: dict[str, Any], *, base_lower: str, scene_type: str, url_title: str) -> None:
         raw_images: list[str] = []
 
         def push_img(u: str) -> None:
@@ -259,6 +249,24 @@ class GammaEntOtherClient(Client):
                 raw_images.insert(0, picture_url)
 
         metadata.art = raw_images
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        site = scene.site
+        base_lower = site.base_url.lower()
+        extra: _SceneExtra = scene.extra
+        d = extra['d']
+        scene_list = extra['scene_list']
+        scene_id = extra['scene_id']
+        scene_type = extra['scene_type']
+        api_key = extra['api_key']
+        url_title = d.get('url_title') or ''
+
+        self._fill_title(metadata, d, base_lower=base_lower, scene_type=scene_type, scene_id=scene_id, scene_list=scene_list)
+        metadata.summary = (d.get('description') or '').replace('<br>', '\n').replace('<br/>', '\n').replace('<br />', '\n').strip()
+        self._fill_labels(metadata, d, site, base_lower=base_lower, scene_list=scene_list)
+        self._fill_genres(metadata, d, scene_type=scene_type, scene_list=scene_list)
+        await self._fill_actors(metadata, d, site, api_key=api_key, scene_id=scene_id)
+        self._fill_art(metadata, d, base_lower=base_lower, scene_type=scene_type, url_title=url_title)
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

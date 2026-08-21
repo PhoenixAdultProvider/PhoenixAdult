@@ -150,20 +150,7 @@ class AdultEmpireClient(Client):
         logger.debug('AdultEmpire', f'_load: HTTP {details_page_elements.get("status")} {len(details_page_elements.get("html") or "")} bytes for {url}')
         return details_page_elements['sel']
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        name = search_data.site_info.name
-        base = search_data.site_info.base_url.rstrip('/')
-        await self._ensure_age_confirmed(base)
-        direct_id = search_data.scene_id is not None and search_data.scene_id.isdigit() and int(search_data.scene_id) > 100
-        scene_id = search_data.scene_id if direct_id and search_data.scene_id else ''
-        title_parts = search_data.title.strip().split()
-        search_vol_num = re.sub(r'[^0-9a-zA-Z]+', '', title_parts[-1]) if title_parts else ''
-        is_vol_search = not direct_id and bool(re.fullmatch(r'\d+', search_vol_num))
-        logger.debug(
-            name,
-            f'search "{search_data.title}" (direct_id={direct_id}, vol_search={is_vol_search}, token={"set" if env.adult_empire_login_token else "absent"})',
-        )
-
+    async def _candidate_movie_urls(self, search_data: SearchContext, *, name: str, base: str, direct_id: bool, scene_id: str) -> dict[str, str]:
         movie_urls: dict[str, str] = {}
         if direct_id:
             movie_urls[f'{base}/{scene_id}'] = ''
@@ -196,7 +183,23 @@ class AdultEmpireClient(Client):
                             added += 1
 
                 logger.debug(name, f'web-search returned {len(web_urls)} URL(s); {added} new movie URL(s)')
+        return movie_urls
 
+    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+        name = search_data.site_info.name
+        base = search_data.site_info.base_url.rstrip('/')
+        await self._ensure_age_confirmed(base)
+        direct_id = search_data.scene_id is not None and search_data.scene_id.isdigit() and int(search_data.scene_id) > 100
+        scene_id = search_data.scene_id if direct_id and search_data.scene_id else ''
+        title_parts = search_data.title.strip().split()
+        search_vol_num = re.sub(r'[^0-9a-zA-Z]+', '', title_parts[-1]) if title_parts else ''
+        is_vol_search = not direct_id and bool(re.fullmatch(r'\d+', search_vol_num))
+        logger.debug(
+            name,
+            f'search "{search_data.title}" (direct_id={direct_id}, vol_search={is_vol_search}, token={"set" if env.adult_empire_login_token else "absent"})',
+        )
+
+        movie_urls = await self._candidate_movie_urls(search_data, name=name, base=base, direct_id=direct_id, scene_id=scene_id)
         logger.debug(name, f'movie URLs to process: {len(movie_urls)}')
         for movie_url, result_type in movie_urls.items():
             sel = await self._load(movie_url, search_data.capture, f'[{name}] movie {movie_url}')
