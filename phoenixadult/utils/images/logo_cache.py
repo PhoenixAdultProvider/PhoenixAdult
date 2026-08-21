@@ -236,7 +236,6 @@ def _save_wells() -> None:
     global _WELL_DIRTY
     if not _WELL_DIRTY:
         return
-    _WELL_DIRTY = False
     target = _well_store()
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -245,6 +244,8 @@ def _save_wells() -> None:
         tmp.replace(target)
     except OSError as err:
         logger.warn('logo-cache', f'could not persist the backdrop cache: {err}')
+        return
+    _WELL_DIRTY = False
 
 
 LIGHT_WELL_RGB = (0xF0, 0xF0, 0xF2)
