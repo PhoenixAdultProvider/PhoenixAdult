@@ -425,6 +425,14 @@ _ENSURE_DATA = (
     "UPDATE users SET theme_light = 'sky' WHERE theme_light = 'day'",
 )
 
+_ENSURE_INDEXES = (
+    'CREATE INDEX IF NOT EXISTS scene_people_person ON scene_people(person_id)',
+    'CREATE INDEX IF NOT EXISTS scene_people_role_person ON scene_people(role, person_id)',
+    'CREATE INDEX IF NOT EXISTS scene_genres_genre ON scene_genres(genre_id)',
+    'CREATE INDEX IF NOT EXISTS scene_collections_collection ON scene_collections(collection_id)',
+    'CREATE INDEX IF NOT EXISTS scene_countries_country ON scene_countries(country_id)',
+)
+
 _ENSURE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('scenes', 'locked_fields', "TEXT NOT NULL DEFAULT '[]'"),
     ('scenes', 'images_locked', 'INTEGER NOT NULL DEFAULT 0'),
@@ -445,6 +453,8 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
             if column not in have:
                 conn.execute(f'ALTER TABLE {table} ADD COLUMN {column} {decl}')
                 logger.info('db', f'added column {table}.{column}')
+    for statement in _ENSURE_INDEXES:
+        conn.execute(statement)
     for statement in _ENSURE_DATA:
         conn.execute(statement)
     conn.commit()
