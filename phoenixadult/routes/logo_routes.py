@@ -182,12 +182,10 @@ async def add_upload(studio: str = Form(''), alias: str = Form(''), file: Upload
     return JSONResponse(_saved(rel))
 
 
-def _reject_private_targets(url: str) -> None:
-    from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname
+async def _reject_private_targets(url: str) -> None:
+    from phoenixadult.utils.http.ssrf_guard import guard_target
 
-    host = (urlsplit(url).hostname or '').strip('[]')
-    if is_blocked_hostname(host):
-        raise ValueError(f'blocked host "{host}"')
+    await guard_target(url)
 
 
 async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
@@ -196,7 +194,7 @@ async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
     problems: list[str] = []
     for url in urls:
         try:
-            _reject_private_targets(url)
+            await _reject_private_targets(url)
             got = await fetch_image(url)
         except Exception as err:  # noqa: BLE001 - report why the whole chain gave up
             problems.append(f'{url} ({err})')

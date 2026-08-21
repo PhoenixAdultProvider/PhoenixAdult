@@ -48,13 +48,17 @@ def _rsvg(svg: Path, png: Path) -> bool:
         return False
 
 
+def _deny_fetch(url: str, *_a: object, **_kw: object) -> bytes:
+    raise ValueError(f'external reference refused: {url}')
+
+
 def _cairosvg(svg: Path, png: Path) -> bool | None:
     try:
         import cairosvg
     except ImportError:
         return None
     try:
-        cairosvg.svg2png(url=str(svg), write_to=str(png))
+        cairosvg.svg2png(url=str(svg), write_to=str(png), url_fetcher=_deny_fetch)
         return png.exists() and png.stat().st_size > 0
     except Exception as err:  # noqa: BLE001 - a bad SVG just stays unconverted
         logger.warn('logo-cache', f'cairosvg failed for {svg.name}: {err!r}')
@@ -73,8 +77,48 @@ def _magick(svg: Path, png: Path) -> bool:
         return False
 
 
+_SAFE_HREF_PREFIXES = ('#', 'data:')
+
+
+def _sanitize_svg(svg: Path) -> bool:
+    from lxml import etree
+
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)
+    try:
+        tree = etree.parse(str(svg), parser)
+    except etree.XMLSyntaxError as err:
+        logger.warn('logo-cache', f'{svg.name} is not parseable as SVG: {err}')
+        return False
+    stripped = 0
+    doomed = []
+    for el in tree.getroot().iter():
+        if not isinstance(el.tag, str):
+            continue
+        if etree.QName(el).localname.lower() in ('script', 'foreignobject'):
+            doomed.append(el)
+            continue
+        for name in list(el.attrib):
+            local = etree.QName(name).localname.lower() if '}' in name else name.lower()
+            value = (el.attrib[name] or '').strip()
+            if local.startswith('on') or (local == 'href' and not value.lower().startswith(_SAFE_HREF_PREFIXES)):
+                del el.attrib[name]
+                stripped += 1
+    for el in doomed:
+        parent = el.getparent()
+        if parent is not None:
+            parent.remove(el)
+            stripped += 1
+    if stripped:
+        logger.warn('logo-cache', f'stripped {stripped} external or scripted reference(s) from {svg.name}')
+    tree.write(str(svg), xml_declaration=True, encoding='utf-8')
+    return True
+
+
 def convert_svg(svg: Path) -> Path | None:
     png = svg.with_suffix('.png')
+    if not _sanitize_svg(svg):
+        svg.unlink(missing_ok=True)
+        return None
     ok = _rsvg(svg, png) or _cairosvg(svg, png) or _magick(svg, png)
     if not ok:
         logger.warn('logo-cache', f'no working SVG converter for {svg.name}: install graphics/librsvg2-rust (rsvg-convert) or cairosvg')

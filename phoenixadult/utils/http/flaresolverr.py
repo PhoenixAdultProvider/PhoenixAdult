@@ -31,6 +31,13 @@ class _FlareSolverrBackend:
         if cmd == 'request.post' and req.body is not None:
             payload['postData'] = req.body
 
+        from phoenixadult.utils.http.ssrf_guard import guard_target
+
+        try:
+            await guard_target(req.url)
+        except ValueError as err:
+            logger.warn('bypass:FlareSolverr', f'refusing {req.url}: {err}')
+            return None
         try:
             async with httpx2.AsyncClient(timeout=timeout_ms / 1000 + 10, verify=False) as client:
                 resp = await client.post(f'{endpoint}/v1', json=payload, headers={'Content-Type': 'application/json'})

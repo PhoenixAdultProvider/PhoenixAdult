@@ -45,6 +45,12 @@ def _is_ip_literal(host: str) -> bool:
         return False
 
 
+def _proxied() -> bool:
+    from phoenixadult.config.env import env
+
+    return bool(env.https_proxy)
+
+
 def is_blocked_hostname(host: str) -> bool:
     h = host.lower().rstrip('.')
     if not h or h == 'localhost' or h.endswith(('.localhost', '.local', '.internal')):
@@ -76,6 +82,24 @@ async def resolve_public_ip(host: str) -> str:
         if is_private_address(address):
             raise ValueError(f'host "{h}" resolves to private address {address}')
     return next((a for a in resolved if ipaddress.ip_address(a).version == 4), resolved[0])
+
+
+async def guard_target(raw_url: str) -> None:
+    parts = urlsplit(raw_url)
+    if parts.scheme not in ('http', 'https') or not parts.netloc:
+        raise ValueError('invalid url')
+    host = (parts.hostname or '').strip('[]')
+    if is_blocked_hostname(host):
+        raise ValueError(f'blocked host "{host}"')
+    if _is_ip_literal(host) or _proxied():
+        return
+    try:
+        resolved = await _resolve(host)
+    except Exception:  # noqa: BLE001 - the name check already ran; an unresolvable host cannot be proven private
+        return
+    for address in resolved:
+        if is_private_address(address):
+            raise ValueError(f'host "{host}" resolves to private address {address}')
 
 
 async def assert_fetchable_url(raw_url: str) -> str:

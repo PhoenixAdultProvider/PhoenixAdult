@@ -6,7 +6,7 @@ import httpx2
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.http.connectivity import note_transport_failure
-from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
 
@@ -31,9 +31,11 @@ async def _guard_redirect(response: httpx2.Response) -> None:
     if response.has_redirect_location:
         location = response.headers.get('location', '')
         if location:
-            host = response.url.join(location).host
-            if host and is_blocked_hostname(host):
-                raise ValueError(f'blocked redirect to {host}')
+            target = str(response.url.join(location))
+            try:
+                await guard_target(target)
+            except ValueError as err:
+                raise ValueError(f'blocked redirect to {target}: {err}') from err
 
 
 class _WatchedTransport(httpx2.AsyncHTTPTransport):

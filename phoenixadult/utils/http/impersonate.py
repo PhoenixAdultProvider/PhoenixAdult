@@ -54,6 +54,13 @@ impersonate_backend = _ImpersonateBackend()
 async def impersonate_get_bytes(url: str, headers: dict[str, str] | None = None, timeout_ms: int = 30_000) -> tuple[bytes, str] | None:
     if not impersonate_backend.is_available():
         return None
+    from phoenixadult.utils.http.ssrf_guard import guard_target
+
+    try:
+        await guard_target(url)
+    except ValueError as err:
+        logger.warn('bypass:Impersonate', f'refusing {url}: {err}')
+        return None
     try:
         from curl_cffi.requests import AsyncSession
     except ImportError:

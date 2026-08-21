@@ -20,7 +20,7 @@ from phoenixadult.utils.http.client import DEFAULT_UA, make_http
 from phoenixadult.utils.http.headers import sanitize_header
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
 from phoenixadult.utils.http.pinned_fetch import fetch_pinned
-from phoenixadult.utils.http.ssrf_guard import is_blocked_hostname
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images.ext import is_image_content_type
 from phoenixadult.utils.logging.logger import logger
 
@@ -124,9 +124,12 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
         resp.raise_for_status()
         for redirect in resp.history:
             loc = redirect.headers.get('location', '')
-            host = urlsplit(loc).hostname
-            if host and is_blocked_hostname(host):
-                raise ValueError(f'blocked redirect to {host}')
+            if loc:
+                target = str(redirect.url.join(loc))
+                try:
+                    await guard_target(target)
+                except ValueError as err:
+                    raise ValueError(f'blocked redirect to {target}: {err}') from err
         content_type = resp.headers.get('content-type', '')
         if not is_image_content_type(content_type):
             raise ValueError(f'non-image content-type "{content_type}" from {url}')
@@ -339,9 +342,13 @@ async def _probe_dims(url: str, referers: list[str] | None, cookies: list[str] |
             responded = True
             absent = resp.status_code in (404, 410)
             for redirect in resp.history:
-                host = urlsplit(redirect.headers.get('location', '')).hostname
-                if host and is_blocked_hostname(host):
-                    raise ValueError(f'blocked redirect to {host}')
+                loc = redirect.headers.get('location', '')
+                if loc:
+                    target = str(redirect.url.join(loc))
+                    try:
+                        await guard_target(target)
+                    except ValueError as err:
+                        raise ValueError(f'blocked redirect to {target}: {err}') from err
             resp.raise_for_status()
             if not is_image_content_type(resp.headers.get('content-type', '')):
                 continue

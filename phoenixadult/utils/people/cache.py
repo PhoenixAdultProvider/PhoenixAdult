@@ -214,6 +214,13 @@ def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
 
 
 async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
+    from phoenixadult.utils.http.ssrf_guard import guard_target
+
+    try:
+        await guard_target(url)
+    except ValueError as err:
+        logger.warn('people-cache', f'refusing to fetch {url}: {err}')
+        return None
     try:
         async with make_http() as client:
             resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
