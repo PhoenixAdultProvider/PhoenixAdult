@@ -6,7 +6,7 @@ from abc import ABC
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import httpx2
 from parsel import Selector
@@ -23,8 +23,33 @@ from phoenixadult.utils.http.rate_limit_helper import (
 from phoenixadult.utils.logging.logger import logger
 
 if TYPE_CHECKING:
-    from phoenixadult.clients.aggregators.data18 import Data18Client
     from phoenixadult.registry import ResolvedSiteInfo
+
+
+class Enricher(Protocol):
+    async def enrich_images(
+        self,
+        *,
+        scope: str,
+        images: list[str],
+        scene_id: str | None = None,
+        title: str = '',
+        providers: list[str] | None = None,
+        scene_date: datetime | None = None,
+        forced_url: str | None = None,
+        kind: Any = 'scene',
+        allow_square: bool = True,
+        priority: list[str] | None = None,
+        search: bool = True,
+    ) -> str | None: ...
+
+
+_enricher_factory: Callable[[], Enricher] | None = None
+
+
+def set_enricher_factory(factory: Callable[[], Enricher]) -> None:
+    global _enricher_factory
+    _enricher_factory = factory
 
 
 # ── Capture (raw-response debugging, surfaced by the dev UI) ──────────────────
@@ -190,7 +215,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         self._extra_headers = extra_headers or {}
         self._http: httpx2.AsyncClient | None = None
-        self._data18_enricher: Data18Client | None = None
+        self._data18_enricher: Enricher | None = None
         self.pacer: ScenePacer | None = None
 
     @property
@@ -470,9 +495,10 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     ) -> None:
         if not (site.scraper_config.data18_enrichment and env.data18_enabled):
             return
-        from phoenixadult.clients.aggregators.data18 import Data18Client
-
-        self._data18_enricher = self._data18_enricher or Data18Client()
+        if self._data18_enricher is None:
+            if _enricher_factory is None:
+                return
+            self._data18_enricher = _enricher_factory()
         date = scene_date if scene_date is not None else metadata.release_date
         metadata.data18_url = await self._data18_enricher.enrich_images(
             scope=site.name,

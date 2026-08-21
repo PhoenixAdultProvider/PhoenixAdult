@@ -11,7 +11,7 @@ from phoenixadult.clients.aggregators.javlibrary import JavLibraryClient
 from phoenixadult.clients.aggregators.metadataapi import MetadataAPIClient
 from phoenixadult.clients.aggregators.pornbox import PornboxClient
 from phoenixadult.clients.aggregators.project1service import Project1ServiceClient
-from phoenixadult.clients.base import Client
+from phoenixadult.clients.base import Client, Enricher, set_enricher_factory
 from phoenixadult.clients.networks.abbywinters import AbbyWintersClient
 from phoenixadult.clients.networks.adultempirecash import AdultEmpireCashClient
 from phoenixadult.clients.networks.adultprime import AdultPrimeClient
@@ -380,3 +380,12 @@ def _assert_registry_consistent() -> None:
 
 
 _assert_registry_consistent()
+
+
+def _make_enricher() -> Enricher:
+    from phoenixadult.clients.aggregators import data18
+
+    return data18.Data18Client()
+
+
+set_enricher_factory(_make_enricher)

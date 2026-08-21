@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from phoenixadult.clients.base import Client, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config import config
-from phoenixadult.registry.site_info import ResolvedSiteInfo
+from phoenixadult.models.site_info import ResolvedSiteInfo
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import build_search_result, title_distance_score

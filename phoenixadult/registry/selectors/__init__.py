@@ -1,6 +1,7 @@
 # ruff: noqa: F401 - every site-list import here exists only to be collected into SITE_DEFINITIONS below.
 from __future__ import annotations
 
+from phoenixadult.models.site_info import SiteInfo
 from phoenixadult.registry.selectors.aggregators.data18empire import DATA18EMPIRE_SITES
 from phoenixadult.registry.selectors.aggregators.data18movies import DATA18MOVIES_SITES
 from phoenixadult.registry.selectors.aggregators.data18scenes import DATA18SCENES_SITES
@@ -178,7 +179,6 @@ from phoenixadult.registry.selectors.sites.xevunleashed import XEVUNLEASHED_SITE
 from phoenixadult.registry.selectors.sites.xillimite import XILLIMITE_SITES
 from phoenixadult.registry.selectors.sites.xsinsvr import XSINSVR_SITES
 from phoenixadult.registry.selectors.sites.xvirtual import XVIRTUAL_SITES
-from phoenixadult.registry.site_info import SiteInfo
 
 SITE_DEFINITIONS: list[SiteInfo] = [
     site for _, group in sorted(globals().items()) if isinstance(group, list) and group and isinstance(group[0], SiteInfo) for site in group

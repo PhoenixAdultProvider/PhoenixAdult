@@ -6,9 +6,9 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from phoenixadult.config.env import env
-from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.helpers.helpers import slugify
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.processors.site_key import normalize_site_key
 
 EXT_CANDIDATES = ('.svg', '.png', '.webp', '.jpg')
 

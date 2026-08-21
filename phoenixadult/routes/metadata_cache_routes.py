@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from dataclasses import dataclass
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -240,59 +241,70 @@ async def state() -> JSONResponse:
     return JSONResponse({'token': await run_in('store', metadata_cache.change_token)})
 
 
-@router.get('/entries')
-async def entries_json(
-    studio: str = '',
-    query: str = Query('', alias='q'),
-    year: str = '',
-    month: str = '',
-    day: str = '',
-    tagline: str = '',
-    collection: str = '',
-    data18: str = '',
-    actor: str = '',
-    genre: str = '',
-    cast: str = '',
-    director: str = '',
-    producer: str = '',
-    provider: str = '',
-    dups: int = Query(0, ge=0, le=2),
-    sort: str = 'updated_at',
-    direction: str = Query('desc', alias='dir'),
-    limit: int = Query(PAGE_SIZE, ge=0, le=1000),
-    offset: int = Query(0, ge=0),
-) -> JSONResponse:
-    sort = sort if sort in _SORT_KEYS else 'updated_at'
-    direction = direction if direction in ('asc', 'desc') else 'desc'
+_SCOPE_FIELDS = (
+    'studio',
+    'query',
+    'year',
+    'month',
+    'day',
+    'tagline',
+    'collection',
+    'data18',
+    'actor',
+    'genre',
+    'cast',
+    'director',
+    'producer',
+    'provider',
+)
 
+
+@dataclass
+class EntryFilters:
+    studio: str = ''
+    query: str = Query('', alias='q')
+    year: str = ''
+    month: str = ''
+    day: str = ''
+    tagline: str = ''
+    collection: str = ''
+    data18: str = ''
+    actor: str = ''
+    genre: str = ''
+    cast: str = ''
+    director: str = ''
+    producer: str = ''
+    provider: str = ''
+    dups: int = Query(0, ge=0, le=2)
+    sort: str = 'updated_at'
+    direction: str = Query('desc', alias='dir')
+    limit: int = Query(PAGE_SIZE, ge=0, le=1000)
+    offset: int = Query(0, ge=0)
+
+    def __post_init__(self) -> None:
+        if self.sort not in _SORT_KEYS:
+            self.sort = 'updated_at'
+        if self.direction not in ('asc', 'desc'):
+            self.direction = 'desc'
+
+    def scope(self, dup_paths: list[str] | None) -> dict[str, Any]:
+        return {name: getattr(self, name) for name in _SCOPE_FIELDS} | {'dup_paths': dup_paths}
+
+
+@router.get('/entries')
+async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONResponse:
     def _bundle() -> dict[str, Any]:
         dup_keys = metadata_cache.stale_duplicate_entries()
-        show_paths = metadata_cache.content_duplicate_entries() if dups == 2 else dup_keys
-        scope: dict[str, Any] = {
-            'studio': studio,
-            'query': query,
-            'year': year,
-            'month': month,
-            'day': day,
-            'tagline': tagline,
-            'collection': collection,
-            'data18': data18,
-            'actor': actor,
-            'genre': genre,
-            'cast': cast,
-            'director': director,
-            'producer': producer,
-            'provider': provider,
-            'dup_paths': show_paths if dups else None,
-        }
+        show_paths = metadata_cache.content_duplicate_entries() if filters.dups == 2 else dup_keys
+        scope = filters.scope(show_paths if filters.dups else None)
         entries, total = metadata_cache.entries_page(
             **{k: v for k, v in scope.items() if k != 'dup_paths'},
-            dups_only=bool(dups),
+            dups_only=bool(filters.dups),
             dup_paths=show_paths,
-            sort=sort,
-            direction=direction,
-            limit=limit if limit > 0 else -1,
-            offset=offset,
+            sort=filters.sort,
+            direction=filters.direction,
+            limit=filters.limit if filters.limit > 0 else -1,
+            offset=filters.offset,
         )
         return {
             'entries': entries,

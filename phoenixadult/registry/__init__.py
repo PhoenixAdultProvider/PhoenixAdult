@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import dataclasses
-import re
-
-from text_unidecode import unidecode
 
 from phoenixadult import provider_version
 from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.models.site_info import ContentType, ResolvedSiteInfo, SiteInfo
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as _SELECTOR_SITES
 from phoenixadult.registry.selectors.aggregators.archive import ARCHIVE_SITES as _ARCHIVE_SITES
-from phoenixadult.registry.site_info import ContentType, ResolvedSiteInfo, SiteInfo
+from phoenixadult.utils.processors.site_key import normalize_site_key
 
 __all__ = [
     'ContentType',
@@ -39,10 +37,6 @@ PROVIDER_DEFINITIONS: list[ProviderInfo] = [
 ]
 
 DEFAULT_PROVIDER_ID = PROVIDER_DEFINITIONS[0].id
-
-
-def normalize_site_key(token: str) -> str:
-    return re.sub(r'[^a-z0-9]', '', unidecode(token).lower())
 
 
 def _with_archive(sites: list[SiteInfo], archived: list[SiteInfo]) -> list[SiteInfo]:

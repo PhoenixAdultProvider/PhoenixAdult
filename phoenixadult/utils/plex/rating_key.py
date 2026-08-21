@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from phoenixadult.registry import normalize_site_key
+from phoenixadult.utils.processors.site_key import normalize_site_key
 
 
 def to_rating_key(cur_id: str, site_name: str, date: str | None = None) -> str:

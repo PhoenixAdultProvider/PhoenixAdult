@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
 from phoenixadult.registry.selectors._factory import make_site
-from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'SinX'
 PROVIDER_BASE_URL = 'https://sinx.com'

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.models.scraper_config import ScraperConfig
-from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
+from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
 
 
 def make_site(

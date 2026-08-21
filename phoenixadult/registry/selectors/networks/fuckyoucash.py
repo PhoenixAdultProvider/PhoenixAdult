@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
 from phoenixadult.registry.selectors._factory import make_site
-from phoenixadult.registry.site_info import ContentType, SearchMethod, SiteInfo
 
 PROVIDER_NAME = 'FuckYouCash'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
