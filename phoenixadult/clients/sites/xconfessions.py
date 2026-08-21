@@ -211,12 +211,12 @@ class XConfessionsClient(Client):
         d = self._data(scene)
         images = self.image_collector(lambda image: (image or '').strip())
         if d.get('poster_picture'):
-            images['push'](strip_query(d['poster_picture']))
+            images.push(strip_query(d['poster_picture']))
         elif d.get('banner_image_mobile'):
-            images['push'](strip_query(d['banner_image_mobile']))
+            images.push(strip_query(d['banner_image_mobile']))
 
         for a in d.get('album') or []:
             if a.get('path'):
-                images['push'](strip_query(a['path']))
+                images.push(strip_query(a['path']))
 
-        metadata.art = images['list']
+        metadata.art = images.items

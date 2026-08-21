@@ -154,8 +154,8 @@ class JulesJordanClient(Client):
         images = self.image_collector(lambda image: join_url(image, base))
 
         for photo in details_page_elements.xpath('//a[contains(@class,"tp-photo-thumb")]//img/@src | //div[contains(@class,"tp-photos-strip")]//img/@src'):
-            images['push']((photo.get() or '').strip())
+            images.push((photo.get() or '').strip())
 
-        images['push'](first_attr(details_page_elements, '(//video[@id="video-player"])[1]/@poster'))
+        images.push(first_attr(details_page_elements, '(//video[@id="video-player"])[1]/@poster'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

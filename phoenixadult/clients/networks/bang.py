@@ -300,6 +300,6 @@ class BangClient(Client):
 
         images = self.image_collector()
         for u in out:
-            images['push'](u)
+            images.push(u)
 
-        metadata.art = images['list']
+        metadata.art = images.items

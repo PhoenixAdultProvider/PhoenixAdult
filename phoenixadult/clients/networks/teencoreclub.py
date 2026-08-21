@@ -118,12 +118,12 @@ class TeenCoreClubClient(Client):
         images = self.image_collector()
         artwork = v.get('artwork') or {}
         cover = v.get('cover') or {}
-        images['push'](artwork.get('small'))
-        images['push'](artwork.get('large'))
-        images['push'](cover.get('small'))
-        images['push'](cover.get('medium'))
-        images['push'](cover.get('large'))
+        images.push(artwork.get('small'))
+        images.push(artwork.get('large'))
+        images.push(cover.get('small'))
+        images.push(cover.get('medium'))
+        images.push(cover.get('large'))
         for s in v.get('screenshots') or []:
-            images['push'](s)
+            images.push(s)
 
-        metadata.art = images['list']
+        metadata.art = images.items

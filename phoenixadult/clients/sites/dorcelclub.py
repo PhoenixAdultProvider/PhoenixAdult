@@ -175,9 +175,9 @@ class DorcelClubClient(Client):
         if _is_movie_url(scene.url):
             cover = first_attr(details_page_elements, '(//div[contains(@class,"header")]//source[contains(@data-srcset,"1536")]/@data-srcset)[1]')
             if cover:
-                images['push'](cover)
+                images.push(cover)
 
         for image_url in details_page_elements.xpath('//div[contains(@class,"photos")]//source/@data-srcset').getall():
-            images['push']((image_url or '').strip())
+            images.push((image_url or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

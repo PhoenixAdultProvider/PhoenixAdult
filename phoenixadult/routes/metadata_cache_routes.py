@@ -32,7 +32,7 @@ _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    def _bundle() -> tuple[tuple[list[dict[str, Any]], int], list[str], list[str], dict[str, Any]]:
+    def _bundle() -> tuple[tuple[list[metadata_cache.UiEntry], int], list[str], list[str], dict[str, Any]]:
         return (
             metadata_cache.entries_page(limit=PAGE_SIZE),
             metadata_cache.stale_duplicate_entries(),

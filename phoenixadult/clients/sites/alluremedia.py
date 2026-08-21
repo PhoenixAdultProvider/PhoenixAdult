@@ -146,7 +146,7 @@ class AllureMediaClient(Client):
         title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
 
         df_script = details_page_elements.xpath('//script[contains(.,"df_movie")]').xpath('string(.)').get() or ''
-        images['push'](script_match(df_script, _USEIMAGE_RE))
+        images.push(script_match(df_script, _USEIMAGE_RE))
 
         set_id = script_match(df_script, _SETID_RE)
         if set_id:
@@ -155,9 +155,9 @@ class AllureMediaClient(Client):
             )
             if search_results:
                 node = search_results['sel'].xpath(f'(//*[@id="set-target-{set_id}"])[1]')
-                images['push'](node.xpath('@src').get() or '')
+                images.push(node.xpath('@src').get() or '')
                 for i in range(7):
-                    images['push'](node.xpath(f'@src{i}_1x').get() or '')
+                    images.push(node.xpath(f'@src{i}_1x').get() or '')
 
         thumbs: list[str] = []
         for selector, attrs in (
@@ -177,7 +177,7 @@ class AllureMediaClient(Client):
             count = int(yy)
             for n in range(max(1, count - 20), count + 1):
                 nn = str(n).zfill(2)
-                images['push'](f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
+                images.push(f'{path_prefix}{xx}/{nn}/{id_prefix}{xx}{nn}-3x.jpg')
 
         photos_href = ''
         for a in details_page_elements.xpath('//div[contains(@class,"cell") and contains(@class,"content_tab")]//a'):
@@ -193,9 +193,9 @@ class AllureMediaClient(Client):
             if photos_page_elements:
                 ptx = photos_page_elements['sel'].xpath('//script[contains(.,"var ptx")]').xpath('string(.)').get() or ''
                 for u in _ptx_srcs(ptx, '1600'):
-                    images['push'](u)
+                    images.push(u)
 
                 for u in _ptx_srcs(ptx, 'jpg'):
-                    images['push'](u)
+                    images.push(u)
 
-        metadata.art = images['list']
+        metadata.art = images.items

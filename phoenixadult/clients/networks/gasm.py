@@ -150,8 +150,8 @@ class GasmClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for src in details_page_elements.xpath('//img[contains(@class,"item_cover")]/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        images['push'](details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
+        images.push(details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
 
-        metadata.art = images['list']
+        metadata.art = images.items

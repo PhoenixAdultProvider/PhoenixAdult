@@ -112,6 +112,6 @@ class GirlsOutWestClient(Client):
             if not image_url:
                 continue
 
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

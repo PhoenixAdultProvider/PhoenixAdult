@@ -170,9 +170,9 @@ class AlsAngelsClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: image.replace('..', base) if image.startswith('..') else image)
         for src in row.xpath('.//td[contains(@class,"videothumbnail")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
         for href in row.xpath('.//td[contains(@class,"videothumbnail")]//a/@href').getall():
-            images['push'](href)
+            images.push(href)
 
-        metadata.art = images['list']
+        metadata.art = images.items

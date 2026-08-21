@@ -99,7 +99,7 @@ class FuckingAwesomeClient(Client):
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
 
         for image_url in details_page_elements.xpath('//span[contains(@class,"et_pb_image_wrap")]//img/@content').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         photos_href = first_attr(details_page_elements, '(//li[contains(@class,"photos")]//a/@href)[1]')
         if photos_href:
@@ -107,6 +107,6 @@ class FuckingAwesomeClient(Client):
             photos_page_elements = await self.fetch_and_load(photos_url, FetchCtx(capture=scene.capture), f'[{scene.site.name}] photos page')
             if photos_page_elements:
                 for image_url in photos_page_elements['sel'].xpath('//div[contains(@class,"my-gallery")]//a/@href').getall():
-                    images['push'](image_url)
+                    images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

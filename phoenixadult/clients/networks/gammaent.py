@@ -274,30 +274,30 @@ class GammaEntClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url(image, base))
 
-        images['push'](details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
+        images.push(details_page_elements.xpath('(//meta[@name="twitter:image"])[1]/@content').get())
         pic = _PIC_PREVIEW_RE.search(scene.html or '')
         if pic:
-            images['push'](pic.group(1).replace('\\', ''))
+            images.push(pic.group(1).replace('\\', ''))
 
-        images['push'](details_page_elements.xpath('(//img[contains(@class,"sceneImage")])[1]/@src').get())
+        images.push(details_page_elements.xpath('(//img[contains(@class,"sceneImage")])[1]/@src').get())
 
         photo_href = first_attr(details_page_elements, '(//a[contains(@class,"GA_Track_Action_Pictures")])[1]/@href')
         if photo_href:
             photo_page_elements = await self.fetch_and_load(absolute_url(photo_href, base), None, 'photo page')
             if photo_page_elements:
-                images['push'](photo_page_elements['sel'].xpath('(//div[contains(@class,"previewImage")]//img)[1]/@src').get())
+                images.push(photo_page_elements['sel'].xpath('(//div[contains(@class,"previewImage")]//img)[1]/@src').get())
                 for h in photo_page_elements['sel'].xpath('//a[contains(@class,"imgLink")]/@href').getall():
-                    images['push'](h)
+                    images.push(h)
 
         if '/movie/' in scene.url:
-            images['push'](details_page_elements.xpath('(//a[contains(@class,"frontCoverImg")])[1]/@href').get())
-            images['push'](details_page_elements.xpath('(//a[contains(@class,"backCoverImg")])[1]/@href').get())
+            images.push(details_page_elements.xpath('(//a[contains(@class,"frontCoverImg")])[1]/@href').get())
+            images.push(details_page_elements.xpath('(//a[contains(@class,"backCoverImg")])[1]/@href').get())
             xpaths = (
                 '//img[contains(@class,"tlcImageItem") and contains(@class,"img")]/@src',
                 '//img[contains(@class,"img") and contains(@class,"lazy")]/@data-original',
             )
             for xpath in xpaths:
                 for image_url in details_page_elements.xpath(xpath).getall():
-                    images['push'](image_url)
+                    images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

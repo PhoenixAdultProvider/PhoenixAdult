@@ -123,15 +123,15 @@ class ColetteClient(Client):
         pages = [p['sel'] for p in (gallery_page_elements,) if p] + [details_page_elements]
         for page in pages:
             for src in page.xpath('//div[contains(@class,"gallery-item")]//a//img/@src').getall():
-                images['push']((src or '').strip())
+                images.push((src or '').strip())
 
             for src in page.xpath('//div[contains(@class,"video-tour")]//a//img/@src').getall():
-                images['push']((src or '').strip())
+                images.push((src or '').strip())
 
             for image_url in page.xpath('//div[contains(@class,"widescreen")]//img/@data-interchange').getall():
-                images['push'](_parse_interchange(image_url or ''))
+                images.push(_parse_interchange(image_url or ''))
 
             for image_url in page.xpath('//div[contains(@class,"columns")]/img/@data-interchange').getall():
-                images['push'](_parse_interchange(image_url or ''))
+                images.push(_parse_interchange(image_url or ''))
 
-        metadata.art = images['list']
+        metadata.art = images.items

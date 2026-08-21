@@ -144,6 +144,6 @@ class BellesaClient(Client):
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         images = self.image_collector()
-        images['push'](self._v(scene).get('image'))
+        images.push(self._v(scene).get('image'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

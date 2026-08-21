@@ -106,12 +106,12 @@ class UnzipVRClient(Client):
         images = self.image_collector(lambda image: image if image.startswith('http') else f'{base}{image}')
         for key in ('sliderImage', 'poster'):
             node = item.get(key) or {}
-            images['push'](node.get('permalink'))
+            images.push(node.get('permalink'))
 
         for img in item.get('galleryImages') or []:
-            images['push'](img.get('permalink'))
+            images.push(img.get('permalink'))
 
-        metadata.art = images['list']
+        metadata.art = images.items
 
         await self.enrich_from_data18(
             metadata,

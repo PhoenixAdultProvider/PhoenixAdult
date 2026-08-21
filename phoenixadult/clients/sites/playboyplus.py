@@ -87,9 +87,9 @@ class PlayboyPlusClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url(image.split('?')[0].strip(), scene.site.base_url))
-        images['push'](scene.extra.get('poster', '') if isinstance(scene.extra, dict) else '')
-        images['push'](details_page_elements.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
+        images.push(scene.extra.get('poster', '') if isinstance(scene.extra, dict) else '')
+        images.push(details_page_elements.xpath('(//img[contains(@class,"image")]/@data-src)[1]').get() or '')
         for image_url in details_page_elements.xpath('//section[contains(@class,"gallery")]//img[contains(@class,"image")]/@data-src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

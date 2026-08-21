@@ -128,6 +128,6 @@ class CherryPimpsClient(Client):
             for attr in ('@src', '@src0_1x'):
                 raw = (row.xpath(attr).get() or '').strip()
                 if raw.startswith('http'):
-                    images['push'](raw)
+                    images.push(raw)
 
-        metadata.art = images['list']
+        metadata.art = images.items

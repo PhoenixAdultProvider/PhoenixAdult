@@ -156,13 +156,13 @@ class DickDrainersClient(Client):
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
 
         for row in details_page_elements.xpath('//div[contains(@class,"player_thumbs")]'):
-            images['push'](row.xpath('@src0_3x').get() or '')
+            images.push(row.xpath('@src0_3x').get() or '')
             for child in row.xpath('.//*[@src0_3x]'):
-                images['push'](child.xpath('@src0_3x').get() or '')
+                images.push(child.xpath('@src0_3x').get() or '')
 
         for script in details_page_elements.xpath('//div[contains(@class,"player") and contains(@class,"full_width")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _SRC0_3X_RE.finditer(text):
-                images['push'](m.group(1))
+                images.push(m.group(1))
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -111,8 +111,8 @@ class VRLatinaClient(Client):
 
         images = self.image_collector(lambda image: to_https((image or '').strip()))
         for href in details_page_elements.xpath('//a[contains(@class,"video-gallery-item")]/@href').getall():
-            images['push'](href)
+            images.push(href)
 
-        images['push'](meta_content(details_page_elements, 'og:image', 'property'))
+        images.push(meta_content(details_page_elements, 'og:image', 'property'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

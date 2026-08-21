@@ -60,8 +60,8 @@ class XVirtualClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url(strip_query(image), scene.site.base_url))
-        images['push'](meta_content(details_page_elements, 'og:image', 'property'))
+        images.push(meta_content(details_page_elements, 'og:image', 'property'))
         for row in details_page_elements.xpath('//div[contains(@class,"thumbnails")]//img'):
-            images['push'](row.xpath('@src').get() or '')
+            images.push(row.xpath('@src').get() or '')
 
-        metadata.art = images['list']
+        metadata.art = images.items

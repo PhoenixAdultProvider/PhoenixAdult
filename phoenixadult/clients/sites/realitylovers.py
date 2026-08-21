@@ -108,6 +108,6 @@ class RealityLoversClient(Client):
 
         images = self.image_collector(lambda image: _srcset_entry(image, len(image.split(',')) - 1, 6))
         for data_big in details_page_elements.xpath('//img[contains(@class,"videoClip__Details--galleryItem")]/@data-big').getall():
-            images['push']((data_big or '').strip())
+            images.push((data_big or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

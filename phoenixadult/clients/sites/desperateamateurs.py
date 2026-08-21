@@ -104,6 +104,6 @@ class DesperateAmateursClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for row in details_page_elements.xpath('//div[contains(@class,"gal")]//img'):
-            images['push'](first_attr(row, '@src'))
+            images.push(first_attr(row, '@src'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

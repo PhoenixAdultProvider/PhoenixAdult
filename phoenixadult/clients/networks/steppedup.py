@@ -139,9 +139,9 @@ class SteppedUpClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         content = self._c(scene)
         images = self.image_collector()
-        images['push'](content.get('trailer_screencap'))
+        images.push(content.get('trailer_screencap'))
         for key in ('extra_thumbnails', 'thumbs'):
             for img in content.get(key) or []:
-                images['push'](img)
+                images.push(img)
 
-        metadata.art = images['list']
+        metadata.art = images.items

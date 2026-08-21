@@ -83,9 +83,9 @@ class JVRPornClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image.strip(), scene.site.base_url))
         for image_url in details_page_elements.xpath('//div[contains(@id,"snapshot-gallery")]//a/@href').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         for image_url in details_page_elements.xpath('//deo-video/@cover-image').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

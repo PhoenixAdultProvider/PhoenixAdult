@@ -161,11 +161,11 @@ class FuckYouCashClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         release = self._data(scene)
         images = self.image_collector()
-        images['push'](release.get('posterUrl'))
+        images.push(release.get('posterUrl'))
         for img in release.get('thumbUrls') or []:
-            images['push'](img)
+            images.push(img)
 
-        metadata.art = images['list']
+        metadata.art = images.items
 
         # Posters from Data18
         await self.enrich_from_data18(

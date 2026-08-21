@@ -217,6 +217,6 @@ class PervCityClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url(image, base))
         for image_url in details_page_elements.xpath('//div[@class="snap"]//img/@src0_3x').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

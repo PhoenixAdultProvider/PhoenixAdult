@@ -94,6 +94,6 @@ class SinXClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for src in details_page_elements.xpath('//div[contains(@class,"video__block") and contains(@class,"video_item--player")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

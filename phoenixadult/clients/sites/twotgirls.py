@@ -132,9 +132,9 @@ class TwoTGirlsClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url((image or '').strip().replace('720p', '1080p'), base))
         for poster in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](poster)
+            images.push(poster)
 
         for src in details_page_elements.xpath('//article//div[contains(@class,"row")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

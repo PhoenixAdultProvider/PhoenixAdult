@@ -163,9 +163,9 @@ class Strike3Client(GraphQLClient):
         for img in v.get('carousel') or []:
             listing = img.get('listing') or []
             uri = (listing[0].get('highdpi') or {}).get('triple') if listing else None
-            images['push'](uri)
+            images.push(uri)
 
-        metadata.art = images['list']
+        metadata.art = images.items
 
         # Posters from Data18
         await self.enrich_from_data18(metadata, site, scene_id=mapping_slug(metadata.title, site.name), providers=[site.name])

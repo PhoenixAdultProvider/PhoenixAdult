@@ -142,7 +142,7 @@ class RomeroClient(Client):
                 continue
 
             if ('alignnone' in cls and 'size-full' in cls) or 'size-medium' in cls:
-                images['push'](row.xpath('@src').get() or '')
+                images.push(row.xpath('@src').get() or '')
 
         xpaths = (
             '//div[@class="iehand"]/a/@href',
@@ -151,6 +151,6 @@ class RomeroClient(Client):
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                images['push'](image_url)
+                images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

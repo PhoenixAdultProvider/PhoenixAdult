@@ -102,11 +102,11 @@ class DorcelVisionClient(Client):
         images = self.image_collector(lambda image: absolute_url((image or '').strip().replace('blur9/', ''), base))
 
         for href in details_page_elements.xpath('//div[contains(@class,"covers")]//a[contains(@class,"cover")]/@href').getall():
-            images['push'](href)
+            images.push(href)
 
         for href in details_page_elements.xpath(
             '//div[contains(@class,"screenshots")]//div[contains(@class,"slider-xl")]//div[contains(@class,"col-xs-2")]//a/@href'
         ).getall():
-            images['push'](href)
+            images.push(href)
 
-        metadata.art = images['list']
+        metadata.art = images.items

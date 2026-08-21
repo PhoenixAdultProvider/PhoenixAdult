@@ -129,9 +129,9 @@ class SexMexClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), base).split('?')[0])
         for image_url in details_page_elements.xpath('//div[contains(@class,"thumbnail")]//img/@src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         for image_url in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from typing import Any
+from typing import Any, TypedDict
 
 from phoenixadult.utils import db
 
@@ -456,7 +456,27 @@ _SORT_COLUMNS = {
 }
 
 
-def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]], actors: dict[int, list[str]]) -> dict[str, Any]:
+class SceneRow(TypedDict):
+    rel_path: str
+    site: str
+    cur_id: str
+    title: str
+    studio: str
+    tagline: str
+    collections: list[str]
+    actors: list[str]
+    genres: int
+    release_date: str
+    thumb: str
+    images: int
+    updated_at: float
+    data18_id: str
+    data18_type: str
+    data18_also: str
+    data18_manual: bool
+
+
+def _summary_row(r: sqlite3.Row, collections: dict[int, list[str]], actors: dict[int, list[str]]) -> SceneRow:
     return {
         'rel_path': str(r['rel_path']),
         'site': str(r['site']),
@@ -663,7 +683,7 @@ def query_entry_rows(
     direction: str = 'desc',
     limit: int = 500,
     offset: int = 0,
-) -> tuple[list[dict[str, Any]], int]:
+) -> tuple[list[SceneRow], int]:
     conn = db.connect()
     where_sql, params = _entry_filters(
         studio, query, year, month, day, tagline, collection, data18, actor, genre, cast, director, producer, provider_sites, dup_paths

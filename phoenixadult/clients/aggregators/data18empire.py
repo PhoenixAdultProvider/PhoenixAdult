@@ -282,11 +282,11 @@ class Data18EmpireClient(Client):
 
         srcset = details_page_elements.xpath('(//div[@id="video-container-details"]//div//section//a//picture//source/@data-srcset)[1]').get()
         if srcset:
-            images['push'](srcset)
+            images.push(srcset)
 
         for noscript in details_page_elements.xpath('//div[@id="viewLargeBoxcoverCarousel"]//noscript/text()').getall():
             for img_src in Selector(text=noscript).xpath('//img/@src').getall():
-                images['push'](img_src)
+                images.push(img_src)
 
         gallery_href = first_attr(details_page_elements, '(//div[@id="video-container-details"]//a[@data-label="Gallery"]/@href)[1]')
         if gallery_href:
@@ -300,12 +300,12 @@ class Data18EmpireClient(Client):
                     .xpath('//div[contains(@class,"item-grid") and contains(@class,"item-grid-gallery")]//div[contains(@class,"grid-item")]//a//img/@data-src')
                     .getall()
                 ):
-                    images['push'](src)
+                    images.push(src)
 
         if packed.get('sceneNum') is not None:
             rows = details_page_elements.xpath(_GRID_ITEM_XP)
             idx = (packed['sceneNum'] or 1) - 1
             if idx < len(rows):
-                images['push'](rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
+                images.push(rows[idx].xpath('.//a[contains(@class,"scene-img")]//img/@src').get() or '')
 
-        metadata.art = images['list']
+        metadata.art = images.items

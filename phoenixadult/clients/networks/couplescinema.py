@@ -152,11 +152,11 @@ class CouplesCinemaClient(Client):
         cover_packed = self._cover_part(scene)
         if cover_packed:
             try:
-                images['push'](self.decode(cover_packed))
+                images.push(self.decode(cover_packed))
             except Exception as err:  # noqa: BLE001 - decode failures are non-fatal
                 logger.debug(scene.site.name, f'cover decode: {err}')
 
         for image_url in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

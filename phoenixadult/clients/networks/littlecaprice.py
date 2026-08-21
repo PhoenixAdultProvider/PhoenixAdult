@@ -166,11 +166,11 @@ class LittleCapriceClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: join_url(image, base))
 
-        images['push'](first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
+        images.push(first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
         gallery = (scene.extra or {}).get('gallery')
         if gallery is not None:
-            images['push'](first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
+            images.push(first_attr(gallery, '(//meta[@property="og:image"])[1]/@content'))
             for src in gallery.xpath('//div[contains(@class,"gallery") and contains(@class,"spotlight-group")]//img/@src').getall():
-                images['push'](src)
+                images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

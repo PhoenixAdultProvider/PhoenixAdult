@@ -173,6 +173,19 @@ def _bypass_enabled(ctx: FetchCtx | None) -> bool:
 # ── Base Client ───────────────────────────────────────────────────────────────
 
 
+@dataclass(slots=True)
+class ImageCollector:
+    clean: Any = None
+    items: list[str] = field(default_factory=list)
+
+    def push(self, raw: str | None) -> None:
+        if not raw:
+            return
+        url = self.clean(raw) if self.clean else raw
+        if url and url not in self.items:
+            self.items.append(url)
+
+
 class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks, none are mandatory
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         self._extra_headers = extra_headers or {}
@@ -398,17 +411,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             out.append(t)
         return out
 
-    def image_collector(self, clean: Any = None) -> dict[str, Any]:
-        out: list[str] = []
-
-        def push(raw: str | None) -> None:
-            if not raw:
-                return
-            url = clean(raw) if clean else raw
-            if url and url not in out:
-                out.append(url)
-
-        return {'push': push, 'list': out}
+    def image_collector(self, clean: Any = None) -> ImageCollector:
+        return ImageCollector(clean=clean)
 
     def group_genre_for(self, cast: int) -> str | None:
         if cast == 3:

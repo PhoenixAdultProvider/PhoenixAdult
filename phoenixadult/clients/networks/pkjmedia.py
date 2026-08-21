@@ -80,6 +80,6 @@ class PKJMediaClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for poster in details_page_elements.xpath('//video[contains(@class,"bricks-plyr")]/@poster').getall():
-            images['push'](poster)
+            images.push(poster)
 
-        metadata.art = images['list']
+        metadata.art = images.items

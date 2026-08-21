@@ -149,9 +149,9 @@ class NewSensationsClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
-        images['push'](details_page_elements.xpath('(//span[@id="trailer_thumb"]//img)[1]/@src').get())
+        images.push(details_page_elements.xpath('(//span[@id="trailer_thumb"]//img)[1]/@src').get())
         if self._is_dvd(scene):
             for src in details_page_elements.xpath('//div[@class="videoBlock"]//img/@src0_3x').getall():
-                images['push'](src)
+                images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

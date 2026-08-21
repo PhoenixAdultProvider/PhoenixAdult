@@ -225,6 +225,6 @@ class RadicalCashOtherClient(Client):
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                images['push'](image_url)
+                images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

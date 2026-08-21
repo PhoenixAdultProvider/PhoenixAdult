@@ -100,11 +100,11 @@ class VirtualTabooClient(Client):
 
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url((image or '').strip().split('?')[0], base))
-        images['push'](meta_content(details_page_elements, 'og:image', 'property'))
+        images.push(meta_content(details_page_elements, 'og:image', 'property'))
         for href in details_page_elements.xpath('//div[contains(@class,"gallery-item")]//a/@href').getall():
-            images['push'](href)
+            images.push(href)
 
-        metadata.art = images['list']
+        metadata.art = images.items
 
         await self.enrich_from_data18(
             metadata,

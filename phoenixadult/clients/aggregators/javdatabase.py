@@ -223,10 +223,10 @@ class JAVDatabaseClient(Client):
         images = self.image_collector(lambda image: image.split('?')[0].strip())
 
         for src in details_page_elements.xpath('//tr[contains(@class,"moviecovertb")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
         for href in details_page_elements.xpath('(//h2[contains(.,"Images")])[1]/../a/@href').getall():
-            images['push'](href)
+            images.push(href)
 
         jav_id = self._jav_id(scene)
         if jav_id:
@@ -237,4 +237,4 @@ class JAVDatabaseClient(Client):
 
             await push_javbus_images(self.http, images, jav_id, _IGNORE_LIST, self._release_date(scene))
 
-        metadata.art = images['list']
+        metadata.art = images.items

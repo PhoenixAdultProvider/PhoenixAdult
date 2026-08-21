@@ -152,11 +152,11 @@ class XartClient(Client):
                     if 'videos' not in url:
                         continue
 
-                    images['push'](url)
+                    images.push(url)
                     if url.endswith('_1.jpg'):
-                        images['push'](url.replace('_1.jpg', '_2.jpg'))
+                        images.push(url.replace('_1.jpg', '_2.jpg'))
                     elif url.endswith('_1-lrg.jpg'):
-                        images['push'](url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
+                        images.push(url.replace('_1-lrg.jpg', '_2-lrg.jpg'))
 
         gallery_url = scene.url.replace('/videos/', '/galleries/')
         if gallery_url != scene.url:
@@ -179,6 +179,6 @@ class XartClient(Client):
 
             fan = await find_fan_art(FindFanArtOptions(sites=_FANART_SITES, title=title, actor_names=actor_names, fetch_page=fetch_page, web_search=do_search))
             for u in fan.images:
-                images['push'](u)
+                images.push(u)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -178,9 +178,9 @@ class FTVClient(Client):
                 gallery_page_elements = await self.fetch_and_load(photo_url, None, f'GET {photo_url} (gallery)')
                 if gallery_page_elements:
                     for raw in _collect_images(gallery_page_elements['sel']):
-                        images['push'](raw)
+                        images.push(raw)
 
         for raw in _collect_images(details_page_elements):
-            images['push'](raw)
+            images.push(raw)
 
-        metadata.art = images['list']
+        metadata.art = images.items

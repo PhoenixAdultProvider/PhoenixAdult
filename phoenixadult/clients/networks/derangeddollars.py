@@ -134,11 +134,11 @@ class DerangedDollarsClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url(image, base))
         for src in details_page_elements.xpath('//div[contains(@class,"stills") and contains(@class,"clearfix")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
         for script in details_page_elements.xpath('//div[contains(@class,"mainpic")]//script'):
             text = script.xpath('string(.)').get() or ''
             for m in _QUOTED_URL_RE.findall(text):
-                images['push'](m)
+                images.push(m)
 
-        metadata.art = images['list']
+        metadata.art = images.items

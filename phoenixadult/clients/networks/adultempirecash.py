@@ -205,6 +205,6 @@ class AdultEmpireCashClient(Client):
 
         images = self.image_collector(_upgrade_image)
         for image_url in details_page_elements.xpath('//div[@id="dv_frames"]//img/@src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -121,6 +121,6 @@ class CaramelCashClient(Client):
 
         images = self.image_collector()
         for href in details_page_elements.xpath('//section[contains(@class,"content-gallery-sec")]//a[@data-lightbox="gallery"]/@href').getall():
-            images['push'](href)
+            images.push(href)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -147,6 +147,6 @@ class InterracialPassClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: image if image.startswith('http') else base + image)
         for src in details_page_elements.xpath('//div[contains(@class,"player-thumb")]//img/@src0_1x').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

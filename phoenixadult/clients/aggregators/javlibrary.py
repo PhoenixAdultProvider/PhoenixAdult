@@ -210,12 +210,12 @@ class JavLibraryClient(Client):
         if poster and 'https' not in poster:
             poster = f'https:{poster}'
 
-        images['push'](poster)
+        images.push(poster)
 
         for thumb in details_page_elements.xpath('//div[contains(@class,"previewthumbs")]//img/@src').getall():
             thumb = (thumb or '').strip()
             m = re.search(r'-([1-9]+)\.jpg', thumb)
-            images['push'](f'{thumb[: m.start()]}jp{thumb[m.start() :]}' if m else thumb)
+            images.push(f'{thumb[: m.start()]}jp{thumb[m.start() :]}' if m else thumb)
 
         jav_id = self._og_jav_id(scene)
         if jav_id:
@@ -226,4 +226,4 @@ class JavLibraryClient(Client):
 
             await push_javbus_images(self.http, images, jav_id, _IGNORE_LIST, self._release_date(scene))
 
-        metadata.art = images['list']
+        metadata.art = images.items

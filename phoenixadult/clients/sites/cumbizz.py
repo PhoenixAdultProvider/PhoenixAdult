@@ -80,8 +80,8 @@ class CumbizzClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
-        images['push'](details_page_elements.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
+        images.push(details_page_elements.xpath('(//section[contains(@class,"har_image_bck")]/@data-image)[1]').get() or '')
         for row in details_page_elements.xpath('//img[contains(@class,"vidgal")]'):
-            images['push'](row.xpath('@src').get() or '')
+            images.push(row.xpath('@src').get() or '')
 
-        metadata.art = images['list']
+        metadata.art = images.items

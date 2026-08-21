@@ -80,6 +80,6 @@ class BAMVisionsClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for row in details_page_elements.xpath('//img[contains(@class,"update_thumb")]'):
-            images['push'](first_attr(row, '@src0_3x'))
+            images.push(first_attr(row, '@src0_3x'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

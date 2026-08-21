@@ -135,6 +135,6 @@ class GirlsRimmingClient(Client):
 
         images = self.image_collector(lambda image: join_url(image, scene.site.base_url))
         for image_url in details_page_elements.xpath('//div[@id="fakeplayer"]//img/@src0_3x').getall():
-            images['push']((image_url or '').strip())
+            images.push((image_url or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

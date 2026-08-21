@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import weakref
 from typing import Any
 
 import httpx2
@@ -65,3 +67,16 @@ def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> 
             transport_opts['limits'] = opts.pop('limits')
         opts['transport'] = _WatchedTransport(**transport_opts)
     return httpx2.AsyncClient(**opts)
+
+
+_shared_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, httpx2.AsyncClient]] = weakref.WeakKeyDictionary()
+
+
+def shared_http(tag: str, **overrides: Any) -> httpx2.AsyncClient:
+    loop = asyncio.get_running_loop()
+    by_tag = _shared_clients.setdefault(loop, {})
+    client = by_tag.get(tag)
+    if client is None:
+        client = make_http(**overrides)
+        by_tag[tag] = client
+    return client

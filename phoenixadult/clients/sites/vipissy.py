@@ -121,9 +121,9 @@ class VIPissyClient(Client):
 
         idx = scene.url.find('/updates')
         if idx >= 0:
-            images['push'](f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg')
+            images.push(f'https://media.vipissy.com/videos{scene.url[idx + len("/updates") :]}cover/l.jpg')
 
         for image_url in details_page_elements.xpath(_POSTERS_XP).getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

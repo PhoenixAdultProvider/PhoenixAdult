@@ -105,6 +105,6 @@ class WeAreHairyClient(Client):
 
         images = self.image_collector(lambda image: to_https((image or '').strip()))
         for src in details_page_elements.xpath('//div[contains(@class,"moviemain")]/div[1]//a//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

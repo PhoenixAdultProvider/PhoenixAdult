@@ -135,6 +135,6 @@ class HeavyOnHottiesClient(Client):
 
         images = self.image_collector(_lift_scheme)
         for image_url in details_page_elements.xpath('//video[@poster]/@poster').getall():
-            images['push']((image_url or '').strip())
+            images.push((image_url or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

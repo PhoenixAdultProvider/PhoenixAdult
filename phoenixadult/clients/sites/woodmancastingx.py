@@ -146,12 +146,12 @@ class WoodmanCastingXClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
         for poster in details_page_elements.xpath('//video[contains(@class,"player_video")]/@poster').getall():
-            images['push'](poster)
+            images.push(poster)
 
         for script in details_page_elements.xpath('//script/text()').getall():
             if 'var player' not in script:
                 continue
 
-            images['push'](script_match(script, _IMAGE_RE).strip())
+            images.push(script_match(script, _IMAGE_RE).strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

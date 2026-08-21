@@ -135,6 +135,6 @@ class VIP4KClient(Client):
 
         images = self.image_collector(lambda image: image if image.startswith('http') else (f'https:{image}' if image.startswith('//') else image))
         for row in details_page_elements.xpath('//div[contains(@class,"player-item__block")]//img'):
-            images['push']((row.xpath('@data-src').get() or row.xpath('@src').get() or '').strip())
+            images.push((row.xpath('@data-src').get() or row.xpath('@src').get() or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

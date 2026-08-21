@@ -172,7 +172,7 @@ class BellaPassClient(Client):
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                images['push'](image_url)
+                images.push(image_url)
 
         set_id = (
             details_page_elements.xpath('(//img[contains(@class,"thumbs")])[1]/@id').get()
@@ -192,11 +192,11 @@ class BellaPassClient(Client):
                     cnt = 0
 
                 for i in range(cnt):
-                    images['push']((search_results['sel'].xpath(f'(//img[@id="{set_id}"])[1]/@src{i}_3x').get() or '').strip())
+                    images.push((search_results['sel'].xpath(f'(//img[@id="{set_id}"])[1]/@src{i}_3x').get() or '').strip())
 
             preview_page_elements = await self.fetch_and_load(scene.url.replace('/trailers/', '/preview/'), None, 'preview page')
             if preview_page_elements:
                 for src in preview_page_elements['sel'].xpath(f'//img[@id="{set_id}"]/@src0_3x').getall():
-                    images['push'](src)
+                    images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

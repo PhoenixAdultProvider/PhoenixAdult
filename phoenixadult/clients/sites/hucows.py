@@ -85,9 +85,9 @@ class HucowsClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image.strip(), scene.site.base_url))
         for image_url in details_page_elements.xpath('//article//div//a[contains(@class,"lightboxhover")]//img/@src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         for image_url in details_page_elements.xpath('//center//a//img[contains(@class,"lightboxhover")]/@src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

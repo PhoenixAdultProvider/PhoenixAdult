@@ -160,9 +160,9 @@ class PlumperPassClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: image if 'http' in image else f'{base}/t1/{image}')
         script = details_page_elements.xpath('string((//div[contains(@class,"movie-big")]//script)[1])').get() or ''
-        images['push'](script_match(script, _IMAGE_RE).strip())
+        images.push(script_match(script, _IMAGE_RE).strip())
 
         for image_url in details_page_elements.xpath('//div[contains(@class,"movie-trailer")]//img/@src').getall():
-            images['push']((image_url or '').strip())
+            images.push((image_url or '').strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

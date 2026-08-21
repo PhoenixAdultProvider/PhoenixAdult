@@ -271,10 +271,10 @@ class Clips4SaleClient(Client):
 
         # Posters
         images = self.image_collector()
-        images['push'](clip.get('preview_screencap_image_path'))
-        images['push'](clip.get('screencap_image_path'))
+        images.push(clip.get('preview_screencap_image_path'))
+        images.push(clip.get('screencap_image_path'))
         clip_id = payload.split('/studio/')[1].split('/')[1] if '/studio/' in payload and len(payload.split('/studio/')[1].split('/')) > 1 else ''
         if user_id and clip_id.isdigit():
-            images['push'](f'http://imagecdn.clips4sale.com/accounts99/{user_id}/clip_images/previewlg_{clip_id}.jpg')
+            images.push(f'http://imagecdn.clips4sale.com/accounts99/{user_id}/clip_images/previewlg_{clip_id}.jpg')
 
-        metadata.art = images['list']
+        metadata.art = images.items

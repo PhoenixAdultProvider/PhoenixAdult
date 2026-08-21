@@ -115,6 +115,6 @@ class PorndoePremiumClient(Client):
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                images['push'](image_url.strip())
+                images.push(image_url.strip())
 
-        metadata.art = images['list']
+        metadata.art = images.items

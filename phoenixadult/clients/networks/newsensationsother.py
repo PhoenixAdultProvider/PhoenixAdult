@@ -121,7 +121,7 @@ class NewSensationsOtherClient(Client):
         images = self.image_collector(lambda image: absolute_url(image.strip(), base))
 
         for src in details_page_elements.xpath('//div[contains(@class,"mejs-layers")]//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
         last = (scene.extra or {}).get('last_actor_page')
         if last is not None:
@@ -132,6 +132,6 @@ class NewSensationsOtherClient(Client):
                     continue
 
                 for src in block.xpath('.//div[@class="cell"]//img/@src0_3x').getall():
-                    images['push'](src)
+                    images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

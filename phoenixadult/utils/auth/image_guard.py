@@ -57,21 +57,34 @@ def _same_origin_subresource(request: Request) -> bool:
     return bool(referer_host) and referer_host == request.url.hostname
 
 
-async def image_guard(request: Request) -> None:
-    if not env.image_guard_enabled:
-        return
-    trace_request('image-guard', request)
+async def _admitted_by(request: Request) -> str | None:
     if signed_request_ok(request):
-        return
+        return 'signature'
     if _PLEX_UA in (request.headers.get('user-agent') or '').lower():
-        return
+        return 'plex user-agent'
     if _is_loopback(request.client.host if request.client else None):
-        return
+        return 'loopback'
     if await resolve_user(request) is not None:
-        return
+        return 'signed-in user'
     if _same_origin_subresource(request):
-        return
+        return 'same-origin subresource'
     if _image_subresource(request):
+        return 'image subresource'
+    return None
+
+
+async def image_guard(request: Request) -> None:
+    enabled = env.image_guard_enabled
+    if enabled:
+        trace_request('image-guard', request)
+    admitted = await _admitted_by(request)
+    if not enabled:
+        if admitted is None:
+            logger.info('image-guard', f'would deny {request.url.path} (ua="{request.headers.get("user-agent") or ""}") — IMAGE_GUARD_ENABLE is off')
+        elif admitted in ('plex user-agent', 'image subresource'):
+            logger.debug('image-guard', f'{request.url.path} admitted only by {admitted}')
+        return
+    if admitted is not None:
         return
     logger.warn('image-guard', f'denied {request.url.path} (ua="{request.headers.get("user-agent") or ""}")')
     raise ImageAccessDenied

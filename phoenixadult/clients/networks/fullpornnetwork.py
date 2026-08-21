@@ -168,6 +168,6 @@ class FullPornNetworkClient(Client):
 
         images = self.image_collector(lambda image: (image if 'http' in image else absolute_url(image, scene.site.base_url)).replace('-1x.jpg', '-3x.jpg'))
         for image_url in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -106,6 +106,6 @@ class TeenyTabooClient(Client):
         base = scene.site.base_url.rstrip('/')
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
         for src in details_page_elements.xpath('//center//img/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

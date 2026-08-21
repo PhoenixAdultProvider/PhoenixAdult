@@ -165,13 +165,13 @@ class PornboxClient(Client):
         data = self._data(scene)
         images = self.image_collector()
         if data.get('player_poster'):
-            images['push'](data['player_poster'])
+            images.push(data['player_poster'])
 
         shots = data.get('screenshots') or []
         for x in range(1, len(shots)):
             if len(shots) > 50 and x % 10 != 0:
                 continue
 
-            images['push'](shots[x].get('xga_size'))
+            images.push(shots[x].get('xga_size'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

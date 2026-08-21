@@ -94,6 +94,6 @@ class ThickCashOtherClient(Client):
 
         images = self.image_collector()
         for image_url in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

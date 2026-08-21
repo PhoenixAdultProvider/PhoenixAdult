@@ -103,10 +103,10 @@ class WowNetworkClient(Client):
             b64 = scene.scene_date.split('|', 1)[1]
             if b64:
                 try:
-                    images['push'](self.decode(b64))
+                    images.push(self.decode(b64))
                 except (ValueError, TypeError):
                     pass
 
-        images['push'](first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
+        images.push(first_attr(details_page_elements, '(//meta[@property="og:image"])[1]/@content'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

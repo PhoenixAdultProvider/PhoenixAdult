@@ -7,7 +7,7 @@ import httpx2
 
 from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.http.client import make_http
+from phoenixadult.utils.http.client import shared_http
 from phoenixadult.utils.http.headers import image_request_headers
 from phoenixadult.utils.images.proxy import proxy_url
 from phoenixadult.utils.logging.logger import logger
@@ -57,9 +57,8 @@ def apply_name_aliases(name: str, studio: str, site_name: str) -> str:
 
 async def _head_is_ok(url: str, headers: dict[str, str]) -> bool:
     try:
-        async with make_http(timeout=8.0) as client:
-            r = await client.head(url, headers=headers)
-            return 200 <= r.status_code < 300
+        r = await shared_http('people-head', timeout=8.0).head(url, headers=headers)
+        return 200 <= r.status_code < 300
     except httpx2.HTTPError:
         return False
 

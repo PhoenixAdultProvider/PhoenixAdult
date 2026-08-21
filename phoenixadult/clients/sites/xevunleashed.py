@@ -125,6 +125,6 @@ class XevUnleashedClient(Client):
         base = scene.site.base_url
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), base))
         for src in details_page_elements.xpath('//div[contains(@class,"update_image")]//img/@src0_4x').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

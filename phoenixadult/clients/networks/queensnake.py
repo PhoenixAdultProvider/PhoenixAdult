@@ -101,6 +101,6 @@ class QueenSnakeClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for src in details_page_elements.xpath('//div[@class="contentBlock"]//img[contains(@src,"preview")]/@src').getall():
-            images['push'](src)
+            images.push(src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

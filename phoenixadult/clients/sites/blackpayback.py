@@ -124,6 +124,6 @@ class BlackPayBackClient(Client):
             if not m:
                 continue
 
-            images['push'](m.group(1))
+            images.push(m.group(1))
 
-        metadata.art = images['list']
+        metadata.art = images.items

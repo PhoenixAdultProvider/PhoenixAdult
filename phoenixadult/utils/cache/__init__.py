@@ -8,7 +8,7 @@ import sqlite3
 import weakref
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 from urllib.parse import unquote
 
 import httpx2
@@ -516,7 +516,30 @@ async def _write_locked(
 # ── Management (UI) ──────────────────────────────────────────────────────────
 
 
-def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
+class UiEntry(TypedDict):
+    key: str
+    provider: str
+    site: str
+    cur_id: str
+    hash: str
+    title: str
+    studio: str
+    tagline: str
+    collections: list[str]
+    actors: list[str]
+    genres: int
+    date: str
+    thumb: str
+    images: int
+    mtime: float
+    data18_id: str
+    data18_type: str
+    data18_manual: bool
+    data18_also: str
+    mapping_slug: str
+
+
+def _ui_entry(row: scene_store.SceneRow) -> UiEntry:
     from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     rel = row['rel_path']
@@ -544,7 +567,7 @@ def _ui_entry(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def entries() -> list[dict[str, Any]]:
+def entries() -> list[UiEntry]:
     rows, _total = scene_store.query_entry_rows(limit=-1)
     return [_ui_entry(row) for row in rows]
 
@@ -576,7 +599,7 @@ def entries_page(
     direction: str = 'desc',
     limit: int = 200,
     offset: int = 0,
-) -> tuple[list[dict[str, Any]], int]:
+) -> tuple[list[UiEntry], int]:
     rows, total = scene_store.query_entry_rows(
         studio=studio,
         query=query,

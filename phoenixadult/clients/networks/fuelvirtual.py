@@ -122,7 +122,7 @@ class FuelVirtualClient(Client):
             if not src:
                 continue
 
-            images['push'](base + src if src.startswith('/') else f'{base}/tour/newgirlpov/{src}')
+            images.push(base + src if src.startswith('/') else f'{base}/tour/newgirlpov/{src}')
 
         photo_url = scene.url.replace('vids', 'highres')
         if photo_url != scene.url:
@@ -130,11 +130,11 @@ class FuelVirtualClient(Client):
             if photo_page_elements:
                 for src in photo_page_elements['sel'].xpath('//a[contains(@class,"jqModal")]//img/@src').getall():
                     if src:
-                        images['push'](base + src)
+                        images.push(base + src)
 
         for script in details_page_elements.xpath('//div[@id="mediabox"]//script'):
             src = script_match(script.xpath('string(.)').get() or '', _IMG_SCRIPT_RE)
             if src:
-                images['push'](base + src)
+                images.push(base + src)
 
-        metadata.art = images['list']
+        metadata.art = images.items

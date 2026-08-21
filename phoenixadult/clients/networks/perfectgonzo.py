@@ -105,9 +105,9 @@ class PerfectGonzoClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image, scene.site.base_url))
         for poster in details_page_elements.xpath('//video/@poster').getall():
-            images['push'](poster)
+            images.push(poster)
 
         for img in details_page_elements.xpath('//ul[@class="bxslider_screenshots"]//img'):
-            images['push'](img.xpath('@src').get() or img.xpath('@data-original').get())
+            images.push(img.xpath('@src').get() or img.xpath('@data-original').get())
 
-        metadata.art = images['list']
+        metadata.art = images.items

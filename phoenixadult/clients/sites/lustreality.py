@@ -99,9 +99,9 @@ class LustRealityClient(Client):
 
         images = self.image_collector(lambda image: absolute_url(image.strip(), scene.site.base_url))
         for row in details_page_elements.xpath('//div[contains(@class,"splash-screen")]'):
-            images['push'](css_bg_image(row.xpath('@style').get()))
+            images.push(css_bg_image(row.xpath('@style').get()))
 
         for href in details_page_elements.xpath('//a[contains(@class,"u-ratio--lightbox")]/@href').getall():
-            images['push'](href)
+            images.push(href)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -94,12 +94,12 @@ class FirstAnalQuestClient(Client):
 
         images = self.image_collector(lambda image: absolute_url((image or '').strip(), scene.site.base_url))
         for image_url in details_page_elements.xpath('//img[contains(@class,"player-preview")]/@src').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         for image_url in details_page_elements.xpath('//a[contains(@class,"fancybox") and contains(@class,"img-album")]/@href').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
         for image_url in details_page_elements.xpath('//a[@data-fancybox-group="gallery"]/@href').getall():
-            images['push'](image_url)
+            images.push(image_url)
 
-        metadata.art = images['list']
+        metadata.art = images.items

@@ -151,7 +151,7 @@ class PrivateClient(Client):
         details_page_elements = scene.require_sel()
 
         images = self.image_collector()
-        images['push'](details_page_elements.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
+        images.push(details_page_elements.xpath('(//meta[@itemprop="thumbnailUrl"])[1]/@content').get())
 
         scene_id = next((s for s in reversed(scene.url.split('/')) if s), '')
         if scene_id:
@@ -161,7 +161,7 @@ class PrivateClient(Client):
             gallery = await self._fetch_localized(gallery_url, language, scene.capture, f'GET {gallery_url} (gallery)')
             if gallery:
                 for href in gallery['sel'].xpath('//a/@href').getall():
-                    images['push'](href)
+                    images.push(href)
 
         content_url = first_attr(details_page_elements, '(//meta[@itemprop="contentURL"])[1]/@content')
         j = content_url.rfind('upload/')
@@ -171,6 +171,6 @@ class PrivateClient(Client):
             prefix = content_url[:k] + 'Fullwatermarked/'
             for i in range(1, 10):
                 n = f'{i * 5:03d}'
-                images['push'](f'{prefix}{watermark_id}_{n}.jpg'.replace('pcoms', 'pcom'))
+                images.push(f'{prefix}{watermark_id}_{n}.jpg'.replace('pcoms', 'pcom'))
 
-        metadata.art = images['list']
+        metadata.art = images.items

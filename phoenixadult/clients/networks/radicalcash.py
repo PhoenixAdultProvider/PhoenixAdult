@@ -119,15 +119,15 @@ class RadicalCashClient(Client):
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         content = self._content(scene)
         images = self.image_collector()
-        images['push'](content.get('trailer_screencap'))
+        images.push(content.get('trailer_screencap'))
         for img in (content.get('previews') or {}).get('full', []):
-            images['push'](img)
+            images.push(img)
 
         for img in content.get('extra_thumbnails') or []:
-            images['push'](img)
+            images.push(img)
 
-        if len(images['list']) <= 4:
+        if len(images.items) <= 4:
             for img in content.get('thumbs') or []:
-                images['push'](img)
+                images.push(img)
 
-        metadata.art = images['list']
+        metadata.art = images.items
