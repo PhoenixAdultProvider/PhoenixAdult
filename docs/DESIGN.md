@@ -585,13 +585,16 @@ Every route is `async def`, so anything synchronous runs on the event loop unles
 
 | Pool | Size | Carries |
 |---|---|---|
-| `store` | 4 | SQLite reads/writes — cache pages, editors, search store, serve-path snapshot reads |
+| `store` | `max(8, min(32, cpu+4))` | SQLite reads/writes — cache pages, editors, search store, serve-path snapshot reads |
 | `image` | `min(8, cpu/2)` | Pillow decode/dimension probing, face cropping |
 | `fs` | 4 | People-cache file writes |
+| `auth` | 4 | Session and API-key lookups, kept off `store` so a reporting query cannot delay sign-in |
 
 Artwork probing is additionally capped at `_PROBE_CONCURRENCY` (8) per scene, so one scene's image set arrives as a stream rather than a burst. Pools are created on first use and shut down in the lifespan's `finally`.
 
-The `store` bound doubles as a cap on SQLite connections: connections are per-thread (§5), so a 4-thread pool means at most four from that pool rather than one per default-executor thread.
+The `store` bound doubles as a cap on SQLite connections: connections are per-thread (§5), so the pool size caps how many that pool holds rather than one per default-executor thread.
+
+A handler that needs several queries runs them **inside one pooled task** rather than gathering several — `/metadata` and its listing API each take a single `store` worker, not four. The rule this enforces: SQLite calls belong on a pool, not on the loop. Writes especially — `db.connect()` sets `busy_timeout=5000`, so a write issued from the event loop while a pool thread holds the write lock can stall every request for up to five seconds. Where a batch enqueues work that must stay on the loop (the scrape queue touches loop state), the per-item database work is hoisted into one pooled call ahead of the loop and the loop yields between items.
 
 ---
 

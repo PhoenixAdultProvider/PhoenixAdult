@@ -30,6 +30,10 @@ from phoenixadult.utils.plex.media_type import provider_mount_path
 from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 
+def queue_label(rating_key: str) -> str:
+    return _queue_label(rating_key)
+
+
 def _queue_label(rating_key: str) -> str:
     from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode
 
@@ -88,7 +92,7 @@ async def refresh_cached_snapshot(
     locks = await run_in('store', scene_store.locks, metadata_cache._hash(site.name, cur_id))
     if metadata_cache.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
         changed = True
-    if metadata_cache.drop_stale_people_thumbs(response, site.name, cur_id):
+    if await run_in('store', metadata_cache.drop_stale_people_thumbs, response, site.name, cur_id):
         changed = True
     backfills = [metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)]
     if not skip_data18:

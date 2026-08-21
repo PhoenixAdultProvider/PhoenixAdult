@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -79,7 +80,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
-    identity = scene_store.identity_for(key)
+    identity = await run_in('store', scene_store.identity_for, key)
     locks = await run_in('store', scene_store.locks, metadata_cache._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
     source_kind, source_url, source_data = _source_context(identity, md[0])
     return HTMLResponse(
@@ -190,10 +191,16 @@ async def refresh_bulk(request: Request) -> JSONResponse:
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
         return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
 
-    targets = await run_in('store', lambda: [scene_store.scrape_target(key) for key in keys])
+    from phoenixadult.services.metadata_service import queue_label
+
+    def _targets() -> list[tuple[dict[str, Any] | None, str]]:
+        found = [scene_store.scrape_target(key) for key in keys]
+        return [(t, queue_label(str(t['rating_key'])) if t else '') for t in found]
+
+    targets = await run_in('store', _targets)
     queued = 0
     skipped = 0
-    for target in targets:
+    for target, label in targets:
         site = find_site(target['site']) if target else None
         resolved = service_for(site.provider_id) if site else None
         if target is None or resolved is None:
@@ -201,10 +208,11 @@ async def refresh_bulk(request: Request) -> JSONResponse:
             continue
         provider, metadata_service = resolved
         metadata_service.drop_memo(target['rating_key'], provider)
-        if metadata_service.queue_snapshot(target['rating_key'], provider, None, force=True, rescrape=True):
+        if metadata_service.queue_snapshot(target['rating_key'], provider, None, label=label, force=True, rescrape=True):
             queued += 1
         else:
             skipped += 1
+        await asyncio.sleep(0)
     logger.info('meta-cache', f'Refresh requested for {len(keys)} snapshot(s) — {queued} queued, {skipped} skipped')
     return JSONResponse({'ok': True, 'queued': queued, 'skipped': skipped})
 

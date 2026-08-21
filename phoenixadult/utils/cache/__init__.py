@@ -757,8 +757,7 @@ def _changed_lockables(before: dict[str, Any], after: dict[str, Any]) -> set[str
 
 
 async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
-    identity = scene_store.identity_for(key)
-    loaded = load_for_edit(key)
+    identity, loaded = await run_in('store', lambda: (scene_store.identity_for(key), load_for_edit(key)))
     if identity is None or loaded is None:
         return None
     site_name, cur_id = identity

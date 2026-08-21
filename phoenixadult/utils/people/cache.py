@@ -246,13 +246,16 @@ async def cache_photo(
     if not cache_enabled():
         return None
     directory = people_cache_dir()
-    os.makedirs(directory, exist_ok=True)
     source = source or source_for_url(upstream_url)
+    reuse = not replace and not cache_replace_enabled()
 
-    if not replace and not cache_replace_enabled():
-        existing = lookup_cached(name, type)
-        if existing:
-            return existing
+    def _prepare() -> dict[str, str] | None:
+        os.makedirs(directory, exist_ok=True)
+        return lookup_cached(name, type) if reuse else None
+
+    existing = await run_in('fs', _prepare)
+    if existing:
+        return existing
 
     fetched = await _download_image(upstream_url, headers)
     if not fetched:
@@ -299,7 +302,7 @@ async def cache_photo(
         )
 
     await run_in('fs', _write)
-    _index_file(relpath)
+    await run_in('store', _index_file, relpath)
     logger.info('people-cache', f'cached {relpath} from {source or "an unrecorded source"}{" (face-cropped)" if cropped else ""}')
     return {'served_url': _local_url(relpath, data), 'gender': gender}
 
@@ -323,7 +326,11 @@ async def restore_original(filename: str) -> bool:
     orig_ext = entry.get('orig_ext') or '.jpg'
 
     local = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
-    data: bytes | None = local.read_bytes() if local is not None and local.exists() else None
+
+    def _read_local() -> bytes | None:
+        return local.read_bytes() if local is not None and local.exists() else None
+
+    data: bytes | None = await run_in('fs', _read_local)
     if data is None and entry.get('upstream_url'):
         fetched = await _download_image(entry['upstream_url'], None)
         data = fetched[0] if fetched else None
@@ -335,15 +342,20 @@ async def restore_original(filename: str) -> bool:
     target = safe_join(directory, subdir, target_name)
     if target is None:
         return False
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(data)
-    if target_name != filename:
-        old = safe_join(directory, subdir, filename)
-        if old is not None and old != target and old.exists():
-            old.unlink()
-        _drop_index_row(f'{subdir}/{filename}')
-    _index_file(f'{subdir}/{target_name}')
-    face_crop_log.update(str(subdir_path), filename, filename=target_name, cropped=False)
+    payload = data
+
+    def _swap() -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        if target_name != filename:
+            stale = safe_join(directory, subdir, filename)
+            if stale is not None and stale != target and stale.exists():
+                stale.unlink()
+            _drop_index_row(f'{subdir}/{filename}')
+        _index_file(f'{subdir}/{target_name}')
+        face_crop_log.update(str(subdir_path), filename, filename=target_name, cropped=False)
+
+    await run_in('fs', _swap)
     logger.info('people-cache', f'restored original for {subdir}/{target_name}')
     return True
 
