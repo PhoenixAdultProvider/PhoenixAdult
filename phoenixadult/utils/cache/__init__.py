@@ -40,6 +40,19 @@ if TYPE_CHECKING:
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
+IMAGE_FETCH_CONCURRENCY = 6
+_image_gates: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
+
+
+def _image_gate() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    gate = _image_gates.get(loop)
+    if gate is None:
+        gate = asyncio.Semaphore(IMAGE_FETCH_CONCURRENCY)
+        _image_gates[loop] = gate
+    return gate
+
+
 _write_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
 
 
@@ -383,7 +396,7 @@ async def _write_locked(
 
     await run_in('fs', _reset_tmp)
     try:
-        sem = asyncio.Semaphore(6)
+        sem = _image_gate()
 
         def _targets() -> list[tuple[dict[str, Any], str, str]]:
             found: list[tuple[dict[str, Any], str, str]] = [(meta, 'thumb', 'poster'), (meta, 'art', 'art')]
