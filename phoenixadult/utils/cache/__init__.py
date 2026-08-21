@@ -781,7 +781,24 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     return bundle_path(scene_hash)
 
 
+_SCAN_MEMO: dict[str, tuple[str, Any]] = {}
+
+
+def _by_change[T](key: str, build: Callable[[], T]) -> T:
+    token = f'{env.state_db_path}|{scene_store.change_token()}'
+    cached = _SCAN_MEMO.get(key)
+    if cached is not None and cached[0] == token:
+        return cached[1]  # type: ignore[no-any-return]
+    value = build()
+    _SCAN_MEMO[key] = (token, value)
+    return value
+
+
 def duplicate_entries() -> list[str]:
+    return list(_by_change('duplicate_entries', _duplicate_entries))
+
+
+def _duplicate_entries() -> list[str]:
     from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
 
     keys = scene_store.scene_keys()
@@ -811,6 +828,10 @@ def _content_norm(value: object) -> str:
 
 
 def _content_duplicate_groups() -> list[list[tuple[str, float]]]:
+    return _by_change('content_groups', _build_content_groups)
+
+
+def _build_content_groups() -> list[list[tuple[str, float]]]:
     groups: dict[str, list[tuple[str, float]]] = {}
     for row in scene_store.dup_candidate_rows():
         title = _content_norm(row['title'])

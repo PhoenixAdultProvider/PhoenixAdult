@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -32,12 +31,15 @@ _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    (entries, total), dup_keys, studios, facets = await asyncio.gather(
-        run_in('store', metadata_cache.entries_page, limit=PAGE_SIZE),
-        run_in('store', metadata_cache.stale_duplicate_entries),
-        run_in('store', metadata_cache.studios),
-        run_in('store', metadata_cache.facets),
-    )
+    def _bundle() -> tuple[tuple[list[dict[str, Any]], int], list[str], list[str], dict[str, Any]]:
+        return (
+            metadata_cache.entries_page(limit=PAGE_SIZE),
+            metadata_cache.stale_duplicate_entries(),
+            metadata_cache.studios(),
+            metadata_cache.facets(),
+        )
+
+    (entries, total), dup_keys, studios, facets = await run_in('store', _bundle)
     status = 'On' if env.metadata_cache_enabled else 'Off (set METADATA_CACHE_ENABLE=true to enable)'
     return HTMLResponse(
         render_page(
@@ -254,55 +256,45 @@ async def entries_json(
 ) -> JSONResponse:
     sort = sort if sort in _SORT_KEYS else 'updated_at'
     direction = direction if direction in ('asc', 'desc') else 'desc'
-    dup_keys = await run_in('store', metadata_cache.stale_duplicate_entries)
-    show_paths = await run_in('store', metadata_cache.content_duplicate_entries) if dups == 2 else dup_keys
-    scope: dict[str, Any] = {
-        'studio': studio,
-        'query': query,
-        'year': year,
-        'month': month,
-        'day': day,
-        'tagline': tagline,
-        'collection': collection,
-        'data18': data18,
-        'actor': actor,
-        'genre': genre,
-        'cast': cast,
-        'director': director,
-        'producer': producer,
-        'provider': provider,
-        'dup_paths': show_paths if dups else None,
-    }
-    (entries, total), studios, facets = await asyncio.gather(
-        run_in(
-            'store',
-            lambda: metadata_cache.entries_page(
-                studio=studio,
-                query=query,
-                year=year,
-                month=month,
-                day=day,
-                tagline=tagline,
-                collection=collection,
-                data18=data18,
-                actor=actor,
-                genre=genre,
-                cast=cast,
-                director=director,
-                producer=producer,
-                provider=provider,
-                dups_only=bool(dups),
-                dup_paths=show_paths,
-                sort=sort,
-                direction=direction,
-                limit=limit if limit > 0 else -1,
-                offset=offset,
-            ),
-        ),
-        run_in('store', lambda: metadata_cache.studios(**scope)),
-        run_in('store', lambda: metadata_cache.facets(**scope)),
-    )
-    return JSONResponse({'entries': entries, 'dup_keys': dup_keys, 'total': total, 'studios': studios, 'facets': facets})
+
+    def _bundle() -> dict[str, Any]:
+        dup_keys = metadata_cache.stale_duplicate_entries()
+        show_paths = metadata_cache.content_duplicate_entries() if dups == 2 else dup_keys
+        scope: dict[str, Any] = {
+            'studio': studio,
+            'query': query,
+            'year': year,
+            'month': month,
+            'day': day,
+            'tagline': tagline,
+            'collection': collection,
+            'data18': data18,
+            'actor': actor,
+            'genre': genre,
+            'cast': cast,
+            'director': director,
+            'producer': producer,
+            'provider': provider,
+            'dup_paths': show_paths if dups else None,
+        }
+        entries, total = metadata_cache.entries_page(
+            **{k: v for k, v in scope.items() if k != 'dup_paths'},
+            dups_only=bool(dups),
+            dup_paths=show_paths,
+            sort=sort,
+            direction=direction,
+            limit=limit if limit > 0 else -1,
+            offset=offset,
+        )
+        return {
+            'entries': entries,
+            'dup_keys': dup_keys,
+            'total': total,
+            'studios': metadata_cache.studios(**scope),
+            'facets': metadata_cache.facets(**scope),
+        }
+
+    return JSONResponse(await run_in('store', _bundle))
 
 
 @router.post('/purge', dependencies=_admin)
