@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 
 UK_SPELLINGS = (
@@ -52,7 +54,10 @@ _PATTERN = re.compile(r'\b(' + '|'.join(UK_SPELLINGS) + r')[a-z]*\b', re.IGNOREC
 
 
 def _tracked_text_files() -> list[Path]:
-    out = subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    try:
+        out = subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip('needs a git checkout to enumerate tracked files')
     keep = ('.py', '.html', '.md', '.css', '.json', '.txt', '.toml', '.cfg')
     return [ROOT / line for line in out.splitlines() if line.endswith(keep) and not any(part in line for part in EXEMPT)]
 
