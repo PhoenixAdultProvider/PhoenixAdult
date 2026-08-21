@@ -10,7 +10,8 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.http.connectivity import note_transport_failure
 from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.context import current_scrape_phase
-from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import logger, verbose_enabled
+from phoenixadult.utils.logging.response_trace import is_textual, trace_body
 
 DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
@@ -27,6 +28,20 @@ async def _log_request(request: httpx2.Request) -> None:
         logger.info(phase, line)
     else:
         logger.http(line)
+
+
+async def _trace_body(response: httpx2.Response) -> None:
+    if not verbose_enabled() or response.has_redirect_location:
+        return
+    content_type = response.headers.get('content-type', '')
+    if not is_textual(content_type):
+        return
+    try:
+        await response.aread()
+    except Exception as err:  # noqa: BLE001 - a body we cannot read is not worth failing the request over
+        logger.debug(f'could not read {response.url} for the verbose body dump: {err!r}')
+        return
+    trace_body(f'{response.request.method} {response.url}', response.status_code, response.text, content_type)
 
 
 async def _guard_redirect(response: httpx2.Response) -> None:
@@ -56,7 +71,7 @@ def make_http(extra_headers: dict[str, str] | None = None, **overrides: Any) -> 
         'verify': False,
         'follow_redirects': True,
         'proxy': _proxy_url(),
-        'event_hooks': {'request': [_log_request]},
+        'event_hooks': {'request': [_log_request], 'response': [_trace_body]},
     }
     opts.update(overrides)
     if opts.get('follow_redirects', True):

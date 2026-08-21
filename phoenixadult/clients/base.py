@@ -22,6 +22,7 @@ from phoenixadult.utils.http.rate_limit_helper import (
     PacingDeferredError as PacingDeferredError,  # noqa: PLC0414 - explicit re-export for client/service imports
 )
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_body
 
 if TYPE_CHECKING:
     from phoenixadult.registry import ResolvedSiteInfo
@@ -262,6 +263,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             logger.warn(f'fetch_and_load {url} failed — direct HTTP {direct_status}, bypass status={bypass.status if bypass else "none"}')
             return None
         logger.info(f'fetch_and_load {url} → recovered via bypass ({bypass.status})')
+        trace_body(f'{verb} {url} (bypass)', bypass.status, bypass.body, 'text/html')
         if ctx and ctx.capture is not None:
             ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'{verb} {url} (bypass)', 'html', bypass.body))
         return {'status': bypass.status, 'html': bypass.body, 'sel': Selector(text=bypass.body)}
@@ -289,6 +291,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             logger.debug(f"fetch_json {url} → bypass body wasn't JSON: {err}")
             return None
         logger.info(f'fetch_json {url} → recovered via bypass ({bypass.status})')
+        trace_body(f'GET {url} (bypass)', bypass.status, bypass.body, 'application/json')
         if ctx and ctx.capture is not None:
             ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'GET {url} (bypass)', 'json', parsed))
         return parsed

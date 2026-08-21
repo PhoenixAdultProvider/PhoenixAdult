@@ -94,6 +94,17 @@ ENV_CATALOG: list[EnvVarSpec] = [
         requires_restart=True,
     ),
     EnvVarSpec(
+        'LOG_BODY_MAX_CHARS',
+        'Verbose Body Dump Limit',
+        'Characters of each scraped response body written to the log at verbose level. 0 keeps the whole body. '
+        'Only applies while Log Level is verbose; JSON bodies are pretty-printed first.',
+        'Logging',
+        'number',
+        default_value='0',
+        min=0,
+        max=10000000,
+    ),
+    EnvVarSpec(
         'LOG_REDACT_HOSTS',
         'Redact Hosts and IPs in Logs',
         'Mask every IP address and the server’s own host in logs. A development-only switch: production always redacts and this setting disappears there.',

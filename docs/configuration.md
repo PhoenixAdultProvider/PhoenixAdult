@@ -154,6 +154,9 @@ debug, and nothing is masked unless you opt in:
 | --- | --- | --- |
 | `LOG_LEVEL` | `info` | Verbosity, least to most: `error`, `warn`, `info`, `debug`, `http`, `verbose`. Each level includes everything before it; HTTP access lines only appear at `http` or `verbose` — **except** requests made while scraping, which log at `info` (see below). Restart to apply. |
 | `LOG_DIR` | `./logs` | Directory for the rolling `agent.log` file. Set in `.env` only; restart to apply. |
+| `LOG_BODY_MAX_CHARS` | `0` | Characters of each scraped response body written to the log at `verbose`. `0` keeps the whole body. Ignored below `verbose`. |
+
+At `LOG_LEVEL=verbose` the body of every textual response the provider fetches is written to the log — the page source a scraper actually parsed, tagged `[scrape-body]` with the method, final URL, status and content type. JSON bodies are pretty-printed. Binary responses (images above all) are skipped by content type and never read, so image streaming is untouched. Pages recovered through the bypass chain are dumped too, even though they never pass through httpx. This is the fastest way to see *why* a selector found nothing: a challenge page, an empty result list and a changed layout all look identical in the scraper's own log lines, and completely different here. Bodies are large — `LOG_BODY_MAX_CHARS` caps them, and `agent.log` rotates at 10 MB with 5 backups.
 
 Every request a scraper makes while searching or updating is logged at `info` with its method and full URL, tagged with the phase and site — `[search TeamSkeet] Requesting GET "…"`, `[update TeamSkeet] Requesting GET "…"`. That covers the supporting fetches too: model pages, photo-gallery pages, Data18 enrichment. Requests outside a scrape (image downloads, Plex calls, the UIs) stay at `http`, so turning the level up is not needed to see how a match was reached.
 

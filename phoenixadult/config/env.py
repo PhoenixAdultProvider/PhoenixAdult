@@ -34,6 +34,13 @@ class _Env:
         return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
 
     @property
+    def log_body_max_chars(self) -> int:
+        try:
+            return max(0, int(os.environ.get('LOG_BODY_MAX_CHARS') or 0))
+        except ValueError:
+            return 0
+
+    @property
     def log_redact_hosts(self) -> bool:
         return self._redact_flag('LOG_REDACT_HOSTS')
 
