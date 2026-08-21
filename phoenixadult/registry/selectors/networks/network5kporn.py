@@ -28,4 +28,4 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-SITES_5KPORN: list[SiteInfo] = [_site('5Kporn'), _site('5Kteens')]
+SITES: list[SiteInfo] = [_site('5Kporn'), _site('5Kteens')]

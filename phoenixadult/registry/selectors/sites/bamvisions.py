@@ -8,7 +8,7 @@ PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = ''
 
-BAMVISIONS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,

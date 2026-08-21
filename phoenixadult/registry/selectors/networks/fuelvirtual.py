@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-FUELVIRTUAL_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('FuckedHard18', 'fuckedhard18.com', '/membersarea/search.php?st=advanced&site[]=5&qall='),
     _site('MassageGirls18', 'massagegirls18.com', '/membersarea/search.php?st=advanced&site[]=4&qall='),
     _site('NewGirlPOV', 'pornmastermind.com', '/tour/newgirlpov/search.php?qall='),

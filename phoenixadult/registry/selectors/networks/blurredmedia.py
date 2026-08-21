@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-BLURREDMEDIA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Sugar Daddy Porn', 'sugardaddyporn.com'),
     _site('Hot Guys Fuck', 'hotguysfuck.com'),
     _site('Bi Guys Fuck', 'biguysfuck.com'),

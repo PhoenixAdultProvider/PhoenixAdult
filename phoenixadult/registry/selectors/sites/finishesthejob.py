@@ -24,7 +24,7 @@ def _finishes_the_job(name: str) -> SiteInfo:
     )
 
 
-FINISHESTHEJOB_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _finishes_the_job('Mano Job'),
     _finishes_the_job('The Dick Suckers'),
     _finishes_the_job('Mister POV'),

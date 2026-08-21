@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-STEPPEDUP_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Swallowed', 'tour.swallowed.com'),
     _site('True Anal', 'tour.trueanal.com'),
     _site('Nympho', 'tour.nympho.com'),

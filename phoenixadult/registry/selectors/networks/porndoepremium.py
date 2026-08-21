@@ -23,7 +23,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
     )
 
 
-PORNDOEPREMIUM_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Chicas Loca', 'https://mamacitaz.com'),
     _site('Carne Del Mercado', 'https://mamacitaz.com'),
     _site('La Cochonne', 'https://amateureuro.com'),

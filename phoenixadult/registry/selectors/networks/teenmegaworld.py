@@ -24,7 +24,7 @@ def _site(name: str, host: str = _SHARED_HOST) -> SiteInfo:
     )
 
 
-TEENMEGAWORLD_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Teen Mega World'),
     _site('18 First Sex'),
     _site('ATMovs'),

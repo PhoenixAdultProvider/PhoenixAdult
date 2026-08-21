@@ -22,4 +22,4 @@ def _data18_scenes(name: str) -> SiteInfo:
     )
 
 
-DATA18SCENES_SITES: list[SiteInfo] = [_data18_scenes('Data18 Scenes'), _data18_scenes('Data18 Movie Scene')]
+SITES: list[SiteInfo] = [_data18_scenes('Data18 Scenes'), _data18_scenes('Data18 Movie Scene')]

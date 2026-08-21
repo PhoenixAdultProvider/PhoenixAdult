@@ -21,7 +21,7 @@ def _site(name: str, host: str, search_path: str, search_notes: str = '') -> Sit
     )
 
 
-HIGHTECHVR_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('SexBabesVR', 'sexbabesvr.com', '/video', 'Direct URL'),
     _site('StasyQ VR', 'stasyqvr.com', '/virtualreality/scene/id', 'SceneID'),
     _site('RealJamVR', 'realjamvr.com', '/scene', 'Direct URL'),

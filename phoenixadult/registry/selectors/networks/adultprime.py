@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-ADULTPRIME_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('4K CFNM'),
     _site('Adult Prime Originals'),
     _site('Adult Prime'),

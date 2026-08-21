@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-GROOBY_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('TGirl Japan Hardcore', 'www.tgirljapanhardcore.com'),
     _site('TGirl Japan', 'www.tgirljapan.com'),
     _site('Grooby Girls', 'www.groobygirls.com'),

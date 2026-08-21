@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-ROMERO_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Defeated XXX', 'defeated.xxx'),
     _site('Defeated Sex Fight', 'defeatedsexfight.com'),
     _site('Goonblins', 'goonblins.com'),

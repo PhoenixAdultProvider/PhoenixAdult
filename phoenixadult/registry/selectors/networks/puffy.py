@@ -23,7 +23,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-PUFFY_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Wet and Pissy'),
     _site('Wet and Puffy'),
     _site('Simply Anal'),

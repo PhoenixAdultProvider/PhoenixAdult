@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-GASM_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('GASM'),
     _site('Magma Film'),
     _site('JapanHD'),

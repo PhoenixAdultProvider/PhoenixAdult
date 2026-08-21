@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str = '/search.php?query={query}') 
     )
 
 
-PERVCITY_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Anal Overdose', 'analoverdose.com'),
     _site('Banging Beauties', 'www.bangingbeauties.com'),
     _site('Chocolate BJs', 'www.chocolatebjs.com'),

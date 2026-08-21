@@ -22,7 +22,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-PURECFNM_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Amateur CFNM', 'amateurcfnm.com'),
     _site('PureCFNM', 'purecfnm.com'),
     _site('CFNMGames', 'cfnmgames.com'),

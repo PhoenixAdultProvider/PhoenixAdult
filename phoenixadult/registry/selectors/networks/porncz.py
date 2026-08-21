@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-PORNCZ_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Czech Sex Casting', 'www.czechsexcasting.com'),
     _site('Sex with Muslims', 'www.sexwithmuslims.com'),
     _site('Sex in Taxi', 'www.sexintaxi.com'),

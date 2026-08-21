@@ -22,7 +22,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-RADICALCASH_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('WankItNow', 'wankitnow.com'),
     _site('BoppingBabes', 'boppingbabes.com'),
     _site('UpskirtJerk', 'upskirtjerk.com'),

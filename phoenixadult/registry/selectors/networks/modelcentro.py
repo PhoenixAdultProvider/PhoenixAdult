@@ -23,7 +23,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
     )
 
 
-MODELCENTRO_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Fall in Lovia', 'https://www.fallinlovia.com'),
     _site('Romi Rain', 'https://www.romirain.com'),
     _site('Jerk Off with Me', 'https://www.jerkoffwithme.com'),

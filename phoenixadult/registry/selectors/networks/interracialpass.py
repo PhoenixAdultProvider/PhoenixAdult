@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-INTERRACIALPASS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Interracial Pass', 'www.interracialpass.com', '/t1/search.php?query={query}'),
     _site('Backroom Casting Couch', 'backroomcastingcouch.com', '/search.php?query={query}'),
     _site('BBC Surprise', 'bbcsurprise.com', '/search.php?query={query}'),

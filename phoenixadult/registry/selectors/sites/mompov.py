@@ -10,7 +10,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'enhanced'
 PROVIDER_SEARCH_NOTES = 'Title only'
 PROVIDER_SEARCH_PATH = '/tour/?s={query}'
 
-MOMPOV_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,

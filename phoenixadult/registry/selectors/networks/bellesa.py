@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-BELLESA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Bellesa Films'),
     _site('Bellesa House'),
 ]

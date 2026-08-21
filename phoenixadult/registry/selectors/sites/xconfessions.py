@@ -22,7 +22,7 @@ def _xconf(name: str, base_url: str) -> SiteInfo:
     )
 
 
-XCONFESSIONS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _xconf('XConfessions', 'https://api.xconfessions.com'),
     _xconf('LustCinema', 'https://next-prod-api.lustcinema.com'),
 ]

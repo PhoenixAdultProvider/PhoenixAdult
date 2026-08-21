@@ -24,7 +24,7 @@ def _site(name: str, domain: str) -> SiteInfo:
     )
 
 
-INTERSEC_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Insex', ''),
     _site('Sexually Broken', 'sexuallybroken.com'),
     _site('Infernal Restraints', 'infernalrestraints.com'),

@@ -9,7 +9,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'exact'
 PROVIDER_SEARCH_NOTES = 'SceneID Only, Date Add, Actor Add (Name1 AND Name2)'
 
 
-NVG_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name='Net Video Girls',
         provider_name=PROVIDER_NAME,

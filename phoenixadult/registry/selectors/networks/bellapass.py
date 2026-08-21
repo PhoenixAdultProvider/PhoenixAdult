@@ -27,7 +27,7 @@ def _site(name: str, host: str, aliases: list[str] | None = None) -> SiteInfo:
     )
 
 
-BELLAPASS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('BellaPass', 'bellapass.com', _ALIASES),
     _site('Hussie Pass', 'hussiepass.com'),
     _site('Babe Archives', 'babearchives.com'),

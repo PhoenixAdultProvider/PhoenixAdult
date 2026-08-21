@@ -23,7 +23,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
     )
 
 
-ADULTEMPIRECASH_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('18 Lust', 'https://18lust.com'),
     _site('Black Massive Cocks', 'https://blackmassivecocks.com'),
     _site("Brutha's Inc", 'https://bruthasinc.com'),

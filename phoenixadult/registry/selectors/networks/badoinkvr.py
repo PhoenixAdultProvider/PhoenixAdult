@@ -23,7 +23,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-BADOINKVR_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('BaDoink VR', 'badoinkvr.com', '/vrpornvideos/search'),
     _site('Babe VR', 'babevr.com', '/vrpornvideos/search'),
     _site('18 VR', '18vr.com', '/vrpornvideos/search'),

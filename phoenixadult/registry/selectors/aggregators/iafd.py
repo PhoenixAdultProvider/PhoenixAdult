@@ -30,6 +30,6 @@ def _site(name: str, listing_type: ListingType, listing_id: str, host: str) -> S
     )
 
 
-IAFD_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Black Patrol', 'distrib', '9954', 'blackpatrol.com'),
 ]

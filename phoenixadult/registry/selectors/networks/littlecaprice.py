@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-LITTLECAPRICE_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Little Caprice Dreams'),
     _site('Buttmuse'),
     _site('Caprice Divas'),

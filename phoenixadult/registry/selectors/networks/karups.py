@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-KARUPS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('KarupsPC'),
     _site('KarupsHA'),
     _site('KarupsOW'),

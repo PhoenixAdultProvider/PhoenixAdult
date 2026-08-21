@@ -11,7 +11,7 @@ PROVIDER_SEARCH_NOTES = ''
 
 _ALIASES: list[str] = load_data(__file__, 'fakings_aliases')
 
-FAKINGS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,

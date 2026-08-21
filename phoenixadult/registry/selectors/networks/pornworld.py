@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str = '/videos/freeword/{query}') -
     )
 
 
-PORNWORLD_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('DDF Babes', 'ddfnetwork.com'),
     _site('DDFNetwork', 'ddfnetwork.com'),
     _site('Sandys Fantasies', 'ddfnetwork.com'),

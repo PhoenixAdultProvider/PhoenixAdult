@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-DIRTYFLIX_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Trick Your GF', 'trickyourgf.com', '/detailedTrailer/'),
     _site('Make Him Cuckold', 'makehimcuckold.com', '/detailed/'),
     _site('She Is Nerdy', 'sheisnerdy.com', '/detailed/'),

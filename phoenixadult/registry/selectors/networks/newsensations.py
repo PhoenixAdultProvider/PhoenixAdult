@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-NEWSENSATIONS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('New Sensations', 'newsensations.com', '/tour_ns/'),
     _site('FamilyXXX', 'familyxxx.com', '/tour_famxxx/'),
 ]

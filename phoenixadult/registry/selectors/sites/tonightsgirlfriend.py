@@ -8,7 +8,7 @@ PROVIDER_CONTENT_TYPE: ContentType = 'actors'
 PROVIDER_SEARCH_METHOD: SearchMethod = 'limited'
 PROVIDER_SEARCH_NOTES = 'Actor only'
 
-TONIGHTSGIRLFRIEND_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name='Tonights Girlfriend',
         provider_name=PROVIDER_NAME,

@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-CZECHAV_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Czech Amateurs', 'czechamateurs.com'),
     _site('Czech Bangbus', 'czechbangbus.com'),
     _site('Czech Bitch', 'czechbitch.com'),

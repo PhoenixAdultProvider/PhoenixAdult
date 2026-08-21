@@ -47,4 +47,4 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-VIP4K_SITES: list[SiteInfo] = [_site(n) for n in _NAMES]
+SITES: list[SiteInfo] = [_site(n) for n in _NAMES]

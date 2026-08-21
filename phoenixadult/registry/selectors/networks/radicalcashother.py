@@ -27,7 +27,7 @@ def _hitzefrei(name: str, host: str) -> SiteInfo:
     return _site(name, host, '/search/{query}', 'Hitzefrei')
 
 
-RADICALCASHOTHER_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('PurgatoryX', 'purgatoryx.com', 'https://tour.purgatoryx.com/search/{query}', 'PurgatoryX'),
     _site('Hitzefrei', 'hitzefrei.com', 'https://tour.hitzefrei.com/search/{query}', 'Hitzefrei'),
     _hitzefrei('Unleashed', 'unleashed.hitzefrei.com'),

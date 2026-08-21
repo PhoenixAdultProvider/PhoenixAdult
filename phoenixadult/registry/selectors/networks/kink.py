@@ -24,7 +24,7 @@ def _site(name: str, channel: str) -> SiteInfo:
     )
 
 
-KINK_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Kink', ''),
     _site('Brutal Sessions', 'brutalsessions'),
     _site('Device Bondage', 'devicebondage'),

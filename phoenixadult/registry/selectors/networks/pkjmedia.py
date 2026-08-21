@@ -22,7 +22,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-PKJMEDIA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('My POV Fam', 'www.mypovfam.com'),
     _site('Perverted POV', 'www.pervertedpov.com'),
     _site("Peter's Kingdom", 'peterskingdom.com'),

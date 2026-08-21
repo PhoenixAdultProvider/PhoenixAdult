@@ -22,7 +22,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-WOWNETWORK_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Wow Girls', 'wowgirlsblog.com'),
     _site('18 Only Girls', '18onlygirlsblog.com'),
     _site('WowPorn', 'wowpornblog.com'),

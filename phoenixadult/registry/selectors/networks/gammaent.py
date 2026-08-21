@@ -23,7 +23,7 @@ def _site(name: str, host: str, studio: str, search_path: str = '/en/search/scen
     )
 
 
-GAMMAENT_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Tera Patrick', 'terapatrick.com', 'Fame Digital', '/en/search/'),
     _site('Sunny Leone', 'sunnyleone.com', 'Open Life Network'),
     _site('Lane Sisters', 'lanesisters.com', 'Open Life Network'),

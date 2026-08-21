@@ -23,7 +23,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-ALLUREMEDIA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Amateur Allure', 'amateurallure.com', '/tour/search.php?st=advanced&cat[]=5&qany={query}'),
     _site('Swallow Salon', 'swallowsalon.com', '/search.php?st=advanced&cat[]=5&qany={query}'),
 ]

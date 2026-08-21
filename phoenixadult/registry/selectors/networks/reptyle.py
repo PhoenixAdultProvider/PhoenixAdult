@@ -30,7 +30,7 @@ def _site(name: str, base_url: str, token_prefixes: tuple[str, ...] = ()) -> Sit
     )
 
 
-REPTYLE_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('MYLF', 'https://www.mylf.com'),
     _site('TeamSkeet', 'https://www.teamskeet.com', token_prefixes=('mylfx', 'teamskeetx')),
     _site('Swappz', 'https://www.swappz.com'),

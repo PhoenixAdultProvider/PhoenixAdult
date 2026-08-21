@@ -27,7 +27,7 @@ def _site(name: str, base_url: str) -> SiteInfo:
     )
 
 
-PROJECT1SERVICE_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Brazzers', 'http://www.brazzers.com'),
     _site('BangBros', 'https://bangbros.com'),
     _site('Reality Kings', 'https://www.realitykings.com'),

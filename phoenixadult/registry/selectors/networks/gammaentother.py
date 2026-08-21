@@ -28,7 +28,7 @@ def _site(sub_group: str, base_url: str, name: str, aliases: list[str] | None = 
     )
 
 
-GAMMAENTOTHER_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Girlsway', 'https://www.girlsway.com', 'Girlsway', ["Mommy's Girl", 'Web Young', 'Girls Try Anal', 'Sextape Lesbians', 'Girlsway Originals']),
     _site('21Naturals', 'https://www.21naturals.com', '21Naturals', ['21FootArt', '21EroticAnal']),
     _site('Evil Angel', 'https://www.evilangel.com', 'Evil Angel', ['Blackmailed']),

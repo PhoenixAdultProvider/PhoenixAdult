@@ -24,7 +24,7 @@ def _site(name: str, base_url: str = _DEFAULT_BASE) -> SiteInfo:
     )
 
 
-CHERRYPIMPS_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Cherry Pimps'),
     _site('Wild on Cam', 'https://www.wildoncam.com'),
     _site('Cherry Spot'),

@@ -24,7 +24,7 @@ def _site(name: str, host: str, search_path: str) -> SiteInfo:
     )
 
 
-PERFECTGONZO_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('PerfectGonzo', _PG, '/movies?q={query}'),
     _site('All Internal', _PG, '/movies?tag=allinternal&q={query}'),
     _site('Ass Traffic', _PG, '/movies?tag=asstraffic&q={query}'),

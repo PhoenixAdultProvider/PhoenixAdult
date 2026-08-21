@@ -22,7 +22,7 @@ def _site(name: str, host: str, search_path: str = '/videos/') -> SiteInfo:
     )
 
 
-VNA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('All Anal All the Time', 'allanalallthetime.com'),
     _site('Kimber Lee Live', 'kimberleelive.com'),
     _site('Vicky at Home', 'vickyathome.com', '/milf-videos/'),

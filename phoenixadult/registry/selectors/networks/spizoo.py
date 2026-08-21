@@ -27,7 +27,7 @@ def _spizoo(name: str) -> SiteInfo:
     return _site(name, 'www.spizoo.com')
 
 
-SPIZOO_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _spizoo('Spizoo'),
     _spizoo('First Class POV'),
     _spizoo('Intimate Lesbians'),

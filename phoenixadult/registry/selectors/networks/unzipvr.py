@@ -23,7 +23,7 @@ def _site(name: str, domain: str, data18: bool = False) -> SiteInfo:
     )
 
 
-UNZIPVR_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('VR Bangers', 'vrbangers.com', data18=True),
     _site('VR Conk', 'vrconk.com', data18=True),
     _site('Blow VR', 'blowvr.com'),

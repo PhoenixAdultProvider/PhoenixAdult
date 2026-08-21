@@ -23,7 +23,7 @@ def _site(name: str, search_path: str) -> SiteInfo:
     )
 
 
-KILLERGRAM_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Killergram', '/episodes.asp?page=episodes&id={query}'),
     _site('Killergram Platinum', '/platinum.asp?page=platinum&id={query}'),
 ]

@@ -10,7 +10,7 @@ PROVIDER_SEARCH_METHOD: SearchMethod = 'exact'
 PROVIDER_SEARCH_NOTES = 'SceneID, Date Add'
 PROVIDER_SEARCH_PATH = '/video_preview_page.php?iID={query}'
 
-LUSTOMIC_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     make_site(
         name=PROVIDER_NAME,
         provider_name=PROVIDER_NAME,

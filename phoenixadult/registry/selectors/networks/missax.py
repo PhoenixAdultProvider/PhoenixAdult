@@ -22,7 +22,7 @@ def _site(name: str, base_url: str, search_path: str) -> SiteInfo:
     )
 
 
-MISSAX_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('MissaX', 'https://missax.com', '/tour/search.php?query={query}'),
     _site('AllHerLuv', 'https://allherluv.com', '/tour/search.php?query={query}'),
     _site('Exposed Whores', 'https://exposedwhores.com/new-tour', '/search.php?query={query}'),

@@ -113,7 +113,7 @@ STANDALONE_SITES = [
     _site('WetVR', 'wetvr.com'),
 ]
 
-FUCKYOUCASH_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     *_group(PORN_PROS, PORN_PROS_SITES),
     *_group(PORN_PLUS, PORN_PLUS_SITES),
     *STANDALONE_SITES,

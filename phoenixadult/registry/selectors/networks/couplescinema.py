@@ -24,7 +24,7 @@ def _site(name: str) -> SiteInfo:
     )
 
 
-COUPLESCINEMA_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Couple Fantasies'),
     _site('Verso Cinema'),
     _site('Sex School'),

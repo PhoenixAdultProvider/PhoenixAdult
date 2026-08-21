@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-FULLPORNNETWORK_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Analized', 'analized.com'),
     _site('James Deen', 'jamesdeen.com'),
     _site('Twisted Visual', 'twistedvisual.com'),

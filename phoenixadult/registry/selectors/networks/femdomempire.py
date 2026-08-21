@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-FEMDOMEMPIRE_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Femdom Empire', 'femdomempire.com'),
     _site('Feminized', 'feminized.com'),
 ]

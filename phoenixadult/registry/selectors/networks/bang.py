@@ -23,7 +23,7 @@ def _site(name: str, search_path: str) -> SiteInfo:
     )
 
 
-BANG_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Bang', '/videos?term={query}'),
     _site('Bang Movies', '/movies?term={query}'),
 ]

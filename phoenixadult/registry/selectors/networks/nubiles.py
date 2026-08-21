@@ -92,7 +92,7 @@ STANDALONE_SITES = [
     _site('The POV God', 'https://thepovgod.com', data18=False),
 ]
 
-NUBILES_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     *_group(NUBILES_PORN, NUBILES_PORN_SITES),
     *_group(MOM_LOVER, MOM_LOVER_SITES),
     *_group(NUBILES_FILMS, NUBILES_FILMS_SITES),

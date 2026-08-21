@@ -24,7 +24,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-STRIKE3_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Blacked', 'blacked.com'),
     _site('Blacked RAW', 'blackedraw.com'),
     _site('Vixen', 'vixen.com'),

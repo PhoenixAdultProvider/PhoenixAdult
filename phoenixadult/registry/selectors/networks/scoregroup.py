@@ -22,7 +22,7 @@ def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
     )
 
 
-SCOREGROUP_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Porn Mega Load', 'pornmegaload.com', '/hd-porn-scenes/'),
     _site('Naughty Mag', 'naughtymag.com', '/amateur-videos/'),
     _site('XL Girls', 'xlgirls.com', '/bbw-videos/'),

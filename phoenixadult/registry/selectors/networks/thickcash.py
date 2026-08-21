@@ -23,7 +23,7 @@ def _site(name: str, host: str) -> SiteInfo:
     )
 
 
-THICKCASH_SITES: list[SiteInfo] = [
+SITES: list[SiteInfo] = [
     _site('Family Lust', 'familylust.com'),
     _site('Over 40 Handjobs', 'over40handjobs.com'),
     _site('Ebony Tugs', 'ebonytugs.com'),
