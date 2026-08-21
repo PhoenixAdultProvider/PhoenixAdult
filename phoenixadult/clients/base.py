@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, Protocol
+from urllib.parse import urlencode
 
 import httpx2
 from parsel import Selector
@@ -14,7 +15,7 @@ from parsel import Selector
 from phoenixadult.config.env import env
 from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
-from phoenixadult.utils.http.bypass import bypass_get
+from phoenixadult.utils.http.bypass import bypass_get, bypass_post
 from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.http.rate_limit_helper import FAST_GATE, ScenePacer
 from phoenixadult.utils.http.rate_limit_helper import (
@@ -238,24 +239,31 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
     # ── Fetch Helpers ──────────────────────────────────────────────────────────
 
-    async def fetch_and_load(self, url: str, ctx: FetchCtx | None = None, label: str | None = None) -> dict[str, Any] | None:
-        direct = await self._direct_get(url, ctx.headers if ctx else None)
+    async def fetch_and_load(
+        self, url: str, ctx: FetchCtx | None = None, label: str | None = None, form: dict[str, str] | None = None
+    ) -> dict[str, Any] | None:
+        verb = 'POST' if form is not None else 'GET'
+        direct = await self._direct_fetch(url, ctx.headers if ctx else None, form)
         if direct and direct['ok']:
             if ctx and ctx.capture is not None:
-                ctx.capture.append(RawCaptureEntry(label or f'GET {url}', 'html', direct['body']))
+                ctx.capture.append(RawCaptureEntry(label or f'{verb} {url}', 'html', direct['body']))
             return {'status': direct['status'], 'html': direct['body'], 'sel': Selector(text=direct['body'])}
         if not _bypass_enabled(ctx):
             if direct:
                 logger.debug(f'fetch_and_load {url} → HTTP {direct["status"]}')
             return None
-        bypass = await bypass_get(url, (ctx.headers if ctx else None) or {})
+        headers = (ctx.headers if ctx else None) or {}
+        if form is not None:
+            bypass = await bypass_post(url, urlencode(form), {'Content-Type': 'application/x-www-form-urlencoded', **headers})
+        else:
+            bypass = await bypass_get(url, headers)
         if not bypass or bypass.status >= 400:
             direct_status = direct['status'] if direct else 'error'
             logger.warn(f'fetch_and_load {url} failed — direct HTTP {direct_status}, bypass status={bypass.status if bypass else "none"}')
             return None
         logger.info(f'fetch_and_load {url} → recovered via bypass ({bypass.status})')
         if ctx and ctx.capture is not None:
-            ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'GET {url} (bypass)', 'html', bypass.body))
+            ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'{verb} {url} (bypass)', 'html', bypass.body))
         return {'status': bypass.status, 'html': bypass.body, 'sel': Selector(text=bypass.body)}
 
     async def fetch_json(self, url: str, ctx: FetchCtx | None = None, headers: dict[str, str] | None = None, label: str | None = None) -> Any | None:
@@ -285,9 +293,9 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'GET {url} (bypass)', 'json', parsed))
         return parsed
 
-    async def _direct_get(self, url: str, headers: dict[str, str] | None = None) -> dict[str, Any] | None:
+    async def _direct_fetch(self, url: str, headers: dict[str, str] | None = None, form: dict[str, str] | None = None) -> dict[str, Any] | None:
         try:
-            r = await self.http.get(url, headers=headers)
+            r = await (self.http.post(url, data=form, headers=headers) if form is not None else self.http.get(url, headers=headers))
             ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError:

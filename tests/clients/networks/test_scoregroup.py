@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qs
+
 import httpx
 import pytest
 import respx
@@ -28,16 +30,21 @@ def _no_web(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @respx.mock
-async def test_search_card() -> None:
-    url = 'https://scoreland.com/search-es?keywords=cool+scene&s_filters[type]=videos&s_filters[site]=current'
+async def test_search_posts_the_query_as_form_data() -> None:
     html = (
         '<div class="compact video">'
         '<a class="title" href="https://scoreland.com/big-boob-videos/jane/777/">Cool Scene</a>'
         '<small class="i-model">Jane Doe</small><img src="https://cdn/t.jpg" /></div>'
     )
-    respx.get(url).mock(return_value=httpx.Response(200, text=html))
+    route = respx.post('https://scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
     await ScoreGroupClient().search(results, _ctx(scene_id='777'))
+
+    request = route.calls.last.request
+    assert request.headers['content-type'] == 'application/x-www-form-urlencoded'
+    assert parse_qs(request.content.decode()) == {'keywords': ['cool scene'], 's_filters[type]': ['videos'], 's_filters[site]': ['current']}
+    assert not request.url.query
+
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

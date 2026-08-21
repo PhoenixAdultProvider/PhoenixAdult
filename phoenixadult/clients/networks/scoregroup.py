@@ -12,7 +12,8 @@ from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Score Group'
-_SEARCH_PATH = '/search-es?keywords={query}&s_filters[type]=videos&s_filters[site]=current'
+_SEARCH_PATH = '/search-es'
+_SEARCH_FILTERS = {'s_filters[type]': 'videos', 's_filters[site]': 'current'}
 _LATEST_RE = re.compile(r'Latest.*Videos')
 _ID_RE = re.compile(r'/(\d+)/')
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
@@ -28,8 +29,9 @@ class ScoreGroupClient(Client):
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
-        url = base + _SEARCH_PATH.replace('{query}', search_data.encoded)
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}')
+        url = base + _SEARCH_PATH
+        form = {'keywords': search_data.title, **_SEARCH_FILTERS}
+        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}', form=form)
         sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
 
         video_list_path = search_data.site_info.search_path or '/'
