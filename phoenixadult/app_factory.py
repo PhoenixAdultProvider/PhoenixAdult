@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
+from phoenixadult import __version__
 from phoenixadult.config import base_url_config_warning, config
 from phoenixadult.config.env import env
 from phoenixadult.registry import get_all_providers
@@ -25,7 +26,7 @@ from phoenixadult.routes import (
 )
 from phoenixadult.routes.provider_router import create_provider_router
 from phoenixadult.utils.concurrency import pools
-from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.logger import configure_logging, logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 from phoenixadult.utils.logging.uvicorn_logging import configure_uvicorn_logging
 from phoenixadult.utils.plex.media_type import provider_mount_path
@@ -97,7 +98,7 @@ def _warn_on_legacy_snapshots() -> None:
 
 
 @asynccontextmanager
-async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
     from phoenixadult.routes.provider_router import restore_queue
@@ -128,7 +129,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title='PhoenixAdult Provider', version='1.0.0', lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    configure_logging()
+    app = FastAPI(title='PhoenixAdult Provider', version=__version__, lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)

@@ -19,8 +19,6 @@ def _record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
     return record
 
 
-logging.setLogRecordFactory(_record_factory)
-
 _LEVEL_MAP = {
     'error': logging.ERROR,
     'warn': logging.WARNING,
@@ -31,38 +29,50 @@ _LEVEL_MAP = {
     'silly': VERBOSE,
 }
 
-_LOG_DIR = Path(env.log_dir)
-_LOG_FILE = _LOG_DIR / 'agent.log'
-try:
-    _LOG_DIR.mkdir(parents=True, exist_ok=True)
-except OSError:
-    pass
-
 _base = logging.getLogger('phoenixadult')
-_base.setLevel(_LEVEL_MAP.get(config.log_level, logging.INFO))
 _base.propagate = False
+_configured = False
 
-if not _base.handlers:
+
+def log_file() -> Path:
+    return Path(env.log_dir) / 'agent.log'
+
+
+def configure_logging(*, to_file: bool = True) -> None:
+    global _configured
+    _base.setLevel(_LEVEL_MAP.get(config.log_level, logging.INFO))
+    if _configured:
+        return
+    _configured = True
+    logging.setLogRecordFactory(_record_factory)
+
     from phoenixadult.utils.logging.redaction import RedactionFilter
     from phoenixadult.utils.logging.session_log import session_log
 
     _base.addFilter(RedactionFilter())
-    _fmt = AlignedFormatter()
-    _console = logging.StreamHandler()
-    _console.setFormatter(_fmt)
-    _base.addHandler(_console)
-    session_log.setFormatter(_fmt)
+    fmt = AlignedFormatter()
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    _base.addHandler(console)
+    session_log.setFormatter(fmt)
     _base.addHandler(session_log)
+    if not to_file:
+        return
+    target = log_file()
     try:
-        _file = RotatingFileHandler(_LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
-        _file.setFormatter(_fmt)
-        _base.addHandler(_file)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(target, maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
+        handler.setFormatter(fmt)
+        _base.addHandler(handler)
     except OSError:
-        pass
+        return
+    logger.info(f'Logging to console (LOG_LEVEL={config.log_level}) and {target}')
 
 
 class _Logger:
     def _emit(self, level: int, a: Any, b: Any = None, **meta: Any) -> None:
+        if not _configured:
+            configure_logging(to_file=False)
         if isinstance(a, str) and isinstance(b, str):
             message = f'[{a}] {b}'
         elif b is None:
@@ -100,4 +110,3 @@ def verbose_enabled() -> bool:
 
 
 logger = _Logger()
-logger.info(f'Logging to console (LOG_LEVEL={config.log_level}) and {_LOG_FILE}')

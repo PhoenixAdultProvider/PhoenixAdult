@@ -31,3 +31,24 @@ def test_plex_is_told_the_same_version_the_package_carries() -> None:
 def test_the_plex_form_spells_the_alpha_out() -> None:
     assert phoenixadult.provider_version().startswith(phoenixadult.__version__.split('a')[0] + '-alpha.')
     assert phoenixadult.provider_version().rsplit('.', 1)[1] == phoenixadult.__version__.rsplit('a', 1)[1]
+
+
+def test_no_module_hardcodes_a_version_string() -> None:
+    import re
+
+    root = _PYPROJECT.parent / 'phoenixadult'
+    pattern = re.compile(r"""version\s*=\s*['"]\d+\.\d+\.\d+""")
+    offenders = [
+        f'{path.relative_to(root).as_posix()}:{n}'
+        for path in root.rglob('*.py')
+        if path.name != '__init__.py' or path.parent != root
+        for n, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1)
+        if pattern.search(line)
+    ]
+    assert not offenders, f'these hardcode a version instead of deriving it from __version__: {offenders}'
+
+
+def test_the_asgi_app_reports_the_package_version() -> None:
+    from phoenixadult.app_factory import create_app
+
+    assert create_app().version == phoenixadult.__version__

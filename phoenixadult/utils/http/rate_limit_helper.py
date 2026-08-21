@@ -5,7 +5,7 @@ import random
 import time
 import weakref
 from collections import deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from contextvars import ContextVar
 
@@ -77,7 +77,7 @@ class FastGate:
             self._waiting = 0
 
     @asynccontextmanager
-    async def turn(self, allow_slow: bool) -> AsyncIterator[None]:
+    async def turn(self, allow_slow: bool) -> AsyncGenerator[None]:
         self._ensure_loop()
         if _fast_slot_held.get():
             yield
@@ -167,7 +167,7 @@ class ScenePacer:
         self._scene_starts.append(now)
 
     @asynccontextmanager
-    async def _turn(self, allow_slow: bool, *, is_scene: bool) -> AsyncIterator[None]:
+    async def _turn(self, allow_slow: bool, *, is_scene: bool) -> AsyncGenerator[None]:
         kind = 'scene' if is_scene else 'search'
         wait = self.pending_wait(include_window=is_scene)
         if not allow_slow and wait > _SYNC_WAIT_BUDGET:
