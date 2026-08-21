@@ -32,7 +32,7 @@ _FIELDS: dict[str, str] = {
 
 
 def enabled() -> bool:
-    return bool(db.connect().execute('SELECT COUNT(*) FROM plex_connections WHERE server_url != "" AND token_encrypted != ""').fetchone()[0])
+    return bool(db.connect().execute("SELECT COUNT(*) FROM plex_connections WHERE server_url != '' AND token_encrypted != ''").fetchone()[0])
 
 
 class ItemReport(CamelModel):
