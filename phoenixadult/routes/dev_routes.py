@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 import time
 from collections.abc import Callable
 from typing import Any
@@ -31,6 +32,7 @@ from phoenixadult.utils.logging.orchestrator_logs import (
     log_update_header,
     log_update_provider,
 )
+from phoenixadult.utils.logging.response_trace import begin_body_capture
 from phoenixadult.utils.people import filter_male_actors
 from phoenixadult.utils.plex.rating_key import parse_rating_key, to_rating_key
 from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry
@@ -44,6 +46,8 @@ async def dev_ui_guard() -> None:
 
 
 router = APIRouter(dependencies=[Depends(dev_ui_guard), Depends(user_auth_guard), Depends(csrf_guard), Depends(admin_auth_guard)])
+
+_URL_IN_LABEL_RE = re.compile(r'https?://\S+')
 
 scraper = ScraperRouter()
 mapper = MetadataMapper()
@@ -118,8 +122,12 @@ def _searched_url(raw_results: list[Any] | None, captures: list[RawCaptureEntry]
     direct = next((r.search_url for r in raw_results if r.search_url), None) if raw_results else None
     if direct:
         return str(direct)
-    first_get = next((c for c in captures if c.label.startswith('GET ')), None)
-    return first_get.label[4:].split(' ')[0].strip() if first_get else ''
+    gets = [c for c in captures if c.label.startswith('GET ')]
+    for capture in gets or captures:
+        found = _URL_IN_LABEL_RE.search(capture.label)
+        if found:
+            return found.group(0)
+    return ''
 
 
 def _score_results(raw_results: list[Any], *, site: Any, parsed: Any, query: str, provider_id: str) -> list[dict[str, Any]]:
@@ -235,19 +243,23 @@ async def dev_test(request: Request) -> JSONResponse:
     lap()
     try:
         captures: list[RawCaptureEntry] = []
-        raw_results = await scraper.search(
-            SearchContext(
-                title=pieces.query,
-                encoded=pieces.query,
-                search_site=parsed.site_token,
-                site_info=site,
-                search_date=parsed.date,
-                year=year_num,
-                capture=captures,
-                scene_id=pieces.scene_id,
-                full_title=pieces.full_title,
+        bodies = begin_body_capture(captures)
+        try:
+            raw_results = await scraper.search(
+                SearchContext(
+                    title=pieces.query,
+                    encoded=pieces.query,
+                    search_site=parsed.site_token,
+                    site_info=site,
+                    search_date=parsed.date,
+                    year=year_num,
+                    capture=captures,
+                    scene_id=pieces.scene_id,
+                    full_title=pieces.full_title,
+                )
             )
-        )
+        finally:
+            bodies.end()
 
         step4_data['searchURL'] = _searched_url(raw_results, captures)
 
@@ -466,7 +478,11 @@ async def _live_metadata_steps(
     lap()
     try:
         captures: list[RawCaptureEntry] = []
-        detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=subsite))
+        bodies = begin_body_capture(captures)
+        try:
+            detail = await scraper.fetch_scene_detail(scene_url, site, SceneContext(capture=captures, subsite=subsite))
+        finally:
+            bodies.end()
         if not detail:
             steps.append(
                 {

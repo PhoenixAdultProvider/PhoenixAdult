@@ -31,5 +31,9 @@ def test_no_results_and_no_captures_yields_nothing() -> None:
     assert _searched_url([], []) == ''
 
 
-def test_a_capture_with_no_get_yields_nothing() -> None:
-    assert _searched_url([_Result(None)], [_Capture('POST https://site.test/x')]) == ''
+def test_a_form_post_search_still_reports_its_url() -> None:
+    assert _searched_url([_Result(None)], [_Capture('POST https://site.test/search-es')]) == 'https://site.test/search-es'
+
+
+def test_a_capture_with_no_url_at_all_yields_nothing() -> None:
+    assert _searched_url([_Result(None)], [_Capture('parsed payload')]) == ''

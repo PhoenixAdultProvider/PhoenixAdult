@@ -10,8 +10,8 @@ from phoenixadult.config.env import env
 from phoenixadult.utils.http.connectivity import note_transport_failure
 from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.context import current_scrape_phase
-from phoenixadult.utils.logging.logger import logger, verbose_enabled
-from phoenixadult.utils.logging.response_trace import is_textual, trace_body
+from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import is_textual, trace_body, tracing_wanted
 
 DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
@@ -31,7 +31,7 @@ async def _log_request(request: httpx2.Request) -> None:
 
 
 async def _trace_body(response: httpx2.Response) -> None:
-    if not verbose_enabled() or response.has_redirect_location:
+    if not tracing_wanted() or response.has_redirect_location:
         return
     content_type = response.headers.get('content-type', '')
     if not is_textual(content_type):

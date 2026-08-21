@@ -133,3 +133,53 @@ async def test_nothing_is_dumped_below_verbose() -> None:
         base.setLevel(previous)
 
     assert 'Secret' not in '\n'.join(r.getMessage() for r in records)
+
+
+@respx.mock
+async def test_the_dev_ui_sink_sees_bodies_without_verbose() -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.logging.response_trace import begin_body_capture
+
+    class _C(Client):
+        pass
+
+    base = logging.getLogger('phoenixadult')
+    previous = base.level
+    base.setLevel(logging.INFO)
+    respx.get('https://example.test/page').mock(return_value=httpx.Response(200, html='<h1>Marker</h1>'))
+    bodies = begin_body_capture()
+    try:
+        await _C().fetch_and_load('https://example.test/page', FetchCtx())
+    finally:
+        entries = bodies.end()
+        base.setLevel(previous)
+
+    assert [e.label for e in entries] == ['GET https://example.test/page']
+    assert '<h1>Marker</h1>' in entries[0].body
+
+
+@respx.mock
+async def test_the_log_and_the_sink_carry_the_same_bodies(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.logging.response_trace import begin_body_capture
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/ok').mock(return_value=httpx.Response(200, html='<h1>Kept</h1>'))
+    respx.get('https://example.test/refused').mock(return_value=httpx.Response(403, html='<title>Just a moment...</title>'))
+    respx.get('https://example.test/api').mock(return_value=httpx.Response(200, json={'b': 2, 'a': [1]}))
+
+    bodies = begin_body_capture()
+    try:
+        await _C().fetch_and_load('https://example.test/ok', FetchCtx())
+        await _C().fetch_and_load('https://example.test/refused', FetchCtx())
+        await _C().fetch_json('https://example.test/api')
+    finally:
+        entries = bodies.end()
+
+    dumped = _bodies(verbose_records)
+    for entry in entries:
+        assert entry.body in dumped, f'{entry.label} reached the dev UI but not the log'
+    assert len(entries) == 3, 'a refusal and a json payload both belong in the dev UI, not just the page that worked'
+    assert [e.content_type for e in entries] == ['html', 'html', 'json']

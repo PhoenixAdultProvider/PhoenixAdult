@@ -13,6 +13,7 @@ import httpx2
 from parsel import Selector
 
 from phoenixadult.config.env import env
+from phoenixadult.models.capture import RawCaptureEntry as RawCaptureEntry  # noqa: PLC0414 - clients import the capture type from here
 from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.http.bypass import bypass_get, bypass_post
@@ -52,16 +53,6 @@ _enricher_factory: Callable[[], Enricher] | None = None
 def set_enricher_factory(factory: Callable[[], Enricher]) -> None:
     global _enricher_factory
     _enricher_factory = factory
-
-
-# ── Capture (raw-response debugging, surfaced by the dev UI) ──────────────────
-
-
-@dataclass
-class RawCaptureEntry:
-    label: str
-    content_type: Literal['json', 'html']
-    body: Any
 
 
 # ── Phase Contexts ────────────────────────────────────────────────────────────
@@ -246,8 +237,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         verb = 'POST' if form is not None else 'GET'
         direct = await self._direct_fetch(url, ctx.headers if ctx else None, form)
         if direct and direct['ok']:
-            if ctx and ctx.capture is not None:
-                ctx.capture.append(RawCaptureEntry(label or f'{verb} {url}', 'html', direct['body']))
             return {'status': direct['status'], 'html': direct['body'], 'sel': Selector(text=direct['body'])}
         if not _bypass_enabled(ctx):
             if direct:
@@ -264,8 +253,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return None
         logger.info(f'fetch_and_load {url} → recovered via bypass ({bypass.status})')
         trace_body(f'{verb} {url} (bypass)', bypass.status, bypass.body, 'text/html')
-        if ctx and ctx.capture is not None:
-            ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'{verb} {url} (bypass)', 'html', bypass.body))
         return {'status': bypass.status, 'html': bypass.body, 'sel': Selector(text=bypass.body)}
 
     async def fetch_json(self, url: str, ctx: FetchCtx | None = None, headers: dict[str, str] | None = None, label: str | None = None) -> Any | None:
@@ -273,8 +260,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             r = await self.http.get(url, headers=headers)
             if r.status_code < 400:
                 data = r.json()
-                if ctx and ctx.capture is not None:
-                    ctx.capture.append(RawCaptureEntry(label or f'GET {url}', 'json', data))
                 return data
             logger.debug(f'fetch_json {url} → HTTP {r.status_code}')
         except (httpx2.HTTPError, ValueError) as err:
@@ -292,8 +277,6 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             return None
         logger.info(f'fetch_json {url} → recovered via bypass ({bypass.status})')
         trace_body(f'GET {url} (bypass)', bypass.status, bypass.body, 'application/json')
-        if ctx and ctx.capture is not None:
-            ctx.capture.append(RawCaptureEntry(f'{label} (bypass)' if label else f'GET {url} (bypass)', 'json', parsed))
         return parsed
 
     async def _direct_fetch(self, url: str, headers: dict[str, str] | None = None, form: dict[str, str] | None = None) -> dict[str, Any] | None:
