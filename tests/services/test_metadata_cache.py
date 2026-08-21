@@ -12,6 +12,7 @@ from PIL import Image as PILImage
 from phoenixadult.models.metadata import PlexData18, PlexImage, PlexMetadataResponse
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils import db
+from phoenixadult.utils.cache import text_rules as _text_rules  # noqa: F401
 from phoenixadult.utils.helpers.helpers import b64url_encode, embed_subsite
 from phoenixadult.utils.images import image_fetcher
 from phoenixadult.utils.plex.rating_key import to_rating_key
@@ -36,8 +37,8 @@ def test_rebased_urls_are_signed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: [t.upper() for t in tags if t != 'Drop Me'])
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Canonical' if name in ('Alias A', 'Alias B') else name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: [t.upper() for t in tags if t != 'Drop Me'])
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: 'Canonical' if name in ('Alias A', 'Alias B') else name)
 
     resp = PlexMetadataResponse.model_validate(
         {
@@ -65,8 +66,8 @@ def test_reapply_text_rules_renormalizes_genres_and_aliases(monkeypatch: pytest.
 
 
 def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: name)
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -80,7 +81,7 @@ def test_reapply_text_rules_noop_returns_false(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_reapply_text_rules_recases_studio_tagline_collections(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_studio', lambda name, site_name='': name.title().replace('Of', 'of'))
+    monkeypatch.setattr(mc.text_rules, 'normalize_studio', lambda name, site_name='': name.title().replace('Of', 'of'))
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -570,8 +571,8 @@ def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monke
 
 
 def test_reapply_text_rules_normalizes_summary(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: name)
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -596,8 +597,8 @@ def test_reapply_text_rules_normalizes_summary(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_reapply_text_rules_normalizes_cast_name_punctuation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: name)
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -624,8 +625,8 @@ def test_reapply_text_rules_normalizes_cast_name_punctuation(monkeypatch: pytest
 
 
 def test_reapply_text_rules_leaves_clean_cast_names_untouched(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: name)
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {
@@ -799,8 +800,8 @@ def test_backfill_recomputes_guid_after_an_identifier_change() -> None:
 
 
 def test_recredited_actor_drops_its_now_wrong_headshot(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mc, 'normalize_genres', lambda tags, opts=None: list(tags))
-    monkeypatch.setattr(mc, 'apply_name_aliases', lambda name, studio, site: 'Vanessa Cruz' if name == 'Vanessa' else name)
+    monkeypatch.setattr(mc.text_rules, 'normalize_genres', lambda tags, opts=None: list(tags))
+    monkeypatch.setattr(mc.text_rules, 'apply_name_aliases', lambda name, studio, site: 'Vanessa Cruz' if name == 'Vanessa' else name)
     resp = PlexMetadataResponse.model_validate(
         {
             'MediaContainer': {

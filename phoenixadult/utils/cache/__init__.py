@@ -20,20 +20,19 @@ from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18
 from phoenixadult.registry import ResolvedSiteInfo, find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.locks import _apply_locks, _carry_emptied_fields, _changed_lockables, _lock_snapshot, _reconcile_dropped_images
+from phoenixadult.utils.cache.text_rules import reapply_text_rules as reapply_text_rules
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
-from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.helpers import hash_key, slugify
 from phoenixadult.utils.images.ext import ext_from
 from phoenixadult.utils.images.image_fetcher import fetch_image, rotate_image_bytes
 from phoenixadult.utils.images.proxy import proxy_params
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people import PeopleManager, apply_name_aliases, to_plex_roles
+from phoenixadult.utils.people import PeopleManager, to_plex_roles
 from phoenixadult.utils.plex.rating_key import parse_rating_key
-from phoenixadult.utils.processors.episode_tag import strip_episode_tag
 from phoenixadult.utils.processors.studio_name import normalize_studio
-from phoenixadult.utils.processors.text_normalize import normalize_text
-from phoenixadult.utils.processors.title_case import title_case, title_sort
+from phoenixadult.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
     from phoenixadult.clients.base import SceneDetail
@@ -256,114 +255,6 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
         _write_locks[scene_hash] = lock
     async with lock:
         return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear)
-
-
-_CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')
-
-
-def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
-    if not previous:
-        return []
-    try:
-        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
-    except (AttributeError, IndexError):
-        return []
-    carried: list[str] = []
-    for field in _CARRY_FIELDS:
-        if meta.get(field) or not prior.get(field):
-            continue
-        meta[field] = prior[field]
-        carried.append(f'{field}({len(prior[field])})')
-    return carried
-
-
-_LOCK_SCALARS = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'originallyAvailableAt')
-_LOCK_LISTS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
-
-
-def _apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
-    if not previous:
-        return []
-    try:
-        prior = ((previous.get('MediaContainer') or {}).get('Metadata') or [{}])[0]
-    except (AttributeError, IndexError):
-        return []
-    held: list[str] = []
-    fields = set(locks.get('fields') or [])
-    for field in _LOCK_SCALARS:
-        if field not in fields:
-            continue
-        if field in prior:
-            meta[field] = prior[field]
-        else:
-            meta.pop(field, None)
-        held.append(field)
-    if 'data18' in fields:
-        if 'data18' in prior:
-            meta['data18'] = prior['data18']
-        else:
-            meta.pop('data18', None)
-        held.append('data18')
-    for field in _LOCK_LISTS:
-        if field not in fields:
-            continue
-        if prior.get(field):
-            meta[field] = prior[field]
-        else:
-            meta.pop(field, None)
-        held.append(field)
-    prior_images = prior.get('Image') or []
-    if locks.get('imagesLocked'):
-        meta['Image'] = prior_images
-        for key in ('thumb', 'art'):
-            if key in prior:
-                meta[key] = prior[key]
-            else:
-                meta.pop(key, None)
-        held.append('Image(set)')
-    else:
-        pinned = [img for img in prior_images if img.get('locked')]
-        if pinned:
-            pinned_urls = {str(img.get('url')) for img in pinned}
-            fresh = [img for img in meta.get('Image') or [] if str(img.get('url')) not in pinned_urls]
-            meta['Image'] = pinned + fresh
-            held.append(f'Image({len(pinned)})')
-    return held
-
-
-_PROMOTABLE = (('thumb', 'coverPoster'), ('art', 'background'))
-
-
-def _reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[int, int, int]]) -> None:
-    dropped = {key for key, _kind in _PROMOTABLE if key in meta and meta[key] is None}
-
-    kept = [img for img in meta.get('Image') or [] if img.get('url')]
-    if kept:
-        meta['Image'] = kept
-    else:
-        meta.pop('Image', None)
-    for key, _kind in _PROMOTABLE:
-        if meta.get(key) is None:
-            meta.pop(key, None)
-    for role_key in ('Role', 'Director', 'Producer', 'Writer'):
-        for role in meta.get(role_key) or []:
-            if role.get('thumb') is None:
-                role.pop('thumb', None)
-    for rating in meta.get('Rating') or []:
-        if rating.get('image') is None:
-            rating.pop('image', None)
-
-    def _pixels(img: dict[str, Any]) -> int:
-        dims = image_meta.get(str(img.get('url')))
-        return dims[0] * dims[1] if dims else 0
-
-    for key, kind in _PROMOTABLE:
-        if key not in dropped:
-            continue
-        candidates = [img for img in kept if img.get('type') == kind]
-        if best := max(candidates, key=_pixels, default=None):
-            meta[key] = best['url']
-            logger.info('meta-cache', f'promoted {str(best["url"]).rsplit("/", 1)[-1]} to {key} after the original was dropped')
 
 
 async def _write_locked(
@@ -766,19 +657,6 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
         md.art = next((i.url for i in md.Image or [] if i.type == 'background'), None)
 
 
-def _lock_snapshot(md: PlexMetadata) -> dict[str, Any]:
-    dump = md.model_dump(by_alias=True, exclude_none=True)
-    view: dict[str, Any] = {field: dump.get(field) for field in _LOCK_SCALARS}
-    view['data18'] = dump.get('data18')
-    for field in _LOCK_LISTS:
-        view[field] = [str(entry.get('tag') or '') for entry in dump.get(field) or []]
-    return view
-
-
-def _changed_lockables(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
-    return {field for field in before if before[field] != after[field]}
-
-
 async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     identity, loaded = await run_in('store', lambda: (scene_store.identity_for(key), load_for_edit(key)))
     if identity is None or loaded is None:
@@ -1035,113 +913,4 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
                 if r.order is None:
                     r.order = idx
                     changed = True
-    return changed
-
-
-_EPISODE_TAGGED = {'nubiles', 'reptyle'}
-
-
-def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bool:
-    title = strip_episode_tag(md.title) if scraper_type in _EPISODE_TAGGED else md.title
-    cased_title = title_case(title, site_name=studio, scraper_type=scraper_type)
-    if not cased_title or cased_title == md.title:
-        return False
-    md.title = cased_title
-    md.titleSort = title_sort(cased_title)
-    return True
-
-
-def _normalize_summary(md: PlexMetadata) -> bool:
-    if not md.summary:
-        return False
-    cleaned_summary = normalize_text(md.summary)
-    if cleaned_summary == md.summary:
-        return False
-    md.summary = cleaned_summary
-    return True
-
-
-def _recase_studio_tagline(md: PlexMetadata, studio: str) -> bool:
-    changed = False
-    cased_studio = normalize_studio(studio)
-    if cased_studio and cased_studio != md.studio:
-        md.studio = cased_studio
-        changed = True
-    if md.tagline:
-        cased_tagline = normalize_studio(md.tagline)
-        if cased_tagline != md.tagline:
-            md.tagline = cased_tagline
-            changed = True
-    if md.tagline and md.tagline == md.studio:
-        md.tagline = None
-        changed = True
-    return changed
-
-
-def _recase_collections(md: PlexMetadata) -> bool:
-    if not md.Collection:
-        return False
-    tags = list(dict.fromkeys(normalize_studio(c.tag) for c in md.Collection if c.tag))
-    if tags == [c.tag for c in md.Collection]:
-        return False
-    md.Collection = [PlexCollection(tag=t) for t in tags]
-    return True
-
-
-def _renormalize_genres(md: PlexMetadata, studio: str) -> bool:
-    if not md.Genre:
-        return False
-    old = [g.tag for g in md.Genre]
-    actors = tuple(r.tag for r in md.Role or [] if r.tag)
-    new = normalize_genres(old, NormalizeGenresOptions(title=md.title, site_name=studio, actors=actors))
-    if new == old:
-        return False
-    md.Genre = [PlexGenre(tag=t) for t in new]
-    return True
-
-
-def _realias_people(md: PlexMetadata, studio: str) -> bool:
-    changed = False
-    for attr in ('Role', 'Director', 'Producer'):
-        roles: list[PlexRole] | None = getattr(md, attr)
-        if not roles:
-            continue
-        seen: set[str] = set()
-        kept: list[PlexRole] = []
-        for r in roles:
-            cased_name = re.sub(r'\s+', ' ', title_case(r.tag, type='name', site_name=studio)).strip()
-            aliased = apply_name_aliases(cased_name, studio, studio)
-            if aliased != r.tag:
-                logger.info('meta-cache', f'recredited "{r.tag}" as "{aliased}"')
-                r.tag = aliased
-                if r.thumb and '/images/local/' in r.thumb:
-                    r.thumb = None
-                changed = True
-            if aliased.lower() in seen:
-                changed = True
-                continue
-            seen.add(aliased.lower())
-            kept.append(r)
-        if len(kept) != len(roles):
-            setattr(md, attr, kept)
-    return changed
-
-
-def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None = None, locked: set[str] | None = None) -> bool:
-    held = locked or set()
-    changed = False
-    for md in response.MediaContainer.Metadata:
-        studio = md.studio or ''
-        if 'title' not in held:
-            changed = _recase_title(md, studio, scraper_type) or changed
-        if 'summary' not in held:
-            changed = _normalize_summary(md) or changed
-        if not {'studio', 'tagline'} & held:
-            changed = _recase_studio_tagline(md, studio) or changed
-        if 'Collection' not in held:
-            changed = _recase_collections(md) or changed
-        if 'Genre' not in held:
-            changed = _renormalize_genres(md, studio) or changed
-        if not {'Role', 'Director', 'Producer'} & held:
-            changed = _realias_people(md, studio) or changed
     return changed
