@@ -12,6 +12,7 @@ _GENRES: dict[str, list[str]] = {'My POV Fam': ['Family', 'Pov'], 'Perverted POV
 
 
 class PKJMediaClient(Client):
+    title_xpath = '(//h1[contains(@class,"brxe-post-title")])[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -34,11 +35,6 @@ class PKJMediaClient(Client):
         return loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"brxe-post-title")])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

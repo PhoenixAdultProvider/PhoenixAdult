@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 
 _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling::span//a[contains(@class,"tiny-link")]'
 
@@ -69,8 +69,7 @@ class XSinsVRClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"model-header__photo")]//img/@src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"model-header__photo")]//img/@src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(_ACTOR_XP):

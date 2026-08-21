@@ -12,6 +12,8 @@ _YEAR_RE = re.compile(r'^\d{4}$')
 
 
 class CouplesCinemaClient(Client):
+    summary_xpath = '(//span[contains(@class,"description")])[1]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': 'WarningModal=true'})
 
@@ -106,11 +108,6 @@ class CouplesCinemaClient(Client):
         metadata.title = (
             details_page_elements.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or ''
         ).strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//span[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

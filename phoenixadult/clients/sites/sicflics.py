@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
@@ -18,16 +18,8 @@ def _actor_from_description(description: str) -> str:
 
 
 class SicflicsClient(Client):
+    search_rows_xpath = '//li[contains(@class,"col-sm-6") and contains(@class,"col-lg-4")]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//li[contains(@class,"col-sm-6") and contains(@class,"col-lg-4")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         title = first_text(source, './/div[contains(@class,"vidtitle")]/p[1]')

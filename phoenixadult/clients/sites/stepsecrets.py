@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, strip_query
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
@@ -14,19 +14,11 @@ _FIXED_GENRES: list[str] = ['European', 'Glamcore', 'Taboo']
 
 class StepSecretsClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    search_rows_xpath = '//div[contains(@class,"card-simple")]'
     title_xpath = '//h1[contains(@class,"font-cond")]'
     summary_xpath = '//div[contains(@class,"descripton")]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//div[contains(@class,"card-simple")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/a[contains(@class,"color-title")]')

@@ -4,23 +4,16 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 
 
 class BAMVisionsClient(Client):
     search_url_xpath = '(.//h3//a/@href)[1]'
+    search_rows_xpath = '//div[contains(@class,"category_listing_wrapper_updates")]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//div[contains(@class,"category_listing_wrapper_updates")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h3//a')
@@ -63,8 +56,7 @@ class BAMVisionsClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"profile-pic")]//img/@src0_3x)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div[contains(@class,"item-info")]//h5//a'):

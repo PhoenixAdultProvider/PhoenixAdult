@@ -357,8 +357,17 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
 
         return list(await asyncio.gather(*(one(url) for url in urls)))
 
+    search_rows_xpath: str | None = None
+
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        return None
+        if not self.search_rows_xpath:
+            return None
+        url = search_data.search_url()
+        found = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
+        if not found:
+            return None
+        sources = list(found['sel'].xpath(self.search_rows_xpath))
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture, sel=found['sel'])
 
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         scene_url = await self.fetch_search_scene_url(source, loaded)
@@ -612,18 +621,26 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             extra={extra_key: tail},
         )
 
-    title_xpath: str | None = None
-    summary_xpath: str | None = None
+    title_xpath: str | tuple[str, ...] | None = None
+    summary_xpath: str | tuple[str, ...] | None = None
     genres_xpath: str | None = None
     actors_xpath: str | None = None
 
+    @staticmethod
+    def first_of(sel: Selector, xpaths: str | tuple[str, ...]) -> str:
+        for xpath in (xpaths,) if isinstance(xpaths, str) else xpaths:
+            found = first_text(sel, xpath)
+            if found:
+                return found
+        return ''
+
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if self.title_xpath:
-            metadata.title = first_text(scene.require_sel(), self.title_xpath) or ''
+            metadata.title = self.first_of(scene.require_sel(), self.title_xpath)
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if self.summary_xpath:
-            metadata.summary = first_text(scene.require_sel(), self.summary_xpath) or ''
+            metadata.summary = self.first_of(scene.require_sel(), self.summary_xpath)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None

@@ -8,7 +8,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'Kelly Madison Productions'
 _NATS_COOKIE = 'nats=MC4wLjMuNTguMC4wLjAuMC4w'
@@ -32,6 +32,9 @@ def _tagline_from_title(title: str, site_name: str) -> str:
 
 
 class KellyMadisonClient(Client):
+    title_xpath = '(//h1[contains(@class,"title")])[1]'
+    summary_xpath = '(//div[contains(.,"Episode Summary")]/p)[1]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': _NATS_COOKIE})
 
@@ -85,16 +88,6 @@ class KellyMadisonClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(.,"Episode Summary")]/p)[1]').xpath('string(.)').get() or '').strip() or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
@@ -130,8 +123,7 @@ class KellyMadisonClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"one")]//img)[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"one")]//img)[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//p[contains(.,"Starring")]//a[contains(@href,"/models/")]'):

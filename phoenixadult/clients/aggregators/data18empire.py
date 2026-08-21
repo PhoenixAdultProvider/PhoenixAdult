@@ -57,6 +57,7 @@ def _release_date(sel: Any) -> str | None:
 
 
 class Data18EmpireClient(Client):
+    summary_xpath = '(//div[contains(@class,"synopsis")])[1]'
     genres_xpath = '//div[contains(@class,"categories")]//a'
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -189,11 +190,6 @@ class Data18EmpireClient(Client):
         scene_num = self._packed(scene).get('sceneNum')
 
         metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"synopsis")])[1]').xpath('normalize-space(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = self._studio(scene) or ''

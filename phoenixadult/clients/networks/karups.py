@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'Karups'
 _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)\b', re.IGNORECASE)
@@ -121,8 +121,7 @@ class KarupsClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"model-thumb")]//img)[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"model-thumb")]//img)[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//span[contains(@class,"models")]//a'):

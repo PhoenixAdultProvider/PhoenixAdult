@@ -12,6 +12,9 @@ _DATE_FMT = '%d %b %Y'
 
 
 class SinXClient(Client):
+    title_xpath = '(//h1[contains(@class,"title--3")])[1]'
+    summary_xpath = '(//div[h5]//p)[1]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -31,16 +34,6 @@ class SinXClient(Client):
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"title--3")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[h5]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 from phoenixadult.utils.processors.title_case import title_case
 
 STUDIO = 'Teen Mega World'
@@ -14,6 +14,8 @@ _SEARCH_PAGES = 2
 
 
 class TeenMegaWorldClient(Client):
+    title_xpath = '(//h1[@id="video-title"])[1]'
+    summary_xpath = '(//p[contains(@class,"video-description-text")])[1]'
     genres_xpath = '//a[contains(@class,"video-tag-link")]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
@@ -49,16 +51,6 @@ class TeenMegaWorldClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[@id="video-title"])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"video-description-text")])[1]').xpath('string(.)').get() or '').strip() or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
@@ -84,8 +76,7 @@ class TeenMegaWorldClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"model-profile-image-wrap")]//img)[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//a[contains(@class,"video-actor-link") and contains(@class,"actor__link")]'):

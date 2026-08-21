@@ -4,7 +4,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 from phoenixadult.utils.logging.logger import logger
 
 
@@ -107,8 +107,7 @@ class TwoTGirlsClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"col-md-4")]//img/@src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"col-md-4")]//img/@src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//p[contains(@class,"video-date")]//a'):

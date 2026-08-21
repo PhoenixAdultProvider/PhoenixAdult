@@ -14,6 +14,7 @@ _NON_WORD_RE = re.compile(r'\W')
 
 
 class PervCityClient(Client):
+    title_xpath = '(//h1)[1]'
     genres_xpath = '//div[@class="tagcats"]/a'
 
     def __init__(self) -> None:
@@ -171,11 +172,6 @@ class PervCityClient(Client):
         return STUDIO
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

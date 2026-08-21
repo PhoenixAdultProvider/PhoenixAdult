@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'LoveHerFilms'
 _DATE_FMT = '%B %d, %Y'
@@ -14,6 +14,8 @@ _DATE_FMT = '%B %d, %Y'
 
 class LoveHerFilmsClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//div[contains(@class,"main-info-left")]/h1)[1]'
+    summary_xpath = '(//p[contains(@class,"description")])[1]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
@@ -34,16 +36,6 @@ class LoveHerFilmsClient(Client):
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"main-info-left")]/h1)[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -85,8 +77,7 @@ class LoveHerFilmsClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"picture")]//img)[1]/@src0_3x')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"picture")]//img)[1]/@src0_3x', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div[contains(@class,"featured")]/a'):

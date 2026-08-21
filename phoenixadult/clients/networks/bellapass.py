@@ -43,6 +43,8 @@ __testing__ = {'strip_punct': _strip_punct, 'studio_for': _studio_for, 'title_se
 
 
 class BellaPassClient(Client):
+    summary_xpath = '(//div[contains(@class,"videoDetails")]//p)[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = [f'{base}/trailers/{slugify(search_data.title)}.html']
@@ -103,11 +105,6 @@ class BellaPassClient(Client):
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = self._title_of(scene) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = _studio_for(scene.site.name)

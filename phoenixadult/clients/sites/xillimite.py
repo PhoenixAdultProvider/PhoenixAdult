@@ -5,7 +5,7 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import ActorResult, Client, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import iso_date, join_url
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
@@ -14,18 +14,10 @@ _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 
 class XillimiteClient(Client):
     search_url_xpath = '@href'
+    search_rows_xpath = '//a[contains(@class,"movies")]'
     title_xpath = '//h1'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//a[contains(@class,"movies")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_attr(source, '(.//img/@alt)[1]')

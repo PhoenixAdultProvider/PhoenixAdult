@@ -31,6 +31,7 @@ def _scene_path(href: str) -> str:
 
 
 class NaughtyAmericaClient(Client):
+    title_xpath = '(//div[contains(@class,"scene-info")]//h1)[1]'
     genres_xpath = '//div[contains(@class,"categories") and contains(@class,"grey-text")]//a'
 
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
@@ -155,11 +156,6 @@ class NaughtyAmericaClient(Client):
         return (details_page_elements.xpath('(//a[contains(@class,"site-title")])[1]').xpath('string(.)').get() or '').strip()
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"scene-info")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

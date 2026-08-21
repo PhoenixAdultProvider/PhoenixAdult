@@ -26,6 +26,8 @@ __testing__ = {'SESSION_COOKIES': _SESSION_COOKIES}
 
 class BlurredMediaClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//h1[contains(@class,"title")])[1]'
+    summary_xpath = '(//section[@name="descriptionIntro"]/p)[1]'
 
     # ── Search Field Hooks ──────────────────────────────────────────────────────
 
@@ -85,16 +87,6 @@ class BlurredMediaClient(Client):
         return f'{name}={jar[name]}' if jar.get(name) else None
 
     # ── Update Field Hooks ──────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//section[@name="descriptionIntro"]/p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

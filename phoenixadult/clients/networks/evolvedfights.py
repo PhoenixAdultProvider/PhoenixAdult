@@ -4,7 +4,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, web_search_urls
 
 STUDIO = 'Evolved Fights Network'
 _URL_CONTAINS = '/updates/'
@@ -12,6 +12,8 @@ _DATE_FMT = '%m/%d/%Y'
 
 
 class EvolvedFightsClient(Client):
+    title_xpath = '(//title)[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = []
@@ -43,11 +45,6 @@ class EvolvedFightsClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -91,8 +88,7 @@ class EvolvedFightsClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_3x', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(

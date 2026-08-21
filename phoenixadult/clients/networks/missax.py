@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 _SEARCH_DATE_XP = (
     './/span[@class="update_thumb_date"] | .//span[@class="date"] | .//div[contains(@class,"updateDetails")]/p/span[2] | .//div[contains(@class,"update_date")]'
@@ -102,8 +102,7 @@ class MissaXClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//img[contains(@class,"model_bio_thumb")])[1]/@src0_1x', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(_CAST_XP):

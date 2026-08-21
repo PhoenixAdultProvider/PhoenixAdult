@@ -13,6 +13,9 @@ _NURSE_RE = re.compile(r'\bNurses?\b')
 
 
 class DerangedDollarsClient(Client):
+    title_xpath = '(//h3[contains(@class,"mas_title")])[1]'
+    summary_xpath = '(//p[contains(@class,"mas_longdescription")])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         candidates = await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS])
 
@@ -69,16 +72,6 @@ class DerangedDollarsClient(Client):
         return entries
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//p[contains(@class,"mas_longdescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

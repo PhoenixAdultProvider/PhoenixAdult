@@ -8,6 +8,8 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 
 
 class WankzVRClient(Client):
+    title_xpath = '(//h1[contains(@class,"detail__title")])[1]'
+    summary_xpath = '(//div[contains(@class,"detail__txt")])[1]'
     genres_xpath = '//div[contains(@class,"tag-list")]//a'
 
     def __init__(self) -> None:
@@ -74,16 +76,6 @@ class WankzVRClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"detail__title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"detail__txt")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

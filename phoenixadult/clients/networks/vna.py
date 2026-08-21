@@ -9,6 +9,8 @@ _SCENE_ACTORS: dict[str, list[str]] = {'36260': ['Sarah Arabic']}
 
 
 class VNAClient(Client):
+    title_xpath = '(//h1[contains(@class,"customhcolor")])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         text = search_data.title.strip()
@@ -60,11 +62,6 @@ class VNAClient(Client):
         return (details_page_elements.xpath('(//h4[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip()
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"customhcolor")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

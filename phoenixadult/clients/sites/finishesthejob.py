@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import append_unique, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
@@ -17,21 +17,13 @@ def _norm(s: str) -> str:
 
 class FinishesTheJobClient(Client):
     search_url_xpath = '(.//a/@href)[1]'
+    search_rows_xpath = '//div[contains(@class,"scene")]'
     title_xpath = '//span[@itemprop="name"]'
     summary_xpath = '//p[@itemprop="description"]'
     genres_xpath = '//p[contains(.,"Categories")]//a'
     actors_xpath = '//h2[contains(.,"Starring")]//a'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//div[contains(@class,"scene")]'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h3[@itemprop="name"]')

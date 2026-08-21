@@ -17,6 +17,9 @@ _PLAYLIST_THUMB_RE = re.compile(r"""<media:thumbnail[^>]*\burl=["']([^"']+)["']"
 
 
 class DirtyHardDriveClient(Client):
+    title_xpath = '(//h1)[1]'
+    summary_xpath = '(//div[@id="video-page-desc"])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         candidates = [u for u in await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS]) if u.endswith(_URL_ENDS_WITH)]
 
@@ -42,16 +45,6 @@ class DirtyHardDriveClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[@id="video-page-desc"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

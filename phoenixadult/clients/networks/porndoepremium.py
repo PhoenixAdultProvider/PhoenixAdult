@@ -11,6 +11,8 @@ _TITLE_SEL = './/div[@class="-g-vc-item-title"]//a'
 
 
 class PorndoePremiumClient(Client):
+    title_xpath = '(//h1[@class="-mvd-heading"])[1]'
+    summary_xpath = '(//div[@class="-mvd-description"])[1]'
     genres_xpath = '//span[@class="-mvd-list-item"]/a'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
@@ -42,16 +44,6 @@ class PorndoePremiumClient(Client):
         return (details_page_elements.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[@class="-mvd-heading"])[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[@class="-mvd-description"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

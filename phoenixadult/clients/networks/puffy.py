@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'Puffy Network'
 _SEARCH_CARD = '//div[@style="position:relative; background:black;"]'
@@ -14,6 +14,7 @@ _SEARCH_CARD = '//div[@style="position:relative; background:black;"]'
 
 class PuffyClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//div/section[1]/div[2]/h2/span)[1]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
@@ -33,11 +34,6 @@ class PuffyClient(Client):
         return loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div/section[1]/div[2]/h2/span)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -86,8 +82,7 @@ class PuffyClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div/section[1]/div/div[1]/img)[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div/section[1]/div/div[1]/img)[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div/section[2]/dl/dd[1]/a'):

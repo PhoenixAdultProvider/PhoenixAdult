@@ -34,6 +34,8 @@ _MAX_GALLERY_IMAGES = 600
 
 
 class BadoinkVrClient(Client):
+    summary_xpath = ('(//div[contains(@class,"video-description-container")])[1]', '(//p[contains(@class,"video-description")])[1]')
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         cleaned = _mangle(search_data.title)
@@ -121,21 +123,6 @@ class BadoinkVrClient(Client):
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
         metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        summary_xpaths = (
-            '(//div[contains(@class,"video-description-container")])[1]',
-            '(//p[contains(@class,"video-description")])[1]',
-        )
-        for xpath in summary_xpaths:
-            summary = (details_page_elements.xpath(xpath).xpath('normalize-space(.)').get() or '').strip()
-            if summary:
-                metadata.summary = summary
-                return
-
-        metadata.summary = ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

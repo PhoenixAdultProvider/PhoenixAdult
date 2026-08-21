@@ -62,3 +62,29 @@ async def test_a_missing_node_yields_empty_not_an_error() -> None:
     detail = SceneDetail(title='old')
     await _Missing().fetch_title(_scene(), detail)
     assert detail.title == ''
+
+
+async def test_several_xpaths_are_tried_in_order() -> None:
+    class _Fallback(Client):
+        title_xpath = ('//h2', '//h1')
+
+    detail = SceneDetail()
+    await _Fallback().fetch_title(_scene(), detail)
+    assert detail.title == 'A Wild Scene', 'the first xpath that yields text wins'
+
+
+async def test_a_tuple_that_matches_nothing_yields_empty() -> None:
+    class _NoneMatch(Client):
+        summary_xpath = ('//nope', '//also-nope')
+
+    detail = SceneDetail(summary='old')
+    await _NoneMatch().fetch_summary(_scene(), detail)
+    assert detail.summary == ''
+
+
+def test_search_rows_is_declarative_too() -> None:
+    class _Rows(Client):
+        search_rows_xpath = '//div[@class="row"]'
+
+    assert _Rows().search_rows_xpath == '//div[@class="row"]'
+    assert Client.search_rows_xpath is None, 'a client that declares nothing keeps the old no-op behavior'

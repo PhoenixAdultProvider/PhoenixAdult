@@ -19,6 +19,8 @@ def _lang_headers(language: str | None) -> dict[str, str]:
 
 
 class PrivateClient(Client):
+    title_xpath = '(//h1)[1]'
+
     async def _fetch_localized(self, url: str, language: str | None, capture: list[RawCaptureEntry] | None, label: str) -> dict[str, Any] | None:
         try:
             r = await self.http.get(url, headers=_lang_headers(language))
@@ -90,11 +92,6 @@ class PrivateClient(Client):
         return (details_page_elements.xpath('(//li[@class="tag-sites"]//a)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

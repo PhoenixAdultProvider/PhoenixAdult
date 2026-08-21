@@ -11,6 +11,8 @@ _SEARCH_PAGES = 5
 
 
 class WowNetworkClient(Client):
+    title_xpath = '(//h1[contains(@class,"entry-title")])[last()]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         slug = search_data.encoded
@@ -44,11 +46,6 @@ class WowNetworkClient(Client):
         results.extend(await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=_SEARCH_PAGES, stop_on_empty_page=True))
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"entry-title")])[last()]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -50,6 +50,8 @@ __testing__ = {'photo_lookup': _photo_lookup, 'parse_title_and_date': _parse_tit
 
 
 class FTVClient(Client):
+    summary_xpath = '(//div[@id="Bio"])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         candidates: list[str] = []
@@ -107,11 +109,6 @@ class FTVClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _parse_title_and_date(details_page_elements)[0] or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[@id="Bio"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

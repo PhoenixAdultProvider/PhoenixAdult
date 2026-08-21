@@ -2,27 +2,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, relative_iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 
 class CumLouderClient(Client):
     search_url_xpath = '@href'
+    search_rows_xpath = '//div[contains(@class,"listado-escenas")]//div[contains(@class,"medida")]/a'
     title_xpath = '//h1'
     summary_xpath = '//div[@id="content-more-less"]/p'
     actors_xpath = '//a[contains(@class,"pornstar-link")]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//div[contains(@class,"listado-escenas")]//div[contains(@class,"medida")]/a'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/h2')

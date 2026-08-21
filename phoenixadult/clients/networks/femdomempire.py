@@ -13,6 +13,9 @@ _MANUAL_MATCHES: dict[str, dict[str, str]] = load_data(__file__, 'femdomempire_m
 
 
 class FemdomEmpireClient(Client):
+    title_xpath = '(//div[contains(@class,"videoDetails")]//h3)[1]'
+    summary_xpath = '(//div[contains(@class,"videoDetails")]//p)[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -69,16 +72,6 @@ class FemdomEmpireClient(Client):
             parse_rows(standard_search_results['sel'])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"videoDetails")]//h3)[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"videoDetails")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

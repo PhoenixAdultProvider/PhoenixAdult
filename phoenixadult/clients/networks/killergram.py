@@ -27,6 +27,8 @@ def _header_sibling(sel: Any, needle: str) -> str:
 
 
 class KillergramClient(Client):
+    summary_xpath = '(//table[contains(@class,"episodetext")]//tr)[5]//td[2]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         scene_id = search_data.title.strip().split()[0] if search_data.title.strip() else ''
         if not scene_id:
@@ -73,11 +75,6 @@ class KillergramClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _extract_title(details_page_elements) or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//table[contains(@class,"episodetext")]//tr)[5]//td[2]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

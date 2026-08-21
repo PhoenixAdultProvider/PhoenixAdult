@@ -13,6 +13,8 @@ def _clean_title(raw: str) -> str:
 
 
 class VIP4KClient(Client):
+    summary_xpath = '(//div[contains(@class,"player-description__text")])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
 
@@ -82,11 +84,6 @@ class VIP4KClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _clean_title(details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '') or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"player-description__text")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

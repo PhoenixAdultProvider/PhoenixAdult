@@ -12,6 +12,8 @@ STUDIO = 'Wankz'
 
 class WankzClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//div[contains(@class,"title")]//h1)[1]'
+    summary_xpath = '(//div[contains(@class,"description")]//p)[1]'
     genres_xpath = '//a[contains(@class,"cat")] | //p[@style]//a'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
@@ -39,16 +41,6 @@ class WankzClient(Client):
         return (source.xpath('(.//div[contains(@class,"series-container")]//a[contains(@class,"sitename")])[1]').xpath('string(.)').get() or '').strip() or None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"title")]//h1)[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"description")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

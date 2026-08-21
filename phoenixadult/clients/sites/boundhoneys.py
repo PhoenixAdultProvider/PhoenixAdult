@@ -7,7 +7,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 
 _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " update ")]'
 
@@ -39,8 +39,7 @@ class BoundHoneysClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"modelDetailPhoto")]//img/@src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div[contains(@class,"updateModelsList")]//a'):

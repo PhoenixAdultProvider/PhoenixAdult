@@ -13,6 +13,8 @@ STUDIO = 'New Sensations'
 
 class NewSensationsOtherClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//div[@class="update_title"])[1]'
+    summary_xpath = '(//span[@class="update_description"])[1]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
@@ -79,16 +81,6 @@ class NewSensationsOtherClient(Client):
         )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[@class="update_title"])[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//span[@class="update_description"])[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -4,7 +4,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
-from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 
@@ -133,8 +133,7 @@ class NewSensationsClient(Client):
         xp = '//span[@class="tour_update_models"]/a' if self._is_dvd(scene) else '//div[@class="sceneTextLink"]//span[@class="tour_update_models"]/a'
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[@class="modelBioPic"]/img)[1]/@src0_3x')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[@class="modelBioPic"]/img)[1]/@src0_3x', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(xp):

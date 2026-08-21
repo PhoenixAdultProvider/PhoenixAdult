@@ -20,6 +20,9 @@ def _resolve_tagline(link_text: str) -> str:
 
 
 class IntersecClient(Client):
+    title_xpath = '(//div[contains(@class,"has-text-weight-bold")])[1]'
+    summary_xpath = '(//div[contains(@class,"has-text-white-ter")])[3]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         scene_url = search_data.search_url()
@@ -71,16 +74,6 @@ class IntersecClient(Client):
         return _resolve_tagline(link_text)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//div[contains(@class,"has-text-weight-bold")])[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"has-text-white-ter")])[3]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

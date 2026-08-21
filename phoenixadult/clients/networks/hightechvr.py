@@ -33,6 +33,8 @@ def _tagline_from_title(raw: str) -> str:
 
 
 class HighTechVRClient(Client):
+    title_xpath = '(//h1)[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         scene_url = search_data.search_url(slugify(search_data.title))
         direct_page_elements = await self.fetch_and_load(
@@ -66,11 +68,6 @@ class HighTechVRClient(Client):
         return _tagline_from_title(raw) if raw else None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

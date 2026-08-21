@@ -8,6 +8,9 @@ STUDIO = 'Thick Cash'
 
 
 class ThickCashOtherClient(Client):
+    title_xpath = '(//h3[contains(@class,"top-title")])[1]'
+    summary_xpath = '(//div[contains(@class,"player-box")]//p)[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         base = search_data.site_info.base_url.rstrip('/')
         seen: set[str] = set()
@@ -56,16 +59,6 @@ class ThickCashOtherClient(Client):
                         await add_scene(absolute_url(href, search_data.site_info.base_url))
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h3[contains(@class,"top-title")])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"player-box")]//p)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text, web_search_urls
 
 _DESCRIPTION_RE = re.compile(r'description:\s*', re.IGNORECASE)
 _RELEASED_XP = '//div[contains(@class,"released2") and contains(@class,"trailerStarr")]'
@@ -90,8 +90,7 @@ class HotwifeXXXClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"modelBioPic")]//img/@src0_3x)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(_CAST_XP):

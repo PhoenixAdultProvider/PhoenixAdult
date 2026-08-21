@@ -7,7 +7,7 @@ from parsel import Selector
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, join_url, load_data
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'LittleCaprice'
 
@@ -15,6 +15,7 @@ _CATEGORY_TAGLINES: dict[str, str] = load_data(__file__, 'littlecaprice_category
 
 
 class LittleCapriceClient(Client):
+    summary_xpath = '(//div[contains(@class,"desc-text")])[1]'
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -93,11 +94,6 @@ class LittleCapriceClient(Client):
 
         metadata.title = title or ''
 
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"desc-text")])[1]').xpath('string(.)').get() or '').strip() or ''
-
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
 
@@ -143,8 +139,7 @@ class LittleCapriceClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//img[contains(@class,"img-poster")])[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//img[contains(@class,"img-poster")])[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//div[contains(@class,"project-models")]//a'):

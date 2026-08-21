@@ -4,7 +4,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _DATE_XP = (
@@ -65,8 +65,7 @@ class LustRealityClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"u-ratio--model-poster")]//img/@data-src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"u-ratio--model-poster")]//img/@data-src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath('//a[contains(@href,"/pornstars/model/")]'):

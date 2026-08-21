@@ -13,6 +13,9 @@ def _is_qs_actor(tag: str) -> bool:
 
 
 class QueenSnakeClient(Client):
+    title_xpath = '(//span[@class="contentFilmName"])[1]'
+    summary_xpath = '(//div[@class="contentPreviewDescription"])[1]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': 'cLegalAge=true'})
 
@@ -49,16 +52,6 @@ class QueenSnakeClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//span[@class="contentFilmName"])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[@class="contentPreviewDescription"])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]

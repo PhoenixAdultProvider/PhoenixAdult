@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from w3lib.html import remove_tags, replace_entities
 from w3lib.url import add_or_replace_parameter
 
+from phoenixadult.utils.helpers.helpers import absolute_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines import SearchOptions, web_search
 
@@ -70,6 +71,11 @@ def first_text(node: Selector, xpath: str) -> str:
 
 def first_attr(node: Node, xpath: str = 'string(.)') -> str:
     return (node.xpath(xpath).get() or '').strip()
+
+
+def absolute_first_attr(node: Node, xpath: str, base_url: str) -> str:
+    raw = first_attr(node, xpath)
+    return absolute_url(raw, base_url) if raw else ''
 
 
 def meta_content(node: Selector, key: str, attr: str | None = None) -> str:

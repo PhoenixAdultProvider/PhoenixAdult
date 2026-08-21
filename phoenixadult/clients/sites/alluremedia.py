@@ -30,6 +30,9 @@ def _ptx_srcs(script: str, key: str) -> list[str]:
 
 
 class AllureMediaClient(Client):
+    title_xpath = '(//title)[1]'
+    summary_xpath = '(//span[contains(@class,"update_description")])[1]'
+
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
         search_url = _search_url_for(search_data.site_info, search_data.title)
         search_results = await self.fetch_and_load(
@@ -68,16 +71,6 @@ class AllureMediaClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//span[contains(@class,"update_description")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

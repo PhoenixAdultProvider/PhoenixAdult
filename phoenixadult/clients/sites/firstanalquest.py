@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 
 _CARD_XP = '//li[contains(concat(" ", normalize-space(@class), " "), " thumb ")]'
 _MODELS_XP = '//ul[contains(.,"Models:")]//li//a'
@@ -74,8 +74,7 @@ class FirstAnalQuestClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"model-box")]//img/@src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"model-box")]//img/@src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(_MODELS_XP):

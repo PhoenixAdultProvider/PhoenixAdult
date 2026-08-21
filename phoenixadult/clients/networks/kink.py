@@ -28,6 +28,8 @@ def _kink_tagline(channel_text: str, fallback: str) -> str:
 
 
 class KinkClient(Client):
+    title_xpath = '(//h1[contains(@class,"fs-0")])[1]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': _VIEWING_COOKIE})
 
@@ -113,11 +115,6 @@ class KinkClient(Client):
         return await self.resolve_actor_photos(refs, extract_photo, capture=None)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"fs-0")])[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

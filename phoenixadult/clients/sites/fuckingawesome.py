@@ -4,28 +4,20 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
 
 _ACTOR_XP = '//div[contains(@class,"pornstarnames")]//ul//li//a[contains(@href,"pornstars")]'
 
 
 class FuckingAwesomeClient(Client):
     search_url_xpath = '(.//div[contains(@class,"video-title") and contains(@class,"truncate")]/a/@href)[1]'
+    search_rows_xpath = '//div[contains(@class,"gallery")]/div'
     title_xpath = '//h1'
     summary_xpath = '//div[contains(@class,"more") and contains(@class,"text-justify")]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
-
-    async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
-        url = search_data.search_url()
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search "{search_data.title}"')
-        if not search_results:
-            return None
-
-        sources = list(search_results['sel'].xpath('//div[contains(@class,"gallery")]/div'))
-        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
 
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
         return first_text(source, './/div[contains(@class,"video-title") and contains(@class,"truncate")]/a')
@@ -73,8 +65,7 @@ class FuckingAwesomeClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[contains(@class,"pornstar-pic")]//img/@src)[1]')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[contains(@class,"pornstar-pic")]//img/@src)[1]', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(_ACTOR_XP):

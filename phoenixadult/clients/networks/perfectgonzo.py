@@ -6,7 +6,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 
 STUDIO = 'Perfect Gonzo'
 _SUMMARY_DIV = 'col-sm-8 col-md-8 no-padding-side'
@@ -17,6 +17,7 @@ _DATE_DIV = 'col-sm-6 col-md-6 no-padding-left no-padding-right text-right'
 
 class PerfectGonzoClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
+    title_xpath = '(//h2)[1]'
 
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
@@ -37,11 +38,6 @@ class PerfectGonzoClient(Client):
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h2)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -86,8 +82,7 @@ class PerfectGonzoClient(Client):
         base = scene.site.base_url
 
         def extract_photo(sel: Selector) -> str:
-            raw = first_attr(sel, '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src')
-            return absolute_url(raw, base) if raw else ''
+            return absolute_first_attr(sel, '(//div[@class="col-md-8 bigmodelpic"]/img)[1]/@src', base)
 
         refs: list[tuple[str, str]] = []
         for actor_link in details_page_elements.xpath(f'//div[@class="{_ACTOR_DIV}"]/p/a'):

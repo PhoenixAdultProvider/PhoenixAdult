@@ -11,6 +11,9 @@ _DOLLS_SITE = 'Czech Real Dolls'
 
 
 class PornCZClient(Client):
+    title_xpath = '(//h1)[1]'
+    summary_xpath = '(//div[contains(@class,"dmb-1")]/p)[1]'
+
     # ── Search Field Hooks ────────────────────────────────────────────────────
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
@@ -38,16 +41,6 @@ class PornCZClient(Client):
         return absolute_url(thumb, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"dmb-1")]/p)[1]').xpath('string(.)').get() or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO

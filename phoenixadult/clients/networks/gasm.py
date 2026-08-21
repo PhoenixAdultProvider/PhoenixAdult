@@ -12,6 +12,8 @@ _CHANNELS: dict[str, str] = load_data(__file__, 'gasm_channels')
 
 
 class GasmClient(Client):
+    title_xpath = '(//h1[contains(@class,"post_title")]//span)[1]'
+
     def __init__(self) -> None:
         super().__init__({'Cookie': 'WarningModal=true'})
 
@@ -83,11 +85,6 @@ class GasmClient(Client):
         return title_case(raw, site_name=scene.site.name) if raw else ''
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"post_title")]//span)[1]').xpath('string(.)').get() or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
