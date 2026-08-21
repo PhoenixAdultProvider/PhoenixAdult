@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
 from phoenixadult.utils.images import logo_cache
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 
 @pytest.fixture()

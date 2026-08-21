@@ -5,7 +5,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent
+_ROOT = Path(__file__).resolve().parents[2]
 _OPTIONAL = {'cv2', 'numpy', 'playwright', 'curl_cffi', 'cairosvg'}
 _LOCAL = {'phoenixadult', 'tests', 'scripts'}
 _IMPORT_NAMES = {

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from phoenixadult.app_factory import create_app
 from phoenixadult.registry import get_all_providers
 from phoenixadult.utils.plex.media_type import provider_mount_path
-from tests.conftest import PLEX_UA, plex_client, seed_connection
+from tests.support import PLEX_UA, plex_client, seed_connection
 
 MOUNT = provider_mount_path(get_all_providers()[0])
 
@@ -111,7 +111,7 @@ def test_client_token_required_gates_matches_but_never_the_provider_url(monkeypa
 
 
 def test_a_signed_in_session_does_not_bypass_the_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.conftest import authed_client
+    from tests.support import authed_client
 
     monkeypatch.setenv('TOKEN_BASED_AUTH', 'true')
     admin = authed_client()

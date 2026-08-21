@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent / 'phoenixadult'
+_ROOT = Path(__file__).resolve().parents[2] / 'phoenixadult'
 
 _LAYERS = ('models', 'config', 'utils', 'registry', 'clients', 'mappers', 'services', 'routes')
 _RANK = {name: i for i, name in enumerate(_LAYERS)}

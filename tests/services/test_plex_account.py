@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from phoenixadult.services import plex_account
-from tests.conftest import seed_connection
+from tests.support import seed_connection
 
 BASE = 'http://192.0.2.10:32400'
 

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from phoenixadult.app_factory import create_app
 from phoenixadult.clients.base import SearchResult
 from phoenixadult.utils.cache import search_store
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 _APIS = ('/searches/api/purge', '/searches/api/purge-site', '/searches/api/purge-all', '/searches/api/sweep', '/searches/api/research')
 

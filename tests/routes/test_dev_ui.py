@@ -11,7 +11,7 @@ from phoenixadult.clients.base import SceneDetail
 from phoenixadult.models.metadata import PlexMetadata
 from phoenixadult.utils.helpers.helpers import b64url_encode
 from phoenixadult.utils.plex.rating_key import to_rating_key
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 TOKEN = 'devtoken'
 

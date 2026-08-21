@@ -4,7 +4,7 @@ import re
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 UK_SPELLINGS = (
     'colour',
@@ -44,7 +44,7 @@ EXEMPT = (
     'tests/health/fixtures.json',
     'phoenixadult/clients/',
     'phoenixadult/utils/genres/_data/',
-    'tests/test_us_english.py',
+    'tests/framework/test_us_english.py',
     'package-lock.json',
 )
 

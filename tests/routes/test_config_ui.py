@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 TOKEN = 'cfgtoken'
 

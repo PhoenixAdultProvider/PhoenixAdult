@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
 from phoenixadult.services import plex_reconcile
-from tests.conftest import authed_client, seed_connection
+from tests.support import authed_client, seed_connection
 
 BASE = 'http://192.0.2.10:32400'
 

@@ -331,7 +331,7 @@ class _OneItemClient:
 
 @pytest.mark.asyncio
 async def test_import_item_imports_exactly_one_scene(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.conftest import seed_connection
+    from tests.support import seed_connection
 
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setattr(plex_import, 'PlexClient', _OneItemClient)
@@ -344,7 +344,7 @@ async def test_import_item_imports_exactly_one_scene(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.asyncio
 async def test_import_item_reports_a_vanished_item(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.conftest import seed_connection
+    from tests.support import seed_connection
 
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setattr(plex_import, 'PlexClient', _OneItemClient)

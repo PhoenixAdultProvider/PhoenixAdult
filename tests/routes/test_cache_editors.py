@@ -13,7 +13,7 @@ from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.images import image_fetcher
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 SITE = 'Brazzers'
 CUR_ID = 'cur1'

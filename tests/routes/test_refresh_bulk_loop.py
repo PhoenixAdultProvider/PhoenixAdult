@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 
 def test_bulk_refresh_looks_up_labels_once_not_once_per_scene(monkeypatch: pytest.MonkeyPatch) -> None:

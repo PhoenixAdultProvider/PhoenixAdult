@@ -6,7 +6,7 @@ from pathlib import Path
 import phoenixadult
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 
-_PYPROJECT = Path(__file__).resolve().parent.parent / 'pyproject.toml'
+_PYPROJECT = Path(__file__).resolve().parents[2] / 'pyproject.toml'
 
 
 def _project() -> dict[str, object]:

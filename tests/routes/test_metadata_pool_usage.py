@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 
 @pytest.fixture()

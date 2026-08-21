@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import phoenixadult
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 
 def test_the_config_page_shows_the_running_version() -> None:

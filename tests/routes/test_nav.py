@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.routes import render_nav
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 PAGES = (
     ('/metadata', 'Metadata'),

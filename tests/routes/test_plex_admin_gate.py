@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
 from phoenixadult.utils.auth import user_store
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 _SHARED_STATE = [
     '/plex/connections/1/verify',

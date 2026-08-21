@@ -8,7 +8,7 @@ import respx
 
 from phoenixadult.services import plex_reconcile as pr
 from phoenixadult.utils.cache import scene_store
-from tests.conftest import seed_connection
+from tests.support import seed_connection
 
 BASE = 'http://192.0.2.10:32400'
 GUID = 'tv.plex.agents.custom.phoenixadult://movie/scene-brazzers-abc123'

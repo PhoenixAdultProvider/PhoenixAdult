@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.routes.metadata_cache_routes import _SCOPE_FIELDS, EntryFilters
-from tests.conftest import authed_client
+from tests.support import authed_client
 
 
 def test_an_unknown_sort_falls_back_instead_of_reaching_sql() -> None:

@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
-from tests.conftest import authed_cookies
+from tests.support import authed_cookies
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def test_the_page_watches_instead_of_polling_on_a_timer(client: TestClient) -> N
 
 
 def test_admins_can_pause_and_resume_one_queue() -> None:
-    from tests.conftest import authed_client
+    from tests.support import authed_client
 
     client = authed_client()
     r = client.post('/queue/api/pause', json={'kind': 'search'})
@@ -55,7 +55,7 @@ def test_admins_can_pause_and_resume_one_queue() -> None:
 
 def test_a_bare_resume_still_lifts_the_global_pause() -> None:
     from phoenixadult.services import scrape_queue
-    from tests.conftest import authed_client
+    from tests.support import authed_client
 
     scrape_queue.pause('test pause', 500)
     client = authed_client()
@@ -64,7 +64,7 @@ def test_a_bare_resume_still_lifts_the_global_pause() -> None:
 
 
 def test_admins_can_remove_a_single_queued_job() -> None:
-    from tests.conftest import authed_client
+    from tests.support import authed_client
 
     client = authed_client()
     assert client.post('/queue/api/remove', json={'key': 'not-there'}).status_code == 404

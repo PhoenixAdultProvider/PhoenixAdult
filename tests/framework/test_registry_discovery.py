@@ -9,7 +9,7 @@ from phoenixadult.registry import SITE_DEFINITIONS
 from phoenixadult.registry.selectors import _MERGED_SEPARATELY, _discover, _site_lists
 from phoenixadult.registry.selectors import SITE_DEFINITIONS as SELECTOR_SITES
 
-_SELECTORS = pathlib.Path(__file__).resolve().parent.parent / 'phoenixadult' / 'registry' / 'selectors'
+_SELECTORS = pathlib.Path(__file__).resolve().parents[2] / 'phoenixadult' / 'registry' / 'selectors'
 
 
 def test_the_site_table_is_the_size_we_expect() -> None:

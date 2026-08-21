@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from phoenixadult.registry import get_all_providers
 from phoenixadult.utils.plex.media_type import provider_mount_path
-from tests.conftest import plex_client
+from tests.support import plex_client
 
 MOUNT = provider_mount_path(get_all_providers()[0])
 
