@@ -114,6 +114,38 @@ async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any]
 # ── POST /Dev/Test ────────────────────────────────────────────────────────────
 
 
+def _searched_url(raw_results: list[Any] | None, captures: list[RawCaptureEntry]) -> str:
+    direct = next((r.search_url for r in raw_results if r.search_url), None) if raw_results else None
+    if direct:
+        return str(direct)
+    first_get = next((c for c in captures if c.label.startswith('GET ')), None)
+    return first_get.label[4:].split(' ')[0].strip() if first_get else ''
+
+
+def _score_results(raw_results: list[Any], *, site: Any, parsed: Any, query: str, provider_id: str) -> list[dict[str, Any]]:
+    filename_site = canonical_site_display(parsed.site_token)
+
+    def rating_key(cur_id: str, sub: str | None) -> str:
+        sub = sub if sub and normalize_site_key(sub) != normalize_site_key(site.name) else None
+        return to_rating_key(embed_subsite(cur_id, sub), site.name, parsed.date)
+
+    scored = [
+        {
+            'title': title_case(r.title, site_name=site.name, scraper_type=site.scraper_config.type),
+            'sceneURL': r.scene_url,
+            'curID': r.cur_id,
+            'displayDate': r.display_date,
+            'thumbUrl': r.thumb_url,
+            'score': r.score if r.score is not None else title_distance_score(query, r.title),
+            'ratingKey': rating_key(r.cur_id, r.subsite or filename_site),
+            'providerId': provider_id,
+        }
+        for r in raw_results
+    ]
+    scored.sort(key=lambda x: x['score'], reverse=True)
+    return scored
+
+
 @router.post('/test')
 async def dev_test(request: Request) -> JSONResponse:
     body = await read_json_body(request)
@@ -217,13 +249,7 @@ async def dev_test(request: Request) -> JSONResponse:
             )
         )
 
-        from_result = next((r.search_url for r in raw_results if r.search_url), None) if raw_results else None
-        resolved = from_result or ''
-        if not resolved:
-            first_get = next((c for c in captures if c.label.startswith('GET ')), None)
-            if first_get:
-                resolved = first_get.label[4:].split(' ')[0].strip()
-        step4_data['searchURL'] = resolved
+        step4_data['searchURL'] = _searched_url(raw_results, captures)
 
         if raw_results is None:
             steps.append(
@@ -239,26 +265,7 @@ async def dev_test(request: Request) -> JSONResponse:
 
         log_search_count(provider.id, site.name, pieces.query, len(raw_results))
 
-        filename_site = canonical_site_display(parsed.site_token)
-
-        def _rating_key(cur_id: str, sub: str | None) -> str:
-            sub = sub if sub and normalize_site_key(sub) != normalize_site_key(site.name) else None
-            return to_rating_key(embed_subsite(cur_id, sub), site.name, parsed.date)
-
-        scored: list[dict[str, Any]] = [
-            {
-                'title': title_case(r.title, site_name=site.name, scraper_type=site.scraper_config.type),
-                'sceneURL': r.scene_url,
-                'curID': r.cur_id,
-                'displayDate': r.display_date,
-                'thumbUrl': r.thumb_url,
-                'score': r.score if r.score is not None else title_distance_score(pieces.query, r.title),
-                'ratingKey': _rating_key(r.cur_id, r.subsite or filename_site),
-                'providerId': provider.id,
-            }
-            for r in raw_results
-        ]
-        scored.sort(key=lambda x: x['score'], reverse=True)
+        scored = _score_results(raw_results, site=site, parsed=parsed, query=pieces.query, provider_id=provider.id)
 
         steps.append(
             {

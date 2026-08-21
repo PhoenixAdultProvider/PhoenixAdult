@@ -128,10 +128,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
         pools.shutdown()
 
 
-def create_app() -> FastAPI:
-    configure_logging()
-    app = FastAPI(title='PhoenixAdult Provider', version=__version__, lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-
+def _install_middleware(app: FastAPI) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
 
@@ -155,6 +152,8 @@ def create_app() -> FastAPI:
 
     app.add_middleware(HookPathMiddleware)
 
+
+def _mount_routers(app: FastAPI) -> None:
     # ── Authentication (login / setup / logout / account) ────────────────────
     from phoenixadult.routes import auth_routes
 
@@ -199,6 +198,8 @@ def create_app() -> FastAPI:
     # ── Dev / Test UI (off unless DEV_UI_ENABLE, admin-guarded) ──────────────
     app.include_router(dev_routes.router, prefix='/dev')
 
+
+def _install_error_pages(app: FastAPI) -> None:
     # ── Image Guard 403 (HTML page for browsers, JSON for API callers) ───────
     from phoenixadult.utils.auth.image_guard import FORBIDDEN_PAGE, ImageAccessDenied
 
@@ -224,6 +225,8 @@ def create_app() -> FastAPI:
         target = request.url.path + (f'?{request.url.query}' if request.url.query else '')
         return Response(status_code=302, headers={'Location': f'/login?next={quote(target)}'})
 
+
+def _install_static_routes(app: FastAPI) -> None:
     # ── Health ───────────────────────────────────────────────────────────────
     @app.get('/health')
     async def health() -> dict[str, str]:
@@ -258,6 +261,14 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail='unknown font')
         return FileResponse(_html_dir / 'fonts' / f'{name}.woff2', media_type='font/woff2', headers={'Cache-Control': 'public, max-age=31536000, immutable'})
 
+
+def create_app() -> FastAPI:
+    configure_logging()
+    app = FastAPI(title='PhoenixAdult Provider', version=__version__, lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    _install_middleware(app)
+    _mount_routers(app)
+    _install_error_pages(app)
+    _install_static_routes(app)
     return app
 
 
