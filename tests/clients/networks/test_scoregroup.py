@@ -36,7 +36,7 @@ async def test_search_posts_the_query_as_form_data() -> None:
         '<a class="title" href="https://scoreland.com/big-boob-videos/jane/777/">Cool Scene</a>'
         '<small class="i-model">Jane Doe</small><img src="https://cdn/t.jpg" /></div>'
     )
-    route = respx.post('https://scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
+    route = respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
     await ScoreGroupClient().search(results, _ctx(scene_id='777'))
 
@@ -68,7 +68,9 @@ async def test_detail() -> None:
             </body></html>""",
         )
     )
-    respx.get('https://scoreland.com/model/jane').mock(return_value=httpx.Response(200, text='<div class="item-img"><img src="https://cdn/jane.jpg" /></div>'))
+    respx.get('https://www.scoreland.com/model/jane').mock(
+        return_value=httpx.Response(200, text='<div class="item-img"><img src="https://cdn/jane.jpg" /></div>')
+    )
     detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
     assert detail is not None
     assert detail.title == 'Cool Scene'
@@ -80,3 +82,17 @@ async def test_detail() -> None:
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://cdn/jane.jpg'
     assert detail.art == ['https://cdn/p.jpg']
+
+
+@respx.mock
+async def test_a_join_promo_row_is_not_a_scene() -> None:
+    html = (
+        '<div class="compact video">'
+        '<a class="i-title" href="https://join.scoreland.com/track/abc/join">Join Now</a>'
+        '<small class="i-model">Jane Doe</small><img src="https://cdn/t.jpg" /></div>'
+    )
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx())
+
+    assert results == [], 'anonymous search rows link to /join, which is not a scene url'

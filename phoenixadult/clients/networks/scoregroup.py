@@ -31,7 +31,8 @@ class ScoreGroupClient(Client):
         base = search_data.site_info.base_url.rstrip('/')
         url = base + _SEARCH_PATH
         form = {'keywords': search_data.title, **_SEARCH_FILTERS}
-        search_results = await self.fetch_and_load(url, FetchCtx(capture=search_data.capture), f'[{search_data.site_info.name}] search {url}', form=form)
+        ctx = FetchCtx(capture=search_data.capture, use_bypass=search_data.site_info.use_bypass)
+        search_results = await self.fetch_and_load(url, ctx, f'[{search_data.site_info.name}] search {url}', form=form)
         sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
 
         video_list_path = search_data.site_info.search_path or '/'
@@ -53,7 +54,8 @@ class ScoreGroupClient(Client):
     async def build_search_results(self, source: Any, loaded: LoadedSearch, results: list[SearchResult]) -> None:
         ctx = loaded.ctx
         if isinstance(source, dict) and '_url' in source:
-            details_page_elements = await self.fetch_and_load(source['_url'], FetchCtx(capture=ctx.capture), f'[{loaded.site.name}] candidate {source["_url"]}')
+            fetch_ctx = FetchCtx(capture=ctx.capture, use_bypass=loaded.site.use_bypass)
+            details_page_elements = await self.fetch_and_load(source['_url'], fetch_ctx, f'[{loaded.site.name}] candidate {source["_url"]}')
             if not details_page_elements:
                 return
 
@@ -83,7 +85,10 @@ class ScoreGroupClient(Client):
 
         scene_url = absolute_url(href, loaded.site.base_url)
         m = _ID_RE.search(scene_url)
-        score = 100 if ctx.scene_id and m and m.group(1) == ctx.scene_id else None
+        if not m:
+            return
+
+        score = 100 if ctx.scene_id and m.group(1) == ctx.scene_id else None
         packed = json.dumps(
             {
                 'url': scene_url,

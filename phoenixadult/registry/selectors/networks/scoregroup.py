@@ -13,12 +13,13 @@ def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
     return make_site(
         name=name,
         provider_name=PROVIDER_NAME,
-        base_url=f'https://{host}',
+        base_url=f'https://www.{host}',
         search_path=video_list_path,
         content_type=PROVIDER_CONTENT_TYPE,
         search_method=PROVIDER_SEARCH_METHOD,
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='scoregroup',
+        use_bypass=True,
     )
 
 

@@ -290,7 +290,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError as err:
-            logger.warn('scrape', f'{verb} {url} never returned a response: {type(err).__name__}: {err}')
+            logger.debug(f'{verb} {url} never returned a response: {type(err).__name__}: {err}')
             return None
         except Exception as err:  # noqa: BLE001 - one unreachable page must not end the whole search
             logger.warn('scrape', f'{verb} {url} raised before a response arrived: {err!r}')
