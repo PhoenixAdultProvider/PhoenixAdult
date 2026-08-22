@@ -183,3 +183,59 @@ async def test_the_log_and_the_sink_carry_the_same_bodies(verbose_records: list[
         assert entry.body in dumped, f'{entry.label} reached the dev UI but not the log'
     assert len(entries) == 3, 'a refusal and a json payload both belong in the dev UI, not just the page that worked'
     assert [e.content_type for e in entries] == ['html', 'html', 'json']
+
+
+@respx.mock
+async def test_a_page_with_no_content_type_is_still_dumped(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/bare').mock(return_value=httpx.Response(200, content=b'<h1>Unlabelled</h1>', headers={'content-type': ''}))
+    await _C().fetch_and_load('https://example.test/bare', FetchCtx())
+
+    assert 'Unlabelled' in _bodies(verbose_records), 'a server that omits content-type must not silence the dump'
+
+
+@respx.mock
+async def test_an_odd_text_type_is_still_dumped(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/odd').mock(return_value=httpx.Response(200, content=b'<h1>Odd</h1>', headers={'content-type': 'httpd/unix-directory'}))
+    await _C().fetch_and_load('https://example.test/odd', FetchCtx())
+
+    assert 'Odd' in _bodies(verbose_records), 'only known binary types are skipped, not everything unrecognised'
+
+
+@respx.mock
+async def test_unlabelled_json_is_still_pretty_printed(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/bare.json').mock(return_value=httpx.Response(200, content=b'{"b":2,"a":[1]}', headers={'content-type': ''}))
+    await _C().fetch_json('https://example.test/bare.json')
+
+    assert _bodies(verbose_records).count('"a": [') == 1
+    assert '"b": 2' in _bodies(verbose_records)
+
+
+@respx.mock
+async def test_an_oversized_body_is_skipped_by_declared_length(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.logging.response_trace import MAX_TRACE_BYTES
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/huge').mock(
+        return_value=httpx.Response(200, content=b'x', headers={'content-type': 'text/plain', 'content-length': str(MAX_TRACE_BYTES + 1)})
+    )
+    await _C().fetch_and_load('https://example.test/huge', FetchCtx())
+
+    assert not _bodies(verbose_records)

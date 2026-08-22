@@ -8,7 +8,9 @@ from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.utils.logging.logger import logger, verbose_enabled
 
 _TAG = 'scrape-body'
-_TEXTUAL = ('text/', 'application/json', 'application/xml', 'application/xhtml', 'application/javascript', '+json', '+xml')
+_BINARY_PREFIXES = ('image/', 'video/', 'audio/', 'font/', 'model/')
+_BINARY_TYPES = frozenset({'application/octet-stream', 'application/zip', 'application/gzip', 'application/x-gzip', 'application/pdf', 'application/wasm'})
+MAX_TRACE_BYTES = 8 * 1024 * 1024
 _sink: ContextVar[list[RawCaptureEntry] | None] = ContextVar('body_capture', default=None)
 
 
@@ -44,17 +46,19 @@ def _clip(body: str) -> str:
     return f'{body[:cap]}\n[clipped — {len(body) - cap} more characters; raise LOG_BODY_MAX_CHARS or set it to 0 for the whole body]'
 
 
-def is_textual(content_type: str) -> bool:
+def is_traceable(content_type: str) -> bool:
     kind = content_type.split(';')[0].strip().lower()
-    return bool(kind) and any(marker in kind for marker in _TEXTUAL)
+    return not kind.startswith(_BINARY_PREFIXES) and kind not in _BINARY_TYPES
 
 
-def _is_json(content_type: str) -> bool:
-    return 'json' in content_type.lower()
+def _is_json(content_type: str, body: str = '') -> bool:
+    if content_type:
+        return 'json' in content_type.lower()
+    return body.lstrip()[:1] in ('{', '[')
 
 
 def _pretty(body: str, content_type: str) -> str:
-    if not _is_json(content_type):
+    if not _is_json(content_type, body):
         return body
     try:
         return json.dumps(json.loads(body), indent=2, sort_keys=True, ensure_ascii=False)
@@ -65,7 +69,7 @@ def _pretty(body: str, content_type: str) -> str:
 def _record(label: str, body: str, content_type: str) -> None:
     entries = _sink.get()
     if entries is not None:
-        entries.append(RawCaptureEntry(label, 'json' if _is_json(content_type) else 'html', body))
+        entries.append(RawCaptureEntry(label, 'json' if _is_json(content_type, body) else 'html', body))
 
 
 def trace_body(where: str, status: int | str, body: str, content_type: str = '') -> None:

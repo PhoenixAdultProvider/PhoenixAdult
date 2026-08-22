@@ -11,7 +11,7 @@ from phoenixadult.utils.http.connectivity import note_transport_failure
 from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.logging.response_trace import is_textual, trace_body, tracing_wanted
+from phoenixadult.utils.logging.response_trace import MAX_TRACE_BYTES, is_traceable, trace_body, tracing_wanted
 
 DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
@@ -34,7 +34,11 @@ async def _trace_body(response: httpx2.Response) -> None:
     if not tracing_wanted() or response.has_redirect_location:
         return
     content_type = response.headers.get('content-type', '')
-    if not is_textual(content_type):
+    if not is_traceable(content_type):
+        return
+    declared = response.headers.get('content-length', '')
+    if declared.isdigit() and int(declared) > MAX_TRACE_BYTES:
+        logger.debug(f'body dump skipped for {response.url}: {declared} bytes of {content_type or "untyped"} exceeds the trace ceiling')
         return
     try:
         await response.aread()
