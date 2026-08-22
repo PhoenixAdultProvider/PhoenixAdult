@@ -113,3 +113,33 @@ async def test_the_same_scene_in_two_letter_cases_is_one_result(monkeypatch: pyt
     await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
 
     assert len(results) == 1, f'the guessed url and the search-engine url are the same scene: {[r.scene_url for r in results]}'
+
+
+@respx.mock
+async def test_the_summary_stops_before_read_more_and_the_tags() -> None:
+    import json
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'title': 'Cool Scene'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(
+            200,
+            text="""<html><body>
+              <h1>Cool Scene</h1>
+              <div class="p-desc p-3">
+                <h2>Bombshell Returns</h2>
+                She bends in ways that should not be legal.
+                <a class="accent-text">Read More &#187;</a>
+                <hr class="my-1" />
+                <div class="my-3">Share X/Twitter Reddit Copy Link</div>
+                <h3 class="mt-3">Related Tags</h3>
+                <a class="btn">Big Tits</a><a class="btn">Blonde</a>
+              </div>
+            </body></html>""",
+        )
+    )
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.summary == 'Bombshell Returns She bends in ways that should not be legal.'
+    for junk in ('Read More', 'Share', 'Related Tags', 'Big Tits', 'Blonde'):
+        assert junk not in detail.summary, f'{junk!r} leaked into the summary'
