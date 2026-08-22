@@ -12,6 +12,7 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
 from phoenixadult.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_response
 from phoenixadult.utils.processors.actor_strip import best_title_score
 from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.title_case import title_case
@@ -299,6 +300,7 @@ class GammaEntOtherClient(Client):
                 json={'requests': [{'indexName': index_name, 'params': params}]},
                 headers={'Content-Type': 'application/json', 'Referer': site.base_url},
             )
+            trace_response(r)
             if r.status_code >= 400:
                 return []
 

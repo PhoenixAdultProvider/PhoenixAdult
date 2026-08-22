@@ -9,6 +9,7 @@ from phoenixadult.clients.base import ActorResult, Client, LoadedScene, SceneCon
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_response
 
 _TOKEN_RE = re.compile(r'\.access_token="([^"]+)"')
 _TOKEN_ORIGIN_MARKERS = ('//api.', '//next-prod-api.')
@@ -49,6 +50,7 @@ class XConfessionsClient(Client):
             r = await self.http.post(
                 f'{base_url}{search_path}', json={'query': query}, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
             )
+            trace_response(r)
             if r.status_code >= 400:
                 return []
 

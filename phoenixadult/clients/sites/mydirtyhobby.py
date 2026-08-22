@@ -10,6 +10,7 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_response
 
 _SUPPORTED_LANGS = {'en', 'de', 'fr', 'es', 'it'}
 _SLUG_RE = re.compile(r'[^A-Za-z0-9-]+')
@@ -36,6 +37,7 @@ class MyDirtyHobbyClient(Client):
                 json={'country': 'us', 'keyword': search_data.title, 'user_language': lang},
                 headers={'Content-Type': 'application/json', 'Accept-Language': lang},
             )
+            trace_response(r)
             items = (r.json() or {}).get('items', [])
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn(search_data.site_info.name, f'search POST threw: {err}')

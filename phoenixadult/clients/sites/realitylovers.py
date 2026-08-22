@@ -7,6 +7,7 @@ from phoenixadult.clients.base import Client, LoadedScene, SceneDetail, SearchCo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.logging.response_trace import trace_response
 
 
 def _srcset_entry(srcset: str, index: int, drop_chars: int) -> str:
@@ -28,6 +29,7 @@ class RealityLoversClient(Client):
                 json={'sortBy': 'MOST_RELEVANT', 'searchQuery': search_data.title, 'videoView': 'MEDIUM'},
                 headers={'Content-Type': 'application/json'},
             )
+            trace_response(r)
             contents = (r.json() or {}).get('contents', [])
         except (httpx2.HTTPError, ValueError) as err:
             logger.warn(search_data.site_info.name, f'search POST threw: {err}')

@@ -16,7 +16,6 @@ _TAG = 'scrape-body'
 _BINARY_PREFIXES = ('image/', 'video/', 'audio/', 'font/', 'model/')
 _BINARY_TYPES = frozenset({'application/octet-stream', 'application/zip', 'application/gzip', 'application/x-gzip', 'application/pdf', 'application/wasm'})
 MAX_TRACE_BYTES = 8 * 1024 * 1024
-TRACED = 'pa_body_traced'
 DUMP_KEEP = 300
 _NL = chr(10)
 _seq = itertools.count(1)
@@ -51,11 +50,6 @@ def dumping_forced() -> bool:
 
 def tracing_wanted() -> bool:
     return dumping_forced() or verbose_enabled() or capture_open()
-
-
-def why_armed() -> str:
-    reasons = [name for name, on in (('HTTP_BODY_DUMP', dumping_forced()), ('LOG_LEVEL=verbose', verbose_enabled())) if on]
-    return ' + '.join(reasons) if reasons else ''
 
 
 def _clip(body: str) -> str:
@@ -143,33 +137,14 @@ def trace_body(where: str, status: int | str, body: str, content_type: str = '')
         logger.verbose(_TAG, f'{where} -> {status} {shape}, {len(body)} chars:' + _NL + _clip(rendered))
 
 
-def trace_payload(where: str, payload: object) -> None:
-    if not tracing_wanted():
-        return
-    try:
-        rendered = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
-        rendered = repr(payload)
-    _record(where, rendered, 'application/json')
-    saved = write_dump(where, rendered, 'application/json')
-    if saved:
-        logger.info(_TAG, f'{where} -> parsed json, {len(rendered)} chars -> {saved}')
-    if verbose_enabled():
-        logger.verbose(_TAG, f'{where} -> parsed json, {len(rendered)} chars:' + _NL + _clip(rendered))
-
-
 def trace_response(response: Any) -> None:
     if not tracing_wanted():
         return
     where = f'{response.request.method} {response.url}'
-    if response.extensions.get(TRACED):
-        logger.debug(f'[{_TAG}] {where} was already dumped by the transport hook')
-        return
     content_type = response.headers.get('content-type', '')
     if not is_traceable(content_type):
         logger.debug(f'[{_TAG}] {where} skipped: {content_type or "untyped"} is binary')
         return
-    response.extensions[TRACED] = True
     try:
         body = response.text
     except Exception as err:  # noqa: BLE001 - a body we cannot decode is not worth failing the request over
