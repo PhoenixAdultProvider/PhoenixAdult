@@ -19,10 +19,30 @@ _ID_RE = re.compile(r'/(\d+)/')
 _READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
+_SCRIPT_POSTER_RE = re.compile(r"(?<=poster: ')[^']*")
+_DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
 
 
 def _clean_title(raw: str) -> str:
     return raw.replace('Coming Soon:', '').strip()
+
+
+def _scene_date(sel: Selector) -> str:
+    for xpath in _DATE_XPATHS:
+        raw = (sel.xpath(xpath).xpath('string(.)').get() or '').strip()
+        parsed = iso_date(raw) if raw else None
+        if parsed:
+            return parsed
+
+    return ''
+
+
+def _keywords(search_data: SearchContext) -> str:
+    digits = search_data.scene_id or re.sub(r'\D', '', search_data.title)
+    if not digits:
+        return search_data.title
+
+    return re.sub(r'\s+', ' ', search_data.title.replace(digits, '', 1)).strip() or search_data.title
 
 
 class ScoreGroupClient(Client):
@@ -31,7 +51,7 @@ class ScoreGroupClient(Client):
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
         base = search_data.site_info.base_url.rstrip('/')
         url = base + _SEARCH_PATH
-        form = {'keywords': search_data.title, **_SEARCH_FILTERS}
+        form = {'keywords': _keywords(search_data), **_SEARCH_FILTERS}
         ctx = FetchCtx(capture=search_data.capture, use_bypass=search_data.site_info.use_bypass)
         search_results = await self.fetch_and_load(url, ctx, f'[{search_data.site_info.name}] search {url}', form=form)
         sources: list[Any] = list(search_results['sel'].xpath('//div[contains(@class,"compact") and contains(@class,"video")]')) if search_results else []
@@ -64,7 +84,9 @@ class ScoreGroupClient(Client):
             if not title or '404' in title or _LATEST_RE.search(title):
                 return
 
-            packed = json.dumps({'url': source['_url'], 'date': ctx.search_date, 'title': title})
+            page_date = _scene_date(details_page_elements['sel'])
+            found = _ID_RE.search(source['_url'])
+            packed = json.dumps({'url': source['_url'], 'date': page_date or ctx.search_date, 'title': title})
 
             results.append(
                 build_search_result(
@@ -73,6 +95,8 @@ class ScoreGroupClient(Client):
                     scene_url=source['_url'],
                     query=ctx.title,
                     search_date=ctx.search_date,
+                    display_date=page_date or None,
+                    score=100 if ctx.scene_id and found and found.group(1) == ctx.scene_id else None,
                     cur_id=pack_cur_id([packed]),
                 )
             )
@@ -192,9 +216,9 @@ class ScoreGroupClient(Client):
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        date = (details_page_elements.xpath('(//div//span[@class="value"])[2]').xpath('string(.)').get() or '').strip()
-        if date:
-            metadata.release_date = iso_date(date)
+        found = _scene_date(details_page_elements)
+        if found:
+            metadata.release_date = found
             return
 
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
@@ -286,14 +310,19 @@ class ScoreGroupClient(Client):
         if pm:
             push(pm.group(1))
 
+        for block in details_page_elements.xpath('//script[@type]/text()').getall():
+            for poster in _SCRIPT_POSTER_RE.findall(block):
+                push(poster)
+
         xpaths = (
             '//div[contains(@class,"thumb")]//img/@src',
             '//div[contains(@class,"p-image")]//a//img/@src',
+            '//div[contains(@class,"dl-opts")]//a//img/@src',
             '//div[contains(@class,"p-photos")]//a/@href',
             '//div[contains(@class,"gallery")]//a/@href',
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                push(image_url.split('&')[0])
+                push(image_url.replace('_tn.', '.').split('&')[0])
 
         metadata.art = images

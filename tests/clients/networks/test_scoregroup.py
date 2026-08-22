@@ -143,3 +143,77 @@ async def test_the_summary_stops_before_read_more_and_the_tags() -> None:
     assert detail.summary == 'Bombshell Returns She bends in ways that should not be legal.'
     for junk in ('Read More', 'Share', 'Related Tags', 'Big Tits', 'Blonde'):
         assert junk not in detail.summary, f'{junk!r} leaked into the summary'
+
+
+_VIEWS_PAGE = """<html><body>
+  <h1>Cool Scene</h1>
+  <div><span>Views:</span><span class="value">15K+</span></div>
+  <div><span>Featuring:</span><span class="value">Jane Doe</span></div>
+  <div><span>Date:</span><span class="value">September 7th, 2024</span></div>
+  <div><span>Duration:</span><span class="value">29:27</span></div>
+</body></html>"""
+
+
+@respx.mock
+async def test_the_date_comes_from_its_own_label_not_a_position() -> None:
+    import json
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'date': '2001-01-01'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_VIEWS_PAGE))
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.release_date == '2024-09-07', 'a Views: row shifts the value index; the Date: label does not move'
+
+
+@respx.mock
+async def test_a_candidate_carries_its_own_date_and_an_id_hit_scores_100(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _one(*_a: object, **_k: object) -> list[str]:
+        return ['https://www.scoreland.com/big-boob-videos/jane/777/']
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _one)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_VIEWS_PAGE))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', scene_id='777', search_date='2001-01-01'))
+
+    assert len(results) == 1
+    assert results[0].display_date == '2024-09-07', "the scene's own date, never the filename's"
+    assert results[0].score == 100, 'the url carries the scene id, so it is the scene'
+
+
+@respx.mock
+async def test_the_form_drops_the_scene_id_but_the_web_search_keeps_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[str] = []
+
+    async def _record(query: str, *_a: object, **_k: object) -> list[str]:
+        asked.append(query)
+        return []
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _record)
+    route = respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert parse_qs(route.calls.last.request.content.decode())['keywords'] == ['jane'], 'the bundle strips the id before searching'
+    assert asked == ['jane 777'], 'the id is what makes the search engine find the exact scene'
+
+
+@respx.mock
+async def test_a_poster_inside_a_script_is_still_picked_up() -> None:
+    import json
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'})
+    page = (
+        '<html><body><h1>Cool Scene</h1>'
+        '<script type="text/javascript">var p = {poster: \'https://cdn/from-script.jpg\'};</script>'
+        '<div class="dl-opts"><a><img src="https://cdn/from-dl-opts.jpg" /></a></div>'
+        '</body></html>'
+    )
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=page))
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.art == ['https://cdn/from-script.jpg', 'https://cdn/from-dl-opts.jpg']
