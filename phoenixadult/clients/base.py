@@ -241,6 +241,8 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         if not _bypass_enabled(ctx):
             if direct:
                 logger.debug(f'fetch_and_load {url} → HTTP {direct["status"]}')
+            else:
+                logger.warn('scrape', f'fetch_and_load {verb} {url} got nothing back, so there is no page to parse or dump')
             return None
         headers = (ctx.headers if ctx else None) or {}
         if form is not None:
@@ -281,12 +283,17 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return parsed
 
     async def _direct_fetch(self, url: str, headers: dict[str, str] | None = None, form: dict[str, str] | None = None) -> dict[str, Any] | None:
+        verb = 'POST' if form is not None else 'GET'
         try:
             r = await (self.http.post(url, data=form, headers=headers) if form is not None else self.http.get(url, headers=headers))
             trace_response(r)
             ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
-        except httpx2.HTTPError:
+        except httpx2.HTTPError as err:
+            logger.warn('scrape', f'{verb} {url} never returned a response: {type(err).__name__}: {err}')
+            return None
+        except Exception as err:  # noqa: BLE001 - one unreachable page must not end the whole search
+            logger.warn('scrape', f'{verb} {url} raised before a response arrived: {err!r}')
             return None
 
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:

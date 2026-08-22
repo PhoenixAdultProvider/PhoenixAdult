@@ -327,3 +327,35 @@ async def test_the_flag_dumps_even_when_logging_is_quiet(monkeypatch: pytest.Mon
     assert [f for f in dump_dir().glob('*.html') if marker in f.read_text(encoding='utf-8')], (
         'HTTP_BODY_DUMP must not depend on the log level, the dev UI sink, or anything else'
     )
+
+
+@respx.mock
+async def test_a_transport_failure_is_never_silent(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+
+    class _C(Client):
+        pass
+
+    import httpx2
+
+    respx.get('https://example.test/dead').mock(side_effect=httpx2.ConnectError('connection reset'))
+    assert await _C().fetch_and_load('https://example.test/dead', FetchCtx()) is None
+
+    said = '\n'.join(r.getMessage() for r in verbose_records)
+    assert 'never returned a response' in said, 'a request that never answers must say so, not vanish'
+    assert 'ConnectError' in said and 'https://example.test/dead' in said
+    assert 'got nothing back' in said, 'the caller must say it has no page, not fall through quietly'
+
+
+@respx.mock
+async def test_a_non_http_error_is_reported_too(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/boom').mock(side_effect=RuntimeError('guard tripped'))
+    assert await _C().fetch_and_load('https://example.test/boom', FetchCtx()) is None
+
+    said = '\n'.join(r.getMessage() for r in verbose_records)
+    assert 'raised before a response arrived' in said and 'guard tripped' in said
