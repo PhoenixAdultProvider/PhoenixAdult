@@ -14,7 +14,7 @@ from parsel import Selector
 
 from phoenixadult.config.env import env
 from phoenixadult.models.capture import RawCaptureEntry as RawCaptureEntry  # noqa: PLC0414 - clients import the capture type from here
-from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id
+from phoenixadult.utils.helpers.helpers import absolute_url, b64url_decode, b64url_encode, build_search_result, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.http.bypass import bypass_get, bypass_post
 from phoenixadult.utils.http.client import make_http
@@ -300,14 +300,15 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         loaded = await self.load_search_context(search_data)
         if not loaded:
             return
-        seen = {r.scene_url for r in results if r.scene_url}
+        seen = {same_scene(r.scene_url) for r in results if r.scene_url}
         built: list[SearchResult] = []
         for source in loaded.sources:
             await self.build_search_results(source, loaded, built)
         for item in built:
-            if not item.scene_url or item.scene_url in seen:
+            key = same_scene(item.scene_url)
+            if not item.scene_url or key in seen:
                 continue
-            seen.add(item.scene_url)
+            seen.add(key)
             results.append(item)
 
     async def paginate_search(
@@ -468,6 +469,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         capture: list[RawCaptureEntry] | None = None,
         label: str = 'actor',
         limit: int = 3,
+        use_bypass: bool = False,
     ) -> list[ActorResult]:
         seen: set[str] = set()
         unique: list[tuple[str, str]] = []
@@ -483,7 +485,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             photo = ''
             if href:
                 async with sem:
-                    model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture), f'[{label}] {name}')
+                    model_page_elements = await self.fetch_and_load(href, FetchCtx(capture=capture, use_bypass=use_bypass), f'[{label}] {name}')
                 if model_page_elements:
                     photo = extract_photo(model_page_elements['sel'])
             return ActorResult(name=name, photo_url=photo)

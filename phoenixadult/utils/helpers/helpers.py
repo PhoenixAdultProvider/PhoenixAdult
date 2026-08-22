@@ -320,3 +320,7 @@ def decensor(text: str, replacements: dict[str, str]) -> str:
         if word in out:
             out = out.replace(word, correction)
     return out
+
+
+def same_scene(url: str | None) -> str:
+    return (url or '').rstrip('/').casefold()

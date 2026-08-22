@@ -96,3 +96,20 @@ async def test_a_join_promo_row_is_not_a_scene() -> None:
     await ScoreGroupClient().search(results, _ctx())
 
     assert results == [], 'anonymous search rows link to /join, which is not a scene url'
+
+
+@respx.mock
+async def test_the_same_scene_in_two_letter_cases_is_one_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _two_urls(*_a: object, **_k: object) -> list[str]:
+        return ['https://www.scoreland.com/big-boob-videos/Jane/777/']
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _two_urls)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    page = '<html><body><h1>Cool Scene</h1></body></html>'
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=page))
+    respx.get('https://www.scoreland.com/big-boob-videos/Jane/777/').mock(return_value=httpx.Response(200, text=page))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert len(results) == 1, f'the guessed url and the search-engine url are the same scene: {[r.scene_url for r in results]}'

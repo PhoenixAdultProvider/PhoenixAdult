@@ -8,7 +8,7 @@ from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 
 STUDIO = 'Score Group'
@@ -45,7 +45,7 @@ class ScoreGroupClient(Client):
                 candidate_urls.append(f'{base}{video_list_path}{actor_slug}/{all_digits}/')
 
         for u in await web_search_urls(search_data.title, search_data.site_info, include=[video_list_path], exclude=['?']):
-            if u not in candidate_urls:
+            if not any(same_scene(u) == same_scene(known) for known in candidate_urls):
                 candidate_urls.append(u)
 
         sources.extend({'_url': u} for u in candidate_urls)
@@ -239,7 +239,7 @@ class ScoreGroupClient(Client):
             genders[actor_name] = 'male' if '/male-' in href else ''
             refs.append((actor_name, absolute_url(href, base) if href else ''))
 
-        resolved = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name)
+        resolved = await self.resolve_actor_photos(refs, extract_photo, label=scene.site.name, use_bypass=scene.site.use_bypass)
         actors = [ActorResult(name=a.name, photo_url=a.photo_url, gender=genders.get(a.name, '')) for a in resolved]
 
         if scene.site.name == 'Christy Marks' and not any(a.name == 'Christy Marks' for a in actors):
@@ -288,6 +288,6 @@ class ScoreGroupClient(Client):
         )
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
-                push(image_url)
+                push(image_url.split('&')[0])
 
         metadata.art = images
