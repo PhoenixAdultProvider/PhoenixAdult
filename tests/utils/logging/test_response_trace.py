@@ -233,9 +233,55 @@ async def test_an_oversized_body_is_skipped_by_declared_length(verbose_records: 
     class _C(Client):
         pass
 
-    respx.get('https://example.test/huge').mock(
-        return_value=httpx.Response(200, content=b'x', headers={'content-type': 'text/plain', 'content-length': str(MAX_TRACE_BYTES + 1)})
-    )
+    respx.get('https://example.test/huge').mock(return_value=httpx.Response(200, content=b'x' * (MAX_TRACE_BYTES + 1), headers={'content-type': 'text/plain'}))
     await _C().fetch_and_load('https://example.test/huge', FetchCtx())
 
     assert not _bodies(verbose_records)
+
+
+@respx.mock
+async def test_the_scrape_path_traces_even_with_no_transport_hook(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.http import client as client_mod
+
+    class _C(Client):
+        pass
+
+    scraper = _C()
+    scraper._http = client_mod.httpx2.AsyncClient(event_hooks={}, follow_redirects=True)
+    respx.get('https://example.test/hooked-off').mock(return_value=httpx.Response(200, html='<h1>Still Dumped</h1>'))
+    try:
+        await scraper.fetch_and_load('https://example.test/hooked-off', FetchCtx())
+    finally:
+        await scraper._http.aclose()
+
+    assert 'Still Dumped' in _bodies(verbose_records), 'the scrape path must not depend on the transport hook firing'
+
+
+@respx.mock
+async def test_a_body_is_never_dumped_twice(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+
+    class _C(Client):
+        pass
+
+    respx.get('https://example.test/once').mock(return_value=httpx.Response(200, html='<h1>Once</h1>'))
+    await _C().fetch_and_load('https://example.test/once', FetchCtx())
+
+    assert _bodies(verbose_records).count('<h1>Once</h1>') == 1
+
+
+def test_the_startup_banner_names_the_version() -> None:
+    import phoenixadult
+    from phoenixadult import app_factory
+
+    base = logging.getLogger('phoenixadult')
+    records: list[logging.LogRecord] = []
+    handler = _capture(records)
+    base.addHandler(handler)
+    try:
+        app_factory._log_startup_banner()
+    finally:
+        base.removeHandler(handler)
+
+    assert any(phoenixadult.__version__ in r.getMessage() for r in records), 'the banner must say which build is running'

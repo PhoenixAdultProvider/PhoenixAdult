@@ -11,7 +11,7 @@ from phoenixadult.utils.http.connectivity import note_transport_failure
 from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.context import current_scrape_phase
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.logging.response_trace import MAX_TRACE_BYTES, is_traceable, trace_body, tracing_wanted
+from phoenixadult.utils.logging.response_trace import MAX_TRACE_BYTES, TRACED, is_traceable, trace_body, tracing_wanted
 
 DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
@@ -45,6 +45,7 @@ async def _trace_body(response: httpx2.Response) -> None:
     except Exception as err:  # noqa: BLE001 - a body we cannot read is not worth failing the request over
         logger.debug(f'could not read {response.url} for the verbose body dump: {err!r}')
         return
+    response.extensions[TRACED] = True
     trace_body(f'{response.request.method} {response.url}', response.status_code, response.text, content_type)
 
 

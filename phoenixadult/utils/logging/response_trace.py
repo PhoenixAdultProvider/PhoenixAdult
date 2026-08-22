@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
+from typing import Any
 
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.utils.logging.logger import logger, verbose_enabled
@@ -11,6 +12,7 @@ _TAG = 'scrape-body'
 _BINARY_PREFIXES = ('image/', 'video/', 'audio/', 'font/', 'model/')
 _BINARY_TYPES = frozenset({'application/octet-stream', 'application/zip', 'application/gzip', 'application/x-gzip', 'application/pdf', 'application/wasm'})
 MAX_TRACE_BYTES = 8 * 1024 * 1024
+TRACED = 'pa_body_traced'
 _sink: ContextVar[list[RawCaptureEntry] | None] = ContextVar('body_capture', default=None)
 
 
@@ -94,3 +96,17 @@ def trace_payload(where: str, payload: object) -> None:
     if not verbose_enabled():
         return
     logger.verbose(_TAG, f'{where} -> parsed json, {len(rendered)} chars:\n{_clip(rendered)}')
+
+
+def trace_response(response: Any) -> None:
+    if not tracing_wanted() or response.extensions.get(TRACED):
+        return
+    content_type = response.headers.get('content-type', '')
+    if not is_traceable(content_type):
+        return
+    response.extensions[TRACED] = True
+    body = response.text
+    if len(body) > MAX_TRACE_BYTES:
+        logger.debug(f'body dump skipped for {response.url}: {len(body)} chars of {content_type or "untyped"} exceeds the trace ceiling')
+        return
+    trace_body(f'{response.request.method} {response.url}', response.status_code, body, content_type)

@@ -33,7 +33,9 @@ from phoenixadult.utils.plex.media_type import provider_mount_path
 
 
 def _log_startup_banner() -> None:
-    logger.info(f'Plex Metadata Provider running on port {config.port}')
+    from phoenixadult import __version__
+
+    logger.info(f'PhoenixAdult {__version__} — Plex Metadata Provider running on port {config.port}')
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 

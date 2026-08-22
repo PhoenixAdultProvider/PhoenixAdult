@@ -23,7 +23,7 @@ from phoenixadult.utils.http.rate_limit_helper import (
     PacingDeferredError as PacingDeferredError,  # noqa: PLC0414 - explicit re-export for client/service imports
 )
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.logging.response_trace import trace_body
+from phoenixadult.utils.logging.response_trace import trace_body, trace_response
 
 if TYPE_CHECKING:
     from phoenixadult.registry import ResolvedSiteInfo
@@ -258,6 +258,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def fetch_json(self, url: str, ctx: FetchCtx | None = None, headers: dict[str, str] | None = None, label: str | None = None) -> Any | None:
         try:
             r = await self.http.get(url, headers=headers)
+            trace_response(r)
             if r.status_code < 400:
                 data = r.json()
                 return data
@@ -282,6 +283,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
     async def _direct_fetch(self, url: str, headers: dict[str, str] | None = None, form: dict[str, str] | None = None) -> dict[str, Any] | None:
         try:
             r = await (self.http.post(url, data=form, headers=headers) if form is not None else self.http.get(url, headers=headers))
+            trace_response(r)
             ok = r.status_code < 400 and r.status_code != 202 and bool(r.text.strip())
             return {'ok': ok, 'status': r.status_code, 'body': r.text}
         except httpx2.HTTPError:
