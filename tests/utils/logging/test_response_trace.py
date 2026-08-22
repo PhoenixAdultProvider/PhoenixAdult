@@ -34,7 +34,8 @@ def verbose_records() -> list[logging.LogRecord]:
 
 
 def _bodies(records: list[logging.LogRecord]) -> str:
-    return '\n'.join(r.getMessage() for r in records if 'scrape-body' in r.getMessage())
+    wanted = [r.getMessage() for r in records if 'scrape-body' in r.getMessage() and ' chars:' in r.getMessage()]
+    return '\n'.join(wanted)
 
 
 @respx.mock
@@ -285,3 +286,20 @@ def test_the_startup_banner_names_the_version() -> None:
         base.removeHandler(handler)
 
     assert any(phoenixadult.__version__ in r.getMessage() for r in records), 'the banner must say which build is running'
+
+
+@respx.mock
+async def test_the_body_is_written_to_a_file_that_can_be_opened(verbose_records: list[logging.LogRecord]) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.logging.response_trace import dump_dir
+
+    class _C(Client):
+        pass
+
+    marker = '<h1>Dumped To Disk</h1>'
+    respx.get('https://example.test/ondisk').mock(return_value=httpx.Response(200, html=marker))
+    await _C().fetch_and_load('https://example.test/ondisk', FetchCtx())
+
+    written = [f for f in dump_dir().glob('*.html') if marker in f.read_text(encoding='utf-8')]
+    assert written, 'the raw page must land on disk, not only in the log'
+    assert any(str(written[0]) in r.getMessage() for r in verbose_records), 'the log must name the file it wrote'
