@@ -303,3 +303,27 @@ async def test_the_body_is_written_to_a_file_that_can_be_opened(verbose_records:
     written = [f for f in dump_dir().glob('*.html') if marker in f.read_text(encoding='utf-8')]
     assert written, 'the raw page must land on disk, not only in the log'
     assert any(str(written[0]) in r.getMessage() for r in verbose_records), 'the log must name the file it wrote'
+
+
+@respx.mock
+async def test_the_flag_dumps_even_when_logging_is_quiet(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.clients.base import Client, FetchCtx
+    from phoenixadult.utils.logging.response_trace import dump_dir
+
+    class _C(Client):
+        pass
+
+    monkeypatch.setenv('HTTP_BODY_DUMP', 'true')
+    base = logging.getLogger('phoenixadult')
+    previous = base.level
+    base.setLevel(logging.WARNING)
+    marker = '<h1>Forced Dump</h1>'
+    respx.get('https://example.test/forced').mock(return_value=httpx.Response(200, html=marker))
+    try:
+        await _C().fetch_and_load('https://example.test/forced', FetchCtx())
+    finally:
+        base.setLevel(previous)
+
+    assert [f for f in dump_dir().glob('*.html') if marker in f.read_text(encoding='utf-8')], (
+        'HTTP_BODY_DUMP must not depend on the log level, the dev UI sink, or anything else'
+    )

@@ -94,6 +94,15 @@ ENV_CATALOG: list[EnvVarSpec] = [
         requires_restart=True,
     ),
     EnvVarSpec(
+        'HTTP_BODY_DUMP',
+        'Dump Scraped Page Sources',
+        'Write the raw body of every page the scrapers fetch to a file under the log directory, whatever the log level. '
+        'Turn this on to inspect the html a selector actually saw; turn it off when you are done.',
+        'Logging',
+        'boolean',
+        default_value='false',
+    ),
+    EnvVarSpec(
         'LOG_BODY_MAX_CHARS',
         'Verbose Body Dump Limit',
         'Characters of each scraped response body written to the log at verbose level. 0 keeps the whole body. '

@@ -34,6 +34,10 @@ class _Env:
         return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
 
     @property
+    def http_body_dump(self) -> bool:
+        return _flag('HTTP_BODY_DUMP', 'false') in {'1', 'true', 'yes', 'on'}
+
+    @property
     def log_body_max_chars(self) -> int:
         try:
             return max(0, int(os.environ.get('LOG_BODY_MAX_CHARS') or 0))

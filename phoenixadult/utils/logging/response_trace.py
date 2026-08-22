@@ -43,8 +43,19 @@ def capture_open() -> bool:
     return _sink.get() is not None
 
 
+def dumping_forced() -> bool:
+    from phoenixadult.config.env import env
+
+    return env.http_body_dump
+
+
 def tracing_wanted() -> bool:
-    return verbose_enabled() or capture_open()
+    return dumping_forced() or verbose_enabled() or capture_open()
+
+
+def why_armed() -> str:
+    reasons = [name for name, on in (('HTTP_BODY_DUMP', dumping_forced()), ('LOG_LEVEL=verbose', verbose_enabled())) if on]
+    return ' + '.join(reasons) if reasons else ''
 
 
 def _clip(body: str) -> str:

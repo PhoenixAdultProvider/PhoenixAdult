@@ -11,6 +11,7 @@ _DERIVED = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'}
 
 _BOOL_GETTERS: dict[str, Callable[[], bool]] = {
     'DEV_UI_ENABLE': lambda: env.dev_ui_enabled,
+    'HTTP_BODY_DUMP': lambda: env.http_body_dump,
     'METADATA_CACHE_ENABLE': lambda: env.metadata_cache_enabled,
     'PEOPLE_CACHE_ENABLE': lambda: env.people_cache_enabled,
     'PEOPLE_CACHE_REPLACE_ENABLE': lambda: env.people_cache_replace_enabled,

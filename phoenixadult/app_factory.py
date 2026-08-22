@@ -41,6 +41,17 @@ def _log_startup_banner() -> None:
 
     logger.info('  The provider mount is open to any client; set LOG_LEVEL=verbose to dump the headers of every request it receives')
 
+    import logging as _logging
+
+    from phoenixadult.utils.logging.response_trace import dump_dir, why_armed
+
+    armed = why_armed()
+    level = _logging.getLogger('phoenixadult').getEffectiveLevel()
+    if armed:
+        logger.info(f'  Response body dumps: ON via {armed} (log level {level}) — raw pages land in {dump_dir()}')
+    else:
+        logger.info(f'  Response body dumps: OFF (log level {level}) — set HTTP_BODY_DUMP=true to write raw pages to {dump_dir()}')
+
     from phoenixadult.utils.auth import user_store
 
     if user_store.user_count() == 0:
