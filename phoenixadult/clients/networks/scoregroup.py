@@ -16,6 +16,7 @@ _SEARCH_PATH = '/search-es'
 _SEARCH_FILTERS = {'s_filters[type]': 'videos', 's_filters[site]': 'current'}
 _LATEST_RE = re.compile(r'Latest.*Videos')
 _ID_RE = re.compile(r'/(\d+)/')
+_READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
 
@@ -170,9 +171,14 @@ class ScoreGroupClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        metadata.summary = (
-            details_page_elements.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]').xpath('string(.)').get() or ''
-        ).strip() or ''
+        node = details_page_elements.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]')
+        own = ' '.join(' '.join(node.xpath('./h2//text() | ./text()').getall()).split())
+        if own:
+            metadata.summary = own
+            return
+
+        whole = ' '.join((node.xpath('string(.)').get() or '').split())
+        metadata.summary = _READ_MORE_RE.split(whole)[0].strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
