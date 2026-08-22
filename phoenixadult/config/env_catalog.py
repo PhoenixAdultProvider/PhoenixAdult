@@ -86,7 +86,7 @@ ENV_CATALOG: list[EnvVarSpec] = [
     EnvVarSpec(
         'LOG_LEVEL',
         'Log Level',
-        'Log Verbosity, least to most; HTTP access lines only appear at http or verbose.',
+        'Log Verbosity, least to most. HTTP access lines need http or verbose; scraped response bodies need verbose, the last step — http is not enough.',
         'Logging',
         'enum',
         options=['error', 'warn', 'info', 'debug', 'http', 'verbose'],
