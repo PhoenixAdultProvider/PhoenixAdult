@@ -19,6 +19,7 @@ _SEARCH_PATH = '/search-es'
 _SEARCH_FILTERS = {'s_filters[type]': 'videos', 's_filters[site]': 'current'}
 _LATEST_RE = re.compile(r'Latest.*Videos')
 _NOT_FOUND_RE = re.compile(r'Watch Our\s+.*Videos Anywhere,\s*Anytime\s*&\s*on Any Device', re.IGNORECASE)
+_COMING_SOON_RE = re.compile(r'^\s*coming\s+soon\s*:\s*', re.IGNORECASE)
 _ID_RE = re.compile(r'/(\d+)/')
 _READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
@@ -31,7 +32,7 @@ _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(/
 
 
 def _clean_title(raw: str) -> str:
-    return raw.replace('Coming Soon:', '').strip()
+    return _COMING_SOON_RE.sub('', raw, count=1).strip()
 
 
 def _usable_title(title: str) -> bool:

@@ -349,3 +349,61 @@ async def test_a_real_scene_is_untouched_by_the_soft_404_filter(monkeypatch: pyt
     await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
 
     assert [r.title for r in results] == ['Watch Our Videos'], 'only the full banner is the marker, not any title that starts like it'
+
+
+@pytest.mark.parametrize(
+    ('raw', 'cleaned'),
+    [
+        ('Coming Soon: Teens In Need', 'Teens In Need'),
+        ('coming soon: teens in need', 'teens in need'),
+        ('COMING SOON: Teens In Need', 'Teens In Need'),
+        ('Coming  Soon : Teens In Need', 'Teens In Need'),
+        ('  Coming Soon:Teens In Need', 'Teens In Need'),
+        ('Teens In Need', 'Teens In Need'),
+        ('The Coming Soon: Sequel', 'The Coming Soon: Sequel'),
+    ],
+)
+def test_the_coming_soon_prefix_is_stripped_only_from_the_front(raw: str, cleaned: str) -> None:
+    assert sg_mod._clean_title(raw) == cleaned
+
+
+@respx.mock
+async def test_searches_strip_coming_soon_from_both_kinds_of_row(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _one(*_a: object, **_k: object) -> list[str]:
+        return ['https://www.scoreland.com/big-boob-videos/jane/777/']
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _one)
+    row = (
+        '<div class="compact video">'
+        '<a class="i-title" href="https://www.scoreland.com/big-boob-videos/mary/888/">coming soon: Mary Scene</a>'
+        '<small class="i-model">Mary</small><img src="https://cdn/t.jpg" /></div>'
+    )
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=row))
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>COMING SOON: Jane Scene</h1></body></html>')
+    )
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert sorted(r.title for r in results) == ['Jane Scene', 'Mary Scene']
+
+
+@respx.mock
+async def test_updates_strip_coming_soon_from_the_heading_and_the_packed_title() -> None:
+    import json
+
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Coming Soon: Jane Scene</h1></body></html>')
+    )
+    detail = await ScoreGroupClient().fetch_scene_detail(json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'}), SITE)
+    assert detail is not None
+    assert detail.title == 'Jane Scene'
+
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/778/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Latest Big Boob Videos</h1></body></html>')
+    )
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/778/', 'title': 'coming soon: Packed Scene', 'actors': 'Jane'})
+    latest = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+    assert latest is not None
+    assert latest.title == 'Packed Scene', 'the Latest-Videos path takes its title from the packed payload'
