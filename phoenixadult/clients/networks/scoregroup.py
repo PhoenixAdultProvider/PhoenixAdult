@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
 
+import httpx2
 from parsel import Selector
 
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.logging.logger import logger
 
 STUDIO = 'Score Group'
 _SEARCH_PATH = '/search-es'
@@ -20,6 +23,9 @@ _READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
 _SCRIPT_POSTER_RE = re.compile(r"(?<=poster: ')[^']*")
+_SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[^/]+)/Screenshots/', re.IGNORECASE)
+_GALLERY_CAP = 60
+_GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
 
 
@@ -277,6 +283,36 @@ class ScoreGroupClient(Client):
 
         metadata.actors = actors
 
+    async def _reachable(self, url: str) -> bool:
+        try:
+            probe = await self.http.head(url)
+        except httpx2.HTTPError as err:
+            logger.debug(f'[scoregroup] gallery probe {url} threw: {err!r}')
+            return False
+
+        if probe.status_code >= 400 and probe.status_code not in (404, 410):
+            logger.debug(f'[scoregroup] gallery probe {url} -> HTTP {probe.status_code}, ending the run there')
+
+        return probe.status_code < 400
+
+    async def _gallery_images(self, shot: str) -> list[str]:
+        found = _SHOT_RE.match(shot)
+        if not found:
+            return []
+
+        prefix = found.group('prefix')
+        base = f'{prefix if prefix.startswith("http") else "https:" + prefix}/Gallys/{found.group("site")}'
+        urls: list[str] = []
+        for start in range(1, _GALLERY_CAP + 1, _GALLERY_BATCH):
+            batch = [f'{base}/{n:02d}.jpg' for n in range(start, min(start + _GALLERY_BATCH, _GALLERY_CAP + 1))]
+            for url, alive in zip(batch, await asyncio.gather(*(self._reachable(u) for u in batch)), strict=True):
+                if not alive:
+                    return urls
+
+                urls.append(url)
+
+        return urls
+
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
@@ -324,5 +360,30 @@ class ScoreGroupClient(Client):
         for xpath in xpaths:
             for image_url in details_page_elements.xpath(xpath).getall():
                 push(image_url.replace('_tn.', '.').split('&')[0])
+
+        probed: set[str] = set()
+        derived: set[str] = set()
+        superseded: set[str] = set()
+        gallery: list[str] = []
+        for shot in [u for u in images if '/Screenshots/' in u]:
+            found = _SHOT_RE.match(shot)
+            if not found:
+                continue
+
+            prefix = found.group('prefix')
+            if prefix not in probed:
+                probed.add(prefix)
+                pages = await self._gallery_images(shot)
+                if pages:
+                    derived.add(prefix)
+                    gallery.extend(pages)
+
+            if prefix in derived:
+                superseded.add(shot)
+
+        if gallery:
+            images[:] = [u for u in images if u not in superseded]
+            for page in gallery:
+                push(page)
 
         metadata.art = images

@@ -217,3 +217,72 @@ async def test_a_poster_inside_a_script_is_still_picked_up() -> None:
 
     assert detail is not None
     assert detail.art == ['https://cdn/from-script.jpg', 'https://cdn/from-dl-opts.jpg']
+
+
+def _shot_page(site: str, scene: str) -> str:
+    shots = ''.join(f'<div class="thumb"><img src="//cdn77.x.com/{site}/scenes/{scene}/Screenshots/{scene}_{n:02d}.jpg" /></div>' for n in (1, 2, 3, 4))
+    return f'<html><body><h1>Cool Scene</h1>{shots}</body></html>'
+
+
+@respx.mock
+async def test_screenshots_expand_into_the_gallery_until_it_runs_out() -> None:
+    import json
+
+    base = 'https://cdn77.x.com/18eighteen/scenes/AdrianMaya_30805/Gallys/18eighteen'
+    for n in range(1, 17):
+        respx.head(f'{base}/{n:02d}.jpg').mock(return_value=httpx.Response(200))
+    respx.head(url__startswith=base).mock(return_value=httpx.Response(404))
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_shot_page('18eighteen', 'AdrianMaya_30805')))
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.art == [f'{base}/{n:02d}.jpg' for n in range(1, 17)], 'stops at the first missing number, keeps everything before it'
+    assert f'{base}/17.jpg' not in detail.art
+    assert not [u for u in detail.art if '/Screenshots/' in u], 'the screenshots are thumbnails; the gallery replaces them'
+
+
+@respx.mock
+async def test_the_gallery_folder_is_named_after_the_cdn_site_segment() -> None:
+    import json
+
+    base = 'https://cdn77.x.com/scoreland/scenes/BarbieNicole_41170/Gallys/scoreland'
+    respx.head(f'{base}/01.jpg').mock(return_value=httpx.Response(200))
+    respx.head(url__startswith=base).mock(return_value=httpx.Response(404))
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_shot_page('scoreland', 'BarbieNicole_41170')))
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert f'{base}/01.jpg' in detail.art, 'the folder follows the /<site>/ segment of the cdn url, not the plex site name'
+
+
+@respx.mock
+async def test_a_page_without_screenshots_is_never_probed() -> None:
+    import json
+
+    probes = respx.head(url__regex=r'.*').mock(return_value=httpx.Response(200))
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Cool Scene</h1><div class="thumb"><img src="https://cdn/plain.jpg" /></div></body></html>')
+    )
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.art == ['https://cdn/plain.jpg']
+    assert not probes.called, 'no Screenshots url means there is nothing to derive a gallery from'
+
+
+@respx.mock
+async def test_the_screenshots_stay_when_no_gallery_can_be_derived() -> None:
+    import json
+
+    respx.head(url__regex=r'.*').mock(return_value=httpx.Response(404))
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_shot_page('18eighteen', 'AdrianMaya_30805')))
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert len([u for u in detail.art if '/Screenshots/' in u]) == 4, 'a low-res screenshot beats no image at all'
