@@ -18,6 +18,7 @@ STUDIO = 'Score Group'
 _SEARCH_PATH = '/search-es'
 _SEARCH_FILTERS = {'s_filters[type]': 'videos', 's_filters[site]': 'current'}
 _LATEST_RE = re.compile(r'Latest.*Videos')
+_NOT_FOUND_RE = re.compile(r'Watch Our\s+.*Videos Anywhere,\s*Anytime\s*&\s*on Any Device', re.IGNORECASE)
 _ID_RE = re.compile(r'/(\d+)/')
 _READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
@@ -31,6 +32,10 @@ _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(/
 
 def _clean_title(raw: str) -> str:
     return raw.replace('Coming Soon:', '').strip()
+
+
+def _usable_title(title: str) -> bool:
+    return bool(title) and '404' not in title and not _LATEST_RE.search(title) and not _NOT_FOUND_RE.search(title)
 
 
 def _scene_date(sel: Selector) -> str:
@@ -91,7 +96,7 @@ class ScoreGroupClient(Client):
                 return
 
             title = (details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
-            if not title or '404' in title or _LATEST_RE.search(title):
+            if not _usable_title(title):
                 return
 
             page_date = _scene_date(details_page_elements['sel'])

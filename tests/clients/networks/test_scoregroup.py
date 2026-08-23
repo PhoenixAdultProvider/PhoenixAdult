@@ -308,3 +308,44 @@ async def test_the_id_in_the_filename_scores_100_without_a_parsed_scene_id(monke
         'the filename carries 53212 even though nothing parsed it as a leading scene id'
     )
     assert by_url['https://www.scoreland.com/big-boob-videos/Alex-Blake/53203/'] != 100, 'a different scene must not claim a perfect match'
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    'promo',
+    [
+        'Watch Our Amateur Videos Anywhere, Anytime &amp; on Any Device',
+        'Watch Our Teen Videos Anywhere, Anytime &amp; on Any Device',
+        'Watch Our Videos Anywhere, Anytime &amp; on Any Device',
+        'Watch Our Foot Fetish Videos Anywhere, Anytime &amp; on Any Device',
+    ],
+)
+async def test_the_sites_soft_404_never_becomes_a_result(promo: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _none(*_a: object, **_k: object) -> list[str]:
+        return []
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _none)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=f'<html><body><h1>{promo}</h1></body></html>'))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert results == [], 'a missing scene answers 200 with this banner as its only h1'
+
+
+@respx.mock
+async def test_a_real_scene_is_untouched_by_the_soft_404_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _none(*_a: object, **_k: object) -> list[str]:
+        return []
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _none)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Watch Our Videos</h1></body></html>')
+    )
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert [r.title for r in results] == ['Watch Our Videos'], 'only the full banner is the marker, not any title that starts like it'
