@@ -407,3 +407,45 @@ async def test_updates_strip_coming_soon_from_the_heading_and_the_packed_title()
     latest = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
     assert latest is not None
     assert latest.title == 'Packed Scene', 'the Latest-Videos path takes its title from the packed payload'
+
+
+_CANON = 'https://www.scoreland.com/big-boob-videos/Alice-Green/45560/'
+
+
+def _scene_page(canonical: str, title: str = 'Butt Student') -> str:
+    return f'<html><head><link rel="canonical" href="{canonical}" /></head><body><h1>{title}</h1></body></html>'
+
+
+@respx.mock
+async def test_two_slugs_for_one_scene_collapse_to_the_published_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    guessed = 'https://www.scoreland.com/big-boob-videos/alice-green-sasha-sean/45560/'
+
+    async def _published(*_a: object, **_k: object) -> list[str]:
+        return [_CANON]
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _published)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    for url in (guessed, _CANON):
+        respx.get(url).mock(return_value=httpx.Response(200, text=_scene_page(_CANON)))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='alice green sasha sean 45560', full_title='alice green sasha sean 45560'))
+
+    assert [r.scene_url for r in results] == [_CANON], 'the guess and the published url are one scene, named by the site'
+
+
+@respx.mock
+async def test_a_canonical_that_is_not_a_scene_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _none(*_a: object, **_k: object) -> list[str]:
+        return []
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _none)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_scene_page('https://www.scoreland.com/home/')))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+
+    assert [r.scene_url for r in results] == ['https://www.scoreland.com/big-boob-videos/jane/777/'], (
+        'the soft-404 points its canonical at /home/, which carries no scene id'
+    )

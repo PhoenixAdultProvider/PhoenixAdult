@@ -35,6 +35,11 @@ def _clean_title(raw: str) -> str:
     return _COMING_SOON_RE.sub('', raw, count=1).strip()
 
 
+def _canonical(sel: Selector, fallback: str) -> str:
+    href = (sel.xpath('//link[@rel="canonical"]/@href').get() or '').strip()
+    return href if href and _ID_RE.search(href) else fallback
+
+
 def _usable_title(title: str) -> bool:
     return bool(title) and '404' not in title and not _LATEST_RE.search(title) and not _NOT_FOUND_RE.search(title)
 
@@ -100,16 +105,17 @@ class ScoreGroupClient(Client):
             if not _usable_title(title):
                 return
 
+            published = _canonical(details_page_elements['sel'], source['_url'])
             page_date = _scene_date(details_page_elements['sel'])
-            found = _ID_RE.search(source['_url'])
+            found = _ID_RE.search(published)
             wanted = _scene_id(ctx)
-            packed = json.dumps({'url': source['_url'], 'date': page_date or ctx.search_date, 'title': title})
+            packed = json.dumps({'url': published, 'date': page_date or ctx.search_date, 'title': title})
 
             results.append(
                 build_search_result(
                     site=loaded.site,
                     title=_clean_title(title),
-                    scene_url=source['_url'],
+                    scene_url=published,
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
