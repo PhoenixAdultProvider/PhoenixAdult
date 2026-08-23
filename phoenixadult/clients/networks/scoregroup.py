@@ -43,6 +43,10 @@ def _scene_date(sel: Selector) -> str:
     return ''
 
 
+def _scene_id(search_data: SearchContext) -> str:
+    return search_data.scene_id or re.sub(r'\D', '', search_data.full_title or search_data.title)
+
+
 def _keywords(search_data: SearchContext) -> str:
     digits = search_data.scene_id or re.sub(r'\D', '', search_data.title)
     if not digits:
@@ -92,6 +96,7 @@ class ScoreGroupClient(Client):
 
             page_date = _scene_date(details_page_elements['sel'])
             found = _ID_RE.search(source['_url'])
+            wanted = _scene_id(ctx)
             packed = json.dumps({'url': source['_url'], 'date': page_date or ctx.search_date, 'title': title})
 
             results.append(
@@ -102,7 +107,7 @@ class ScoreGroupClient(Client):
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
-                    score=100 if ctx.scene_id and found and found.group(1) == ctx.scene_id else None,
+                    score=100 if wanted and found and found.group(1) == wanted else None,
                     cur_id=pack_cur_id([packed]),
                 )
             )
@@ -119,7 +124,8 @@ class ScoreGroupClient(Client):
         if not m:
             return
 
-        score = 100 if ctx.scene_id and m.group(1) == ctx.scene_id else None
+        wanted = _scene_id(ctx)
+        score = 100 if wanted and m.group(1) == wanted else None
         packed = json.dumps(
             {
                 'url': scene_url,

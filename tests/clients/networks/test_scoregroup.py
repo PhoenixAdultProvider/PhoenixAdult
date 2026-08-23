@@ -286,3 +286,25 @@ async def test_the_screenshots_stay_when_no_gallery_can_be_derived() -> None:
 
     assert detail is not None
     assert len([u for u in detail.art if '/Screenshots/' in u]) == 4, 'a low-res screenshot beats no image at all'
+
+
+@respx.mock
+async def test_the_id_in_the_filename_scores_100_without_a_parsed_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _both(*_a: object, **_k: object) -> list[str]:
+        return ['https://www.scoreland.com/big-boob-videos/Alex-Blake/53203/']
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _both)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    for slug, num in (('alex-blake', '53212'), ('Alex-Blake', '53203')):
+        respx.get(f'https://www.scoreland.com/big-boob-videos/{slug}/{num}/').mock(
+            return_value=httpx.Response(200, text=f'<html><body><h1>Scene {num}</h1></body></html>')
+        )
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='alex blake 53212', full_title='alex blake 53212'))
+
+    by_url = {r.scene_url: r.score for r in results}
+    assert by_url['https://www.scoreland.com/big-boob-videos/alex-blake/53212/'] == 100, (
+        'the filename carries 53212 even though nothing parsed it as a leading scene id'
+    )
+    assert by_url['https://www.scoreland.com/big-boob-videos/Alex-Blake/53203/'] != 100, 'a different scene must not claim a perfect match'
