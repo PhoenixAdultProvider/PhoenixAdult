@@ -168,7 +168,14 @@ async def test_detail_data18_enrichment_appends_images(tmp_path: Path, monkeypat
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> str:
             calls['providers'] = providers
             calls['query'] = query
@@ -193,7 +200,14 @@ async def test_detail_data18_enrichment_no_match_is_quiet(tmp_path: Path, monkey
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> None:
             queries.append(query)
             return None
@@ -258,7 +272,14 @@ async def test_detail_nested_data18_movie_fetches_movie_images(tmp_path: Path, m
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> None:
             raise AssertionError('an explicit <data18> ref must not run the data18 search')
 
@@ -288,7 +309,14 @@ async def test_detail_data18_tag_bypasses_search(ref: str, tmp_path: Path, monke
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> None:
             raise AssertionError('an explicit <data18> ref must not run the data18 search')
 
@@ -311,7 +339,14 @@ async def test_detail_data18_tag_unusable_value_falls_back_to_search(tmp_path: P
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> None:
             queries.append(query)
             return None

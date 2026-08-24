@@ -44,6 +44,7 @@ class Enricher(Protocol):
         allow_square: bool = True,
         priority: list[str] | None = None,
         search: bool = True,
+        actors: list[str] | None = None,
     ) -> str | None: ...
 
 
@@ -506,6 +507,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         kind: Literal['scene', 'movie'] = 'scene',
         allow_square: bool = True,
         search: bool = True,
+        actors: list[str] | None = None,
     ) -> None:
         if not (site.scraper_config.data18_enrichment and env.data18_enabled):
             return
@@ -526,6 +528,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             kind=kind,
             allow_square=allow_square,
             search=search,
+            actors=actors,
         )
 
     async def fetch_scene_detail(self, payload: str, site: ResolvedSiteInfo, ctx: SceneContext | None = None) -> SceneDetail | None:

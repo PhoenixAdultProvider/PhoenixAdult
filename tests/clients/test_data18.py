@@ -347,8 +347,9 @@ async def test_movie_enrichment_reports_cover_urls_as_priority(monkeypatch: pyte
     assert images[0] == 'https://cdn.example/front-cover.jpg'
 
 
-def _row(scene_id: str, date: str, provider: str = 'Scoreland', title: str = 'Funbag Fuckers') -> str:
-    return f'<a href="/scenes/{scene_id}"><p class="gen12 bold">{title}</p><span class="gen11"><b>#1</b> {date} <i>{provider}</i></span></a>'
+def _row(scene_id: str, date: str, provider: str = 'Scoreland', title: str = 'Funbag Fuckers', cast: str = '') -> str:
+    billing = f'<p class="gen11"><b>S</b>cene w/ {cast}</p>' if cast else ''
+    return f'<a href="/scenes/{scene_id}"><p class="gen12 bold">{title}</p><span class="gen11"><b>#1</b> {date} <i>{provider}</i></span>{billing}</a>'
 
 
 def _paged(*pages: str) -> object:
@@ -389,3 +390,54 @@ async def test_the_nearest_date_wins_when_no_candidate_matches_exactly() -> None
     )
     url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 5))
     assert url == 'https://www.data18.com/scenes/1221416'
+
+
+_SAME_DAY = _row('1221391', 'February 25, 2015', cast='Danielle Derek, Mikey Butders') + _row('1221390', 'February 25, 2015', cast='Shyla Stylez, Jt')
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ('actors', 'expected'),
+    [
+        (['Danielle Derek', 'Mikey Butders'], '1221391'),
+        (['Shyla Stylez', 'J.T.'], '1221390'),
+        ([], '1221391'),
+    ],
+)
+async def test_the_billed_cast_separates_two_scenes_released_the_same_day(actors: list[str], expected: str) -> None:
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(side_effect=_paged(_SAME_DAY))
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 25), actors=actors)
+    assert url == f'https://www.data18.com/scenes/{expected}'
+
+
+@respx.mock
+async def test_a_row_with_no_billing_line_is_ranked_on_date_alone() -> None:
+    rows = _row('1221391', 'February 25, 2015') + _row('1221390', 'February 25, 2015', cast='Shyla Stylez, Jt')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(side_effect=_paged(rows))
+    client = Data18Client()
+    assert (
+        await client.find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 25), actors=['Shyla Stylez'])
+        == 'https://www.data18.com/scenes/1221390'
+    )
+    assert (
+        await client.find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 25), actors=['Nobody Here'])
+        == 'https://www.data18.com/scenes/1221391'
+    )
+
+
+@respx.mock
+async def test_a_closer_date_still_outranks_a_matching_cast() -> None:
+    rows = _row('1221409', 'February 11, 2015', cast='Shyla Stylez, Jt') + _row('1221416', 'February 04, 2015', cast='Daphne Rosen')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(side_effect=_paged(rows))
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 4), actors=['Shyla Stylez'])
+    assert url == 'https://www.data18.com/scenes/1221416'
+
+
+@respx.mock
+async def test_a_movie_billing_line_is_read_the_same_way() -> None:
+    rows = _row('900001', 'February 25, 2015').replace('/scenes/', '/movies/').replace(
+        '</span>', '</span><p class="gen11"><b>M</b>ovie w/ Wrong Person</p>'
+    ) + _row('900002', 'February 25, 2015').replace('/scenes/', '/movies/').replace('</span>', '</span><p class="gen11"><b>M</b>ovie w/ Shyla Stylez</p>')
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(side_effect=_paged(rows))
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 25), kind='movie', actors=['Shyla Stylez'])
+    assert url == 'https://www.data18.com/movies/900002'

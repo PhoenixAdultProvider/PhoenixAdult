@@ -31,6 +31,7 @@ _BASE = 'https://www.data18.com'
 _PROBE_CONCURRENCY = 8
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _MAX_ACCURACY = 100.0
+_CAST_PREFIX_RE = re.compile(r'^\s*(?:scene|movie)\s+w/\s*', re.IGNORECASE)
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 _MAX_GALLERY_IMAGES = 600
 _TITLE_XP = '(//h1)[1]'
@@ -220,14 +221,40 @@ def _date_match(a: datetime | None, b: datetime | None, tolerance_days: int = 7)
     return 1 if _date_gap(a, b) <= tolerance_days else 0
 
 
+def _name_key(raw: str) -> str:
+    return re.sub(r'\W', '', raw).lower()
+
+
+def _row_cast(a: Selector) -> set[str]:
+    for node in a.xpath('.//p[contains(@class,"gen11")]'):
+        raw = first_attr(node, 'normalize-space(.)')
+        if _CAST_PREFIX_RE.match(raw):
+            return {key for key in (_name_key(part) for part in _CAST_PREFIX_RE.sub('', raw).split(',')) if key}
+
+    return set()
+
+
+def _cast_overlap(wanted: list[str], found: set[str]) -> float:
+    keys = {key for key in (_name_key(name) for name in wanted) if key}
+    if not keys or not found:
+        return 0.0
+
+    return len(keys & found) / len(keys)
+
+
 @dataclass
 class _Ranked:
     url: str
     accuracy: float
     gap: float
+    cast: float
+
+    @property
+    def rank(self) -> tuple[float, float, float]:
+        return (self.accuracy, -self.gap, self.cast)
 
 
-def _rank_anchor(a: Selector, path_segment: str, query_clean: str, providers: list[str], scene_date: datetime | None) -> _Ranked | None:
+def _rank_anchor(a: Selector, path_segment: str, query_clean: str, providers: list[str], scene_date: datetime | None, actors: list[str]) -> _Ranked | None:
     href = a.xpath('./@href').get() or ''
     if path_segment not in href:
         return None
@@ -251,8 +278,9 @@ def _rank_anchor(a: Selector, path_segment: str, query_clean: str, providers: li
     )
 
     gap = _date_gap(scene_date, search_date)
-    logger.debug('data18', f'"{title_clean}" vs "{query_clean}" date="{date_raw}" provider="{provider}" accuracy={accuracy} gap={gap}d')
-    return _Ranked(url=href if href.startswith('http') else f'{_BASE}{href}', accuracy=accuracy, gap=gap)
+    cast = _cast_overlap(actors, _row_cast(a))
+    logger.debug('data18', f'"{title_clean}" vs "{query_clean}" date="{date_raw}" provider="{provider}" accuracy={accuracy} gap={gap}d cast={cast:.2f}')
+    return _Ranked(url=href if href.startswith('http') else f'{_BASE}{href}', accuracy=accuracy, gap=gap, cast=cast)
 
 
 @dataclass
@@ -395,7 +423,14 @@ class Data18Client(Client):
         return search_results['html'], search_results['sel']
 
     async def find_scene_url(
-        self, scene_id: str | None, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene', search: bool = True
+        self,
+        scene_id: str | None,
+        query: str,
+        providers: list[str],
+        scene_date: datetime | None,
+        kind: Data18Kind = 'scene',
+        search: bool = True,
+        actors: list[str] | None = None,
     ) -> str | None:
         logger.debug('data18', f'find_scene_url: scene_id={scene_id} query="{query}" providers={providers} scene_date={scene_date} kind={kind}')
         if forced := manual_mapping_url(scene_id):
@@ -405,23 +440,26 @@ class Data18Client(Client):
             logger.debug('data18', f'search disabled for scene_id={scene_id} — manual mappings only')
             return None
 
-        url = await self._search_scene_url(query, providers, scene_date, kind)
+        url = await self._search_scene_url(query, providers, scene_date, kind, actors)
         if not url and (alt := convert_sequence_numbers(query)):
             logger.info('data18', f'no match for "{query}" — retrying as "{alt}"')
-            url = await self._search_scene_url(alt, providers, scene_date, kind)
+            url = await self._search_scene_url(alt, providers, scene_date, kind, actors)
 
         if not url:
             logger.info('data18', f'no match for "{query}"')
 
         return url
 
-    async def _search_scene_url(self, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene') -> str | None:
+    async def _search_scene_url(
+        self, query: str, providers: list[str], scene_date: datetime | None, kind: Data18Kind = 'scene', actors: list[str] | None = None
+    ) -> str | None:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
         if not clean_query:
             return None
 
         query_clean = re.sub(r'\W', '', query).lower()
         min_accuracy = env.data18_accuracy
+        cast = actors or []
 
         page_zero = await self._fetch_search_page(clean_query, 0)
         if not page_zero:
@@ -435,14 +473,14 @@ class Data18Client(Client):
         best: _Ranked | None = None
         for page in range(num_pages):
             for a in sel.xpath('//a'):
-                ranked = _rank_anchor(a, path_segment, query_clean, providers, scene_date)
+                ranked = _rank_anchor(a, path_segment, query_clean, providers, scene_date, cast)
                 if not ranked or ranked.accuracy < min_accuracy:
                     continue
 
-                if best is None or (ranked.accuracy, -ranked.gap) > (best.accuracy, -best.gap):
+                if best is None or ranked.rank > best.rank:
                     best = ranked
 
-                if ranked.accuracy >= _MAX_ACCURACY and ranked.gap == 0:
+                if ranked.accuracy >= _MAX_ACCURACY and ranked.gap == 0 and (ranked.cast == 1.0 or not cast):
                     return ranked.url
 
             if page + 1 < num_pages:
@@ -453,7 +491,7 @@ class Data18Client(Client):
                 _, sel = next_page
 
         if best:
-            logger.debug('data18', f'best match for "{query_clean}": {best.url} accuracy={best.accuracy} date gap={best.gap}d')
+            logger.debug('data18', f'best match for "{query_clean}": {best.url} accuracy={best.accuracy} date gap={best.gap}d cast={best.cast:.2f}')
 
         return best.url if best else None
 
@@ -471,9 +509,10 @@ class Data18Client(Client):
         allow_square: bool = True,
         priority: list[str] | None = None,
         search: bool = True,
+        actors: list[str] | None = None,
     ) -> str | None:
         with best_effort(scope, 'data18 enrichment'):
-            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind, search=search)
+            url = forced_url or await self.find_scene_url(scene_id, title, providers or [], scene_date, kind, search=search, actors=actors)
             if url:
                 logger.info(scope, f'data18 enrichment {"manual" if forced_url else "match"}: {url}')
                 ref = data18_ref(url)

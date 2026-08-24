@@ -89,7 +89,14 @@ async def test_detail_data18_enrichment_keys_off_the_slug_id(monkeypatch: pytest
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> str:
             captured['mapping_id'] = scene_id
             return 'https://www.data18.com/scenes/999'
@@ -127,7 +134,14 @@ async def test_data18_search_is_disabled_for_listed_sub_sites_but_mappings_still
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> str | None:
             captured['search'] = search
             captured['scene_id'] = scene_id
@@ -170,7 +184,14 @@ async def test_data18_slug_keeps_the_site_when_it_is_also_the_sub_site(monkeypat
 
     class FakeData18(data18_module.Data18Client):
         async def find_scene_url(
-            self, scene_id: str | None, query: str, providers: list[str], scene_date: object, kind: str = 'scene', search: bool = True
+            self,
+            scene_id: str | None,
+            query: str,
+            providers: list[str],
+            scene_date: object,
+            kind: str = 'scene',
+            search: bool = True,
+            actors: list[str] | None = None,
         ) -> str | None:
             captured['mapping_id'] = scene_id
             return None

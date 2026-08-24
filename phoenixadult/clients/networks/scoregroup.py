@@ -80,6 +80,20 @@ def _joined_names(names: list[str]) -> str:
     return names[0] if len(names) == 1 else f'{", ".join(names[:-1])} and {names[-1]}'
 
 
+def _actor_links(sel: Selector) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for link in sel.xpath('//div//span[@class="value"]/a'):
+        name = first_attr(link, 'normalize-space(.)')
+        if not name or name.lower() == 'extra' or name in seen:
+            continue
+
+        seen.add(name)
+        out.append((name, first_attr(link, '@href').split('?')[0]))
+
+    return out
+
+
 def _canonical(sel: Selector, fallback: str) -> str:
     href = (sel.xpath('//link[@rel="canonical"]/@href').get() or '').strip()
     return href if href and scene_url_id(href) else fallback
@@ -252,6 +266,13 @@ class ScoreGroupClient(Client):
         extra = scene.extra or {}
         return extra.get('packed', {'url': scene.url}), bool(extra.get('is_latest'))
 
+    def _cast_names(self, scene: LoadedScene) -> list[str]:
+        packed, is_latest = self._data(scene)
+        if is_latest:
+            return [name for raw in (packed.get('actors') or '').split(',') if (name := raw.strip())]
+
+        return [name for name, _ in _actor_links(scene.require_sel())]
+
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
@@ -349,13 +370,7 @@ class ScoreGroupClient(Client):
 
         refs: list[tuple[str, str]] = []
         genders: dict[str, str] = {}
-        for actor_link in details_page_elements.xpath('//div//span[@class="value"]/a'):
-            actor_name = first_attr(actor_link, 'normalize-space(.)')
-            href = first_attr(actor_link, '@href').split('?')[0]
-            if not actor_name or actor_name.lower() == 'extra' or actor_name in seen:
-                continue
-
-            seen.add(actor_name)
+        for actor_name, href in _actor_links(details_page_elements):
             genders[actor_name] = 'male' if '/male-' in href else ''
             refs.append((actor_name, absolute_url(href, base) if href else ''))
 
@@ -474,5 +489,10 @@ class ScoreGroupClient(Client):
 
         # Posters from Data18
         await self.enrich_from_data18(
-            metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO], title=metadata.title
+            metadata,
+            scene.site,
+            scene_id=mapping_slug(metadata.title, scene.site.name),
+            providers=[scene.site.name, STUDIO],
+            title=metadata.title,
+            actors=self._cast_names(scene),
         )
