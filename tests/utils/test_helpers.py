@@ -72,3 +72,14 @@ def test_meta_content_pins_one_attribute_when_asked() -> None:
 
     assert meta_content(Selector(text='<meta name="k" content="  padded  ">'), 'k', 'name') == 'padded'
     assert meta_content(Selector(text='<meta name="k">'), 'k', 'name') == ''
+
+
+def test_scene_url_id_reads_the_site_id_from_a_path_or_a_query() -> None:
+    from phoenixadult.utils.helpers.helpers import scene_url_id
+
+    assert scene_url_id('https://www.scoreland.com/big-boob-videos/Danielle-Derek/45336/') == '45336'
+    assert scene_url_id('https://www.scoreland.com/big-boob-videos/Danielle-Derek/45336') == '45336'
+    assert scene_url_id('https://site-api.project1service.com/v2/releases?type=scene&id=3816751') == '3816751'
+    assert scene_url_id('https://lubed.com/api/releases/soapy-wet-threesome') == ''
+    assert scene_url_id('https://example.com/2024/some-scene/') == ''
+    assert scene_url_id(None) == ''

@@ -11,7 +11,7 @@ from parsel import Selector
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
 
@@ -21,7 +21,6 @@ _SEARCH_FILTERS = {'s_filters[type]': 'videos', 's_filters[site]': 'current'}
 _LATEST_RE = re.compile(r'Latest.*Videos')
 _NOT_FOUND_RE = re.compile(r'Watch Our\s+.*Videos Anywhere,\s*Anytime\s*&\s*on Any Device', re.IGNORECASE)
 _COMING_SOON_RE = re.compile(r'^\s*coming\s+soon\s*:\s*', re.IGNORECASE)
-_ID_RE = re.compile(r'/(\d+)/')
 _READ_MORE_RE = re.compile(r'\s*Read More\s*»?', re.IGNORECASE)
 _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
@@ -37,13 +36,13 @@ def _clean_title(raw: str) -> str:
 
 
 def _scene_key(url: str) -> str:
-    found = _ID_RE.search(url)
-    return f'id:{found.group(1)}' if found else f'url:{same_scene(url)}'
+    found = scene_url_id(url)
+    return f'id:{found}' if found else f'url:{same_scene(url)}'
 
 
 def _canonical(sel: Selector, fallback: str) -> str:
     href = (sel.xpath('//link[@rel="canonical"]/@href').get() or '').strip()
-    return href if href and _ID_RE.search(href) else fallback
+    return href if href and scene_url_id(href) else fallback
 
 
 def _usable_title(title: str) -> bool:
@@ -121,7 +120,7 @@ class ScoreGroupClient(Client):
 
             published = _canonical(details_page_elements['sel'], source['_url'])
             page_date = _scene_date(details_page_elements['sel'])
-            found = _ID_RE.search(published)
+            found = scene_url_id(published)
             wanted = _scene_id(ctx)
             packed = json.dumps({'url': published, 'date': page_date or ctx.search_date, 'title': title})
 
@@ -133,7 +132,7 @@ class ScoreGroupClient(Client):
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
-                    score=100 if wanted and found and found.group(1) == wanted else None,
+                    score=100 if wanted and found and found == wanted else None,
                     cur_id=pack_cur_id([packed]),
                 )
             )
@@ -146,12 +145,12 @@ class ScoreGroupClient(Client):
             return
 
         scene_url = absolute_url(href, loaded.site.base_url)
-        m = _ID_RE.search(scene_url)
-        if not m:
+        found = scene_url_id(scene_url)
+        if not found:
             return
 
         wanted = _scene_id(ctx)
-        score = 100 if wanted and m.group(1) == wanted else None
+        score = 100 if wanted and found == wanted else None
         packed = json.dumps(
             {
                 'url': scene_url,

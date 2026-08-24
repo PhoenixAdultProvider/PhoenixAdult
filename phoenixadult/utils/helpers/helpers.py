@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urljoin, urlsplit
 
 from dateutil import parser as date_parser
 from dateutil.relativedelta import relativedelta
@@ -324,3 +324,12 @@ def decensor(text: str, replacements: dict[str, str]) -> str:
 
 def same_scene(url: str | None) -> str:
     return (url or '').rstrip('/').casefold()
+
+
+def scene_url_id(url: str | None) -> str:
+    parts = urlsplit(url or '')
+    for key, value in parse_qsl(parts.query):
+        if key.casefold() == 'id' and value.isdigit():
+            return value
+    segments = [seg for seg in parts.path.split('/') if seg]
+    return segments[-1] if segments and segments[-1].isdigit() else ''

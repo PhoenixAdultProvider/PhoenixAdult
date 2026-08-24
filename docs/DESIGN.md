@@ -340,6 +340,8 @@ flowchart LR
 
 Mutable state — queue replays, the search store, the fully normalized scene snapshot store (scalars on `scenes`; dimension + junction tables for genres, collections, countries, people; image metadata in `scene_images`, image bytes on disk), and the derived people-image/logo indexes plus the face-crop log — lives in one SQLite database opened by `phoenixadult/utils/db` (WAL, FK-enforced, `PRAGMA user_version` migrations). Schema, normalization rationale, scoped-people resolution, and backup guidance (`VACUUM INTO`) are documented in [database.md](database.md). Two small JSON sidecars sit beside the database rather than in it: `logo-wells.json` (each logo's preferred backdrop) and `logo-templates.json` (the per-studio logo URL template), both rebuildable and safe to delete.
 
+Redundant snapshots are surfaced by two passes in `phoenixadult/utils/cache/duplicates.py`. The *stale* pass keys on the rating key, so a subsite-qualified `cur_id` supersedes the bare one. The *content* pass groups snapshots that share a normalized title, release date, studio and tagline **and** the site's own scene id, parsed from `source_url` by `scene_url_id` (an `id=` query parameter, else a trailing all-digit path segment; empty when the URL carries neither). One scene published under two slugs therefore still groups, while two entries of a recurring series that reuses its title — Score Group's `Funbag Fuckers` — no longer do. Purging drops every rating-key-superseded entry plus all but the newest member of each content group.
+
 ---
 
 ## 6. Scraper Client Hierarchy (Template Method / Field-Hook Pattern)

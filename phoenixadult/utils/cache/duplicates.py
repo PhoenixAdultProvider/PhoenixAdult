@@ -7,6 +7,7 @@ from typing import Any
 from phoenixadult.config.env import env
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.layout import _hash
+from phoenixadult.utils.helpers.helpers import scene_url_id
 from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 _SCAN_MEMO: dict[str, tuple[str, Any]] = {}
@@ -65,7 +66,9 @@ def _build_content_groups() -> list[list[tuple[str, float]]]:
         title = _content_norm(row['title'])
         if not title:
             continue
-        key = '|'.join((title, _content_norm(row['release_date']), _content_norm(row['studio_name']), _content_norm(row['tagline_name'])))
+        key = '|'.join(
+            (title, _content_norm(row['release_date']), _content_norm(row['studio_name']), _content_norm(row['tagline_name']), scene_url_id(row['source_url']))
+        )
         groups.setdefault(key, []).append((str(row['rel_path']), float(row['updated_at'] or 0)))
     return [members for members in groups.values() if len(members) > 1]
 

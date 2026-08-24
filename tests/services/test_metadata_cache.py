@@ -191,8 +191,11 @@ def _resp(
     role_thumb: str | None = None,
     images: list[str] | None = None,
     data18: dict[str, str] | None = None,
+    source_url: str = '',
 ) -> PlexMetadataResponse:
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title}
+    if source_url:
+        md['sourceRef'] = {'url': source_url, 'kind': 'page'}
     if studio:
         md['studio'] = studio
     if tagline:
@@ -1065,6 +1068,40 @@ async def test_content_duplicates_match_on_normalized_quad(tmp_path: pytest.Temp
     assert len(dupes) == 2
     titles = {by_cur[k]['tagline'] for k in flagged}
     assert titles == {'Mom Swap', 'MomSwap'}
+
+
+async def test_two_scenes_sharing_a_title_are_not_duplicates_when_the_site_ids_differ(
+    tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    for cur, url in (
+        ('s1', 'https://www.scoreland.com/big-boob-videos/Danielle-Derek/45336/'),
+        ('s2', 'https://www.scoreland.com/big-boob-videos/Shyla-Stylez/45339/'),
+    ):
+        resp = _resp(title='Funbag Fuckers', studio='Score Group', tagline='Scoreland', source_url=url)
+        resp.MediaContainer.Metadata[0].originallyAvailableAt = '2015-02-25'
+        assert await mc.write('Scoreland', cur, resp) is True
+
+    assert mc.content_duplicate_entries() == []
+    assert mc.stale_duplicate_entries() == []
+
+
+async def test_one_scene_published_under_two_slugs_is_still_a_duplicate(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    for cur, url in (
+        ('p1', 'https://www.pornmegaload.com/hd-porn-scenes/lila-lovely/71161/'),
+        ('p2', 'https://www.pornmegaload.com/hd-porn-scenes/lila-lovely-drop-your-loads/71161/'),
+    ):
+        resp = _resp(title='Drop Your Loads', studio='Score Group', tagline='Porn Mega Load', source_url=url)
+        resp.MediaContainer.Metadata[0].originallyAvailableAt = '2022-07-29'
+        assert await mc.write('Porn Mega Load', cur, resp) is True
+
+    assert len(mc.content_duplicate_entries()) == 2
+    assert len(mc.stale_duplicate_entries()) == 1
 
 
 async def test_stale_duplicates_keep_the_newest_copy(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
