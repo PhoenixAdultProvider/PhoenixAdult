@@ -30,7 +30,41 @@ _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
-_SERIES_TITLES = frozenset({'funbag fuckers', 'teens in need', 'voluptuous theater'})
+_SERIES_TITLES = frozenset(
+    title.casefold()
+    for title in (
+        'A Diamond in the Buff',
+        'Behind the Scenes',
+        'Big Tit Glory Hole',
+        'Boob Talk',
+        'Boobs & Bubbles',
+        'Bounce Baby, Bounce!',
+        'Busty Cock Rock',
+        'Busty Euro Maids',
+        'Busty Swinger',
+        'Funbag Fuckers',
+        'HardSCORE 2',
+        'How to Make a Model',
+        'In the Pink',
+        'Maid for Sex',
+        'MILF of the Month',
+        'My Busty Valentine',
+        'New Discovery',
+        'Push in the Bush',
+        'Putting the Show in Shower',
+        'SCORE Sexplosion',
+        'Teens in Need',
+        'The Girl They Call the Body',
+        'Three the Hard Way',
+        'Tit Chat',
+        'Tits & Tugs',
+        'Tits on Glass',
+        'Tits on Top',
+        'Tool Time Girl',
+        'Triple Play',
+        'Voluptuous Theater',
+    )
+)
 
 
 def _clean_title(raw: str) -> str:
