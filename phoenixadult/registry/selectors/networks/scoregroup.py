@@ -20,6 +20,7 @@ def _site(name: str, host: str, video_list_path: str) -> SiteInfo:
         search_notes=PROVIDER_SEARCH_NOTES,
         scraper_type='scoregroup',
         use_bypass=True,
+        data18_enrichment=True,
     )
 
 

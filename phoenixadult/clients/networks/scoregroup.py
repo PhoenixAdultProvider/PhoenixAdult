@@ -8,6 +8,7 @@ from typing import Any
 import httpx2
 from parsel import Selector
 
+from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene
@@ -405,3 +406,8 @@ class ScoreGroupClient(Client):
                 push(page)
 
         metadata.art = images
+
+        # Posters from Data18
+        await self.enrich_from_data18(
+            metadata, scene.site, scene_id=mapping_slug(metadata.title, scene.site.name), providers=[scene.site.name, STUDIO], title=metadata.title
+        )
