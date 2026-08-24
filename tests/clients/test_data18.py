@@ -345,3 +345,47 @@ async def test_movie_enrichment_reports_cover_urls_as_priority(monkeypatch: pyte
     await client.enrich_images(scope='x', images=images, forced_url='https://www.data18.com/movies/1227431', priority=priority)
     assert priority == ['https://cdn.example/front-cover.jpg']
     assert images[0] == 'https://cdn.example/front-cover.jpg'
+
+
+def _row(scene_id: str, date: str, provider: str = 'Scoreland', title: str = 'Funbag Fuckers') -> str:
+    return f'<a href="/scenes/{scene_id}"><p class="gen12 bold">{title}</p><span class="gen11"><b>#1</b> {date} <i>{provider}</i></span></a>'
+
+
+def _paged(*pages: str) -> object:
+    def respond(request: httpx.Request) -> httpx.Response:
+        page = int(dict(request.url.params).get('page', 0))
+        return httpx.Response(200, text=f'<html>pages: {len(pages)}{pages[page]}</html>')
+
+    return respond
+
+
+@respx.mock
+async def test_an_exact_date_on_a_later_page_beats_a_near_miss_on_the_first() -> None:
+    route = respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(
+        side_effect=_paged(
+            _row('1221391', 'February 25, 2015') + _row('1221401', 'February 18, 2015') + _row('1221409', 'February 11, 2015'),
+            _row('1221416', 'February 04, 2015'),
+        )
+    )
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 4))
+    assert url == 'https://www.data18.com/scenes/1221416'
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_an_exact_date_hit_stops_the_search_without_fetching_more_pages() -> None:
+    route = respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(
+        side_effect=_paged(_row('1221409', 'February 11, 2015') + _row('1221416', 'February 04, 2015'), _row('9999999', 'February 04, 2015'))
+    )
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 4))
+    assert url == 'https://www.data18.com/scenes/1221416'
+    assert route.call_count == 1
+
+
+@respx.mock
+async def test_the_nearest_date_wins_when_no_candidate_matches_exactly() -> None:
+    respx.route(method='GET', url__regex=r'data18\.com/sys/live\.php').mock(
+        side_effect=_paged(_row('1221409', 'February 11, 2015') + _row('1221416', 'February 08, 2015'))
+    )
+    url = await Data18Client().find_scene_url(None, 'Funbag Fuckers', ['Scoreland'], datetime(2015, 2, 5))
+    assert url == 'https://www.data18.com/scenes/1221416'

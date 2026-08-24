@@ -30,6 +30,7 @@ _GALLERY_CONCURRENCY = 3
 _BASE = 'https://www.data18.com'
 _PROBE_CONCURRENCY = 8
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
+_MAX_ACCURACY = 100.0
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 _MAX_GALLERY_IMAGES = 600
 _TITLE_XP = '(//h1)[1]'
@@ -211,12 +212,47 @@ def _provider_similarity(a: str | list[str], b: str | list[str]) -> float:
     return best
 
 
-def _date_match(a: datetime | None, b: datetime | None, tolerance_days: int = 7) -> int:
-    if not a or not b:
-        return 0
+def _date_gap(a: datetime | None, b: datetime | None) -> float:
+    return abs((a - b).total_seconds()) / 86_400 if a and b else float('inf')
 
-    diff = abs((a - b).total_seconds()) / 86_400
-    return 1 if diff <= tolerance_days else 0
+
+def _date_match(a: datetime | None, b: datetime | None, tolerance_days: int = 7) -> int:
+    return 1 if _date_gap(a, b) <= tolerance_days else 0
+
+
+@dataclass
+class _Ranked:
+    url: str
+    accuracy: float
+    gap: float
+
+
+def _rank_anchor(a: Selector, path_segment: str, query_clean: str, providers: list[str], scene_date: datetime | None) -> _Ranked | None:
+    href = a.xpath('./@href').get() or ''
+    if path_segment not in href:
+        return None
+
+    title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
+    if not title_node:
+        return None
+
+    title_raw = first_attr(title_node[0], 'normalize-space(.)')
+    title_clean = re.sub(r'\W', '', title_raw).lower()
+
+    span = a.xpath('.//span[contains(@class,"gen11")]')
+    date_raw = _direct_text(span[0]) if span else ''
+    search_date = _parse_date(date_raw) if date_raw and date_raw != 'unknown' else None
+    provider = first_attr(a, './/span[contains(@class,"gen11")]//i[1]/text()')
+
+    truncated_prefix = title_clean.split('...')[0].strip()
+    use_title = not (('...' in title_raw) and truncated_prefix and truncated_prefix in query_clean)
+    accuracy = _accuracy_score(
+        _ScoreInputs(title=query_clean, date=scene_date, provider=providers), _ScoreInputs(title=title_clean, date=search_date, provider=provider), use_title
+    )
+
+    gap = _date_gap(scene_date, search_date)
+    logger.debug('data18', f'"{title_clean}" vs "{query_clean}" date="{date_raw}" provider="{provider}" accuracy={accuracy} gap={gap}d')
+    return _Ranked(url=href if href.startswith('http') else f'{_BASE}{href}', accuracy=accuracy, gap=gap)
 
 
 @dataclass
@@ -396,33 +432,18 @@ class Data18Client(Client):
         num_pages = min(int(pages_match.group(1)) if pages_match else 1, 150)
 
         path_segment = f'/{kind}s/'
+        best: _Ranked | None = None
         for page in range(num_pages):
             for a in sel.xpath('//a'):
-                href = a.xpath('./@href').get() or ''
-                if path_segment not in href:
+                ranked = _rank_anchor(a, path_segment, query_clean, providers, scene_date)
+                if not ranked or ranked.accuracy < min_accuracy:
                     continue
 
-                title_node = a.xpath('.//p[contains(@class,"gen12") and contains(@class,"bold")]')
-                if not title_node:
-                    continue
+                if best is None or (ranked.accuracy, -ranked.gap) > (best.accuracy, -best.gap):
+                    best = ranked
 
-                title_raw = first_attr(title_node[0], 'normalize-space(.)')
-                title_clean = re.sub(r'\W', '', title_raw).lower()
-
-                span = a.xpath('.//span[contains(@class,"gen11")]')
-                date_raw = _direct_text(span[0]) if span else ''
-                search_date = _parse_date(date_raw) if date_raw and date_raw != 'unknown' else None
-                provider = first_attr(a, './/span[contains(@class,"gen11")]//i[1]/text()')
-
-                network_data = _ScoreInputs(title=query_clean, date=scene_date, provider=providers)
-                data18_data = _ScoreInputs(title=title_clean, date=search_date, provider=provider)
-                truncated_prefix = title_clean.split('...')[0].strip()
-                use_title = not (('...' in title_raw) and truncated_prefix and truncated_prefix in query_clean)
-                accuracy = _accuracy_score(network_data, data18_data, use_title)
-
-                logger.debug('data18', f'"{title_clean}" vs "{query_clean}" date="{date_raw}" provider="{provider}" accuracy={accuracy}')
-                if accuracy >= min_accuracy:
-                    return href if href.startswith('http') else f'{_BASE}{href}'
+                if ranked.accuracy >= _MAX_ACCURACY and ranked.gap == 0:
+                    return ranked.url
 
             if page + 1 < num_pages:
                 next_page = await self._fetch_search_page(clean_query, page + 1)
@@ -431,7 +452,10 @@ class Data18Client(Client):
 
                 _, sel = next_page
 
-        return None
+        if best:
+            logger.debug('data18', f'best match for "{query_clean}": {best.url} accuracy={best.accuracy} date gap={best.gap}d')
+
+        return best.url if best else None
 
     async def enrich_images(
         self,
