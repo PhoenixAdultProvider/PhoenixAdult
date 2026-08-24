@@ -3,6 +3,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 import phoenixadult
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 
@@ -52,3 +54,27 @@ def test_the_asgi_app_reports_the_package_version() -> None:
     from phoenixadult.app_factory import create_app
 
     assert create_app().version == phoenixadult.__version__
+
+
+def test_the_bump_script_reads_and_increments_the_one_literal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import bump_version
+
+    fake = tmp_path / '__init__.py'
+    fake.write_text("__version__ = '1.0.0a453'\n\n\ndef provider_version() -> str:\n    return __version__\n", encoding='utf-8')
+    monkeypatch.setattr(bump_version, 'INIT', fake)
+
+    assert bump_version.read() == '1.0.0a453'
+    assert bump_version.bump() == '1.0.0a454'
+    assert bump_version.read() == '1.0.0a454'
+    assert 'def provider_version' in fake.read_text(encoding='utf-8'), 'only the version line moves'
+
+
+def test_the_bump_script_refuses_a_file_it_cannot_parse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts import bump_version
+
+    fake = tmp_path / '__init__.py'
+    fake.write_text("__version__ = 'nonsense'\n", encoding='utf-8')
+    monkeypatch.setattr(bump_version, 'INIT', fake)
+
+    with pytest.raises(SystemExit):
+        bump_version.bump()
