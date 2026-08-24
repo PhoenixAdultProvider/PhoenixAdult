@@ -7,7 +7,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.scoregroup as sg_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.clients.base import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.registry import find_site
 
@@ -480,3 +480,34 @@ async def test_a_different_scene_id_is_still_its_own_candidate(monkeypatch: pyte
     await ScoreGroupClient().search(results, _ctx(title='alice green 45560', full_title='alice green 45560'))
 
     assert sorted(r.title for r in results) == ['A Different Scene', 'Butt Student']
+
+
+def _series(title: str, actors: list[tuple[str, str]]) -> SceneDetail:
+    return SceneDetail(title=title, actors=[ActorResult(name=name, gender=gender) for name, gender in actors])
+
+
+@pytest.mark.parametrize(
+    ('skip_male', 'actors', 'expected'),
+    [
+        (True, [('Shyla Stylez', ''), ('J.T.', 'male')], 'Funbag Fuckers - Shyla Stylez'),
+        (False, [('Shyla Stylez', ''), ('J.T.', 'male')], 'Funbag Fuckers - Shyla Stylez and J.T.'),
+        (False, [('Shyla Stylez', ''), ('Danielle Derek', ''), ('Mikey Butders', 'male')], 'Funbag Fuckers - Shyla Stylez, Danielle Derek and Mikey Butders'),
+        (True, [('Danielle Derek', '')], 'Funbag Fuckers - Danielle Derek'),
+        (True, [('J.T.', 'male')], 'Funbag Fuckers'),
+        (True, [], 'Funbag Fuckers'),
+    ],
+)
+def test_a_series_title_carries_the_cast_that_survives_the_male_filter(
+    monkeypatch: pytest.MonkeyPatch, skip_male: bool, actors: list[tuple[str, str]], expected: str
+) -> None:
+    monkeypatch.setattr(sg_mod, 'gender_skip_male_enabled', lambda: skip_male)
+    metadata = _series('Funbag Fuckers', actors)
+    ScoreGroupClient(SITE)._name_the_series_entry(metadata)
+    assert metadata.title == expected
+
+
+def test_a_one_off_title_is_left_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sg_mod, 'gender_skip_male_enabled', lambda: False)
+    metadata = _series('Cool Scene', [('Jane Doe', '')])
+    ScoreGroupClient(SITE)._name_the_series_entry(metadata)
+    assert metadata.title == 'Cool Scene'

@@ -14,6 +14,7 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.people.generic import gender_skip_male_enabled
 
 STUDIO = 'Score Group'
 _SEARCH_PATH = '/search-es'
@@ -29,6 +30,7 @@ _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
+_SERIES_TITLES = frozenset({'funbag fuckers', 'teens in need', 'voluptuous theater'})
 
 
 def _clean_title(raw: str) -> str:
@@ -38,6 +40,10 @@ def _clean_title(raw: str) -> str:
 def _scene_key(url: str) -> str:
     found = scene_url_id(url)
     return f'id:{found}' if found else f'url:{same_scene(url)}'
+
+
+def _joined_names(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else f'{", ".join(names[:-1])} and {names[-1]}'
 
 
 def _canonical(sel: Selector, fallback: str) -> str:
@@ -213,6 +219,19 @@ class ScoreGroupClient(Client):
         return extra.get('packed', {'url': scene.url}), bool(extra.get('is_latest'))
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
+
+    async def update(self, metadata: SceneDetail, scene: LoadedScene) -> None:
+        await super().update(metadata, scene)
+        self._name_the_series_entry(metadata)
+
+    def _name_the_series_entry(self, metadata: SceneDetail) -> None:
+        if metadata.title.casefold() not in _SERIES_TITLES:
+            return
+
+        skip_male = gender_skip_male_enabled()
+        names = [a.name for a in metadata.actors if a.name and not (skip_male and a.gender.casefold() == 'male')]
+        if names:
+            metadata.title = f'{metadata.title} - {_joined_names(names)}'
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
