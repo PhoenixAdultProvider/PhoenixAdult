@@ -36,6 +36,11 @@ def _clean_title(raw: str) -> str:
     return _COMING_SOON_RE.sub('', raw, count=1).strip()
 
 
+def _scene_key(url: str) -> str:
+    found = _ID_RE.search(url)
+    return f'id:{found.group(1)}' if found else f'url:{same_scene(url)}'
+
+
 def _canonical(sel: Selector, fallback: str) -> str:
     href = (sel.xpath('//link[@rel="canonical"]/@href').get() or '').strip()
     return href if href and _ID_RE.search(href) else fallback
@@ -80,16 +85,24 @@ class ScoreGroupClient(Client):
 
         video_list_path = search_data.site_info.search_path or '/'
         candidate_urls: list[str] = []
+        seen: set[str] = set()
+
+        def remember(candidate: str) -> None:
+            key = _scene_key(candidate)
+            if key in seen:
+                return
+
+            seen.add(key)
+            candidate_urls.append(candidate)
 
         if not search_data.scene_id and search_data.full_title:
             all_digits = re.sub(r'\D', '', search_data.full_title)
             actor_slug = re.sub(r'\s\d.*', '', search_data.full_title).replace(' ', '-')
             if all_digits and actor_slug:
-                candidate_urls.append(f'{base}{video_list_path}{actor_slug}/{all_digits}/')
+                remember(f'{base}{video_list_path}{actor_slug}/{all_digits}/')
 
         for u in await web_search_urls(search_data.title, search_data.site_info, include=[video_list_path], exclude=['?']):
-            if not any(same_scene(u) == same_scene(known) for known in candidate_urls):
-                candidate_urls.append(u)
+            remember(u)
 
         sources.extend({'_url': u} for u in candidate_urls)
         return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)

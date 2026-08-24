@@ -425,13 +425,13 @@ async def test_two_slugs_for_one_scene_collapse_to_the_published_url(monkeypatch
 
     monkeypatch.setattr(sg_mod, 'web_search_urls', _published)
     respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
-    for url in (guessed, _CANON):
-        respx.get(url).mock(return_value=httpx.Response(200, text=_scene_page(_CANON)))
+    fetched = {url: respx.get(url).mock(return_value=httpx.Response(200, text=_scene_page(_CANON))) for url in (guessed, _CANON)}
 
     results: list[SearchResult] = []
     await ScoreGroupClient().search(results, _ctx(title='alice green sasha sean 45560', full_title='alice green sasha sean 45560'))
 
     assert [r.scene_url for r in results] == [_CANON], 'the guess and the published url are one scene, named by the site'
+    assert fetched[guessed].called and not fetched[_CANON].called, 'the same scene id is not worth a second round trip'
 
 
 @respx.mock
@@ -449,3 +449,34 @@ async def test_a_canonical_that_is_not_a_scene_is_ignored(monkeypatch: pytest.Mo
     assert [r.scene_url for r in results] == ['https://www.scoreland.com/big-boob-videos/jane/777/'], (
         'the soft-404 points its canonical at /home/, which carries no scene id'
     )
+
+
+@pytest.mark.parametrize(
+    ('left', 'right', 'same'),
+    [
+        ('https://s.test/v/alice-green-sasha-sean/45560/', 'https://s.test/v/Alice-Green/45560/', True),
+        ('https://s.test/v/Alice-Green/45560/', 'https://s.test/v/Alice-Green/45561/', False),
+        ('https://s.test/v/no-digits/', 'https://s.test/v/NO-DIGITS/', True),
+        ('https://s.test/v/no-digits/', 'https://s.test/v/other/', False),
+    ],
+)
+def test_candidates_are_keyed_on_the_scene_id(left: str, right: str, same: bool) -> None:
+    assert (sg_mod._scene_key(left) == sg_mod._scene_key(right)) is same
+
+
+@respx.mock
+async def test_a_different_scene_id_is_still_its_own_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
+    other = 'https://www.scoreland.com/big-boob-videos/Alice-Green/45561/'
+
+    async def _other(*_a: object, **_k: object) -> list[str]:
+        return [other]
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _other)
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
+    respx.get('https://www.scoreland.com/big-boob-videos/alice-green/45560/').mock(return_value=httpx.Response(200, text=_scene_page(_CANON, 'Butt Student')))
+    respx.get(other).mock(return_value=httpx.Response(200, text=_scene_page(other, 'A Different Scene')))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='alice green 45560', full_title='alice green 45560'))
+
+    assert sorted(r.title for r in results) == ['A Different Scene', 'Butt Student']
