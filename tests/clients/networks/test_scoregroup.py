@@ -140,8 +140,8 @@ async def test_the_summary_stops_before_read_more_and_the_tags() -> None:
     detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
 
     assert detail is not None
-    assert detail.summary == 'Bombshell Returns She bends in ways that should not be legal.'
-    for junk in ('Read More', 'Share', 'Related Tags', 'Big Tits', 'Blonde'):
+    assert detail.summary == 'She bends in ways that should not be legal.'
+    for junk in ('Bombshell Returns', 'Read More', 'Share', 'Related Tags', 'Big Tits', 'Blonde'):
         assert junk not in detail.summary, f'{junk!r} leaked into the summary'
 
 
@@ -522,3 +522,46 @@ def test_a_later_addition_to_the_series_list_is_matched_case_insensitively(monke
     metadata = _series('HardSCORE 2', [('Angela White', ''), ('Kayla Kleevage', '')])
     ScoreGroupClient(SITE)._name_the_series_entry(metadata)
     assert metadata.title == 'HardSCORE 2 - Angela White and Kayla Kleevage'
+
+
+def test_the_summary_ignores_the_video_player_descriptions_button() -> None:
+    from parsel import Selector
+
+    page = Selector(
+        text="""<html><body>
+          <div class="vjs-descriptions-button vjs-menu-button vjs-control vjs-button vjs-hidden">
+            <div class="vjs-menu"><li class="vjs-menu-item">descriptions off, selected</li></div>
+          </div>
+          <div class="p-desc p-3" itemprop="articleBody">
+            <h2>Alexya Was Born To Play</h2>
+            Relaxing on a hammock, gorgeous Alexya soaks in the paradise.
+            <a class="accent-text">Read More &#187;</a>
+          </div>
+        </body></html>"""
+    )
+    assert sg_mod._summary_text(page) == 'Relaxing on a hammock, gorgeous Alexya soaks in the paradise.'
+
+
+def test_the_older_bare_desc_template_still_reads() -> None:
+    from parsel import Selector
+
+    page = Selector(text='<html><body><div class="desc">Sapphire is unique. She had an amazing rack.</div></body></html>')
+    assert sg_mod._summary_text(page) == 'Sapphire is unique. She had an amazing rack.'
+
+
+def test_a_body_wrapped_in_a_child_element_drops_the_heading_and_the_tail() -> None:
+    from parsel import Selector
+
+    page = Selector(
+        text="""<html><body><div class="p-desc">
+          <h2>Bombshell Returns</h2><p>She bends in ways that should not be legal.</p>
+          <a class="accent-text">Read More &#187;</a><h3>Related Tags</h3><a class="btn">Big Tits</a>
+        </div></body></html>"""
+    )
+    assert sg_mod._summary_text(page) == 'She bends in ways that should not be legal.'
+
+
+def test_a_page_with_no_description_yields_an_empty_summary() -> None:
+    from parsel import Selector
+
+    assert sg_mod._summary_text(Selector(text='<html><body><h1>Cool Scene</h1></body></html>')) == ''

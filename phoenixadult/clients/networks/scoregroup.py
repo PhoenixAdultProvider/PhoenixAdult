@@ -30,6 +30,10 @@ _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
+_DESC_XPATHS = (
+    '//div[contains(concat(" ", normalize-space(@class), " "), " p-desc ")]',
+    '//div[contains(concat(" ", normalize-space(@class), " "), " desc ")]',
+)
 _SERIES_TITLES = frozenset(
     title.casefold()
     for title in (
@@ -78,6 +82,28 @@ def _scene_key(url: str) -> str:
 
 def _joined_names(names: list[str]) -> str:
     return names[0] if len(names) == 1 else f'{", ".join(names[:-1])} and {names[-1]}'
+
+
+def _summary_text(sel: Selector) -> str:
+    for xpath in _DESC_XPATHS:
+        node = sel.xpath(f'({xpath})[1]')
+        if not node:
+            continue
+
+        own = ' '.join(' '.join(node.xpath('./text()').getall()).split())
+        if own:
+            return own
+
+        whole = ' '.join((node.xpath('string(.)').get() or '').split())
+        heading = ' '.join(' '.join(node.xpath('./h2//text()').getall()).split())
+        if heading and whole.startswith(heading):
+            whole = whole[len(heading) :].lstrip()
+
+        trimmed = _READ_MORE_RE.split(whole)[0].strip()
+        if trimmed:
+            return trimmed
+
+    return ''
 
 
 def _actor_links(sel: Selector) -> list[tuple[str, str]]:
@@ -304,16 +330,7 @@ class ScoreGroupClient(Client):
         metadata.title = _clean_title(raw) if raw else ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        details_page_elements = scene.require_sel()
-
-        node = details_page_elements.xpath('(//div[contains(@class,"p-desc")] | //div[contains(@class,"desc")])[1]')
-        own = ' '.join(' '.join(node.xpath('./h2//text() | ./text()').getall()).split())
-        if own:
-            metadata.summary = own
-            return
-
-        whole = ' '.join((node.xpath('string(.)').get() or '').split())
-        metadata.summary = _READ_MORE_RE.split(whole)[0].strip()
+        metadata.summary = _summary_text(scene.require_sel())
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
