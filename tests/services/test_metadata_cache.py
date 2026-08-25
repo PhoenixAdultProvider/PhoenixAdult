@@ -1226,3 +1226,37 @@ async def test_a_scene_whose_only_image_vanished_reports_no_thumb_at_all(tmp_pat
     md = mc.read('Brazzers', 'gone2')['MediaContainer']['Metadata'][0]
     assert not md.get('thumb'), 'an empty thumb is what makes the cache list render "No image" instead of a broken one'
     assert not md.get('Image')
+
+
+async def test_the_scan_finds_snapshots_whose_thumb_file_is_gone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    intact_rel = mc.bundle_path(mc._hash('Brazzers', 'intact'))
+    (tmp_path / intact_rel / 'images').mkdir(parents=True)
+    (tmp_path / intact_rel / 'images' / 'img-01.jpg').write_bytes(_jpeg(600, 900))
+    assert await mc.write('Brazzers', 'intact', _resp(studio='Brazzers', thumb=f'/cache/{intact_rel}/images/img-01.jpg')) is True
+
+    broken_rel = mc.bundle_path(mc._hash('Brazzers', 'broken'))
+    (tmp_path / broken_rel / 'images').mkdir(parents=True)
+    (tmp_path / broken_rel / 'images' / 'img-01.jpg').write_bytes(_jpeg(600, 900))
+    assert await mc.write('Brazzers', 'broken', _resp(studio='Brazzers', thumb=f'/cache/{broken_rel}/images/img-01.jpg')) is True
+
+    assert mc.missing_image_entries() == []
+
+    (tmp_path / broken_rel / 'images' / 'img-01.jpg').unlink()
+    conn = db.connect()
+    with conn:
+        conn.execute('UPDATE scenes SET updated_at = updated_at + 1 WHERE rel_path = ?', (broken_rel,))
+
+    assert mc.missing_image_entries() == [broken_rel]
+
+
+def test_the_scan_ignores_images_that_do_not_live_in_the_snapshot_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache.integrity import snapshot_image_path
+
+    assert snapshot_image_path('https://cdn.example/p.jpg') is None
+    assert snapshot_image_path('/images/local/actors/female/actor.jane_female.jpg') is None
+    assert snapshot_image_path('') is None
+    assert snapshot_image_path('/cache/scenes/d2/d2f973d18fb4/images/poster-00.jpg') is not None
+    assert snapshot_image_path('/cache/scenes/d2/d2f973d18fb4/images/poster-00.jpg?v=123') is not None

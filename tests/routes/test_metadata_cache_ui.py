@@ -840,3 +840,24 @@ def test_the_editor_carries_a_data18_launch_point(monkeypatch: pytest.MonkeyPatc
     assert 'id="data18Link"' in page.text
     assert "'https://www.data18.com/' + (qs('f-data18Type').value === 'movie' ? 'movies' : 'scenes') + '/' + id" in page.text
     assert 'hidden>Data18 ↗</a>' in page.text, 'the link starts hidden and is shown only once an id is present'
+
+
+def test_the_edit_button_opens_a_new_tab_and_carries_the_page_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    page = _source_client(monkeypatch, 'x').get('/metadata').text
+    assert "window.open('/metadata/edit?'" in page, 'edit must open a new tab, not navigate the list away'
+    assert 'back: String(offset)' in page
+    assert "parseInt(new URLSearchParams(location.search).get('offset')" in page, 'the list must restore the offset it was sent back to'
+
+
+def test_save_and_cancel_return_to_the_page_that_launched_the_editor(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    page = _source_client(monkeypatch, pack_cur_id(['https://example.com/scene/alpha'])).get('/metadata/edit?key=studio/abc').text
+    assert "'/metadata?offset=' + encodeURIComponent(back)" in page
+    assert 'onclick="leave()"' in page
+
+
+def test_the_missing_image_filter_is_offered_and_sent_to_the_server(monkeypatch: pytest.MonkeyPatch) -> None:
+    page = _source_client(monkeypatch, 'x').get('/metadata').text
+    assert 'id="brokenToggle"' in page
+    assert "p.set('broken', '1')" in page

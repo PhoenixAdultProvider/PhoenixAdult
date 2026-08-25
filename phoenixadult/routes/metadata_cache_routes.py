@@ -276,6 +276,7 @@ class EntryFilters:
     producer: str = ''
     provider: str = ''
     dups: int = Query(0, ge=0, le=2)
+    broken: int = Query(0, ge=0, le=1)
     sort: str = 'updated_at'
     direction: str = Query('desc', alias='dir')
     limit: int = Query(PAGE_SIZE, ge=0, le=1000)
@@ -291,16 +292,27 @@ class EntryFilters:
         return {name: getattr(self, name) for name in _SCOPE_FIELDS} | {'dup_paths': dup_paths}
 
 
+def _restricted_paths(filters: EntryFilters, dup_paths: list[str]) -> list[str] | None:
+    picked = [set(dup_paths)] if filters.dups else []
+    if filters.broken:
+        picked.append(set(metadata_cache.missing_image_entries()))
+    if not picked:
+        return None
+
+    return sorted(set.intersection(*picked))
+
+
 @router.get('/entries')
 async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONResponse:
     def _bundle() -> dict[str, Any]:
         dup_keys = metadata_cache.stale_duplicate_entries()
         show_paths = metadata_cache.content_duplicate_entries() if filters.dups == 2 else dup_keys
-        scope = filters.scope(show_paths if filters.dups else None)
+        restrict = _restricted_paths(filters, show_paths)
+        scope = filters.scope(restrict)
         entries, total = metadata_cache.entries_page(
             **{k: v for k, v in scope.items() if k != 'dup_paths'},
-            dups_only=bool(filters.dups),
-            dup_paths=show_paths,
+            dups_only=restrict is not None,
+            dup_paths=restrict or [],
             sort=filters.sort,
             direction=filters.direction,
             limit=filters.limit if filters.limit > 0 else -1,

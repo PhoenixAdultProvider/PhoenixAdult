@@ -752,6 +752,10 @@ def dup_candidate_rows() -> list[sqlite3.Row]:
     ).fetchall()
 
 
+def image_check_rows() -> list[sqlite3.Row]:
+    return db.connect().execute('SELECT rel_path, thumb, art FROM scenes').fetchall()
+
+
 def prune_orphan_names() -> dict[str, int]:
     conn = db.connect()
     with conn:

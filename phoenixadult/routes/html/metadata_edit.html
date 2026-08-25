@@ -225,7 +225,10 @@
     }
 
 
-    function leave() { location.href = '/metadata'; }
+    function leave() {
+      const back = new URLSearchParams(location.search).get('back');
+      location.href = back ? '/metadata?offset=' + encodeURIComponent(back) : '/metadata';
+    }
 
     var PEOPLE_ROLES = {Role: 'actor', Director: 'director', Producer: 'producer'};
 

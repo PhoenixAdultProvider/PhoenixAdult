@@ -22,6 +22,7 @@ from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.duplicates import content_duplicate_entries as content_duplicate_entries
 from phoenixadult.utils.cache.duplicates import duplicate_entries as duplicate_entries
 from phoenixadult.utils.cache.duplicates import stale_duplicate_entries as stale_duplicate_entries
+from phoenixadult.utils.cache.integrity import missing_image_entries as missing_image_entries
 from phoenixadult.utils.cache.layout import (
     BUNDLE_FILE as BUNDLE_FILE,
 )

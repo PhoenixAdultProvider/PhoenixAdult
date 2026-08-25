@@ -186,7 +186,8 @@
 
   {% call toolbar.bar('count') %}
 {% if is_admin() %}    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="dupToggle" onclick="toggleDuplicates()" hidden>Show Stale</button>
-    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>{% endif %}
+    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="potToggle" onclick="togglePotential()">Show Duplicates</button>
+    <button class="pa-btn pa-btn--lg pa-btn--warn tb-filter-toggle" id="brokenToggle" onclick="toggleBroken()">Show Missing Images</button>{% endif %}
     <div class="tb-actions">
 {% if is_admin() %}      <button class="pa-btn pa-btn--lg pa-btn--warn" id="dupBtn" onclick="purgeDuplicates()" disabled></button>
       <button class="pa-btn pa-btn--lg" id="pruneBtn" onclick="pruneNames()">Purge Unused Names</button>
@@ -225,6 +226,7 @@
     var DUP_SET = new Set(DUP_KEYS);
     var showDupsOnly = false;
     var showPotential = false;
+    var showBroken = false;
     var STORE_KEY = 'metadata-cache-filters';
     var SFW = readSfw();
 
@@ -251,7 +253,7 @@
 
     // ── Every filter, sort, and page runs in SQL, so pages and totals agree ──
     var PAGE_SIZE = {{ page_size|tojson }};
-    var offset = 0;
+    var offset = Math.max(0, parseInt(new URLSearchParams(location.search).get('offset') || '0', 10) || 0);
     var SERVER_SORTS = {mtime: 'updated_at', date: 'release_date', year: 'release_date', title: 'title', studio: 'studio', tagline: 'tagline', data18_id: 'data18_id'};
     var FILTER_PARAMS = {'f-actor': 'actor', 'f-genre': 'genre', 'f-cast': 'cast', 'f-director': 'director', 'f-producer': 'producer', 'f-provider': 'provider', 'f-studio': 'studio', 'f-year': 'year', 'f-month': 'month', 'f-day': 'day', 'f-tagline': 'tagline', 'f-collection': 'collection', 'f-data18': 'data18'};
 
@@ -265,6 +267,7 @@
       }
       if (showPotential) p.set('dups', '2');
       else if (showDupsOnly) p.set('dups', '1');
+      if (showBroken) p.set('broken', '1');
       return p;
     }
 
@@ -386,7 +389,7 @@
     function saveFilters() {
       const facets = {};
       FILTER_IDS.forEach(id => { facets[id] = document.getElementById(id).value; });
-      try { localStorage.setItem(STORE_KEY, JSON.stringify({facets, sortKey, sortDir, showDupsOnly, showPotential})); } catch {}
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({facets, sortKey, sortDir, showDupsOnly, showPotential, showBroken})); } catch {}
     }
 
     function restoreFilters() {
@@ -401,6 +404,7 @@
       if (saved.sortKey && SERVER_SORTS[saved.sortKey]) { sortKey = saved.sortKey; sortDir = saved.sortDir === 1 ? 1 : -1; }
       if (saved.showDupsOnly && DUP_SET.size) setDupsOnly(true);
       if (saved.showPotential) setPotential(true);
+      if (saved.showBroken) setBroken(true);
     }
 
     function buildSortOptions() {
@@ -444,6 +448,7 @@
       FILTER_IDS.forEach(id => { document.getElementById(id).value = ''; });
       if (showDupsOnly) setDupsOnly(false);
       if (showPotential) setPotential(false);
+      if (showBroken) setBroken(false);
       sortKey = DEFAULT_SORT_KEY;
       sortDir = DEFAULT_SORT_DIR;
       applySortIndicators();
@@ -523,7 +528,7 @@
 
 
     function edit(key) {
-      location.href = '/metadata/edit?' + new URLSearchParams({key}).toString();
+      window.open('/metadata/edit?' + new URLSearchParams({key, back: String(offset)}).toString(), '_blank', 'noopener');
     }
 
     function personLink(name) {
@@ -677,6 +682,20 @@
 
     function togglePotential() {
       setPotential(!showPotential);
+      offset = 0;
+      refreshEntries();
+    }
+
+    function setBroken(on) {
+      showBroken = on;
+      const t = document.getElementById('brokenToggle');
+      if (!t) return;
+      t.classList.toggle('on', on);
+      t.textContent = on ? 'Showing Missing Images Only' : 'Show Missing Images';
+    }
+
+    function toggleBroken() {
+      setBroken(!showBroken);
       offset = 0;
       refreshEntries();
     }
