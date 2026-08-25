@@ -849,12 +849,19 @@ def test_the_edit_button_opens_a_new_tab_and_carries_the_page_back(monkeypatch: 
     assert "parseInt(new URLSearchParams(location.search).get('offset')" in page, 'the list must restore the offset it was sent back to'
 
 
-def test_save_and_cancel_return_to_the_page_that_launched_the_editor(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_save_and_cancel_close_the_tab_the_list_opened(monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.helpers.helpers import pack_cur_id
 
     page = _source_client(monkeypatch, pack_cur_id(['https://example.com/scene/alpha'])).get('/metadata/edit?key=studio/abc').text
-    assert "'/metadata?offset=' + encodeURIComponent(back)" in page
+    assert 'window.close()' in page
+    assert 'opener.refreshEntries()' in page, 'the list behind the tab should show the edit without a full reload'
+    assert "'/metadata?offset=' + encodeURIComponent(back)" in page, 'a directly-opened editor still needs somewhere to go'
     assert 'onclick="leave()"' in page
+
+
+def test_the_editor_tab_is_opened_so_it_can_close_itself(monkeypatch: pytest.MonkeyPatch) -> None:
+    page = _source_client(monkeypatch, 'x').get('/metadata').text
+    assert "'_blank');" in page, 'noopener would leave window.opener null, and a tab without an opener cannot close itself'
 
 
 def test_the_missing_image_filter_is_offered_and_sent_to_the_server(monkeypatch: pytest.MonkeyPatch) -> None:

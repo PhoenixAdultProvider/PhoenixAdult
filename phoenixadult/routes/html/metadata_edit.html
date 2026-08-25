@@ -226,8 +226,22 @@
 
 
     function leave() {
+      const opener = openerList();
+      if (opener) {
+        try { opener.refreshEntries(); } catch {}
+        window.close();
+        return;
+      }
       const back = new URLSearchParams(location.search).get('back');
       location.href = back ? '/metadata?offset=' + encodeURIComponent(back) : '/metadata';
+    }
+
+    function openerList() {
+      try {
+        return window.opener && !window.opener.closed && typeof window.opener.refreshEntries === 'function' ? window.opener : null;
+      } catch {
+        return null;
+      }
     }
 
     var PEOPLE_ROLES = {Role: 'actor', Director: 'director', Producer: 'producer'};
