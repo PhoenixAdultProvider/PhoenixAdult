@@ -486,7 +486,7 @@
       cards.innerHTML = rows.map(e => {
         const thumb = SFW
           ? ''
-          : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb + (e.thumb.includes('/cache/') ? (e.thumb.includes('?') ? '&' : '?') + 'v=' + Math.floor(e.mtime || 0) : ''))}" loading="lazy" decoding="async" alt="">` : '<div class="noimg">No image</div>'}</div>`;
+          : `<div class="c-thumb">${e.thumb ? `<img src="${esc(e.thumb + (e.thumb.includes('/cache/') ? (e.thumb.includes('?') ? '&' : '?') + 'v=' + Math.floor(e.mtime || 0) : ''))}" loading="lazy" decoding="async" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'noimg', textContent: 'Image missing'}))">` : '<div class="noimg">No image</div>'}</div>`;
         const heading = e.tagline && e.tagline !== e.studio ? `${e.studio} · ${e.tagline}` : e.studio;
         const data18 = e.data18_id
           ? esc(e.data18_id) + (e.data18_also ? ' <span class="manual">+' + e.data18_also.split(',').length + '</span>' : '') + (e.data18_manual ? ' <span class="manual">manual</span>' : '')

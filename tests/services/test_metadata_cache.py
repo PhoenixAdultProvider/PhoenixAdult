@@ -1193,3 +1193,36 @@ def test_a_locked_summary_keeps_its_leading_title() -> None:
     resp = _summary_resp('Funbag Fuckers', 'Funbag Fuckers In the SCORE movie, Shyla is needy.')
     mc.reapply_text_rules(resp, 'scoregroup', locked={'summary'})
     assert resp.MediaContainer.Metadata[0].summary == 'Funbag Fuckers In the SCORE movie, Shyla is needy.'
+
+
+async def test_a_thumb_whose_file_vanished_is_dropped_rather_than_left_pointing_at_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    rel = mc.bundle_path(mc._hash('Brazzers', 'gone1'))
+    scene_dir = tmp_path / rel / 'images'
+    scene_dir.mkdir(parents=True)
+    (scene_dir / 'img-01.jpg').write_bytes(_jpeg(600, 900))
+    survivor = f'/cache/{rel}/images/img-01.jpg'
+    vanished = f'/cache/{rel}/images/poster-00.jpg'
+
+    assert await mc.write('Brazzers', 'gone1', _resp(studio='Brazzers', thumb=vanished, images=[vanished, survivor])) is True
+
+    md = mc.read('Brazzers', 'gone1')['MediaContainer']['Metadata'][0]
+    assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
+    assert md['thumb'].endswith('/images/img-01.jpg'), 'the surviving image should be promoted into the empty thumb'
+
+
+async def test_a_scene_whose_only_image_vanished_reports_no_thumb_at_all(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+
+    rel = mc.bundle_path(mc._hash('Brazzers', 'gone2'))
+    (tmp_path / rel / 'images').mkdir(parents=True)
+    vanished = f'/cache/{rel}/images/poster-00.jpg'
+
+    assert await mc.write('Brazzers', 'gone2', _resp(studio='Brazzers', thumb=vanished, images=[vanished])) is True
+
+    md = mc.read('Brazzers', 'gone2')['MediaContainer']['Metadata'][0]
+    assert not md.get('thumb'), 'an empty thumb is what makes the cache list render "No image" instead of a broken one'
+    assert not md.get('Image')

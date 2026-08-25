@@ -326,8 +326,8 @@ async def _write_locked(
                     if probed:
                         image_meta[local] = probed
                     return local
-                logger.debug('meta-cache', f'kept snapshot image missing on disk {url}')
-                return _relativize(url)
+                logger.info('meta-cache', f'dropped {url} from {rel_path}: the snapshot image it points at is gone from disk')
+                return None
             target, referers, cookies = proxy_params(url)
             while (name := f'{hint}-{counter[0]:02d}{ext_from("", target)}') in kept_names:
                 counter[0] += 1
