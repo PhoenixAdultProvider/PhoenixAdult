@@ -581,3 +581,24 @@ def test_the_cast_reads_the_same_whether_or_not_the_spans_sit_inside_divs() -> N
     bare = Selector(text='<html><body><span class="value"><a href="/f/1/">Shyla Stylez</a></span></body></html>')
     assert sg_mod._actor_links(nested) == [('Shyla Stylez', '/f/1/')]
     assert sg_mod._actor_links(bare) == [('Shyla Stylez', '/f/1/')]
+
+
+@respx.mock
+async def test_two_searches_never_post_to_the_endpoint_at_the_same_time() -> None:
+    import asyncio
+
+    in_flight = 0
+    peak = 0
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        nonlocal in_flight, peak
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0.02)
+        in_flight -= 1
+        return httpx.Response(200, text='<html><body></body></html>')
+
+    respx.post('https://www.scoreland.com/search-es').mock(side_effect=slow)
+    client = ScoreGroupClient()
+    await asyncio.gather(*(client.load_search_context(_ctx(f'scene {i}')) for i in range(5)))
+    assert peak == 1, f'the endpoint resets every stream but one — {peak} concurrent posts would lose {peak - 1} of them'

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from typing import Any
 
@@ -8,6 +9,8 @@ from phoenixadult.utils.images.ext import is_image_content_type
 from phoenixadult.utils.logging.logger import logger
 
 _IMPERSONATE = 'chrome120'
+_TRANSIENT = ('stream 1 reset', 'Recv failure', 'Connection reset', 'Send failure')
+_RETRY_PAUSE = 0.4
 
 
 class _ImpersonateBackend:
@@ -31,15 +34,21 @@ class _ImpersonateBackend:
             'timeout': timeout,
             'allow_redirects': True,
         }
-        try:
-            async with AsyncSession() as session:
-                if req.method == 'POST':
-                    r = await session.post(req.url, data=req.body, **kwargs)
-                else:
-                    r = await session.get(req.url, **kwargs)
-        except Exception as err:  # noqa: BLE001 - any curl_cffi failure → skip backend
-            logger.warn('bypass:Impersonate', f'{req.url} failed: {err}')
-            return None
+        for attempt in (1, 2):
+            try:
+                async with AsyncSession() as session:
+                    if req.method == 'POST':
+                        r = await session.post(req.url, data=req.body, **kwargs)
+                    else:
+                        r = await session.get(req.url, **kwargs)
+                break
+            except Exception as err:  # noqa: BLE001 - any curl_cffi failure → retry once, then skip backend
+                if attempt == 1 and any(mark in str(err) for mark in _TRANSIENT):
+                    logger.debug('bypass:Impersonate', f'{req.url} dropped the connection, retrying once: {err}')
+                    await asyncio.sleep(_RETRY_PAUSE)
+                    continue
+                logger.warn('bypass:Impersonate', f'{req.url} failed: {err}')
+                return None
 
         try:
             cookies = dict(r.cookies)

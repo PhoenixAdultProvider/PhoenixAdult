@@ -7,6 +7,7 @@ ARTWORK_PROBE = 16
 DATA18_PROBE = 8
 DATA18_GALLERY = 8
 IMAGE_FETCH = 6
+SCOREGROUP_SEARCH = 1
 
 _gates: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Semaphore]] = weakref.WeakKeyDictionary()
 
@@ -25,4 +26,10 @@ def loop_gate(name: str, limit: int) -> asyncio.Semaphore:
 
 
 def limits() -> dict[str, int]:
-    return {'artwork-probe': ARTWORK_PROBE, 'data18-probe': DATA18_PROBE, 'data18-gallery': DATA18_GALLERY, 'image-fetch': IMAGE_FETCH}
+    return {
+        'artwork-probe': ARTWORK_PROBE,
+        'data18-probe': DATA18_PROBE,
+        'data18-gallery': DATA18_GALLERY,
+        'image-fetch': IMAGE_FETCH,
+        'scoregroup-search': SCOREGROUP_SEARCH,
+    }
