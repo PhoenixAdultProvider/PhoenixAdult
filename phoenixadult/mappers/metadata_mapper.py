@@ -20,6 +20,8 @@ from phoenixadult.models.metadata import (
     PlexSource,
 )
 from phoenixadult.registry import ResolvedSiteInfo, find_site, normalize_site_key
+from phoenixadult.utils.concurrency import gate
+from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.helpers import embed_subsite
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -33,8 +35,6 @@ from phoenixadult.utils.processors.scene_link import is_api_url
 from phoenixadult.utils.processors.studio_name import normalize_studio
 from phoenixadult.utils.processors.text_normalize import normalize_text
 from phoenixadult.utils.processors.title_case import title_case, title_sort
-
-_PROBE_CONCURRENCY = 8
 
 
 def _year_of(date: str | None) -> int | None:
@@ -259,7 +259,7 @@ class MetadataMapper:
 
     async def _probe_artwork(self, art: list[str], referers: list[str], cookies: list[str]) -> list[dict[str, Any]]:
 
-        sem = asyncio.Semaphore(_PROBE_CONCURRENCY)
+        sem = loop_gate('artwork-probe', gate.ARTWORK_PROBE)
 
         async def probe(raw_url: str) -> dict[str, Any] | None:
             async with sem:

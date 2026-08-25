@@ -41,6 +41,14 @@ def _log_startup_banner() -> None:
 
     logger.info('  The provider mount is open to any client; set LOG_LEVEL=verbose to dump the headers of every request it receives')
 
+    from phoenixadult.services.scrape_queue import lane_workers
+    from phoenixadult.utils.concurrency.gate import limits
+    from phoenixadult.utils.concurrency.pools import sizes
+
+    logger.info(f'  Thread pools: {", ".join(f"{n}={w}" for n, w in sizes().items())}')
+    logger.info(f'  Queue lanes:  {", ".join(f"{n}={w}" for n, w in lane_workers().items())}')
+    logger.info(f'  Fan-out caps: {", ".join(f"{n}={w}" for n, w in limits().items())} (process-wide, not per scene)')
+
     from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
 
     if tracing_wanted():

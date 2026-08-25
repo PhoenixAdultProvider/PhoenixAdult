@@ -19,7 +19,6 @@
     .fetchrow select { flex: 1 1 180px; }
     .fetch { flex: 0 0 auto; }
     .fetch:hover { background: var(--button-primary-bg); border-color: var(--button-primary-bg); color: var(--button-text); }
-    .fetch:disabled { color: var(--label-text); cursor: not-allowed; background: var(--button-secondary-bg); }
     .toggle { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; color: var(--soft-text); }
     .toggle input { width: 16px; height: 16px; accent-color: var(--button-primary-bg); }
     .imgs { display: flex; gap: 12px; }
@@ -68,7 +67,7 @@
       <input class="pa-input" type="text" id="f-upstream" placeholder="https://…"{% if not is_admin() %} readonly{% endif %}>
 {% if is_admin() %}      <div class="fetchrow">
         <select class="pa-input" id="f-source"></select>
-        <button class="fetch" id="fetchBtn">Fetch From</button>
+        <button class="pa-btn fetch" id="fetchBtn">Fetch From</button>
         <span class="status" id="fetchStatus"></span>
       </div>
       <div class="hint">Fetch From looks the performer up at that source and fills the URL above; nothing is downloaded until you save.</div>

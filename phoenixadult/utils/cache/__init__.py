@@ -62,6 +62,8 @@ from phoenixadult.utils.cache.locks import _apply_locks, _carry_emptied_fields, 
 from phoenixadult.utils.cache.people_backfill import backfill_metadata_attrs as backfill_metadata_attrs
 from phoenixadult.utils.cache.people_backfill import backfill_people_images as backfill_people_images
 from phoenixadult.utils.cache.text_rules import reapply_text_rules as reapply_text_rules
+from phoenixadult.utils.concurrency import gate
+from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.images.ext import ext_from
@@ -72,17 +74,11 @@ from phoenixadult.utils.processors.studio_name import normalize_studio
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
 
-IMAGE_FETCH_CONCURRENCY = 6
-_image_gates: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore] = weakref.WeakKeyDictionary()
+IMAGE_FETCH_CONCURRENCY = gate.IMAGE_FETCH
 
 
 def _image_gate() -> asyncio.Semaphore:
-    loop = asyncio.get_running_loop()
-    gate = _image_gates.get(loop)
-    if gate is None:
-        gate = asyncio.Semaphore(IMAGE_FETCH_CONCURRENCY)
-        _image_gates[loop] = gate
-    return gate
+    return loop_gate('image-fetch', gate.IMAGE_FETCH)
 
 
 _write_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()

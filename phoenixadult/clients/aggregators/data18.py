@@ -17,6 +17,8 @@ from parsel import Selector
 from phoenixadult.clients.base import Client, SceneDetail, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.registry import normalize_site_key
+from phoenixadult.utils.concurrency import gate
+from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -26,9 +28,7 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import convert_sequence_numbers
 
-_GALLERY_CONCURRENCY = 3
 _BASE = 'https://www.data18.com'
-_PROBE_CONCURRENCY = 8
 _SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
 _MAX_ACCURACY = 100.0
 _CAST_PREFIX_RE = re.compile(r'^\s*(?:scene|movie)\s+w/\s*', re.IGNORECASE)
@@ -534,7 +534,7 @@ class Data18Client(Client):
             dims = await fetch_dimensions(u, [_BASE])
             return dims is not None and classify_image(dims['width'], dims['height']).orientation == 'square'
 
-        sem = asyncio.Semaphore(_PROBE_CONCURRENCY)
+        sem = loop_gate('data18-probe', gate.DATA18_PROBE)
 
         async def gated(u: str) -> bool:
             async with sem:
@@ -741,7 +741,7 @@ class Data18Client(Client):
             gallery_ids = [
                 gid for gallery in sel.xpath('//div[@id="galleriesoff"]//div') if (gid := (gallery.xpath('./@id').get() or '').replace('gallery', ''))
             ]
-            sem = asyncio.Semaphore(_GALLERY_CONCURRENCY)
+            sem = loop_gate('data18-gallery', gate.DATA18_GALLERY)
 
             async def viewer_for(gallery_id: str) -> Selector | None:
                 async with sem:

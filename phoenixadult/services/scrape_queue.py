@@ -48,6 +48,11 @@ FAST = 'fast'
 PACED = 'paced'
 _LANE_WORKERS = {FAST: 5, PACED: 1}
 
+
+def lane_workers() -> dict[str, int]:
+    return dict(_LANE_WORKERS)
+
+
 _queues: dict[str, asyncio.Queue[tuple[QueueEntry, Callable[[], Awaitable[object]]]]] = {}
 _pending: dict[str, QueueEntry] = {}
 _running: dict[str, float] = {}
