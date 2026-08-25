@@ -158,7 +158,7 @@ _VIEWS_PAGE = """<html><body>
 async def test_the_date_comes_from_its_own_label_not_a_position() -> None:
     import json
 
-    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'date': '2001-01-01'})
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'date': '2025-06-01'})
     respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_VIEWS_PAGE))
     detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
 
@@ -602,3 +602,64 @@ async def test_two_searches_never_post_to_the_endpoint_at_the_same_time() -> Non
     client = ScoreGroupClient()
     await asyncio.gather(*(client.load_search_context(_ctx(f'scene {i}')) for i in range(5)))
     assert peak == 1, f'the endpoint resets every stream but one — {peak} concurrent posts would lose {peak - 1} of them'
+
+
+def _score(query: str, title: str, search_date: str, page_date: str) -> float:
+    return sg_mod._blended_score(_ctx(query, search_date=search_date), SITE, title, page_date)
+
+
+def test_a_manipulated_date_no_longer_outranks_the_matching_title() -> None:
+    right = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
+    wrong = _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-04')
+    assert right > wrong, 'score group refreshes release dates, so the date alone must not decide the match'
+
+
+def test_the_date_still_counts_when_the_titles_tie() -> None:
+    near = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2015-02-04')
+    far = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
+    assert near > far
+    assert near == 100.0
+
+
+def test_a_result_with_no_date_on_either_side_is_scored_on_title_alone() -> None:
+    assert _score('Funbag Fuckers', 'Funbag Fuckers', '', '') == 100.0
+    assert _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '') == 100.0
+    assert _score('Funbag Fuckers', 'Totally Different Scene', '', '2015-02-04') < 100.0
+
+
+def test_the_scene_id_still_wins_outright(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert sg_mod._scene_id(_ctx('alex blake 53212')) == '53212'
+    assert sg_mod._scene_id(_ctx('no digits here')) == ''
+
+
+@pytest.mark.parametrize(
+    ('scraped', 'filename', 'expected'),
+    [
+        ('2019-11-02', '2015-02-04', '2015-02-04'),
+        ('2015-02-04', '2019-11-02', '2015-02-04'),
+        ('2019-11-02', '', '2019-11-02'),
+        ('', '2015-02-04', '2015-02-04'),
+        ('2015-02-04', '2015-02-04', '2015-02-04'),
+        ('', '', ''),
+        ('2019-11-02', 'not a date', '2019-11-02'),
+    ],
+)
+def test_the_earlier_of_the_filename_and_scraped_dates_wins(scraped: str, filename: str, expected: str) -> None:
+    assert sg_mod._earliest_date(scraped, filename) == expected
+
+
+@respx.mock
+async def test_an_update_keeps_the_filename_date_when_the_site_has_refreshed_its_own(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    packed = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'date': '2015-02-04'})
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(
+            200,
+            text='<html><body><h1>Cool Scene</h1><div><span>Date:</span><span class="value">November 2nd, 2019</span></div></body></html>',
+        )
+    )
+    detail = await ScoreGroupClient().fetch_scene_detail(packed, SITE)
+
+    assert detail is not None
+    assert detail.release_date == '2015-02-04', 'score group refreshes release dates; the earlier one is the real one'

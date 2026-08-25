@@ -13,10 +13,11 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.generic import gender_skip_male_enabled
+from phoenixadult.utils.processors.actor_strip import best_title_score
 
 STUDIO = 'Score Group'
 _SEARCH_PATH = '/search-es'
@@ -32,6 +33,7 @@ _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//span[@class="value"])[2]')
+_TITLE_WEIGHT = 0.7
 _DESC_XPATHS = (
     '//div[contains(concat(" ", normalize-space(@class), " "), " p-desc ")]',
     '//div[contains(concat(" ", normalize-space(@class), " "), " desc ")]',
@@ -75,6 +77,22 @@ _SERIES_TITLES = frozenset(
 
 def _clean_title(raw: str) -> str:
     return _COMING_SOON_RE.sub('', raw, count=1).strip()
+
+
+def _earliest_date(*candidates: str | None) -> str:
+    seen = sorted({iso for raw in candidates if (iso := iso_date(raw or ''))})
+    return seen[0] if seen else ''
+
+
+def _blended_score(ctx: SearchContext, site: ResolvedSiteInfo, title: str, page_date: str) -> float:
+    by_title = float(best_title_score(ctx.title, title, site))
+    if not (ctx.search_date and page_date):
+        return by_title
+
+    by_date = float(date_distance_score(ctx.search_date, page_date))
+    blended = round(_TITLE_WEIGHT * by_title + (1 - _TITLE_WEIGHT) * by_date, 2)
+    logger.debug('scoregroup', f'"{title}" title={by_title} date={by_date} -> {blended}')
+    return blended
 
 
 def _scene_key(url: str) -> str:
@@ -205,7 +223,7 @@ class ScoreGroupClient(Client):
             page_date = _scene_date(details_page_elements['sel'])
             found = scene_url_id(published)
             wanted = _scene_id(ctx)
-            packed = json.dumps({'url': published, 'date': page_date or ctx.search_date, 'title': title})
+            packed = json.dumps({'url': published, 'date': _earliest_date(page_date, ctx.search_date) or page_date or ctx.search_date, 'title': title})
 
             results.append(
                 build_search_result(
@@ -215,7 +233,7 @@ class ScoreGroupClient(Client):
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
-                    score=100 if wanted and found and found == wanted else None,
+                    score=100 if wanted and found and found == wanted else _blended_score(ctx, loaded.site, _clean_title(title), page_date),
                     cur_id=pack_cur_id([packed]),
                 )
             )
@@ -348,11 +366,11 @@ class ScoreGroupClient(Client):
         details_page_elements = scene.require_sel()
 
         found = _scene_date(details_page_elements)
-        if found:
-            metadata.release_date = found
+        if earliest := _earliest_date(found, scene.scene_date):
+            metadata.release_date = earliest
             return
 
-        metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None
+        metadata.release_date = found or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
