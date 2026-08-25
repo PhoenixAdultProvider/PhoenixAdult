@@ -565,3 +565,19 @@ def test_a_page_with_no_description_yields_an_empty_summary() -> None:
     from parsel import Selector
 
     assert sg_mod._summary_text(Selector(text='<html><body><h1>Cool Scene</h1></body></html>')) == ''
+
+
+def test_the_cast_xpath_is_not_an_unanchored_descendant_scan() -> None:
+    import inspect
+
+    source = inspect.getsource(sg_mod)
+    assert '//div//span' not in source, '//div//span walks every div then every descendant span — 100x the cost of //span for the same nodes'
+
+
+def test_the_cast_reads_the_same_whether_or_not_the_spans_sit_inside_divs() -> None:
+    from parsel import Selector
+
+    nested = Selector(text='<html><body><div><div><div><span class="value"><a href="/f/1/">Shyla Stylez</a></span></div></div></div></body></html>')
+    bare = Selector(text='<html><body><span class="value"><a href="/f/1/">Shyla Stylez</a></span></body></html>')
+    assert sg_mod._actor_links(nested) == [('Shyla Stylez', '/f/1/')]
+    assert sg_mod._actor_links(bare) == [('Shyla Stylez', '/f/1/')]

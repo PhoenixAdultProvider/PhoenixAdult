@@ -29,7 +29,7 @@ _SCRIPT_POSTER_RE = re.compile(r"(?<=poster: ')[^']*")
 _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[^/]+)/Screenshots/', re.IGNORECASE)
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
-_DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//div//span[@class="value"])[2]')
+_DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//span[@class="value"])[2]')
 _DESC_XPATHS = (
     '//div[contains(concat(" ", normalize-space(@class), " "), " p-desc ")]',
     '//div[contains(concat(" ", normalize-space(@class), " "), " desc ")]',
@@ -109,7 +109,7 @@ def _summary_text(sel: Selector) -> str:
 def _actor_links(sel: Selector) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for link in sel.xpath('//div//span[@class="value"]/a'):
+    for link in sel.xpath('//span[@class="value"]/a'):
         name = first_attr(link, 'normalize-space(.)')
         if not name or name.lower() == 'extra' or name in seen:
             continue
@@ -324,7 +324,7 @@ class ScoreGroupClient(Client):
 
         raw = (details_page_elements.xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()
         if not raw:
-            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in details_page_elements.xpath('//div//span[@class="value"]/a')) if n]
+            names = [n for n in (first_attr(a, 'normalize-space(.)') for a in details_page_elements.xpath('//span[@class="value"]/a')) if n]
             raw = ' and '.join(names)
 
         metadata.title = _clean_title(raw) if raw else ''
