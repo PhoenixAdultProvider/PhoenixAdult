@@ -1252,11 +1252,24 @@ async def test_the_scan_finds_snapshots_whose_thumb_file_is_gone(tmp_path: Path,
     assert mc.missing_image_entries() == [broken_rel]
 
 
-def test_the_scan_ignores_images_that_do_not_live_in_the_snapshot_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_only_a_snapshot_path_resolves_to_a_file_on_disk() -> None:
     from phoenixadult.utils.cache.integrity import snapshot_image_path
 
     assert snapshot_image_path('https://cdn.example/p.jpg') is None
     assert snapshot_image_path('/images/local/actors/female/actor.jane_female.jpg') is None
     assert snapshot_image_path('') is None
+    assert snapshot_image_path('/cache/scenes/../../etc/passwd/images/x.jpg') is None
     assert snapshot_image_path('/cache/scenes/d2/d2f973d18fb4/images/poster-00.jpg') is not None
     assert snapshot_image_path('/cache/scenes/d2/d2f973d18fb4/images/poster-00.jpg?v=123') is not None
+
+
+def test_an_image_the_scrape_never_localized_counts_as_broken(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.cache.integrity import unrenderable
+
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
+    proxied = '/images/proxy?url=https%3A%2F%2Fcdn77.example%2Fscoreland%2Fgallys%2Fi.jpg'
+    assert unrenderable(proxied), 'a proxy url means the download failed at scrape time — a re-scrape is the fix'
+    assert unrenderable('https://cdn.example/p.jpg')
+    assert not unrenderable(''), 'an empty thumb renders the "No image" placeholder, which is not broken'
+    assert not unrenderable(None)
+    assert not unrenderable('/images/local/actors/female/actor.jane_female.jpg')
