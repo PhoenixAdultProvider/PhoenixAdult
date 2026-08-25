@@ -1160,3 +1160,36 @@ def test_an_edit_save_keeps_the_image_priority_flag() -> None:
     assert md.Image[0].priority is True
     mc._apply_edits(md, {'title': 'Cool Scene', 'Image': [{'url': '/cache/x/images/a.jpg', 'type': 'coverPoster'}]})
     assert md.Image[0].priority is None
+
+
+def _summary_resp(title: str, summary: str) -> PlexMetadataResponse:
+    md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'studio': 'Score Group', 'summary': summary}
+    return PlexMetadataResponse.model_validate({'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}})
+
+
+@pytest.mark.parametrize(
+    ('title', 'summary', 'expected'),
+    [
+        ('Funbag Fuckers', 'Funbag Fuckers In the SCORE movie, Shyla is needy.', 'In the SCORE movie, Shyla is needy.'),
+        ('A Diamond in the Buff', 'A Diamond In The Buff Roxanne makes a good case.', 'Roxanne makes a good case.'),
+        ('Funbag Fuckers - Shyla Stylez', 'Funbag Fuckers In the SCORE movie, Shyla is needy.', 'In the SCORE movie, Shyla is needy.'),
+        ('Teens in Need', 'Cutie pie Kelsey loves sucking on things.', 'Cutie pie Kelsey loves sucking on things.'),
+        ('Funbag Fuckers', 'Funbag Fuckers', 'Funbag Fuckers'),
+    ],
+)
+def test_a_cached_score_group_summary_sheds_the_title_glued_to_its_front(title: str, summary: str, expected: str) -> None:
+    resp = _summary_resp(title, summary)
+    mc.reapply_text_rules(resp, 'scoregroup')
+    assert resp.MediaContainer.Metadata[0].summary == expected
+
+
+def test_only_score_group_summaries_shed_their_leading_title() -> None:
+    resp = _summary_resp('Funbag Fuckers', 'Funbag Fuckers In the SCORE movie, Shyla is needy.')
+    mc.reapply_text_rules(resp, 'brazzers')
+    assert resp.MediaContainer.Metadata[0].summary == 'Funbag Fuckers In the SCORE movie, Shyla is needy.'
+
+
+def test_a_locked_summary_keeps_its_leading_title() -> None:
+    resp = _summary_resp('Funbag Fuckers', 'Funbag Fuckers In the SCORE movie, Shyla is needy.')
+    mc.reapply_text_rules(resp, 'scoregroup', locked={'summary'})
+    assert resp.MediaContainer.Metadata[0].summary == 'Funbag Fuckers In the SCORE movie, Shyla is needy.'

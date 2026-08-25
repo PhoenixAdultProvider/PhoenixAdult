@@ -12,6 +12,7 @@ from phoenixadult.utils.processors.text_normalize import normalize_text
 from phoenixadult.utils.processors.title_case import title_case, title_sort
 
 _EPISODE_TAGGED = {'nubiles', 'reptyle'}
+_TITLE_HEADED_SUMMARY = {'scoregroup'}
 
 
 def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bool:
@@ -24,10 +25,25 @@ def _recase_title(md: PlexMetadata, studio: str, scraper_type: str | None) -> bo
     return True
 
 
-def _normalize_summary(md: PlexMetadata) -> bool:
+def _strip_title_heading(summary: str, title: str) -> str:
+    for heading in (title, title.split(' - ')[0]):
+        head = heading.strip()
+        if not head or summary[: len(head)].casefold() != head.casefold():
+            continue
+
+        rest = summary[len(head) :].lstrip()
+        if rest:
+            return rest
+
+    return summary
+
+
+def _normalize_summary(md: PlexMetadata, scraper_type: str | None = None) -> bool:
     if not md.summary:
         return False
     cleaned_summary = normalize_text(md.summary)
+    if scraper_type in _TITLE_HEADED_SUMMARY and md.title:
+        cleaned_summary = _strip_title_heading(cleaned_summary, md.title)
     if cleaned_summary == md.summary:
         return False
     md.summary = cleaned_summary
@@ -108,7 +124,7 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
         if 'title' not in held:
             changed = _recase_title(md, studio, scraper_type) or changed
         if 'summary' not in held:
-            changed = _normalize_summary(md) or changed
+            changed = _normalize_summary(md, scraper_type) or changed
         if not {'studio', 'tagline'} & held:
             changed = _recase_studio_tagline(md, studio) or changed
         if 'Collection' not in held:
