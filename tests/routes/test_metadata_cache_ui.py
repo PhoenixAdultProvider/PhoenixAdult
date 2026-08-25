@@ -831,3 +831,12 @@ def test_every_action_button_uses_the_shared_button_system() -> None:
         if button_id in ('filtersToggle',):
             continue
         assert classes.startswith('pa-btn'), f'{button_id} is not on the shared button system'
+
+
+def test_the_editor_carries_a_data18_launch_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    from phoenixadult.utils.helpers.helpers import pack_cur_id
+
+    page = _source_client(monkeypatch, pack_cur_id(['https://example.com/scene/alpha', '2024-01-01'])).get('/metadata/edit?key=studio/abc')
+    assert 'id="data18Link"' in page.text
+    assert "'https://www.data18.com/' + (qs('f-data18Type').value === 'movie' ? 'movies' : 'scenes') + '/' + id" in page.text
+    assert 'hidden>Data18 ↗</a>' in page.text, 'the link starts hidden and is shown only once an id is present'

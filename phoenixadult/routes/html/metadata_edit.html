@@ -94,7 +94,7 @@
 {% endblock %}
 {% block content %}
   <h1>Edit Snapshot</h1>
-  <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}
+  <div class="sub"><code id="subKey">{{ key }}</code>{% if source_url %} <a class="srclink" id="sourceLink" href="{{ source_url }}" target="_blank" rel="noreferrer">{{ 'Listing ↗' if source_kind == 'listing' else 'Scene ↗' }}</a>{% endif %}<a class="srclink" id="data18Link" target="_blank" rel="noreferrer" hidden>Data18 ↗</a>
   {% if source_kind == 'api' or source_json is not none %}<details id="sourcePanel"><summary>Source JSON</summary><pre id="sourceJson">Loading…</pre></details>{% endif %}</div>
 
   <div class="cols">
@@ -430,11 +430,21 @@
       });
     }
 
+    function data18Url() {
+      const id = data18Ids()[0] || '';
+      if (!/^[0-9]+$/.test(id)) return '';
+      return 'https://www.data18.com/' + (qs('f-data18Type').value === 'movie' ? 'movies' : 'scenes') + '/' + id;
+    }
+
     function renderData18State() {
       const state = data18State();
       const box = qs('d18state');
       box.textContent = state;
       box.className = 'state ' + state;
+      const link = qs('data18Link');
+      const href = data18Url();
+      link.href = href;
+      link.hidden = !href;
     }
 
     function load() {
