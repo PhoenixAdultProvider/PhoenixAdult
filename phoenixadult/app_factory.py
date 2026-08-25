@@ -48,6 +48,7 @@ def _log_startup_banner() -> None:
     logger.info(f'  Thread pools: {", ".join(f"{n}={w}" for n, w in sizes().items())}')
     logger.info(f'  Queue lanes:  {", ".join(f"{n}={w}" for n, w in lane_workers().items())}')
     logger.info(f'  Fan-out caps: {", ".join(f"{n}={w}" for n, w in limits().items())} (process-wide, not per scene)')
+    logger.info(f'  Bypass chain: {env.bypass_order_raw or "(default)"} · FlareSolverr {env.flaresolverr_url or "not configured"}')
 
     from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
 

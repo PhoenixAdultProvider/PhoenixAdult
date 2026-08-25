@@ -59,5 +59,5 @@ def test_the_banner_reports_the_limits_that_shape_bulk_throughput(caplog: pytest
     with caplog.at_level(logging.INFO):
         _log_startup_banner()
     printed = caplog.text
-    for expected in ('Thread pools:', 'Queue lanes:', 'Fan-out caps:', 'artwork-probe=', 'store=', 'fast='):
+    for expected in ('Thread pools:', 'Queue lanes:', 'Fan-out caps:', 'Bypass chain:', 'artwork-probe=', 'store=', 'fast='):
         assert expected in printed, f'{expected!r} missing from the startup banner'

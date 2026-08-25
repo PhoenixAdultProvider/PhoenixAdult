@@ -43,7 +43,7 @@ class _FlareSolverrBackend:
                 resp = await client.post(f'{endpoint}/v1', json=payload, headers={'Content-Type': 'application/json'})
             envelope = resp.json()
         except (httpx2.HTTPError, ValueError) as err:
-            logger.warn('bypass:FlareSolverr', f'transport failed: {err}')
+            logger.warn('bypass:FlareSolverr', f'{endpoint}/v1 unreachable ({type(err).__name__}: {err}) — check FLARESOLVERR_URL resolves from this host')
             return None
 
         if envelope.get('status') != 'ok' or not envelope.get('solution'):

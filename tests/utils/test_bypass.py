@@ -4,6 +4,7 @@ import sys
 from types import ModuleType, SimpleNamespace
 
 import httpx
+import httpx2
 import pytest
 import respx
 
@@ -130,3 +131,17 @@ async def test_a_failure_that_is_not_transient_is_not_retried(monkeypatch: pytes
     session = _stub_curl_cffi(monkeypatch, 'Failed to perform, curl: (6) Could not resolve host')
     assert await impersonate_backend.request(BypassRequest(url='https://nope.example/x', method='POST', body='')) is None
     assert session.calls == 1, 'a dead host must not be tried twice'
+
+
+@respx.mock
+async def test_an_unreachable_solver_names_the_endpoint_it_could_not_reach(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    import logging
+
+    from phoenixadult.utils.http.flaresolverr import flare_solverr_backend
+
+    monkeypatch.setenv('FLARESOLVERR_URL', 'http://mipha.local:8191')
+    respx.post('http://mipha.local:8191/v1').mock(side_effect=httpx2.ConnectError('All connection attempts failed'))
+    with caplog.at_level(logging.WARNING):
+        assert await flare_solverr_backend.request(BypassRequest(url='https://example.com/x', method='GET')) is None
+    assert 'http://mipha.local:8191/v1' in caplog.text, 'the warning must name the endpoint, not just the transport error'
+    assert 'FLARESOLVERR_URL' in caplog.text
