@@ -275,9 +275,12 @@ class MetadataMapper:
     async def _resolve_artwork(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[str | None, str | None, list[PlexImage]]:
         valid = await self._probe_artwork(detail.art, referers, cookies)
         images = build_artwork(valid, set(detail.art_priority))
+        usable = [str(entry['url']) for entry in valid]
+        if detail.art and not usable:
+            logger.info(f'None of the {len(detail.art)} artwork url(s) could be read — leaving this scene without a poster')
 
-        thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (detail.art[0] if detail.art else None)
-        art_raw = next((img.url for img in images if img.type == 'background'), None) or (detail.art[1] if len(detail.art) > 1 else None)
+        thumb_raw = next((img.url for img in images if img.type == 'coverPoster'), None) or (usable[0] if usable else None)
+        art_raw = next((img.url for img in images if img.type == 'background'), None) or (usable[1] if len(usable) > 1 else None)
         images_proxied = [PlexImage(url=self._proxy(img.url, referers, cookies) or img.url, type=img.type, priority=img.priority) for img in images]
         return self._proxy(thumb_raw, referers, cookies), self._proxy(art_raw, referers, cookies), images_proxied
 

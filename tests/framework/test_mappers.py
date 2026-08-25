@@ -307,3 +307,31 @@ async def test_unserializable_source_json_is_dropped_not_fatal() -> None:
     detail = SceneDetail(title='A', studio='X', scene_url='https://example.com/api/x', source_json={'bad': object()})
     md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
     assert md.sourceRef is not None and md.sourceRef.data is None
+
+
+async def test_artwork_the_site_no_longer_serves_leaves_the_scene_without_a_poster(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def all_404(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        return None
+
+    monkeypatch.setattr(mapper_mod, 'fetch_dimensions', all_404)
+    monkeypatch.setattr(mapper_mod, 'proxy_url', lambda url, *a, **k: url)
+    dead = ['https://cdn77.example/scoreland/gallys/images_content/MissyMonroe_30126/01_tn.jpg', 'https://cdn77.example/x/02_tn.jpg']
+    detail = SceneDetail(title='A Scene', studio='X', art=dead)
+    md = await MetadataMapper().to_metadata(detail, 'scene-x-YWJj', 'com.plexapp.agents.x')
+
+    assert md.thumb is None, 'a url that failed its dimension probe must never become the poster'
+    assert md.art is None
+    assert not md.Image
+
+
+async def test_a_probed_url_still_backs_the_poster_when_nothing_classifies_as_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    only_square = 'http://x/sq.jpg'
+
+    async def fake_dims(url: str, referers: object = None, cookies: object = None) -> dict[str, int] | None:
+        return {'width': 1000, 'height': 1000}
+
+    monkeypatch.setattr(mapper_mod, 'fetch_dimensions', fake_dims)
+    monkeypatch.setattr(mapper_mod, 'proxy_url', lambda url, *a, **k: url)
+    md = await MetadataMapper().to_metadata(SceneDetail(title='A Scene', studio='X', art=[only_square]), 'scene-x-YWJj', 'com.plexapp.agents.x')
+
+    assert md.thumb == only_square, 'the fallback still works — it just may not reach past what probing accepted'
