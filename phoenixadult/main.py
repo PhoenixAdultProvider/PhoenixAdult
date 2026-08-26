@@ -13,7 +13,7 @@ def main() -> None:
     reload = not env.is_production
     uvicorn.run(
         'phoenixadult.main:app' if reload else app,
-        host='0.0.0.0',
+        host='',
         port=config.port,
         reload=reload,
         log_config=UVICORN_LOG_CONFIG,
