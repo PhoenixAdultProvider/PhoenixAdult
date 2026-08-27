@@ -708,13 +708,12 @@ async def test_scene_context_resolves_a_bare_id_and_trusts_the_canonical() -> No
         '<html><head><link rel="canonical" href="https://www.scoreland.com/big-boob-videos/Kelsey-Michaels/17133/"></head>'
         '<body><h1>Teens In Need</h1></body></html>'
     )
-    slugless = respx.get('https://www.scoreland.com/big-boob-videos/17133/').mock(return_value=httpx.Response(404, text='<h1>404</h1>'))
     placeholder = respx.get('https://www.scoreland.com/big-boob-videos/scene/17133/').mock(return_value=httpx.Response(200, text=page))
 
     scene = await ScoreGroupClient().load_scene_context('17133|2021-02-10', SITE)
 
     assert scene is not None
-    assert slugless.called and placeholder.called
+    assert placeholder.called
     assert scene.url == 'https://www.scoreland.com/big-boob-videos/Kelsey-Michaels/17133/'
     assert scene.scene_date == '2021-02-10'
 

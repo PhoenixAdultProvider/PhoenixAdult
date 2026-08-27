@@ -106,10 +106,10 @@ def _subsite_name(cdn_site: str) -> str:
     return site.name if site else ''
 
 
-def _id_candidates(site: ResolvedSiteInfo, scene_id: str) -> list[str]:
+def _id_url(site: ResolvedSiteInfo, scene_id: str) -> str:
     base = site.base_url.rstrip('/')
     path = site.search_path or '/'
-    return [f'{base}{path}{scene_id}/', f'{base}{path}scene/{scene_id}/']
+    return f'{base}{path}scene/{scene_id}/'
 
 
 def _scene_key(url: str) -> str:
@@ -269,7 +269,7 @@ class ScoreGroupClient(Client):
 
         wanted = _scene_id(ctx)
         subsite = _subsite_name(cdn_site)
-        scene_url = linked if scene_url_id(linked) else _id_candidates(find_site(subsite) or loaded.site, found)[0]
+        scene_url = linked if scene_url_id(linked) else _id_url(find_site(subsite) or loaded.site, found)
 
         results.append(
             build_search_result(
@@ -298,30 +298,22 @@ class ScoreGroupClient(Client):
                 packed['date'] = payload[pipe + 1 :].strip()
 
         head = str(packed.get('url') or '')
-        candidates = _id_candidates(site, head) if head.isdigit() else ([head] if head else [])
-        if not candidates:
+        if not head:
             return None
 
-        details_page_elements = None
-        for candidate in candidates:
-            loaded_page = await self.fetch_and_load(
-                candidate, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {candidate}'
-            )
-            if not loaded_page:
-                continue
-
-            details_page_elements = details_page_elements or loaded_page
-            if _usable_title((loaded_page['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()):
-                details_page_elements = loaded_page
-                packed['url'] = _canonical(loaded_page['sel'], candidate)
-                break
-
+        fetch_url = _id_url(site, head) if head.isdigit() else head
+        details_page_elements = await self.fetch_and_load(
+            fetch_url, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {fetch_url}'
+        )
         if not details_page_elements:
             return None
 
+        if head.isdigit():
+            packed['url'] = _canonical(details_page_elements['sel'], fetch_url)
+
         is_latest = bool(_LATEST_RE.search((details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()))
         return LoadedScene(
-            url=packed.get('url') or candidates[0],
+            url=packed['url'],
             site=site,
             scene_date=packed.get('date') or None,
             capture=ctx.capture if ctx else None,
