@@ -10,7 +10,7 @@ from parsel import Selector
 
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
-from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.registry import ResolvedSiteInfo, find_site
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, pack_cur_id, same_scene, scene_url_id
@@ -30,6 +30,7 @@ _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
 _SCRIPT_POSTER_RE = re.compile(r"(?<=poster: ')[^']*")
 _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[^/]+)/Screenshots/', re.IGNORECASE)
+_CDN_SCENE_RE = re.compile(r'//[^/]+/(?P<site>[A-Za-z0-9]+)/scenes/[A-Za-z0-9]+_(?P<id>\d+)/', re.IGNORECASE)
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//span[@class="value"])[2]')
@@ -93,6 +94,22 @@ def _blended_score(ctx: SearchContext, site: ResolvedSiteInfo, title: str, page_
     blended = round(_TITLE_WEIGHT * by_title + (1 - _TITLE_WEIGHT) * by_date, 2)
     logger.debug('scoregroup', f'"{title}" title={by_title} date={by_date} -> {blended}')
     return blended
+
+
+def _scene_ref(markup: str) -> tuple[str, str]:
+    found = _CDN_SCENE_RE.search(markup or '')
+    return (found.group('id'), found.group('site').lower()) if found else ('', '')
+
+
+def _subsite_name(cdn_site: str) -> str:
+    site = find_site(cdn_site) if cdn_site else None
+    return site.name if site else ''
+
+
+def _id_candidates(site: ResolvedSiteInfo, scene_id: str) -> list[str]:
+    base = site.base_url.rstrip('/')
+    path = site.search_path or '/'
+    return [f'{base}{path}{scene_id}/', f'{base}{path}scene/{scene_id}/']
 
 
 def _scene_key(url: str) -> str:
@@ -223,7 +240,8 @@ class ScoreGroupClient(Client):
             page_date = _scene_date(details_page_elements['sel'])
             found = scene_url_id(published)
             wanted = _scene_id(ctx)
-            packed = json.dumps({'url': published, 'date': _earliest_date(page_date, ctx.search_date) or page_date or ctx.search_date, 'title': title})
+            carried = _earliest_date(page_date, ctx.search_date) or page_date or ctx.search_date
+            _, cdn_site = _scene_ref(details_page_elements['html'] or '')
 
             results.append(
                 build_search_result(
@@ -234,7 +252,8 @@ class ScoreGroupClient(Client):
                     search_date=ctx.search_date,
                     display_date=page_date or None,
                     score=100 if wanted and found and found == wanted else _blended_score(ctx, loaded.site, _clean_title(title), page_date),
-                    cur_id=pack_cur_id([packed]),
+                    cur_id=pack_cur_id([x for x in (found or published, carried) if x]),
+                    subsite=_subsite_name(cdn_site) or None,
                 )
             )
             return
@@ -242,25 +261,15 @@ class ScoreGroupClient(Client):
         anchor = source.xpath('(.//a[contains(@class,"title")])[1]')
         raw_title = first_attr(anchor)
         href = first_attr(anchor, '@href').split('?')[0]
-        if not raw_title or not href:
-            return
-
-        scene_url = absolute_url(href, loaded.site.base_url)
-        found = scene_url_id(scene_url)
-        if not found:
+        linked = absolute_url(href, loaded.site.base_url) if href else ''
+        found, cdn_site = _scene_ref(source.get() or '')
+        found = found or scene_url_id(linked)
+        if not raw_title or not found:
             return
 
         wanted = _scene_id(ctx)
-        score = 100 if wanted and found == wanted else None
-        packed = json.dumps(
-            {
-                'url': scene_url,
-                'date': ctx.search_date,
-                'title': raw_title,
-                'actors': (source.xpath('(.//small[contains(@class,"i-model")])[1]').xpath('string(.)').get() or '').strip(),
-                'img': first_attr(source, '(.//img)[1]/@src'),
-            }
-        )
+        subsite = _subsite_name(cdn_site)
+        scene_url = linked if scene_url_id(linked) else _id_candidates(find_site(subsite) or loaded.site, found)[0]
 
         results.append(
             build_search_result(
@@ -269,8 +278,9 @@ class ScoreGroupClient(Client):
                 scene_url=scene_url,
                 query=ctx.title,
                 search_date=ctx.search_date,
-                score=score,
-                cur_id=pack_cur_id([packed]),
+                score=100 if wanted and found == wanted else None,
+                cur_id=pack_cur_id([x for x in (found, ctx.search_date) if x]),
+                subsite=subsite or None,
             )
         )
 
@@ -287,18 +297,31 @@ class ScoreGroupClient(Client):
             if pipe >= 0:
                 packed['date'] = payload[pipe + 1 :].strip()
 
-        if not packed.get('url'):
+        head = str(packed.get('url') or '')
+        candidates = _id_candidates(site, head) if head.isdigit() else ([head] if head else [])
+        if not candidates:
             return None
 
-        details_page_elements = await self.fetch_and_load(
-            packed['url'], FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {packed["url"]}'
-        )
+        details_page_elements = None
+        for candidate in candidates:
+            loaded_page = await self.fetch_and_load(
+                candidate, FetchCtx(capture=ctx.capture if ctx else None, use_bypass=site.use_bypass), f'[{site.name}] scene {candidate}'
+            )
+            if not loaded_page:
+                continue
+
+            details_page_elements = details_page_elements or loaded_page
+            if _usable_title((loaded_page['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()):
+                details_page_elements = loaded_page
+                packed['url'] = _canonical(loaded_page['sel'], candidate)
+                break
+
         if not details_page_elements:
             return None
 
         is_latest = bool(_LATEST_RE.search((details_page_elements['sel'].xpath('(//h1)[1]').xpath('string(.)').get() or '').strip()))
         return LoadedScene(
-            url=packed['url'],
+            url=packed.get('url') or candidates[0],
             site=site,
             scene_date=packed.get('date') or None,
             capture=ctx.capture if ctx else None,

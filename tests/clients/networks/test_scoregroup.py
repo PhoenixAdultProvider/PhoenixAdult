@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from urllib.parse import parse_qs
 
 import httpx
@@ -10,6 +11,7 @@ import phoenixadult.clients.networks.scoregroup as sg_mod
 from phoenixadult.clients.base import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.registry import find_site
+from phoenixadult.utils.helpers.helpers import b64url_decode
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -663,3 +665,69 @@ async def test_an_update_keeps_the_filename_date_when_the_site_has_refreshed_its
 
     assert detail is not None
     assert detail.release_date == '2015-02-04', 'score group refreshes release dates; the earlier one is the real one'
+
+
+@respx.mock
+async def test_search_reads_the_scene_id_from_the_cdn_preview_when_cards_link_to_join() -> None:
+    card = (
+        '<div class="compact video">'
+        '<a class="i-title" href="https://join.scoreland.com/strack/MTAwNC4/scoreland:promo_half_off/0/0/join">Roxee &amp; Her Big Toys</a>'
+        '<video><source data-src="https://cdn77.scoreuniverse.com/xlgirls/scenes/RoxeeRobinson_32927/PreviewClips/x_480.mp4"></video>'
+        '<small class="i-model">Roxee Robinson</small></div>'
+    )
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=card))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='Roxee Robinson Roxee & Her Big Toys'))
+
+    assert len(results) == 1
+    found = results[0]
+    assert found.title == 'Roxee & Her Big Toys'
+    assert b64url_decode(found.cur_id) == '32927'
+    assert found.subsite == 'XL Girls'
+
+
+@respx.mock
+async def test_search_keeps_reading_a_real_href_when_one_is_present() -> None:
+    card = (
+        '<div class="compact video">'
+        '<a class="title" href="https://scoreland.com/big-boob-videos/jane/777/">Cool Scene</a>'
+        '<small class="i-model">Jane Doe</small></div>'
+    )
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=card))
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='cool scene'))
+
+    assert [b64url_decode(r.cur_id) for r in results] == ['777']
+
+
+@respx.mock
+async def test_scene_context_resolves_a_bare_id_and_trusts_the_canonical() -> None:
+    page = (
+        '<html><head><link rel="canonical" href="https://www.scoreland.com/big-boob-videos/Kelsey-Michaels/17133/"></head>'
+        '<body><h1>Teens In Need</h1></body></html>'
+    )
+    slugless = respx.get('https://www.scoreland.com/big-boob-videos/17133/').mock(return_value=httpx.Response(404, text='<h1>404</h1>'))
+    placeholder = respx.get('https://www.scoreland.com/big-boob-videos/scene/17133/').mock(return_value=httpx.Response(200, text=page))
+
+    scene = await ScoreGroupClient().load_scene_context('17133|2021-02-10', SITE)
+
+    assert scene is not None
+    assert slugless.called and placeholder.called
+    assert scene.url == 'https://www.scoreland.com/big-boob-videos/Kelsey-Michaels/17133/'
+    assert scene.scene_date == '2021-02-10'
+
+
+@respx.mock
+async def test_scene_context_still_loads_a_legacy_blob_cur_id() -> None:
+    respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Jane Scene</h1></body></html>')
+    )
+
+    payload = json.dumps({'url': 'https://www.scoreland.com/big-boob-videos/jane/777/', 'date': '2020-01-02', 'title': 'Jane Scene'})
+    scene = await ScoreGroupClient().load_scene_context(payload, SITE)
+
+    assert scene is not None
+    assert scene.url == 'https://www.scoreland.com/big-boob-videos/jane/777/'
+    assert scene.scene_date == '2020-01-02'
