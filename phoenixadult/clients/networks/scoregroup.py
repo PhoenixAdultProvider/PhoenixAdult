@@ -10,7 +10,7 @@ from parsel import Selector
 
 from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
-from phoenixadult.registry import ResolvedSiteInfo, find_site
+from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, pack_cur_id, same_scene, scene_url_id
@@ -30,7 +30,7 @@ _POSTER_RE = re.compile(r"posterImage:\s*'([^']+)'")
 _POSTERTHUMBS_RE = re.compile(r'(?<=PosterThumbs)/\d\d')
 _SCRIPT_POSTER_RE = re.compile(r"(?<=poster: ')[^']*")
 _SHOT_RE = re.compile(r'^(?P<prefix>(?:https?:)?//[^/]+/(?P<site>[^/]+)/scenes/[^/]+)/Screenshots/', re.IGNORECASE)
-_CDN_SCENE_RE = re.compile(r'//[^/]+/(?P<site>[A-Za-z0-9]+)/scenes/[A-Za-z0-9]+_(?P<id>\d+)/', re.IGNORECASE)
+_POSTING_ID_RE = re.compile(r'posting_(\d+)_')
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//span[@class="value"])[2]')
@@ -96,14 +96,9 @@ def _blended_score(ctx: SearchContext, site: ResolvedSiteInfo, title: str, page_
     return blended
 
 
-def _scene_ref(markup: str) -> tuple[str, str]:
-    found = _CDN_SCENE_RE.search(markup or '')
-    return (found.group('id'), found.group('site').lower()) if found else ('', '')
-
-
-def _subsite_name(cdn_site: str) -> str:
-    site = find_site(cdn_site) if cdn_site else None
-    return site.name if site else ''
+def _card_scene_id(markup: str) -> str:
+    found = _POSTING_ID_RE.search(markup or '')
+    return found.group(1) if found else ''
 
 
 def _id_url(site: ResolvedSiteInfo, scene_id: str) -> str:
@@ -241,7 +236,6 @@ class ScoreGroupClient(Client):
             found = scene_url_id(published)
             wanted = _scene_id(ctx)
             carried = _earliest_date(page_date, ctx.search_date) or page_date or ctx.search_date
-            _, cdn_site = _scene_ref(details_page_elements['html'] or '')
 
             results.append(
                 build_search_result(
@@ -253,7 +247,6 @@ class ScoreGroupClient(Client):
                     display_date=page_date or None,
                     score=100 if wanted and found and found == wanted else _blended_score(ctx, loaded.site, _clean_title(title), page_date),
                     cur_id=pack_cur_id([x for x in (found or published, carried) if x]),
-                    subsite=_subsite_name(cdn_site) or None,
                 )
             )
             return
@@ -262,14 +255,12 @@ class ScoreGroupClient(Client):
         raw_title = first_attr(anchor)
         href = first_attr(anchor, '@href').split('?')[0]
         linked = absolute_url(href, loaded.site.base_url) if href else ''
-        found, cdn_site = _scene_ref(source.get() or '')
-        found = found or scene_url_id(linked)
+        found = scene_url_id(linked) or _card_scene_id(source.get() or '')
         if not raw_title or not found:
             return
 
         wanted = _scene_id(ctx)
-        subsite = _subsite_name(cdn_site)
-        scene_url = linked if scene_url_id(linked) else _id_url(find_site(subsite) or loaded.site, found)
+        scene_url = linked if scene_url_id(linked) else _id_url(loaded.site, found)
 
         results.append(
             build_search_result(
@@ -280,7 +271,6 @@ class ScoreGroupClient(Client):
                 search_date=ctx.search_date,
                 score=100 if wanted and found == wanted else None,
                 cur_id=pack_cur_id([x for x in (found, ctx.search_date) if x]),
-                subsite=subsite or None,
             )
         )
 

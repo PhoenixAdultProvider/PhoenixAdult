@@ -668,10 +668,11 @@ async def test_an_update_keeps_the_filename_date_when_the_site_has_refreshed_its
 
 
 @respx.mock
-async def test_search_reads_the_scene_id_from_the_cdn_preview_when_cards_link_to_join() -> None:
+async def test_search_reads_the_posting_id_when_cards_link_to_join() -> None:
     card = (
         '<div class="compact video">'
         '<a class="i-title" href="https://join.scoreland.com/strack/MTAwNC4/scoreland:promo_half_off/0/0/join">Roxee &amp; Her Big Toys</a>'
+        '<img src="https://cdn77.scoreuniverse.com/modeldir/data/posting/55/226/posting_55226_xl.jpg">'
         '<video><source data-src="https://cdn77.scoreuniverse.com/xlgirls/scenes/RoxeeRobinson_32927/PreviewClips/x_480.mp4"></video>'
         '<small class="i-model">Roxee Robinson</small></div>'
     )
@@ -683,8 +684,8 @@ async def test_search_reads_the_scene_id_from_the_cdn_preview_when_cards_link_to
     assert len(results) == 1
     found = results[0]
     assert found.title == 'Roxee & Her Big Toys'
-    assert b64url_decode(found.cur_id) == '32927'
-    assert found.subsite == 'XL Girls'
+    assert b64url_decode(found.cur_id) == '55226'
+    assert found.scene_url == 'https://www.scoreland.com/big-boob-videos/scene/55226/'
 
 
 @respx.mock
