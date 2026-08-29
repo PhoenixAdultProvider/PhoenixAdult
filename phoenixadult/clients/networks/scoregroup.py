@@ -101,6 +101,13 @@ def _card_scene_id(markup: str) -> str:
     return found.group(1) if found else ''
 
 
+def _card_ref(card: Any, base_url: str) -> tuple[str, str, str]:
+    anchor = card.xpath('(.//a[contains(@class,"title")])[1]')
+    href = first_attr(anchor, '@href').split('?')[0]
+    linked = absolute_url(href, base_url) if href else ''
+    return scene_url_id(linked) or _card_scene_id(card.get() or ''), linked, first_attr(anchor)
+
+
 def _id_url(site: ResolvedSiteInfo, scene_id: str) -> str:
     base = site.base_url.rstrip('/')
     path = site.search_path or '/'
@@ -197,7 +204,7 @@ class ScoreGroupClient(Client):
 
         video_list_path = search_data.site_info.search_path or '/'
         candidate_urls: list[str] = []
-        seen: set[str] = set()
+        seen: set[str] = {f'id:{found}' for card in sources if (found := _card_ref(card, base)[0])}
 
         def remember(candidate: str) -> None:
             key = _scene_key(candidate)
@@ -234,6 +241,9 @@ class ScoreGroupClient(Client):
             published = _canonical(details_page_elements['sel'], source['_url'])
             page_date = _scene_date(details_page_elements['sel'])
             found = scene_url_id(published)
+            if found and any(scene_url_id(r.scene_url) == found for r in results):
+                return
+
             wanted = _scene_id(ctx)
             carried = _earliest_date(page_date, ctx.search_date) or page_date or ctx.search_date
 
@@ -251,11 +261,7 @@ class ScoreGroupClient(Client):
             )
             return
 
-        anchor = source.xpath('(.//a[contains(@class,"title")])[1]')
-        raw_title = first_attr(anchor)
-        href = first_attr(anchor, '@href').split('?')[0]
-        linked = absolute_url(href, loaded.site.base_url) if href else ''
-        found = scene_url_id(linked) or _card_scene_id(source.get() or '')
+        found, linked, raw_title = _card_ref(source, loaded.site.base_url)
         if not raw_title or not found:
             return
 

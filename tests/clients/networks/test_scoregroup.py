@@ -731,3 +731,28 @@ async def test_scene_context_still_loads_a_legacy_blob_cur_id() -> None:
     assert scene is not None
     assert scene.url == 'https://www.scoreland.com/big-boob-videos/jane/777/'
     assert scene.scene_date == '2020-01-02'
+
+
+@respx.mock
+async def test_a_scene_found_by_both_the_site_search_and_the_web_search_appears_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    card = (
+        '<div class="compact video">'
+        '<a class="i-title" href="https://join.scoreland.com/strack/x/scoreland:promo_half_off/0/0/join">Adria Rae Scene</a>'
+        '<img src="https://cdn77.scoreuniverse.com/modeldir/data/posting/49/309/posting_49309_xl.jpg">'
+        '<small class="i-model">Adria Rae</small></div>'
+    )
+    respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=card))
+
+    async def _web(*_a: object, **_k: object) -> list[str]:
+        return ['https://www.scoreland.com/big-boob-videos/Adria-Rae/49309/']
+
+    monkeypatch.setattr(sg_mod, 'web_search_urls', _web)
+    hit = respx.get('https://www.scoreland.com/big-boob-videos/Adria-Rae/49309/').mock(
+        return_value=httpx.Response(200, text='<html><body><h1>Adria Rae Scene</h1></body></html>')
+    )
+
+    results: list[SearchResult] = []
+    await ScoreGroupClient().search(results, _ctx(title='adria rae 49309', full_title='adria rae 49309', scene_id='49309'))
+
+    assert [b64url_decode(r.cur_id) for r in results] == ['49309']
+    assert not hit.called
