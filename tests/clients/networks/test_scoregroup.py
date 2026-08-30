@@ -12,6 +12,7 @@ from phoenixadult.clients.base import ActorResult, SceneDetail, SearchContext, S
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.helpers import b64url_decode
+from phoenixadult.utils.processors.actor_strip import best_title_score
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -607,25 +608,29 @@ async def test_two_searches_never_post_to_the_endpoint_at_the_same_time() -> Non
 
 
 def _score(query: str, title: str, search_date: str, page_date: str) -> float:
-    return sg_mod._blended_score(_ctx(query, search_date=search_date), SITE, title, page_date)
+    return float(best_title_score(_ctx(query, search_date=search_date).title, title, SITE))
 
 
-def test_a_manipulated_date_no_longer_outranks_the_matching_title() -> None:
-    right = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
-    wrong = _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-04')
-    assert right > wrong, 'score group refreshes release dates, so the date alone must not decide the match'
+def test_a_matching_title_scores_full_whatever_the_dates_say() -> None:
+    assert _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02') == 100.0
+    assert _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2015-02-04') == 100.0
 
 
-def test_the_date_still_counts_when_the_titles_tie() -> None:
+def test_an_actor_prefixed_filename_scores_full_once_the_strip_is_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'The Score Group')
+    assert _score('Peyton Thomas Office Hottie', 'Office Hottie', '2015-04-03', '2015-04-03') == 100.0
+
+
+def test_the_date_never_moves_the_score() -> None:
     near = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2015-02-04')
     far = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
-    assert near > far
-    assert near == 100.0
+    assert near == far
 
 
-def test_a_result_with_no_date_on_either_side_is_scored_on_title_alone() -> None:
-    assert _score('Funbag Fuckers', 'Funbag Fuckers', '', '') == 100.0
-    assert _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '') == 100.0
+def test_a_wrong_title_still_loses_even_with_a_perfect_date() -> None:
+    right = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
+    wrong = _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-04')
+    assert right > wrong
     assert _score('Funbag Fuckers', 'Totally Different Scene', '', '2015-02-04') < 100.0
 
 

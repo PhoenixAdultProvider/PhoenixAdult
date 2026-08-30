@@ -13,7 +13,7 @@ from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, pack_cur_id, same_scene, scene_url_id
+from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.generic import gender_skip_male_enabled
@@ -34,7 +34,6 @@ _POSTING_ID_RE = re.compile(r'posting_(\d+)_')
 _GALLERY_CAP = 60
 _GALLERY_BATCH = 8
 _DATE_XPATHS = ('//div[./span[contains(., "Date:")]]//span[@class="value"]', '(//span[@class="value"])[2]')
-_TITLE_WEIGHT = 0.7
 _DESC_XPATHS = (
     '//div[contains(concat(" ", normalize-space(@class), " "), " p-desc ")]',
     '//div[contains(concat(" ", normalize-space(@class), " "), " desc ")]',
@@ -83,17 +82,6 @@ def _clean_title(raw: str) -> str:
 def _earliest_date(*candidates: str | None) -> str:
     seen = sorted({iso for raw in candidates if (iso := iso_date(raw or ''))})
     return seen[0] if seen else ''
-
-
-def _blended_score(ctx: SearchContext, site: ResolvedSiteInfo, title: str, page_date: str) -> float:
-    by_title = float(best_title_score(ctx.title, title, site))
-    if not (ctx.search_date and page_date):
-        return by_title
-
-    by_date = float(date_distance_score(ctx.search_date, page_date))
-    blended = round(_TITLE_WEIGHT * by_title + (1 - _TITLE_WEIGHT) * by_date, 2)
-    logger.debug('scoregroup', f'"{title}" title={by_title} date={by_date} -> {blended}')
-    return blended
 
 
 def _card_scene_id(markup: str) -> str:
@@ -255,7 +243,7 @@ class ScoreGroupClient(Client):
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
-                    score=100 if wanted and found and found == wanted else _blended_score(ctx, loaded.site, _clean_title(title), page_date),
+                    score=100 if wanted and found and found == wanted else best_title_score(ctx.title, _clean_title(title), loaded.site),
                     cur_id=pack_cur_id([x for x in (found or published, carried) if x]),
                 )
             )
