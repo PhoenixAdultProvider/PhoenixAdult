@@ -65,6 +65,7 @@ _SERIES_TITLES = frozenset(
         'The Girl They Call the Body',
         'Three the Hard Way',
         'Tit Chat',
+        'Tit-Fuck Tryouts',
         'Tits & Tugs',
         'Tits on Glass',
         'Tits on Top',
