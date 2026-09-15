@@ -89,6 +89,16 @@ def _card_scene_id(markup: str) -> str:
     return found.group(1) if found else ''
 
 
+_DATE_MATCH_SCORE = 99.0
+
+
+def _hit_score(ctx: SearchContext, site: ResolvedSiteInfo, title: str, page_date: str | None) -> float:
+    by_title = float(best_title_score(ctx.title, title, site))
+    if by_title < 100 and page_date and ctx.search_date and page_date == ctx.search_date:
+        return _DATE_MATCH_SCORE
+    return by_title
+
+
 def _card_ref(card: Any, base_url: str) -> tuple[str, str, str]:
     anchor = card.xpath('(.//a[contains(@class,"title")])[1]')
     href = first_attr(anchor, '@href').split('?')[0]
@@ -243,7 +253,7 @@ class ScoreGroupClient(Client):
                     query=ctx.title,
                     search_date=ctx.search_date,
                     display_date=page_date or None,
-                    score=100 if wanted and found and found == wanted else best_title_score(ctx.title, _clean_title(title), loaded.site),
+                    score=100 if wanted and found and found == wanted else _hit_score(ctx, loaded.site, _clean_title(title), page_date),
                     cur_id=pack_cur_id([x for x in (found or published, carried) if x]),
                 )
             )

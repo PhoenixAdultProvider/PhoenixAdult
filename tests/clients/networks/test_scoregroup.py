@@ -12,7 +12,6 @@ from phoenixadult.clients.base import ActorResult, SceneDetail, SearchContext, S
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.helpers import b64url_decode
-from phoenixadult.utils.processors.actor_strip import best_title_score
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -608,7 +607,7 @@ async def test_two_searches_never_post_to_the_endpoint_at_the_same_time() -> Non
 
 
 def _score(query: str, title: str, search_date: str, page_date: str) -> float:
-    return float(best_title_score(_ctx(query, search_date=search_date).title, title, SITE))
+    return sg_mod._hit_score(_ctx(query, search_date=search_date), SITE, title, page_date)
 
 
 def test_a_matching_title_scores_full_whatever_the_dates_say() -> None:
@@ -621,17 +620,20 @@ def test_an_actor_prefixed_filename_scores_full_once_the_strip_is_on(monkeypatch
     assert _score('Peyton Thomas Office Hottie', 'Office Hottie', '2015-04-03', '2015-04-03') == 100.0
 
 
-def test_the_date_never_moves_the_score() -> None:
-    near = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2015-02-04')
-    far = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
-    assert near == far
+def test_an_exact_date_lifts_a_partial_title_to_99_but_never_to_auto_match() -> None:
+    assert _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-04') == 99.0
 
 
-def test_a_wrong_title_still_loses_even_with_a_perfect_date() -> None:
-    right = _score('Funbag Fuckers', 'Funbag Fuckers', '2015-02-04', '2019-11-02')
-    wrong = _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-04')
-    assert right > wrong
-    assert _score('Funbag Fuckers', 'Totally Different Scene', '', '2015-02-04') < 100.0
+def test_a_near_date_does_not_count_as_a_match() -> None:
+    title_only = _score('Funbag Fuckers', 'Totally Different Scene', '', '')
+    assert _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '2015-02-05') == title_only
+    assert title_only < 99.0
+
+
+def test_a_missing_date_on_either_side_never_promotes() -> None:
+    title_only = _score('Funbag Fuckers', 'Totally Different Scene', '', '')
+    assert _score('Funbag Fuckers', 'Totally Different Scene', '2015-02-04', '') == title_only
+    assert _score('Funbag Fuckers', 'Totally Different Scene', '', '2015-02-04') == title_only
 
 
 def test_the_scene_id_still_wins_outright(monkeypatch: pytest.MonkeyPatch) -> None:
