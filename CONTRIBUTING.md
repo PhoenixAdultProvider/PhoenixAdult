@@ -75,7 +75,7 @@ full gate before every commit:
 | `ruff format --check`    | Check formatting only (no writes) — what CI runs    |
 | `ruff check`             | Lint only (no writes)                               |
 | `ruff check --fix`       | Lint and auto-fix what's safe                       |
-| `mypy app`               | Static type-check the `app/` package                |
+| `mypy phoenixadult`      | Static type-check the `phoenixadult/` package       |
 | `pytest`                 | Run the test suite                                  |
 
 Tests mirror the source tree under `tests/` — one test module per source module

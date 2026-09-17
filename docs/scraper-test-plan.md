@@ -15,7 +15,7 @@ a scraper against the live site while developing.
 ```bash
 ./.venv/Scripts/python.exe -m ruff format <files>
 ./.venv/Scripts/python.exe -m ruff check <files>     # must pass
-./.venv/Scripts/python.exe -m mypy app               # "Success: no issues"
+./.venv/Scripts/python.exe -m mypy phoenixadult     # "Success: no issues"
 ./.venv/Scripts/python.exe -m pytest -q              # full suite green
 ```
 
@@ -139,7 +139,7 @@ When iterating on a scraper it's often fastest to watch it live:
 
 ## Progress
 
-**12** ✅ passing · **3** ❌ removed · **159** ⬜ remaining — **174** total
+Status per provider is tracked in the table below; ✅ passing, ❌ removed, ⬜ remaining.
 
 ## Providers
 

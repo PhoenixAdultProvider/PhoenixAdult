@@ -19,9 +19,9 @@ PhoenixAdult is an HTTP service that implements the **Plex Metadata Provider** c
 | Dimension | Value (current) |
 |---|---|
 | Providers | 1 (`phoenixadult`) |
-| Scraper config variants (`type`) | ≈178 |
-| `Client` subclasses | 178 (registered in `CLIENT_REGISTRY`) |
-| Site/network definition groups | 178 (spanning ~1,200 individual sites) |
+| Scraper config variants (`type`) | one per client |
+| `Client` subclasses | one per scraper (discovered into `CLIENT_REGISTRY`) |
+| Site/network definition groups | one per scraper type (spanning ~1,200 individual sites) |
 | Actor-photo sources | 8 (IAFD, AdultDVDEmpire, Indexxx, Babepedia, …) |
 | HTTP-bypass backends | 4 (Impersonate, FlareSolverr, Playwright, ReqBin) |
 | Runtime | Python 3.13, FastAPI, uvicorn, httpx2 (async), parsel (XPath / lxml), Pillow |
@@ -159,7 +159,7 @@ flowchart TB
 
   subgraph scr["Scraper engine"]
     srt["ScraperRouter<br/>(type → Client via get_client)"]:::c
-    cli["178 dedicated Client subclasses<br/>(sites / networks / aggregators)"]:::c
+    cli["one Client subclass per scraper<br/>(sites / networks / aggregators)"]:::c
     base["base Client<br/>(field-hook orchestrator)"]:::c
   end
 
@@ -369,20 +369,20 @@ classDiagram
     #fetch_and_load(url, ctx) parsel.Selector  bypass-aware
     #fetch_json(url, ctx) Any  bypass-aware
   }
-  class sites["phoenixadult/clients/sites/* (92)"] {
+  class sites["phoenixadult/clients/sites/*"] {
     «per-site XPath flow»
   }
-  class networks["phoenixadult/clients/networks/* (76)"] {
+  class networks["phoenixadult/clients/networks/*"] {
     «per-network flow»
   }
-  class aggregators["phoenixadult/clients/aggregators/* (12)"] {
+  class aggregators["phoenixadult/clients/aggregators/*"] {
     «Data18 / JavBus / MetadataAPI / …»
   }
 
   Client <|-- sites
   Client <|-- networks
   Client <|-- aggregators
-  note for Client "178 dedicated subclasses registered in CLIENT_REGISTRY; ScraperConfig.type selects one instance."
+  note for Client "one subclass per scraper, discovered into CLIENT_REGISTRY; ScraperConfig.type selects one instance."
 ```
 
 The search default = `load_search_context` + per-source `build_search_results` (which calls `fetch_search_scene_url` / `fetch_search_title` / `fetch_search_date` / `fetch_search_score` / `fetch_search_thumb_url`, dedups on `scene_url`, and packs the `cur_id`). The detail default = `load_scene_context` + per-field hooks (`fetch_title` / `summary` / `studio` / `tagline` / `release_date` / `genres` / `actors` / `directors` / `producers` / `collections` / `image_urls`). `fetch_scene_detail()` fans the field hooks out with `asyncio.gather` (one network/parse step per field), then assembles a `SceneDetail`. Data18 enrichment picks its scene by scoring every search hit across every result page and keeping the best — highest accuracy, then smallest release-date gap — then the billed cast — because a title a studio reuses returns many same-provider hits that all clear the accuracy threshold, and two of them can share a release date. The cast comes from the `Scene w/ …` / `Movie w/ …` line on the result row, compared on alphanumerics so `J.T.` and `Jt` are one name; rows without that line rank on date alone, so a caller that passes no cast is unaffected. A candidate that scores the maximum on all three short-circuits the scan, which keeps the common case at one page. Because the hooks run concurrently, a rule that needs one field to see another belongs in an `update()` override that runs after `super().update()` — that is where Score Group appends the cast to the titles it reuses across unrelated scenes (`_SERIES_TITLES`). Score Group also scores and dates itself against the grain of the shared helpers, because it refreshes release dates to keep old scenes looking new: a candidate that is not an outright scene-id hit is scored `0.7 x title + 0.3 x date` rather than by `build_search_result`'s date-only branch (`date_distance_score` is a Levenshtein of the date *strings*, so a twelve-year gap still scores 94 — nearly useless on its own), and the stored release date is the **earlier** of the filename date and the scraped one. `display_date` keeps the scene's own date either way (`Funbag Fuckers - Shyla Stylez and J.T.`, comma-separated with a final `and`, males dropped when `GENDER_SKIP_MALE_ENABLE` is on at scrape time). `fetch_and_load` / `fetch_json` try a direct httpx2 request first and fall back to the bypass chain when enabled (§8); passing `form=` to `fetch_and_load` switches it to a form-encoded POST (the Score Group `/search-es` endpoint), bypass included; every response a client receives is dumped by `trace_response` (`utils/logging/response_trace.py`) — to a file under `<LOG_DIR>/dumps/`, to the verbose log, and to the dev UI capture sink from one call, so the three cannot drift; a request that never returns a response says so at `warn` rather than being swallowed; HTML is parsed XPath-only via `parsel.Selector` (lxml-backed). Parsing is cheap (~3 ms for a 170 KB page) but xpath evaluation is not, and it runs **on the event loop** — an unanchored `//div//span[...]` walks every div and then every descendant span of each, which measured 8–33 ms per page against 0.2 ms for the `//span[...]` that selects the same nodes. Anchor a descendant scan on an id or class, or start it at the element you actually want; the cost lands on every request the process is serving, not just the scrape that paid for it. Images are classified by aspect ratio (`classify_image`): a portrait image with aspect ~1.4–1.6 is a `coverPoster`, a landscape image is a `background`. `_probe_artwork` drops any url whose dimensions cannot be read, and `_resolve_artwork` picks the poster and background from what *survived* that probe — never from the raw `detail.art` list, because falling back past the validation is how a url the site 404s reaches a snapshot and renders as a broken card. A scene whose every artwork url is dead gets no poster at all, and says so at `info`. clearLogos are managed separately from scenes: `phoenixadult/utils/images/logo_cache.py` stores `logos/<studio-slug>/logo.<name-slug>.<ext>` files (SVG rasterized via rsvg-convert/cairosvg/ImageMagick), reviewed at `/logos`, and pushed to Plex **collections** by `plex_reconcile.push_collection_logos` (the "Push Logos to Collections" action) — scenes never carry a logo.
@@ -766,7 +766,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 
 | Pattern | Where | Why |
 |---|---|---|
-| Template Method / field hooks | `Client.search` / `fetch_scene_detail` + hooks | one orchestration, 178 site variations |
+| Template Method / field hooks | `Client.search` / `fetch_scene_detail` + hooks | one orchestration, every site variation |
 | Strategy / Registry dispatch | `get_client` → `CLIENT_REGISTRY`; `ScraperConfig` union | data selects behavior |
 | Adapter | `MetadataMapper` (SceneDetail → Plex schema) | isolate Plex contract |
 | Chain of Responsibility | bypass chain; people-source order | ordered fallback |
@@ -791,7 +791,7 @@ phoenixadult/
                              #   plex_reconcile, plex_account, plex_import
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + 180 dedicated clients:
-                             #   sites/ (92), networks/ (76), aggregators/ (12)
+                             #   sites/, networks/, aggregators/
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
   models/                    # scraper_config (union), metadata, provider_info, media_provider
