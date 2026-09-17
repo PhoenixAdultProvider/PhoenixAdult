@@ -6,7 +6,7 @@ from abc import ABC
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol
 from urllib.parse import urlencode
 
 import httpx2
@@ -206,6 +206,8 @@ class ImageCollector:
 
 
 class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks, none are mandatory
+    scraper_type: ClassVar[str] = ''
+
     def __init__(self, extra_headers: dict[str, str] | None = None) -> None:
         self._extra_headers = extra_headers or {}
         self._http: httpx2.AsyncClient | None = None

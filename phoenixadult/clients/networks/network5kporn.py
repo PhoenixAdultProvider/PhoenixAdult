@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import ClassVar
 from urllib.parse import quote
 
 from parsel import Selector
@@ -21,6 +22,8 @@ def _cls(name: str) -> str:
 
 
 class Network5KPClient(Client):
+    scraper_type: ClassVar[str] = '5kporn'
+
     def __init__(self) -> None:
         super().__init__({'Accept': 'application/json,text/html;q=0.9,*/*;q=0.8', 'Cookie': _COOKIE})
 
