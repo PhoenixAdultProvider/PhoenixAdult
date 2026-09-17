@@ -6,8 +6,8 @@ from urllib.parse import quote, urlsplit
 
 from parsel import Selector
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.images.image_fetcher import fetch_dimensions

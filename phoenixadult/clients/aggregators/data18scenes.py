@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import Data18Client, squash, strip_reptyle_suffix, xp_first_ns, xp_ns
+from phoenixadult.clients.aggregators.data18 import Data18Client
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.clients.networks.reptyle_subnetworks import resolve_reptyle_subnetwork
 from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.data18 import squash, strip_reptyle_suffix, xp_first_ns, xp_ns
 from phoenixadult.utils.helpers.helpers import iso_date
 
 _TITLE_XP = '(//h1)[1]'

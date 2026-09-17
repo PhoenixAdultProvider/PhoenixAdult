@@ -8,11 +8,11 @@ from typing import Any
 import httpx2
 from parsel import Selector
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.logging.logger import logger

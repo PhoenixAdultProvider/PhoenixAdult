@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 

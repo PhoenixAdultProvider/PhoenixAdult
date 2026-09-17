@@ -8,6 +8,7 @@ from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.duplicates import duplicate_entries, stale_duplicate_entries
 from phoenixadult.utils.cache.layout import cache_dir
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.logging.logger import logger
 
 
@@ -35,7 +36,6 @@ class UiEntry(TypedDict):
 
 
 def _ui_entry(row: scene_store.SceneRow) -> UiEntry:
-    from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     rel = row['rel_path']
     return {

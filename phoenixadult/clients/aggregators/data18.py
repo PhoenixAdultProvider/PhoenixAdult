@@ -1,25 +1,33 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Literal, NotRequired, TypedDict
 from urllib.parse import urljoin, urlsplit
 
 import httpx2
 from dateutil import parser as date_parser
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
-from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score, slugify
+from phoenixadult.utils.helpers.data18 import (
+    DATA18_BASE,
+    DATA18_HOSTS,
+    Data18Kind,
+    data18_ref,
+    data18_scene_id,
+    manual_mapping_extras,
+    manual_mapping_url,
+    url_id,
+    xp_ns,
+)
+from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import fetch_dimensions
@@ -28,155 +36,13 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import convert_sequence_numbers
 
-_BASE = 'https://www.data18.com'
-_SEARCH_URL_TPL = f'{_BASE}/sys/live.php?index=&key='
+_SEARCH_URL_TPL = f'{DATA18_BASE}/sys/live.php?index=&key='
 _MAX_ACCURACY = 100.0
 _CAST_PREFIX_RE = re.compile(r'^\s*(?:scene|movie)\s+w/\s*', re.IGNORECASE)
 _SPECIAL_GALLERIES = {1001, 1101, 1201, 1901}
 _MAX_GALLERY_IMAGES = 600
 _TITLE_XP = '(//h1)[1]'
-
-
-def data18_scene_id(raw: str | None) -> str:
-    return raw if raw and raw.isdigit() and int(raw) > 100 else ''
-
-
-Data18Kind = Literal['scene', 'movie']
-
-
-class ManualMapping(TypedDict):
-    slug: str | list[str]
-    type: Data18Kind
-    also: NotRequired[list[str]]
-
-
-def _load_manual_mappings(caller_file: str = __file__) -> dict[str, ManualMapping]:
-    folder = Path(caller_file).parent / '_data' / 'data18'
-    merged: dict[str, ManualMapping] = {}
-    for name in ['data18_manual_mappings', *sorted(p.stem for p in folder.glob('data18_manual_mappings_*.json'))]:
-        path = folder / f'{name}.json'
-        if path.exists():
-            merged.update(json.loads(path.read_text(encoding='utf-8')))
-
-    return merged
-
-
-DATA18_MANUAL_MAPPINGS: dict[str, ManualMapping] = _load_manual_mappings()
-
-
-def mapping_slug(title: str, sub_site: str | None, metadata: SceneDetail | None = None) -> str | None:
-    sid = slugify(title, replacements=[("'", '')])
-    if not sid:
-        return None
-
-    if not sub_site and metadata:
-        sub_site = metadata.tagline or metadata.studio
-
-    return f'{sid}-{re.sub(r"\W", "", sub_site).lower()}' if sub_site else sid
-
-
-def manual_mapping_url(mapping_key: str | None) -> str | None:
-    if not mapping_key:
-        return None
-
-    for d18, entry in DATA18_MANUAL_MAPPINGS.items():
-        slug = entry['slug']
-        if mapping_key == slug or (isinstance(slug, list) and mapping_key in slug):
-            return f'{_BASE}/{"movies" if entry["type"] == "movie" else "scenes"}/{d18}'
-
-    return None
-
-
-def manual_mapping_extras(url: str | None) -> list[str]:
-    ref = data18_ref(url)
-    if not ref:
-        return []
-    entry = DATA18_MANUAL_MAPPINGS.get(ref['id'])
-    if not entry:
-        return []
-    segment = 'movies' if entry['type'] == 'movie' else 'scenes'
-    return [f'{_BASE}/{segment}/{extra}' for extra in entry.get('also', [])]
-
-
-def data18_ref_with_extras(url: str | None) -> dict[str, Any] | None:
-    ref: dict[str, Any] | None = data18_ref(url)
-    if not ref:
-        return None
-    entry = DATA18_MANUAL_MAPPINGS.get(str(ref['id']))
-    if entry and entry.get('also'):
-        ref['also'] = list(entry['also'])
-    return ref
-
-
-def xp_ns(sel: Any, xpath: str) -> str:
-    return (sel.xpath(f'normalize-space({xpath})').get() or '').strip()
-
-
-def xp_first_ns(sel: Any, xpaths: tuple[str, ...]) -> str:
-    for xpath in xpaths:
-        if value := xp_ns(sel, xpath):
-            return value
-
-    return ''
-
-
-def squash(value: str) -> str:
-    return re.sub(r'\s+', '', value).lower()
-
-
-def url_id(url: str) -> str:
-    return re.sub(r'.*/', '', url).split('-')[0]
-
-
-_DATA18_REF_RE = re.compile(r'/(scenes|movies)/(\d+)')
-
-
-def data18_ref(url: str | None) -> dict[str, str] | None:
-    if not url:
-        return None
-
-    m = _DATA18_REF_RE.search(url)
-    if not m:
-        return None
-
-    return {'type': 'scene' if m.group(1) == 'scenes' else 'movie', 'id': m.group(2)}
-
-
-_REPTYLE_SUFFIX_RE = re.compile(r'\s*-\s*Reptyle$', re.IGNORECASE)
-
-
-def strip_reptyle_suffix(studio: str) -> str:
-    return _REPTYLE_SUFFIX_RE.sub('', studio).strip()
-
-
-_SCENE_REF_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
-_DATA18_HOSTS = ('data18.com', 'www.data18.com')
 _ID_ONLY_RE = re.compile(r'/(?:scenes|movies)/\d+/?$')
-
-
-def scene_url_from_ref(ref: str | None) -> str | None:
-    if not ref:
-        return None
-
-    ref = ref.strip()
-    if '://' in ref:
-        parts = urlsplit(ref)
-        if (parts.hostname or '').lower() not in _DATA18_HOSTS:
-            return None
-
-        ref = parts.path
-
-    ref = ref.strip('/')
-    kind = 'scenes'
-    if ref.lower() in ('scenes', 'movies'):
-        return None
-
-    if ref.lower().startswith('movies/'):
-        kind, ref = 'movies', ref[len('movies/') :].strip('/')
-    elif ref.lower().startswith('scenes/'):
-        ref = ref[len('scenes/') :].strip('/')
-
-    return f'{_BASE}/{kind}/{ref}' if _SCENE_REF_RE.match(ref) else None
 
 
 @dataclass
@@ -280,7 +146,7 @@ def _rank_anchor(a: Selector, path_segment: str, query_clean: str, providers: li
     gap = _date_gap(scene_date, search_date)
     cast = _cast_overlap(actors, _row_cast(a))
     logger.debug('data18', f'"{title_clean}" vs "{query_clean}" date="{date_raw}" provider="{provider}" accuracy={accuracy} gap={gap}d cast={cast:.2f}')
-    return _Ranked(url=href if href.startswith('http') else f'{_BASE}{href}', accuracy=accuracy, gap=gap, cast=cast)
+    return _Ranked(url=href if href.startswith('http') else f'{DATA18_BASE}{href}', accuracy=accuracy, gap=gap, cast=cast)
 
 
 @dataclass
@@ -322,7 +188,7 @@ def _clean_thumb(u: str) -> str:
 
 class Data18Client(Client):
     def __init__(self) -> None:
-        super().__init__({'Referer': _BASE, 'Cookie': 'data_user_captcha=1'})
+        super().__init__({'Referer': DATA18_BASE, 'Cookie': 'data_user_captcha=1'})
 
     async def data18_search(
         self,
@@ -531,7 +397,7 @@ class Data18Client(Client):
     @staticmethod
     async def _drop_square(scope: str, urls: list[str]) -> list[str]:
         async def is_square(u: str) -> bool:
-            dims = await fetch_dimensions(u, [_BASE])
+            dims = await fetch_dimensions(u, [DATA18_BASE])
             return dims is not None and classify_image(dims['width'], dims['height']).orientation == 'square'
 
         sem = loop_gate('data18-probe', gate.DATA18_PROBE)
@@ -559,7 +425,7 @@ class Data18Client(Client):
         loc: str = r.headers.get('location', '')
         if r.status_code in (301, 302, 307, 308) and loc:
             resolved = urljoin(url, loc)
-            if (urlsplit(resolved).hostname or '').lower() in _DATA18_HOSTS:
+            if (urlsplit(resolved).hostname or '').lower() in DATA18_HOSTS:
                 logger.debug('data18', f'resolved {url} -> {resolved}')
                 return resolved
 
@@ -614,7 +480,7 @@ class Data18Client(Client):
             except ValueError:
                 continue
 
-            viewer_url = f'{_BASE}/sys/media_photos.php?s={scene_prefix}&scene={scene_suffix}&pic={gallery_id}'
+            viewer_url = f'{DATA18_BASE}/sys/media_photos.php?s={scene_prefix}&scene={scene_suffix}&pic={gallery_id}'
             viewer_page_elements = await self.fetch_and_load(viewer_url, label=f'[data18] gallery {gallery_id}')
             if not viewer_page_elements:
                 continue
@@ -693,7 +559,7 @@ class Data18Client(Client):
                 span = a.xpath('.//span[contains(@class,"gen11")]')
                 date_raw = _direct_text(span[0]) if span else ''
                 release_date = self._iso(_parse_date(date_raw)) if date_raw and date_raw != 'unknown' else None
-                url = href if href.startswith('http') else f'{_BASE}{href}'
+                url = href if href.startswith('http') else f'{DATA18_BASE}{href}'
                 url_id = re.sub(r'.*/', '', href)
                 seen.add(href)
                 out.append(
@@ -745,7 +611,7 @@ class Data18Client(Client):
 
             async def viewer_for(gallery_id: str) -> Selector | None:
                 async with sem:
-                    return await self.fetch_page(f'{_BASE}/sys/media_photos.php?movie={movie_prefix}&pic={gallery_id}')
+                    return await self.fetch_page(f'{DATA18_BASE}/sys/media_photos.php?movie={movie_prefix}&pic={gallery_id}')
 
             for viewer in await asyncio.gather(*(viewer_for(gid) for gid in gallery_ids)):
                 if not viewer:

@@ -3,9 +3,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.http.rate_limit_helper import ScenePacer

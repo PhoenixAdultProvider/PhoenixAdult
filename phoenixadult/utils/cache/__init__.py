@@ -67,6 +67,7 @@ from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.helpers.data18 import data18_ref_with_extras, manual_mapping_url, mapping_slug
 from phoenixadult.utils.images.ext import ext_from
 from phoenixadult.utils.images.image_fetcher import fetch_image, rotate_image_bytes
 from phoenixadult.utils.images.proxy import proxy_params
@@ -89,7 +90,6 @@ _write_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValue
 
 
 def _data18_fingerprint(response: PlexMetadataResponse) -> str:
-    from phoenixadult.clients.aggregators.data18 import manual_mapping_url, mapping_slug
 
     try:
         md = response.MediaContainer.Metadata[0]
@@ -112,7 +112,6 @@ def _stored_data18(response: PlexMetadataResponse) -> dict[str, Any] | None:
 
 
 def data18_remap_needed(response: PlexMetadataResponse, site_name: str) -> bool:
-    from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras
 
     if not env.data18_enabled:
         return False
@@ -135,7 +134,7 @@ def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bo
 async def backfill_data18(response: PlexMetadataResponse, site_name: str) -> bool:
     from datetime import datetime
 
-    from phoenixadult.clients.aggregators.data18 import Data18Client, data18_ref_with_extras, mapping_slug
+    from phoenixadult.clients.aggregators.data18 import Data18Client
     from phoenixadult.models.metadata import PlexData18
 
     if not env.data18_enabled:

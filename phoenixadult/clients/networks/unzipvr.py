@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import strip_tags
 

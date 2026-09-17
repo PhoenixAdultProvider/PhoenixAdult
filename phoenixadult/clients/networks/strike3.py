@@ -4,9 +4,9 @@ import asyncio
 import time
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.graphql_client import GraphQLClient
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
 

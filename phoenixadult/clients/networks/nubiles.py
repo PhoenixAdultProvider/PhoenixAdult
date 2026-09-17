@@ -9,10 +9,10 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.captcha.pow import get_verified_cookies
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.http.connectivity import internet_reachable

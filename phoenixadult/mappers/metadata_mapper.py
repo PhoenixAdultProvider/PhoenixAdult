@@ -4,7 +4,6 @@ import asyncio
 import json
 from typing import Any
 
-from phoenixadult.clients.aggregators.data18 import data18_ref_with_extras
 from phoenixadult.clients.base import SceneDetail, SearchResult
 from phoenixadult.config import config, image_base_url
 from phoenixadult.models.metadata import (
@@ -23,6 +22,7 @@ from phoenixadult.registry import ResolvedSiteInfo, find_site, normalize_site_ke
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
+from phoenixadult.utils.helpers.data18 import data18_ref_with_extras
 from phoenixadult.utils.helpers.helpers import embed_subsite
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import content_digest, fetch_dimensions, pixel_digest

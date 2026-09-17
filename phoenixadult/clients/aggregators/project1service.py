@@ -8,10 +8,10 @@ import time
 from typing import Any, TypedDict
 from urllib.parse import quote, urlsplit
 
-from phoenixadult.clients.aggregators.data18 import mapping_slug
 from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import build_search_result, date_distance_score, iso_date, pack_cur_id, sceneid_distance_score, title_distance_score
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.logging.logger import logger

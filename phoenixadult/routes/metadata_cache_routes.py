@@ -16,6 +16,7 @@ from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
+from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.scene_link import resolve_source_link
@@ -78,7 +79,6 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
     if loaded is None:
         return HTMLResponse('<p style="font-family:system-ui;color:#e2e8f0;background:#0f1117">No snapshot for that key.</p>', status_code=404)
     md = (loaded.get('MediaContainer') or {}).get('Metadata') or [{}]
-    from phoenixadult.clients.aggregators.data18 import mapping_slug
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     identity = await run_in('store', scene_store.identity_for, key)
