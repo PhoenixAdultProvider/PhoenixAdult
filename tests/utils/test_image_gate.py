@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_the_image_gate_is_shared_across_scene_writes() -> None:
-    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import metadata as mc
 
     first = mc._image_gate()
     second = mc._image_gate()

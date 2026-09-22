@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.utils.cache import layout as cache_layout
 from tests.support import authed_client
 
 
@@ -38,12 +39,11 @@ def test_metadata_hides_purge_and_says_view(member: TestClient) -> None:
 
 
 def test_metadata_edit_is_read_only(member: TestClient) -> None:
-    from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
 
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert('Studio', 'cur1', metadata_cache._hash('Studio', 'cur1'), metadata_cache.bundle_path(metadata_cache._hash('Studio', 'cur1')), payload)
+    scene_store.upsert('Studio', 'cur1', cache_layout._hash('Studio', 'cur1'), cache_layout.bundle_path(cache_layout._hash('Studio', 'cur1')), payload)
     key = scene_store.snapshot_state('Studio', 'cur1')['key']
 
     body = member.get(f'/metadata/edit?key={key}').text
@@ -150,15 +150,14 @@ def test_source_json_is_admin_only(member: TestClient) -> None:
 def _seed_snapshot() -> str:
     import json
 
-    from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
     from phoenixadult.utils.helpers.ids import b64url_encode
 
     cur_id = b64url_encode(json.dumps({'title': 'Scene', 'poster': '/img/x.jpg'}))
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_hash = metadata_cache._hash('Studio', cur_id)
-    scene_store.upsert('Studio', cur_id, scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    scene_hash = cache_layout._hash('Studio', cur_id)
+    scene_store.upsert('Studio', cur_id, scene_hash, cache_layout.bundle_path(scene_hash), payload)
     return str(scene_store.snapshot_state('Studio', cur_id)['key'])
 
 

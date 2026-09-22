@@ -6,7 +6,8 @@ from typing import Any
 
 import pytest
 
-from phoenixadult.utils.cache import BUNDLE_FILE, bundle_path, bundle_sweep, scene_store
+from phoenixadult.utils.cache import bundle_sweep, scene_store
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, bundle_path
 
 
 def _write_bundle(root: Path, scene_hash: str, site: str = 'Fit18', title: str = 'Recovered Scene', version: int = 1) -> Path:

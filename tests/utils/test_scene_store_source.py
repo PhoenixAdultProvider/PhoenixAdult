@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 
 
@@ -12,8 +12,8 @@ def _payload(md_extra: dict[str, Any]) -> dict[str, Any]:
 
 
 def _roundtrip(md_extra: dict[str, Any]) -> dict[str, Any]:
-    scene_hash = metadata_cache._hash('Studio', 'cur-src')
-    scene_store.upsert('Studio', 'cur-src', scene_hash, metadata_cache.bundle_path(scene_hash), _payload(md_extra))
+    scene_hash = cache_layout._hash('Studio', 'cur-src')
+    scene_store.upsert('Studio', 'cur-src', scene_hash, cache_layout.bundle_path(scene_hash), _payload(md_extra))
     loaded = scene_store.load(scene_hash)
     assert loaded is not None
     return dict(loaded['MediaContainer']['Metadata'][0])

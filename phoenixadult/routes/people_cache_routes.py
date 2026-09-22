@@ -16,6 +16,7 @@ from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
+from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
@@ -253,9 +254,8 @@ def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
 
 
 def _scene_rows(entry: dict[str, Any]) -> list[dict[str, Any]] | None:
-    from phoenixadult.utils import cache as metadata_cache
 
-    if not metadata_cache.enabled():
+    if not cache_layout.enabled():
         return None
     scenes = scene_store.scenes_for_person(str(entry.get('name', '')), str(entry.get('role', '')))
     return [{**scene, 'key_quoted': quote(scene['key'], safe='/')} for scene in scenes]

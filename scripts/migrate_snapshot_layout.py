@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
-from phoenixadult.utils.cache import BUNDLE_FILE, BUNDLE_ROOT, bundle_path, bundle_payload, scene_store
+from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, BUNDLE_ROOT, bundle_path, bundle_payload
 
 _STAGING = '_plex-import'
 _ROOTS = {BUNDLE_ROOT, _STAGING}

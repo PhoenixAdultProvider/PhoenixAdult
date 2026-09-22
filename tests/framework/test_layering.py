@@ -9,7 +9,7 @@ _LAYERS = ('models', 'config', 'utils', 'registry', 'clients', 'mappers', 'servi
 _RANK = {name: i for i, name in enumerate(_LAYERS)}
 
 _KNOWN_UPWARD = {
-    ('utils', 'registry'): {'utils/cache/__init__.py', 'utils/cache/layout.py', 'utils/cache/listing.py'},
+    ('utils', 'registry'): {'utils/cache/layout.py', 'utils/cache/listing.py', 'utils/cache/metadata.py'},
     ('config', 'utils'): {'config/env_overrides.py'},
 }
 

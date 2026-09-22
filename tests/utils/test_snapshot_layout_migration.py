@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from phoenixadult.utils import cache as mc
 from phoenixadult.utils import db
+from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.bundle_sweep import sweep
 from scripts.migrate_snapshot_layout import migrate, orphans
@@ -63,7 +63,7 @@ def test_dry_run_reports_without_touching_anything(_tmp_db: Path) -> None:
 
 def test_apply_moves_folders_rewrites_urls_and_writes_bundles(_tmp_db: Path) -> None:
     _seed_legacy(_tmp_db)
-    new_rel = mc.bundle_path('h1abc')
+    new_rel = cache_layout.bundle_path('h1abc')
 
     stats = migrate(_tmp_db, apply=True, prune=False)
 
@@ -77,7 +77,7 @@ def test_apply_moves_folders_rewrites_urls_and_writes_bundles(_tmp_db: Path) -> 
     assert conn.execute('SELECT thumb FROM scenes').fetchone()['thumb'] == f'/cache/{new_rel}/images/poster-00.jpg'
     assert conn.execute('SELECT rel_path FROM scene_images').fetchone()['rel_path'] == f'/cache/{new_rel}/images/poster-00.jpg'
 
-    payload = json.loads((_tmp_db / new_rel / mc.BUNDLE_FILE).read_text(encoding='utf-8'))
+    payload = json.loads((_tmp_db / new_rel / cache_layout.BUNDLE_FILE).read_text(encoding='utf-8'))
     assert (payload['site'], payload['cur_id'], payload['hash']) == ('Brazzers', 'cur-1', 'h1abc')
     assert payload['images'][f'/cache/{new_rel}/images/poster-00.jpg'] == [30, 45, 4]
 
@@ -89,7 +89,7 @@ def test_apply_is_idempotent(_tmp_db: Path) -> None:
     stats = migrate(_tmp_db, apply=True, prune=False)
 
     assert stats['moved'] == 0 and stats['orphans'] == 0
-    assert (_tmp_db / mc.bundle_path('h1abc') / 'images' / 'poster-00.jpg').exists()
+    assert (_tmp_db / cache_layout.bundle_path('h1abc') / 'images' / 'poster-00.jpg').exists()
 
 
 def test_a_row_without_a_folder_still_gets_its_path_rewritten(_tmp_db: Path) -> None:
@@ -101,7 +101,7 @@ def test_a_row_without_a_folder_still_gets_its_path_rewritten(_tmp_db: Path) -> 
     stats = migrate(_tmp_db, apply=True, prune=False)
 
     assert stats['rowonly'] == 1 and stats['moved'] == 0
-    assert db.connect().execute('SELECT rel_path FROM scenes').fetchone()['rel_path'] == mc.bundle_path('h1abc')
+    assert db.connect().execute('SELECT rel_path FROM scenes').fetchone()['rel_path'] == cache_layout.bundle_path('h1abc')
 
 
 def test_unreferenced_folders_are_reported_and_only_pruned_on_request(_tmp_db: Path) -> None:
@@ -143,7 +143,7 @@ def test_image_rows_whose_scene_is_gone_are_swept_with_the_orphans(_tmp_db: Path
 def test_bundles_rebuild_the_scene_rows_after_a_db_loss(_tmp_db: Path) -> None:
     _seed_legacy(_tmp_db)
     migrate(_tmp_db, apply=True, prune=False)
-    new_rel = mc.bundle_path('h1abc')
+    new_rel = cache_layout.bundle_path('h1abc')
 
     with db.connect() as conn:
         conn.execute('DELETE FROM scenes')
@@ -171,7 +171,7 @@ def test_rebuild_leaves_existing_rows_alone_unless_told_otherwise(_tmp_db: Path)
 def test_a_corrupt_bundle_is_counted_and_skipped(_tmp_db: Path) -> None:
     _seed_legacy(_tmp_db)
     migrate(_tmp_db, apply=True, prune=False)
-    (_tmp_db / mc.bundle_path('h1abc') / mc.BUNDLE_FILE).write_text('{not json', encoding='utf-8')
+    (_tmp_db / cache_layout.bundle_path('h1abc') / cache_layout.BUNDLE_FILE).write_text('{not json', encoding='utf-8')
 
     stats = sweep(_tmp_db, overwrite=True)
 

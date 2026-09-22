@@ -108,7 +108,8 @@ async def _backup_task() -> None:
 
 
 def _warn_on_legacy_snapshots() -> None:
-    from phoenixadult.utils.cache import BUNDLE_ROOT, scene_store
+    from phoenixadult.utils.cache import scene_store
+    from phoenixadult.utils.cache.layout import BUNDLE_ROOT
 
     stale = scene_store.legacy_count(f'{BUNDLE_ROOT}/%')
     if stale:

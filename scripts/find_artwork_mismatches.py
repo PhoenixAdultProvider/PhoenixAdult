@@ -7,6 +7,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from phoenixadult.utils.cache import listing as cache_listing
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image as PILImage
@@ -97,9 +99,7 @@ def main() -> int:
             for m in unlocalized:
                 print(f'  {m["site"]} — {m["title"]}  ({m["rel_path"]})')
     if args.purge and corrupted:
-        from phoenixadult.utils import cache as metadata_cache
-
-        removed = sum(1 for m in corrupted if metadata_cache.purge(m['rel_path']))
+        removed = sum(1 for m in corrupted if cache_listing.purge(m['rel_path']))
         print(f'\nPurged {removed}/{len(corrupted)} scene(s); a normal Plex metadata refresh now re-scrapes them.')
     return 0
 

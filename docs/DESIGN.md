@@ -788,7 +788,7 @@ phoenixadult/
                              #   metadata_cache_routes, people_cache_routes, logo_routes,
                              #   queue_routes, plex_routes (+ html/)
   services/                  # match_service, metadata_service, scraper_router, scrape_queue,
-                             #   plex_reconcile, plex_account, plex_import
+                             #   plex_reconcile, plex_account, plex_import, snapshot_backfill
   mappers/                   # metadata_mapper
   clients/                   # base Client (base.py) + one dedicated client per scraper:
                              #   sites/, networks/, aggregators/
@@ -806,6 +806,8 @@ phoenixadult/
     processors/              # filename_parser, search_query, similarity, title_case, studio_name,
                              #   abbreviations, actor_strip
     concurrency/             # pools (named thread pools), coalescer, single_flight
+    cache/                   # metadata (snapshot read/write/edit), scene_store, search_store,
+                             #   layout, listing, duplicates, integrity, locks, text_rules
     logging/, genres/, captcha/, cookies/, helpers/
   config/                    # env, env_catalog, env_overrides, __init__
 scripts/                     # generate_sitelist, site_health, start-with-tunnel.ps1

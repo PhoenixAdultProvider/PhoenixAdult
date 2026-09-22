@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from phoenixadult.utils.cache import BUNDLE_FILE, BUNDLE_ROOT, BUNDLE_VERSION, bundle_path, cache_dir, enabled, scene_store
+from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, BUNDLE_ROOT, BUNDLE_VERSION, bundle_path, cache_dir, enabled
 from phoenixadult.utils.logging.logger import logger
 
 

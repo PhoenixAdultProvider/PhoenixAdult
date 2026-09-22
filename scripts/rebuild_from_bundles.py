@@ -8,7 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
-from phoenixadult.utils.cache import BUNDLE_FILE, BUNDLE_ROOT, bundle_sweep
+from phoenixadult.utils.cache import bundle_sweep
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, BUNDLE_ROOT
 
 
 def main() -> int:

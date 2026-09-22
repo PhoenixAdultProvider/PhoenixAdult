@@ -6,10 +6,10 @@ from phoenixadult.clients.aggregators import archive
 from phoenixadult.clients.aggregators.archive import ArchiveClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from phoenixadult.utils.cache import layout as cache_layout
 
 
 def _seed(site: str, cur_id: str, title: str, date: str = '', thumb: str = '') -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'studio': site}
@@ -18,7 +18,7 @@ def _seed(site: str, cur_id: str, title: str, date: str = '', thumb: str = '') -
     if thumb:
         md['thumb'] = thumb
     data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur_id, mc._hash(site, cur_id), f'{site.lower()}/{cur_id}', data)
+    scene_store.upsert(site, cur_id, cache_layout._hash(site, cur_id), f'{site.lower()}/{cur_id}', data)
 
 
 def _ctx(title: str, site_name: str = 'Aussie Ass') -> SearchContext:

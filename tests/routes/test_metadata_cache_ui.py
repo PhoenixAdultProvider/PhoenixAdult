@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import listing as cache_listing
 from tests.support import authed_client
 
 
@@ -32,7 +34,7 @@ def test_purge_bulk_validates_and_counts(monkeypatch: pytest.MonkeyPatch) -> Non
         purged.append(key)
         return key != 'studio/missing'
 
-    monkeypatch.setattr(mcr.metadata_cache, 'purge', fake_purge)
+    monkeypatch.setattr(mcr.cache_listing, 'purge', fake_purge)
     client = authed_client()
     assert client.post('/metadata/purge-bulk', json={}).status_code == 400
     assert client.post('/metadata/purge-bulk', json={'keys': []}).status_code == 400
@@ -49,8 +51,8 @@ def test_purge_bulk_validates_and_counts(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
-    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_listing, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'purgeShown()' in page.text
     assert 'This cannot be undone.' in page.text
@@ -62,11 +64,11 @@ def test_page_has_filtered_bulk_purge(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache, 'change_token', lambda: '3:123.0')
-    monkeypatch.setattr(mcr.metadata_cache, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
-    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: ['studio/abc'])
-    monkeypatch.setattr(mcr.metadata_cache, 'studios', lambda **_kw: ['Studio'])
-    monkeypatch.setattr(mcr.metadata_cache, 'facets', lambda **_kw: {'taglines': ['T']})
+    monkeypatch.setattr(mcr.cache_listing, 'change_token', lambda: '3:123.0')
+    monkeypatch.setattr(mcr.cache_listing, 'entries_page', lambda **_kw: ([{'key': 'studio/abc'}], 1))
+    monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: ['studio/abc'])
+    monkeypatch.setattr(mcr.cache_listing, 'studios', lambda **_kw: ['Studio'])
+    monkeypatch.setattr(mcr.cache_listing, 'facets', lambda **_kw: {'taglines': ['T']})
     assert TestClient(create_app()).get('/metadata/state', headers={'accept': 'application/json'}).status_code == 401
     client = authed_client()
     assert client.get('/metadata/state').json() == {'token': '3:123.0'}
@@ -82,8 +84,8 @@ def test_state_and_entries_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
-    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_listing, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'metadata-cache-filters' in page.text
     assert 'restoreFilters()' in page.text
@@ -94,8 +96,8 @@ def test_page_persists_filters_and_polls(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_page_injects_duplicate_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
 
-    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
-    monkeypatch.setattr(mcr.metadata_cache, 'entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: ['a/b/c', 'd/e/f'])
+    monkeypatch.setattr(mcr.cache_listing, 'entries', lambda: [])
     page = authed_client().get('/metadata')
     assert 'var DUP_KEYS = ["a/b/c", "d/e/f"];' in page.text
     assert 'Show Duplicates' in page.text
@@ -111,7 +113,6 @@ def test_page_has_server_side_pagination(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def _seed_scene(site: str, cur: str, title: str, studio: str, date: str, updated: float) -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     data = {
@@ -121,7 +122,7 @@ def _seed_scene(site: str, cur: str, title: str, studio: str, date: str, updated
             'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'studio': studio, 'originallyAvailableAt': date}],
         }
     }
-    scene_store.upsert(site, cur, mc._hash(site, cur), f'{studio.lower()}/{cur}', data, updated_at=updated)
+    scene_store.upsert(site, cur, cache_layout._hash(site, cur), f'{studio.lower()}/{cur}', data, updated_at=updated)
 
 
 def _seed_library() -> None:
@@ -379,15 +380,14 @@ def test_entries_endpoint_passes_the_actor_filter(monkeypatch: pytest.MonkeyPatc
         seen.update(kw)
         return [], 0
 
-    monkeypatch.setattr(mcr.metadata_cache, 'entries_page', fake_page)
-    monkeypatch.setattr(mcr.metadata_cache.duplicates, 'duplicate_entries', lambda: [])
+    monkeypatch.setattr(mcr.cache_listing, 'entries_page', fake_page)
+    monkeypatch.setattr(mcr.cache_duplicates, 'duplicate_entries', lambda: [])
     client = authed_client()
     client.get('/metadata/entries', params={'actor': 'Jane Doe'})
     assert seen['actor'] == 'Jane Doe'
 
 
 def _seed_cast(site: str, cur: str, title: str, actors: list[str], genres: list[str]) -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     md = {
@@ -400,7 +400,7 @@ def _seed_cast(site: str, cur: str, title: str, actors: list[str], genres: list[
         'Genre': [{'tag': name} for name in genres],
     }
     data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur, mc._hash(site, cur), f'{site.lower()}/{cur}', data, updated_at=100.0)
+    scene_store.upsert(site, cur, cache_layout._hash(site, cur), f'{site.lower()}/{cur}', data, updated_at=100.0)
 
 
 def test_entries_carry_actors_and_genre_counts_and_filter_by_actor(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -485,12 +485,11 @@ def test_edit_page_stops_waiting_when_the_job_leaves_the_queue(monkeypatch: pyte
 
 
 def _seed_faceted(site: str, cur: str, title: str, studio: str, tagline: str, date: str) -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     md = {'type': 'movie', 'ratingKey': f'rk-{cur}', 'guid': 'g', 'title': title, 'studio': studio, 'tagline': tagline, 'originallyAvailableAt': date}
     scene_store.upsert(
-        site, cur, mc._hash(site, cur), f'{studio}/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
+        site, cur, cache_layout._hash(site, cur), f'{studio}/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
     )
 
 
@@ -517,7 +516,6 @@ def test_facets_narrow_to_the_other_active_filters(monkeypatch: pytest.MonkeyPat
 
 
 def _seed_people(cur: str, title: str, roles: list[str], directors: list[str], collections: list[str]) -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     md: dict[str, object] = {'type': 'movie', 'ratingKey': f'rk-{cur}', 'guid': 'g', 'title': title, 'studio': 'Brazzers'}
@@ -528,7 +526,12 @@ def _seed_people(cur: str, title: str, roles: list[str], directors: list[str], c
     if collections:
         md['Collection'] = [{'tag': c} for c in collections]
     scene_store.upsert(
-        'Brazzers', cur, mc._hash('Brazzers', cur), f'people/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
+        'Brazzers',
+        cur,
+        cache_layout._hash('Brazzers', cur),
+        f'people/{cur}',
+        {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}},
+        updated_at=100.0,
     )
 
 
@@ -581,7 +584,7 @@ async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     from phoenixadult.models.metadata import PlexMetadataResponse
-    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import metadata as mc
 
     resp = PlexMetadataResponse.model_validate(
         {
@@ -593,7 +596,7 @@ async def test_edit_page_shows_the_mapping_slug(tmp_path: Path, monkeypatch: pyt
         }
     )
     assert await mc.write('MYLF', 'slug1', resp) is True
-    key = mc.entries()[0]['key']
+    key = cache_listing.entries()[0]['key']
 
     body = authed_client().get(f'/metadata/edit?key={key}').text
     assert '"cool-scene-mylffeatures"' in body
@@ -605,7 +608,7 @@ async def test_entries_endpoint_filters_potential_duplicates(tmp_path: Path, mon
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     from phoenixadult.models.metadata import PlexMetadataResponse
-    from phoenixadult.utils import cache as mc
+    from phoenixadult.utils.cache import metadata as mc
 
     def resp(title: str, tagline: str) -> PlexMetadataResponse:
         return PlexMetadataResponse.model_validate(

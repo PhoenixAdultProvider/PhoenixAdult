@@ -8,7 +8,8 @@ import pytest
 from PIL import Image
 
 from phoenixadult.models.metadata import PlexMetadataResponse
-from phoenixadult.utils import cache as mc
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import metadata as mc
 from phoenixadult.utils.images import image_fetcher as fetcher
 from phoenixadult.utils.images.image_fetcher import ImageEntry
 
@@ -44,7 +45,7 @@ def _rich() -> PlexMetadataResponse:
 def _stored() -> dict[str, Any]:
     from phoenixadult.utils.cache import scene_store
 
-    loaded = scene_store.load(mc._hash(SITE, CUR))
+    loaded = scene_store.load(cache_layout._hash(SITE, CUR))
     assert loaded is not None
     md: dict[str, Any] = loaded['MediaContainer']['Metadata'][0]
     return md
@@ -67,11 +68,11 @@ async def test_a_scrape_that_lost_everything_keeps_the_stored_values(caplog: pyt
 
 async def test_the_kept_image_is_still_on_disk() -> None:
     assert await mc.write(SITE, CUR, _rich())
-    before = sorted(p.name for p in Path(mc.cache_dir()).rglob('*.jpg'))
+    before = sorted(p.name for p in Path(cache_layout.cache_dir()).rglob('*.jpg'))
     assert before
 
     assert await mc.write(SITE, CUR, _response(summary='no images this time'))
-    after = sorted(p.name for p in Path(mc.cache_dir()).rglob('*.jpg'))
+    after = sorted(p.name for p in Path(cache_layout.cache_dir()).rglob('*.jpg'))
     assert after == before
 
 

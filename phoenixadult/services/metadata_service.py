@@ -13,11 +13,12 @@ from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.models.scrape import SceneContext, SceneDetail
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site
-from phoenixadult.services import scrape_queue
+from phoenixadult.services import scrape_queue, snapshot_backfill
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.services.scraper_router import ScraperRouter
-from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.cache import scene_store, search_store
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import metadata as metadata_cache
+from phoenixadult.utils.cache import people_backfill, scene_store, search_store, text_rules
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.ids import split_subsite
@@ -88,18 +89,18 @@ async def refresh_cached_snapshot(
     fetch_detail: Callable[[], Awaitable[SceneDetail | None]] | None = None,
     skip_data18: bool = False,
 ) -> bool:
-    changed = metadata_cache.backfill_studio(response, site)
-    locks = await run_in('store', scene_store.locks, metadata_cache._hash(site.name, cur_id))
-    if metadata_cache.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
+    changed = snapshot_backfill.backfill_studio(response, site)
+    locks = await run_in('store', scene_store.locks, cache_layout._hash(site.name, cur_id))
+    if text_rules.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
         changed = True
     if await run_in('store', metadata_cache.drop_stale_people_thumbs, response, site.name, cur_id):
         changed = True
-    backfills = [metadata_cache.backfill_people_images(response, site.name, fetch_detail=fetch_detail)]
+    backfills = [people_backfill.backfill_people_images(response, site.name, fetch_detail=fetch_detail)]
     if not skip_data18:
-        backfills.append(metadata_cache.backfill_data18(response, site.name))
+        backfills.append(snapshot_backfill.backfill_data18(response, site.name))
     if any(await asyncio.gather(*backfills)):
         changed = True
-    if metadata_cache.backfill_metadata_attrs(response):
+    if people_backfill.backfill_metadata_attrs(response):
         changed = True
     if changed:
         await metadata_cache.write(site.name, cur_id, response)

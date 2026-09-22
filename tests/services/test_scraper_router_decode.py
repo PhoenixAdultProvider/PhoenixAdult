@@ -9,7 +9,7 @@ from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.scraper_router import ScraperRouter
-from phoenixadult.utils import cache as mc
+from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.helpers.ids import b64url_encode
 from phoenixadult.utils.plex.rating_key import to_rating_key
@@ -32,7 +32,7 @@ async def test_an_imported_scene_serves_from_cache_despite_its_legacy_cur_id(mon
     site, cur_id = 'Thicc18', _BINARY_CUR_ID
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Imported Scene', 'studio': site}
     data = {'MediaContainer': {'identifier': 'phoenixadult', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur_id, mc._hash(site, cur_id), f'archive/{site.lower()}/x', data)
+    scene_store.upsert(site, cur_id, cache_layout._hash(site, cur_id), f'archive/{site.lower()}/x', data)
 
     served = await MetadataService()._fetch_metadata(to_rating_key(cur_id, site), PROVIDER)
 

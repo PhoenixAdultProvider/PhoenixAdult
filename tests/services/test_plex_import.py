@@ -169,7 +169,7 @@ async def test_dry_run_counts_without_writing(monkeypatch: pytest.MonkeyPatch) -
 
 @pytest.mark.asyncio
 async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.utils import cache as metadata_cache
+    from phoenixadult.utils.cache import metadata as metadata_cache
 
     monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
 
@@ -216,7 +216,7 @@ async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, m
 
     from PIL import Image as PILImage
 
-    from phoenixadult.utils import cache as metadata_cache
+    from phoenixadult.utils.cache import metadata as metadata_cache
 
     monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
 

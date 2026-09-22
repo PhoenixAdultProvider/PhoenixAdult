@@ -261,7 +261,7 @@ def load(scene_hash: str) -> dict[str, Any] | None:
 
 
 def tags_for(site_name: str, cur_id: str) -> dict[str, list[str]] | None:
-    from phoenixadult.utils.cache import _hash
+    from phoenixadult.utils.cache.layout import _hash
 
     conn = db.connect()
     row = conn.execute('SELECT id FROM scenes WHERE hash = ?', (_hash(site_name, cur_id),)).fetchone()

@@ -19,8 +19,9 @@ from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.services.metadata_service import refresh_cached_snapshot
 from phoenixadult.services.scraper_router import ScraperRouter
-from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.ids import embed_subsite, split_subsite
 from phoenixadult.utils.helpers.scoring import title_distance_score
@@ -84,7 +85,7 @@ def _metadata_field_diff(direct: dict[str, Any], reassembled: dict[str, Any]) ->
 
 async def _db_roundtrip_step(site_name: str, cur_id: str, direct: dict[str, Any], written: bool, lap: Callable[[], int]) -> dict[str, Any]:
     step = '6. DB round-trip'
-    if not metadata_cache.enabled():
+    if not cache_layout.enabled():
         return {
             'step': step,
             'ok': True,
@@ -512,7 +513,7 @@ async def _live_metadata_steps(
                 'ok': True,
                 'data': {
                     'servedFrom': 'live',
-                    'snapshotEnabled': metadata_cache.enabled(),
+                    'snapshotEnabled': cache_layout.enabled(),
                     'snapshotSaved': snapshot_saved,
                     'title': metadata.title,
                     'summary': metadata.summary,

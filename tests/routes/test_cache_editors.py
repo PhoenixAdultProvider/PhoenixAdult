@@ -10,7 +10,10 @@ import respx
 from fastapi.testclient import TestClient
 
 from phoenixadult.models.metadata import PlexMetadataResponse
-from phoenixadult.utils import cache as mc
+from phoenixadult.services import snapshot_backfill
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import listing as cache_listing
+from phoenixadult.utils.cache import metadata as mc
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.images import image_fetcher
 from tests.support import authed_client
@@ -38,8 +41,8 @@ def _snapshot(tmp_path: Path, **overrides: Any) -> str:
         **overrides,
     }
     data = {'MediaContainer': {'identifier': 'phoenixadult', 'size': 1, 'Metadata': [md]}}
-    rel = f'brazzers/{mc._hash(SITE, CUR_ID)}'
-    scene_store.upsert(SITE, CUR_ID, mc._hash(SITE, CUR_ID), rel, data)
+    rel = f'brazzers/{cache_layout._hash(SITE, CUR_ID)}'
+    scene_store.upsert(SITE, CUR_ID, cache_layout._hash(SITE, CUR_ID), rel, data)
     return rel
 
 
@@ -159,7 +162,7 @@ async def test_metadata_save_keeps_kept_images_and_deletes_dropped_ones(monkeypa
         }
     )
     assert await mc.write(SITE, CUR_ID, seeded) is True
-    rel = mc.bundle_path(mc._hash(SITE, CUR_ID))
+    rel = cache_layout.bundle_path(cache_layout._hash(SITE, CUR_ID))
     before = sorted(p.name for p in (tmp_path / rel / 'images').iterdir())
     assert len(before) == 2
 
@@ -186,7 +189,7 @@ def test_force_refresh_clears_local_thumbs_once(client: TestClient, tmp_path: Pa
     _snapshot(tmp_path)
     scene_store.flag_people_changed('Jane Doe')
 
-    stored = mc.load_for_edit(f'brazzers/{mc._hash(SITE, CUR_ID)}')
+    stored = mc.load_for_edit(f'brazzers/{cache_layout._hash(SITE, CUR_ID)}')
     assert stored is not None
     response = PlexMetadataResponse.model_validate(stored)
     assert response.MediaContainer.Metadata[0].Role[0].thumb is not None
@@ -212,11 +215,11 @@ def test_backfill_studio_corrects_a_regrouped_site() -> None:
             }
         }
     )
-    assert mc.backfill_studio(response, site) is True
+    assert snapshot_backfill.backfill_studio(response, site) is True
     md = response.MediaContainer.Metadata[0]
     assert md.studio == 'Cum4K'
     assert md.tagline is None
-    assert mc.backfill_studio(response, site) is False
+    assert snapshot_backfill.backfill_studio(response, site) is False
 
 
 def test_backfill_studio_leaves_a_payload_derived_client_alone() -> None:
@@ -233,7 +236,7 @@ def test_backfill_studio_leaves_a_payload_derived_client_alone() -> None:
             }
         }
     )
-    assert mc.backfill_studio(response, site) is False
+    assert snapshot_backfill.backfill_studio(response, site) is False
     assert response.MediaContainer.Metadata[0].studio == 'Some Payload Studio'
 
 
@@ -307,7 +310,7 @@ def test_metadata_save_flags_a_hand_entered_data18_id(client: TestClient, tmp_pa
     assert stored is not None
     assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'scene', 'id': '987654', 'manual': True}
 
-    entries, _total = mc.entries_page(data18='__manual__')
+    entries, _total = cache_listing.entries_page(data18='__manual__')
     assert [e['data18_id'] for e in entries] == ['987654']
     assert entries[0]['data18_manual'] is True
 
@@ -320,8 +323,8 @@ def test_a_scraped_data18_id_stays_filled_across_a_resave(client: TestClient, tm
     stored = mc.load_for_edit(r.json()['key'])
     assert stored is not None
     assert stored['MediaContainer']['Metadata'][0]['data18'] == {'type': 'movie', 'id': '111'}
-    assert mc.entries_page(data18='__manual__')[1] == 0
-    assert mc.entries_page(data18='__set__')[1] == 1
+    assert cache_listing.entries_page(data18='__manual__')[1] == 0
+    assert cache_listing.entries_page(data18='__set__')[1] == 1
 
 
 def test_clearing_the_data18_id_drops_the_ref(client: TestClient, tmp_path: Path) -> None:
@@ -332,7 +335,7 @@ def test_clearing_the_data18_id_drops_the_ref(client: TestClient, tmp_path: Path
     stored = mc.load_for_edit(r.json()['key'])
     assert stored is not None
     assert 'data18' not in stored['MediaContainer']['Metadata'][0]
-    assert mc.entries_page(data18='__blank__')[1] == 1
+    assert cache_listing.entries_page(data18='__blank__')[1] == 1
 
 
 def test_metadata_edit_page_offers_the_data18_fields(client: TestClient, tmp_path: Path) -> None:
@@ -348,7 +351,7 @@ def test_saving_a_changed_field_auto_locks_it(client: TestClient, tmp_path: Path
     rel = _snapshot(tmp_path)
     r = client.post('/metadata/save', json={'key': rel, 'title': 'Hand Edited Title'})
     assert r.status_code == 200
-    locks = scene_store.locks(mc._hash(SITE, CUR_ID))
+    locks = scene_store.locks(cache_layout._hash(SITE, CUR_ID))
     assert 'title' in locks['fields'], 'a field the admin changed must not be undone by the next refresh'
     assert 'summary' not in locks['fields'], 'untouched fields stay unlocked'
 
@@ -357,12 +360,12 @@ def test_explicit_locks_and_unlocks_round_trip(client: TestClient, tmp_path: Pat
     rel = _snapshot(tmp_path)
     r = client.post('/metadata/save', json={'key': rel, 'title': 'A Cached Scene', 'lockedFields': ['summary', 'Genre'], 'imagesLocked': True})
     assert r.status_code == 200
-    locks = scene_store.locks(mc._hash(SITE, CUR_ID))
+    locks = scene_store.locks(cache_layout._hash(SITE, CUR_ID))
     assert locks == {'fields': ['Genre', 'summary'], 'imagesLocked': True}
 
     r = client.post('/metadata/save', json={'key': r.json()['key'], 'title': 'A Cached Scene', 'lockedFields': [], 'imagesLocked': False})
     assert r.status_code == 200
-    assert scene_store.locks(mc._hash(SITE, CUR_ID)) == {'fields': [], 'imagesLocked': False}
+    assert scene_store.locks(cache_layout._hash(SITE, CUR_ID)) == {'fields': [], 'imagesLocked': False}
 
 
 def test_a_refresh_write_cannot_overwrite_locked_fields(client: TestClient, tmp_path: Path) -> None:
@@ -371,7 +374,7 @@ def test_a_refresh_write_cannot_overwrite_locked_fields(client: TestClient, tmp_
     from phoenixadult.models.metadata import PlexMetadataResponse
 
     _snapshot(tmp_path)
-    scene_hash = mc._hash(SITE, CUR_ID)
+    scene_hash = cache_layout._hash(SITE, CUR_ID)
     scene_store.set_locks(scene_hash, ['title', 'Genre'], False)
     scraped = {
         'MediaContainer': {
@@ -401,7 +404,7 @@ def test_a_refresh_write_cannot_overwrite_locked_fields(client: TestClient, tmp_
 
 def test_the_edit_page_carries_lock_state(client: TestClient, tmp_path: Path) -> None:
     rel = _snapshot(tmp_path)
-    scene_store.set_locks(mc._hash(SITE, CUR_ID), ['title'], True)
+    scene_store.set_locks(cache_layout._hash(SITE, CUR_ID), ['title'], True)
     body = client.get('/metadata/edit', params={'key': rel}).text
     assert '"fields": ["title"]' in body and '"imagesLocked": true' in body
     assert 'installLockUI' in body and 'lockedFields' in body

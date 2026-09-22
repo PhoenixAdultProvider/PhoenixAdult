@@ -8,6 +8,7 @@ import pytest
 
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
+from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import search_store
 
 KEY = ('Nubile Films', 'cool scene', '2024-01-01', '', '')
@@ -136,14 +137,13 @@ def test_dump_lists_everything_with_totals_and_site_counts() -> None:
 
 
 def test_dump_attaches_snapshot_keys_and_expiry(monkeypatch) -> None:
-    from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
 
     monkeypatch.setenv('SEARCH_STORE_TTL_DAYS', '30')
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_hash = metadata_cache._hash('Bratty Sis', 'snapcur')
-    scene_store.upsert('Bratty Sis', 'snapcur', scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    scene_hash = cache_layout._hash('Bratty Sis', 'snapcur')
+    scene_store.upsert('Bratty Sis', 'snapcur', scene_hash, cache_layout.bundle_path(scene_hash), payload)
 
     search_store.save(('Bratty Sis', 'snap query', '2024-06-21', '', ''), [SearchResult(title='S', scene_url='https://x/s', cur_id='snapcur')])
     state = search_store.dump()

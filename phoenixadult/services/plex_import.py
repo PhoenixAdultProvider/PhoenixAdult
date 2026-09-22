@@ -18,8 +18,10 @@ from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
-from phoenixadult.utils import cache as metadata_cache
-from phoenixadult.utils.cache import _hash, scene_store
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import metadata as metadata_cache
+from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.cache.layout import _hash
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -229,7 +231,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='importable', site=site_name, cur_id=cur_id))
         return
 
-    staging = safe_join(metadata_cache.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}')
+    staging = safe_join(cache_layout.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}')
     try:
         item = await client.item(rating_key)
         if not item:
@@ -253,7 +255,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
 
 
 async def import_item(connection: Connection, token: str, rating_key: str, overwrite: bool = False) -> ItemReport:
-    if not metadata_cache.enabled():
+    if not cache_layout.enabled():
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
     report = ImportReport(applied=True)
     client = PlexClient(connection.server_url, token)
@@ -282,7 +284,7 @@ async def import_library(
     connection: Connection, token: str, section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False
 ) -> ImportReport:
     report = ImportReport(applied=apply, section=section)
-    if not metadata_cache.enabled():
+    if not cache_layout.enabled():
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
     client = PlexClient(connection.server_url, token)
     try:

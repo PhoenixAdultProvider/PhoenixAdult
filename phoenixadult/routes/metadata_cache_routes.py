@@ -12,8 +12,12 @@ from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import service_for
-from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
+from phoenixadult.utils.cache import duplicates as cache_duplicates
+from phoenixadult.utils.cache import integrity as cache_integrity
+from phoenixadult.utils.cache import layout as cache_layout
+from phoenixadult.utils.cache import listing as cache_listing
+from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.data18 import mapping_slug
@@ -34,12 +38,12 @@ _EDIT_TAGS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 @router.get('', response_class=HTMLResponse)
 @router.get('/', response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    def _bundle() -> tuple[tuple[list[metadata_cache.UiEntry], int], list[str], list[str], dict[str, Any]]:
+    def _bundle() -> tuple[tuple[list[cache_listing.UiEntry], int], list[str], list[str], dict[str, Any]]:
         return (
-            metadata_cache.entries_page(limit=PAGE_SIZE),
-            metadata_cache.stale_duplicate_entries(),
-            metadata_cache.studios(),
-            metadata_cache.facets(),
+            cache_listing.entries_page(limit=PAGE_SIZE),
+            cache_duplicates.stale_duplicate_entries(),
+            cache_listing.studios(),
+            cache_listing.facets(),
         )
 
     (entries, total), dup_keys, studios, facets = await run_in('store', _bundle)
@@ -82,7 +86,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     identity = await run_in('store', scene_store.identity_for, key)
-    locks = await run_in('store', scene_store.locks, metadata_cache._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
+    locks = await run_in('store', scene_store.locks, cache_layout._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
     source_kind, source_url, source_data = _source_context(identity, md[0])
     return HTMLResponse(
         render_page(
@@ -227,18 +231,18 @@ async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'not snapshotted'}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, snap['key'])
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
-    locks = await run_in('store', scene_store.locks, metadata_cache._hash(site, cur_id))
+    locks = await run_in('store', scene_store.locks, cache_layout._hash(site, cur_id))
     return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0], 'locks': locks})
 
 
 @router.get('/actors')
 async def actors(query: str = Query('', alias='q'), limit: int = Query(50, ge=1, le=200)) -> JSONResponse:
-    return JSONResponse({'actors': await run_in('store', metadata_cache.actor_suggestions, query, limit)})
+    return JSONResponse({'actors': await run_in('store', cache_listing.actor_suggestions, query, limit)})
 
 
 @router.get('/state')
 async def state() -> JSONResponse:
-    return JSONResponse({'token': await run_in('store', metadata_cache.change_token)})
+    return JSONResponse({'token': await run_in('store', cache_listing.change_token)})
 
 
 _SCOPE_FIELDS = (
@@ -295,7 +299,7 @@ class EntryFilters:
 def _restricted_paths(filters: EntryFilters, dup_paths: list[str]) -> list[str] | None:
     picked = [set(dup_paths)] if filters.dups else []
     if filters.broken:
-        picked.append(set(metadata_cache.missing_image_entries()))
+        picked.append(set(cache_integrity.missing_image_entries()))
     if not picked:
         return None
 
@@ -305,11 +309,11 @@ def _restricted_paths(filters: EntryFilters, dup_paths: list[str]) -> list[str] 
 @router.get('/entries')
 async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONResponse:
     def _bundle() -> dict[str, Any]:
-        dup_keys = metadata_cache.stale_duplicate_entries()
-        show_paths = metadata_cache.content_duplicate_entries() if filters.dups == 2 else dup_keys
+        dup_keys = cache_duplicates.stale_duplicate_entries()
+        show_paths = cache_duplicates.content_duplicate_entries() if filters.dups == 2 else dup_keys
         restrict = _restricted_paths(filters, show_paths)
         scope = filters.scope(restrict)
-        entries, total = metadata_cache.entries_page(
+        entries, total = cache_listing.entries_page(
             **{k: v for k, v in scope.items() if k != 'dup_paths'},
             dups_only=restrict is not None,
             dup_paths=restrict or [],
@@ -322,8 +326,8 @@ async def entries_json(filters: Annotated[EntryFilters, Depends()]) -> JSONRespo
             'entries': entries,
             'dup_keys': dup_keys,
             'total': total,
-            'studios': metadata_cache.studios(**scope),
-            'facets': metadata_cache.facets(**scope),
+            'studios': cache_listing.studios(**scope),
+            'facets': cache_listing.facets(**scope),
         }
 
     return JSONResponse(await run_in('store', _bundle))
@@ -335,7 +339,7 @@ async def purge(request: Request) -> JSONResponse:
     key = str(data.get('key', ''))
     if '/' not in key:
         return JSONResponse({'ok': False, 'error': 'bad key'}, status_code=400)
-    ok = await run_in('store', metadata_cache.purge, key)
+    ok = await run_in('store', cache_listing.purge, key)
     return JSONResponse({'ok': ok})
 
 
@@ -345,13 +349,13 @@ async def purge_bulk(request: Request) -> JSONResponse:
     keys = data.get('keys')
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
         return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
-    purged = await run_in('store', lambda: sum(1 for key in keys if metadata_cache.purge(key)))
+    purged = await run_in('store', lambda: sum(1 for key in keys if cache_listing.purge(key)))
     return JSONResponse({'ok': True, 'purged': purged})
 
 
 @router.post('/purge-duplicates', dependencies=_admin)
 async def purge_duplicates() -> JSONResponse:
-    return JSONResponse({'ok': True, 'purged': await run_in('store', metadata_cache.purge_duplicates)})
+    return JSONResponse({'ok': True, 'purged': await run_in('store', cache_listing.purge_duplicates)})
 
 
 @router.post('/prune-names', dependencies=_admin)

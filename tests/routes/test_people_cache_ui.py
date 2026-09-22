@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.utils.cache import layout as cache_layout
 from tests.support import authed_client
 
 
@@ -248,7 +249,6 @@ def test_resetting_people_filters_leaves_sfw_alone(monkeypatch: pytest.MonkeyPat
 
 
 def _seed_scene(title: str, cur: str, studio: str, tagline: str, date: str, cast: list[str]) -> None:
-    from phoenixadult.utils import cache as mc
     from phoenixadult.utils.cache import scene_store
 
     md: dict[str, object] = {
@@ -263,7 +263,11 @@ def _seed_scene(title: str, cur: str, studio: str, tagline: str, date: str, cast
     if tagline:
         md['tagline'] = tagline
     scene_store.upsert(
-        studio, cur, mc._hash(studio, cur), mc.bundle_path(mc._hash(studio, cur)), {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
+        studio,
+        cur,
+        cache_layout._hash(studio, cur),
+        cache_layout.bundle_path(cache_layout._hash(studio, cur)),
+        {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}},
     )
 
 

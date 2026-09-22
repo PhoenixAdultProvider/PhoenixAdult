@@ -6,17 +6,17 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.utils.cache import layout as cache_layout
 from tests.support import authed_client
 
 
 def _snapshot_key() -> str:
-    from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
 
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
-    scene_hash = metadata_cache._hash('Studio', 'cur1')
+    scene_hash = cache_layout._hash('Studio', 'cur1')
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert('Studio', 'cur1', scene_hash, metadata_cache.bundle_path(scene_hash), payload)
+    scene_store.upsert('Studio', 'cur1', scene_hash, cache_layout.bundle_path(scene_hash), payload)
     return str(scene_store.snapshot_state('Studio', 'cur1')['key'])
 
 
