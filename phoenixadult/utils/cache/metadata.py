@@ -162,114 +162,139 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
         lock = asyncio.Lock()
         _write_locks[scene_hash] = lock
     async with lock:
-        return await _write_locked(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear)
+        return await _SnapshotWrite(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear).run()
 
 
-async def _write_locked(
-    response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path, allow_clear: bool = False
-) -> bool:
-    tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
+class _SnapshotWrite:
+    def __init__(self, response: PlexMetadataResponse, site_name: str, cur_id: str, scene_hash: str, rel_path: str, final_dir: Path, allow_clear: bool) -> None:
+        self.site_name = site_name
+        self.cur_id = cur_id
+        self.scene_hash = scene_hash
+        self.rel_path = rel_path
+        self.final_dir = final_dir
+        self.allow_clear = allow_clear
+        self.tmp_dir = final_dir.parent / f'{scene_hash}.tmp'
+        self.data = response.model_dump(by_alias=True, exclude_none=True)
+        self.meta: dict[str, Any] = self.data['MediaContainer']['Metadata'][0]
+        self.base = config.base_url.rstrip('/')
+        self.counter = 0
+        self.image_meta: dict[str, tuple[int, int, int]] = {}
+        self.rotations: dict[str, int] = {}
+        self.kept_names: set[str] = set()
 
-    data = response.model_dump(by_alias=True, exclude_none=True)
-    meta: dict[str, Any] = data['MediaContainer']['Metadata'][0]
+    async def run(self) -> bool:
+        if not self.allow_clear:
+            await self._hold_stored_values()
+        self._take_rotations()
+        await run_in('fs', self._reset_tmp)
+        try:
+            await self._stage_images()
+            await run_in('fs', self._write_bundle)
+            await run_in('fs', self._promote)
+        except OSError as err:
+            await run_in('fs', shutil.rmtree, self.tmp_dir, ignore_errors=True)
+            logger.warn('meta-cache', f'snapshot write failed {self.rel_path}: {err}')
+            return False
+        return await self._index()
 
-    if not allow_clear:
-        previous = await run_in('store', scene_store.load, scene_hash)
-        if carried := _carry_emptied_fields(meta, previous):
-            logger.warn('meta-cache', f'scrape returned nothing for {", ".join(carried)} on {rel_path} — kept the stored values')
-        locks = await run_in('store', scene_store.locks, scene_hash)
-        if held := _apply_locks(meta, previous, locks):
-            logger.info('meta-cache', f'locks held {", ".join(held)} on {rel_path} — the scrape does not overwrite them')
-    base = config.base_url.rstrip('/')
-    counter = [0]
-    image_meta: dict[str, tuple[int, int, int]] = {}
-    rotations: dict[str, int] = {}
-    for img in meta.get('Image') or []:
-        turn = int(img.pop('rotate', 0) or 0) % 360
-        if turn and img.get('url'):
-            rotations[str(img['url'])] = turn
+    # ── Carry and Locks ───────────────────────────────────────────────────────
 
-    def _reset_tmp() -> None:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+    async def _hold_stored_values(self) -> None:
+        previous = await run_in('store', scene_store.load, self.scene_hash)
+        if carried := _carry_emptied_fields(self.meta, previous):
+            logger.warn('meta-cache', f'scrape returned nothing for {", ".join(carried)} on {self.rel_path} — kept the stored values')
+        locks = await run_in('store', scene_store.locks, self.scene_hash)
+        if held := _apply_locks(self.meta, previous, locks):
+            logger.info('meta-cache', f'locks held {", ".join(held)} on {self.rel_path} — the scrape does not overwrite them')
 
-    await run_in('fs', _reset_tmp)
-    try:
-        sem = _image_gate()
+    def _take_rotations(self) -> None:
+        for img in self.meta.get('Image') or []:
+            turn = int(img.pop('rotate', 0) or 0) % 360
+            if turn and img.get('url'):
+                self.rotations[str(img['url'])] = turn
 
-        def _targets() -> list[tuple[dict[str, Any], str, str]]:
-            found: list[tuple[dict[str, Any], str, str]] = [(meta, 'thumb', 'poster'), (meta, 'art', 'art')]
-            found.extend((img, 'url', 'img') for img in meta.get('Image', []))
-            for role_key in ('Role', 'Director', 'Producer', 'Writer'):
-                found.extend((role, 'thumb', 'role') for role in meta.get(role_key, []))
-            found.extend((rating, 'image', 'rating') for rating in meta.get('Rating', []))
-            return [(obj, key, hint) for obj, key, hint in found if obj.get(key)]
+    def _reset_tmp(self) -> None:
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
-        targets = _targets()
-        kept_names = {hit[1] for obj, key, _hint in targets if (hit := _snapshot_file(str(obj[key]), base)) is not None}
+    # ── Stage Images ──────────────────────────────────────────────────────────
 
-        def _relativize(u: str) -> str:
-            u = strip_sig(u)
-            return u[len(base) :] if u.startswith(f'{base}/') else u
+    def _targets(self) -> list[tuple[dict[str, Any], str, str]]:
+        meta = self.meta
+        found: list[tuple[dict[str, Any], str, str]] = [(meta, 'thumb', 'poster'), (meta, 'art', 'art')]
+        found.extend((img, 'url', 'img') for img in meta.get('Image', []))
+        for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+            found.extend((role, 'thumb', 'role') for role in meta.get(role_key, []))
+        found.extend((rating, 'image', 'rating') for rating in meta.get('Rating', []))
+        return [(obj, key, hint) for obj, key, hint in found if obj.get(key)]
 
-        def _keep(source: Path, name: str, turn: int = 0) -> tuple[str, tuple[int, int, int] | None, bool] | None:
-            if not source.is_file():
-                return None
-            img_dir = tmp_dir / 'images'
-            img_dir.mkdir(exist_ok=True)
-            copied = img_dir / name
-            shutil.copy2(source, copied)
-            if turn:
-                copied.write_bytes(rotate_image_bytes(copied.read_bytes(), turn))
-            probed = _probe_file(copied)
-            if probed is not None and probed[1]:
-                copied.unlink(missing_ok=True)
-                return f'/cache/{rel_path}/images/{name}', None, True
-            return f'/cache/{rel_path}/images/{name}', (probed[0] if probed else None), False
+    def _relativize(self, u: str) -> str:
+        u = strip_sig(u)
+        return u[len(self.base) :] if u.startswith(f'{self.base}/') else u
 
-        def _store_bytes(name: str, payload: bytes) -> None:
-            img_dir = tmp_dir / 'images'
-            img_dir.mkdir(exist_ok=True)
-            (img_dir / name).write_bytes(payload)
+    def _keep(self, source: Path, name: str, turn: int = 0) -> tuple[str, tuple[int, int, int] | None, bool] | None:
+        if not source.is_file():
+            return None
+        img_dir = self.tmp_dir / 'images'
+        img_dir.mkdir(exist_ok=True)
+        copied = img_dir / name
+        shutil.copy2(source, copied)
+        if turn:
+            copied.write_bytes(rotate_image_bytes(copied.read_bytes(), turn))
+        probed = _probe_file(copied)
+        if probed is not None and probed[1]:
+            copied.unlink(missing_ok=True)
+            return f'/cache/{self.rel_path}/images/{name}', None, True
+        return f'/cache/{self.rel_path}/images/{name}', (probed[0] if probed else None), False
 
-        async def localize(url: str | None, hint: str) -> str | None:
-            if not url:
-                return url
-            if '/images/local/' in url:
-                return strip_sig(url[url.index('/images/local/') :])
-            if (hit := _snapshot_file(url, base)) is not None:
-                if (kept := await run_in('fs', _keep, *hit, rotations.get(url, 0))) is not None:
-                    local, probed, solid = kept
-                    if solid:
-                        logger.info('meta-cache', f'dropped a solid-color image from {rel_path}: {hit[1]}')
-                        return None
-                    if probed:
-                        image_meta[local] = probed
-                    return local
-                logger.info('meta-cache', f'dropped {url} from {rel_path}: the snapshot image it points at is gone from disk')
-                return None
-            target, referers, cookies = proxy_params(url)
-            while (name := f'{hint}-{counter[0]:02d}{ext_from("", target)}') in kept_names:
-                counter[0] += 1
-            counter[0] += 1
-            try:
-                async with sem:
-                    entry = await fetch_image(target, referers or None, cookies or None)
-                if entry.solid:
-                    logger.info('meta-cache', f'skipped a solid-color image for {rel_path}: {target}')
+    def _store_bytes(self, name: str, payload: bytes) -> None:
+        img_dir = self.tmp_dir / 'images'
+        img_dir.mkdir(exist_ok=True)
+        (img_dir / name).write_bytes(payload)
+
+    async def _localize(self, url: str | None, hint: str, sem: asyncio.Semaphore) -> str | None:
+        if not url:
+            return url
+        if '/images/local/' in url:
+            return strip_sig(url[url.index('/images/local/') :])
+        if (hit := _snapshot_file(url, self.base)) is not None:
+            if (kept := await run_in('fs', self._keep, *hit, self.rotations.get(url, 0))) is not None:
+                local, probed, solid = kept
+                if solid:
+                    logger.info('meta-cache', f'dropped a solid-color image from {self.rel_path}: {hit[1]}')
                     return None
-                payload, width, height = entry.data, entry.width, entry.height
-                if turn := rotations.get(url, 0):
-                    payload = rotate_image_bytes(payload, turn)
-                    if turn in (90, 270):
-                        width, height = height, width
-                await run_in('fs', _store_bytes, name, payload)
-                local = f'/cache/{rel_path}/images/{name}'
-                image_meta[local] = (width, height, len(payload))
+                if probed:
+                    self.image_meta[local] = probed
                 return local
-            except (httpx2.HTTPError, ValueError, OSError) as err:
-                logger.debug('meta-cache', f'image download failed {target}: {err!r}')
-                return _relativize(url)
+            logger.info('meta-cache', f'dropped {url} from {self.rel_path}: the snapshot image it points at is gone from disk')
+            return None
+        target, referers, cookies = proxy_params(url)
+        while (name := f'{hint}-{self.counter:02d}{ext_from("", target)}') in self.kept_names:
+            self.counter += 1
+        self.counter += 1
+        try:
+            async with sem:
+                entry = await fetch_image(target, referers or None, cookies or None)
+            if entry.solid:
+                logger.info('meta-cache', f'skipped a solid-color image for {self.rel_path}: {target}')
+                return None
+            payload, width, height = entry.data, entry.width, entry.height
+            if turn := self.rotations.get(url, 0):
+                payload = rotate_image_bytes(payload, turn)
+                if turn in (90, 270):
+                    width, height = height, width
+            await run_in('fs', self._store_bytes, name, payload)
+            local = f'/cache/{self.rel_path}/images/{name}'
+            self.image_meta[local] = (width, height, len(payload))
+            return local
+        except (httpx2.HTTPError, ValueError, OSError) as err:
+            logger.debug('meta-cache', f'image download failed {target}: {err!r}')
+            return self._relativize(url)
+
+    async def _stage_images(self) -> None:
+        sem = _image_gate()
+        targets = self._targets()
+        self.kept_names = {hit[1] for obj, key, _hint in targets if (hit := _snapshot_file(str(obj[key]), self.base)) is not None}
 
         by_url: dict[str, list[tuple[dict[str, Any], str]]] = {}
         hints: dict[str, str] = {}
@@ -279,37 +304,34 @@ async def _write_locked(
             hints.setdefault(url, hint)
 
         async def _assign(url: str, holders: list[tuple[dict[str, Any], str]]) -> None:
-            resolved = await localize(url, hints[url])
+            resolved = await self._localize(url, hints[url], sem)
             for obj, key in holders:
                 obj[key] = resolved
 
         await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
-        _reconcile_dropped_images(meta, image_meta)
+        _reconcile_dropped_images(self.meta, self.image_meta)
 
-        def _write_bundle() -> None:
-            payload = bundle_payload(site_name, cur_id, scene_hash, data, image_meta)
-            (tmp_dir / BUNDLE_FILE).write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+    # ── Write Bundle and Promote ──────────────────────────────────────────────
 
-        await run_in('fs', _write_bundle)
+    def _write_bundle(self) -> None:
+        payload = bundle_payload(self.site_name, self.cur_id, self.scene_hash, self.data, self.image_meta)
+        (self.tmp_dir / BUNDLE_FILE).write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
 
-        def _promote() -> None:
-            if final_dir.exists():
-                shutil.rmtree(final_dir, ignore_errors=True)
-            tmp_dir.rename(final_dir)
+    def _promote(self) -> None:
+        if self.final_dir.exists():
+            shutil.rmtree(self.final_dir, ignore_errors=True)
+        self.tmp_dir.rename(self.final_dir)
 
-        await run_in('fs', _promote)
-    except OSError as err:
-        await run_in('fs', shutil.rmtree, tmp_dir, ignore_errors=True)
-        logger.warn('meta-cache', f'snapshot write failed {rel_path}: {err}')
-        return False
+    # ── Index ─────────────────────────────────────────────────────────────────
 
-    try:
-        await run_in('store', scene_store.upsert, site_name, cur_id, scene_hash, rel_path, data, image_meta)
-    except sqlite3.Error as err:
-        logger.warn('meta-cache', f'snapshot db write failed {rel_path}: {err}')
-        return False
-    logger.info('meta-cache', f'snapshot saved {rel_path} ({meta.get("title", "")})')
-    return True
+    async def _index(self) -> bool:
+        try:
+            await run_in('store', scene_store.upsert, self.site_name, self.cur_id, self.scene_hash, self.rel_path, self.data, self.image_meta)
+        except sqlite3.Error as err:
+            logger.warn('meta-cache', f'snapshot db write failed {self.rel_path}: {err}')
+            return False
+        logger.info('meta-cache', f'snapshot saved {self.rel_path} ({self.meta.get("title", "")})')
+        return True
 
 
 # ── Management (UI) ──────────────────────────────────────────────────────────
@@ -423,6 +445,3 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
     images_locked = bool(fields['imagesLocked']) if 'imagesLocked' in fields else bool(current['imagesLocked'])
     await run_in('store', scene_store.set_locks, scene_hash, sorted(base | auto), images_locked)
     return bundle_path(scene_hash)
-
-
-# ── People-Image Backfill ─────────────────────────────────────────────────────
