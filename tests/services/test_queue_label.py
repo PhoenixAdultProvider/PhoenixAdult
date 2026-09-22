@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.services.metadata_service import _queue_label
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.helpers.helpers import embed_subsite, pack_cur_id

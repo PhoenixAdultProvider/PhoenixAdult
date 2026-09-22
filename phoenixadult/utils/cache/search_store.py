@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any
 
-from phoenixadult.clients.base import SearchResult
 from phoenixadult.config.env import env
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
 from phoenixadult.utils.helpers.helpers import hash_key
 

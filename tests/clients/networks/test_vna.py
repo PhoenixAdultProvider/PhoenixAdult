@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.vna as mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.vna import VNAClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

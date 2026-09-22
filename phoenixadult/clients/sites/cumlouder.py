@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, relative_iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 

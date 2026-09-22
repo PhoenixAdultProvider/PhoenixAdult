@@ -3,8 +3,8 @@ from __future__ import annotations
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.watch4beauty import Watch4BeautyClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Watch4Beauty')

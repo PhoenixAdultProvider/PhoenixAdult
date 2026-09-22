@@ -790,11 +790,12 @@ phoenixadult/
   services/                  # match_service, metadata_service, scraper_router, scrape_queue,
                              #   plex_reconcile, plex_account, plex_import
   mappers/                   # metadata_mapper
-  clients/                   # base Client (base.py) + 180 dedicated clients:
+  clients/                   # base Client (base.py) + one dedicated client per scraper:
                              #   sites/, networks/, aggregators/
   registry/                  # ProviderInfo / SiteInfo / ResolvedSiteInfo, site_info,
                              #   selectors/ (site-definition modules, sites/networks/aggregators)
-  models/                    # scraper_config (union), metadata, provider_info, media_provider
+  models/                    # scrape (SearchContext/SearchResult/SceneDetail/ActorResult), capture,
+                             #   scraper_config (union), metadata, provider_info, media_provider
   graveyard/                 # retired scrapers and people sources, imported by nothing (see §Archive)
   utils/
     http/                    # client (make_http), bypass, flaresolverr, playwright, reqbin,

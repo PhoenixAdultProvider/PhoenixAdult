@@ -5,7 +5,8 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, LoadedScene, LoadedSearch, SceneDetail
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneDetail
 from phoenixadult.utils.helpers.helpers import iso_date, join_url
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 

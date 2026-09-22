@@ -4,7 +4,8 @@ from urllib.parse import quote
 
 import httpx2
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.auth.user_tokens import metadataapi_token
 from phoenixadult.utils.helpers.helpers import api_date, build_search_result

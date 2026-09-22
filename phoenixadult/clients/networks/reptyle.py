@@ -4,7 +4,9 @@ import json
 import re
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene
+from phoenixadult.models.capture import RawCaptureEntry
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import strip_tags

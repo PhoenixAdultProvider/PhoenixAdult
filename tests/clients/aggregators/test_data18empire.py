@@ -6,7 +6,7 @@ import respx
 
 import phoenixadult.clients.aggregators.data18empire as d18e_module
 from phoenixadult.clients.aggregators.data18empire import Data18EmpireClient
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Data18 Empire')

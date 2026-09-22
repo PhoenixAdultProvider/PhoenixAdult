@@ -5,8 +5,8 @@ import json
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.modelcentro import ModelCentroClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Romi Rain')

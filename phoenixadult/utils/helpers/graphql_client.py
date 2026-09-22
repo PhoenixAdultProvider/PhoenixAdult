@@ -5,8 +5,9 @@ from typing import Any
 
 import httpx2
 
-from phoenixadult.clients.base import Client, RawCaptureEntry
+from phoenixadult.clients.base import Client
 from phoenixadult.config.env import env
+from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.utils.http.bypass import bypass_post
 from phoenixadult.utils.logging.logger import logger
 

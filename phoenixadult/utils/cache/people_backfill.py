@@ -13,7 +13,7 @@ from phoenixadult.utils.people import PeopleManager, to_plex_roles
 from phoenixadult.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
-    from phoenixadult.clients.base import SceneDetail
+    from phoenixadult.models.scrape import SceneDetail
 
 
 def _is_stale_local_thumb(thumb: str) -> bool:

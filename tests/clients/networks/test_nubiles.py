@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.nubiles as nub_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.nubiles import NubilesClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.helpers import pack_cur_id
 

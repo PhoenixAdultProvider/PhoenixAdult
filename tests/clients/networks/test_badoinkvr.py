@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.badoinkvr as badoinkvr_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.badoinkvr import BadoinkVrClient, __testing__
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('BaDoinkVR')

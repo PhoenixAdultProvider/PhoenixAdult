@@ -3,7 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.helpers.helpers import append_unique, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 

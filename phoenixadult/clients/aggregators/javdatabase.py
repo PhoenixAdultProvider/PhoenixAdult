@@ -3,7 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any, TypedDict
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneDetail, SearchContext
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.helpers import decensor, iso_date, load_data, sceneid_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 from phoenixadult.utils.helpers.javbus_images import push_javbus_images

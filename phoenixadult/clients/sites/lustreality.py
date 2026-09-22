@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text, web_search_urls
 from phoenixadult.utils.logging.best_effort import best_effort

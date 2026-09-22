@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.bellapass as bp_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.bellapass import BellaPassClient, __testing__
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 STANDARD = find_site('18 Lust')

@@ -34,8 +34,8 @@ A typical module covers **search** and **detail** for one site:
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext
 from phoenixadult.clients.networks.example import ExampleClient
+from phoenixadult.models.scrape import SearchContext
 from phoenixadult.registry import find_site
 
 SITE = find_site('Example Site')

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from phoenixadult.clients.base import PacingDeferredError
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.services import scrape_queue
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import ProviderUnavailableError
 from phoenixadult.utils import cache as metadata_cache
+from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 
 PROVIDER = ProviderInfo(id='p', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 RATING_KEY = 'scene-nubilefilms-abc123'

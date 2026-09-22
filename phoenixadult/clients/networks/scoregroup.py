@@ -8,7 +8,8 @@ from typing import Any
 import httpx2
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, LoadedSearch, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate

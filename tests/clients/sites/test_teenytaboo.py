@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.sites.teenytaboo as tt_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.teenytaboo import TeenyTabooClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Teeny Taboo')

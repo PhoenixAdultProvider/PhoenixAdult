@@ -4,7 +4,8 @@ import re
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, load_data, pack_cur_id, slugify
 from phoenixadult.utils.helpers.html_helpers import first_attr
 

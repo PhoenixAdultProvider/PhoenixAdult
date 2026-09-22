@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.helpers.helpers import build_search_result, dict_values_from_key, iso_date, load_data, pack_cur_id, slugify

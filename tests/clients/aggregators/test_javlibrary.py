@@ -6,7 +6,7 @@ import respx
 
 import phoenixadult.clients.aggregators.javlibrary as jl_module
 from phoenixadult.clients.aggregators.javlibrary import JavLibraryClient
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('JAVLibrary')

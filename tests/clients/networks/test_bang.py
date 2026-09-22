@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.bang as bang_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.bang import BangClient, __testing__
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

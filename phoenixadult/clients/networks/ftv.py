@@ -3,7 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_data, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import web_search_urls
 from phoenixadult.utils.logging.logger import logger

@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.logging.logger import logger
 

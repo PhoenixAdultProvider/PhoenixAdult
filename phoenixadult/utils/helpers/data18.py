@@ -3,13 +3,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 from urllib.parse import urlsplit
 
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.helpers.helpers import slugify
-
-if TYPE_CHECKING:
-    from phoenixadult.clients.base import SceneDetail
 
 DATA18_BASE = 'https://www.data18.com'
 

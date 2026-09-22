@@ -5,7 +5,8 @@ from typing import Any
 import pytest
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, LoadedScene, SceneDetail
+from phoenixadult.clients.base import Client, LoadedScene
+from phoenixadult.models.scrape import SceneDetail
 
 _PAGE = """
 <html><body>

@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.fuckyoucash import FuckYouCashClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Cum4K')

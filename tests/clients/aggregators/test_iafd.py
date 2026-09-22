@@ -4,7 +4,8 @@ import httpx
 import respx
 
 from phoenixadult.clients.aggregators.iafd import IAFDClient, supplement
-from phoenixadult.clients.base import FetchCtx, SearchContext, SearchResult
+from phoenixadult.clients.base import FetchCtx
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Black Patrol')

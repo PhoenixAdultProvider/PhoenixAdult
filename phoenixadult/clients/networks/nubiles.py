@@ -9,7 +9,9 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene
+from phoenixadult.models.capture import RawCaptureEntry
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.captcha.pow import get_verified_cookies
 from phoenixadult.utils.helpers.data18 import mapping_slug

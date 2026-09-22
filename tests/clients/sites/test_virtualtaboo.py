@@ -5,8 +5,8 @@ from urllib.parse import quote
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.virtualtaboo import VirtualTabooClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Virtual Taboo')

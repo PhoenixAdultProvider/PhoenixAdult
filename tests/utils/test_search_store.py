@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from phoenixadult.clients.base import SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
 from phoenixadult.utils.cache import search_store
 

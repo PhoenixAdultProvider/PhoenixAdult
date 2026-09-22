@@ -7,7 +7,8 @@ from urllib.parse import urlsplit
 
 from parsel import Selector
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import data18_scene_id
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score

@@ -7,7 +7,7 @@ import pytest
 import respx
 
 from phoenixadult.clients.aggregators.data18scenes import Data18ScenesClient
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Data18 Scenes')

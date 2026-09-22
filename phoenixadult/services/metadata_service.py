@@ -7,11 +7,11 @@ from collections.abc import Awaitable, Callable
 from cachetools import TTLCache
 
 from phoenixadult.clients import is_paced
-from phoenixadult.clients.base import PacingDeferredError, SceneContext, SceneDetail
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper, log_served_images
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.models.scrape import SceneContext, SceneDetail
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
@@ -22,7 +22,7 @@ from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import split_subsite
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
-from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
+from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import filter_male_actors

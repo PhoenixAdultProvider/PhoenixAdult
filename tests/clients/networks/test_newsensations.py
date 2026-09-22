@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.newsensations as ns_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.newsensations import NewSensationsClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

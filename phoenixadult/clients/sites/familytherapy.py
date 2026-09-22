@@ -4,8 +4,9 @@ import dataclasses
 import re
 from urllib.parse import quote
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.clients.sites.clips4sale import Clips4SaleClient
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.models.scraper_config import ScraperConfig
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, unpack_cur_id

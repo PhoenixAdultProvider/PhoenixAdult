@@ -8,7 +8,8 @@ import time
 from typing import Any, TypedDict
 from urllib.parse import quote, urlsplit
 
-from phoenixadult.clients.base import ActorResult, Client, FetchCtx, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency.single_flight import SingleFlight
 from phoenixadult.utils.helpers.data18 import mapping_slug

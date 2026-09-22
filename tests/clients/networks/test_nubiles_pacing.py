@@ -5,9 +5,9 @@ from email.utils import format_datetime
 
 import pytest
 
-from phoenixadult.clients.base import ActorResult, SceneDetail
 from phoenixadult.clients.networks import nubiles
 from phoenixadult.clients.networks.nubiles import _MAX_BACKOFF, _PACE_JITTER, _PACE_SECONDS, NubilesClient, _jittered, _retry_after_seconds
+from phoenixadult.models.scrape import ActorResult, SceneDetail
 
 
 class _Resp:
@@ -115,8 +115,8 @@ def test_pending_wait_ignores_stale_starts_and_uses_gap() -> None:
 async def test_sync_scene_defers_instead_of_sleeping() -> None:
     import time as _t
 
-    from phoenixadult.clients.base import PacingDeferredError
     from phoenixadult.registry import find_site
+    from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 
     site = find_site('Nubile Films')
     assert site is not None
@@ -129,9 +129,10 @@ async def test_sync_scene_defers_instead_of_sleeping() -> None:
 
 async def test_search_shares_the_gap_track(monkeypatch: pytest.MonkeyPatch) -> None:
 
-    from phoenixadult.clients.base import PacingDeferredError, SearchContext
+    from phoenixadult.models.scrape import SearchContext
     from phoenixadult.registry import find_site
     from phoenixadult.utils.http import rate_limit_helper as rlh
+    from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 
     site = find_site('Nubile Films')
     assert site is not None

@@ -3,16 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import (
-    ActorResult,
-    Client,
-    FetchCtx,
-    LoadedScene,
-    LoadedSearch,
-    SceneContext,
-    SceneDetail,
-    SearchContext,
-)
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.cookies.site_cookies import get_site_cookies
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date

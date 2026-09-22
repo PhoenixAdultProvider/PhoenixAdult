@@ -4,7 +4,7 @@ from typing import Any
 
 from phoenixadult.clients.aggregators import archive
 from phoenixadult.clients.aggregators.archive import ArchiveClient
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

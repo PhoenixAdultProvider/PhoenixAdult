@@ -4,7 +4,9 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, LoadedScene, RawCaptureEntry, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene
+from phoenixadult.models.capture import RawCaptureEntry
+from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr

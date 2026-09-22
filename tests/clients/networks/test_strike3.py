@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.strike3 as s3
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.strike3 import Strike3Client
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Tushy')

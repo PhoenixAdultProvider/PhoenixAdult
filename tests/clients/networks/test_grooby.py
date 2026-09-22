@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.grooby as grooby_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Grooby Girls')

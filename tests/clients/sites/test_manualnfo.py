@@ -6,8 +6,8 @@ import pytest
 
 import phoenixadult.clients.aggregators.data18 as data18_module
 import phoenixadult.clients.sites.manualnfo as mn_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.manualnfo import ManualNfoClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Manual NFO')

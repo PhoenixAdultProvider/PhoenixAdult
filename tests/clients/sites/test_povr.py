@@ -5,8 +5,8 @@ import json
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.povr import POVRClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.helpers import pack_cur_id
 

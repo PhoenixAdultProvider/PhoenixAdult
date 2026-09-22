@@ -20,7 +20,7 @@ from phoenixadult.utils.processors.similarity import compare_string
 from phoenixadult.utils.processors.title_case import convert_sequence_numbers, title_case
 
 if TYPE_CHECKING:
-    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.models.scrape import SearchResult
     from phoenixadult.registry import ResolvedSiteInfo
 
 
@@ -274,7 +274,7 @@ def build_search_result(
     subsite: str | None = None,
     site: ResolvedSiteInfo,
 ) -> SearchResult:
-    from phoenixadult.clients.base import SearchResult
+    from phoenixadult.models.scrape import SearchResult
     from phoenixadult.utils.processors.actor_strip import best_title_score
 
     title = re.sub(r'\s+', ' ', title).strip()

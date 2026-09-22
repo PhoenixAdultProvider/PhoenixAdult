@@ -6,8 +6,8 @@ import httpx
 import respx
 
 import phoenixadult.clients.networks.gammaentother as geo_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.gammaentother import GammaEntOtherClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Girlsway')

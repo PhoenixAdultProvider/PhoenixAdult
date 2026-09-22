@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.sites.vrlatina as vrl_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.vrlatina import VRLatinaClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('VR Latina')

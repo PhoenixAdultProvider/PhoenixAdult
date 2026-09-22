@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from phoenixadult.utils.logging.logger import logger
 
 if TYPE_CHECKING:
-    from phoenixadult.clients.base import SceneDetail
+    from phoenixadult.models.scrape import SceneDetail
 
 
 def log_search_data(

@@ -7,8 +7,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.sites.adultempire as ae_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.adultempire import AdultEmpireClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Adult Empire')

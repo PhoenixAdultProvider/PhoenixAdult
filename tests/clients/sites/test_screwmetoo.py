@@ -5,8 +5,9 @@ import respx
 from parsel import Selector
 
 import phoenixadult.clients.sites.screwmetoo as smt_module
-from phoenixadult.clients.base import ActorResult, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import LoadedScene
 from phoenixadult.clients.sites.screwmetoo import ScrewMeTooClient
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('ScrewMeToo')

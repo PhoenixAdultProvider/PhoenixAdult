@@ -37,7 +37,8 @@ _CLIENT = """from __future__ import annotations
 
 from typing import Any
 @CLASSVAR_IMPORT@
-from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch, SceneDetail
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
 from phoenixadult.utils.helpers.html_helpers import first_text
 
@@ -88,7 +89,7 @@ import httpx
 import respx
 
 from phoenixadult.clients.@KIND@.@MODULE@ import @CLASS@
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('@NAME@')

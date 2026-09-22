@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from phoenixadult.clients.base import PacingDeferredError, SearchResult
 from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.services import match_service as match_module
 from phoenixadult.services import metadata_service as metadata_module
 from phoenixadult.services.match_service import MatchRequest, MatchService
@@ -16,6 +16,7 @@ from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
 from phoenixadult.utils import db
 from phoenixadult.utils.helpers.helpers import b64url_encode
+from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 from phoenixadult.utils.plex.rating_key import to_rating_key
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')

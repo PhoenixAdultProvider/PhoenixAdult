@@ -4,7 +4,7 @@ import httpx
 import respx
 
 from phoenixadult.clients.aggregators.javdatabase import JAVDatabaseClient
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('JAVDatabase')

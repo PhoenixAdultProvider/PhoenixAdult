@@ -99,8 +99,8 @@ def _check_threshold(min_val: int | None, got: float) -> dict[str, str]:
 
 
 async def _run_one(fx: dict[str, Any]) -> dict[str, Any]:
-    from phoenixadult.clients.base import SceneContext, SearchContext
     from phoenixadult.mappers.metadata_mapper import MetadataMapper
+    from phoenixadult.models.scrape import SceneContext, SearchContext
     from phoenixadult.registry import find_site, get_all_providers
     from phoenixadult.services.scraper_router import ScraperRouter
     from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry

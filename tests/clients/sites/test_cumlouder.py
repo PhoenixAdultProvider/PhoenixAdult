@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.cumlouder import CumLouderClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('CumLouder')

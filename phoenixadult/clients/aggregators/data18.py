@@ -11,8 +11,9 @@ import httpx2
 from dateutil import parser as date_parser
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, SearchContext, SearchResult
+from phoenixadult.clients.base import Client
 from phoenixadult.config.env import env
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import normalize_site_key
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate

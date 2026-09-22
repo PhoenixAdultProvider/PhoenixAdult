@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
-from phoenixadult.clients.base import SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils.cache import search_store
 from tests.support import authed_client
 

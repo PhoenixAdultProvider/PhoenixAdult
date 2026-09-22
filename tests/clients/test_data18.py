@@ -37,7 +37,7 @@ def test_mapping_slug_matches_the_client_formula() -> None:
 
 
 def test_mapping_slug_falls_back_to_the_tagline_then_the_studio() -> None:
-    from phoenixadult.clients.base import SceneDetail
+    from phoenixadult.models.scrape import SceneDetail
 
     scene = SceneDetail(title='Some Scene', studio='Hussie Pass', tagline='')
     assert mapping_slug('Some Scene', '', scene) == 'some-scene-hussiepass'

@@ -9,11 +9,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from phoenixadult.clients.base import RawCaptureEntry, SceneContext, SceneDetail, SearchContext
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
+from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.metadata import PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext
 from phoenixadult.registry import ResolvedSiteInfo, canonical_site_display, find_site, get_all_providers, get_sites_for_provider, normalize_site_key
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.services.metadata_service import refresh_cached_snapshot

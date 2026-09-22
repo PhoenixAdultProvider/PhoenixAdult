@@ -7,8 +7,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.sites.xart as xart_module
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.xart import XartClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('X-Art')

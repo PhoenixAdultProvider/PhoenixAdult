@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import Client, SearchResult
+from phoenixadult.clients.base import Client
+from phoenixadult.models.scrape import SearchResult
 
 
 def _result(url: str) -> SearchResult:

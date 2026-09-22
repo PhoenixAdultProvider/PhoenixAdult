@@ -5,7 +5,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.evolvedfights as ef_mod
-from phoenixadult.clients.base import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 

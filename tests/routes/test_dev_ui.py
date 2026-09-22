@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
-from phoenixadult.clients.base import SceneDetail
 from phoenixadult.models.metadata import PlexMetadata
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.helpers.helpers import b64url_encode
 from phoenixadult.utils.plex.rating_key import to_rating_key
 from tests.support import authed_client

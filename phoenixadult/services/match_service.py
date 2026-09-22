@@ -8,11 +8,11 @@ from urllib.parse import quote
 from cachetools import TTLCache
 
 from phoenixadult.clients import is_paced
-from phoenixadult.clients.base import PacingDeferredError, SearchContext, SearchResult
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.metadata import PlexMatchResponse, PlexMatchResult
 from phoenixadult.models.provider_info import ProviderInfo
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import canonical_site_display, find_site
 from phoenixadult.services import scrape_queue
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
@@ -22,7 +22,7 @@ from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score, unpack_cur_id
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
-from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET
+from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
 from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry

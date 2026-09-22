@@ -5,7 +5,8 @@ from typing import Any
 
 import pytest
 
-from phoenixadult.clients.base import Client, SceneContext, SceneDetail
+from phoenixadult.clients.base import Client
+from phoenixadult.models.scrape import SceneContext, SceneDetail
 from phoenixadult.utils.http import rate_limit_helper
 from phoenixadult.utils.http.rate_limit_helper import FastGate, PacingDeferredError
 

@@ -54,7 +54,7 @@ def test_search_url_returns_an_absolute_search_path_unchanged() -> None:
 
 
 def test_search_context_search_url_defaults_to_the_encoded_query() -> None:
-    from phoenixadult.clients.base import SearchContext
+    from phoenixadult.models.scrape import SearchContext
     from phoenixadult.registry import SITE_DEFINITIONS
 
     site = next(s for s in SITE_DEFINITIONS if '{query}' in s.search_path and not s.search_path.startswith('http'))

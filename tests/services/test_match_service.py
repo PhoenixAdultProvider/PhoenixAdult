@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from phoenixadult.clients.base import SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site, get_all_providers
 from phoenixadult.services.match_service import MatchRequest, MatchService
 

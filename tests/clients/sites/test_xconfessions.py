@@ -3,8 +3,8 @@ from __future__ import annotations
 import httpx
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites.xconfessions import XConfessionsClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 XC = find_site('XConfessions')

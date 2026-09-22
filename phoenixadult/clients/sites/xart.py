@@ -6,7 +6,8 @@ from typing import Any
 from parsel import Selector
 
 import phoenixadult.utils.images.fansite_adapters  # noqa: F401 - registers the fansite adapters
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
+from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 from phoenixadult.utils.images.fanart import FindFanArtOptions, find_fan_art, register_fanart_overrides

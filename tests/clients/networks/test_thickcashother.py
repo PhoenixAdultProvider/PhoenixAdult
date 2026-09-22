@@ -5,8 +5,8 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.thickcashother as mod
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.networks.thickcashother import ThickCashOtherClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('MilfAF')

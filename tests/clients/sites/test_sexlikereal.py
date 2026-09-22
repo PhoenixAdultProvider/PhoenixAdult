@@ -4,9 +4,9 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.clients.base import SearchContext, SearchResult
 from phoenixadult.clients.sites import sexlikereal as slr_module
 from phoenixadult.clients.sites.sexlikereal import SexLikeRealClient
+from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 
 SITE = find_site('Sex Like Real')

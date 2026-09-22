@@ -5,7 +5,8 @@ from typing import Any
 
 import httpx2
 
-from phoenixadult.clients.base import ActorResult, Client, LoadedScene, SceneContext, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene
+from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
 from phoenixadult.utils.logging.logger import logger

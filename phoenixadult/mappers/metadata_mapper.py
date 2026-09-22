@@ -4,7 +4,6 @@ import asyncio
 import json
 from typing import Any
 
-from phoenixadult.clients.base import SceneDetail, SearchResult
 from phoenixadult.config import config, image_base_url
 from phoenixadult.models.metadata import (
     PlexCollection,
@@ -18,6 +17,7 @@ from phoenixadult.models.metadata import (
     PlexRole,
     PlexSource,
 )
+from phoenixadult.models.scrape import SceneDetail, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo, find_site, normalize_site_key
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
