@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.teencoreclub import TeenCoreClubClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Young Throats')
 assert SITE is not None
 _API = 'https://api.fundorado.com/api'
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -21,7 +18,7 @@ async def test_search() -> None:
     body = {'videos': {'last_page': 1, 'data': [{'id': 77, 'title': {'en': 'Cool Scene'}, 'publication_date': '2021-03-04'}]}}
     respx.get(url__startswith=f'{_API}/videos/browse/search/').mock(return_value=httpx.Response(200, json=body))
     results: list[SearchResult] = []
-    await TeenCoreClubClient().search(results, _ctx(scene_id='77'))
+    await TeenCoreClubClient().search(results, search_context(SITE, 'cool scene', scene_id='77'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

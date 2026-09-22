@@ -4,7 +4,8 @@ from typing import Any
 
 from phoenixadult.app_factory import create_app
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
-from phoenixadult.models.scrape import SceneDetail
+from phoenixadult.models.scrape import SceneDetail, SearchContext
+from phoenixadult.models.site_info import ResolvedSiteInfo
 from phoenixadult.utils.auth import user_store
 
 PLEX_UA = 'PlexMediaServer/1.43.3.10861-07dfddaeb'
@@ -51,3 +52,8 @@ def plex_client(app: Any = None, host: str = '203.0.113.9') -> Any:
 
 def served_collections(detail: SceneDetail) -> list[str]:
     return MetadataMapper()._resolve_labels(detail, None)[2]
+
+
+def search_context(site: ResolvedSiteInfo | None, title: str = '', *, space: str = '+', **kw: Any) -> SearchContext:
+    assert site is not None
+    return SearchContext(title=title, encoded=title.replace(' ', space), search_site=site.name, site_info=site, **kw)

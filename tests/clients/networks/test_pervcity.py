@@ -6,15 +6,12 @@ import respx
 
 import phoenixadult.clients.networks.pervcity as pc_mod
 from phoenixadult.clients.networks.pervcity import PervCityClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Anal Overdose')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +32,7 @@ async def test_search_native() -> None:
         )
     )
     results: list[SearchResult] = []
-    await PervCityClient().search(results, _ctx())
+    await PervCityClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://analoverdose.com/scene/7'

@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.couplescinema import CouplesCinemaClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('JoyBear')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -20,7 +17,7 @@ async def test_search_direct_scene_id() -> None:
     url = 'https://www.couplescinema.com/post/details/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="mediaHeader"><span class="title">Cool Scene</span></div>'))
     results: list[SearchResult] = []
-    await CouplesCinemaClient().search(results, _ctx(scene_id='555'))
+    await CouplesCinemaClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'
@@ -41,7 +38,7 @@ async def test_search_keyword_packs_cover() -> None:
         )
     )
     results: list[SearchResult] = []
-    await CouplesCinemaClient().search(results, _ctx(search_date='2021-03-04'))
+    await CouplesCinemaClient().search(results, search_context(SITE, 'cool scene', search_date='2021-03-04', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.couplescinema.com/post/details/77'
     assert results[0].score == 100

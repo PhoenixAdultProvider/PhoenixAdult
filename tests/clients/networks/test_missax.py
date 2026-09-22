@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.missax import MissaXClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('MissaX')
 FYRE = find_site('House of Fyre')
 assert SITE is not None and FYRE is not None
-
-
-def _ctx(site, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=site.name, site_info=site, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -26,7 +23,7 @@ async def test_search() -> None:
         )
     )
     results: list[SearchResult] = []
-    await MissaXClient().search(results, _ctx(SITE))
+    await MissaXClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://missax.com/scene/77'

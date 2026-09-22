@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.porndoepremium import PorndoePremiumClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Chicas Loca')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -25,7 +22,7 @@ async def test_search() -> None:
     )
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
-    await PorndoePremiumClient().search(results, _ctx())
+    await PorndoePremiumClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://mamacitaz.com/v/7'

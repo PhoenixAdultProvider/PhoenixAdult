@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.perfectgonzo import PerfectGonzoClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('All Internal')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -22,7 +19,7 @@ async def test_search() -> None:
         return_value=httpx.Response(200, text='<div class="itemm"><a href="/movie/7" title="Cool Scene"></a><span class="nm-date">March 4, 2021</span></div>')
     )
     results: list[SearchResult] = []
-    await PerfectGonzoClient().search(results, _ctx())
+    await PerfectGonzoClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.perfectgonzo.com/movie/7'

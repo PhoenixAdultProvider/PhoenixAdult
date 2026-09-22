@@ -4,21 +4,18 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.gammaent import GammaEntClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Sunny Leone')
 TERA = find_site('Tera Patrick')
 assert SITE is not None and TERA is not None
 
 
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
-
-
 async def test_search_disabled_site() -> None:
     results: list[SearchResult] = []
-    await GammaEntClient().search(results, _ctx(TERA))
+    await GammaEntClient().search(results, search_context(TERA, 'cool scene', space='%20'))
     assert results == []
 
 
@@ -30,7 +27,7 @@ async def test_search() -> None:
     respx.get('http://www.sunnyleone.com/en/search/scene/cool%20scene').mock(return_value=httpx.Response(200, text=row))
     respx.get('http://www.sunnyleone.com/en/search/scene/cool%20scene/2').mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []
-    await GammaEntClient().search(results, _ctx(SITE))
+    await GammaEntClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'http://www.sunnyleone.com/en/movie/cool/123'

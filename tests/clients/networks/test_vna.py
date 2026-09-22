@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.vna as mod
 from phoenixadult.clients.networks.vna import VNAClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -16,10 +17,6 @@ async def _no_web_search(*_a: object, **_k: object) -> list[str]:
 
 SITE = find_site('Sara Jay')
 assert SITE is not None
-
-
-def _ctx(title: str = '12345', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title, search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 _SCENE = """<html><body>
@@ -37,7 +34,7 @@ async def test_search_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod, 'web_search_urls', _no_web_search)
     respx.get('https://sarajay.com/videos/12345').mock(return_value=httpx.Response(200, text=_SCENE))
     results: list[SearchResult] = []
-    await VNAClient().search(results, _ctx(scene_id='12345'))
+    await VNAClient().search(results, search_context(SITE, '12345', scene_id='12345', space=' '))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://sarajay.com/videos/12345'

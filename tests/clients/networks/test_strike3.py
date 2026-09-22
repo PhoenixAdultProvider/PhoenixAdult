@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.strike3 as s3
 from phoenixadult.clients.networks.strike3 import Strike3Client
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Tushy')
 assert SITE is not None
@@ -19,16 +20,12 @@ def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(s3, '_PACE_SECONDS', 0.0)
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_text() -> None:
     body = {'data': {'searchVideos': {'edges': [{'node': {'videoId': '99', 'title': 'Cool Scene', 'releaseDate': '2021-03-04', 'slug': 'cool-scene'}}]}}}
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
     results: list[SearchResult] = []
-    await Strike3Client().search(results, _ctx())
+    await Strike3Client().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert Strike3Client().decode(results[0].cur_id) == 'cool-scene'
@@ -41,7 +38,7 @@ async def test_search_by_id() -> None:
     body = {'data': {'findOneVideo': {'videoId': '12345', 'title': 'Cool Scene', 'releaseDate': '2021-03-04', 'slug': 'cool-scene'}}}
     respx.post(_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
     results: list[SearchResult] = []
-    await Strike3Client().search(results, _ctx(scene_id='12345'))
+    await Strike3Client().search(results, search_context(SITE, 'cool scene', scene_id='12345'))
     assert len(results) == 1
     assert results[0].score == 100
 
@@ -58,7 +55,7 @@ async def test_search_recovers_via_bypass(monkeypatch: pytest.MonkeyPatch) -> No
     respx.post('http://localhost:8191/v1').mock(return_value=httpx.Response(200, json=envelope))
 
     results: list[SearchResult] = []
-    await Strike3Client().search(results, _ctx(title='x'))
+    await Strike3Client().search(results, search_context(SITE, title='x'))
     assert len(results) == 1 and results[0].title == 'Bypassed'
 
 

@@ -4,8 +4,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.sites.alsangels import AlsAngelsClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('ALS Angels')
 assert SITE is not None
@@ -21,15 +22,11 @@ _ROW = (
 )
 
 
-def _ctx(title: str = 'Jane Doe Masturbation', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search() -> None:
     respx.get('https://alsangels.com/dailyvideos.html').mock(return_value=httpx.Response(200, text=f'<table>{_ROW}</table>'))
     results: list[SearchResult] = []
-    await AlsAngelsClient().search(results, _ctx())
+    await AlsAngelsClient().search(results, search_context(SITE, 'Jane Doe Masturbation'))
     assert len(results) == 1
     assert results[0].score == 100
     assert results[0].scene_url == 'https://alsangels.com/profiles/jane01'

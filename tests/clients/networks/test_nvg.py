@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.nvg as nvg_mod
 from phoenixadult.clients.networks.nvg import NVGClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -37,16 +38,12 @@ _PAGE_DATA = {
 }
 
 
-def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_fallback_to_page_data(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(nvg_mod, 'web_search_urls', _no_web_search)
     respx.get(nvg_mod._PAGE_DATA_URL).mock(return_value=httpx.Response(200, json=_PAGE_DATA))
     results: list[SearchResult] = []
-    await NVGClient().search(results, _ctx(scene_id='123'))
+    await NVGClient().search(results, search_context(SITE, 'jane doe', scene_id='123'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

@@ -4,18 +4,15 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.adultempirecash import AdultEmpireCashClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 STANDARD = find_site('18 Lust')
 IMGFLUID = find_site('Jays POV')
 SCENEP = find_site('SINematica')
 ELEGANT = find_site('Elegant Angel')
 assert STANDARD is not None and IMGFLUID is not None and SCENEP is not None and ELEGANT is not None
-
-
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
 
 
 @respx.mock
@@ -31,7 +28,7 @@ async def test_search_standard_variant() -> None:
         )
     )
     results: list[SearchResult] = []
-    await AdultEmpireCashClient().search(results, _ctx(STANDARD, search_date='2020-08-27'))
+    await AdultEmpireCashClient().search(results, search_context(STANDARD, 'cool scene', search_date='2020-08-27'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == f'{STANDARD.base_url}/123/cool-scene.html'
@@ -51,7 +48,7 @@ async def test_search_imgfullfluid_variant() -> None:
         )
     )
     results: list[SearchResult] = []
-    await AdultEmpireCashClient().search(results, _ctx(IMGFLUID))
+    await AdultEmpireCashClient().search(results, search_context(IMGFLUID, 'cool scene'))
     assert [r.title for r in results] == ['Cool Scene']
     assert results[0].scene_url == 'https://jayspov.net/9/x.html'
 
@@ -68,7 +65,7 @@ async def test_search_scenetitlep_variant() -> None:
         )
     )
     results: list[SearchResult] = []
-    await AdultEmpireCashClient().search(results, _ctx(SCENEP))
+    await AdultEmpireCashClient().search(results, search_context(SCENEP, 'cool scene'))
     assert [r.title for r in results] == ['Cool Scene']
     assert results[0].scene_url == f'{SCENEP.base_url}/7/y.html'
 
@@ -79,7 +76,7 @@ async def test_search_direct_scene_id() -> None:
     respx.get(direct).mock(return_value=httpx.Response(200, text='<h1 class="description">Cool Scene</h1>'))
     respx.get(f'{STANDARD.base_url}/MemberSceneSearch?q=cool+scene').mock(return_value=httpx.Response(200, text='<div></div>'))
     results: list[SearchResult] = []
-    await AdultEmpireCashClient().search(results, _ctx(STANDARD, scene_id='555'))
+    await AdultEmpireCashClient().search(results, search_context(STANDARD, 'cool scene', scene_id='555'))
     assert results[0].scene_url == direct
     assert results[0].score == 100
 

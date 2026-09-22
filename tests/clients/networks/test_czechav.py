@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.czechav import CzechAVClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Czech Massage')
 CASTING = find_site('Czech Casting')
 assert SITE is not None and CASTING is not None
-
-
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
 
 
 @respx.mock
@@ -29,7 +26,7 @@ async def test_search_scene_id_boost() -> None:
         )
     )
     results: list[SearchResult] = []
-    await CzechAVClient().search(results, _ctx(SITE, scene_id='555'))
+    await CzechAVClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://czechmassage.com/video/cool-scene-555/'

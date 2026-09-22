@@ -8,15 +8,12 @@ import respx
 
 import phoenixadult.clients.aggregators.data18 as data18_module
 from phoenixadult.clients.networks.reptyle import ReptyleClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('TeamSkeet')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 def _state_html(content: dict) -> str:
@@ -41,7 +38,7 @@ async def test_search() -> None:
     respx.get(url).mock(return_value=httpx.Response(200, text=_state_html({'moviesContent': {'cool-scene': _SCENE}})))
     respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx())
+    await ReptyleClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].thumb_url == 'https://cdn/p.jpg'
@@ -163,7 +160,7 @@ async def test_a_leading_episode_tag_is_dropped_from_search_and_detail() -> None
     respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx())
+    await ReptyleClient().search(results, search_context(SITE, 'cool scene'))
     assert [r.title for r in results] == ['Sneaky, Bratty Lil Stepsis']
 
     detail = await ReptyleClient().fetch_scene_detail(f'cool-scene|moviesContent|{url}', SITE)
@@ -239,7 +236,7 @@ async def test_the_direct_hit_is_not_duplicated_when_the_model_page_lists_the_sa
     respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+    await ReptyleClient().search(results, search_context(SITE, 'Gia Ohmy'))
 
     assert [r.title for r in results] == ['Cool Scene']
     assert ReptyleClient().decode(results[0].cur_id) == 'cool-scene|videosContent|https://www.teamskeet.com/movies/cool-scene'
@@ -253,7 +250,7 @@ async def test_a_direct_hit_is_supplemented_with_the_model_page_movies() -> None
     respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+    await ReptyleClient().search(results, search_context(SITE, 'Gia Ohmy'))
 
     assert [r.title for r in results] == ['Other Scene', 'Cool Scene']
     assert ReptyleClient().decode(results[1].cur_id) == f'gia-ohmy|moviesContent|{hit_url}'
@@ -266,7 +263,7 @@ async def test_search_falls_back_to_the_model_page_when_the_movie_slug_misses() 
     respx.get('https://www.teamskeet.com/models/gia-ohmy').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {'gia-ohmy': model}})))
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx('Gia Ohmy'))
+    await ReptyleClient().search(results, search_context(SITE, 'Gia Ohmy'))
 
     assert [r.title for r in results] == ['Cool Scene', 'Other Scene']
     assert results[0].scene_url == 'https://www.teamskeet.com/movies/cool-scene'
@@ -288,7 +285,7 @@ async def test_model_fallback_tries_split_names_and_survives_a_404_page() -> Non
     )
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx(title))
+    await ReptyleClient().search(results, search_context(SITE, title))
 
     assert [r.title for r in results] == ['Cool Scene']
 
@@ -297,7 +294,7 @@ async def test_model_fallback_tries_split_names_and_survives_a_404_page() -> Non
 async def test_model_fallback_gives_up_when_no_candidate_matches() -> None:
     respx.get(url__regex=r'.*').mock(return_value=httpx.Response(200, text=_state_html(_EMPTY_STATE)))
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx('Gia Ohmy And Lolly Dames'))
+    await ReptyleClient().search(results, search_context(SITE, 'Gia Ohmy And Lolly Dames'))
     assert results == []
 
 
@@ -309,7 +306,7 @@ async def test_search_canonicalizes_an_alias_slug() -> None:
     respx.get(url__regex=r'.*/models/.*').mock(return_value=httpx.Response(200, text=_state_html({'modelsContent': {}})))
 
     results: list[SearchResult] = []
-    await ReptyleClient().search(results, _ctx('Chloe Rose Cool Scene'))
+    await ReptyleClient().search(results, search_context(SITE, 'Chloe Rose Cool Scene'))
 
     assert len(results) == 1
     composite = ReptyleClient().decode(results[0].cur_id)

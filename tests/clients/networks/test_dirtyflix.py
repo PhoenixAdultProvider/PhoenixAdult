@@ -4,9 +4,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.dirtyflix import DirtyFlixClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import served_collections
+from tests.support import search_context, served_collections
 
 SITE = find_site('Tricky Agent')
 assert SITE is not None
@@ -21,10 +21,6 @@ _LISTING = """<div class="movie-block">
 _TOUR = """<div class="thumbs-item"><img src="x/tour_thumbs/tag001/1.jpg" /><span class="added">2021-03-04</span></div>"""
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_and_detail_roundtrip() -> None:
     respx.get('https://dirtyflix.com/index.php/main/show_one_tour/11').mock(return_value=httpx.Response(200, text=_TOUR))
@@ -32,7 +28,7 @@ async def test_search_and_detail_roundtrip() -> None:
     respx.get('https://trickyagent.com/detailedTrailer/').mock(return_value=httpx.Response(200, text=_LISTING))
 
     results: list[SearchResult] = []
-    await DirtyFlixClient().search(results, _ctx(search_date='2021-03-04'))
+    await DirtyFlixClient().search(results, search_context(SITE, 'cool scene', search_date='2021-03-04', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].release_date == '2021-03-04'

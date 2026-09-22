@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.thickcashother as mod
 from phoenixadult.clients.networks.thickcashother import ThickCashOtherClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('MilfAF')
 assert SITE is not None
@@ -20,10 +21,6 @@ _SCENE = """<html><body>
 </body></html>"""
 
 
-def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_and_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _no_web(*_a: object, **_k: object) -> list[str]:
@@ -34,7 +31,7 @@ async def test_search_and_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get('https://milfaf.com/models/Jane-Doe.html').mock(return_value=httpx.Response(404, text=''))
 
     results: list[SearchResult] = []
-    await ThickCashOtherClient().search(results, _ctx())
+    await ThickCashOtherClient().search(results, search_context(SITE, 'Jane Doe Cool Scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://milfaf.com/videos/jane-doe-cool-scene.html'

@@ -7,8 +7,9 @@ import pytest
 import phoenixadult.clients.aggregators.data18 as data18_module
 import phoenixadult.clients.sites.manualnfo as mn_module
 from phoenixadult.clients.sites.manualnfo import ManualNfoClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Manual NFO')
 assert SITE is not None
@@ -50,15 +51,11 @@ def _write_folder(root: Path, basename: str, *, poster: bool = False, fanart: bo
         (d / f'{basename}-fanart.jpg').write_text('', encoding='utf-8')
 
 
-def _ctx(title: str) -> SearchContext:
-    return SearchContext(title=title, encoded=title, search_site=SITE.name, site_info=SITE)
-
-
 async def test_search_folder_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     _write_folder(tmp_path, BASENAME, poster=True, fanart=True)
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx(BASENAME))
+    await ManualNfoClient().search(results, search_context(SITE, BASENAME, space=' '))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
     assert results[0].release_date == '2024-03-15'
@@ -70,7 +67,7 @@ async def test_search_no_match(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     _write_folder(tmp_path, BASENAME)
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx('no.such.basename'))
+    await ManualNfoClient().search(results, search_context(SITE, 'no.such.basename', space=' '))
     assert results == []
 
 
@@ -79,10 +76,10 @@ async def test_search_miss_driven_refresh(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(mn_module, '_MISS_THROTTLE_S', 0.0)
     _write_folder(tmp_path, BASENAME)
     client = ManualNfoClient()
-    await client.search([], _ctx(BASENAME))
+    await client.search([], search_context(SITE, BASENAME, space=' '))
     _write_folder(tmp_path, 'latecomer.basename')
     results: list[SearchResult] = []
-    await client.search(results, _ctx('latecomer.basename'))
+    await client.search(results, search_context(SITE, 'latecomer.basename', space=' '))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
 
@@ -91,7 +88,7 @@ async def test_search_flat_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv('MANUAL_NFO_PATH', str(tmp_path))
     (tmp_path / 'flat.example.nfo').write_text(SAMPLE_NFO, encoding='utf-8')
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx('flat.example'))
+    await ManualNfoClient().search(results, search_context(SITE, 'flat.example', space=' '))
     assert len(results) == 1
     assert results[0].title == 'Naughty Fantasy'
 
@@ -106,7 +103,7 @@ async def test_search_nested_and_shallowest_wins(tmp_path: Path, monkeypatch: py
     shallow.mkdir()
     (shallow / f'{BASENAME}.nfo').write_text('<?xml version="1.0"?><movie><title>Shallow Winner</title></movie>', encoding='utf-8')
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx(BASENAME))
+    await ManualNfoClient().search(results, search_context(SITE, BASENAME, space=' '))
     assert results[0].title == 'Shallow Winner'
 
 
@@ -117,7 +114,7 @@ async def test_search_nested_thumb_url_encoded(tmp_path: Path, monkeypatch: pyte
     (nested / f'{BASENAME}.nfo').write_text(SAMPLE_NFO, encoding='utf-8')
     (nested / f'{BASENAME}-poster.jpg').write_text('', encoding='utf-8')
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx(BASENAME))
+    await ManualNfoClient().search(results, search_context(SITE, BASENAME, space=' '))
     assert results[0].thumb_url is not None
     assert '/images/manual-nfo/Studios/Paradise%20Films/' in results[0].thumb_url
     assert f'{BASENAME}-poster.jpg' in results[0].thumb_url
@@ -429,7 +426,7 @@ async def test_a_miss_walks_the_tree_once(tmp_path: Path, monkeypatch: pytest.Mo
 
     monkeypatch.setattr(mn_module, '_build_index', counted)
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx('absent.basename'))
+    await ManualNfoClient().search(results, search_context(SITE, 'absent.basename', space=' '))
     assert results == []
     assert builds == 1
 
@@ -439,7 +436,7 @@ async def test_search_tolerates_a_resolution_suffix(tmp_path: Path, monkeypatch:
     _write_folder(tmp_path, 'assparade.22.10.10.julianna.vega')
     for query in ('assparade.22.10.10.julianna.vega.4k', 'assparade.22.10.10.julianna.vega.1080p'):
         results: list[SearchResult] = []
-        await ManualNfoClient().search(results, _ctx(query))
+        await ManualNfoClient().search(results, search_context(SITE, query, space=' '))
         assert len(results) == 1, query
         assert results[0].title == 'Naughty Fantasy'
 
@@ -449,5 +446,5 @@ async def test_exact_match_still_wins_over_normalized(tmp_path: Path, monkeypatc
     _write_folder(tmp_path, 'scene.a.4k', nfo=SAMPLE_NFO.replace('Naughty Fantasy', 'Exact Four K'))
     _write_folder(tmp_path, 'scene.a', nfo=SAMPLE_NFO.replace('Naughty Fantasy', 'Bare'))
     results: list[SearchResult] = []
-    await ManualNfoClient().search(results, _ctx('scene.a.4k'))
+    await ManualNfoClient().search(results, search_context(SITE, 'scene.a.4k', space=' '))
     assert len(results) == 1 and results[0].title == 'Exact Four K'

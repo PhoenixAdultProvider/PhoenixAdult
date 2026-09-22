@@ -87,9 +87,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.@KIND@.@MODULE@ import @CLASS@
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import served_collections
+from tests.support import search_context, served_collections
 
 SITE = find_site('@NAME@')
 assert SITE is not None
@@ -97,7 +97,7 @@ assert SITE is not None
 
 @respx.mock
 async def test_search_parses_result_rows() -> None:
-    context = SearchContext(title='wild scene', encoded='wild%20scene', search_site=SITE.name, site_info=SITE)
+    context = search_context(SITE, 'wild scene', space='%20')
     html = """<html><body>
       <div class="scene"><a href="/scene/wild">x</a><h2>Wild Scene</h2></div>
     </body></html>"""

@@ -35,25 +35,23 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.example import ExampleClient
-from phoenixadult.models.scrape import SearchContext
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context, served_collections
 
 SITE = find_site('Example Site')
 assert SITE is not None
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search() -> None:
-    respx.get('https://example.com/search?q=cool+scene').mock(return_value=httpx.Response(200, text='<...>'))
-    results = await ExampleClient().search(_ctx())
+    context = search_context(SITE, 'cool scene')
+    respx.get(context.search_url()).mock(return_value=httpx.Response(200, text='<...>'))
+    results: list[SearchResult] = []
+    await ExampleClient().search(results, context)
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
-    # curID round-trips back to the payload the detail step expects:
-    assert ExampleClient().decode(results[0].cur_id) == 'https://example.com/v/7'
+    assert results[0].scene_url == 'https://example.com/v/7'
 
 
 @respx.mock
@@ -64,9 +62,10 @@ async def test_detail() -> None:
     assert detail is not None
     assert detail.title == 'Cool Scene'
     assert detail.studio == 'Example'
+    assert served_collections(detail) == ['Example Site']
     assert detail.genres == ['Teen']
     assert detail.actors is not None and detail.actors[0].name == 'Jane Doe'
-    assert detail.raw_image_urls == ['https://cdn/p.jpg']
+    assert detail.art == ['https://cdn/p.jpg']
 ```
 
 Conventions that recur:
@@ -74,6 +73,10 @@ Conventions that recur:
 - **`find_site('<exact registry name>')`** resolves the `ResolvedSiteInfo` to drive
   the client; `assert SITE is not None` at module load surfaces a registration
   mistake immediately.
+- **`search_context(SITE, title, space='%20')`** (`tests/support.py`) builds the
+  `SearchContext`; `space` is how the site encodes spaces (`+` by default).
+- **`served_collections(detail)`** asserts the collections Plex is served, after
+  the mapper's own default, rather than the raw `SceneDetail.collections`.
 - **Mock by exact URL** (`respx.get(url)`) when you know it, or
   `respx.get(url__startswith=...)` for query-string-bearing search URLs. respx
   raises on any unmocked request, so mock every fetch the client makes (including
@@ -82,7 +85,7 @@ Conventions that recur:
   are async.
 - **Assert the mapped fields**, not internals: `title`, `summary`, `studio`,
   `tagline`, `collections`, `release_date`, `genres`, `actors[*].name/photo_url/
-  gender`, `directors`, `raw_image_urls`.
+  gender`, `directors`, `art`.
 - **curID round-trip** — decode the search result's `cur_id` and assert it's exactly
   what `fetch_scene_detail` / `load_scene_context` consumes (URL, or the packed
   `<url>|<date>|...` tail). This catches pack/unpack drift.

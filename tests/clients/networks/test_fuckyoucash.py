@@ -5,8 +5,9 @@ import pytest
 import respx
 
 from phoenixadult.clients.networks.fuckyoucash import FuckYouCashClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Cum4K')
 assert SITE is not None
@@ -24,16 +25,12 @@ _RELEASE = {
 }
 
 
-def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_falls_back_past_the_actor_prefix() -> None:
     respx.get('https://cum4k.com/api/releases/cool-scene').mock(return_value=httpx.Response(200, json=_RELEASE))
     respx.route(method='GET', url__regex=r'cum4k\.com/api/releases/.*').mock(return_value=httpx.Response(404))
     results: list[SearchResult] = []
-    await FuckYouCashClient().search(results, _ctx())
+    await FuckYouCashClient().search(results, search_context(SITE, 'Jane Doe Cool Scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert FuckYouCashClient().decode(results[0].cur_id).startswith('cool-scene|')
@@ -43,7 +40,7 @@ async def test_search_falls_back_past_the_actor_prefix() -> None:
 async def test_search_keeps_a_title_that_only_looks_like_a_name() -> None:
     route = respx.get('https://cum4k.com/api/releases/casting-couch-x').mock(return_value=httpx.Response(200, json=_RELEASE))
     results: list[SearchResult] = []
-    await FuckYouCashClient().search(results, _ctx(title='Casting Couch X'))
+    await FuckYouCashClient().search(results, search_context(SITE, title='Casting Couch X'))
     assert route.call_count == 1
     assert len(results) == 1
 

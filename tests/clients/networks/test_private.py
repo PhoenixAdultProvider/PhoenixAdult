@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.private import PrivateClient, _lang_headers
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Private')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 def test_lang_headers() -> None:
@@ -32,7 +29,7 @@ async def test_search() -> None:
         )
     )
     results: list[SearchResult] = []
-    await PrivateClient().search(results, _ctx())
+    await PrivateClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.private.com/scene/7'

@@ -6,8 +6,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.sites.clips4sale import Clips4SaleClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Clips4Sale')
 assert SITE is not None
@@ -28,16 +29,12 @@ def _page(clip: dict) -> str:
     return f'<html><body><script>window.__remixContext = {json.dumps(remix)};</script></body></html>'
 
 
-def _ctx(title: str, **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_direct_clip_search() -> None:
     url = 'https://clips4sale.com/studio/57445/99999999/'
     respx.get(url).mock(return_value=httpx.Response(200, text=_page(_CLIP)))
     results: list[SearchResult] = []
-    await Clips4SaleClient().search(results, _ctx('57445 99999999'))
+    await Clips4SaleClient().search(results, search_context(SITE, '57445 99999999'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100

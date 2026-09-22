@@ -6,8 +6,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.bellesa import BellesaClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Bellesa Films')
 assert SITE is not None
@@ -18,16 +19,12 @@ def _body(payload: object) -> str:
     return f'<html><body>{json.dumps(payload)}</body></html>'
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search() -> None:
     body = {'videos': [{'id': 4321, 'title': 'Cool Scene', 'posted_on': 1614816000}]}
     respx.get(url__startswith=f'{_API}/search').mock(return_value=httpx.Response(200, text=_body(body)))
     results: list[SearchResult] = []
-    await BellesaClient().search(results, _ctx())
+    await BellesaClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
@@ -39,7 +36,7 @@ async def test_search_by_id() -> None:
     video = {'id': 4321, 'title': 'Cool Scene', 'posted_on': 1614816000}
     respx.get(url__startswith=f'{_API}/videos').mock(return_value=httpx.Response(200, text=_body([video])))
     results: list[SearchResult] = []
-    await BellesaClient().search(results, _ctx(scene_id='4321'))
+    await BellesaClient().search(results, search_context(SITE, 'cool scene', scene_id='4321'))
     assert len(results) == 1
     assert results[0].score == 100
 

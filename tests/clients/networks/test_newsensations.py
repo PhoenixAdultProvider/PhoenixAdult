@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.newsensations as ns_mod
 from phoenixadult.clients.networks.newsensations import NewSensationsClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -23,10 +24,6 @@ def _strip_actors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', SITE.name)
 
 
-def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_url_guess(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ns_mod, 'web_search_urls', _no_web_search)
@@ -34,7 +31,7 @@ async def test_search_url_guess(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get(hit).mock(return_value=httpx.Response(200, text='<div class="indScene"><h1>Cool Scene</h1></div>'))
     respx.get(url__startswith='http://www.newsensations.com/tour_ns/').mock(return_value=httpx.Response(404, text=''))
     results: list[SearchResult] = []
-    await NewSensationsClient().search(results, _ctx())
+    await NewSensationsClient().search(results, search_context(SITE, 'Jane Doe Cool Scene'))
     assert any(r.title == 'Cool Scene' and r.scene_url == hit for r in results)
 
 

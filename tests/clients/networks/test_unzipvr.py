@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.unzipvr import UnzipVRClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('VR Conk')
 assert SITE is not None
 _BASE = 'https://content.vrconk.com'
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -21,7 +18,7 @@ async def test_search() -> None:
     body = {'data': {'videos': [{'title': 'Cool Scene', 'slug': 'cool-scene'}]}}
     respx.get(f'{_BASE}/api/content/v1/search/cool%20scene').mock(return_value=httpx.Response(200, json=body))
     results: list[SearchResult] = []
-    await UnzipVRClient().search(results, _ctx())
+    await UnzipVRClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert UnzipVRClient().decode(results[0].cur_id) == 'cool-scene'

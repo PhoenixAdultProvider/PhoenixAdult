@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.femdomempire import FemdomEmpireClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Femdom Empire')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -25,7 +22,7 @@ async def test_search_advanced() -> None:
         )
     )
     results: list[SearchResult] = []
-    await FemdomEmpireClient().search(results, _ctx())
+    await FemdomEmpireClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://femdomempire.com/tour/trailers/cool.html'
@@ -37,7 +34,7 @@ async def test_search_manual_match() -> None:
     url = 'https://femdomempire.com/tour/search.php?st=advanced&qany=Cock+Locked'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []
-    await FemdomEmpireClient().search(results, _ctx(title='Cock Locked'))
+    await FemdomEmpireClient().search(results, search_context(SITE, title='Cock Locked'))
     assert len(results) == 1
     assert results[0].title == 'Cock Locked'
     assert results[0].scene_url == 'https://femdomempire.com/tour/trailers/CockLocked.html'

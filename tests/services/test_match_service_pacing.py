@@ -12,6 +12,7 @@ from phoenixadult.registry import find_site
 from phoenixadult.services.match_service import MatchService
 from phoenixadult.utils import db
 from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
+from tests.support import search_context
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = find_site('Nubile Films')
@@ -23,10 +24,6 @@ def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]
     monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
     yield tmp_path
     db.close()
-
-
-def _ctx(title: str = 'cool scene') -> SearchContext:
-    return SearchContext(title=title, encoded=title, search_site=SITE.name, site_info=SITE)
 
 
 async def test_deferred_search_returns_empty_queues_and_memoizes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -41,7 +38,7 @@ async def test_deferred_search_returns_empty_queues_and_memoizes(monkeypatch: py
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
 
-    ctx = _ctx()
+    ctx = search_context(SITE, 'cool scene', space=' ')
     with pytest.raises(PacingDeferredError):
         await svc._search_results(ctx, PROVIDER)
 
@@ -52,7 +49,7 @@ async def test_deferred_search_returns_empty_queues_and_memoizes(monkeypatch: py
         await asyncio.sleep(0.01)
     assert calls == [False, True]
 
-    memoed = await svc._search_results(_ctx(), PROVIDER)
+    memoed = await svc._search_results(search_context(SITE, 'cool scene', space=' '), PROVIDER)
     assert memoed is not None and memoed[0].title == 'Found Scene'
     assert calls == [False, True]
 
@@ -66,9 +63,9 @@ async def test_search_memo_absorbs_duplicate_searches(monkeypatch: pytest.Monkey
         return [SearchResult(title=search_data.title, scene_url='https://nubilefilms.com/video/watch/1', cur_id=search_data.title)]
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
-    await svc._search_results(_ctx('scene a'), PROVIDER)
-    await svc._search_results(_ctx('scene a'), PROVIDER)
-    await svc._search_results(_ctx('scene b'), PROVIDER)
+    await svc._search_results(search_context(SITE, 'scene a', space=' '), PROVIDER)
+    await svc._search_results(search_context(SITE, 'scene a', space=' '), PROVIDER)
+    await svc._search_results(search_context(SITE, 'scene b', space=' '), PROVIDER)
     assert calls == ['scene a', 'scene b']
 
 
@@ -84,10 +81,10 @@ async def test_empty_results_are_never_stored(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(svc._scraper, 'search', empty_search)
     monkeypatch.setattr(svc, '_is_paced', lambda _ctx: True)
-    assert await svc._search_results(_ctx(), PROVIDER) == []
-    assert svc._search_memo.get(svc._memo_key(_ctx())) is None
-    assert search_store.load(svc._memo_key(_ctx())) is None
-    assert await svc._search_results(_ctx(), PROVIDER) == []
+    assert await svc._search_results(search_context(SITE, 'cool scene', space=' '), PROVIDER) == []
+    assert svc._search_memo.get(svc._memo_key(search_context(SITE, 'cool scene', space=' '))) is None
+    assert search_store.load(svc._memo_key(search_context(SITE, 'cool scene', space=' '))) is None
+    assert await svc._search_results(search_context(SITE, 'cool scene', space=' '), PROVIDER) == []
     assert calls == ['cool scene', 'cool scene']
 
 
@@ -96,7 +93,7 @@ async def test_a_transport_failure_never_caches_or_erases_results(monkeypatch: p
     from phoenixadult.utils.http import connectivity
 
     svc = MatchService()
-    key = svc._memo_key(_ctx())
+    key = svc._memo_key(search_context(SITE, 'cool scene', space=' '))
     search_store.save(key, [SearchResult(title='Kept Scene', scene_url='https://nubilefilms.com/video/watch/9', cur_id='keep')])
     calls: list[str] = []
 
@@ -111,7 +108,7 @@ async def test_a_transport_failure_never_caches_or_erases_results(monkeypatch: p
     orig_load, orig_similar = search_store.load, search_store.load_similar
     monkeypatch.setattr(search_store, 'load', lambda _key: None)
     monkeypatch.setattr(search_store, 'load_similar', lambda _key: None)
-    assert await svc._search_results(_ctx(), PROVIDER) == []
+    assert await svc._search_results(search_context(SITE, 'cool scene', space=' '), PROVIDER) == []
 
     assert svc._search_memo.get(key) is None
     monkeypatch.setattr(search_store, 'load', orig_load)
@@ -129,8 +126,8 @@ async def test_memo_key_normalizes_case_and_whitespace(monkeypatch: pytest.Monke
         return [SearchResult(title='Found', scene_url='https://nubilefilms.com/video/watch/1', cur_id='abc')]
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
-    await svc._search_results(_ctx('scene a'), PROVIDER)
-    await svc._search_results(_ctx('Scene  A'), PROVIDER)
+    await svc._search_results(search_context(SITE, 'scene a', space=' '), PROVIDER)
+    await svc._search_results(search_context(SITE, 'Scene  A', space=' '), PROVIDER)
     assert calls == ['scene a']
 
 
@@ -141,7 +138,7 @@ async def test_search_store_survives_a_fresh_service(monkeypatch: pytest.MonkeyP
         return [SearchResult(title='Stored Scene', scene_url='https://nubilefilms.com/video/watch/2', cur_id='xyz')]
 
     monkeypatch.setattr(svc._scraper, 'search', fake_search)
-    await svc._search_results(_ctx('stored scene'), PROVIDER, allow_slow=True)
+    await svc._search_results(search_context(SITE, 'stored scene', space=' '), PROVIDER, allow_slow=True)
 
     fresh = MatchService()
 
@@ -149,7 +146,7 @@ async def test_search_store_survives_a_fresh_service(monkeypatch: pytest.MonkeyP
         raise AssertionError('should serve from the search store')
 
     monkeypatch.setattr(fresh._scraper, 'search', fail_search)
-    served = await fresh._search_results(_ctx('Stored  Scene'), PROVIDER)
+    served = await fresh._search_results(search_context(SITE, 'Stored  Scene', space=' '), PROVIDER)
     assert served is not None and served[0].title == 'Stored Scene'
 
 

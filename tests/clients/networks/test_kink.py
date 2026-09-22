@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.kink import KinkClient, _kink_tagline
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Kink')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -20,7 +17,7 @@ async def test_search_direct_scene_id() -> None:
     url = 'https://www.kink.com/shoot/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1 class="fs-0">Cool Scene</h1>'))
     results: list[SearchResult] = []
-    await KinkClient().search(results, _ctx(scene_id='555'))
+    await KinkClient().search(results, search_context(SITE, 'cool scene', scene_id='555'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

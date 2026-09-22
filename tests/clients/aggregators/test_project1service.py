@@ -8,14 +8,11 @@ import phoenixadult.clients.aggregators.data18 as data18_module
 from phoenixadult.clients.aggregators.project1service import Project1ServiceClient, _service_url
 from phoenixadult.models.scrape import SceneContext, SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Brazzers')
 assert SITE is not None
 _API = 'https://site-api.project1service.com'
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 def _token_head() -> None:
@@ -45,7 +42,7 @@ async def test_search() -> None:
     _token_head()
     respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
     results: list[SearchResult] = []
-    await Project1ServiceClient().search(results, _ctx())
+    await Project1ServiceClient().search(results, search_context(SITE, 'cool scene'))
     titles = {r.title for r in results}
     assert 'Cool Scene' in titles
     assert '[Trailer] Cool Scene' in titles
@@ -62,7 +59,7 @@ async def test_search_date_falls_back_to_filename_date() -> None:
     dateless = {**_RELEASE, 'dateReleased': None}
     respx.get(url__startswith=f'{_API}/v2/releases').mock(return_value=httpx.Response(200, json={'result': [dateless]}))
     results: list[SearchResult] = []
-    await Project1ServiceClient().search(results, _ctx(search_date='2021-03-04'))
+    await Project1ServiceClient().search(results, search_context(SITE, 'cool scene', search_date='2021-03-04'))
     cool = next(r for r in results if r.title == 'Cool Scene')
     assert cool.release_date == '2021-03-04'
     assert cool.display_date is None
@@ -143,7 +140,7 @@ async def test_scene_id_hit_skips_the_text_search() -> None:
     id_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': [hit]}))
     search_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': []}))
     results: list[SearchResult] = []
-    await Project1ServiceClient().search(results, _ctx('3940141 the coachs wife'))
+    await Project1ServiceClient().search(results, search_context(SITE, '3940141 the coachs wife'))
     assert id_route.called
     assert not search_route.called
     assert any(r.score == 100 and r.title == "The Coach's Wife" for r in results)
@@ -155,7 +152,7 @@ async def test_scene_id_miss_falls_back_to_the_text_search() -> None:
     id_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': []}))
     search_route = respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': [_RELEASE]}))
     results: list[SearchResult] = []
-    await Project1ServiceClient().search(results, _ctx('3940141 cool scene'))
+    await Project1ServiceClient().search(results, search_context(SITE, '3940141 cool scene'))
     assert id_route.called
     assert search_route.called
     assert any(r.title == 'Cool Scene' for r in results)
@@ -168,6 +165,6 @@ async def test_scene_id_near_miss_still_searches_and_dedupes() -> None:
     respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&id=3940141').mock(return_value=httpx.Response(200, json={'result': [other]}))
     respx.get(url__regex=rf'{_API}/v2/releases\?type=\w+&search=.*').mock(return_value=httpx.Response(200, json={'result': [other]}))
     results: list[SearchResult] = []
-    await Project1ServiceClient().search(results, _ctx('3940141 cool scene'))
+    await Project1ServiceClient().search(results, search_context(SITE, '3940141 cool scene'))
     assert len(results) == 4
     assert all(r.score < 100 for r in results)

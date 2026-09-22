@@ -6,9 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.caramelcash as cc_mod
 from phoenixadult.clients.networks.caramelcash import CaramelCashClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import served_collections
+from tests.support import search_context, served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -19,17 +19,13 @@ SITE = find_site('Alex Legend')
 assert SITE is not None
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cc_mod, 'web_search_urls', _no_web_search)
     url = 'https://alexlegend.com/video/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1>Cool Scene</h1><div class="content-date">04.03.2021</div>'))
     results: list[SearchResult] = []
-    await CaramelCashClient().search(results, _ctx(scene_id='555'))
+    await CaramelCashClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

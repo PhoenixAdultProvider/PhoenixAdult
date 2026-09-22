@@ -4,16 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.blurredmedia import BlurredMediaClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import served_collections
+from tests.support import search_context, served_collections
 
 SITE = find_site('Gay Hoopla')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -30,7 +26,7 @@ async def test_search() -> None:
         )
     )
     results: list[SearchResult] = []
-    await BlurredMediaClient().search(results, _ctx())
+    await BlurredMediaClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://gayhoopla.com/videos/77/cool-scene'

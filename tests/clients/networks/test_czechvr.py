@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.czechvr import CzechVRClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Czech VR')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -30,7 +27,7 @@ async def test_search_scene_id_score() -> None:
         )
     )
     results: list[SearchResult] = []
-    await CzechVRClient().search(results, _ctx(scene_id='555'))
+    await CzechVRClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].title == '555 - Cool Scene'
     assert results[0].scene_url == 'https://czechvr.com/video/555-cool-scene'

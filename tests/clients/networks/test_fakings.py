@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.fakings import FAKingsClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('FAKings')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -24,7 +21,7 @@ async def test_search_both_surfaces() -> None:
     respx.get('https://www.fakings.com/en/buscar/cool-scene').mock(return_value=httpx.Response(200, text=row))
     respx.get('https://www.fakings.com/buscar/cool-scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []
-    await FAKingsClient().search(results, _ctx())
+    await FAKingsClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.fakings.com/en/video/77/cool-scene'

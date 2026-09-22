@@ -5,8 +5,9 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.fullpornnetwork as fpn_mod
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -15,10 +16,6 @@ async def _no_web_search(*_a: object, **_k: object) -> list[str]:
 
 SITE = find_site('James Deen')
 assert SITE is not None
-
-
-def _ctx(title: str = 'jane doe', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -34,7 +31,7 @@ async def test_search_model_crawl(monkeypatch: pytest.MonkeyPatch) -> None:
         )
     )
     results: list[SearchResult] = []
-    await fpn_mod.FullPornNetworkClient().search(results, _ctx())
+    await fpn_mod.FullPornNetworkClient().search(results, search_context(SITE, 'jane doe', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://jamesdeen.com/trailers/cool.html'

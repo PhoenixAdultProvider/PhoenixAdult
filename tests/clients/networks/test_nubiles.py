@@ -6,16 +6,13 @@ import respx
 
 import phoenixadult.clients.networks.nubiles as nub_mod
 from phoenixadult.clients.networks.nubiles import NubilesClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.ids import pack_cur_id
+from tests.support import search_context
 
 SITE = find_site('Nubile Films')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @pytest.fixture(autouse=True)
@@ -66,7 +63,7 @@ async def test_search_scene_id() -> None:
         )
     )
     results: list[SearchResult] = []
-    await NubilesClient().search(results, _ctx(scene_id='555'))
+    await NubilesClient().search(results, search_context(SITE, 'cool scene', scene_id='555'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].score == 100
@@ -193,7 +190,7 @@ async def test_search_by_date_builds_results() -> None:
         return_value=httpx.Response(200, text=f'<html><body>{card}</body></html>')
     )
     results: list[SearchResult] = []
-    await NubilesClient().search(results, _ctx(title='cool scene', search_date='2024-05-07'))
+    await NubilesClient().search(results, search_context(SITE, title='cool scene', search_date='2024-05-07'))
     assert len(results) == 1
     r = results[0]
     assert r.title == 'Jane - Cool Scene'
@@ -220,11 +217,11 @@ async def test_search_by_date_scores_stripped_actor_prefix(monkeypatch: pytest.M
 
     monkeypatch.delenv('SEARCH_STRIP_ACTORS', raising=False)
     plain_results: list[SearchResult] = []
-    await NubilesClient().search(plain_results, _ctx(title=query, search_date='2024-05-07'))
+    await NubilesClient().search(plain_results, search_context(SITE, title=query, search_date='2024-05-07'))
 
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', 'Nubile Films')
     stripped_results: list[SearchResult] = []
-    await NubilesClient().search(stripped_results, _ctx(title=query, search_date='2024-05-07'))
+    await NubilesClient().search(stripped_results, search_context(SITE, title=query, search_date='2024-05-07'))
 
     assert plain_results[0].score is not None and stripped_results[0].score == 100
     assert stripped_results[0].score > plain_results[0].score

@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.gasm import GasmClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('GASM')
 MAGMA = find_site('Magma Film')
 assert SITE is not None and MAGMA is not None
-
-
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
 
 
 @respx.mock
@@ -21,7 +18,7 @@ async def test_search_direct_scene_id() -> None:
     url = 'https://www.gasm.com/post/details/555'
     respx.get(url).mock(return_value=httpx.Response(200, text='<h1 class="post_title"><span>Cool Scene</span></h1><h3 class="post_date">Mar 4, 2021</h3>'))
     results: list[SearchResult] = []
-    await GasmClient().search(results, _ctx(SITE, scene_id='555'))
+    await GasmClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url
@@ -34,7 +31,7 @@ async def test_search_keyword_with_channel() -> None:
     url = 'https://www.gasm.com/search/videos?s=cool+scene&channel=8118'
     respx.get(url).mock(return_value=httpx.Response(200, text='<div class="results_item"><a class="post_title" href="/post/details/77">Cool Scene</a></div>'))
     results: list[SearchResult] = []
-    await GasmClient().search(results, _ctx(MAGMA))
+    await GasmClient().search(results, search_context(MAGMA, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.gasm.com/post/details/77'
 

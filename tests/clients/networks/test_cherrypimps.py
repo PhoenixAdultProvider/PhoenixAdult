@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.cherrypimps import CherryPimpsClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Cherry Pimps')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -24,7 +21,7 @@ async def test_search_two_pages() -> None:
     respx.get('https://www.cherrypimps.com/search.php?query=cool+scene&page=1').mock(return_value=httpx.Response(200, text=page1))
     respx.get('https://www.cherrypimps.com/search.php?query=cool+scene&page=2').mock(return_value=httpx.Response(200, text='<div class="item-updates"></div>'))
     results: list[SearchResult] = []
-    await CherryPimpsClient().search(results, _ctx())
+    await CherryPimpsClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.cherrypimps.com/scene/1/cool-scene'

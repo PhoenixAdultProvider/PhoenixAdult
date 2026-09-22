@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.naughtyamerica as na
 from phoenixadult.clients.networks.naughtyamerica import NaughtyAmericaClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Naughty Office')
 assert SITE is not None
@@ -23,10 +24,6 @@ def _no_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rlh, '_GAP_JITTER_MIN', 0.0)
     monkeypatch.setattr(rlh, '_GAP_JITTER_MAX', 0.0)
     monkeypatch.setenv('SCENE_GAP', '0')
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 async def test_paced_serializes_and_spaces_requests(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -66,7 +63,7 @@ async def test_search_keyword_paginates() -> None:
     respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1').mock(return_value=httpx.Response(200, text=page1))
     respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1&page=2').mock(return_value=httpx.Response(200, text=page2))
     results: list[SearchResult] = []
-    await NaughtyAmericaClient().search(results, _ctx())
+    await NaughtyAmericaClient().search(results, search_context(SITE, 'cool scene'))
     titles = {r.title for r in results}
     assert titles == {'Scene One', 'Scene Two'}
     assert results[0].scene_url == 'https://www.naughtyamerica.com/scene/scene-one-111'
@@ -84,7 +81,7 @@ async def test_search_by_scene_id_direct() -> None:
     )
     respx.get('https://www.naughtyamerica.com/scene/0815').mock(return_value=httpx.Response(200, text=scene_html))
     results: list[SearchResult] = []
-    await NaughtyAmericaClient().search(results, _ctx(title='815', scene_id='815'))
+    await NaughtyAmericaClient().search(results, search_context(SITE, title='815', scene_id='815'))
     assert len(results) == 1
     assert results[0].title == 'Ava Addams Scene'
     assert results[0].scene_url == 'https://www.naughtyamerica.com/scene/ava-addams-815'
@@ -97,7 +94,7 @@ async def test_search_by_scene_id_falls_back_to_keyword() -> None:
     card = '<div class="scene-grid-item"><a href="/scene/found-1" title="Found" data-scene-id="1"></a><p class="entry-date">March 4, 2021</p></div>'
     respx.get('https://www.naughtyamerica.com/search?term=cool+scene&_gl=1').mock(return_value=httpx.Response(200, text=f'<html><body>{card}</body></html>'))
     results: list[SearchResult] = []
-    await NaughtyAmericaClient().search(results, _ctx(title='cool scene', scene_id='999'))
+    await NaughtyAmericaClient().search(results, search_context(SITE, title='cool scene', scene_id='999'))
     assert [r.title for r in results] == ['Found']
 
 

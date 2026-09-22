@@ -5,9 +5,9 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.ftv as ftv_mod
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import served_collections
+from tests.support import search_context, served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -18,17 +18,13 @@ SITE = find_site('FTVGirls')
 assert SITE is not None
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ftv_mod, 'web_search_urls', _no_web_search)
     url = 'https://www.ftvgirls.com/update/s-555.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene Released March 4, 2021!</title>'))
     results: list[SearchResult] = []
-    await ftv_mod.FTVClient().search(results, _ctx(scene_id='555'))
+    await ftv_mod.FTVClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == url

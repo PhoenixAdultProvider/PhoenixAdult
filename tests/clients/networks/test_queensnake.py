@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.queensnake import QueenSnakeClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('QueenSnake')
 assert SITE is not None
-
-
-def _ctx(title: str = 'Cool Scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -25,7 +22,7 @@ async def test_search() -> None:
         )
     )
     results: list[SearchResult] = []
-    await QueenSnakeClient().search(results, _ctx())
+    await QueenSnakeClient().search(results, search_context(SITE, 'Cool Scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].display_date == '2021-03-04'
@@ -40,7 +37,7 @@ async def test_search_no_match_pager() -> None:
         )
     )
     results: list[SearchResult] = []
-    await QueenSnakeClient().search(results, _ctx('nope'))
+    await QueenSnakeClient().search(results, search_context(SITE, 'nope'))
     assert results == []
 
 

@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.porncz import PornCZClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Czech Sex Casting')
 DOLLS = find_site('Czech Real Dolls')
 assert SITE is not None and DOLLS is not None
-
-
-def _ctx(site, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=site.name, site_info=site, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -24,7 +21,7 @@ async def test_search() -> None:
     )
     respx.get(url).mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
-    await PornCZClient().search(results, _ctx(SITE))
+    await PornCZClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.czechsexcasting.com/en/video/7'

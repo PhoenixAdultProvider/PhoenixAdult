@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.interracialpass import InterracialPassClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Interracial Pass')
 BBC = find_site('BBC Surprise')
 assert SITE is not None and BBC is not None
-
-
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
 
 
 @respx.mock
@@ -26,7 +23,7 @@ async def test_search_direct_and_onsite() -> None:
     )
     respx.get('https://www.interracialpass.com/t1/search.php?query=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []
-    await InterracialPassClient().search(results, _ctx(SITE))
+    await InterracialPassClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == direct

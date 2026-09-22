@@ -4,16 +4,13 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.adultprime import AdultPrimeClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Adult Prime')
 SWEETHEARTS = find_site('Club Sweethearts')
 assert SITE is not None and SWEETHEARTS is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -28,7 +25,7 @@ async def test_search_keyword_video_and_performer() -> None:
         return_value=httpx.Response(200, text='<ul id="studio-videos-container"></ul>')
     )
     results: list[SearchResult] = []
-    await AdultPrimeClient().search(results, _ctx(search_date='2020-08-27'))
+    await AdultPrimeClient().search(results, search_context(SITE, 'cool scene', search_date='2020-08-27', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://adultprime.com/studios/video/9001'
@@ -47,7 +44,7 @@ async def test_search_direct_scene_id() -> None:
         )
     )
     results: list[SearchResult] = []
-    await AdultPrimeClient().search(results, _ctx(scene_id='555'))
+    await AdultPrimeClient().search(results, search_context(SITE, 'cool scene', scene_id='555', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == url
     assert results[0].title == 'Cool Scene'

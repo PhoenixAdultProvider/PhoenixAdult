@@ -6,8 +6,9 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.steppedup import SteppedUpClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('True Anal')
 assert SITE is not None
@@ -18,17 +19,13 @@ def _probe(build_id: str) -> str:
     return f'<html><body><script type="application/json">{json.dumps({"buildId": build_id})}</script></body></html>'
 
 
-def _ctx(title: str = 'Jane Doe', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search() -> None:
     respx.get('https://tour.trueanal.com/models/jane-doe').mock(return_value=httpx.Response(200, text=_probe(_BID)))
     body = {'pageProps': {'model_contents': [{'title': 'Cool Scene', 'slug': 'cool-scene', 'publish_date': '2021-03-04'}]}}
     respx.get(f'https://tour.trueanal.com/_next/data/{_BID}/models/jane-doe.json').mock(return_value=httpx.Response(200, json=body))
     results: list[SearchResult] = []
-    await SteppedUpClient().search(results, _ctx())
+    await SteppedUpClient().search(results, search_context(SITE, 'Jane Doe'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert SteppedUpClient().decode(results[0].cur_id).startswith('cool-scene|')

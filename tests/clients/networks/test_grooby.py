@@ -5,15 +5,12 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.grooby as grooby_mod
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Grooby Girls')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -27,7 +24,7 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
         return_value=httpx.Response(200, text='<div class="trailer_videoinfo"><h3>Cool Scene</h3></div><div class="setdesc">Added - March 4, 2021</div>')
     )
     results: list[SearchResult] = []
-    await grooby_mod.GroobyClient().search(results, _ctx())
+    await grooby_mod.GroobyClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.groobygirls.com/tour/trailers/cool.html'

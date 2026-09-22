@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.bang as bang_mod
 from phoenixadult.clients.networks.bang import BangClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -24,10 +25,6 @@ _VIDEO_LD = """<script type="application/ld+json">
 </script>"""
 
 
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_grid_only_when_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(bang_mod, 'web_search_urls', _no_web_search)
@@ -42,7 +39,7 @@ async def test_search_grid_only_when_no_engine(monkeypatch: pytest.MonkeyPatch) 
         )
     )
     results: list[SearchResult] = []
-    await BangClient().search(results, _ctx())
+    await BangClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.bang.com/video/77/cool-scene'
@@ -59,7 +56,7 @@ async def test_search_web_augmentation(monkeypatch: pytest.MonkeyPatch) -> None:
     respx.get('https://www.bang.com/video/123/slug').mock(return_value=httpx.Response(200, text=f'<html><body>{_VIDEO_LD}</body></html>'))
     respx.get('https://www.bang.com/videos?term=cool+scene').mock(return_value=httpx.Response(200, text='<html></html>'))
     results: list[SearchResult] = []
-    await BangClient().search(results, _ctx())
+    await BangClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].scene_url == 'https://www.bang.com/video/123/slug'
     assert results[0].title == 'Cool Scene'

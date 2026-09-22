@@ -4,15 +4,12 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.vip4k import VIP4KClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Sis')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -20,7 +17,7 @@ async def test_search() -> None:
     html = '<div class="item__description"><a class="item__title" href="/en/videos/12345">Cool Scene</a><div class="item__date">March 4, 2021</div></div>'
     respx.get('https://vip4k.com/en/search/cool+scene').mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
-    await VIP4KClient().search(results, _ctx())
+    await VIP4KClient().search(results, search_context(SITE, 'cool scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://vip4k.com/en/videos/12345'
@@ -31,7 +28,7 @@ async def test_search() -> None:
 async def test_direct_scene() -> None:
     respx.get('https://vip4k.com/en/videos/99999').mock(return_value=httpx.Response(200, text='<title>Sis | Cool Scene</title>'))
     results: list[SearchResult] = []
-    await VIP4KClient().search(results, _ctx(scene_id='99999'))
+    await VIP4KClient().search(results, search_context(SITE, 'cool scene', scene_id='99999'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
 

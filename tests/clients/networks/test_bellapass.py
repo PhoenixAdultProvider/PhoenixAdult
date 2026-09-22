@@ -6,8 +6,9 @@ import respx
 
 import phoenixadult.clients.networks.bellapass as bp_mod
 from phoenixadult.clients.networks.bellapass import BellaPassClient, __testing__
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -17,10 +18,6 @@ async def _no_web_search(*_a: object, **_k: object) -> list[str]:
 BELLA = find_site('BellaPass')
 HUSSIE = find_site('Hussie Pass')
 assert BELLA is not None and HUSSIE is not None
-
-
-def _ctx(site: object, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '%20'), search_site=site.name, site_info=site, **kw)  # type: ignore[union-attr,arg-type]
 
 
 @respx.mock
@@ -34,7 +31,7 @@ async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
         )
     )
     results: list[SearchResult] = []
-    await BellaPassClient().search(results, _ctx(BELLA))
+    await BellaPassClient().search(results, search_context(BELLA, 'cool scene', space='%20'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://bellapass.com/trailers/cool-scene.html'

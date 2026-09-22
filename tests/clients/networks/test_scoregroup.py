@@ -9,9 +9,10 @@ import respx
 
 import phoenixadult.clients.networks.scoregroup as sg_mod
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
-from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.ids import b64url_decode
+from tests.support import search_context
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -20,10 +21,6 @@ async def _no_web_search(*_a: object, **_k: object) -> list[str]:
 
 SITE = find_site('Scoreland')
 assert SITE is not None
-
-
-def _ctx(title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
 
 
 @pytest.fixture(autouse=True)
@@ -40,7 +37,7 @@ async def test_search_posts_the_query_as_form_data() -> None:
     )
     route = respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(scene_id='777'))
+    await ScoreGroupClient().search(results, search_context(SITE, 'cool scene', scene_id='777'))
 
     request = route.calls.last.request
     assert request.headers['content-type'] == 'application/x-www-form-urlencoded'
@@ -95,7 +92,7 @@ async def test_a_join_promo_row_is_not_a_scene() -> None:
     )
     respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=html))
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx())
+    await ScoreGroupClient().search(results, search_context(SITE, 'cool scene'))
 
     assert results == [], 'anonymous search rows link to /join, which is not a scene url'
 
@@ -112,7 +109,7 @@ async def test_the_same_scene_in_two_letter_cases_is_one_result(monkeypatch: pyt
     respx.get('https://www.scoreland.com/big-boob-videos/Jane/777/').mock(return_value=httpx.Response(200, text=page))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert len(results) == 1, f'the guessed url and the search-engine url are the same scene: {[r.scene_url for r in results]}'
 
@@ -178,7 +175,7 @@ async def test_a_candidate_carries_its_own_date_and_an_id_hit_scores_100(monkeyp
     respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_VIEWS_PAGE))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', scene_id='777', search_date='2001-01-01'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', scene_id='777', search_date='2001-01-01'))
 
     assert len(results) == 1
     assert results[0].display_date == '2024-09-07', "the scene's own date, never the filename's"
@@ -197,7 +194,7 @@ async def test_the_form_drops_the_scene_id_but_the_web_search_keeps_it(monkeypat
     route = respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text='<html></html>'))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert parse_qs(route.calls.last.request.content.decode())['keywords'] == ['jane'], 'the bundle strips the id before searching'
     assert asked == ['jane 777'], 'the id is what makes the search engine find the exact scene'
@@ -303,7 +300,7 @@ async def test_the_id_in_the_filename_scores_100_without_a_parsed_scene_id(monke
         )
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='alex blake 53212', full_title='alex blake 53212'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='alex blake 53212', full_title='alex blake 53212'))
 
     by_url = {r.scene_url: r.score for r in results}
     assert by_url['https://www.scoreland.com/big-boob-videos/alex-blake/53212/'] == 100, (
@@ -331,7 +328,7 @@ async def test_the_sites_soft_404_never_becomes_a_result(promo: str, monkeypatch
     respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=f'<html><body><h1>{promo}</h1></body></html>'))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert results == [], 'a missing scene answers 200 with this banner as its only h1'
 
@@ -348,7 +345,7 @@ async def test_a_real_scene_is_untouched_by_the_soft_404_filter(monkeypatch: pyt
     )
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert [r.title for r in results] == ['Watch Our Videos'], 'only the full banner is the marker, not any title that starts like it'
 
@@ -386,7 +383,7 @@ async def test_searches_strip_coming_soon_from_both_kinds_of_row(monkeypatch: py
     )
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert sorted(r.title for r in results) == ['Jane Scene', 'Mary Scene']
 
@@ -430,7 +427,7 @@ async def test_two_slugs_for_one_scene_collapse_to_the_published_url(monkeypatch
     fetched = {url: respx.get(url).mock(return_value=httpx.Response(200, text=_scene_page(_CANON))) for url in (guessed, _CANON)}
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='alice green sasha sean 45560', full_title='alice green sasha sean 45560'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='alice green sasha sean 45560', full_title='alice green sasha sean 45560'))
 
     assert [r.scene_url for r in results] == [_CANON], 'the guess and the published url are one scene, named by the site'
     assert fetched[guessed].called and not fetched[_CANON].called, 'the same scene id is not worth a second round trip'
@@ -446,7 +443,7 @@ async def test_a_canonical_that_is_not_a_scene_is_ignored(monkeypatch: pytest.Mo
     respx.get('https://www.scoreland.com/big-boob-videos/jane/777/').mock(return_value=httpx.Response(200, text=_scene_page('https://www.scoreland.com/home/')))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='jane 777', full_title='jane 777'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='jane 777', full_title='jane 777'))
 
     assert [r.scene_url for r in results] == ['https://www.scoreland.com/big-boob-videos/jane/777/'], (
         'the soft-404 points its canonical at /home/, which carries no scene id'
@@ -479,7 +476,7 @@ async def test_a_different_scene_id_is_still_its_own_candidate(monkeypatch: pyte
     respx.get(other).mock(return_value=httpx.Response(200, text=_scene_page(other, 'A Different Scene')))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='alice green 45560', full_title='alice green 45560'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='alice green 45560', full_title='alice green 45560'))
 
     assert sorted(r.title for r in results) == ['A Different Scene', 'Butt Student']
 
@@ -602,12 +599,12 @@ async def test_two_searches_never_post_to_the_endpoint_at_the_same_time() -> Non
 
     respx.post('https://www.scoreland.com/search-es').mock(side_effect=slow)
     client = ScoreGroupClient()
-    await asyncio.gather(*(client.load_search_context(_ctx(f'scene {i}')) for i in range(5)))
+    await asyncio.gather(*(client.load_search_context(search_context(SITE, f'scene {i}')) for i in range(5)))
     assert peak == 1, f'the endpoint resets every stream but one — {peak} concurrent posts would lose {peak - 1} of them'
 
 
 def _score(query: str, title: str, search_date: str, page_date: str) -> float:
-    return sg_mod._hit_score(_ctx(query, search_date=search_date), SITE, title, page_date)
+    return sg_mod._hit_score(search_context(SITE, query, search_date=search_date), SITE, title, page_date)
 
 
 def test_a_matching_title_scores_full_whatever_the_dates_say() -> None:
@@ -637,8 +634,8 @@ def test_a_missing_date_on_either_side_never_promotes() -> None:
 
 
 def test_the_scene_id_still_wins_outright(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert sg_mod._scene_id(_ctx('alex blake 53212')) == '53212'
-    assert sg_mod._scene_id(_ctx('no digits here')) == ''
+    assert sg_mod._scene_id(search_context(SITE, 'alex blake 53212')) == '53212'
+    assert sg_mod._scene_id(search_context(SITE, 'no digits here')) == ''
 
 
 @pytest.mark.parametrize(
@@ -686,7 +683,7 @@ async def test_search_reads_the_posting_id_when_cards_link_to_join() -> None:
     respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=card))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='Roxee Robinson Roxee & Her Big Toys'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='Roxee Robinson Roxee & Her Big Toys'))
 
     assert len(results) == 1
     found = results[0]
@@ -705,7 +702,7 @@ async def test_search_keeps_reading_a_real_href_when_one_is_present() -> None:
     respx.post('https://www.scoreland.com/search-es').mock(return_value=httpx.Response(200, text=card))
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='cool scene'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='cool scene'))
 
     assert [b64url_decode(r.cur_id) for r in results] == ['777']
 
@@ -759,7 +756,7 @@ async def test_a_scene_found_by_both_the_site_search_and_the_web_search_appears_
     )
 
     results: list[SearchResult] = []
-    await ScoreGroupClient().search(results, _ctx(title='adria rae 49309', full_title='adria rae 49309', scene_id='49309'))
+    await ScoreGroupClient().search(results, search_context(SITE, title='adria rae 49309', full_title='adria rae 49309', scene_id='49309'))
 
     assert [b64url_decode(r.cur_id) for r in results] == ['49309']
     assert not hit.called

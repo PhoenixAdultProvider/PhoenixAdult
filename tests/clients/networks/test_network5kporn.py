@@ -5,8 +5,9 @@ import pytest
 import respx
 
 from phoenixadult.clients.networks.network5kporn import Network5KPClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('5Kporn')
 assert SITE is not None
@@ -17,17 +18,13 @@ def _strip_actors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('SEARCH_STRIP_ACTORS', SITE.name)
 
 
-def _ctx(title: str = 'Jane Doe Cool Scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=SITE.name, site_info=SITE, **kw)  # type: ignore[arg-type]
-
-
 @respx.mock
 async def test_search_json_html() -> None:
     url = 'https://www.5kporn.com/episodes/search?search=Jane%20Doe'
     inner = '<div class="col ep"><div class="ep-body"><a href="https://www.5kporn.com/video/5KP1"></a><h3 class="ep-title">Cool Scene</h3></div></div>'
     respx.get(url).mock(return_value=httpx.Response(200, json={'html': inner}))
     results: list[SearchResult] = []
-    await Network5KPClient().search(results, _ctx())
+    await Network5KPClient().search(results, search_context(SITE, 'Jane Doe Cool Scene'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.5kporn.com/video/5KP1'

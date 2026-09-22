@@ -6,18 +6,15 @@ import httpx
 import respx
 
 from phoenixadult.clients.networks.modelcentro import ModelCentroClient
-from phoenixadult.models.scrape import SearchContext, SearchResult
+from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
+from tests.support import search_context
 
 SITE = find_site('Romi Rain')
 JOWM = find_site('Jerk Off with Me')
 assert SITE is not None and JOWM is not None
 
 _TOKEN_HTML = '<html><script>var x = {"ah":"ZYX","aet":99};</script></html>'
-
-
-def _ctx(site, title: str = 'cool scene', **kw: object) -> SearchContext:
-    return SearchContext(title=title, encoded=title.replace(' ', '+'), search_site=site.name, site_info=site, **kw)  # type: ignore[arg-type]
 
 
 @respx.mock
@@ -37,7 +34,7 @@ async def test_search() -> None:
     }
     respx.get(url__startswith='https://www.romirain.com/sapi/XYZ/99/content.load').mock(return_value=httpx.Response(200, json=list_body))
     results: list[SearchResult] = []
-    await ModelCentroClient().search(results, _ctx(SITE, '5 cool scene', scene_id='5'))
+    await ModelCentroClient().search(results, search_context(SITE, '5 cool scene', scene_id='5'))
     assert len(results) == 1
     assert results[0].title == 'Cool Scene'
     assert results[0].scene_url == 'https://www.romirain.com/scene/5/'
