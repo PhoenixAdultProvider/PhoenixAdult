@@ -146,8 +146,8 @@ flowchart TB
     mw["request-logging middleware"]:::r
     pr["provider_router<br/>/library/metadata/*"]:::r
     ir["image_routes<br/>/images/*"]:::r
-    cr["env_routes<br/>/config/*  (env_auth_guard dep)"]:::r
-    dr["dev_routes<br/>/dev/*  (env_auth_guard dep)"]:::r
+    cr["env_routes<br/>/config/*  (user_auth_guard + csrf_guard; admin_auth_guard on writes)"]:::r
+    dr["dev_routes<br/>/dev/*  (user_auth_guard + csrf_guard + admin_auth_guard)"]:::r
   end
 
   subgraph svc["Services"]
@@ -536,14 +536,16 @@ sequenceDiagram
 sequenceDiagram
   autonumber
   participant Op as Operator
-  participant AG as env_auth_guard
+  participant AG as user_auth_guard + admin_auth_guard
   participant CR as env_routes
   participant OV as env_overrides
   participant FS as env.overrides.json
 
   Op->>AG: POST /config/api/save {updates}
   alt no session cookie and no valid API key
-    AG-->>Op: 401
+    AG-->>Op: 401 (browsers: 302 to /login)
+  else signed in but not an admin
+    AG-->>Op: 403
   else allowed
     AG->>CR: dependency passes
     CR->>CR: normalize_env_value per catalog spec
@@ -681,7 +683,7 @@ flowchart TB
   end
   subgraph INT["INTERNAL — server-side"]
     g1["ssrf_guard (proxy + rating_key decode)"]:::int
-    g2["_safe_path (local & manual-nfo files)"]:::int
+    g2["safe_join (local & manual-nfo files)"]:::int
     g3["slug sanitize + write containment (photo cache)"]:::int
     g4["secret redaction in /config state"]:::int
   end
@@ -703,15 +705,16 @@ flowchart TB
 - **Framing and sniffing**: every response carries `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'` and `X-Content-Type-Options: nosniff` (`phoenixadult/utils/http/security_headers.py`), so no page can be embedded for clickjacking.
 - **Login redirect**: `next=` is honored only as a same-site path — not `//host`, and no backslash, which browsers read as `/`.
 - **SSRF guard** (`phoenixadult/utils/http/ssrf_guard.py`): scheme allow-list + private/loopback/link-local/CGNAT/metadata (`169.254.169.254`) blocklist with hostname resolution; applied to the image proxy (`assert_fetchable_url`) and to the rating-key-decoded scene URL (`ensure_fetchable_url`).
-- **Path safety**: `_safe_path` (`phoenixadult/routes/image_routes.py`) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
+- **Path safety**: `safe_join` (`phoenixadult/utils/fs/paths.py`, used by every file-serving route) anchors containment on the resolved root; photo-cache slugging strips separators/`..` with a write-containment backstop.
 - **Secret hygiene**: `/config/api/state` redacts secret values (exposes only whether set); the request-logging middleware deliberately does not log `/config` bodies (they can carry secrets being saved).
 
-**Known residuals (documented, not yet fixed)** — see also `memory` notes:
+**Known residuals (documented, not yet fixed):**
 
-- DNS-rebinding TOCTOU in the SSRF guard (resolve-then-fetch); robust fix = pin the validated IP for the outbound connection.
-- Hostname-based internal SSRF on the *general* scrape path (only the metadata boundary + image proxy are guarded).
-- Admin loopback-trust is bypassable behind a same-host reverse proxy (documented caveat); and the blank-token "auth off" mode opens the surfaces entirely.
-- No inbound rate limiting (the outbound `ScenePacer` in §8 is ban-avoidance, not a security control); TLS verification intentionally relaxed (`verify=False`) for upstream CDNs.
+- DNS-rebinding TOCTOU: the image proxy fetches by the validated, pinned IP (`IMAGE_PROXY_PIN`, on by default), but the rating-key scene-URL check and the redirect guard still resolve and then fetch.
+- Scrape URLs are trusted as they come from the site table; only a rating-key-decoded scene URL is SSRF-checked up front. Redirects are checked on every client (`_guard_redirect`).
+- The image guard admits loopback clients (Plex on the same host), so behind a same-host reverse proxy every image request looks local and passes it.
+- No general inbound rate limit: `/login` and `/setup`, failed hook-key attempts and the provider's per-day quotas are throttled; other routes are not. No request-body size cap either (every such route requires sign-in; uploads are admin-only).
+- TLS verification is intentionally relaxed (`verify=False`) for upstream CDNs; the SSRF guard is the mitigation.
 
 > The `title_case` ReDoS (O(n²) post-process passes on long scraped titles) is **mitigated** by a `MAX_TITLE_LENGTH` input cap — see Appendix A.
 
@@ -773,7 +776,7 @@ Single stateless-ish uvicorn process (state = on-disk caches + overrides). Run i
 | Adapter | `MetadataMapper` (SceneDetail → Plex schema) | isolate Plex contract |
 | Chain of Responsibility | bypass chain; people-source order | ordered fallback |
 | Facade | Services over scraper/mapper/people | thin routes |
-| Guard / Boundary validation | `ssrf_guard`, `_safe_path`, `env_auth_guard` | trust boundaries |
+| Guard / Boundary validation | `ssrf_guard`, `safe_join`, `user_auth_guard` | trust boundaries |
 | Lazy config accessor | `phoenixadult/config/env.py` property getters | testability + runtime overrides |
 | Fail-fast + deferred work | `ScenePacer` + `scrape_queue` + serve budgets | Plex's 90s timeout vs. slow, ban-prone sites |
 
