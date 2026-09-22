@@ -61,3 +61,14 @@ def test_the_banner_reports_the_limits_that_shape_bulk_throughput(caplog: pytest
     printed = caplog.text
     for expected in ('Thread pools:', 'Queue lanes:', 'Fan-out caps:', 'Bypass chain:', 'artwork-probe=', 'store=', 'fast='):
         assert expected in printed, f'{expected!r} missing from the startup banner'
+
+
+def test_every_response_refuses_framing_and_sniffing() -> None:
+    from fastapi.testclient import TestClient
+
+    client = TestClient(create_app())
+    for path in ('/health', '/login', '/no-such-page'):
+        headers = client.get(path).headers
+        assert headers['x-frame-options'] == 'DENY', path
+        assert headers['content-security-policy'] == "frame-ancestors 'none'", path
+        assert headers['x-content-type-options'] == 'nosniff', path

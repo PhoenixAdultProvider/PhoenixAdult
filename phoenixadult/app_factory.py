@@ -26,6 +26,7 @@ from phoenixadult.routes import (
 )
 from phoenixadult.routes.provider_router import create_provider_router
 from phoenixadult.utils.concurrency import pools
+from phoenixadult.utils.http.security_headers import SecurityHeadersMiddleware
 from phoenixadult.utils.logging.logger import configure_logging, logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
 from phoenixadult.utils.logging.uvicorn_logging import configure_uvicorn_logging
@@ -149,6 +150,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 def _install_middleware(app: FastAPI) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=1024)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestContextMiddleware)
 
     # ── Plex Client Tracking (records hits; resolves the owner's enrichment token) ─
