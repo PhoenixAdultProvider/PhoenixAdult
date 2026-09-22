@@ -18,8 +18,8 @@ from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18
 from phoenixadult.registry import find_site
 from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import BUNDLE_FILE, _hash, bundle_path, bundle_payload, cache_dir, enabled
-from phoenixadult.utils.cache.locks import _apply_locks, _carry_emptied_fields, _changed_lockables, _lock_snapshot, _reconcile_dropped_images
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, bundle_path, bundle_payload, cache_dir, enabled, scene_hash_for
+from phoenixadult.utils.cache.locks import apply_locks, carry_emptied_fields, changed_lockables, lock_snapshot, reconcile_dropped_images
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.concurrency.pools import run_in
@@ -93,7 +93,7 @@ def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bo
 def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
     if not enabled():
         return None
-    loaded = scene_store.load(_hash(site_name, cur_id))
+    loaded = scene_store.load(scene_hash_for(site_name, cur_id))
     if loaded is None:
         return None
     rebased = _rebase(loaded, config.base_url.rstrip('/'), image_base_url().rstrip('/'))
@@ -151,7 +151,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
         logger.info('meta-cache', f'skip snapshot (title looks like an error): {title!r}')
         return False
 
-    scene_hash = _hash(site_name, cur_id)
+    scene_hash = scene_hash_for(site_name, cur_id)
     rel_path = bundle_path(scene_hash)
     final_dir = safe_join(cache_dir(), rel_path)
     if final_dir is None:
@@ -201,10 +201,10 @@ class _SnapshotWrite:
 
     async def _hold_stored_values(self) -> None:
         previous = await run_in('store', scene_store.load, self.scene_hash)
-        if carried := _carry_emptied_fields(self.meta, previous):
+        if carried := carry_emptied_fields(self.meta, previous):
             logger.warn('meta-cache', f'scrape returned nothing for {", ".join(carried)} on {self.rel_path} — kept the stored values')
         locks = await run_in('store', scene_store.locks, self.scene_hash)
-        if held := _apply_locks(self.meta, previous, locks):
+        if held := apply_locks(self.meta, previous, locks):
             logger.info('meta-cache', f'locks held {", ".join(held)} on {self.rel_path} — the scrape does not overwrite them')
 
     def _take_rotations(self) -> None:
@@ -309,7 +309,7 @@ class _SnapshotWrite:
                 obj[key] = resolved
 
         await asyncio.gather(*(_assign(url, holders) for url, holders in by_url.items()))
-        _reconcile_dropped_images(self.meta, self.image_meta)
+        reconcile_dropped_images(self.meta, self.image_meta)
 
     # ── Write Bundle and Promote ──────────────────────────────────────────────
 
@@ -342,7 +342,7 @@ _EDITABLE_ROLES = ('Role', 'Director', 'Producer')
 
 
 def drop_stale_people_thumbs(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:
-    if not scene_store.take_force_refresh(_hash(site_name, cur_id)):
+    if not scene_store.take_force_refresh(scene_hash_for(site_name, cur_id)):
         return False
     try:
         md = response.MediaContainer.Metadata[0]
@@ -433,15 +433,15 @@ async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
         md = response.MediaContainer.Metadata[0]
     except (AttributeError, IndexError):
         return None
-    before = _lock_snapshot(md)
+    before = lock_snapshot(md)
     _apply_edits(md, fields)
     if not await write(site_name, cur_id, response, allow_clear=True):
         return None
-    scene_hash = _hash(site_name, cur_id)
+    scene_hash = scene_hash_for(site_name, cur_id)
     current = await run_in('store', scene_store.locks, scene_hash)
     requested = fields.get('lockedFields')
     base = {str(f) for f in requested if isinstance(f, str)} if isinstance(requested, list) else set(current['fields'])
-    auto = _changed_lockables(before, _lock_snapshot(md))
+    auto = changed_lockables(before, lock_snapshot(md))
     images_locked = bool(fields['imagesLocked']) if 'imagesLocked' in fields else bool(current['imagesLocked'])
     await run_in('store', scene_store.set_locks, scene_hash, sorted(base | auto), images_locked)
     return bundle_path(scene_hash)

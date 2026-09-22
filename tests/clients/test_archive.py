@@ -18,7 +18,7 @@ def _seed(site: str, cur_id: str, title: str, date: str = '', thumb: str = '') -
     if thumb:
         md['thumb'] = thumb
     data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur_id, cache_layout._hash(site, cur_id), f'{site.lower()}/{cur_id}', data)
+    scene_store.upsert(site, cur_id, cache_layout.scene_hash_for(site, cur_id), f'{site.lower()}/{cur_id}', data)
 
 
 def _ctx(title: str, site_name: str = 'Aussie Ass') -> SearchContext:

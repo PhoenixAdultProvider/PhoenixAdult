@@ -12,7 +12,7 @@ def _payload(md_extra: dict[str, Any]) -> dict[str, Any]:
 
 
 def _roundtrip(md_extra: dict[str, Any]) -> dict[str, Any]:
-    scene_hash = cache_layout._hash('Studio', 'cur-src')
+    scene_hash = cache_layout.scene_hash_for('Studio', 'cur-src')
     scene_store.upsert('Studio', 'cur-src', scene_hash, cache_layout.bundle_path(scene_hash), _payload(md_extra))
     loaded = scene_store.load(scene_hash)
     assert loaded is not None

@@ -86,7 +86,7 @@ async def edit_page(request: Request, key: str = '') -> HTMLResponse:
 
     slug = mapping_slug(str(md[0].get('title') or ''), str(md[0].get('tagline') or md[0].get('studio') or '') or None) or ''
     identity = await run_in('store', scene_store.identity_for, key)
-    locks = await run_in('store', scene_store.locks, cache_layout._hash(*identity)) if identity else {'fields': [], 'imagesLocked': False}
+    locks = await run_in('store', scene_store.locks, cache_layout.scene_hash_for(*identity)) if identity else {'fields': [], 'imagesLocked': False}
     source_kind, source_url, source_data = _source_context(identity, md[0])
     return HTMLResponse(
         render_page(
@@ -231,7 +231,7 @@ async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
         return JSONResponse({'ok': False, 'error': 'not snapshotted'}, status_code=404)
     loaded = await run_in('store', metadata_cache.load_for_edit, snap['key'])
     md = ((loaded or {}).get('MediaContainer') or {}).get('Metadata') or [{}]
-    locks = await run_in('store', scene_store.locks, cache_layout._hash(site, cur_id))
+    locks = await run_in('store', scene_store.locks, cache_layout.scene_hash_for(site, cur_id))
     return JSONResponse({'ok': True, 'key': snap['key'], 'updated_at': snap['updated_at'], 'metadata': md[0], 'locks': locks})
 
 

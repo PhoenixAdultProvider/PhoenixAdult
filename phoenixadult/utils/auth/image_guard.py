@@ -6,7 +6,7 @@ from fastapi import Request
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.auth.url_signing import signed_request_ok
-from phoenixadult.utils.auth.user_auth import _is_loopback, resolve_user
+from phoenixadult.utils.auth.user_auth import is_loopback, resolve_user
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.request_trace import trace_request
 
@@ -62,7 +62,7 @@ async def _admitted_by(request: Request) -> str | None:
         return 'signature'
     if _PLEX_UA in (request.headers.get('user-agent') or '').lower():
         return 'plex user-agent'
-    if _is_loopback(request.client.host if request.client else None):
+    if is_loopback(request.client.host if request.client else None):
         return 'loopback'
     if await resolve_user(request) is not None:
         return 'signed-in user'

@@ -235,7 +235,7 @@ async def test_write_then_read_localizes_images(tmp_path: pytest.TempPathFactory
     cached = mc.read('Brazzers', 'curid123')
     assert cached is not None
     md = cached['MediaContainer']['Metadata'][0]
-    assert f'/cache/{cache_layout.bundle_path(cache_layout._hash("Brazzers", "curid123"))}/' in md['thumb'] and '/images/cache/' not in md['thumb']
+    assert f'/cache/{cache_layout.bundle_path(cache_layout.scene_hash_for("Brazzers", "curid123"))}/' in md['thumb'] and '/images/cache/' not in md['thumb']
     assert md['thumb'].endswith('/images/poster-00.jpg')
     assert md['Role'][0]['thumb'].endswith('/images/local/actor.jane_female.jpg')
     downloaded = list(tmp_path.glob('scenes/*/*/images/poster-00.jpg'))  # type: ignore[attr-defined]
@@ -285,7 +285,7 @@ async def test_every_snapshot_lands_in_a_hash_bucket(tmp_path: pytest.TempPathFa
         assert await mc.write(site, cur, _resp(studio=studio, tagline=tagline or None)) is True
 
     for site, cur, _studio, _tagline in written:
-        scene_hash = cache_layout._hash(site, cur)
+        scene_hash = cache_layout.scene_hash_for(site, cur)
         assert (tmp_path / 'scenes' / scene_hash[:2] / scene_hash).is_dir()  # type: ignore[operator]
         assert mc.read(site, cur) is not None
     assert [p.name for p in sorted(tmp_path.iterdir()) if p.is_dir()] == ['scenes']  # type: ignore[attr-defined]
@@ -296,7 +296,7 @@ async def test_restudioing_a_scene_never_moves_its_folder(tmp_path: pytest.TempP
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
     assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
-    scene_hash = cache_layout._hash('Brazzers', 'b1')
+    scene_hash = cache_layout.scene_hash_for('Brazzers', 'b1')
     bundle = tmp_path / 'scenes' / scene_hash[:2] / scene_hash  # type: ignore[operator]
     assert bundle.is_dir()
 
@@ -314,7 +314,7 @@ async def test_each_snapshot_carries_a_self_contained_bundle(tmp_path: pytest.Te
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     assert await mc.write('Brazzers', 'b1', _resp(studio='Brazzers', tagline='Baby Got Boobs')) is True
 
-    scene_hash = cache_layout._hash('Brazzers', 'b1')
+    scene_hash = cache_layout.scene_hash_for('Brazzers', 'b1')
     payload = json.loads((tmp_path / cache_layout.bundle_path(scene_hash) / cache_layout.BUNDLE_FILE).read_text(encoding='utf-8'))  # type: ignore[operator]
     assert payload['version'] == cache_layout.BUNDLE_VERSION
     assert (payload['site'], payload['cur_id'], payload['hash']) == ('Brazzers', 'b1', scene_hash)
@@ -561,8 +561,8 @@ def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch:
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     old_cur = b64url_encode('3870731|scene|2015-09-24')
     new_cur = embed_subsite(old_cur, 'Teens Like It Big')
-    old_rel = f'brazzers/brazzers/{cache_layout._hash("Brazzers", old_cur)}'
-    new_rel = f'brazzers/teens-like-it-big/{cache_layout._hash("Brazzers", new_cur)}'
+    old_rel = f'brazzers/brazzers/{cache_layout.scene_hash_for("Brazzers", old_cur)}'
+    new_rel = f'brazzers/teens-like-it-big/{cache_layout.scene_hash_for("Brazzers", new_cur)}'
     _snapshot(tmp_path, old_rel, 'Brazzers', old_cur)
     _snapshot(tmp_path, new_rel, 'Brazzers', new_cur)
 
@@ -575,7 +575,7 @@ def test_duplicate_entries_reports_the_subless_twin(tmp_path: Path, monkeypatch:
 def test_duplicate_entries_ignores_a_lone_subless_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     old_cur = b64url_encode('3870731|scene|2015-09-24')
-    _snapshot(tmp_path, f'brazzers/brazzers/{cache_layout._hash("Brazzers", old_cur)}', 'Brazzers', old_cur)
+    _snapshot(tmp_path, f'brazzers/brazzers/{cache_layout.scene_hash_for("Brazzers", old_cur)}', 'Brazzers', old_cur)
     assert cache_duplicates.duplicate_entries() == []
 
 
@@ -737,7 +737,7 @@ async def test_rewrite_keeps_snapshot_images_in_place(tmp_path: Path, monkeypatc
     cached = mc.read('Brazzers', 'rw1')
     assert cached is not None
     before = {img['url'].rsplit('/', 1)[-1]: img['type'] for img in cached['MediaContainer']['Metadata'][0]['Image']}
-    scene_dir = tmp_path / cache_layout.bundle_path(cache_layout._hash('Brazzers', 'rw1'))
+    scene_dir = tmp_path / cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'rw1'))
     poster_bytes = (scene_dir / 'images' / 'img-01.jpg').read_bytes()
 
     again = PlexMetadataResponse.model_validate(cached)
@@ -773,7 +773,7 @@ def test_tags_for_matches_the_seeded_scene() -> None:
         'Country': [{'tag': 'United States'}],
     }
     data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert('Brazzers', 'tf1', cache_layout._hash('Brazzers', 'tf1'), 'brazzers/x', data)
+    scene_store.upsert('Brazzers', 'tf1', cache_layout.scene_hash_for('Brazzers', 'tf1'), 'brazzers/x', data)
 
     assert scene_store.tags_for('Brazzers', 'tf1') == {
         'Collection': ['Baby Got Boobs', 'Brazzers Exxtra'],
@@ -891,7 +891,7 @@ async def test_a_solid_colour_image_is_never_stored(tmp_path: Path, monkeypatch:
     md = mc.read('Brazzers', 'solid1')['MediaContainer']['Metadata'][0]
     assert [img['url'].rsplit('/', 1)[-1] for img in md['Image']] == ['img-01.jpg']
     assert md['thumb'].endswith('/images/img-01.jpg')
-    stored = sorted(p.name for p in (tmp_path / cache_layout.bundle_path(cache_layout._hash('Brazzers', 'solid1')) / 'images').iterdir())
+    stored = sorted(p.name for p in (tmp_path / cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'solid1')) / 'images').iterdir())
     assert stored == ['img-01.jpg']
 
 
@@ -915,12 +915,12 @@ async def test_a_solid_image_already_in_a_snapshot_is_dropped_on_rewrite(tmp_pat
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
-    scene_dir = tmp_path / cache_layout.bundle_path(cache_layout._hash('Brazzers', 'solid3')) / 'images'
+    scene_dir = tmp_path / cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'solid3')) / 'images'
     scene_dir.mkdir(parents=True)
     (scene_dir / 'poster-00.jpg').write_bytes(_solid_jpeg(600, 900))
     (scene_dir / 'img-01.jpg').write_bytes(_jpeg(600, 900))
-    kept = f'/cache/{cache_layout.bundle_path(cache_layout._hash("Brazzers", "solid3"))}/images/img-01.jpg'
-    blank = f'/cache/{cache_layout.bundle_path(cache_layout._hash("Brazzers", "solid3"))}/images/poster-00.jpg'
+    kept = f'/cache/{cache_layout.bundle_path(cache_layout.scene_hash_for("Brazzers", "solid3"))}/images/img-01.jpg'
+    blank = f'/cache/{cache_layout.bundle_path(cache_layout.scene_hash_for("Brazzers", "solid3"))}/images/poster-00.jpg'
 
     resp = _resp(studio='Brazzers', thumb=blank, images=[blank, kept])
     assert await mc.write('Brazzers', 'solid3', resp) is True
@@ -1205,7 +1205,7 @@ async def test_a_thumb_whose_file_vanished_is_dropped_rather_than_left_pointing_
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
-    rel = cache_layout.bundle_path(cache_layout._hash('Brazzers', 'gone1'))
+    rel = cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'gone1'))
     scene_dir = tmp_path / rel / 'images'
     scene_dir.mkdir(parents=True)
     (scene_dir / 'img-01.jpg').write_bytes(_jpeg(600, 900))
@@ -1223,7 +1223,7 @@ async def test_a_scene_whose_only_image_vanished_reports_no_thumb_at_all(tmp_pat
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
-    rel = cache_layout.bundle_path(cache_layout._hash('Brazzers', 'gone2'))
+    rel = cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'gone2'))
     (tmp_path / rel / 'images').mkdir(parents=True)
     vanished = f'/cache/{rel}/images/poster-00.jpg'
 
@@ -1238,12 +1238,12 @@ async def test_the_scan_finds_snapshots_whose_thumb_file_is_gone(tmp_path: Path,
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
-    intact_rel = cache_layout.bundle_path(cache_layout._hash('Brazzers', 'intact'))
+    intact_rel = cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'intact'))
     (tmp_path / intact_rel / 'images').mkdir(parents=True)
     (tmp_path / intact_rel / 'images' / 'img-01.jpg').write_bytes(_jpeg(600, 900))
     assert await mc.write('Brazzers', 'intact', _resp(studio='Brazzers', thumb=f'/cache/{intact_rel}/images/img-01.jpg')) is True
 
-    broken_rel = cache_layout.bundle_path(cache_layout._hash('Brazzers', 'broken'))
+    broken_rel = cache_layout.bundle_path(cache_layout.scene_hash_for('Brazzers', 'broken'))
     (tmp_path / broken_rel / 'images').mkdir(parents=True)
     (tmp_path / broken_rel / 'images' / 'img-01.jpg').write_bytes(_jpeg(600, 900))
     assert await mc.write('Brazzers', 'broken', _resp(studio='Brazzers', thumb=f'/cache/{broken_rel}/images/img-01.jpg')) is True

@@ -32,7 +32,7 @@ async def test_an_imported_scene_serves_from_cache_despite_its_legacy_cur_id(mon
     site, cur_id = 'Thicc18', _BINARY_CUR_ID
     md: dict[str, Any] = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Imported Scene', 'studio': site}
     data = {'MediaContainer': {'identifier': 'phoenixadult', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur_id, cache_layout._hash(site, cur_id), f'archive/{site.lower()}/x', data)
+    scene_store.upsert(site, cur_id, cache_layout.scene_hash_for(site, cur_id), f'archive/{site.lower()}/x', data)
 
     served = await MetadataService()._fetch_metadata(to_rating_key(cur_id, site), PROVIDER)
 

@@ -265,8 +265,8 @@ def _seed_scene(title: str, cur: str, studio: str, tagline: str, date: str, cast
     scene_store.upsert(
         studio,
         cur,
-        cache_layout._hash(studio, cur),
-        cache_layout.bundle_path(cache_layout._hash(studio, cur)),
+        cache_layout.scene_hash_for(studio, cur),
+        cache_layout.bundle_path(cache_layout.scene_hash_for(studio, cur)),
         {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}},
     )
 

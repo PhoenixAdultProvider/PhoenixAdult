@@ -43,7 +43,9 @@ def test_metadata_edit_is_read_only(member: TestClient) -> None:
 
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert('Studio', 'cur1', cache_layout._hash('Studio', 'cur1'), cache_layout.bundle_path(cache_layout._hash('Studio', 'cur1')), payload)
+    scene_store.upsert(
+        'Studio', 'cur1', cache_layout.scene_hash_for('Studio', 'cur1'), cache_layout.bundle_path(cache_layout.scene_hash_for('Studio', 'cur1')), payload
+    )
     key = scene_store.snapshot_state('Studio', 'cur1')['key']
 
     body = member.get(f'/metadata/edit?key={key}').text
@@ -156,7 +158,7 @@ def _seed_snapshot() -> str:
     cur_id = b64url_encode(json.dumps({'title': 'Scene', 'poster': '/img/x.jpg'}))
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_hash = cache_layout._hash('Studio', cur_id)
+    scene_hash = cache_layout.scene_hash_for('Studio', cur_id)
     scene_store.upsert('Studio', cur_id, scene_hash, cache_layout.bundle_path(scene_hash), payload)
     return str(scene_store.snapshot_state('Studio', cur_id)['key'])
 

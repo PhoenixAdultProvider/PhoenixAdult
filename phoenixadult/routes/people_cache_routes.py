@@ -22,7 +22,7 @@ from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
+from phoenixadult.utils.people.cache import ORIGINALS_DIR, cache_photo, index_conn, people_cache_dir, purge, restore_original, set_gender
 from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.local_storage import local_storage_source
@@ -84,7 +84,7 @@ def _entry(relpath: str, mtime: float, log: dict[str, Any]) -> dict[str, Any] | 
 
 
 def _list_people(directory: str) -> list[dict[str, Any]]:
-    rows = _index_conn().execute('SELECT rel_path, mtime FROM people_images ORDER BY rel_path').fetchall()
+    rows = index_conn().execute('SELECT rel_path, mtime FROM people_images ORDER BY rel_path').fetchall()
     if not rows:
         return _list_people_files(directory)
     logs = face_crop_log.entries_by_path()
@@ -102,7 +102,7 @@ def _list_people_files(directory: str) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for sd in subdirs:
         subpath = sd.relative_to(root).as_posix()
-        if subpath == _ORIGINALS_DIR or subpath.startswith(f'{_ORIGINALS_DIR}/'):
+        if subpath == ORIGINALS_DIR or subpath.startswith(f'{ORIGINALS_DIR}/'):
             continue
         by_file = {e.get('filename'): e for e in face_crop_log.recent(str(sd))}
         for f in sorted(sd.iterdir()):

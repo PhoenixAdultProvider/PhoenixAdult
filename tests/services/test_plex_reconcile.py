@@ -47,9 +47,9 @@ def test_enabled_tracks_configured_connections() -> None:
 
 
 def test_our_rating_key_only_matches_our_guids() -> None:
-    assert pr._our_rating_key(GUID) == 'scene-brazzers-abc123'
-    assert pr._our_rating_key(FOREIGN_GUID) is None
-    assert pr._our_rating_key('') is None
+    assert pr.our_rating_key(GUID) == 'scene-brazzers-abc123'
+    assert pr.our_rating_key(FOREIGN_GUID) is None
+    assert pr.our_rating_key('') is None
 
 
 @respx.mock

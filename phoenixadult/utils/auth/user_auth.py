@@ -29,7 +29,7 @@ class LoginRequired(Exception):
     pass
 
 
-def _is_loopback(ip: str | None) -> bool:
+def is_loopback(ip: str | None) -> bool:
     if not ip:
         return False
     h = ip.removeprefix('::ffff:')

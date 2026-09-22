@@ -60,7 +60,7 @@ def _guid_prefixes() -> tuple[str, ...]:
     return tuple(f'{p.plex_identifier}://' for p in PROVIDER_DEFINITIONS)
 
 
-def _our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str | None:
+def our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str | None:
     if not guid.startswith(prefixes if prefixes is not None else _guid_prefixes()):
         return None
     _, _, tail = guid.partition('://')
@@ -231,7 +231,7 @@ async def reconcile(
         for section in await client.movie_sections():
             for stub in await client.section_items(section):
                 report.scanned += 1
-                rating_key = _our_rating_key(stub.get('guid') or '', prefixes)
+                rating_key = our_rating_key(stub.get('guid') or '', prefixes)
                 if not rating_key:
                     continue
                 report.matched += 1

@@ -41,7 +41,7 @@ def _slug(name: str) -> str:
     return re.sub(r'\s+', '-', re.sub(r'\.{2,}', '.', re.sub(r'[/\\]', '-', name))).lower()
 
 
-_ORIGINALS_DIR = 'originals'
+ORIGINALS_DIR = 'originals'
 
 
 def _base_name(name: str, type: PersonType) -> str:
@@ -102,7 +102,7 @@ def _served_files(root: Path) -> Iterator[Path]:
     for entry in root.rglob('*'):
         if not entry.is_file() or entry.name.startswith('.') or entry.suffix.lower() not in IMAGE_EXTS:
             continue
-        if entry.relative_to(root).parts[0] == _ORIGINALS_DIR:
+        if entry.relative_to(root).parts[0] == ORIGINALS_DIR:
             continue
         yield entry
 
@@ -111,7 +111,7 @@ def reconcile() -> None:
     _index.reconcile()
 
 
-def _index_conn() -> sqlite3.Connection:
+def index_conn() -> sqlite3.Connection:
     return _index.connect()
 
 
@@ -145,7 +145,7 @@ def _index_file(relpath: str) -> None:
         mtime = target.stat().st_mtime
     except OSError:
         return
-    conn = _index_conn()
+    conn = index_conn()
     with conn:
         conn.execute(
             'INSERT OR REPLACE INTO people_images(type, slug, gender, ext, rel_path, mtime) VALUES(?, ?, ?, ?, ?, ?)',
@@ -154,7 +154,7 @@ def _index_file(relpath: str) -> None:
 
 
 def _drop_index_row(relpath: str) -> None:
-    conn = _index_conn()
+    conn = index_conn()
     with conn:
         conn.execute('DELETE FROM people_images WHERE rel_path = ?', (relpath,))
 
@@ -187,7 +187,7 @@ def _scan_miss(conn: sqlite3.Connection, type: PersonType, slug: str) -> tuple[s
 
 
 def _find_row(type: PersonType, slug: str) -> tuple[str, str] | None:
-    conn = _index_conn()
+    conn = index_conn()
     while True:
         row = conn.execute('SELECT rel_path, gender FROM people_images WHERE type = ? AND slug = ? ORDER BY rel_path LIMIT 1', (type, slug)).fetchone()
         if row is None:
@@ -295,7 +295,7 @@ async def cache_photo(
     if filepath is None:
         logger.warn('people-cache', f'refusing to write outside cache dir: {relpath}')
         return None
-    orig_path = safe_join(directory, _ORIGINALS_DIR, f'{name_base}{orig_ext}') if cropped else None
+    orig_path = safe_join(directory, ORIGINALS_DIR, f'{name_base}{orig_ext}') if cropped else None
 
     def _write() -> None:
         filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -331,7 +331,7 @@ async def restore_original(filename: str) -> bool:
         return False
     orig_ext = entry.get('orig_ext') or '.jpg'
 
-    local = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+    local = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
 
     def _read_local() -> bytes | None:
         return local.read_bytes() if local is not None and local.exists() else None
@@ -379,7 +379,7 @@ def purge(filename: str) -> bool:
         return False
     entry = _log_entry(str(target.parent), filename)
     if entry:
-        orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
+        orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
         if orig is not None and orig.exists():
             orig.unlink()
     _drop_index_row(f'{subdir}/{filename}')
@@ -420,8 +420,8 @@ def set_gender(filename: str, new_gender: str) -> str | None:
     entry = _log_entry(old_log, filename)
     if entry:
         orig_ext = entry.get('orig_ext') or '.jpg'
-        old_orig = safe_join(directory, _ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
-        new_orig = safe_join(directory, _ORIGINALS_DIR, f'{new_base}{orig_ext}')
+        old_orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')
+        new_orig = safe_join(directory, ORIGINALS_DIR, f'{new_base}{orig_ext}')
         if old_orig is not None and new_orig is not None and old_orig != new_orig and old_orig.exists():
             if new_orig.exists():
                 new_orig.unlink()

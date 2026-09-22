@@ -17,11 +17,11 @@ from phoenixadult.models.camel import CamelModel
 from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_connections import Connection
-from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
+from phoenixadult.services.plex_reconcile import PlexClient, our_rating_key
 from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import _hash
+from phoenixadult.utils.cache.layout import scene_hash_for
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.images.image_classifier import classify_image
@@ -74,7 +74,7 @@ def _foreign_cur_id(guid: str) -> str:
 
 
 def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
-    if rating_key := _our_rating_key(guid):
+    if rating_key := our_rating_key(guid):
         parsed = parse_rating_key(rating_key)
         if parsed and parsed['site_name'] and parsed['cur_id']:
             site = find_site(str(parsed['site_name']))
@@ -222,7 +222,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='unresolved', detail=_unresolved_detail(guid, studio)))
         return
     site_name, cur_id = resolved
-    if not overwrite and scene_store.has(_hash(site_name, cur_id)):
+    if not overwrite and scene_store.has(scene_hash_for(site_name, cur_id)):
         report.skipped_existing += 1
         report.add(ItemReport(rating_key=rating_key, title=title, status='skipped', site=site_name, cur_id=cur_id, detail='already cached'))
         return
@@ -231,7 +231,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='importable', site=site_name, cur_id=cur_id))
         return
 
-    staging = safe_join(cache_layout.cache_dir(), f'{_STAGING}/{_hash(site_name, cur_id)}')
+    staging = safe_join(cache_layout.cache_dir(), f'{_STAGING}/{scene_hash_for(site_name, cur_id)}')
     try:
         item = await client.item(rating_key)
         if not item:

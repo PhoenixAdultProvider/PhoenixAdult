@@ -6,7 +6,7 @@ from typing import Any
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import _hash
+from phoenixadult.utils.cache.layout import scene_hash_for
 from phoenixadult.utils.helpers.ids import scene_url_id
 from phoenixadult.utils.plex.rating_key import parse_rating_key
 
@@ -43,7 +43,7 @@ def _duplicate_entries() -> list[str]:
             continue
         if not subsite:
             continue
-        old_rel = by_hash.get(_hash(parsed['site_name'], b64url_encode(payload)))
+        old_rel = by_hash.get(scene_hash_for(parsed['site_name'], b64url_encode(payload)))
         if old_rel and old_rel != rel:
             stale.add(old_rel)
     return sorted(stale)

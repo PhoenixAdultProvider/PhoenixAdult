@@ -5,7 +5,7 @@ import asyncio
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 
-from phoenixadult.utils.http.client import _proxy_url
+from phoenixadult.utils.http.client import configured_https_proxy
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines.types import SearchOptions
 
@@ -19,7 +19,7 @@ class MetasearchClient:
         return True
 
     def _run(self, query: str, num: int, safesearch: str) -> list[str]:
-        rows = DDGS(proxy=_proxy_url(), timeout=_TIMEOUT).text(query, safesearch=safesearch, max_results=num)
+        rows = DDGS(proxy=configured_https_proxy(), timeout=_TIMEOUT).text(query, safesearch=safesearch, max_results=num)
         urls: list[str] = []
         for row in rows:
             href = str(row.get('href') or '')

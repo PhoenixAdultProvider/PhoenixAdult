@@ -90,7 +90,7 @@ async def refresh_cached_snapshot(
     skip_data18: bool = False,
 ) -> bool:
     changed = snapshot_backfill.backfill_studio(response, site)
-    locks = await run_in('store', scene_store.locks, cache_layout._hash(site.name, cur_id))
+    locks = await run_in('store', scene_store.locks, cache_layout.scene_hash_for(site.name, cur_id))
     if text_rules.reapply_text_rules(response, site.scraper_config.type, locked=set(locks['fields'])):
         changed = True
     if await run_in('store', metadata_cache.drop_stale_people_thumbs, response, site.name, cur_id):

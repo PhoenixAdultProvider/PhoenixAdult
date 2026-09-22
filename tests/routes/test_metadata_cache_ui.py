@@ -122,7 +122,7 @@ def _seed_scene(site: str, cur: str, title: str, studio: str, date: str, updated
             'Metadata': [{'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': title, 'studio': studio, 'originallyAvailableAt': date}],
         }
     }
-    scene_store.upsert(site, cur, cache_layout._hash(site, cur), f'{studio.lower()}/{cur}', data, updated_at=updated)
+    scene_store.upsert(site, cur, cache_layout.scene_hash_for(site, cur), f'{studio.lower()}/{cur}', data, updated_at=updated)
 
 
 def _seed_library() -> None:
@@ -400,7 +400,7 @@ def _seed_cast(site: str, cur: str, title: str, actors: list[str], genres: list[
         'Genre': [{'tag': name} for name in genres],
     }
     data = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_store.upsert(site, cur, cache_layout._hash(site, cur), f'{site.lower()}/{cur}', data, updated_at=100.0)
+    scene_store.upsert(site, cur, cache_layout.scene_hash_for(site, cur), f'{site.lower()}/{cur}', data, updated_at=100.0)
 
 
 def test_entries_carry_actors_and_genre_counts_and_filter_by_actor(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -489,7 +489,12 @@ def _seed_faceted(site: str, cur: str, title: str, studio: str, tagline: str, da
 
     md = {'type': 'movie', 'ratingKey': f'rk-{cur}', 'guid': 'g', 'title': title, 'studio': studio, 'tagline': tagline, 'originallyAvailableAt': date}
     scene_store.upsert(
-        site, cur, cache_layout._hash(site, cur), f'{studio}/{cur}', {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}, updated_at=100.0
+        site,
+        cur,
+        cache_layout.scene_hash_for(site, cur),
+        f'{studio}/{cur}',
+        {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}},
+        updated_at=100.0,
     )
 
 
@@ -528,7 +533,7 @@ def _seed_people(cur: str, title: str, roles: list[str], directors: list[str], c
     scene_store.upsert(
         'Brazzers',
         cur,
-        cache_layout._hash('Brazzers', cur),
+        cache_layout.scene_hash_for('Brazzers', cur),
         f'people/{cur}',
         {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}},
         updated_at=100.0,

@@ -45,7 +45,7 @@ def _rich() -> PlexMetadataResponse:
 def _stored() -> dict[str, Any]:
     from phoenixadult.utils.cache import scene_store
 
-    loaded = scene_store.load(cache_layout._hash(SITE, CUR))
+    loaded = scene_store.load(cache_layout.scene_hash_for(SITE, CUR))
     assert loaded is not None
     md: dict[str, Any] = loaded['MediaContainer']['Metadata'][0]
     return md

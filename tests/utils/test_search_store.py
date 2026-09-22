@@ -142,7 +142,7 @@ def test_dump_attaches_snapshot_keys_and_expiry(monkeypatch) -> None:
     monkeypatch.setenv('SEARCH_STORE_TTL_DAYS', '30')
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
-    scene_hash = cache_layout._hash('Bratty Sis', 'snapcur')
+    scene_hash = cache_layout.scene_hash_for('Bratty Sis', 'snapcur')
     scene_store.upsert('Bratty Sis', 'snapcur', scene_hash, cache_layout.bundle_path(scene_hash), payload)
 
     search_store.save(('Bratty Sis', 'snap query', '2024-06-21', '', ''), [SearchResult(title='S', scene_url='https://x/s', cur_id='snapcur')])

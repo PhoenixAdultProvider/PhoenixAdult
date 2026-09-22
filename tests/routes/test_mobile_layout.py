@@ -14,7 +14,7 @@ def _snapshot_key() -> str:
     from phoenixadult.utils.cache import scene_store
 
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}
-    scene_hash = cache_layout._hash('Studio', 'cur1')
+    scene_hash = cache_layout.scene_hash_for('Studio', 'cur1')
     payload = {'MediaContainer': {'identifier': 'i', 'size': 1, 'Metadata': [md]}}
     scene_store.upsert('Studio', 'cur1', scene_hash, cache_layout.bundle_path(scene_hash), payload)
     return str(scene_store.snapshot_state('Studio', 'cur1')['key'])

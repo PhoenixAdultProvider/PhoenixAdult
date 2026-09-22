@@ -28,7 +28,7 @@ BUNDLE_VERSION = 1
 _FANOUT = 2
 
 
-def _hash(site_name: str, cur_id: str) -> str:
+def scene_hash_for(site_name: str, cur_id: str) -> str:
     site = find_site(site_name)
     base = site.name if site else site_name
     return hash_key(slugify(base), cur_id, sep='\n', length=12)

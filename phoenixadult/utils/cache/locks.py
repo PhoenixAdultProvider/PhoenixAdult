@@ -8,7 +8,7 @@ from phoenixadult.utils.logging.logger import logger
 _CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')
 
 
-def _carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
+def carry_emptied_fields(meta: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
     if not previous:
         return []
     try:
@@ -30,7 +30,7 @@ _LOCK_SCALARS = ('title', 'titleSort', 'summary', 'tagline', 'studio', 'original
 _LOCK_LISTS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer')
 
 
-def _apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
+def apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: dict[str, Any]) -> list[str]:
     if not previous:
         return []
     try:
@@ -83,7 +83,7 @@ def _apply_locks(meta: dict[str, Any], previous: dict[str, Any] | None, locks: d
 _PROMOTABLE = (('thumb', 'coverPoster'), ('art', 'background'))
 
 
-def _reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[int, int, int]]) -> None:
+def reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[int, int, int]]) -> None:
     dropped = {key for key, _kind in _PROMOTABLE if key in meta and meta[key] is None}
 
     kept = [img for img in meta.get('Image') or [] if img.get('url')]
@@ -115,7 +115,7 @@ def _reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[
             logger.info('meta-cache', f'promoted {str(best["url"]).rsplit("/", 1)[-1]} to {key} after the original was dropped')
 
 
-def _lock_snapshot(md: PlexMetadata) -> dict[str, Any]:
+def lock_snapshot(md: PlexMetadata) -> dict[str, Any]:
     dump = md.model_dump(by_alias=True, exclude_none=True)
     view: dict[str, Any] = {field: dump.get(field) for field in _LOCK_SCALARS}
     view['data18'] = dump.get('data18')
@@ -124,5 +124,5 @@ def _lock_snapshot(md: PlexMetadata) -> dict[str, Any]:
     return view
 
 
-def _changed_lockables(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
+def changed_lockables(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
     return {field for field in before if before[field] != after[field]}

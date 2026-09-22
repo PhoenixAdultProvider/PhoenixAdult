@@ -36,7 +36,7 @@ def _payload(**overrides: Any) -> dict[str, Any]:
 
 
 def _seed(**overrides: Any) -> str:
-    scene_hash = cache_layout._hash(SITE, CUR)
+    scene_hash = cache_layout.scene_hash_for(SITE, CUR)
     scene_store.upsert(SITE, CUR, scene_hash, cache_layout.bundle_path(scene_hash), _payload(**overrides))
     return scene_hash
 
@@ -72,7 +72,7 @@ def test_the_merge_holds_locked_fields_against_a_fresh_scrape() -> None:
     scene_hash = _seed()
     previous = scene_store.load(scene_hash)
     meta = _fresh_meta()
-    held = cache_locks._apply_locks(meta, previous, {'fields': ['title', 'Genre'], 'imagesLocked': False})
+    held = cache_locks.apply_locks(meta, previous, {'fields': ['title', 'Genre'], 'imagesLocked': False})
     assert 'title' in held and 'Genre' in held
     assert meta['title'] == 'Original Title'
     assert [g['tag'] for g in meta['Genre']] == ['Original Genre']
@@ -83,20 +83,20 @@ def test_the_global_image_lock_freezes_the_exact_set() -> None:
     scene_hash = _seed()
     previous = scene_store.load(scene_hash)
     meta = _fresh_meta()
-    cache_locks._apply_locks(meta, previous, {'fields': [], 'imagesLocked': True})
+    cache_locks.apply_locks(meta, previous, {'fields': [], 'imagesLocked': True})
     assert [i['url'] for i in meta['Image']] == ['/cache/scenes/aa/lock/images/img-01.jpg', '/cache/scenes/aa/lock/images/img-02.jpg']
     assert meta['thumb'] == '/cache/scenes/aa/lock/images/img-01.jpg'
     assert meta['art'] == '/cache/scenes/aa/lock/images/img-02.jpg'
 
 
 def test_an_individually_locked_image_survives_while_siblings_are_replaced() -> None:
-    scene_hash = cache_layout._hash(SITE, CUR)
+    scene_hash = cache_layout.scene_hash_for(SITE, CUR)
     payload = _payload()
     payload['MediaContainer']['Metadata'][0]['Image'][1]['locked'] = True
     scene_store.upsert(SITE, CUR, scene_hash, cache_layout.bundle_path(scene_hash), payload)
     previous = scene_store.load(scene_hash)
     meta = _fresh_meta()
-    cache_locks._apply_locks(meta, previous, {'fields': [], 'imagesLocked': False})
+    cache_locks.apply_locks(meta, previous, {'fields': [], 'imagesLocked': False})
     urls = [i['url'] for i in meta['Image']]
     assert '/cache/scenes/aa/lock/images/img-02.jpg' in urls, 'the locked image is pinned'
     assert 'https://site/new-poster.jpg' in urls, 'fresh siblings still arrive'
