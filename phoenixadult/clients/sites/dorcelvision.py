@@ -5,8 +5,10 @@ from urllib.parse import quote
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url
 
 UMBRELLA_STUDIO = 'Dorcel Vision'
 _YEAR_RE = re.compile(r'\d{4}')

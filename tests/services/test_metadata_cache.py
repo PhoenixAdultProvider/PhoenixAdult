@@ -13,7 +13,7 @@ from phoenixadult.models.metadata import PlexData18, PlexImage, PlexMetadataResp
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils import db
 from phoenixadult.utils.cache import text_rules as _text_rules  # noqa: F401
-from phoenixadult.utils.helpers.helpers import b64url_encode, embed_subsite
+from phoenixadult.utils.helpers.ids import b64url_encode, embed_subsite
 from phoenixadult.utils.images import image_fetcher
 from phoenixadult.utils.plex.rating_key import to_rating_key
 

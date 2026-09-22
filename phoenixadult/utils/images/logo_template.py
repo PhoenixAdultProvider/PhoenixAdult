@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.helpers.helpers import slugify
+from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.site_key import normalize_site_key
 

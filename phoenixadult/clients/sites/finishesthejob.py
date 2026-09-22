@@ -5,8 +5,9 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail
-from phoenixadult.utils.helpers.helpers import append_unique, title_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.scoring import title_distance_score
+from phoenixadult.utils.helpers.urls import append_unique
 
 _NON_ALNUM_RE = re.compile(r'[^a-z0-9]', re.IGNORECASE)
 _SUBSITE_RE = re.compile(r'scene/(.*?)/')

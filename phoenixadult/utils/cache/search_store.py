@@ -9,7 +9,7 @@ from typing import Any
 from phoenixadult.config.env import env
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.utils import db
-from phoenixadult.utils.helpers.helpers import hash_key
+from phoenixadult.utils.helpers.ids import hash_key
 
 SearchKey = tuple[str, str, str, str, str]
 

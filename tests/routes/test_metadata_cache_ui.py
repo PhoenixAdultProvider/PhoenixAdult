@@ -649,7 +649,7 @@ def _source_client(monkeypatch: pytest.MonkeyPatch, cur_id: str, site: str = 'Vi
 
 
 def test_edit_page_links_to_the_source_scene(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     cur = pack_cur_id(['https://example.com/scene/alpha', '2024-01-01'])
     page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
@@ -660,7 +660,7 @@ def test_edit_page_links_to_the_source_scene(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_edit_page_labels_a_listing_link(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     cur = pack_cur_id(['someslug', '2019-04-12', 'https://sheisnerdy.com/detailed/3'])
     page = _source_client(monkeypatch, cur, site='She Is Nerdy').get('/metadata/edit?key=studio/abc')
@@ -671,7 +671,7 @@ def test_edit_page_labels_a_listing_link(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_edit_page_shows_the_source_json_panel(monkeypatch: pytest.MonkeyPatch) -> None:
     import json
 
-    from phoenixadult.utils.helpers.helpers import b64url_encode
+    from phoenixadult.utils.helpers.ids import b64url_encode
 
     cur = b64url_encode(json.dumps({'title': 'Embedded', 'summary': 'words'}))
     page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
@@ -684,7 +684,7 @@ def test_edit_page_shows_the_source_json_panel(monkeypatch: pytest.MonkeyPatch) 
 def test_edit_page_links_and_panels_a_blob_with_a_url(monkeypatch: pytest.MonkeyPatch) -> None:
     import json
 
-    from phoenixadult.utils.helpers.helpers import b64url_encode
+    from phoenixadult.utils.helpers.ids import b64url_encode
 
     cur = b64url_encode(json.dumps({'movieURL': 'https://www.adultempire.com/1/m.html', 'sceneNum': 2}))
     page = _source_client(monkeypatch, cur).get('/metadata/edit?key=studio/abc')
@@ -709,7 +709,7 @@ def test_source_json_serves_an_embedded_blob_without_network(monkeypatch: pytest
     import json
 
     import phoenixadult.routes.metadata_cache_routes as mcr
-    from phoenixadult.utils.helpers.helpers import b64url_encode
+    from phoenixadult.utils.helpers.ids import b64url_encode
 
     blob = {'title': 'Embedded', 'poster': '/img/x.jpg'}
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', b64url_encode(json.dumps(blob))))
@@ -719,7 +719,7 @@ def test_source_json_serves_an_embedded_blob_without_network(monkeypatch: pytest
 
 def test_source_json_proxies_an_api_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://api.example.com/scenes/1'])))
 
@@ -738,7 +738,7 @@ def test_source_json_proxies_an_api_payload(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_source_json_refuses_a_blocked_host(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://127.0.0.1/api/x'])))
     r = authed_client().get('/metadata/source-json?key=studio/abc')
@@ -747,7 +747,7 @@ def test_source_json_refuses_a_blocked_host(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_source_json_rejects_a_plain_scene_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.routes.metadata_cache_routes as mcr
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     monkeypatch.setattr(mcr.scene_store, 'identity_for', lambda key: ('Vixen', pack_cur_id(['https://example.com/scene/alpha'])))
     r = authed_client().get('/metadata/source-json?key=studio/abc')
@@ -834,7 +834,7 @@ def test_every_action_button_uses_the_shared_button_system() -> None:
 
 
 def test_the_editor_carries_a_data18_launch_point(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     page = _source_client(monkeypatch, pack_cur_id(['https://example.com/scene/alpha', '2024-01-01'])).get('/metadata/edit?key=studio/abc')
     assert 'id="data18Link"' in page.text
@@ -850,7 +850,7 @@ def test_the_edit_button_opens_a_new_tab_and_carries_the_page_back(monkeypatch: 
 
 
 def test_save_and_cancel_close_the_tab_the_list_opened(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     page = _source_client(monkeypatch, pack_cur_id(['https://example.com/scene/alpha'])).get('/metadata/edit?key=studio/abc').text
     assert 'window.close()' in page

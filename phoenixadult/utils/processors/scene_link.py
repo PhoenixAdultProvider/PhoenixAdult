@@ -8,7 +8,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from phoenixadult.models.site_info import SiteInfo
-from phoenixadult.utils.helpers.helpers import b64url_decode, split_subsite
+from phoenixadult.utils.helpers.ids import b64url_decode, split_subsite
 
 Kind = Literal['scene', 'listing', 'api', 'json']
 

@@ -4,8 +4,10 @@ import re
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, script_match
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')

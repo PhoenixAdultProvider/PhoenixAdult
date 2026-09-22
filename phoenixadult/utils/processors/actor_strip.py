@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.helpers.helpers import title_distance_score
+from phoenixadult.utils.helpers.scoring import title_distance_score
 from phoenixadult.utils.processors.site_key import normalize_site_key
 
 if TYPE_CHECKING:

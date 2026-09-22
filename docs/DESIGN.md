@@ -332,7 +332,7 @@ flowchart LR
   rk -->|parse_rating_key + decode| surl -->|fetch_scene_detail| detail
 ```
 
-- Encode/decode: `Client.encode` / `Client.decode` = base64url, backed by `b64url_encode` / `b64url_decode` (`phoenixadult/utils/helpers/helpers.py`); `cur_id` is assembled by `pack_cur_id`.
+- Encode/decode: `Client.encode` / `Client.decode` = base64url, backed by `b64url_encode` / `b64url_decode` (`phoenixadult/utils/helpers/ids.py`); `cur_id` is assembled by `pack_cur_id`.
 - `to_rating_key` / `parse_rating_key`: `phoenixadult/mappers/metadata_mapper.py` (regex `^scene-([a-z0-9]+)-([A-Za-z0-9_-]+)(?:\.(\d{8}))?$`).
 - **Security-relevant:** the decoded `scene_url` is attacker-influenceable and is validated by `ensure_fetchable_url` (`phoenixadult/utils/http/ssrf_guard.py`) before any fetch (§10).
 

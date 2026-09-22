@@ -8,7 +8,7 @@ import respx
 from phoenixadult.clients.sites.pornstarplatinum import PornstarPlatinumClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import pack_cur_id
+from phoenixadult.utils.helpers.ids import pack_cur_id
 
 SITE = find_site('Pornstar Platinum')
 assert SITE is not None

@@ -4,8 +4,9 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.urls import absolute_url
 
 STUDIO = 'SinX'
 _ANCHOR = './/div[contains(@class,"video_item--content")]//a'

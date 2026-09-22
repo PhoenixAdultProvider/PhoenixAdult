@@ -7,8 +7,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail
-from phoenixadult.utils.helpers.helpers import iso_date, join_url
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
+from phoenixadult.utils.helpers.urls import join_url
 
 _BR_RE = re.compile(r'</?br\s*/?>', re.IGNORECASE)
 

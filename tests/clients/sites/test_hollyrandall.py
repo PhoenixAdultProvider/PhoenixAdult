@@ -6,7 +6,7 @@ import respx
 from phoenixadult.clients.sites.hollyrandall import HollyRandallClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import b64url_encode, pack_cur_id
+from phoenixadult.utils.helpers.ids import b64url_encode, pack_cur_id
 
 SITE = find_site('Holly Randall')
 assert SITE is not None

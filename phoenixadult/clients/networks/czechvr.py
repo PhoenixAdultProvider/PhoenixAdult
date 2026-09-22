@@ -6,8 +6,10 @@ from urllib.parse import quote
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, sceneid_distance_score
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.scoring import sceneid_distance_score
+from phoenixadult.utils.helpers.urls import absolute_url
 
 STUDIO = 'Czech VR'
 _DATE_FMT = '%b %d, %Y'

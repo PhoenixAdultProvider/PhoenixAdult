@@ -8,7 +8,10 @@ import httpx2
 from phoenixadult.clients.base import Client, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, strip_query
+from phoenixadult.utils.helpers.dates import iso_date
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import strip_query
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.response_trace import trace_response
 

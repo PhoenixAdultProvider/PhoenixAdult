@@ -6,7 +6,7 @@ import respx
 from phoenixadult.clients.sites.playboyplus import PlayboyPlusClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import pack_cur_id
+from phoenixadult.utils.helpers.ids import pack_cur_id
 
 SITE = find_site('Playboy Plus')
 assert SITE is not None

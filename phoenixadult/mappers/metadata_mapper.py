@@ -23,7 +23,7 @@ from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
 from phoenixadult.utils.helpers.data18 import data18_ref_with_extras
-from phoenixadult.utils.helpers.helpers import embed_subsite
+from phoenixadult.utils.helpers.ids import embed_subsite
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import content_digest, fetch_dimensions, pixel_digest
 from phoenixadult.utils.images.image_referers import resolve_image_cookies, resolve_image_referers

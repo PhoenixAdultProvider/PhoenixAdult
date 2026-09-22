@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from phoenixadult.models.site_info import ContentType, SearchMethod, SiteInfo
 from phoenixadult.registry.selectors._factory import make_site
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 
 PROVIDER_NAME = 'BellaPass'
 PROVIDER_CONTENT_TYPE: ContentType = 'sceneName'

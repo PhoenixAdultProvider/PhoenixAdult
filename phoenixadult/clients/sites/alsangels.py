@@ -6,8 +6,10 @@ from typing import Any
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 _VIDEO_TYPES = ['masturbation', 'photoshoot', 'interview', 'girl-girl action', 'pov lapdance']
 _SCENEID_RE = re.compile(r'([^0-9]+)([0-9-]+)')

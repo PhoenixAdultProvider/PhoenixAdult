@@ -7,14 +7,11 @@ from urllib.parse import quote
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import (
-    build_search_result,
-    date_distance_score,
-    iso_date,
-    pack_cur_id,
-    title_distance_score,
-)
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import strip_tags
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.scoring import date_distance_score, title_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 
 @dataclass

@@ -7,7 +7,7 @@ from typing import Any
 from phoenixadult.config.env import env
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.layout import _hash
-from phoenixadult.utils.helpers.helpers import scene_url_id
+from phoenixadult.utils.helpers.ids import scene_url_id
 from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 _SCAN_MEMO: dict[str, tuple[str, Any]] = {}
@@ -28,7 +28,7 @@ def duplicate_entries() -> list[str]:
 
 
 def _duplicate_entries() -> list[str]:
-    from phoenixadult.utils.helpers.helpers import b64url_decode, b64url_encode, split_subsite
+    from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, split_subsite
 
     keys = scene_store.scene_keys()
     by_hash = {scene_hash: rel for scene_hash, rel, _rating_key in keys}

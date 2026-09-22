@@ -15,8 +15,12 @@ from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, S
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.captcha.pow import get_verified_cookies
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, load_data, pack_cur_id, to_https
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import to_https
 from phoenixadult.utils.http.connectivity import internet_reachable
 from phoenixadult.utils.http.rate_limit_helper import ScenePacer
 from phoenixadult.utils.images.image_fetcher import fetch_image

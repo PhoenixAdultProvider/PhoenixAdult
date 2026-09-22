@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 
 _RAW: dict[str, dict[str, Any]] = load_data(__file__, 'reptyle_networks')
 

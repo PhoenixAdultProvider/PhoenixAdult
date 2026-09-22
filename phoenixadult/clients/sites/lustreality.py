@@ -4,8 +4,11 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, css_bg_image, iso_date, slugify
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text, web_search_urls
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import absolute_url, css_bg_image
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _DATE_XP = (

@@ -7,8 +7,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _READ_LESS_RE = re.compile(r'\s*Read less\s*$', re.IGNORECASE)
 

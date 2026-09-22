@@ -5,8 +5,9 @@ from typing import Any
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.processors.title_case import title_case
 
 STUDIO = 'New Sensations'

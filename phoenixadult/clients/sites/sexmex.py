@@ -7,8 +7,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _TITLE_FIXES: dict[str, str] = {' Analìa ': ' Analia ', ' Kary ': ' Kari '}
 _TITLE_KEYWORDS: list[str] = ['casting', 'debut', 'mesmerized', 'porn casting', 'pov']

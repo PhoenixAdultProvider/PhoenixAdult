@@ -7,8 +7,12 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify, to_https
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import to_https
 from phoenixadult.utils.http.rate_limit_helper import ScenePacer
 from phoenixadult.utils.people.sources import scene_image_pref
 

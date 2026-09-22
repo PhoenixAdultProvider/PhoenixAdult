@@ -4,7 +4,7 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 _SUMMARY_XP = '//div[4]/div/div[2]/div/div/div[2]/div[2]/p'

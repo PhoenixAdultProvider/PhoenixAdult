@@ -21,7 +21,7 @@ from phoenixadult.services.plex_reconcile import PlexClient, _our_rating_key
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.cache import _hash, scene_store
 from phoenixadult.utils.fs.paths import safe_join
-from phoenixadult.utils.helpers.helpers import pack_cur_id
+from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex import legacy_guid

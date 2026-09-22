@@ -6,8 +6,13 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, load_data, pack_cur_id, slugify
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import join_url
 
 _PROFILES: dict[str, dict[str, str]] = load_data(__file__, 'hightechvr_profiles')
 _SEXBABES_RE = re.compile(r'videos_screenshots/(.+?)/\d+x\d+/')

@@ -7,8 +7,8 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _UPDATE_CARD_XP = '//div[contains(concat(" ", normalize-space(@class), " "), " update ")]'
 

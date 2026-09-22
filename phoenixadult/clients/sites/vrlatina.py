@@ -6,8 +6,11 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, to_https
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url, to_https
 
 
 def _title_or_text(node: Any) -> str:

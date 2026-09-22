@@ -7,7 +7,7 @@ from typing import Literal
 
 from phoenixadult.config.env import env
 from phoenixadult.config.env_catalog import DEFAULT_SEARCH_TITLE_TRASH
-from phoenixadult.utils.helpers.helpers import iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.abbreviations import expand_abbreviations
 

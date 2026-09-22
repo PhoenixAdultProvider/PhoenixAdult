@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 import httpx2
 from parsel import Selector
 
-from phoenixadult.utils.helpers.helpers import pad_jav_id
+from phoenixadult.utils.helpers.ids import pad_jav_id
 from phoenixadult.utils.logging.logger import logger
 
 _JAVBUS_BASE = 'https://www.javbus.com'

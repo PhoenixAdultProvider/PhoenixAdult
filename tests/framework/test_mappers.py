@@ -6,7 +6,7 @@ import phoenixadult.mappers.metadata_mapper as mapper_mod
 from phoenixadult.mappers.metadata_mapper import MetadataMapper
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchResult
 from phoenixadult.registry import find_site, normalize_site_key
-from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id, split_subsite
+from phoenixadult.utils.helpers.ids import b64url_decode, pack_cur_id, split_subsite
 from phoenixadult.utils.plex.rating_key import parse_rating_key, to_rating_key
 
 POSTER, BG, SQ, UNK = 'http://x/poster.jpg', 'http://x/bg.jpg', 'http://x/sq.jpg', 'http://x/unk.jpg'
@@ -215,7 +215,7 @@ def test_priority_artwork_outranks_larger_images_within_a_kind() -> None:
 def test_a_registered_series_reconciles_to_one_rating_key() -> None:
     from phoenixadult.mappers.metadata_mapper import MetadataMapper
     from phoenixadult.models.scrape import SearchResult
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     mapper = MetadataMapper()
     cur = pack_cur_id(['183626', '2024-01-18'])
@@ -234,7 +234,7 @@ def test_a_registered_series_reconciles_to_one_rating_key() -> None:
 def test_an_unregistered_series_still_embeds_the_subsite() -> None:
     from phoenixadult.mappers.metadata_mapper import MetadataMapper
     from phoenixadult.models.scrape import SearchResult
-    from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id
+    from phoenixadult.utils.helpers.ids import b64url_decode, pack_cur_id
     from phoenixadult.utils.plex.rating_key import parse_rating_key
 
     mapper = MetadataMapper()
@@ -249,7 +249,7 @@ def test_an_unregistered_series_still_embeds_the_subsite() -> None:
 def test_a_same_named_site_of_another_scraper_never_hijacks_the_key() -> None:
     from phoenixadult.mappers.metadata_mapper import MetadataMapper
     from phoenixadult.models.scrape import SearchResult
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     mapper = MetadataMapper()
     cur = pack_cur_id(['6', '2024-01-18'])
@@ -262,7 +262,7 @@ def test_an_alias_subsite_keeps_its_embedding_and_its_tagline_carrier() -> None:
     from phoenixadult.mappers.metadata_mapper import MetadataMapper
     from phoenixadult.models.scrape import SearchResult
     from phoenixadult.registry import find_site
-    from phoenixadult.utils.helpers.helpers import b64url_decode, pack_cur_id
+    from phoenixadult.utils.helpers.ids import b64url_decode, pack_cur_id
     from phoenixadult.utils.plex.rating_key import parse_rating_key
 
     resolved = find_site('Big Tits in Uniform')

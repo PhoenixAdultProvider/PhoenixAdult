@@ -5,9 +5,12 @@ from typing import Any, TypedDict
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import decensor, iso_date, load_data, sceneid_distance_score
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 from phoenixadult.utils.helpers.javbus_images import push_javbus_images
+from phoenixadult.utils.helpers.scoring import sceneid_distance_score
+from phoenixadult.utils.helpers.text import decensor
 from phoenixadult.utils.processors.title_case import title_case
 
 _TABLES = load_data(__file__, 'javdatabase_tables')

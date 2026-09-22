@@ -8,7 +8,7 @@ from phoenixadult.clients.base import Client, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import squash, strip_reptyle_suffix, xp_first_ns, xp_ns
-from phoenixadult.utils.helpers.helpers import iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 
 _TITLE_XP = '(//h1)[1]'

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import b64url_encode, embed_subsite, pack_cur_id
+from phoenixadult.utils.helpers.ids import b64url_encode, embed_subsite, pack_cur_id
 from phoenixadult.utils.processors.scene_link import resolve_source_link
 
 

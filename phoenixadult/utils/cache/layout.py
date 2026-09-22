@@ -4,7 +4,8 @@ from typing import Any
 
 from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import hash_key, slugify
+from phoenixadult.utils.helpers.ids import hash_key
+from phoenixadult.utils.helpers.text import slugify
 
 
 def enabled() -> bool:

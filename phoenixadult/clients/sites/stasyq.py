@@ -5,8 +5,9 @@ import re
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 _COOKIE = {'Cookie': 'lang=en'}
 _DIGITS_RE = re.compile(r'^\d+$')

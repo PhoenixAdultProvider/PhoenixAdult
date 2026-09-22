@@ -10,8 +10,10 @@ from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.processors.actor_strip import enabled_for, split_actor_prefix
 
 STUDIO = '5Kporn'

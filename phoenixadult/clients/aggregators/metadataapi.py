@@ -8,7 +8,8 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.auth.user_tokens import metadataapi_token
-from phoenixadult.utils.helpers.helpers import api_date, build_search_result
+from phoenixadult.utils.helpers.dates import api_date
+from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.http.client import make_http
 
 _API_BASE = 'https://api.theporndb.net'

@@ -6,7 +6,8 @@ from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext,
 from phoenixadult.models.site_info import ResolvedSiteInfo
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import build_search_result, title_distance_score
+from phoenixadult.utils.helpers.scoring import title_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 MAX_RESULTS = 20
 

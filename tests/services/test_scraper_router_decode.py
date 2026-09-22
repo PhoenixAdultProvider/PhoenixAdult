@@ -11,7 +11,7 @@ from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as mc
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.helpers.helpers import b64url_encode
+from phoenixadult.utils.helpers.ids import b64url_encode
 from phoenixadult.utils.plex.rating_key import to_rating_key
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.agents.custom.phoenixadult', title='P', version='1', media_type='movie')

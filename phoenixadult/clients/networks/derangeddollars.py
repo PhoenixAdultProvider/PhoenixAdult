@@ -4,8 +4,10 @@ import re
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _URL_CONTAINS = '/session/'
 _QUOTED_URL_RE = re.compile(r"""['"]([^'"]+\.(?:jpg|jpeg|png|webp))['"]""", re.IGNORECASE)

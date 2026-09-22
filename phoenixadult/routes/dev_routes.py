@@ -22,7 +22,8 @@ from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils import cache as metadata_cache
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import embed_subsite, split_subsite, title_distance_score
+from phoenixadult.utils.helpers.ids import embed_subsite, split_subsite
+from phoenixadult.utils.helpers.scoring import title_distance_score
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
 from phoenixadult.utils.logging.log_capture import begin_capture
 from phoenixadult.utils.logging.logger import logger

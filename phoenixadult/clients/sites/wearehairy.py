@@ -4,8 +4,9 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail
-from phoenixadult.utils.helpers.helpers import iso_date, to_https
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.urls import to_https
 
 _FIXED_GENRES: list[str] = ['Hairy Girls', 'Hairy Pussy']
 

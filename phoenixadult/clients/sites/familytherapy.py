@@ -9,8 +9,11 @@ from phoenixadult.clients.sites.clips4sale import Clips4SaleClient
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.models.scraper_config import ScraperConfig
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, unpack_cur_id
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id, unpack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _C4S_STUDIO_ID = '81593'
 _C4S_BASE = 'https://clips4sale.com'

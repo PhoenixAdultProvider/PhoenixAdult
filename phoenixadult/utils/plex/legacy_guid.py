@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 
 _GUID = re.compile(r'^com\.plexapp\.agents\.phoenixadult://([^|]+)\|(\d+)(?:\||\?|$)')
 _SITE_IDS: dict[str, str] = load_data(__file__, 'legacy_site_ids')

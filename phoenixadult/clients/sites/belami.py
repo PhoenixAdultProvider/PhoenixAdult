@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 _TITLE_XP = '//div[contains(@class,"video_detail")]//span[contains(@id,"ContentPlaceHolder1_LabelTitle")]'

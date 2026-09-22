@@ -8,7 +8,9 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
+from phoenixadult.utils.helpers.dates import epoch_date
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 STUDIO = 'Bellesa'
 _API = '/api/rest/v1'

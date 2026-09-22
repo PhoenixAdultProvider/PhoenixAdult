@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from phoenixadult.utils.helpers.helpers import dict_values_from_key, format_duration, pack_cur_id, title_distance_score, unpack_cur_id
+from phoenixadult.utils.helpers.dates import format_duration
+from phoenixadult.utils.helpers.ids import pack_cur_id, unpack_cur_id
+from phoenixadult.utils.helpers.scoring import title_distance_score
+from phoenixadult.utils.helpers.text import dict_values_from_key
 
 
 def test_cur_id_roundtrip() -> None:
@@ -75,7 +78,7 @@ def test_meta_content_pins_one_attribute_when_asked() -> None:
 
 
 def test_scene_url_id_reads_the_site_id_from_a_path_or_a_query() -> None:
-    from phoenixadult.utils.helpers.helpers import scene_url_id
+    from phoenixadult.utils.helpers.ids import scene_url_id
 
     assert scene_url_id('https://www.scoreland.com/big-boob-videos/Danielle-Derek/45336/') == '45336'
     assert scene_url_id('https://www.scoreland.com/big-boob-videos/Danielle-Derek/45336') == '45336'

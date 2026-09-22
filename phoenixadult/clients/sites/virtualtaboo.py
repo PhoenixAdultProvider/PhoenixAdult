@@ -5,8 +5,10 @@ from typing import Any
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date, slugify
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _CARD_XP = '//a[contains(@class,"video-card__title")]'
 _MODEL_MATCH_SCORE = 90.0

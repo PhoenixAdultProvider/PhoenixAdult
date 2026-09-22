@@ -28,8 +28,11 @@ from phoenixadult.utils.helpers.data18 import (
     url_id,
     xp_ns,
 )
-from phoenixadult.utils.helpers.helpers import append_unique, build_search_result, pack_cur_id, sceneid_distance_score
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.scoring import sceneid_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import append_unique
 from phoenixadult.utils.images.image_classifier import classify_image
 from phoenixadult.utils.images.image_fetcher import fetch_dimensions
 from phoenixadult.utils.logging.best_effort import best_effort

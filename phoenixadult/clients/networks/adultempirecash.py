@@ -6,8 +6,12 @@ from typing import Any, Literal, cast
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, load_data, slugify
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 
 STUDIO = 'Adult Empire Cash'

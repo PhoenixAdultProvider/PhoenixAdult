@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, slugify
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import append_year_param, first_attr, first_text, meta_content
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
+from phoenixadult.utils.helpers.urls import join_url
 
 _DIRECTOR = ActorResult(
     name='Petter Hegre',

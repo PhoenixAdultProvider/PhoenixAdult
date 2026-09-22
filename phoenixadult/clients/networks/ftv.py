@@ -5,8 +5,12 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, date_distance_score, iso_date, load_data, title_distance_score
+from phoenixadult.utils.helpers.data_files import load_data
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import web_search_urls
+from phoenixadult.utils.helpers.scoring import date_distance_score, title_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 
 STUDIO = 'First Time Videos'

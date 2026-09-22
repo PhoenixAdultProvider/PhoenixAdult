@@ -152,7 +152,7 @@ def _seed_snapshot() -> str:
 
     from phoenixadult.utils import cache as metadata_cache
     from phoenixadult.utils.cache import scene_store
-    from phoenixadult.utils.helpers.helpers import b64url_encode
+    from phoenixadult.utils.helpers.ids import b64url_encode
 
     cur_id = b64url_encode(json.dumps({'title': 'Scene', 'poster': '/img/x.jpg'}))
     md = {'type': 'movie', 'ratingKey': 'rk', 'guid': 'g', 'title': 'Scene', 'studio': 'Studio'}

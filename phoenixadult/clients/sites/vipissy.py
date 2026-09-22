@@ -6,8 +6,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _SEARCH_ROW_XP = '//div[contains(@style,"position:relative") and contains(@style,"background:black")]'
 _TITLE_XP = '//section[contains(@class,"downloads")]//strong'

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 from phoenixadult.utils.processors.title_case import title_case
 
 _raw = load_data(__file__, 'studios')

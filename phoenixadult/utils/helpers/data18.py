@@ -7,7 +7,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 from urllib.parse import urlsplit
 
 from phoenixadult.models.scrape import SceneDetail
-from phoenixadult.utils.helpers.helpers import slugify
+from phoenixadult.utils.helpers.text import slugify
 
 DATA18_BASE = 'https://www.data18.com'
 

@@ -42,7 +42,7 @@ async def test_search_lists_model_scenes() -> None:
 async def test_detail_fields_genres_actor_via_packed_curid() -> None:
     import json
 
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     scene_url = 'https://brandnewamateurs.com/scenes/first.html'
     model_url = 'https://brandnewamateurs.com/models/JaneDoe.html'

@@ -7,8 +7,10 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import build_search_result, epoch_date, pack_cur_id
+from phoenixadult.utils.helpers.dates import epoch_date
 from phoenixadult.utils.helpers.html_helpers import strip_tags
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 _DATA18_PROVIDERS = ['VR Bangers', 'VR Conk']
 

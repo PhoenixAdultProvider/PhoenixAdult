@@ -19,7 +19,10 @@ from phoenixadult.config.env import env
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.helpers.data18 import scene_url_from_ref
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id, slugify
+from phoenixadult.utils.helpers.dates import iso_date
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.filename_parser import clean_search_title
 

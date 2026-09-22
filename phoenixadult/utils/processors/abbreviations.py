@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 
 _raw: list[list[str]] = load_data(__file__, 'abbreviations')
 

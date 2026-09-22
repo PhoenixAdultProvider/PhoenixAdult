@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from w3lib.html import remove_tags, replace_entities
 from w3lib.url import add_or_replace_parameter
 
-from phoenixadult.utils.helpers.helpers import absolute_url
+from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines import SearchOptions, web_search
 

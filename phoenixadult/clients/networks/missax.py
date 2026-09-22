@@ -6,8 +6,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _SEARCH_DATE_XP = (
     './/span[@class="update_thumb_date"] | .//span[@class="date"] | .//div[contains(@class,"updateDetails")]/p/span[2] | .//div[contains(@class,"update_date")]'

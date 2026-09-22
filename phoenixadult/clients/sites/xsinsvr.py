@@ -6,8 +6,9 @@ from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
+from phoenixadult.utils.helpers.urls import absolute_url, append_unique
 
 _ACTOR_XP = '//div/strong[normalize-space(text())="Starring"]/following-sibling::span//a[contains(@class,"tiny-link")]'
 

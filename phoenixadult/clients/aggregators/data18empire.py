@@ -11,8 +11,12 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.helpers.data18 import data18_scene_id
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, join_url, pack_cur_id, sceneid_distance_score
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.scoring import sceneid_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import join_url
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _SCENE_GRID_XP = '//div[contains(@class,"item-grid") and contains(@class,"item-grid-scene")]'

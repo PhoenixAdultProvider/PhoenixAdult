@@ -5,7 +5,7 @@ import binascii
 from phoenixadult.clients import get_client
 from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.helpers import b64url_decode
+from phoenixadult.utils.helpers.ids import b64url_decode
 from phoenixadult.utils.logging.context import scrape_phase_scope
 from phoenixadult.utils.logging.logger import logger
 

@@ -4,7 +4,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from phoenixadult.utils.helpers.helpers import load_data
+from phoenixadult.utils.helpers.data_files import load_data
 from phoenixadult.utils.logging.logger import logger
 
 _MODEL_PATH: Path = load_data(__file__, 'face_detection_yunet_2023mar.onnx', kind='path')

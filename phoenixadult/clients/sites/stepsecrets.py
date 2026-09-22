@@ -4,8 +4,8 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail
-from phoenixadult.utils.helpers.helpers import absolute_url, strip_query
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.urls import absolute_url, strip_query
 
 STUDIO = 'Joymii'
 TAGLINE = 'Step Secrets'

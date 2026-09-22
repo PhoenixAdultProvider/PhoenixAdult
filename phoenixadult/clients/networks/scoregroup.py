@@ -14,8 +14,11 @@ from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
 from phoenixadult.utils.helpers.data18 import mapping_slug
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, pack_cur_id, same_scene, scene_url_id
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id, same_scene, scene_url_id
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.generic import gender_skip_male_enabled
 from phoenixadult.utils.processors.actor_strip import best_title_score

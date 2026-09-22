@@ -4,8 +4,11 @@ import re
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import absolute_url, build_search_result, iso_date, sceneid_distance_score, strip_query, title_distance_score
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.scoring import sceneid_distance_score, title_distance_score
+from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.urls import absolute_url, strip_query
 
 _SEARCH_SURFACES = (('Censored', 'search/'), ('Uncensored', 'uncensored/search/'))
 

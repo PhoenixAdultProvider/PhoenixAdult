@@ -20,7 +20,9 @@ from phoenixadult.services.scraper_router import ScraperRouter
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.helpers import format_duration, title_distance_score, unpack_cur_id
+from phoenixadult.utils.helpers.dates import format_duration
+from phoenixadult.utils.helpers.ids import unpack_cur_id
+from phoenixadult.utils.helpers.scoring import title_distance_score
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.logging.logger import logger
@@ -54,7 +56,7 @@ def _result_scene_id(result: SearchResult) -> str | None:
 
 
 def _live_score(result: SearchResult, search_data: SearchContext) -> float:
-    from phoenixadult.utils.helpers.helpers import date_distance_score
+    from phoenixadult.utils.helpers.scoring import date_distance_score
     from phoenixadult.utils.processors.actor_strip import best_title_score
 
     if search_data.scene_id and _result_scene_id(result) == search_data.scene_id:

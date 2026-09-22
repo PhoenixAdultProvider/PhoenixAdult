@@ -5,8 +5,9 @@ from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
-from phoenixadult.utils.helpers.helpers import absolute_url, append_unique, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, script_match
+from phoenixadult.utils.helpers.urls import absolute_url, append_unique
 
 _CARD_XP = '//a[contains(@class,"scene") and contains(@class,"item") and contains(@class,"light_background")]'
 _IMAGE_RE = re.compile(r'image:\s*"([^"]+)"')

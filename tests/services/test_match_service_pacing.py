@@ -190,7 +190,7 @@ async def test_an_exact_title_store_hit_also_carries_a_live_score(monkeypatch: p
 
 async def test_a_scene_id_match_keeps_its_perfect_score(monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.cache import search_store
-    from phoenixadult.utils.helpers.helpers import pack_cur_id
+    from phoenixadult.utils.helpers.ids import pack_cur_id
 
     svc = MatchService()
     stored = [
@@ -215,7 +215,7 @@ async def test_a_scene_id_match_keeps_its_perfect_score(monkeypatch: pytest.Monk
 
 async def test_an_off_date_stored_result_is_scored_by_date_distance(monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.cache import search_store
-    from phoenixadult.utils.helpers.helpers import date_distance_score
+    from phoenixadult.utils.helpers.scoring import date_distance_score
 
     svc = MatchService()
     stored = [

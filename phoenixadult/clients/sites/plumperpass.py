@@ -8,8 +8,10 @@ from parsel import Selector
 from phoenixadult.clients.base import Client, LoadedScene
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import build_search_result, iso_date, pack_cur_id
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, script_match, web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.logging.best_effort import best_effort
 
 _SCENE_ID_RE = re.compile(r'(?:(?<=\dpp/)|(?<=\dbbwd/)|(?<=\dhsp/)|(?<=\dbbbj/)|(?<=\dpatp/)|(?<=\dftf/)|(?<=\dbgb/))\d+(?=/)')

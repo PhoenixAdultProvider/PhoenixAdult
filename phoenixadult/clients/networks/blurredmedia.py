@@ -7,8 +7,9 @@ from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearc
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.cookies.site_cookies import get_site_cookies
-from phoenixadult.utils.helpers.helpers import absolute_url, iso_date
+from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.urls import absolute_url
 
 _SESSION_COOKIES: dict[str, str] = {'Hot Guys Fuck': 'SPSI'}
 

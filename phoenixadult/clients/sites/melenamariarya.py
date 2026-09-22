@@ -4,8 +4,9 @@ import re
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.helpers import build_search_result, pack_cur_id
 from phoenixadult.utils.helpers.html_helpers import first_text, meta_content
+from phoenixadult.utils.helpers.ids import pack_cur_id
+from phoenixadult.utils.helpers.search_results import build_search_result
 
 _TITLE_SUFFIX = ' - Sex Movies Featuring Melena Maria Rya'
 

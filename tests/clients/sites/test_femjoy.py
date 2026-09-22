@@ -6,7 +6,7 @@ import respx
 from phoenixadult.clients.sites.femjoy import FemjoyClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import pack_cur_id
+from phoenixadult.utils.helpers.ids import pack_cur_id
 
 SITE = find_site('Femjoy')
 assert SITE is not None

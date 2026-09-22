@@ -11,7 +11,7 @@ import phoenixadult.clients.networks.scoregroup as sg_mod
 from phoenixadult.clients.networks.scoregroup import ScoreGroupClient
 from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import find_site
-from phoenixadult.utils.helpers.helpers import b64url_decode
+from phoenixadult.utils.helpers.ids import b64url_decode
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:

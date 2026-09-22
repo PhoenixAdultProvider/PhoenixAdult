@@ -50,7 +50,7 @@ def test_resolve_gives_up_without_a_site() -> None:
 
 
 def test_resolve_recovers_an_item_another_agent_matched() -> None:
-    from phoenixadult.utils.helpers.helpers import b64url_decode
+    from phoenixadult.utils.helpers.ids import b64url_decode
 
     resolved = plex_import._resolve('com.plexapp.agents.xbmcnfo://AA196?lang=xn', 'Aussie Ass')
     assert resolved is not None
