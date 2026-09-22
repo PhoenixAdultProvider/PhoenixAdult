@@ -12,7 +12,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import join_url
 
-STUDIO = 'PornWorld'
 _PER_PAGE = 99
 _MAX_CRAWL_PAGES = 15
 _ISO_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
@@ -178,9 +177,6 @@ class PornWorldClient(Client):
         raw = (details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
 
         metadata.title = _clean_title(raw) if raw else ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

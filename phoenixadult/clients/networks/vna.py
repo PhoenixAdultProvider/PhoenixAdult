@@ -7,7 +7,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 
-STUDIO = 'VNA Network'
 _SCENE_ACTORS: dict[str, list[str]] = {'36260': ['Sarah Arabic']}
 
 
@@ -77,9 +76,6 @@ class VNAClient(Client):
             summary = summary.replace(self._actors_text(scene), '').strip()
 
         metadata.summary = summary or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

@@ -10,8 +10,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.processors.title_case import title_case
 
-STUDIO = 'New Sensations'
-
 
 class NewSensationsOtherClient(Client):
     search_url_xpath = '(.//a)[1]/@href'
@@ -83,9 +81,6 @@ class NewSensationsOtherClient(Client):
         )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

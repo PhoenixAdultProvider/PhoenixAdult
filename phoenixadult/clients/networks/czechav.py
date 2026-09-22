@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.scoring import title_distance_score
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Czech Authentic Videos'
 _CASTING_HOST = 'czechcasting.com'
 _TRAILING_ID_RE = re.compile(r'-(\d+)$')
 
@@ -79,9 +78,6 @@ class CzechAVClient(Client):
         first = first_attr(ps[0])
 
         metadata.summary = second or first or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

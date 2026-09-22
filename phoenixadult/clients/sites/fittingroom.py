@@ -69,9 +69,6 @@ class FittingRoomClient(Client):
 
         metadata.title = _extract_title(details_page_elements) or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

@@ -8,7 +8,6 @@ from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, meta_content
 
-STUDIO = 'Romero Multimedia'
 _FULLSTORY_ONLY = {'Freeze', 'Plants vs Cunts'}
 _LOOSE_ACTOR = {'Defeated Sex Fight'}
 
@@ -77,9 +76,6 @@ class RomeroClient(Client):
                 parts.append(text)
 
         metadata.summary = '\n'.join(parts).strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

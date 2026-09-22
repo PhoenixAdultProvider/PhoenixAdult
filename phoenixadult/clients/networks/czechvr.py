@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.scoring import sceneid_distance_score
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Czech VR'
 _DATE_FMT = '%b %d, %Y'
 _BRAND_SUFFIXES = ['Czech VR Network', ' - Czech VR Fetish Porn Videos', 'Czech VR Fetish', 'Czech VR Casting', 'Czech VR']
 _CDN_RE = re.compile(r'/cdn-cgi/image/[^/]*/')
@@ -87,9 +86,6 @@ class CzechVRClient(Client):
             return
 
         metadata.summary = (details_page_elements.xpath('(//div[@class="textDetail"])[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

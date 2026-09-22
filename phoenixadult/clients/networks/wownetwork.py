@@ -10,7 +10,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'WowNetwork'
 _SEARCH_PAGES = 5
 
 
@@ -50,9 +49,6 @@ class WowNetworkClient(Client):
         results.extend(await self.paginate_search(fetch_rows=fetch_rows, build_row=build_row, max_pages=_SEARCH_PAGES, stop_on_empty_page=True))
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

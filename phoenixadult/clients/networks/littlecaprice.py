@@ -12,8 +12,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 from phoenixadult.utils.helpers.urls import absolute_url, join_url
 
-STUDIO = 'LittleCaprice'
-
 _CATEGORY_TAGLINES: dict[str, str] = load_data(__file__, 'littlecaprice_category_taglines')
 
 
@@ -96,9 +94,6 @@ class LittleCapriceClient(Client):
             title = title[len(tagline) :].strip()
 
         metadata.title = title or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

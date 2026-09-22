@@ -19,7 +19,6 @@ from phoenixadult.utils.people.sources import scene_image_pref
 _SCENE_BASE = 'https://www.naughtyamerica.com'
 _LASTPAGE_RE = re.compile(r'\d+(?=#)')
 _IMAGES_CDN_RE = re.compile(r'images\d+', re.IGNORECASE)
-STUDIO = 'Naughty America'
 _PACE_SECONDS = 5.0
 _PACE_JITTER = 3.0
 _SCENE_COOLDOWN = 7.0
@@ -168,9 +167,6 @@ class NaughtyAmericaClient(Client):
         div = details_page_elements.xpath('(//div[contains(@class,"synopsis") and contains(@class,"grey-text")])[1]')
 
         metadata.summary = ''.join(div.xpath('.//text()[not(ancestor::h2)]').getall()).strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''

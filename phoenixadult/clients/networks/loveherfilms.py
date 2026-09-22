@@ -10,7 +10,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'LoveHerFilms'
 _DATE_FMT = '%B %d, %Y'
 
 
@@ -38,9 +37,6 @@ class LoveHerFilmsClient(Client):
         return (iso_date(raw) if raw else None) or loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

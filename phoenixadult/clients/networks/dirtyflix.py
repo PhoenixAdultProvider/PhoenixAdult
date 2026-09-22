@@ -13,7 +13,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Dirty Flix'
 _TOUR_HOST = 'https://dirtyflix.com'
 _SCENE_ID_RE = re.compile(r'tour_thumbs/([^/]+)/')
 
@@ -175,9 +174,6 @@ class DirtyFlixClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = (scene.extra or {}).get('summary') or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

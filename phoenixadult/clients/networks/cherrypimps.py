@@ -8,7 +8,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Cherry Pimps'
 _SEARCH_PAGES = 2
 
 _SEARCH_TITLE_XP = './/p[contains(@class,"text-thumb")]//a | .//div[contains(@class,"item-title")]//a'
@@ -58,9 +57,6 @@ class CherryPimpsClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.summary = (details_page_elements.xpath(f'({_DETAIL_SUMMARY_XP})[1]').xpath('string(.)').get() or '').strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

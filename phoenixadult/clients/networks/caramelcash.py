@@ -10,8 +10,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import strip_query
 
-STUDIO = 'Caramel Cash'
-
 _DDMMYYYY_RE = re.compile(r'^\d{1,2}\.\d{1,2}\.\d{4}$')
 _ORDINAL_RE = re.compile(r'(\d)(st|nd|rd|th)', re.IGNORECASE)
 
@@ -72,9 +70,6 @@ class CaramelCashClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

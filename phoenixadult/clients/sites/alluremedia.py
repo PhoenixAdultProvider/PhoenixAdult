@@ -17,7 +17,6 @@ from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.text import decensor
 from phoenixadult.utils.helpers.urls import absolute_url, join_url
 
-STUDIO = 'Allure Media'
 _TABLES: dict[str, Any] = load_data(__file__, 'alluremedia_tables')
 _CENSORED: dict[str, str] = _TABLES['censoredWords']
 _SCENE_ACTORS: list[str] = _TABLES['sceneActors']
@@ -77,9 +76,6 @@ class AllureMediaClient(Client):
             )
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

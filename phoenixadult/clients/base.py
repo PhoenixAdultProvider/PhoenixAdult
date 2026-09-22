@@ -578,7 +578,7 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
             metadata.summary = self.first_of(scene.require_sel(), self.summary_xpath)
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        return None
+        metadata.studio = scene.site.provider_name or scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         return None

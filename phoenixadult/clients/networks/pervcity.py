@@ -188,9 +188,6 @@ class PervCityClient(Client):
 
         metadata.summary = (details_page_elements.xpath('(//h3[@class="description"])[1]').xpath('string(.)').get() or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)
 

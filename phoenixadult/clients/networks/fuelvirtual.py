@@ -9,7 +9,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr, script_match
 from phoenixadult.utils.helpers.search_results import build_search_result
 
-STUDIO = 'FuelVirtual'
 _IMG_SCRIPT_RE = re.compile(r'image:\s*"(.+)"')
 _SCENE_ID_RE = re.compile(r'id=(\d+)')
 
@@ -68,9 +67,6 @@ class FuelVirtualClient(Client):
             return
 
         metadata.title = raw.split('-')[0].strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

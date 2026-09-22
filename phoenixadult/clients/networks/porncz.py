@@ -8,7 +8,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'PornCZ'
 _DOLLS_SITE = 'Czech Real Dolls'
 
 
@@ -43,9 +42,6 @@ class PornCZClient(Client):
         return absolute_url(thumb, loaded.site.base_url)
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

@@ -9,8 +9,6 @@ from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Thick Cash'
-
 
 class ThickCashOtherClient(Client):
     title_xpath = '(//h3[contains(@class,"top-title")])[1]'
@@ -64,9 +62,6 @@ class ThickCashOtherClient(Client):
                         await add_scene(absolute_url(href, search_data.site_info.base_url))
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

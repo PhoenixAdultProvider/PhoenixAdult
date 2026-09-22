@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 
-STUDIO = 'PureCFNM'
 _GENRES: dict[str, list[str]] = load_data(__file__, 'purecfnm_genres')
 
 
@@ -74,9 +73,6 @@ class PureCFNMClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = scene.extra_or(dict, {}).get('summary') or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

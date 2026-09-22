@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.processors.title_case import title_case
 
-STUDIO = 'GASM'
 _DATE_FMT = '%b %d, %Y'
 
 _CHANNELS: dict[str, str] = load_data(__file__, 'gasm_channels')
@@ -98,9 +97,6 @@ class GasmClient(Client):
         raw = details_page_elements.xpath('(//h2[contains(@class,"post_description")])[1]').xpath('string(.)').get() or ''
 
         metadata.summary = raw.replace('´', "'").replace('’', "'").strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''

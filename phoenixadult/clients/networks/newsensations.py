@@ -12,8 +12,6 @@ from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.best_effort import best_effort
 from phoenixadult.utils.processors.actor_strip import enabled_for, strip_actor_prefix
 
-STUDIO = 'New Sensations'
-
 
 class NewSensationsClient(Client):
     async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
@@ -89,9 +87,6 @@ class NewSensationsClient(Client):
         metadata.summary = (
             (details_page_elements.xpath('(//div[@class="description"]/h2)[1]').xpath('string(.)').get() or '').replace('Description:', '').strip()
         )
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._dvd_tagline(scene) or ''

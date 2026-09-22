@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_a
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.processors.title_case import title_case
 
-STUDIO = 'Teen Mega World'
 _SEARCH_PAGES = 2
 
 
@@ -52,9 +51,6 @@ class TeenMegaWorldClient(Client):
         return title_case(raw, site_name=scene.site.name) if raw else scene.site.name
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

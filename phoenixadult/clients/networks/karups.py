@@ -12,7 +12,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Karups'
 _ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)\b', re.IGNORECASE)
 
 
@@ -89,9 +88,6 @@ class KarupsClient(Client):
         metadata.summary = (
             details_page_elements.xpath('(//div[contains(@class,"content-information-description")]//p)[1]').xpath('string(.)').get() or ''
         ).strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

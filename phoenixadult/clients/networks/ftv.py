@@ -13,8 +13,6 @@ from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'First Time Videos'
-
 _PHOTO_LOOKUP: dict[str, list[str]] = load_data(__file__, 'ftv_photo_lookup')
 
 _GENRES: dict[str, list[str]] = {
@@ -114,9 +112,6 @@ class FTVClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _parse_title_and_date(details_page_elements)[0] or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

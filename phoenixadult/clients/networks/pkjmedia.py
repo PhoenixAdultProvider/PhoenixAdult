@@ -8,8 +8,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'PKJ Media'
-
 _GENRES: dict[str, list[str]] = {'My POV Fam': ['Family', 'Pov'], 'Perverted POV': ['Pov'], 'Raw White Meat': ['Interracial']}
 
 
@@ -47,9 +45,6 @@ class PKJMediaClient(Client):
             return
 
         metadata.summary = (details_page_elements.xpath('(//div[contains(@class,"brxe-post-content")]//p)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

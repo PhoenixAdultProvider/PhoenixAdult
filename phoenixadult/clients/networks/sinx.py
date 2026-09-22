@@ -8,7 +8,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'SinX'
 _ANCHOR = './/div[contains(@class,"video_item--content")]//a'
 _DATE_FMT = '%d %b %Y'
 
@@ -36,9 +35,6 @@ class SinXClient(Client):
         return absolute_url(href, loaded.site.base_url) if href else ''
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

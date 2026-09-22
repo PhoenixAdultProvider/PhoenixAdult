@@ -13,7 +13,6 @@ from phoenixadult.utils.helpers.urls import absolute_url
 
 _FIXED_GENRES: list[str] = ['Blockbuster Movie', 'French porn']
 
-STUDIO = 'Marc Dorcel'
 _DENSITY_RE = re.compile(r'\s*\d+x\s*$')
 
 _SCENE_CARD_XP = (
@@ -99,9 +98,6 @@ class DorcelClubClient(Client):
                 results.append(card_result(scene_title, scene_url))
 
     # ── Update Field Hooks (branch on movie vs scene URL) ─────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

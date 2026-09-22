@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 
-STUDIO = 'Killergram'
 _TITLE_RE = re.compile(r'/models/([\w ]+)/\1_([\w ]+)/')
 
 
@@ -78,9 +77,6 @@ class KillergramClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _extract_title(details_page_elements) or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

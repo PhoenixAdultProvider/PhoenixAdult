@@ -83,9 +83,6 @@ class VirtualRealClient(Client):
 
         metadata.summary = ((ld.get('description') if ld else '') or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name or ''
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
 

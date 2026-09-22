@@ -9,7 +9,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import join_url
 
-STUDIO = 'VIP4K'
 _GENRES: dict[str, list[str]] = load_data(__file__, 'vip4k_genres')
 
 
@@ -89,9 +88,6 @@ class VIP4KClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.title = _clean_title(details_page_elements.xpath('(//title)[1]').xpath('string(.)').get() or '') or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

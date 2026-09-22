@@ -12,7 +12,6 @@ from phoenixadult.utils.helpers.dates import epoch_date
 from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 
-STUDIO = 'Bellesa'
 _API = '/api/rest/v1'
 
 
@@ -115,9 +114,6 @@ class BellesaClient(Client):
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = str(self._v(scene).get('description') or '').strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''

@@ -128,9 +128,6 @@ class BadoinkVrClient(Client):
         details_page_elements = scene.require_sel()
         metadata.title = (details_page_elements.xpath('(//h1[contains(@class,"video-title")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name if scene.site.name != STUDIO else ''
 

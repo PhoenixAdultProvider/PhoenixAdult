@@ -11,7 +11,6 @@ from phoenixadult.utils.helpers.scoring import date_distance_score, title_distan
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Femdom Empire'
 _DATE_FMT = '%B %d, %Y'
 
 _MANUAL_MATCHES: dict[str, dict[str, str]] = load_data(__file__, 'femdomempire_manual_matches')
@@ -77,9 +76,6 @@ class FemdomEmpireClient(Client):
             parse_rows(standard_search_results['sel'])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

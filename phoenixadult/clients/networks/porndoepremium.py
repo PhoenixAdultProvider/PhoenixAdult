@@ -8,7 +8,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Porndoe Premium'
 _TITLE_SEL = './/div[@class="-g-vc-item-title"]//a'
 
 
@@ -46,9 +45,6 @@ class PorndoePremiumClient(Client):
         return (details_page_elements.xpath('(//div[@class="-mvd-grid-actors"]//span/a)[1]').xpath('string(.)').get() or '').strip()
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._first_actor(scene) or ''

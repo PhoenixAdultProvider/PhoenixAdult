@@ -10,7 +10,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Perfect Gonzo'
 _SUMMARY_DIV = 'col-sm-8 col-md-8 no-padding-side'
 _TAGS_DIV = 'col-sm-8 col-md-8 no-padding-side tag-container'
 _ACTOR_DIV = 'col-sm-3 col-md-3 col-md-offset-1 no-padding-side'
@@ -45,9 +44,6 @@ class PerfectGonzoClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.summary = (details_page_elements.xpath(f'(//div[@class="{_SUMMARY_DIV}"]/p)[1]').xpath('string(.)').get() or '').strip()
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name

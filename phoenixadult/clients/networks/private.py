@@ -14,7 +14,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Private'
 _SUPPORTED_LANGS = {'en', 'de', 'fr', 'es', 'nl'}
 
 
@@ -102,9 +101,6 @@ class PrivateClient(Client):
         details_page_elements = scene.require_sel()
 
         metadata.summary = first_attr(details_page_elements, '(//meta[@itemprop="description"])[1]/@content') or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene)

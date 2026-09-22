@@ -12,7 +12,6 @@ from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 
-STUDIO = 'Couples Cinema'
 _YEAR_RE = re.compile(r'^\d{4}$')
 
 
@@ -113,9 +112,6 @@ class CouplesCinemaClient(Client):
         metadata.title = (
             details_page_elements.xpath('(//div[contains(@class,"mediaHeader")]//span[contains(@class,"title")])[1]').xpath('string(.)').get() or ''
         ).strip() or ''
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''

@@ -83,9 +83,6 @@ class SexMexClient(Client):
 
         metadata.title = _cleanup_title(raw, self._actor_names(scene)) or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = scene.site.name or ''
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
 

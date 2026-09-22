@@ -10,7 +10,6 @@ from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
 from phoenixadult.utils.helpers.urls import absolute_url
 
-STUDIO = 'Puffy Network'
 _SEARCH_CARD = '//div[@style="position:relative; background:black;"]'
 
 
@@ -48,9 +47,6 @@ class PuffyClient(Client):
         summary = all_text.replace(tags, '') if tags else all_text
 
         metadata.summary = summary.split('Show more...')[0].strip()
-
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
