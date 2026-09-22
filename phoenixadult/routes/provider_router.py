@@ -6,11 +6,11 @@ from fastapi.responses import JSONResponse
 from phoenixadult.models.media_provider import MediaProviderResponse
 from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.routes import plex_json, read_json_body
+from phoenixadult.routes.provider_guard import provider_guard
 from phoenixadult.services import scrape_queue
 from phoenixadult.services.match_service import MatchRequest, MatchService
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
-from phoenixadult.utils.auth.provider_guard import provider_guard
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.logging.request_trace import trace_body
 from phoenixadult.utils.plex.media_type import plex_media_type_id
