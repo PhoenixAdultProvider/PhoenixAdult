@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -7,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.auth.image_guard import image_guard
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.http.ssrf_guard import assert_fetchable_url
 from phoenixadult.utils.images.ext import IMAGE_EXTS
@@ -38,17 +40,24 @@ async def local_image(request: Request, filepath: str) -> Response:
     candidates = [file_path, safe_join(env.people_cache_dir, filepath)]
     if filepath.startswith('logos/'):
         candidates.append(safe_join(env.logo_cache_dir, filepath[len('logos/') :]))
+    found = await run_in('fs', _first_existing, candidates)
+    if found is None:
+        return JSONResponse({'error': 'Image not found'}, status_code=404)
+
+    candidate, stat_result = found
+    cache_control = _VERSIONED_CACHE_CONTROL if request.query_params.get('v') else _REVALIDATE_CACHE_CONTROL
+    return FileResponse(candidate, stat_result=stat_result, headers={'Cache-Control': cache_control})
+
+
+def _first_existing(candidates: list[Path | None]) -> tuple[Path, os.stat_result] | None:
     for candidate in candidates:
         if candidate is None:
             continue
         try:
-            stat_result = candidate.stat()
+            return candidate, candidate.stat()
         except OSError:
             continue
-        cache_control = _VERSIONED_CACHE_CONTROL if request.query_params.get('v') else _REVALIDATE_CACHE_CONTROL
-        return FileResponse(candidate, stat_result=stat_result, headers={'Cache-Control': cache_control})
-
-    return JSONResponse({'error': 'Image not found'}, status_code=404)
+    return None
 
 
 @cache_router.get('/cache/{splat:path}')
@@ -56,7 +65,7 @@ async def cached_metadata_image(splat: str) -> Response:
     if Path(splat).suffix.lower() not in IMAGE_EXTS:
         return JSONResponse({'error': 'Invalid file type'}, status_code=400)
     file_path = safe_join(env.metadata_cache_dir, splat)
-    if not file_path or not file_path.exists():
+    if not file_path or not await run_in('fs', file_path.exists):
         return JSONResponse({'error': 'Image not found'}, status_code=404)
     return FileResponse(file_path, headers={'Cache-Control': _REVALIDATE_CACHE_CONTROL})
 
@@ -71,7 +80,7 @@ async def manual_nfo_image(splat: str) -> Response:
     file_path = safe_join(env.manual_nfo_path, *segments)
     if not file_path:
         return JSONResponse({'error': 'Invalid path'}, status_code=400)
-    if not file_path.exists():
+    if not await run_in('fs', file_path.exists):
         return JSONResponse({'error': 'Image not found'}, status_code=404)
     return FileResponse(file_path)
 
