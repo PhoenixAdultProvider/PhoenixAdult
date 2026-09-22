@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.sources.adultDvdEmpire import adult_dvd_empire_source
+from phoenixadult.utils.people.sources.adult_dvd_empire import adult_dvd_empire_source
 from phoenixadult.utils.people.sources.babepedia import babepedia_source
-from phoenixadult.utils.people.sources.babesAndStars import babes_and_stars_source
+from phoenixadult.utils.people.sources.babes_and_stars import babes_and_stars_source
 from phoenixadult.utils.people.sources.boobpedia import boobpedia_source
 from phoenixadult.utils.people.sources.iafd import iafd_source
 from phoenixadult.utils.people.sources.indexxx import indexxx_source
-from phoenixadult.utils.people.sources.javDatabase import jav_database_source
-from phoenixadult.utils.people.sources.localStorage import local_storage_source
+from phoenixadult.utils.people.sources.jav_database import jav_database_source
+from phoenixadult.utils.people.sources.local_storage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, PhotoHit
 
 ALL_SOURCES: list[PersonSource] = [

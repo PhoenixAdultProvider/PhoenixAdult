@@ -24,7 +24,7 @@ from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import _ORIGINALS_DIR, _index_conn, cache_photo, people_cache_dir, purge, restore_original, set_gender
 from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
-from phoenixadult.utils.people.sources.localStorage import local_storage_source
+from phoenixadult.utils.people.sources.local_storage import local_storage_source
 from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
 from phoenixadult.utils.processors.title_case import title_case
 
