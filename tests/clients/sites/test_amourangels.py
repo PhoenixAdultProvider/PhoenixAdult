@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.amourangels import AmourAngelsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Amour Angels')
 assert SITE is not None
@@ -47,7 +48,7 @@ async def test_detail_fields_actors_images() -> None:
     assert detail is not None
     assert detail.title == 'Sunny Day'
     assert detail.studio == 'Amour Angels'
-    assert detail.collections == ['Amour Angels']
+    assert served_collections(detail) == ['Amour Angels']
     assert detail.genres == ['Softcore', 'European Girls']
     assert detail.release_date == '2021-05-10'
     assert len(detail.actors) == 1

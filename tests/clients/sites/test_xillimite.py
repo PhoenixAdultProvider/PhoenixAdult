@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.xillimite import XillimiteClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Xillimite')
 assert SITE is not None
@@ -56,7 +57,7 @@ async def test_detail() -> None:
     assert detail.summary == 'Line one.\nLine two.'
     assert detail.studio == 'Xillimite'
     assert detail.tagline == ''
-    assert detail.collections == ['Xillimite']
+    assert served_collections(detail) == ['Xillimite']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://www.xillimite.com/img/blur9/jane.jpg'),
         ('Mary Roe', 'https://www.xillimite.com/img/blur9/mary.jpg'),

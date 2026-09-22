@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.vrpfilms import VRPFilmsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('VRPFilms')
 assert SITE is not None
@@ -65,7 +66,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A wild scene blurb.'
     assert detail.studio == 'VRPFilms'
     assert detail.tagline == ''
-    assert detail.collections == ['VRPFilms']
+    assert served_collections(detail) == ['VRPFilms']
     assert detail.genres == ['Anal', 'Hardcore', 'Threesome']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://cdn.vrp.com/jane.jpg'),

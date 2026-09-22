@@ -10,6 +10,7 @@ import phoenixadult.clients.sites.xart as xart_module
 from phoenixadult.clients.sites.xart import XartClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('X-Art')
 assert SITE is not None
@@ -77,7 +78,7 @@ async def test_detail_harvest_variants(monkeypatch: pytest.MonkeyPatch, no_web_s
     assert detail.title == 'Wild Ride'
     assert detail.summary == 'An exquisite scene.\n\nSet in the wilderness.'
     assert detail.studio == 'X-Art'
-    assert detail.collections == ['X-Art']
+    assert served_collections(detail) == ['X-Art']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Artistic', 'Glamorous']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.example/jane.jpg')]

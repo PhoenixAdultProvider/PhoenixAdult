@@ -8,6 +8,7 @@ import phoenixadult.clients.sites.vrlatina as vrl_module
 from phoenixadult.clients.sites.vrlatina import VRLatinaClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('VR Latina')
 assert SITE is not None
@@ -51,7 +52,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'VR Latina'
     assert detail.tagline == ''
-    assert detail.collections == ['VR Latina']
+    assert served_collections(detail) == ['VR Latina']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.vrl.com/jane.jpg')]

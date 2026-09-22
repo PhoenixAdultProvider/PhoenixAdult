@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.vrallure import VRAllureClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('VRAllure')
 assert SITE is not None
@@ -65,7 +66,7 @@ async def test_detail() -> None:
     assert detail.summary == 'Lots of fun.'
     assert detail.studio == 'VRAllure'
     assert detail.tagline == 'VRAllure'
-    assert detail.collections == ['VRAllure']
+    assert served_collections(detail) == ['VRAllure']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.vra.com/jane.jpg')]

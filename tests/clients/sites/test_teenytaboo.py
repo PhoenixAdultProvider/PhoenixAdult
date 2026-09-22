@@ -8,6 +8,7 @@ import phoenixadult.clients.sites.teenytaboo as tt_module
 from phoenixadult.clients.sites.teenytaboo import TeenyTabooClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Teeny Taboo')
 assert SITE is not None
@@ -41,6 +42,6 @@ async def test_detail() -> None:
     assert detail.summary == 'A scene blurb.'
     assert detail.studio == 'Teeny Taboo'
     assert detail.tagline == ''
-    assert detail.collections == ['Teeny Taboo']
+    assert served_collections(detail) == ['Teeny Taboo']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Sue Smith']
     assert detail.art == ['https://teenytaboo.com/img/poster.jpg']

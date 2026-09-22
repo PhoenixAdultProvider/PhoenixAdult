@@ -65,9 +65,6 @@ class @CLASS@(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"description")]')
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
             return
@@ -92,6 +89,7 @@ import respx
 from phoenixadult.clients.@KIND@.@MODULE@ import @CLASS@
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('@NAME@')
 assert SITE is not None
@@ -124,7 +122,7 @@ async def test_detail_parses_the_scene_page() -> None:
     assert detail is not None
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A blurb.'
-    assert detail.collections == ['@NAME@']
+    assert served_collections(detail) == ['@NAME@']
     assert detail.art == ['@BASE_URL@/img/t1.jpg']
 '''
 

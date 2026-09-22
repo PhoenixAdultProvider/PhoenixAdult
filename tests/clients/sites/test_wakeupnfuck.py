@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.wakeupnfuck import WakeUpNFuckClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('WakeUpNFuck')
 assert SITE is not None
@@ -49,7 +50,7 @@ async def test_detail_publish_date_split() -> None:
     assert detail.title == 'wild scene'
     assert detail.studio == 'WakeUpNFuck'
     assert detail.tagline == ''
-    assert detail.collections == ['WakeUpNFuck']
+    assert served_collections(detail) == ['WakeUpNFuck']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Hardcore', 'POV']
     assert [(a.name, a.photo_url) for a in detail.actors] == [

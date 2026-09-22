@@ -62,9 +62,6 @@ class VRPFilmsClient(Client):
 
         metadata.title = first_text(details_page_elements, _HERO_TITLE_XP) or ''
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
             return

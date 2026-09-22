@@ -84,9 +84,6 @@ class TwoTGirlsClient(Client):
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if not scene.scene_date:
             return

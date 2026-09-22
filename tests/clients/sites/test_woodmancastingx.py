@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.woodmancastingx import WoodmanCastingXClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('WoodmanCastingX')
 assert SITE is not None
@@ -56,7 +57,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb with extra spaces.'
     assert detail.studio == 'Woodman Casting X'
     assert detail.tagline == 'WoodmanCastingX'
-    assert detail.collections == ['WoodmanCastingX']
+    assert served_collections(detail) == ['WoodmanCastingX']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.wcx/jane.jpg')]

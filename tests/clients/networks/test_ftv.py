@@ -7,6 +7,7 @@ import respx
 import phoenixadult.clients.networks.ftv as ftv_mod
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -54,7 +55,7 @@ async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.summary == 'A summary featuring Jane Doe here.'
     assert detail.studio == 'First Time Videos'
     assert detail.tagline == 'FTVGirls'
-    assert detail.collections == ['FTVGirls']
+    assert served_collections(detail) == ['FTVGirls']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Teen', 'Solo', 'Public']
     assert detail.actors[0].name == 'Jane Doe'

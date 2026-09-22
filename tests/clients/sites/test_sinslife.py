@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.sinslife import SinsLifeClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('SinsLife')
 assert SITE is not None
@@ -67,7 +68,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A wild blurb.'
     assert detail.studio == 'SinsLife'
     assert detail.tagline == 'SinsLife'
-    assert detail.collections == ['SinsLife']
+    assert served_collections(detail) == ['SinsLife']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Kissa Sins', 'Johnny Sins', 'Third Star']

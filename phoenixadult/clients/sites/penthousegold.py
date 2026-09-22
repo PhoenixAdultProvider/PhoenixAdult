@@ -94,9 +94,6 @@ class PenthouseGoldClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"content-desc") and contains(@class,"content-new-scene")]//p')
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

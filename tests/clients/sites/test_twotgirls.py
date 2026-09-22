@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.twotgirls import TwoTGirlsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('TwoTGirls')
 assert SITE is not None
@@ -79,7 +80,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'TwoTGirls'
     assert detail.tagline == 'TwoTGirls'
-    assert detail.collections == ['TwoTGirls']
+    assert served_collections(detail) == ['TwoTGirls']
     assert detail.genres == ['Anal', 'Hardcore', 'Threesome']
     assert [(a.name, a.photo_url) for a in detail.actors] == [
         ('Jane Doe', 'https://cdn/tt/jane.jpg'),

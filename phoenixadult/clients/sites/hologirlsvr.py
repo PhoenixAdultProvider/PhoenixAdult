@@ -80,9 +80,6 @@ class HoloGirlsVRClient(Client):
 
         metadata.summary = nodes[4].strip() or ''
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

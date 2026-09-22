@@ -97,9 +97,6 @@ class DickDrainersClient(Client):
 
         metadata.summary = joined or ''
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         if scene.scene_date:
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date

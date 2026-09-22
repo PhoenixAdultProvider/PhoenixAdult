@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.vogov import VogoVClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('VogoV')
 assert SITE is not None
@@ -64,7 +65,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'VogoV'
     assert detail.tagline == ''
-    assert detail.collections == ['VogoV']
+    assert served_collections(detail) == ['VogoV']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn/jane.jpg')]

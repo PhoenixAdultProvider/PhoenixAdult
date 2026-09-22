@@ -59,9 +59,6 @@ class PubaClient(Client):
 
         metadata.title = first_text(details_page_elements, _TITLE_XP)
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

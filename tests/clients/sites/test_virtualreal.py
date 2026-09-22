@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.virtualreal import VirtualRealClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('VirtualRealPorn')
 assert SITE is not None
@@ -59,7 +60,7 @@ async def test_detail_actor_photo_zip() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'VirtualRealPorn'
     assert detail.tagline == 'VirtualRealPorn'
-    assert detail.collections == ['VirtualRealPorn']
+    assert served_collections(detail) == ['VirtualRealPorn']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [(a.name, a.photo_url) for a in detail.actors] == [

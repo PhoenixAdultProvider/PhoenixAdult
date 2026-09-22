@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.puba import PubaClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Puba')
 assert SITE is not None
@@ -41,7 +42,7 @@ async def test_detail_genres_actors_image() -> None:
     assert detail is not None
     assert detail.title == 'Network Scene'
     assert detail.studio == 'Puba'
-    assert detail.collections == ['Puba']
+    assert served_collections(detail) == ['Puba']
     assert detail.genres == ['Anal']
     assert [a.name for a in detail.actors] == ['Alice']
     assert detail.art == ['https://cdn.puba.com/poster.jpg']

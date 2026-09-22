@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.sicflics import SicflicsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Sicflics')
 assert SITE is not None
@@ -58,7 +59,7 @@ async def test_detail_from_packed_payload() -> None:
     assert detail.summary == "Featuring: 'Anna Loma' is wild"
     assert detail.studio == 'Sicflics'
     assert detail.tagline == 'Sicflics'
-    assert detail.collections == ['Sicflics']
+    assert served_collections(detail) == ['Sicflics']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Fisting', 'Extreme']
     assert [a.name for a in detail.actors] == ['Anna Loma']

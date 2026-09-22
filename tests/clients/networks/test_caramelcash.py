@@ -8,6 +8,7 @@ import phoenixadult.clients.networks.caramelcash as cc_mod
 from phoenixadult.clients.networks.caramelcash import CaramelCashClient, __testing__
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -58,7 +59,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Caramel Cash'
     assert detail.tagline == 'Alex Legend'
-    assert detail.collections == ['Alex Legend']
+    assert served_collections(detail) == ['Alex Legend']
     assert detail.release_date == '2024-05-12'
     assert detail.genres == ['Anal', 'Gonzo']
     assert [a.name for a in detail.actors] == ['Jane Doe']

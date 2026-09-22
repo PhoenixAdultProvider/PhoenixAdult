@@ -96,9 +96,6 @@ class BlackPayBackClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"videoDetails") and contains(@class,"clear")]/p')
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = scene.require_extra(_BpbExtra).release_date
 

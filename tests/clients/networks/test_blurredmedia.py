@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.networks.blurredmedia import BlurredMediaClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Gay Hoopla')
 assert SITE is not None
@@ -60,7 +61,7 @@ async def test_detail() -> None:
     assert detail.title == 'Cool Scene'
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Gay Hoopla'
-    assert detail.collections == ['Gay Hoopla']
+    assert served_collections(detail) == ['Gay Hoopla']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Anal', 'Twink']
     assert [a.name for a in detail.actors] == ['Jane Doe']

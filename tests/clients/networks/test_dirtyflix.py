@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.networks.dirtyflix import DirtyFlixClient, __testing__
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Tricky Agent')
 assert SITE is not None
@@ -43,7 +44,7 @@ async def test_search_and_detail_roundtrip() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Dirty Flix'
     assert detail.tagline == 'Tricky Agent'
-    assert detail.collections == ['Tricky Agent']
+    assert served_collections(detail) == ['Tricky Agent']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Agent', 'Casting']
     assert detail.art == ['https://trickyagent.com/img/poster.jpg']

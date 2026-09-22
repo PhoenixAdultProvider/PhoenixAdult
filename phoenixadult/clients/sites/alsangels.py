@@ -146,9 +146,6 @@ class AlsAngelsClient(Client):
 
         metadata.summary = (row.xpath('(.//span[contains(@class,"videodescription")])[1]').xpath('string(.)').get() or '').strip() or ''
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = self._ex(scene).get('scene_date') or None
 

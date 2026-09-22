@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.virtualtaboo import VirtualTabooClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Virtual Taboo')
 assert SITE is not None
@@ -84,7 +85,7 @@ async def test_detail_full_summary() -> None:
     assert detail.summary == 'Full description text.'
     assert detail.studio == 'Virtual Taboo'
     assert detail.tagline == ''
-    assert detail.collections == ['Virtual Taboo']
+    assert served_collections(detail) == ['Virtual Taboo']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Anal', 'Hardcore']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe']

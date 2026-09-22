@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.wearehairy import WeAreHairyClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('We Are Hairy')
 assert SITE is not None
@@ -59,7 +60,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'We Are Hairy'
     assert detail.tagline == 'We Are Hairy'
-    assert detail.collections == ['We Are Hairy']
+    assert served_collections(detail) == ['We Are Hairy']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Hairy Armpits', 'Solo', 'Hairy Girls', 'Hairy Pussy']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe']

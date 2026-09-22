@@ -8,6 +8,7 @@ from phoenixadult.clients.sites import blackpayback as bpb_module
 from phoenixadult.clients.sites.blackpayback import BlackPayBackClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Black PayBack')
 assert SITE is not None
@@ -58,7 +59,7 @@ async def test_detail_title_fix_iafd_genres_images() -> None:
     assert detail.title == 'Birfday Bitch'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Black PayBack'
-    assert detail.collections == ['Black PayBack']
+    assert served_collections(detail) == ['Black PayBack']
     assert detail.release_date == '2021-03-14'
     assert detail.genres == ['Anal', 'BBC']
     assert [a.name for a in detail.actors] == ['Aria Carson']

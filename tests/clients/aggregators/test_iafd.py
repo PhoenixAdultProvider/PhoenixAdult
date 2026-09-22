@@ -7,6 +7,7 @@ from phoenixadult.clients.aggregators.iafd import IAFDClient, supplement
 from phoenixadult.clients.base import FetchCtx
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Black Patrol')
 assert SITE is not None
@@ -92,7 +93,7 @@ async def test_detail_reads_every_field_iafd_carries() -> None:
     assert metadata.actors[0].photo_url == 'https://www.iafd.com/graphics/headshots/joslynjane_f_25.jpg'
     assert [d.name for d in metadata.directors or []] == ['Ric Cash']
     assert metadata.studio == 'Black Patrol'
-    assert metadata.collections == ['Black Patrol']
+    assert served_collections(metadata) == ['Black Patrol']
     assert metadata.art == []
 
 

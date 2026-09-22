@@ -8,6 +8,7 @@ import respx
 from phoenixadult.clients.sites.ultrafilms import UltrafilmsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Ultrafilms')
 assert SITE is not None
@@ -74,7 +75,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Ultrafilms'
     assert detail.tagline == 'Ultrafilms'
-    assert detail.collections == ['Ultrafilms']
+    assert served_collections(detail) == ['Ultrafilms']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['anal', 'hardcore', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'Mary Roe', 'Mike Jones']

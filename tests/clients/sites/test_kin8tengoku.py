@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.kin8tengoku import Kin8tengokuClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Kin8tengoku')
 assert SITE is not None
@@ -44,7 +45,7 @@ async def test_detail_table_fields() -> None:
     assert detail is not None
     assert detail.title == 'Blonde Beauty'
     assert detail.studio == 'Kin8tengoku'
-    assert detail.collections == ['Kin8tengoku']
+    assert served_collections(detail) == ['Kin8tengoku']
     assert detail.release_date == '2021-05-05'
     assert detail.genres == ['Blonde', 'Creampie']
     assert [a.name for a in detail.actors] == ['Alice']

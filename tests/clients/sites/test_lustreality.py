@@ -8,6 +8,7 @@ from phoenixadult.clients.sites import lustreality as lr_module
 from phoenixadult.clients.sites.lustreality import LustRealityClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Lust Reality')
 assert SITE is not None
@@ -52,7 +53,7 @@ async def test_detail_fields_actors_images() -> None:
     assert detail.title == 'VR Lust'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Lust Reality'
-    assert detail.collections == ['Lust Reality']
+    assert served_collections(detail) == ['Lust Reality']
     assert detail.release_date == '2021-04-04'
     assert detail.genres == ['VR', 'POV']
     assert [a.name for a in detail.actors] == ['Alice']

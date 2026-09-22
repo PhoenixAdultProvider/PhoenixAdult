@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.brandnewamateurs import BrandNewAmateursClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Brand New Amateurs')
 assert SITE is not None
@@ -55,7 +56,7 @@ async def test_detail_fields_genres_actor_via_packed_curid() -> None:
     assert detail.title == 'First Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Brand New Amateurs'
-    assert detail.collections == ['Brand New Amateurs']
+    assert served_collections(detail) == ['Brand New Amateurs']
     assert detail.release_date == '2021-06-06'
     assert detail.genres == ['Amateur', 'POV']
     assert len(detail.actors) == 1

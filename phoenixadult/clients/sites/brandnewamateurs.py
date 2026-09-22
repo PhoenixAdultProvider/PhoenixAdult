@@ -72,9 +72,6 @@ class BrandNewAmateursClient(Client):
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actor_url = scene.extra if isinstance(scene.extra, str) else ''
         if not actor_url:

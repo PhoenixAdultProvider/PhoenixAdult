@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from phoenixadult.app_factory import create_app
+from phoenixadult.mappers.metadata_mapper import MetadataMapper
+from phoenixadult.models.scrape import SceneDetail
 from phoenixadult.utils.auth import user_store
 
 PLEX_UA = 'PlexMediaServer/1.43.3.10861-07dfddaeb'
@@ -45,3 +47,7 @@ def plex_client(app: Any = None, host: str = '203.0.113.9') -> Any:
     from starlette.testclient import TestClient
 
     return TestClient(app or create_app(), client=(host, 51234), headers={'user-agent': PLEX_UA})
+
+
+def served_collections(detail: SceneDetail) -> list[str]:
+    return MetadataMapper()._resolve_labels(detail, None)[2]

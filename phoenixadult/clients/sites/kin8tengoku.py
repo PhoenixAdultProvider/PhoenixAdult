@@ -88,9 +88,6 @@ class Kin8tengokuClient(Client):
 
         metadata.title = _title_of(details_page_elements) or ''
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 

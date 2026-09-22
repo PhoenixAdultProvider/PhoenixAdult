@@ -116,9 +116,6 @@ class ScrewMeTooClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[h2]').replace('Read More ...Read Less', '').strip()
 
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
-
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = scene.extra_or(_SmtExtra, _SmtExtra()).release_date or scene.scene_date or None
 

@@ -7,6 +7,7 @@ from phoenixadult.clients.sites.femjoy import FemjoyClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.ids import pack_cur_id
+from tests.support import served_collections
 
 SITE = find_site('Femjoy')
 assert SITE is not None
@@ -56,7 +57,7 @@ async def test_detail_via_packed_curid() -> None:
     assert detail.title == 'Girl In The Mirror'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Femjoy'
-    assert detail.collections == ['Femjoy']
+    assert served_collections(detail) == ['Femjoy']
     assert detail.release_date == '2021-03-12'
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Maria Rya', 'Bella', 'Cara']

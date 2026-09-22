@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.stasyq import StasyQClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('StasyQ')
 assert SITE is not None
@@ -49,7 +50,7 @@ async def test_detail() -> None:
     assert detail.summary == 'A glossy shoot.'
     assert detail.studio == 'StasyQ'
     assert detail.tagline == ''
-    assert detail.collections == ['StasyQ']
+    assert served_collections(detail) == ['StasyQ']
     assert detail.release_date == '2024-03-02'
     assert detail.genres == ['Solo', 'Glamour']
     assert [a.name for a in detail.actors] == ['Stasy Q']
