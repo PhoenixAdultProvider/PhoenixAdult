@@ -35,7 +35,7 @@ def _release_text(sel: Selector) -> str:
     return ''
 
 
-def _tagline_for(url: str) -> str:
+def _tagline(url: str) -> str:
     for token, tagline in _TOUR_TAGLINES:
         if token in url:
             return tagline
@@ -111,10 +111,10 @@ class PlumperPassClient(Client):
         metadata.studio = 'PlumperPass'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = _tagline_for(scene.url)
+        metadata.tagline = _tagline(scene.url)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [_tagline_for(scene.url)]
+        metadata.collections = [_tagline(scene.url)]
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

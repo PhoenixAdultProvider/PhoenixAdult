@@ -75,7 +75,7 @@ class LittleCapriceClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         cls = details_page_elements.xpath('(//div[@id="main-project-content"])[1]/@class').get() or ''
@@ -91,7 +91,7 @@ class LittleCapriceClient(Client):
         details_page_elements = scene.require_sel()
 
         title = (details_page_elements.xpath('(//div[contains(@class,"project-details")]//h1)[1]').xpath('string(.)').get() or '').strip()
-        tagline = self._tagline_of(scene)
+        tagline = self._tagline(scene)
         if title.lower().startswith(tagline.lower()):
             title = title[len(tagline) :].strip()
 
@@ -101,10 +101,10 @@ class LittleCapriceClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene)
+        metadata.tagline = self._tagline(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [self._tagline_of(scene)]
+        metadata.collections = [self._tagline(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

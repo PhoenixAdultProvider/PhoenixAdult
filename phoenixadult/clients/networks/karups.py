@@ -71,7 +71,7 @@ class KarupsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//h1//span[contains(@class,"sup-title")]//span)[1]').xpath('string(.)').get() or '').strip() or scene.site.name
@@ -94,15 +94,15 @@ class KarupsClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene)
+        metadata.tagline = self._tagline(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [self._tagline_of(scene)]
+        metadata.collections = [self._tagline(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        tagline = self._tagline_of(scene)
+        tagline = self._tagline(scene)
         date = (
             (details_page_elements.xpath(f'(//span[{_cls("date")}]//span[{_cls("content")}])[1]').xpath('string(.)').get() or '')
             .replace(tagline, '')
@@ -113,7 +113,7 @@ class KarupsClient(Client):
         metadata.release_date = (iso_date(_de_ordinal(date)) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        tagline = self._tagline_of(scene)
+        tagline = self._tagline(scene)
         if tagline == 'KarupsHA':
             metadata.genres = ['Amateur']
         elif tagline == 'KarupsOW':

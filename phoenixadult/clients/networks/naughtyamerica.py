@@ -155,7 +155,7 @@ class NaughtyAmericaClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//a[contains(@class,"site-title")])[1]').xpath('string(.)').get() or '').strip()
@@ -173,10 +173,10 @@ class NaughtyAmericaClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene) or ''
+        metadata.tagline = self._tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        tag = self._tagline_of(scene)
+        tag = self._tagline(scene)
 
         metadata.collections = [tag] if tag else None
 

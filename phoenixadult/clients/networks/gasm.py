@@ -84,7 +84,7 @@ class GasmClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         raw = (details_page_elements.xpath('(//a[contains(@href,"/studio/profile/")])[1]').xpath('string(.)').get() or '').strip()
@@ -103,13 +103,13 @@ class GasmClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene) or ''
+        metadata.tagline = self._tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
         out: list[str] = []
-        tagline = self._tagline_of(scene)
+        tagline = self._tagline(scene)
         if tagline:
             out.append(tagline)
 

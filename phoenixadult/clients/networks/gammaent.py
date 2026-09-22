@@ -113,7 +113,7 @@ class GammaEntClient(Client):
 
     # ── Update Field Hook Helpers ───────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         return (details_page_elements.xpath('(//div[contains(@class,"studioLink")])[1]').xpath('string(.)').get() or '').strip() or scene.site.name
@@ -214,10 +214,10 @@ class GammaEntClient(Client):
         metadata.studio = self.studio_for(scene.site) or scene.site.name
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene)
+        metadata.tagline = self._tagline(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [self._tagline_of(scene)]
+        metadata.collections = [self._tagline(scene)]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

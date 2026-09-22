@@ -82,7 +82,7 @@ class KellyMadisonClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         raw = (details_page_elements.xpath('(//h1[contains(@class,"title")])[1]').xpath('string(.)').get() or '').strip()
@@ -94,10 +94,10 @@ class KellyMadisonClient(Client):
         metadata.studio = STUDIO
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene)
+        metadata.tagline = self._tagline(scene)
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [self._tagline_of(scene) or scene.site.name]
+        metadata.collections = [self._tagline(scene) or scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

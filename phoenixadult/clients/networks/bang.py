@@ -144,7 +144,7 @@ class BangClient(Client):
 
         return _bangify(raw or STUDIO)
 
-    def _tagline_of(self, scene: LoadedScene) -> str:
+    def _tagline(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
         for row in details_page_elements.xpath('//p[contains(.,"eries:")]//a'):
@@ -186,12 +186,12 @@ class BangClient(Client):
         metadata.studio = self._studio_of(scene)
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._tagline_of(scene) or ''
+        metadata.tagline = self._tagline(scene) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        tagline = self._tagline_of(scene)
+        tagline = self._tagline(scene)
         collections = [tagline] if tagline else [self._studio_of(scene)]
         dvd_title = (details_page_elements.xpath('(//p[contains(.,"Movie")]//a[contains(@href,"dvd")])[1]').xpath('string(.)').get() or '').strip()
         if dvd_title:
