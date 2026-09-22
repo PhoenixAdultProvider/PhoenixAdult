@@ -50,7 +50,7 @@ class DirtyHardDriveClient(Client):
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = scene.site.name if scene.site.name != scene.site.name else ''
+        metadata.tagline = scene.site.name if scene.site.name != (scene.site.provider_name or scene.site.name) else ''
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
