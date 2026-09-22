@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from phoenixadult.clients._graphql import GraphQLClient
 from phoenixadult.clients.base import LoadedScene
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
-from phoenixadult.utils.helpers.graphql_client import GraphQLClient
 from phoenixadult.utils.helpers.search_results import build_search_result
 
 _SEARCH_QUERY = 'query Search($query: String!) { search { search(input: {query: $query}) { result { type itemId name description images } } } }'

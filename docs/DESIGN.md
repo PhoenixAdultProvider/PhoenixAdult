@@ -350,7 +350,7 @@ A third pass, `integrity.missing_image_entries()`, lists the scenes whose `thumb
 
 ## 6. Scraper Client Hierarchy (Template Method / Field-Hook Pattern)
 
-The base `Client` (`phoenixadult/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`phoenixadult/utils/helpers/graphql_client.py`), `html_helpers`, and the image adapters.
+The base `Client` (`phoenixadult/clients/base.py`) defines two *orchestrators* — `search()` and `fetch_scene_detail()` — that call a fixed sequence of overridable *hooks*. A concrete client implements only the hooks relevant to its site; the orchestration (dedup, parallel field fetch, capture logging, bypass fallback) lives once in the base. **Every scraper is hand-written** — there is intentionally *no* shared, config-driven client (no `JsonClient`, no per-network base class). Shared *helpers* are fine: `GraphQLClient` (`phoenixadult/clients/_graphql.py`), `html_helpers`, and the image adapters.
 
 ```mermaid
 classDiagram
