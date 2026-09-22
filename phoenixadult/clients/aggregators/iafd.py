@@ -161,24 +161,20 @@ class IAFDClient(Client):
             extra=parse_scene(scene_page_elements['sel']),
         )
 
-    def _extra(self, scene: LoadedScene) -> IafdScene:
-        assert isinstance(scene.extra, IafdScene)
-        return scene.extra
-
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = self._extra(scene).title
+        metadata.title = scene.require_extra(IafdScene).title
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = self._extra(scene).summary
+        metadata.summary = scene.require_extra(IafdScene).summary
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = self._extra(scene).release_date
+        metadata.release_date = scene.require_extra(IafdScene).release_date
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = self._extra(scene).actors
+        metadata.actors = scene.require_extra(IafdScene).actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.directors = self._extra(scene).directors
+        metadata.directors = scene.require_extra(IafdScene).directors
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name

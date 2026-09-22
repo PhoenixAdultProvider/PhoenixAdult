@@ -69,13 +69,10 @@ class PornstarPlatinumClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = (self._data(scene).get('title') or '').strip()
+        metadata.title = (scene.extra_or(dict, {}).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -92,14 +89,14 @@ class PornstarPlatinumClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = self._data(scene).get('releaseDate') or None
+        metadata.release_date = scene.extra_or(dict, {}).get('releaseDate') or None
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        actor_name = (self._data(scene).get('actor') or '').strip()
+        actor_name = (scene.extra_or(dict, {}).get('actor') or '').strip()
 
         metadata.actors = [ActorResult(name=actor_name)] if actor_name else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        poster = (self._data(scene).get('poster') or '').strip()
+        poster = (scene.extra_or(dict, {}).get('poster') or '').strip()
 
         metadata.art = [poster] if poster else []

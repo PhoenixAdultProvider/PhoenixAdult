@@ -164,9 +164,6 @@ class Data18EmpireClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _packed(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     def _studio(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
@@ -192,7 +189,7 @@ class Data18EmpireClient(Client):
         if not title:
             return
 
-        scene_num = self._packed(scene).get('sceneNum')
+        scene_num = scene.extra_or(dict, {}).get('sceneNum')
 
         metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
 
@@ -216,7 +213,7 @@ class Data18EmpireClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        packed = self._packed(scene)
+        packed = scene.extra_or(dict, {})
         actors: list[ActorResult] = []
         seen: set[str] = set()
 
@@ -271,7 +268,7 @@ class Data18EmpireClient(Client):
         details_page_elements = scene.require_sel()
 
         base = scene.site.base_url.rstrip('/')
-        packed = self._packed(scene)
+        packed = scene.extra_or(dict, {})
         images = self.image_collector(lambda image: join_url(image.strip(), base) if image.strip() else '')
 
         srcset = details_page_elements.xpath('(//div[@id="video-container-details"]//div//section//a//picture//source/@data-srcset)[1]').get()

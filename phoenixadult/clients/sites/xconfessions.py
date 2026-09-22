@@ -147,19 +147,16 @@ class XConfessionsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     # ── Update Field Hooks (all read scene.extra) ─────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = (self._data(scene).get('title') or '').strip() or ''
+        metadata.title = (scene.extra_or(dict, {}).get('title') or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = (self._data(scene).get('synopsis_clean') or '').strip() or ''
+        metadata.summary = (scene.extra_or(dict, {}).get('synopsis_clean') or '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = _full_name(self._data(scene).get('producer')) or ''
+        metadata.studio = _full_name(scene.extra_or(dict, {}).get('producer')) or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
@@ -168,7 +165,7 @@ class XConfessionsClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        date = self._data(scene).get('release_date')
+        date = scene.extra_or(dict, {}).get('release_date')
         if date:
             parsed = iso_date(date)
             if parsed:
@@ -179,7 +176,7 @@ class XConfessionsClient(Client):
             metadata.release_date = iso_date(scene.scene_date) or scene.scene_date
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        d = self._data(scene)
+        d = scene.extra_or(dict, {})
         genres = self.dedup_strings([(t.get('title') or '').strip() for t in d.get('tags') or []])
         hay = f'{(d.get("title") or "").lower()} {(d.get("synopsis_clean") or "").lower()}'
         if (d.get('is_compilation') or 'compilation' in hay) and 'Compilation' not in genres:
@@ -190,7 +187,7 @@ class XConfessionsClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for p in self._data(scene).get('performers') or []:
+        for p in scene.extra_or(dict, {}).get('performers') or []:
             actor_name = _full_name(p)
             if not actor_name or actor_name in seen:
                 continue
@@ -201,12 +198,12 @@ class XConfessionsClient(Client):
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        director_name = _full_name(self._data(scene).get('director'))
+        director_name = _full_name(scene.extra_or(dict, {}).get('director'))
 
         metadata.directors = [ActorResult(name=director_name)] if director_name else None
 
     async def fetch_producers(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        producer = self._data(scene).get('producer')
+        producer = scene.extra_or(dict, {}).get('producer')
         producer_name = _full_name(producer)
         if not producer_name or not isinstance(producer, dict):
             return
@@ -214,7 +211,7 @@ class XConfessionsClient(Client):
         metadata.producers = [ActorResult(name=producer_name, photo_url=strip_query(producer.get('poster_image')))]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        d = self._data(scene)
+        d = scene.extra_or(dict, {})
         images = self.image_collector(lambda image: (image or '').strip())
         if d.get('poster_picture'):
             images.push(strip_query(d['poster_picture']))

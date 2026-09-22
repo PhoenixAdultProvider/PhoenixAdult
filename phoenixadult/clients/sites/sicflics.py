@@ -81,9 +81,6 @@ class SicflicsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _packed(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -94,7 +91,7 @@ class SicflicsClient(Client):
         metadata.title = raw.lower() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = (self._packed(scene).get('description') or '').replace('\n', '').strip() or ''
+        metadata.summary = (scene.extra_or(dict, {}).get('description') or '').replace('\n', '').strip() or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = scene.site.name
@@ -127,11 +124,11 @@ class SicflicsClient(Client):
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        actor_name = _actor_from_description(self._packed(scene).get('description') or '')
+        actor_name = _actor_from_description(scene.extra_or(dict, {}).get('description') or '')
 
         metadata.actors = [ActorResult(name=actor_name)] if actor_name else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        img = (self._packed(scene).get('imgURL') or '').strip()
+        img = (scene.extra_or(dict, {}).get('imgURL') or '').strip()
 
         metadata.art = [img] if img else []

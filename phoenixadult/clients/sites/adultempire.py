@@ -298,9 +298,6 @@ class AdultEmpireClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _packed(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     def _tagline_value(self, scene: LoadedScene) -> str:
         details_page_elements = scene.require_sel()
 
@@ -324,7 +321,7 @@ class AdultEmpireClient(Client):
         if not title:
             return
 
-        scene_num = self._packed(scene).get('sceneNum')
+        scene_num = scene.extra_or(dict, {}).get('sceneNum')
 
         metadata.title = f'{title} [Scene {scene_num}]' if scene_num is not None else title
 
@@ -357,7 +354,7 @@ class AdultEmpireClient(Client):
         if tagline:
             if tagline not in collections:
                 collections.append(tagline)
-        elif self._packed(scene).get('sceneNum') is not None:
+        elif scene.extra_or(dict, {}).get('sceneNum') is not None:
             h1 = _h1_title(details_page_elements)
             if h1 and h1 not in collections:
                 collections.append(h1)
@@ -372,7 +369,7 @@ class AdultEmpireClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
 
-        packed = self._packed(scene)
+        packed = scene.extra_or(dict, {})
         split_scene = packed.get('sceneNum') is not None
         actors: list[ActorResult] = []
         seen: set[str] = set()
@@ -444,7 +441,7 @@ class AdultEmpireClient(Client):
         if cover_href:
             images.append(cover_href)
 
-        packed = self._packed(scene)
+        packed = scene.extra_or(dict, {})
         rows = details_page_elements.xpath('//div[contains(@class,"row")][.//div[contains(@class,"row")] and .//a[@rel="scenescreenshots"]]')
         if packed.get('sceneNum') is not None:
             idx = packed.get('sceneIndex') or 0

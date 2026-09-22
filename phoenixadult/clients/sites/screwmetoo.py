@@ -104,9 +104,6 @@ class ScrewMeTooClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _extra(self, scene: LoadedScene) -> _SmtExtra:
-        return scene.extra if isinstance(scene.extra, _SmtExtra) else _SmtExtra()
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -123,7 +120,7 @@ class ScrewMeTooClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = self._extra(scene).release_date or scene.scene_date or None
+        metadata.release_date = scene.extra_or(_SmtExtra, _SmtExtra()).release_date or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -135,14 +132,14 @@ class ScrewMeTooClient(Client):
             if genre_name and genre_name not in genres:
                 genres.append(genre_name)
 
-        cast = len(self._extra(scene).actors)
+        cast = len(scene.extra_or(_SmtExtra, _SmtExtra()).actors)
         if group := self.group_genre_for(cast + 1):
             genres.append(group)
 
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = self._extra(scene).actors
+        metadata.actors = scene.extra_or(_SmtExtra, _SmtExtra()).actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

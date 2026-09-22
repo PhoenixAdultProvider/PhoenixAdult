@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import SceneContext, SceneDetail, SearchContext, SearchResult
@@ -67,16 +66,13 @@ class ThickCashClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _packed(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra or {}
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = self._packed(scene).get('title') or ''
+        metadata.title = scene.extra_or(dict, {}).get('title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = self._packed(scene).get('summary') or ''
+        metadata.summary = scene.extra_or(dict, {}).get('summary') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -88,7 +84,7 @@ class ThickCashClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        d = self._packed(scene).get('release_date')
+        d = scene.extra_or(dict, {}).get('release_date')
 
         metadata.release_date = (iso_date(d) or d) if d else None
 
@@ -96,6 +92,6 @@ class ThickCashClient(Client):
         metadata.genres = list(_GENRES.get(scene.site.name, []))
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        poster = self._packed(scene).get('poster')
+        poster = scene.extra_or(dict, {}).get('poster')
 
         metadata.art = [poster] if poster else []

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
@@ -68,16 +67,13 @@ class PureCFNMClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _packed(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra or {}
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = self._packed(scene).get('title') or ''
+        metadata.title = scene.extra_or(dict, {}).get('title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = self._packed(scene).get('summary') or ''
+        metadata.summary = scene.extra_or(dict, {}).get('summary') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = STUDIO
@@ -89,13 +85,13 @@ class PureCFNMClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        d = self._packed(scene).get('release_date')
+        d = scene.extra_or(dict, {}).get('release_date')
 
         metadata.release_date = (iso_date(d) or d) if d else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         genres = list(_GENRES.get(scene.site.name, ['CFNM']))
-        count = len(self._packed(scene).get('actors') or [])
+        count = len(scene.extra_or(dict, {}).get('actors') or [])
         if count == 2:
             genres.append('Threesome')
         elif count == 3:
@@ -106,11 +102,11 @@ class PureCFNMClient(Client):
         metadata.genres = genres
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        entries = [ActorResult(name=n) for n in (self._packed(scene).get('actors') or [])]
+        entries = [ActorResult(name=n) for n in (scene.extra_or(dict, {}).get('actors') or [])]
 
         metadata.actors = self.dedup_people(entries)
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        poster = self._packed(scene).get('poster')
+        poster = scene.extra_or(dict, {}).get('poster')
 
         metadata.art = [poster] if poster else []

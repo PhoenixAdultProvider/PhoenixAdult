@@ -86,14 +86,10 @@ class BlackPayBackClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _extra(self, scene: LoadedScene) -> _BpbExtra:
-        assert isinstance(scene.extra, _BpbExtra)
-        return scene.extra
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = self._extra(scene).title or ''
+        metadata.title = scene.require_extra(_BpbExtra).title or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()
@@ -104,10 +100,10 @@ class BlackPayBackClient(Client):
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = self._extra(scene).release_date
+        metadata.release_date = scene.require_extra(_BpbExtra).release_date
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = self._extra(scene).actors
+        metadata.actors = scene.require_extra(_BpbExtra).actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         details_page_elements = scene.require_sel()

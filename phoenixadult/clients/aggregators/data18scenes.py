@@ -133,9 +133,6 @@ class Data18ScenesClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _extra(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
@@ -169,13 +166,13 @@ class Data18ScenesClient(Client):
                 return
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = self._extra(scene).get('studio') or ''
+        metadata.studio = scene.extra_or(dict, {}).get('studio') or ''
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = self._extra(scene).get('tagline') or ''
+        metadata.tagline = scene.extra_or(dict, {}).get('tagline') or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        c = self._extra(scene).get('collections') or []
+        c = scene.extra_or(dict, {}).get('collections') or []
 
         metadata.collections = c or None
 

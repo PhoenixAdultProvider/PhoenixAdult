@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
 
 from parsel import Selector
 
@@ -127,17 +126,13 @@ class JesseLoadsMonsterFacialsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        assert isinstance(scene.extra, dict)
-        return scene.extra
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = f'{" and ".join(self._data(scene)["actors"])} from JesseLoadsMonsterFacials.com'
+        metadata.title = f'{" and ".join(scene.require_extra(dict)["actors"])} from JesseLoadsMonsterFacials.com'
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = self._data(scene).get('summary') or ''
+        metadata.summary = scene.require_extra(dict).get('summary') or ''
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'Jesse Loads Monster Facials'
@@ -146,15 +141,15 @@ class JesseLoadsMonsterFacialsClient(Client):
         metadata.collections = ['Jesse Loads Monster Facials']
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.release_date = self._data(scene).get('releaseDate') or None
+        metadata.release_date = scene.require_extra(dict).get('releaseDate') or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.genres = ['Facial']
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.actors = [ActorResult(name=n) for n in self._data(scene).get('actors', []) if n != 'Compilation']
+        metadata.actors = [ActorResult(name=n) for n in scene.require_extra(dict).get('actors', []) if n != 'Compilation']
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        poster = self._data(scene).get('poster')
+        poster = scene.require_extra(dict).get('poster')
 
         metadata.art = [absolute_url(poster, scene.site.base_url)] if poster else []

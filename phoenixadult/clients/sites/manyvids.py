@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
@@ -68,41 +67,37 @@ class ManyvidsClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        assert isinstance(scene.extra, dict)
-        return scene.extra
-
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = (self._data(scene).get('title') or '').strip()
+        metadata.title = (scene.require_extra(dict).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = (self._data(scene).get('description') or '').strip()
+        metadata.summary = (scene.require_extra(dict).get('description') or '').strip()
 
     async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.studio = 'ManyVids'
 
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.tagline = ((self._data(scene).get('model') or {}).get('displayName') or '').strip()
+        metadata.tagline = ((scene.require_extra(dict).get('model') or {}).get('displayName') or '').strip()
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        name = ((self._data(scene).get('model') or {}).get('displayName') or '').strip()
+        name = ((scene.require_extra(dict).get('model') or {}).get('displayName') or '').strip()
 
         metadata.collections = [name] if name else None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        values: list[str | None] = [tag.get('label') for tag in (self._data(scene).get('tagList') or [])]
+        values: list[str | None] = [tag.get('label') for tag in (scene.require_extra(dict).get('tagList') or [])]
 
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        model = self._data(scene).get('model') or {}
+        model = scene.require_extra(dict).get('model') or {}
         actor_name = (model.get('displayName') or '').strip()
 
         metadata.actors = [ActorResult(name=actor_name, photo_url=model.get('avatar') or '')] if actor_name else []
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        shot = self._data(scene).get('screenshot')
+        shot = scene.require_extra(dict).get('screenshot')
 
         metadata.art = [shot] if shot else []

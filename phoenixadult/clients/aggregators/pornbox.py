@@ -97,20 +97,17 @@ class PornboxClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra if isinstance(scene.extra, dict) else {}
-
     def _tagline(self, scene: LoadedScene) -> str | None:
-        raw = (self._data(scene).get('studio') or '').strip()
+        raw = (scene.extra_or(dict, {}).get('studio') or '').strip()
         return title_case(raw) if raw else None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = (self._data(scene).get('scene_name') or '').strip() or ''
+        metadata.title = (scene.extra_or(dict, {}).get('scene_name') or '').strip() or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        raw = self._data(scene).get('small_description')
+        raw = scene.extra_or(dict, {}).get('small_description')
         if not raw:
             return
 
@@ -130,18 +127,18 @@ class PornboxClient(Client):
         metadata.collections = [tagline] if tagline else None
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        date = self._data(scene).get('publish_date')
+        date = scene.extra_or(dict, {}).get('publish_date')
 
         metadata.release_date = (iso_date(date) if date else None) or scene.scene_date or None
 
     async def fetch_genres(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        values: list[str | None] = [n.get('niche') for n in (self._data(scene).get('niches') or [])]
+        values: list[str | None] = [n.get('niche') for n in (scene.extra_or(dict, {}).get('niches') or [])]
 
         metadata.genres = self.dedup_strings(values)
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         base = scene.site.base_url.rstrip('/')
-        data = self._data(scene)
+        data = scene.extra_or(dict, {})
         models = [*(data.get('models') or []), *(data.get('male_models') or [])]
         actors: list[ActorResult] = []
         for m in models:
@@ -165,7 +162,7 @@ class PornboxClient(Client):
             metadata.directors = [ActorResult(name='Giorgio Grandi')]
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        data = self._data(scene)
+        data = scene.extra_or(dict, {})
         images = self.image_collector()
         if data.get('player_poster'):
             images.push(data['player_poster'])

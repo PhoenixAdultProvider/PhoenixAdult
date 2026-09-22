@@ -99,22 +99,19 @@ class FuckYouCashClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _data(self, scene: LoadedScene) -> dict[str, Any]:
-        return scene.extra or {}
-
     def _sub_site(self, scene: LoadedScene) -> str:
         if not scene.site.sub_group:
             return ''
-        sponsor = str((self._data(scene).get('sponsor') or {}).get('name') or '').strip()
+        sponsor = str((scene.extra_or(dict, {}).get('sponsor') or {}).get('name') or '').strip()
         return sponsor if sponsor and sponsor != scene.site.sub_group else ''
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = str(self._data(scene).get('title') or '').strip()
+        metadata.title = str(scene.extra_or(dict, {}).get('title') or '').strip()
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        summary = str(self._data(scene).get('description') or '').strip()
+        summary = str(scene.extra_or(dict, {}).get('description') or '').strip()
 
         metadata.summary = summary if summary and summary.lower() != 'n/a' else ''
 
@@ -133,7 +130,7 @@ class FuckYouCashClient(Client):
         metadata.collections = [self._sub_site(scene) or studio]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        date = iso_date(self._data(scene).get('releasedAt') or '')
+        date = iso_date(scene.extra_or(dict, {}).get('releasedAt') or '')
 
         metadata.release_date = date or (iso_date(scene.scene_date) or scene.scene_date if scene.scene_date else None)
 
@@ -141,12 +138,12 @@ class FuckYouCashClient(Client):
         metadata.genres = self.dedup_strings(
             [
                 str(genre_name).replace('_', ' ').replace('-', ' ').strip()
-                for genre_name in [*(self._data(scene).get('tags') or []), *_GENRES.get(scene.site.name, [])]
+                for genre_name in [*(scene.extra_or(dict, {}).get('tags') or []), *_GENRES.get(scene.site.name, [])]
             ]
         )
 
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        release = self._data(scene)
+        release = scene.extra_or(dict, {})
         title = str(release.get('title') or '')
         rename = dict_values_from_key(_ACTORS_REPLACE, _query_slug(title))
         actors: list[ActorResult] = []
@@ -164,7 +161,7 @@ class FuckYouCashClient(Client):
         metadata.actors = actors
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        release = self._data(scene)
+        release = scene.extra_or(dict, {})
         images = self.image_collector()
         images.push(release.get('posterUrl'))
         for img in release.get('thumbUrls') or []:

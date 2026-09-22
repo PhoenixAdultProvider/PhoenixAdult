@@ -82,6 +82,14 @@ class LoadedScene:
             raise ValueError(f'{self.url}: scene has no parsed HTML')
         return self.sel
 
+    def require_extra[T](self, kind: type[T]) -> T:
+        if not isinstance(self.extra, kind):
+            raise ValueError(f'{self.url}: scene extra is {type(self.extra).__name__}, not {kind.__name__}')
+        return self.extra
+
+    def extra_or[T](self, kind: type[T], default: T) -> T:
+        return self.extra if isinstance(self.extra, kind) else default
+
 
 @dataclass
 class LoadedSearch:

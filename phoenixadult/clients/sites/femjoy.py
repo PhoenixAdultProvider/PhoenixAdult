@@ -78,13 +78,9 @@ class FemjoyClient(Client):
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 
-    def _extra(self, scene: LoadedScene) -> _FemjoyExtra:
-        assert isinstance(scene.extra, _FemjoyExtra)
-        return scene.extra
-
     def _unique_actor_count(self, scene: LoadedScene) -> int:
         seen: set[str] = set()
-        for a in self._extra(scene).result.get('actors', []):
+        for a in scene.require_extra(_FemjoyExtra).result.get('actors', []):
             actor_name = a.get('name')
             if actor_name and actor_name not in seen:
                 seen.add(actor_name)
@@ -101,16 +97,16 @@ class FemjoyClient(Client):
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.title = self._extra(scene).result.get('title') or ''
+        metadata.title = scene.require_extra(_FemjoyExtra).result.get('title') or ''
 
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.summary = strip_tags(self._extra(scene).result.get('long_description')) or ''
+        metadata.summary = strip_tags(scene.require_extra(_FemjoyExtra).result.get('long_description')) or ''
 
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        extra = self._extra(scene)
+        extra = scene.require_extra(_FemjoyExtra)
 
         metadata.release_date = iso_date(extra.result.get('release_date') or '') or extra.date_fallback or None
 
@@ -122,7 +118,7 @@ class FemjoyClient(Client):
     async def fetch_actors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         actors: list[ActorResult] = []
         seen: set[str] = set()
-        for a in self._extra(scene).result.get('actors', []):
+        for a in scene.require_extra(_FemjoyExtra).result.get('actors', []):
             actor_name = a.get('name')
             if not actor_name or actor_name in seen:
                 continue
@@ -137,11 +133,11 @@ class FemjoyClient(Client):
         metadata.actors = actors
 
     async def fetch_directors(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        directors = [ActorResult(name=d['name']) for d in self._extra(scene).result.get('directors', []) if d.get('name')]
+        directors = [ActorResult(name=d['name']) for d in scene.require_extra(_FemjoyExtra).result.get('directors', []) if d.get('name')]
 
         metadata.directors = directors or None
 
     async def fetch_image_urls(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        image = (self._extra(scene).result.get('thumb') or {}).get('image')
+        image = (scene.require_extra(_FemjoyExtra).result.get('thumb') or {}).get('image')
 
         metadata.art = [image] if image else []
