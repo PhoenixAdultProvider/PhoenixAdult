@@ -51,9 +51,6 @@ class MomComesFirstClient(Client):
 
         metadata.summary = '\n'.join(parts) or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Mom Comes First'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['Mom Comes First']
 

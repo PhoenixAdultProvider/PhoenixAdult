@@ -101,9 +101,6 @@ class HeavyOnHottiesClient(Client):
 
         metadata.summary = first_attr(details_page_elements, 'normalize-space((//div[contains(@class,"video_text")])[1])') or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Heavy on Hotties'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['Heavy on Hotties']
 

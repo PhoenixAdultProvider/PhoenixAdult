@@ -79,14 +79,8 @@ class PornstarPlatinumClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"panel-content")]//p')
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Pornstar Platinum'
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
-
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = scene.extra_or(dict, {}).get('releaseDate') or None

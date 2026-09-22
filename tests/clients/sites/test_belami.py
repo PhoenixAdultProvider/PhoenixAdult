@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.belami import BelAmiClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Bel Ami Online')
 assert SITE is not None
@@ -46,7 +47,7 @@ async def test_detail_fields_actors_genres_poster() -> None:
     assert detail.title == 'Summer Boys'
     assert detail.summary == 'A real blurb.'
     assert detail.studio == 'Bel Ami Online'
-    assert detail.collections == ['Bel Ami Online']
+    assert served_collections(detail) == ['Bel Ami Online']
     assert detail.release_date == '2021-06-16'
     assert detail.genres == ['Twink', 'Outdoor', 'Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']

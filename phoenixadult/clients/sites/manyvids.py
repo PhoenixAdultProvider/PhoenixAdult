@@ -75,9 +75,6 @@ class ManyvidsClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = (scene.require_extra(dict).get('description') or '').strip()
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'ManyVids'
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = ((scene.require_extra(dict).get('model') or {}).get('displayName') or '').strip()
 

@@ -49,9 +49,6 @@ class HucowsClient(Client):
 
         metadata.title = raw or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'HuCows'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['HuCows']
 

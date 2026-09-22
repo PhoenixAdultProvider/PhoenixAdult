@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.xconfessions import XConfessionsClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 XC = find_site('XConfessions')
 LC = find_site('LustCinema')
@@ -79,7 +80,7 @@ async def test_detail_json_map() -> None:
     assert detail.summary == 'Selection of greatest hits.'
     assert detail.studio == 'Erika Lust'
     assert detail.tagline == 'XConfessions'
-    assert detail.collections == ['XConfessions']
+    assert served_collections(detail) == ['XConfessions']
     assert detail.release_date == '2024-01-05'
     assert detail.genres == ['Glamour', 'Femme', 'Compilation']
     assert [(a.name, a.photo_url) for a in detail.actors] == [('Jane Doe', 'https://cdn.xc.com/jane.jpg'), ('Mary Roe', '')]

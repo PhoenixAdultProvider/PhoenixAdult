@@ -115,9 +115,6 @@ class PornboxClient(Client):
 
         metadata.summary = _clean_summary(stripped) if stripped else ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Pornbox'
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = self._tagline(scene) or ''
 

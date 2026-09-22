@@ -8,6 +8,7 @@ from phoenixadult.clients.sites import hotwifexxx as hwxxx_module
 from phoenixadult.clients.sites.hotwifexxx import HotwifeXXXClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('HotwifeXXX')
 assert SITE is not None
@@ -54,7 +55,7 @@ async def test_detail_summary_genres_actors_images() -> None:
     assert detail.title == 'Wild Wife'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'HotwifeXXX'
-    assert detail.collections == ['HotwifeXXX']
+    assert served_collections(detail) == ['HotwifeXXX']
     assert detail.release_date == '2021-06-06'
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']

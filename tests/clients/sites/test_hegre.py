@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.hegre import HegreClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Hegre')
 assert SITE is not None
@@ -44,7 +45,7 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.title == 'Morning Massage'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Hegre'
-    assert detail.collections == ['Hegre']
+    assert served_collections(detail) == ['Hegre']
     assert detail.release_date == '2021-09-09'
     assert detail.genres == ['massage', 'solo']
     assert [a.name for a in detail.actors] == ['Alice']

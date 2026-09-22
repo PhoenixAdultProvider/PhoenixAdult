@@ -46,9 +46,6 @@ class ScrewboxClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//p[contains(@class,"shorter")]')
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Screwbox'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['Screwbox']
 

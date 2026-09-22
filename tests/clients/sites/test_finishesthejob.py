@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.finishesthejob import FinishesTheJobClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Mano Job')
 assert SITE is not None
@@ -48,7 +49,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Finishes The Job'
     assert detail.tagline == 'Mano Job'
-    assert detail.collections == ['Mano Job']
+    assert served_collections(detail) == ['Mano Job']
     assert detail.release_date == '2021-04-04'
     assert [a.name for a in detail.actors] == ['Alice', 'Bob']
     assert detail.genres == ['Handjob', 'POV']

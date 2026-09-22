@@ -7,7 +7,7 @@ import respx
 import phoenixadult.clients.networks.dirtyharddrive as dhd_mod
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import search_context
+from tests.support import search_context, served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -69,7 +69,7 @@ async def test_detail_with_playlist_poster() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'Dirty Hard Drive'
     assert detail.tagline == ''
-    assert detail.collections == ['Dirty Hard Drive']
+    assert served_collections(detail) == ['Dirty Hard Drive']
     assert detail.release_date == '2021-03-04'
     assert detail.actors[0].name == 'Jane Doe'
     assert detail.actors[0].photo_url == 'https://dirtyharddrive.com/p/jane.jpg'

@@ -7,6 +7,7 @@ from phoenixadult.clients.sites.meanawolf import MeanaWolfClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.ids import pack_cur_id
+from tests.support import served_collections
 
 SITE = find_site('Meana Wolf')
 assert SITE is not None
@@ -53,7 +54,7 @@ async def test_detail_via_packed_curid() -> None:
     assert detail.title == 'Hypno Session'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Meana Wolf'
-    assert detail.collections == ['Meana Wolf']
+    assert served_collections(detail) == ['Meana Wolf']
     assert detail.release_date == '2021-03-03'
     assert detail.genres == ['Fetish', 'POV']
     assert [a.name for a in detail.actors] == ['Alice']

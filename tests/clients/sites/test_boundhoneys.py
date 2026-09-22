@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.boundhoneys import BoundHoneysClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Bound Honeys')
 assert SITE is not None
@@ -48,7 +49,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Bound Honeys'
-    assert detail.collections == ['Bound Honeys']
+    assert served_collections(detail) == ['Bound Honeys']
     assert detail.genres == ['Bondage', 'BDSM']
     assert len(detail.actors) == 1
     assert detail.actors[0].name == 'Alice'

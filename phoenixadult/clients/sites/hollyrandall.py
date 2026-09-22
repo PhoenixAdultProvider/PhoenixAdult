@@ -85,14 +85,8 @@ class HollyRandallClient(Client):
     async def fetch_title(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.title = (scene.fallback_title or '').strip() or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Holly Randall Productions'
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = scene.site.name
-
-    async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.collections = [scene.site.name]
 
     async def fetch_release_date(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.release_date = (iso_date(scene.scene_date) or scene.scene_date) if scene.scene_date else None

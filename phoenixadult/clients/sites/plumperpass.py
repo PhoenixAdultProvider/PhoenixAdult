@@ -107,9 +107,6 @@ class PlumperPassClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//div[contains(@class,"vidinfo")]//p')
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'PlumperPass'
-
     async def fetch_tagline(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.tagline = _tagline(scene.url)
 

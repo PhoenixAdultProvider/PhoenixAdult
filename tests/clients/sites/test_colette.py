@@ -8,6 +8,7 @@ from phoenixadult.clients.sites import colette as colette_module
 from phoenixadult.clients.sites.colette import ColetteClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Colette')
 assert SITE is not None
@@ -56,7 +57,7 @@ async def test_detail_genres_actors_images() -> None:
     assert detail.title == 'Hot Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Colette'
-    assert detail.collections == ['Colette']
+    assert served_collections(detail) == ['Colette']
     assert detail.release_date == '2021-10-10'
     assert detail.genres == ['Threesome']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob', 'Carol']

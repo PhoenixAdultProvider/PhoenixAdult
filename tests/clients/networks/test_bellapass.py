@@ -8,7 +8,7 @@ import phoenixadult.clients.networks.bellapass as bp_mod
 from phoenixadult.clients.networks.bellapass import BellaPassClient, __testing__
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import search_context
+from tests.support import search_context, served_collections
 
 
 async def _no_web_search(*_a: object, **_k: object) -> list[str]:
@@ -71,7 +71,7 @@ async def test_detail_umbrella() -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'BellaPass'
     assert detail.tagline == 'BellaPass'
-    assert detail.collections == ['BellaPass']
+    assert served_collections(detail) == ['BellaPass']
     assert detail.genres == ['Anal', 'Threesome']
     assert [a.name for a in detail.actors] == ['Jane Doe', 'John Smith', 'Jack']
     assert detail.actors[0].photo_url == 'https://bellapass.com/p/jane.jpg'
@@ -92,7 +92,7 @@ async def test_detail_subbrand_is_own_studio() -> None:
     assert detail.title == 'Sub Scene'
     assert detail.studio == 'Hussie Pass'
     assert detail.tagline == ''
-    assert detail.collections == ['Hussie Pass']
+    assert served_collections(detail) == ['Hussie Pass']
 
 
 def test_helpers() -> None:

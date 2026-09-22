@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.inthecrack import InTheCrackClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('In The Crack')
 assert SITE is not None
@@ -51,7 +52,7 @@ async def test_detail_title_actors_image() -> None:
     assert detail.title == 'Collection 1234'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'InTheCrack'
-    assert detail.collections == ['In the Crack']
+    assert served_collections(detail) == ['In the Crack']
     assert detail.release_date == '2021-02-02'
     assert detail.genres == ['Solo']
     assert [a.name for a in detail.actors] == ['Alice Wonder', 'Bea Star']

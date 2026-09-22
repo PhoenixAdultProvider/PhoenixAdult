@@ -8,7 +8,7 @@ import phoenixadult.clients.networks.badoinkvr as badoinkvr_module
 from phoenixadult.clients.networks.badoinkvr import BadoinkVrClient, __testing__
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
-from tests.support import search_context
+from tests.support import search_context, served_collections
 
 SITE = find_site('BaDoinkVR')
 COSPLAY = find_site('VRCosplayX')
@@ -81,7 +81,7 @@ async def test_detail_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     assert detail.summary == 'A summary.'
     assert detail.studio == 'BaDoink VR'
     assert detail.tagline == ''
-    assert detail.collections == ['BaDoink VR']
+    assert served_collections(detail) == ['BaDoink VR']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['VR', '180']
     assert detail.actors[0].name == 'Jane Doe'

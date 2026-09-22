@@ -134,9 +134,6 @@ class JesseLoadsMonsterFacialsClient(Client):
     async def fetch_summary(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.summary = scene.require_extra(dict).get('summary') or ''
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'Jesse Loads Monster Facials'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['Jesse Loads Monster Facials']
 

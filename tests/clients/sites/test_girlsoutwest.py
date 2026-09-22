@@ -8,6 +8,7 @@ from phoenixadult.clients.sites import girlsoutwest as gow_module
 from phoenixadult.clients.sites.girlsoutwest import GirlsOutWestClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('GirlsOutWest')
 assert SITE is not None
@@ -47,7 +48,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail is not None
     assert detail.title == 'Outback Fun'
     assert detail.studio == 'GirlsOutWest'
-    assert detail.collections == ['GirlsOutWest']
+    assert served_collections(detail) == ['GirlsOutWest']
     assert detail.release_date == '2021-03-04'
     assert detail.genres == ['Amateur', 'Australian']
     assert len(detail.actors) == 1

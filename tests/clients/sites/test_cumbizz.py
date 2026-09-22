@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.cumbizz import CumbizzClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Cumbizz')
 assert SITE is not None
@@ -53,7 +54,7 @@ async def test_detail_fields_genres_actors_images() -> None:
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Cumbizz'
     assert detail.tagline == 'Cumbizz'
-    assert detail.collections == ['Cumbizz']
+    assert served_collections(detail) == ['Cumbizz']
     assert detail.genres == ['anal', 'pov']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob']
     assert detail.art == ['https://cdn.cb.com/bg.jpg', 'https://cdn.cb.com/g1.jpg', 'https://cumbizz.com/g2.jpg']

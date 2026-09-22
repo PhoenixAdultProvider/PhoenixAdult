@@ -32,9 +32,6 @@ class BAMVisionsClient(Client):
 
         metadata.summary = first_text(details_page_elements, '//p[contains(@class,"description")]')
 
-    async def fetch_studio(self, scene: LoadedScene, metadata: SceneDetail) -> None:
-        metadata.studio = 'BAMVisions'
-
     async def fetch_collections(self, scene: LoadedScene, metadata: SceneDetail) -> None:
         metadata.collections = ['BAMVisions']
 

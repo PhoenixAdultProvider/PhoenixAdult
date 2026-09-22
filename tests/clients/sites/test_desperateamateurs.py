@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.desperateamateurs import DesperateAmateursClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Desperate Amateurs')
 assert SITE is not None
@@ -49,7 +50,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Desperate Amateurs'
-    assert detail.collections == ['Desperate Amateurs']
+    assert served_collections(detail) == ['Desperate Amateurs']
     assert detail.release_date == '2021-09-12'
     assert detail.genres == ['Anal']
     assert len(detail.actors) == 1

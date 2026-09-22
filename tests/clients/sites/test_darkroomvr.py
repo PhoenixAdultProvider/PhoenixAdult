@@ -6,6 +6,7 @@ import respx
 from phoenixadult.clients.sites.darkroomvr import DarkRoomVRClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
+from tests.support import served_collections
 
 SITE = find_site('Dark Room VR')
 assert SITE is not None
@@ -47,7 +48,7 @@ async def test_detail_fields_actors_genres_images() -> None:
     assert detail.title == 'Wild Scene'
     assert detail.summary == 'A blurb.'
     assert detail.studio == 'Dark Room VR'
-    assert detail.collections == ['Dark Room VR']
+    assert served_collections(detail) == ['Dark Room VR']
     assert detail.release_date == '2021-07-04'
     assert detail.genres == ['VR', 'POV']
     assert len(detail.actors) == 1

@@ -7,6 +7,7 @@ from phoenixadult.clients.sites.hollyrandall import HollyRandallClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.utils.helpers.ids import b64url_encode, pack_cur_id
+from tests.support import served_collections
 
 SITE = find_site('Holly Randall')
 assert SITE is not None
@@ -52,7 +53,7 @@ async def test_detail_via_packed_curid() -> None:
     assert detail is not None
     assert detail.title == 'Glam Shoot'
     assert detail.studio == 'Holly Randall Productions'
-    assert detail.collections == ['Holly Randall']
+    assert served_collections(detail) == ['Holly Randall']
     assert detail.release_date == '2021-06-06'
     assert detail.genres == ['Solo', 'Glamour']
     assert [a.name for a in detail.actors] == ['Alice', 'Bob']
