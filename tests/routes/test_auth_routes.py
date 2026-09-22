@@ -68,9 +68,10 @@ def test_login_success_and_failure() -> None:
 def test_login_next_is_validated_against_open_redirect() -> None:
     c = _remote()
     c.post('/setup', json={'username': 'admin', 'password': 'Hunter2hunter!'})
-    fresh = _remote()
-    r = fresh.post('/login', json={'username': 'admin', 'password': 'Hunter2hunter!', 'next': 'https://evil.example'})
-    assert r.json()['redirect'] == '/config'
+    for target in ('https://evil.example', '//evil.example', '/\\evil.example', '/\\/evil.example'):
+        fresh = _remote()
+        r = fresh.post('/login', json={'username': 'admin', 'password': 'Hunter2hunter!', 'next': target})
+        assert r.json()['redirect'] == '/config', target
 
 
 def test_login_is_rate_limited() -> None:

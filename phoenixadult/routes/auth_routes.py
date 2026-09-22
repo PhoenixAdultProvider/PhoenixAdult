@@ -29,7 +29,7 @@ def _set_session_cookie(response: Response, token: str, request: Request) -> Non
 
 
 def _safe_next(raw: str) -> str:
-    if raw.startswith('/') and not raw.startswith('//'):
+    if raw.startswith('/') and not raw.startswith('//') and '\\' not in raw:
         return raw
     return '/config'
 
