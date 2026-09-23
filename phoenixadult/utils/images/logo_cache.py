@@ -323,17 +323,15 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
         return cached
     well = 'dark'
     try:
-        from collections.abc import Iterable
-        from typing import cast
-
         from PIL import Image
         from PIL.Image import Resampling
 
         with Image.open(path) as im:
             converted: Image.Image = im.convert('RGBA')
             converted.thumbnail((96, 96), Resampling.NEAREST)
-            raw = converted.get_flattened_data() if hasattr(converted, 'get_flattened_data') else converted.getdata()
-            data = list(cast(Iterable[tuple[int, int, int, int]], raw))
+            raw = converted.tobytes()
+
+        data = [(raw[i], raw[i + 1], raw[i + 2], raw[i + 3]) for i in range(0, len(raw), 4)]
         ink = [(r, g, b) for r, g, b, a in data if a > 128] or [(r, g, b) for r, g, b, a in data if a > 0]
         if ink:
             light_well, dark_well = _luminance(*LIGHT_WELL_RGB), _luminance(*DARK_WELL_RGB)

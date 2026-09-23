@@ -90,6 +90,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
+# starlette 0.4x still imports the retired anyio.abc alias; nothing here can reach it.
+filterwarnings = ["ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning"]
 # Coverage is opt-in: `pytest --cov` costs ~45s on a full run. Settings live below.
 
 [tool.coverage.run]

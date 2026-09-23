@@ -73,14 +73,18 @@ def test_the_well_is_the_one_that_keeps_the_ink_visible(tmp_path: Path) -> None:
         assert _well(f) == expected, f'{ink} landed on the wrong well'
 
 
-def test_the_ink_is_read_on_pillow_11_too(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_rgba_readback_matches_pillows_own_pixels() -> None:
     from PIL import Image
 
-    monkeypatch.delattr(Image.Image, 'get_flattened_data', raising=False)
-    for ink, expected in (((255, 255, 255), 'dark'), ((18, 18, 20), 'light')):
-        f = tmp_path / f'logo.p11.{ink[0]}.png'
-        _logo(f, ink)
-        assert _well(f) == expected, 'get_flattened_data arrived in Pillow 12; the 11.x path must still read the ink'
+    im = Image.new('RGBA', (5, 3))
+    for x in range(5):
+        for y in range(3):
+            im.putpixel((x, y), (x * 10, y * 20, 7, 255 - x))
+    px = im.load()
+    assert px is not None
+    raw = im.tobytes()
+    expected = [px[x, y] for y in range(im.height) for x in range(im.width)]
+    assert [tuple(raw[i : i + 4]) for i in range(0, len(raw), 4)] == expected, 'the stride or channel order of the ink readback drifted'
 
 
 def test_a_dim_mid_tone_never_outvotes_ink_that_would_vanish(tmp_path: Path) -> None:
