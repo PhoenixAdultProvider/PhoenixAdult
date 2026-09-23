@@ -3,13 +3,13 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext
 from phoenixadult.utils.helpers.data_files import load_data
 from phoenixadult.utils.helpers.dates import iso_date
 from phoenixadult.utils.helpers.html_helpers import web_search_urls
+from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.scoring import date_distance_score, title_distance_score
-from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
 
@@ -53,45 +53,30 @@ __testing__ = {'photo_lookup': _photo_lookup, 'parse_title_and_date': _parse_tit
 
 
 class FTVClient(Client):
+    candidate_include = ('/update/',)
     summary_xpath = '(//div[@id="Bio"])[1]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        candidates: list[str] = []
-        if search_data.scene_id:
-            candidates.append(f'{base}{search_data.site_info.search_path}{search_data.scene_id}.html')
+    # ── Search Field Hooks ────────────────────────────────────────────────────
 
-        for url in await web_search_urls(search_data.title, search_data.site_info, include=['/update/']):
-            if url not in candidates:
-                candidates.append(url)
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
+        if not search_data.scene_id:
+            return []
+        return [f'{search_data.site_info.base_url.rstrip("/")}{search_data.site_info.search_path}{search_data.scene_id}.html']
 
-        for scene_url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
-        ):
-            if not details_page_elements:
-                continue
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return _parse_title_and_date(source.sel)[0]
 
-            title, date_iso = _parse_title_and_date(details_page_elements['sel'])
-            if not title:
-                continue
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return _parse_title_and_date(source.sel)[1]
 
-            score = (
-                date_distance_score(search_data.search_date, date_iso)
-                if search_data.search_date and date_iso
-                else title_distance_score(search_data.title, title)
-            )
+    async def fetch_search_score(self, source: Any, loaded: LoadedSearch) -> float | None:
+        title, date_iso = _parse_title_and_date(source.sel)
+        if loaded.ctx.search_date and date_iso:
+            return date_distance_score(loaded.ctx.search_date, date_iso)
+        return title_distance_score(loaded.ctx.title, title)
 
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    display_date=date_iso,
-                    search_date=search_data.search_date,
-                    score=score,
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date or loaded.ctx.search_date) if p])
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 

@@ -1,56 +1,37 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.html_helpers import first_text, web_search_urls
+from typing import Any
+
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
+from phoenixadult.utils.helpers.html_helpers import first_text
 from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url, css_bg_image
-from phoenixadult.utils.logging.best_effort import best_effort
 
 _TITLE_XP = '//div[@id="body-player-container"]//div//div[contains(@class,"tour-video-title")]'
 
 
 class PubaClient(Client):
+    candidate_include = ('show_video',)
+    candidate_exclude = ('index',)
     genres_xpath = '//center//div//a[contains(@class,"btn-outline-secondary")]'
     actors_xpath = '//center//div//a[contains(@class,"btn-secondary")]'
 
     def __init__(self) -> None:
         super().__init__({'Referer': 'https://www.puba.com/pornstarnetwork/index.php', 'Cookie': 'PHPSESSID=rvo9ieo5bhoh81knnmu88c3lf3'})
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        stem = f'{base}{search_data.site_info.search_path}'
+    # ── Search Field Hooks ────────────────────────────────────────────────────
 
-        candidates: list[str] = []
-        if search_data.scene_id:
-            candidates.append(f'{stem}show_video.php?galid={search_data.scene_id}')
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
+        if not search_data.scene_id:
+            return []
+        return [f'{search_data.site_info.base_url.rstrip("/")}{search_data.site_info.search_path}show_video.php?galid={search_data.scene_id}']
 
-        with best_effort(search_data.site_info.name, 'webSearch'):
-            for url in await web_search_urls(search_data.title, search_data.site_info):
-                if 'show_video' in url and 'index' not in url and url not in candidates:
-                    candidates.append(url)
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return first_text(source.sel, _TITLE_XP)
 
-        for scene_url, search_results in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] {scene_url}'
-        ):
-            if not search_results:
-                continue
-
-            card_title = first_text(search_results['sel'], _TITLE_XP)
-            if not card_title:
-                continue
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=card_title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([scene_url]),
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([scene_url])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

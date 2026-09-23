@@ -5,6 +5,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.evolvedfights as ef_mod
+from phoenixadult.clients import base as client_base
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
 from tests.support import search_context
@@ -20,7 +21,7 @@ assert SITE is not None
 
 @respx.mock
 async def test_search_direct_guess(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ef_mod, 'web_search_urls', _no_web_search)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web_search)
     url = 'https://evolvedfights.com/cool-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene</title><span class="update_date">03/04/2021</span>'))
     results: list[SearchResult] = []

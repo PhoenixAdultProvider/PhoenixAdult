@@ -15,7 +15,7 @@ from parsel import Selector
 from phoenixadult.config.env import env
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
 from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, pack_cur_id, same_scene
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
@@ -99,6 +99,13 @@ class LoadedSearch:
     capture: list[RawCaptureEntry] | None = None
     sel: Selector | None = None
     extra: Any = None
+
+
+@dataclass
+class CandidatePage:
+    url: str
+    sel: Selector
+    html: str
 
 
 @dataclass
@@ -290,8 +297,12 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
         return list(await asyncio.gather(*(one(url) for url in urls)))
 
     search_rows_xpath: str | None = None
+    candidate_include: tuple[str, ...] | None = None
+    candidate_exclude: tuple[str, ...] = ()
 
     async def load_search_context(self, search_data: SearchContext) -> LoadedSearch | None:
+        if self.candidate_include is not None:
+            return await self._load_candidate_pages(search_data)
         if not self.search_rows_xpath:
             return None
         url = search_data.search_url()
@@ -323,16 +334,39 @@ class Client(ABC):  # noqa: B024 - abstract by intent; subclasses override hooks
                 score=score,
                 thumb_url=thumb_url,
                 subsite=subsite,
-                cur_id=pack_cur_id([p for p in (scene_url, date) if p]),
+                cur_id=self.search_cur_id(scene_url, date, loaded),
             )
         )
 
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date) if p])
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
+        return []
+
+    async def _load_candidate_pages(self, search_data: SearchContext) -> LoadedSearch:
+        urls = await self.candidate_urls(search_data)
+        include, exclude = list(self.candidate_include or ()) or None, list(self.candidate_exclude) or None
+        for url in await web_search_urls(search_data.title, search_data.site_info, include=include, exclude=exclude):
+            if url not in urls:
+                urls.append(url)
+
+        pages = await self.fetch_candidate_pages(
+            list(dict.fromkeys(urls)), FetchCtx(capture=search_data.capture), lambda url: f'[{search_data.site_info.name}] candidate {url}'
+        )
+        sources = [CandidatePage(url=url, sel=page['sel'], html=page['html']) for url, page in pages if page]
+        return LoadedSearch(ctx=search_data, site=search_data.site_info, sources=sources, capture=search_data.capture)
+
     async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        if isinstance(source, CandidatePage) and self.title_xpath:
+            return self.first_of(source.sel, self.title_xpath)
         return ''
 
     search_url_xpath: str | None = None
 
     async def fetch_search_scene_url(self, source: Any, loaded: LoadedSearch) -> str:
+        if isinstance(source, CandidatePage):
+            return source.url
         if not self.search_url_xpath:
             return ''
         href = first_attr(source, self.search_url_xpath)

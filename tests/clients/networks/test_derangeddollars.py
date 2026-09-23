@@ -5,6 +5,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.derangeddollars as dd_mod
+from phoenixadult.clients import base as client_base
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
 from tests.support import search_context
@@ -24,7 +25,7 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_filtered(*_a: object, **_k: object) -> list[str]:
         return ['https://derangeddollars.com/session/77/cool-scene']
 
-    monkeypatch.setattr(dd_mod, 'web_search_urls', fake_filtered)
+    monkeypatch.setattr(client_base, 'web_search_urls', fake_filtered)
     respx.get('https://derangeddollars.com/session/77/cool-scene').mock(
         return_value=httpx.Response(200, text='<h3 class="mas_title">Cool Scene</h3><div class="lch"><span>Nurse Jane, March 4, 2021</span></div>')
     )
@@ -38,7 +39,7 @@ async def test_search(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @respx.mock
 async def test_search_no_engine(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dd_mod, 'web_search_urls', _no_web_search)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web_search)
     results: list[SearchResult] = []
     await dd_mod.DerangedDollarsClient().search(results, search_context(SITE, 'cool scene', space='%20'))
     assert results == []

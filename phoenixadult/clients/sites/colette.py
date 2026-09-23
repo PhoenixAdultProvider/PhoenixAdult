@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
-from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text
 
 _GALLERY_FIXES: dict[str, str] = {'The_Perfect_Threesome': 'The_Perfect_Threesome_or_Pussy_Galore'}
 
@@ -24,41 +24,23 @@ def _parse_interchange(raw: str) -> str:
 
 
 class ColetteClient(Client):
+    candidate_include = ('/videos/',)
     summary_xpath = '(//div[contains(@class,"info")]//p)[2]'
 
     def __init__(self) -> None:
         super().__init__({'Cookie': '_warning=True'})
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
         base = search_data.site_info.base_url.rstrip('/')
-        candidates: list[str] = [f'{base}/videos/{search_data.title.replace(" ", "_")}']
-        for u in await web_search_urls(search_data.title, search_data.site_info, include=['/videos/']):
-            if u not in candidates:
-                candidates.append(u)
+        return [f'{base}/videos/{search_data.title.replace(" ", "_")}']
 
-        for scene_url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
-        ):
-            if not details_page_elements:
-                continue
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return first_text(source.sel, _TITLE_XP)
 
-            title = first_text(details_page_elements['sel'], _TITLE_XP)
-            if not title:
-                continue
-
-            date = iso_date(first_text(details_page_elements['sel'], '//h2')) or ''
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    display_date=date or None,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
-                )
-            )
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return iso_date(first_text(source.sel, '//h2')) or None
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

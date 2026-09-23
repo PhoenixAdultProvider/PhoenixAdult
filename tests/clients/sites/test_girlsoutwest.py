@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.clients.sites import girlsoutwest as gow_module
+from phoenixadult.clients import base as client_base
 from phoenixadult.clients.sites.girlsoutwest import GirlsOutWestClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
@@ -27,7 +27,7 @@ async def _no_web(*_a: object, **_k: object) -> list[str]:
 
 @respx.mock
 async def test_search_direct_candidate(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gow_module, 'web_search_urls', _no_web)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web)
     url = 'https://tour.girlsoutwest.com/trailers/outback-fun.html'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     results: list[SearchResult] = []

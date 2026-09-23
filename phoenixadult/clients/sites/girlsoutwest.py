@@ -4,12 +4,10 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, web_search_urls
-from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import join_url
 
@@ -18,36 +16,19 @@ _CAST_XP = _TRAILER_P_XP + '//a'
 
 
 class GirlsOutWestClient(Client):
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        direct = search_data.search_url(slugify(search_data.title))
-        candidates = [direct]
-        for u in await web_search_urls(search_data.title, search_data.site_info, include=['/trailers/']):
-            if u not in candidates:
-                candidates.append(u)
+    candidate_include = ('/trailers/',)
+    # ── Search Field Hooks ────────────────────────────────────────────────────
 
-        for scene_url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
-        ):
-            if not details_page_elements or details_page_elements['html'].strip() == 'Page not found':
-                continue
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
+        return [search_data.search_url(slugify(search_data.title))]
 
-            title = meta_content(details_page_elements['sel'], 'twitter:title')
-            if not title:
-                continue
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        if source.html.strip() == 'Page not found':
+            return ''
+        return meta_content(source.sel, 'twitter:title')
 
-            date = self._date_from(details_page_elements['sel'])
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    display_date=date,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
-                )
-            )
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return self._date_from(source.sel)
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 

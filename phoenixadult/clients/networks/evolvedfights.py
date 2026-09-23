@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, web_search_urls
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import absolute_url
 
@@ -16,37 +18,21 @@ _DATE_FMT = '%m/%d/%Y'
 
 
 class EvolvedFightsClient(Client):
+    candidate_include = (_URL_CONTAINS,)
     title_xpath = '(//title)[1]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
-        candidates: list[str] = []
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
         slug = slugify(search_data.title)
-        if slug:
-            candidates.append(f'{base}/{slug}.html')
+        return [f'{search_data.site_info.base_url.rstrip("/")}/{slug}.html'] if slug else []
 
-        for url in await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS]):
-            if url not in candidates:
-                candidates.append(url)
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        raw = (source.sel.xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
+        return iso_date(raw, _DATE_FMT) if raw else None
 
-        for url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda url: f'[{search_data.site_info.name}] candidate {url}'
-        ):
-            if not details_page_elements:
-                continue
-
-            title = (details_page_elements['sel'].xpath('(//title)[1]').xpath('string(.)').get() or '').strip()
-            if not title:
-                continue
-
-            raw = (details_page_elements['sel'].xpath('(//span[contains(@class,"update_date")])[1]').xpath('string(.)').get() or '').strip()
-            date_iso = iso_date(raw, _DATE_FMT) if raw else None
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info, title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date or loaded.ctx.search_date) if p])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

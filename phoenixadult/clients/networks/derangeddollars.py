@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import ActorResult, SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import ActorResult, SceneDetail
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import first_attr
+from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.urls import absolute_url
 
 _URL_CONTAINS = '/session/'
@@ -16,31 +17,19 @@ _NURSE_RE = re.compile(r'\bNurses?\b')
 
 
 class DerangedDollarsClient(Client):
+    candidate_include = (_URL_CONTAINS,)
     title_xpath = '(//h3[contains(@class,"mas_title")])[1]'
     summary_xpath = '(//p[contains(@class,"mas_longdescription")])[1]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        candidates = await web_search_urls(search_data.title, search_data.site_info, include=[_URL_CONTAINS])
+    # ── Search Field Hooks ────────────────────────────────────────────────────
 
-        for url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda url: f'[{search_data.site_info.name}] candidate {url}'
-        ):
-            if not details_page_elements:
-                continue
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        lch = (source.sel.xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
+        date_raw = ','.join(lch.split(',')[-2:]).strip()
+        return iso_date(date_raw) if date_raw else None
 
-            title = (details_page_elements['sel'].xpath('(//h3[contains(@class,"mas_title")])[1]').xpath('string(.)').get() or '').strip()
-            if not title:
-                continue
-
-            lch = (details_page_elements['sel'].xpath('(//div[contains(@class,"lch")]//span)[1]').xpath('string(.)').get() or '').strip()
-            date_raw = ','.join(lch.split(',')[-2:]).strip()
-            date_iso = iso_date(date_raw) if date_raw else None
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info, title=title, scene_url=url, query=search_data.title, display_date=date_iso, search_date=search_data.search_date
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date or loaded.ctx.search_date) if p])
 
     # ── Update Field Hook Helpers ─────────────────────────────────────────────
 

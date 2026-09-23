@@ -77,6 +77,9 @@ Conventions that recur:
   `SearchContext`; `space` is how the site encodes spaces (`+` by default).
 - **`served_collections(detail)`** asserts the collections Plex is served, after
   the mapper's own default, rather than the raw `SceneDetail.collections`.
+- **Web search for candidate-page clients** runs in the base, so stub it with
+  `monkeypatch.setattr(client_base, 'web_search_urls', ...)` (`from phoenixadult.clients
+  import base as client_base`); patching the client module misses the call.
 - **Mock by exact URL** (`respx.get(url)`) when you know it, or
   `respx.get(url__startswith=...)` for query-string-bearing search URLs. respx
   raises on any unmocked request, so mock every fetch the client makes (including

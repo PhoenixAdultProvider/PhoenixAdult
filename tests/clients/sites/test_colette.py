@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.clients.sites import colette as colette_module
+from phoenixadult.clients import base as client_base
 from phoenixadult.clients.sites.colette import ColetteClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
@@ -33,7 +33,7 @@ async def test_search_constructed_candidate(monkeypatch: pytest.MonkeyPatch) -> 
     async def _no_web(*_a: object, **_k: object) -> list[str]:
         return []
 
-    monkeypatch.setattr(colette_module, 'web_search_urls', _no_web)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web)
     url = 'https://colette.com/videos/Hot_Scene'
     respx.get(url).mock(return_value=httpx.Response(200, text=DETAIL_HTML))
     respx.get('https://colette.com/galleries/Hot_Scene').mock(return_value=httpx.Response(200, text=GALLERY_HTML))

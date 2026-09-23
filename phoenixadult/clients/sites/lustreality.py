@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+from typing import Any
+
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text, web_search_urls
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import absolute_first_attr, first_attr, first_text
+from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import absolute_url, css_bg_image
-from phoenixadult.utils.logging.best_effort import best_effort
 
 _DATE_XP = (
     '//span[contains(@class,"date-display-single")]'
@@ -20,38 +21,22 @@ _DATE_XP = (
 
 
 class LustRealityClient(Client):
+    candidate_include = ('/scene/',)
     title_xpath = '//h1'
     summary_xpath = '//div[contains(@class,"u-mb--six")]'
     genres_xpath = '//a[contains(@href,"/list/category/")]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
         base = search_data.site_info.base_url.rstrip('/')
-        candidates = [f'{base}{search_data.site_info.search_path}{slugify(search_data.title)}']
-        with best_effort(search_data.site_info.name, 'webSearch'):
-            for url in await web_search_urls(search_data.title, search_data.site_info):
-                if '/scene/' in url and url not in candidates:
-                    candidates.append(url)
+        return [f'{base}{search_data.site_info.search_path}{slugify(search_data.title)}']
 
-        for scene_url, search_results in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] {scene_url}'
-        ):
-            if not search_results:
-                continue
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        return iso_date(first_text(source.sel, _DATE_XP))
 
-            title = first_text(search_results['sel'], '//h1')
-            if not title:
-                continue
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    display_date=iso_date(first_text(search_results['sel'], _DATE_XP)),
-                    search_date=search_data.search_date,
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date or loaded.ctx.search_date) if p])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

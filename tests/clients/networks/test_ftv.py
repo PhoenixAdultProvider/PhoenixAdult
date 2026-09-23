@@ -5,6 +5,7 @@ import pytest
 import respx
 
 import phoenixadult.clients.networks.ftv as ftv_mod
+from phoenixadult.clients import base as client_base
 from phoenixadult.models.scrape import SearchResult
 from phoenixadult.registry import find_site
 from tests.support import search_context, served_collections
@@ -21,6 +22,7 @@ assert SITE is not None
 @respx.mock
 async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ftv_mod, 'web_search_urls', _no_web_search)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web_search)
     url = 'https://www.ftvgirls.com/update/s-555.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<title>Cool Scene Released March 4, 2021!</title>'))
     results: list[SearchResult] = []
@@ -33,6 +35,7 @@ async def test_search_direct_scene_id(monkeypatch: pytest.MonkeyPatch) -> None:
 @respx.mock
 async def test_detail(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ftv_mod, 'web_search_urls', _no_web_search)
+    monkeypatch.setattr(client_base, 'web_search_urls', _no_web_search)
     url = 'https://www.ftvgirls.com/update/s-555.html'
     respx.get(url).mock(
         return_value=httpx.Response(

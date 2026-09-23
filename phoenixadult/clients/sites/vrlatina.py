@@ -4,12 +4,11 @@ from typing import Any
 
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content, web_search_urls
+from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, meta_content
 from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url, to_https
 
 
@@ -18,44 +17,21 @@ def _title_or_text(node: Any) -> str:
 
 
 class VRLatinaClient(Client):
+    candidate_include = ('/video/',)
     title_xpath = '//h2'
     summary_xpath = '//div[contains(@class,"content-desc")]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        base = search_data.site_info.base_url.rstrip('/')
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
         slug = search_data.title.replace(' ', '-').lower()
-        if not slug:
-            return
+        return [f'{search_data.site_info.base_url.rstrip("/")}{search_data.site_info.search_path}{slug}.html'] if slug else []
 
-        direct_url = f'{base}{search_data.site_info.search_path}{slug}.html'
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        return meta_content(source.sel, 'og:title')
 
-        seen = {direct_url}
-        candidates = [direct_url]
-        for raw in await web_search_urls(search_data.title, search_data.site_info):
-            if '/video/' in raw and raw not in seen:
-                seen.add(raw)
-                candidates.append(raw)
-
-        for scene_url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
-        ):
-            if not details_page_elements:
-                continue
-
-            title = meta_content(details_page_elements['sel'], 'og:title')
-            if not title:
-                continue
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([scene_url, search_data.search_date or '']),
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([scene_url, loaded.ctx.search_date or ''])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

@@ -1,41 +1,20 @@
 from __future__ import annotations
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
-from phoenixadult.utils.helpers.html_helpers import first_attr, first_text, web_search_urls
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail
+from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 
 
 class MeloneChallengeClient(Client):
+    candidate_include = ('/video/',)
     title_xpath = '//a[contains(@class,"dark")]'
 
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
-        found = await web_search_urls(search_data.title, search_data.site_info)
+    # ── Search Field Hooks ────────────────────────────────────────────────────
 
-        candidates = list(dict.fromkeys(u for u in found if '/video/' in u))
-
-        for scene_url, search_results in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] {scene_url}'
-        ):
-            if not search_results:
-                continue
-
-            title = first_text(search_results['sel'], '//a[contains(@class,"dark")]')
-            if not title:
-                continue
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([x for x in (scene_url, search_data.search_date) if x]),
-                )
-            )
+    def search_cur_id(self, scene_url: str, date: str | None, loaded: LoadedSearch) -> str:
+        return pack_cur_id([p for p in (scene_url, date or loaded.ctx.search_date) if p])
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 

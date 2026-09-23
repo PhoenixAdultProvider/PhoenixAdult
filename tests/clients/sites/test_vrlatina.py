@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-import phoenixadult.clients.sites.vrlatina as vrl_module
+from phoenixadult.clients import base as client_base
 from phoenixadult.clients.sites.vrlatina import VRLatinaClient
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
@@ -16,7 +16,7 @@ assert SITE is not None
 
 @respx.mock
 async def test_search_direct_og_title(monkeypatch: pytest.MonkeyPatch, no_web_search: object) -> None:
-    monkeypatch.setattr(vrl_module, 'web_search_urls', no_web_search)
+    monkeypatch.setattr(client_base, 'web_search_urls', no_web_search)
     url = 'https://vrlatina.com/video/wild-scene.html'
     respx.get(url).mock(return_value=httpx.Response(200, text='<html><head><meta property="og:title" content="Wild Scene" /></head></html>'))
     results: list[SearchResult] = []

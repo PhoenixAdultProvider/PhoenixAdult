@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 from parsel import Selector
 
-from phoenixadult.clients.base import Client, FetchCtx, LoadedScene
-from phoenixadult.models.scrape import SceneDetail, SearchContext, SearchResult
+from phoenixadult.clients.base import Client, LoadedScene, LoadedSearch
+from phoenixadult.models.scrape import SceneDetail, SearchContext
 from phoenixadult.utils.helpers.dates import iso_date
-from phoenixadult.utils.helpers.html_helpers import first_attr, web_search_urls
-from phoenixadult.utils.helpers.ids import pack_cur_id
-from phoenixadult.utils.helpers.search_results import build_search_result
+from phoenixadult.utils.helpers.html_helpers import first_attr
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.helpers.urls import join_url
 
@@ -32,7 +32,11 @@ def _lift_scheme(url: str) -> str:
 
 
 class HeavyOnHottiesClient(Client):
-    async def search(self, results: list[SearchResult], search_data: SearchContext) -> None:
+    candidate_include = ('/movies/',)
+    candidate_exclude = ('/page-',)
+    # ── Search Field Hooks ────────────────────────────────────────────────────
+
+    async def candidate_urls(self, search_data: SearchContext) -> list[str]:
         base = search_data.site_info.base_url.rstrip('/')
         words = search_data.title.strip().split()
 
@@ -49,41 +53,15 @@ class HeavyOnHottiesClient(Client):
             if joined:
                 variants.append(slugify(joined))
 
-        candidates: list[str] = []
-        for slug in variants:
-            url = f'{base}/movies/{slug}'
-            if url not in candidates:
-                candidates.append(url)
+        return list(dict.fromkeys(f'{base}/movies/{slug}' for slug in variants))
 
-        for u in await web_search_urls(search_data.title, search_data.site_info, include=['/movies/'], exclude=['/page-']):
-            if u not in candidates:
-                candidates.append(u)
+    async def fetch_search_title(self, source: Any, loaded: LoadedSearch) -> str:
+        raw_h1 = source.sel.xpath('normalize-space((//h1)[1])').get() or ''
+        return _search_title_strip(raw_h1) if raw_h1 else ''
 
-        for scene_url, details_page_elements in await self.fetch_candidate_pages(
-            candidates, FetchCtx(capture=search_data.capture), lambda scene_url: f'[{search_data.site_info.name}] candidate {scene_url}'
-        ):
-            if not details_page_elements:
-                continue
-
-            raw_h1 = details_page_elements['sel'].xpath('normalize-space((//h1)[1])').get() or ''
-            if not raw_h1:
-                continue
-
-            title = _search_title_strip(raw_h1)
-            raw_date = (details_page_elements['sel'].xpath(f'normalize-space(({_RELEASED_XP})[1])').get() or '').strip()
-            date = iso_date(raw_date) if raw_date else search_data.search_date
-
-            results.append(
-                build_search_result(
-                    site=search_data.site_info,
-                    title=title,
-                    scene_url=scene_url,
-                    query=search_data.title,
-                    display_date=date,
-                    search_date=search_data.search_date,
-                    cur_id=pack_cur_id([x for x in (scene_url, date) if x]),
-                )
-            )
+    async def fetch_search_date(self, source: Any, loaded: LoadedSearch) -> str | None:
+        raw_date = (source.sel.xpath(f'normalize-space(({_RELEASED_XP})[1])').get() or '').strip()
+        return iso_date(raw_date) if raw_date else loaded.ctx.search_date
 
     # ── Update Field Hooks ────────────────────────────────────────────────────
 
