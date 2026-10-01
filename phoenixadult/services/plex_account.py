@@ -16,7 +16,7 @@ _PRODUCT = 'PhoenixAdult'
 _UPDATE_TTL = 6 * 3600.0
 _PLATFORM_NAME_OVERRIDES = {'MacOSX': 'Mac'}
 
-_update_cache: dict[int, tuple[float, tuple[str, str], dict[str, Any]]] = {}
+_update_cache: dict[int, tuple[float, tuple[str, str, str], dict[str, Any]]] = {}
 
 
 def _headers(client_id: str, token: str | None = None) -> dict[str, str]:
@@ -125,7 +125,7 @@ async def _server_update_channel(http: httpx2.AsyncClient, base: str, token: str
 
 async def update_status(connection: Connection, token: str, force: bool = False) -> dict[str, Any]:
     now = time.monotonic()
-    config = (connection.update_channel, connection.update_release)
+    config = (connection.server_url, connection.update_channel, connection.update_release)
     cached = _update_cache.get(connection.id)
     if not force and cached and cached[1] == config and now - cached[0] < _UPDATE_TTL:
         return cached[2]
