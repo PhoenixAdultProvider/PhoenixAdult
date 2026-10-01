@@ -159,18 +159,25 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
         logger.info('meta-cache', f'skip snapshot (title looks like an error): {title!r}')
         return False
 
+    async with _write_lock(scene_hash_for(site_name, cur_id)):
+        return await _write_locked(site_name, cur_id, response, allow_clear=allow_clear)
+
+
+def _write_lock(scene_hash: str) -> asyncio.Lock:
+    lock = _write_locks.get(scene_hash)
+    if lock is None:
+        lock = asyncio.Lock()
+        _write_locks[scene_hash] = lock
+    return lock
+
+
+async def _write_locked(site_name: str, cur_id: str, response: PlexMetadataResponse, *, allow_clear: bool) -> bool:
     scene_hash = scene_hash_for(site_name, cur_id)
     rel_path = bundle_path(scene_hash)
     final_dir = safe_join(env.metadata_cache_dir, rel_path)
     if final_dir is None:
         return False
-
-    lock = _write_locks.get(scene_hash)
-    if lock is None:
-        lock = asyncio.Lock()
-        _write_locks[scene_hash] = lock
-    async with lock:
-        return await _SnapshotWrite(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear).run()
+    return await _SnapshotWrite(response, site_name, cur_id, scene_hash, rel_path, final_dir, allow_clear).run()
 
 
 class _SnapshotWrite:
@@ -326,9 +333,12 @@ class _SnapshotWrite:
         (self.tmp_dir / BUNDLE_FILE).write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
 
     def _promote(self) -> None:
+        retired = self.final_dir.parent / f'{self.scene_hash}.old'
+        shutil.rmtree(retired, ignore_errors=True)
         if self.final_dir.exists():
-            shutil.rmtree(self.final_dir, ignore_errors=True)
+            self.final_dir.rename(retired)
         self.tmp_dir.rename(self.final_dir)
+        shutil.rmtree(retired, ignore_errors=True)
 
     # ── Index ─────────────────────────────────────────────────────────────────
 
@@ -431,20 +441,27 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
 
 
 async def save_edits(key: str, fields: dict[str, Any]) -> str | None:
-    identity, loaded = await run_in('store', lambda: (scene_store.identity_for(key), load_for_edit(key)))
-    if identity is None or loaded is None:
+    if not env.metadata_cache_enabled:
+        return None
+    identity = await run_in('store', scene_store.identity_for, key)
+    if identity is None:
         return None
     site_name, cur_id = identity
-    response = PlexMetadataResponse.model_validate(loaded)
-    try:
-        md = response.MediaContainer.Metadata[0]
-    except (AttributeError, IndexError):
-        return None
-    before = lock_snapshot(md)
-    _apply_edits(md, fields)
-    if not await write(site_name, cur_id, response, allow_clear=True):
-        return None
     scene_hash = scene_hash_for(site_name, cur_id)
+    async with _write_lock(scene_hash):
+        loaded = await run_in('store', load_for_edit, key)
+        if loaded is None:
+            return None
+        response = PlexMetadataResponse.model_validate(loaded)
+        try:
+            md = response.MediaContainer.Metadata[0]
+        except (AttributeError, IndexError):
+            return None
+        before = lock_snapshot(md)
+        _apply_edits(md, fields)
+        title = (md.title or '').strip()
+        if not title or _ERROR_TITLE_RE.search(title) or not await _write_locked(site_name, cur_id, response, allow_clear=True):
+            return None
     current = await run_in('store', scene_store.locks, scene_hash)
     requested = fields.get('lockedFields')
     base = {str(f) for f in requested if isinstance(f, str)} if isinstance(requested, list) else set(current['fields'])
