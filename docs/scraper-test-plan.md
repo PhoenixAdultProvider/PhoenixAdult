@@ -22,11 +22,24 @@ a scraper against the live site while developing.
 One commit per scraper. After adding a scraper, regenerate the sitelist
 (`python -m scripts.generate_sitelist`).
 
+## Starting a New Scraper
+
+Scaffold it rather than copying a neighbor:
+
+```bash
+./.venv/Scripts/python.exe scripts/new_scraper.py --name "Foo Bar" --base-url https://foo.bar --kind sites
+```
+
+This writes the selector (`phoenixadult/registry/selectors/<kind>/<x>.py`), the client
+(`phoenixadult/clients/<kind>/<x>.py`) and its test (`tests/clients/<kind>/test_<x>.py`),
+refuses a name or scraper type that is already taken, and regenerates the sitelist. Clients
+are discovered by module name, so nothing else needs registering. `--search-path`,
+`--search-method` and `--search-notes` fill in the selector; see `--help` for the rest.
+
 ## Unit-Test Conventions
 
-Tests mirror the source tree: a scraper at `phoenixadult/clients/networks/<x>.py` (or
-`phoenixadult/clients/scrapers/<x>.py`) gets `tests/clients/networks/test_<x>.py` (resp.
-`tests/clients/scrapers/test_<x>.py`). Each module is `respx`-mocked — no network.
+Tests mirror the source tree: a scraper at `phoenixadult/clients/<kind>/<x>.py` (`sites`,
+`networks` or `aggregators`) gets `tests/clients/<kind>/test_<x>.py`. Each module is `respx`-mocked — no network.
 
 A typical module covers **search** and **detail** for one site:
 
