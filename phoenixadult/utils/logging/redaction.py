@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import re
@@ -64,7 +65,7 @@ def redact_client_addr(addr: str) -> str:
 
 class RedactionFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        try:
+        with contextlib.suppress(Exception):
             if record.name.startswith('uvicorn.access') and isinstance(record.args, tuple) and len(record.args) >= 3:
                 args = list(record.args)
                 args[0] = redact_client_addr(str(args[0]))
@@ -76,6 +77,4 @@ class RedactionFilter(logging.Filter):
                 if masked != msg:
                     record.msg = masked
                     record.args = None
-        except Exception:
-            pass
         return True

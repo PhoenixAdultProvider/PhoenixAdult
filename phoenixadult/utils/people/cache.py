@@ -5,7 +5,6 @@ import re
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 import httpx2
 from cachetools import LRUCache
@@ -22,18 +21,6 @@ from phoenixadult.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.image_source import GENERIC_SOURCE, source_for_url
 from phoenixadult.utils.people.types import Gender, PersonType, parse_person_filename
-
-
-def people_cache_dir() -> str:
-    return env.people_cache_dir
-
-
-def cache_enabled() -> bool:
-    return env.people_cache_enabled
-
-
-def cache_replace_enabled() -> bool:
-    return env.people_cache_replace_enabled
 
 
 def _slug(name: str) -> str:
@@ -65,7 +52,7 @@ _bust_cache: LRUCache[str, tuple[float, str]] = LRUCache(maxsize=8192)
 def _bust_token(relpath: str, data: bytes | None) -> str:
     if data is not None:
         return hashlib.sha1(data).hexdigest()[:8]  # noqa: S324 - cache-bust, not security
-    path = safe_join(people_cache_dir(), relpath)
+    path = safe_join(env.people_cache_dir, relpath)
     if path is None:
         return ''
     try:
@@ -94,7 +81,7 @@ def _local_url(relpath: str, data: bytes | None = None) -> str:
 # ── Index (people_images table; files are the source of truth) ────────────────
 
 
-_index = db.ReconciledConn(people_cache_dir, lambda: _rebuild_index(db.connect()))
+_index = db.ReconciledConn(lambda: env.people_cache_dir, lambda: _rebuild_index(db.connect()))
 
 
 def _served_files(root: Path) -> Iterator[Path]:
@@ -115,7 +102,7 @@ def index_conn() -> sqlite3.Connection:
 
 
 def _rebuild_index(conn: sqlite3.Connection) -> None:
-    root = Path(people_cache_dir())
+    root = Path(env.people_cache_dir)
     rows: list[tuple[str, str, str, str, str, float]] = []
     if root.exists():
         for entry in sorted(_served_files(root)):
@@ -134,7 +121,7 @@ def _rebuild_index(conn: sqlite3.Connection) -> None:
 
 
 def _index_file(relpath: str) -> None:
-    target = safe_join(people_cache_dir(), relpath)
+    target = safe_join(env.people_cache_dir, relpath)
     if target is None:
         return
     type, slug, gender = parse_person_filename(target.name)
@@ -159,7 +146,7 @@ def _drop_index_row(relpath: str) -> None:
 
 
 def _scan_miss(conn: sqlite3.Connection, type: PersonType, slug: str) -> tuple[str, str] | None:
-    root = Path(people_cache_dir())
+    root = Path(env.people_cache_dir)
     subdirs = [f'actors/{bucket}' for bucket in ('male', 'female', 'trans', 'unknown')] if type == 'actor' else [f'{type}s']
     for subdir in subdirs:
         folder = root / subdir
@@ -192,7 +179,7 @@ def _find_row(type: PersonType, slug: str) -> tuple[str, str] | None:
         if row is None:
             return _scan_miss(conn, type, slug)
         relpath = str(row['rel_path'])
-        target = safe_join(people_cache_dir(), relpath)
+        target = safe_join(env.people_cache_dir, relpath)
         if target is not None and target.is_file():
             return relpath, str(row['gender'])
         with conn:
@@ -203,7 +190,7 @@ def _find_row(type: PersonType, slug: str) -> tuple[str, str] | None:
 
 
 def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
-    if not cache_enabled():
+    if not env.people_cache_enabled:
         return None
     found = _find_row(type, _slug(name))
     if found is None:
@@ -248,11 +235,11 @@ async def cache_photo(
     replace: bool = False,
     crop: bool | None = None,
 ) -> dict[str, str] | None:
-    if not cache_enabled():
+    if not env.people_cache_enabled:
         return None
-    directory = people_cache_dir()
+    directory = env.people_cache_dir
     source = source or source_for_url(upstream_url)
-    reuse = not replace and not cache_replace_enabled()
+    reuse = not replace and not env.people_cache_replace_enabled
 
     def _prepare() -> dict[str, str] | None:
         Path(directory).mkdir(parents=True, exist_ok=True)
@@ -315,17 +302,13 @@ async def cache_photo(
 _NO_CROP_SOURCES = {'IAFD', GENERIC_SOURCE}
 
 
-def _log_entry(subdir_path: str, filename: str) -> dict[str, Any] | None:
-    return face_crop_log.entry_for(subdir_path, filename)
-
-
 async def restore_original(filename: str) -> bool:
-    directory = people_cache_dir()
+    directory = env.people_cache_dir
     subdir = _subdir_for(filename)
     subdir_path = safe_join(directory, subdir)
     if subdir_path is None:
         return False
-    entry = _log_entry(str(subdir_path), filename)
+    entry = face_crop_log.entry_for(str(subdir_path), filename)
     if not entry:
         return False
     orig_ext = entry.get('orig_ext') or '.jpg'
@@ -366,7 +349,7 @@ async def restore_original(filename: str) -> bool:
 
 
 def purge(filename: str) -> bool:
-    directory = people_cache_dir()
+    directory = env.people_cache_dir
     subdir = _subdir_for(filename)
     target = safe_join(directory, subdir, filename)
     if target is None or not target.exists():
@@ -376,7 +359,7 @@ def purge(filename: str) -> bool:
     except OSError as err:
         logger.warn('people-cache', f'purge failed {filename}: {err}')
         return False
-    entry = _log_entry(str(target.parent), filename)
+    entry = face_crop_log.entry_for(str(target.parent), filename)
     if entry:
         orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{entry.get("orig_ext") or ".jpg"}')
         if orig is not None and orig.exists():
@@ -393,7 +376,7 @@ _GENDERS = ('', 'male', 'female', 'trans')
 def set_gender(filename: str, new_gender: str) -> str | None:
     if new_gender not in _GENDERS:
         return None
-    directory = people_cache_dir()
+    directory = env.people_cache_dir
     type, slug, old_gender = parse_person_filename(filename)
     root = f'{type}.{slug}' if type else slug
     if not root:
@@ -416,7 +399,7 @@ def set_gender(filename: str, new_gender: str) -> str | None:
         src.rename(dst)
 
     old_log, new_log = str(src.parent), str(dst.parent)
-    entry = _log_entry(old_log, filename)
+    entry = face_crop_log.entry_for(old_log, filename)
     if entry:
         orig_ext = entry.get('orig_ext') or '.jpg'
         old_orig = safe_join(directory, ORIGINALS_DIR, f'{entry["base"]}{orig_ext}')

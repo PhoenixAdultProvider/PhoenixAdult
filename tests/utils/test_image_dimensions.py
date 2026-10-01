@@ -110,7 +110,7 @@ async def test_the_probe_is_skipped_when_snapshots_will_download_anyway(monkeypa
     assert await fetch_dimensions(URL) == {'width': 1200, 'height': 800}
     assert route.call_count == 1
     assert 'Range' not in route.calls[0].request.headers
-    assert fetcher._cache_get(URL) is not None
+    assert fetcher._cache.get(URL) is not None
 
 
 def test_a_solid_colour_image_is_flagged_and_real_detail_is_not() -> None:

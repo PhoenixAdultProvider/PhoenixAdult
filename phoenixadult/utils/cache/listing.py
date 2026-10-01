@@ -3,10 +3,10 @@ from __future__ import annotations
 import shutil
 from typing import Any, TypedDict
 
+from phoenixadult.config.env import env
 from phoenixadult.registry import find_site, provider_name_for, provider_name_tokens
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.duplicates import duplicate_entries, stale_duplicate_entries
-from phoenixadult.utils.cache.layout import cache_dir
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.data18 import mapping_slug
 from phoenixadult.utils.logging.logger import logger
@@ -130,10 +130,6 @@ def studios(**active: Any) -> list[str]:
     return scene_store.studio_names(**_facet_scope(active))
 
 
-def actor_suggestions(query: str = '', limit: int = 50) -> list[str]:
-    return scene_store.actor_names(query, limit)
-
-
 def facets(**active: Any) -> dict[str, Any]:
     values = scene_store.facet_values(**_facet_scope(active))
     sites = values.pop('sites', [])
@@ -148,7 +144,7 @@ def change_token() -> str:
 def purge(key: str) -> bool:
     if not scene_store.delete(key):
         return False
-    target = safe_join(cache_dir(), key)
+    target = safe_join(env.metadata_cache_dir, key)
     if target is not None:
         shutil.rmtree(target, ignore_errors=True)
     logger.info('meta-cache', f'purged snapshot {key}')

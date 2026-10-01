@@ -132,7 +132,7 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await _try_startup('bundle sweep', bundle_sweep.startup_sweep)
     await _try_startup('plex connection migration', _migrate_plex_env)
     await _try_startup('metadataapi token migration', _migrate_metadataapi_env)
-    if people_cache.cache_enabled():
+    if env.people_cache_enabled:
         await _try_startup('people-cache reconcile', people_cache.reconcile)
     await _try_startup('logo-cache reconcile', logo_cache.reconcile)
     try:

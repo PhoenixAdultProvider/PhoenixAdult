@@ -16,13 +16,12 @@ from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
-from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.cache import ORIGINALS_DIR, cache_photo, index_conn, people_cache_dir, purge, restore_original, set_gender
+from phoenixadult.utils.people.cache import ORIGINALS_DIR, cache_photo, index_conn, purge, restore_original, set_gender
 from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.local_storage import local_storage_source
@@ -177,7 +176,7 @@ def _listing(
     limit: int = PAGE_SIZE,
     pick_default: bool = False,
 ) -> dict[str, Any]:
-    everything = _list_people(people_cache_dir())
+    everything = _list_people(env.people_cache_dir)
     counts = {t: sum(1 for e in everything if e['type'] == t) for t, _ in _TABS}
     if pick_default:
         tab = next((t for t, _ in _TABS if counts[t]), _TABS[0][0])
@@ -244,18 +243,18 @@ async def page(request: Request) -> HTMLResponse:
 
 
 def _find_entry(filename: str) -> dict[str, Any] | None:
-    return next((e for e in _list_people(people_cache_dir()) if e['filename'] == filename), None)
+    return next((e for e in _list_people(env.people_cache_dir) if e['filename'] == filename), None)
 
 
 def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
     wanted = name.casefold()
-    matches = [e for e in _list_people(people_cache_dir()) if str(e['name']).casefold() == wanted]
+    matches = [e for e in _list_people(env.people_cache_dir) if str(e['name']).casefold() == wanted]
     return next((e for e in matches if str(e['role']) == role), None) or (matches[0] if matches else None)
 
 
 def _scene_rows(entry: dict[str, Any]) -> list[dict[str, Any]] | None:
 
-    if not cache_layout.enabled():
+    if not env.metadata_cache_enabled:
         return None
     scenes = scene_store.scenes_for_person(str(entry.get('name', '')), str(entry.get('role', '')))
     return [{**scene, 'key_quoted': quote(scene['key'], safe='/')} for scene in scenes]
@@ -333,7 +332,7 @@ async def bulk_fetch(request: Request) -> Response:
         return JSONResponse({'ok': False, 'error': 'no people selected'}, status_code=400)
 
     truncated = max(0, len(filenames) - _BULK_MAX)
-    known = {e['filename']: e for e in await run_in('store', _list_people, people_cache_dir())}
+    known = {e['filename']: e for e in await run_in('store', _list_people, env.people_cache_dir)}
     stream = _bulk_stream(source, filenames[:_BULK_MAX], known, truncated)
     return StreamingResponse(stream, media_type='application/x-ndjson')
 
@@ -400,7 +399,7 @@ async def _bulk_stream(source: PersonSource, filenames: list[str], known: dict[s
 def _relabel_source(entry: dict[str, Any], source: str) -> bool:
     if source == str(entry.get('source', '')):
         return False
-    directory = str(Path(people_cache_dir()) / str(entry['relpath']).rpartition('/')[0])
+    directory = str(Path(env.people_cache_dir) / str(entry['relpath']).rpartition('/')[0])
     if not face_crop_log.update(directory, str(entry['filename']), source=source):
         logger.warn('people-cache', f'cannot relabel {entry["filename"]} — it has no crop-log entry to carry the source')
         return False

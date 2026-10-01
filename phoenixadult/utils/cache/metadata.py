@@ -18,7 +18,7 @@ from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18
 from phoenixadult.registry import find_site
 from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import BUNDLE_FILE, bundle_path, bundle_payload, cache_dir, enabled, scene_hash_for
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, bundle_path, bundle_payload, scene_hash_for
 from phoenixadult.utils.cache.locks import apply_locks, carry_emptied_fields, changed_lockables, lock_snapshot, reconcile_dropped_images
 from phoenixadult.utils.concurrency import gate
 from phoenixadult.utils.concurrency.gate import loop_gate
@@ -89,7 +89,7 @@ def data18_backfill_needed(response: PlexMetadataResponse, site_name: str) -> bo
 
 
 def read(site_name: str, cur_id: str) -> dict[str, Any] | None:
-    if not enabled():
+    if not env.metadata_cache_enabled:
         return None
     loaded = scene_store.load(scene_hash_for(site_name, cur_id))
     if loaded is None:
@@ -108,7 +108,7 @@ def _snapshot_file(url: str, base: str) -> tuple[Path, str] | None:
     match = _SNAPSHOT_IMG_RE.match(path)
     if match is None:
         return None
-    target = safe_join(cache_dir(), f'{match["rel"]}/images/{match["name"]}')
+    target = safe_join(env.metadata_cache_dir, f'{match["rel"]}/images/{match["name"]}')
     return None if target is None else (target, match['name'])
 
 
@@ -138,7 +138,7 @@ def _rebase(obj: Any, base: str, people_base: str) -> Any:
 
 
 async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, allow_clear: bool = False) -> bool:
-    if not enabled():
+    if not env.metadata_cache_enabled:
         return False
     try:
         md0 = response.MediaContainer.Metadata[0]
@@ -151,7 +151,7 @@ async def write(site_name: str, cur_id: str, response: PlexMetadataResponse, *, 
 
     scene_hash = scene_hash_for(site_name, cur_id)
     rel_path = bundle_path(scene_hash)
-    final_dir = safe_join(cache_dir(), rel_path)
+    final_dir = safe_join(env.metadata_cache_dir, rel_path)
     if final_dir is None:
         return False
 

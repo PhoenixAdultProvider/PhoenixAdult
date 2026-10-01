@@ -237,7 +237,7 @@ async def snapshot(site: str = '', cur_id: str = '') -> JSONResponse:
 
 @router.get('/actors')
 async def actors(query: str = Query('', alias='q'), limit: int = Query(50, ge=1, le=200)) -> JSONResponse:
-    return JSONResponse({'actors': await run_in('store', cache_listing.actor_suggestions, query, limit)})
+    return JSONResponse({'actors': await run_in('store', scene_store.actor_names, query, limit)})
 
 
 @router.get('/state')

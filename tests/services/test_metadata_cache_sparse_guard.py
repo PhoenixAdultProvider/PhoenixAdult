@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from PIL import Image
 
+from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexMetadataResponse
 from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import metadata as mc
@@ -25,7 +26,7 @@ def _env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fetcher._cache.clear()
     buf = io.BytesIO()
     Image.effect_noise((800, 1200), 90).convert('RGB').save(buf, format='JPEG', quality=95)
-    fetcher._cache_put(IMG, ImageEntry(data=buf.getvalue(), content_type='image/jpeg', cached_at=9e9, width=800, height=1200))
+    fetcher._cache[IMG] = ImageEntry(data=buf.getvalue(), content_type='image/jpeg', cached_at=9e9, width=800, height=1200)
 
 
 def _response(**fields: Any) -> PlexMetadataResponse:
@@ -68,11 +69,11 @@ async def test_a_scrape_that_lost_everything_keeps_the_stored_values(caplog: pyt
 
 async def test_the_kept_image_is_still_on_disk() -> None:
     assert await mc.write(SITE, CUR, _rich())
-    before = sorted(p.name for p in Path(cache_layout.cache_dir()).rglob('*.jpg'))
+    before = sorted(p.name for p in Path(env.metadata_cache_dir).rglob('*.jpg'))
     assert before
 
     assert await mc.write(SITE, CUR, _response(summary='no images this time'))
-    after = sorted(p.name for p in Path(cache_layout.cache_dir()).rglob('*.jpg'))
+    after = sorted(p.name for p in Path(env.metadata_cache_dir).rglob('*.jpg'))
     assert after == before
 
 

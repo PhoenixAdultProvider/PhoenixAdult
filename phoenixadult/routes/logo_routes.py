@@ -87,13 +87,13 @@ def _taken_slugs() -> set[str]:
     return {str(e['slug']) for e in logo_cache.entries()}
 
 
-def _missing_for(studio: str, subs: list[str], taken: set[str]) -> list[str]:
+def _missing_for(subs: list[str], taken: set[str]) -> list[str]:
     return [s for s in subs if logo_cache.logo_slug(s) not in taken]
 
 
 def _add_state() -> dict[str, object]:
     taken = _taken_slugs()
-    studios = [studio for studio, subs in _site_catalog().items() if logo_cache.logo_slug(studio) not in taken or _missing_for(studio, subs, taken)]
+    studios = [studio for studio, subs in _site_catalog().items() if logo_cache.logo_slug(studio) not in taken or _missing_for(subs, taken)]
     return {'studios': sorted(studios, key=str.casefold), 'placeholders': [{'token': t, 'note': n} for t, n in logo_template.PLACEHOLDERS]}
 
 
@@ -110,7 +110,7 @@ async def aliases(studio: str = '') -> JSONResponse:
         taken = _taken_slugs()
         subs = _site_catalog().get(studio, [])
         return {
-            'aliases': _missing_for(studio, subs, taken),
+            'aliases': _missing_for(subs, taken),
             'studioTaken': logo_cache.logo_slug(studio) in taken,
             'template': logo_template.templates().get(studio, ''),
         }
@@ -127,7 +127,7 @@ def _base_url_for(alias: str) -> str:
 async def expand(studio: str = '', template: str = '') -> JSONResponse:
     def _build() -> dict[str, object]:
         taken = _taken_slugs()
-        subs = _missing_for(studio, _site_catalog().get(studio, []), taken)
+        subs = _missing_for(_site_catalog().get(studio, []), taken)
         return {'rows': [{'alias': alias, 'urls': logo_template.expand(template, studio, alias, _base_url_for(alias))} for alias in subs]}
 
     if not studio:

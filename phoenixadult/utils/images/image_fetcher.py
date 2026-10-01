@@ -80,14 +80,6 @@ _dims_cache: TLRUCache[str, tuple[int, int] | None] = TLRUCache(maxsize=_DIMS_CA
 _DIMS_MISSING: tuple[int, int] = (-1, -1)
 
 
-def _cache_get(url: str) -> ImageEntry | None:
-    return _cache.get(url)
-
-
-def _cache_put(url: str, entry: ImageEntry) -> None:
-    _cache[url] = entry
-
-
 def _max_bytes() -> int:
     parsed = parse_bytes(env.image_max_bytes_raw or '')
     if parsed is None:
@@ -180,7 +172,7 @@ def _decode_pixels(data: bytes) -> str:
 async def content_digest(url: str) -> str | None:
     if (hit := _byte_digests.get(url)) is not None:
         return hit
-    entry = _cache_get(url)
+    entry = _cache.get(url)
     if entry is None:
         return None
     digest = await run_in('image', _sha1, entry.data)
@@ -191,7 +183,7 @@ async def content_digest(url: str) -> str | None:
 async def pixel_digest(url: str) -> str | None:
     if (hit := _pixel_digests.get(url)) is not None:
         return hit
-    entry = _cache_get(url)
+    entry = _cache.get(url)
     if entry is None:
         return None
     try:
@@ -244,7 +236,7 @@ _coalesce: Coalescer[str, ImageEntry] = Coalescer()
 
 
 async def fetch_image(url: str, configured_referers: list[str] | None = None, configured_cookies: list[str] | None = None, pinned: bool = False) -> ImageEntry:
-    cached = _cache_get(url)
+    cached = _cache.get(url)
     if cached:
         return cached
     return await _coalesce.run(url, lambda: _fetch_image(url, configured_referers, configured_cookies, pinned))
@@ -302,7 +294,7 @@ async def _fetch_image(url: str, configured_referers: list[str] | None = None, c
         width, height, solid = 0, 0, False
 
     entry = ImageEntry(data=data, content_type=content_type, cached_at=time.time(), width=width, height=height, solid=solid)
-    _cache_put(url, entry)
+    _cache[url] = entry
     return entry
 
 
@@ -311,10 +303,6 @@ def _dims_cache_get(url: str) -> tuple[bool, tuple[int, int] | None]:
     if hit is _DIMS_MISSING:
         return False, None
     return True, hit
-
-
-def _dims_cache_put(url: str, dims: tuple[int, int] | None) -> None:
-    _dims_cache[url] = dims
 
 
 def _dims_from_head(data: bytes) -> tuple[int, int] | None:
@@ -364,27 +352,27 @@ async def fetch_dimensions(url: str, referers: list[str] | None = None, cookies:
     if cached_hit:
         return {'width': cached_dims[0], 'height': cached_dims[1]} if cached_dims else None
 
-    if (entry := _cache_get(url)) is not None and entry.width > 0 and entry.height > 0:
-        _dims_cache_put(url, (entry.width, entry.height))
+    if (entry := _cache.get(url)) is not None and entry.width > 0 and entry.height > 0:
+        _dims_cache[url] = (entry.width, entry.height)
         return {'width': entry.width, 'height': entry.height}
 
     if not env.metadata_cache_enabled:
         probed, responded = await _probe_dims(url, referers, cookies)
         if probed:
-            _dims_cache_put(url, probed)
+            _dims_cache[url] = probed
             return {'width': probed[0], 'height': probed[1]}
         if not responded:
-            _dims_cache_put(url, None)
+            _dims_cache[url] = None
             return None
 
     try:
         entry = await fetch_image(url, referers, cookies)
     except Exception as err:  # noqa: BLE001
         logger.debug(f'fetchDimensions failed for {url}: {err!r}')
-        _dims_cache_put(url, None)
+        _dims_cache[url] = None
         return None
     if entry.width <= 0 or entry.height <= 0:
-        _dims_cache_put(url, None)
+        _dims_cache[url] = None
         return None
-    _dims_cache_put(url, (entry.width, entry.height))
+    _dims_cache[url] = (entry.width, entry.height)
     return {'width': entry.width, 'height': entry.height}

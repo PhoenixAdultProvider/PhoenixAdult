@@ -78,7 +78,7 @@ def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], floa
     return best
 
 
-def _headshot_crop(np: Any, img: Any, box: tuple[int, int, int, int]) -> Any | None:
+def _headshot_crop(img: Any, box: tuple[int, int, int, int]) -> Any | None:
     height, width = img.shape[:2]
     x, y, w, h = box
     cx = x + w / 2.0
@@ -113,7 +113,7 @@ def crop_to_headshot(data: bytes) -> bytes | None:
         if best is None or best[2] < _CROP_SCORE:
             return None
         upright, box, _score = best
-        crop = _headshot_crop(np, upright, box)
+        crop = _headshot_crop(upright, box)
         if crop is None:
             return None
         ok, out = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, _JPEG_QUALITY])

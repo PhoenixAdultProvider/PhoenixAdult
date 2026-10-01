@@ -8,12 +8,12 @@ from typing import Any
 import httpx2
 from pydantic import Field
 
+from phoenixadult.config.env import env
 from phoenixadult.models.camel import CamelModel
 from phoenixadult.registry import PROVIDER_DEFINITIONS
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.utils import db
 from phoenixadult.utils.auth.url_signing import sign_url
-from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
@@ -70,7 +70,7 @@ def our_rating_key(guid: str, prefixes: tuple[str, ...] | None = None) -> str | 
 
 async def _snapshot_tags(rating_key: str) -> dict[str, list[str]] | None:
     parsed = parse_rating_key(rating_key)
-    if not parsed or not parsed['site_name'] or not parsed['cur_id'] or not cache_layout.enabled():
+    if not parsed or not parsed['site_name'] or not parsed['cur_id'] or not env.metadata_cache_enabled:
         return None
     return await run_in('store', scene_store.tags_for, parsed['site_name'], parsed['cur_id'])
 

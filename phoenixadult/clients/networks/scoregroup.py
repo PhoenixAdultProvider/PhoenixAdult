@@ -9,6 +9,7 @@ import httpx2
 from parsel import Selector
 
 from phoenixadult.clients.base import Client, FetchCtx, LoadedScene, LoadedSearch
+from phoenixadult.config.env import env
 from phoenixadult.models.scrape import ActorResult, SceneContext, SceneDetail, SearchContext, SearchResult
 from phoenixadult.registry import ResolvedSiteInfo
 from phoenixadult.utils.concurrency import gate
@@ -20,7 +21,6 @@ from phoenixadult.utils.helpers.ids import pack_cur_id, same_scene, scene_url_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.urls import absolute_url
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.generic import gender_skip_male_enabled
 from phoenixadult.utils.processors.actor_strip import best_title_score
 
 STUDIO = 'Score Group'
@@ -344,7 +344,7 @@ class ScoreGroupClient(Client):
         if metadata.title.casefold() not in _SERIES_TITLES:
             return
 
-        skip_male = gender_skip_male_enabled()
+        skip_male = env.gender_skip_male_enabled
         names = [a.name for a in metadata.actors if a.name and not (skip_male and a.gender.casefold() == 'male')]
         if names:
             metadata.title = f'{metadata.title} - {_joined_names(names)}'

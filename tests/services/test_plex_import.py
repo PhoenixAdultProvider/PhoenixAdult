@@ -67,9 +67,9 @@ def test_foreign_cur_id_survives_the_rating_key_round_trip() -> None:
 
 
 def test_unresolved_detail_names_the_actual_gap() -> None:
-    assert 'no studio' in plex_import._unresolved_detail('local://12345', '')
-    assert 'registry' in plex_import._unresolved_detail('local://12345', 'Nope Not A Site')
-    assert 'identifier' in plex_import._unresolved_detail('nonsense-guid', 'Aussie Ass')
+    assert 'no studio' in plex_import._unresolved_detail('')
+    assert 'registry' in plex_import._unresolved_detail('Nope Not A Site')
+    assert 'identifier' in plex_import._unresolved_detail('Aussie Ass')
 
 
 def test_retired_sites_resolve_to_the_archive_client() -> None:
@@ -171,7 +171,7 @@ async def test_dry_run_counts_without_writing(monkeypatch: pytest.MonkeyPatch) -
 async def test_staged_image_url_points_at_the_file_it_wrote(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.utils.cache import metadata as metadata_cache
 
-    monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
     import io
 
@@ -216,9 +216,7 @@ async def test_stage_artwork_takes_every_candidate_and_types_it(tmp_path: Any, m
 
     from PIL import Image as PILImage
 
-    from phoenixadult.utils.cache import metadata as metadata_cache
-
-    monkeypatch.setattr(metadata_cache, 'cache_dir', lambda: str(tmp_path))
+    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
 
     def _jpeg(width: int, height: int) -> bytes:
         buf = io.BytesIO()

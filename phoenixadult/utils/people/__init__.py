@@ -7,16 +7,17 @@ from typing import TYPE_CHECKING
 
 import httpx2
 
+from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import shared_http
 from phoenixadult.utils.http.headers import image_request_headers
 from phoenixadult.utils.images.proxy import proxy_url
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.cache import cache_enabled, cache_photo, cache_replace_enabled, lookup_cached
+from phoenixadult.utils.people.cache import cache_photo, lookup_cached
 from phoenixadult.utils.people.data import actor_rules
-from phoenixadult.utils.people.gender import gender_detect_enabled, iafd_gender_check
-from phoenixadult.utils.people.generic import gender_skip_male_enabled, generic_image_enabled, generic_image_url
+from phoenixadult.utils.people.gender import iafd_gender_check
+from phoenixadult.utils.people.generic import generic_image_url
 from phoenixadult.utils.people.image_source import GENERIC_SOURCE, SCENE_SOURCE
 from phoenixadult.utils.people.sources import find_photo, scene_image_pref
 from phoenixadult.utils.people.types import (
@@ -151,7 +152,7 @@ class PeopleResolver:
         return [resolved]
 
     async def _detect_gender(self, name: str, type: PersonType, gender: Gender) -> Gender:
-        if gender or type != 'actor' or not gender_detect_enabled():
+        if gender or type != 'actor' or not env.gender_detect_enabled:
             return gender
         return await iafd_gender_check(name) or gender
 
@@ -162,7 +163,7 @@ class PeopleResolver:
         if not await _head_is_ok(entry.photo, headers):
             return '', gender
         gender = await self._detect_gender(name, type, gender)
-        if not cache_enabled():
+        if not env.people_cache_enabled:
             return entry.photo, gender
         cached = await cache_photo(entry.photo, name, type, gender, headers, source=SCENE_SOURCE)
         if cached:
@@ -175,7 +176,7 @@ class PeopleResolver:
         gender: Gender = entry.gender or ''
         use_scene, scene_first = scene_image_pref()
 
-        if cache_enabled() and not cache_replace_enabled():
+        if env.people_cache_enabled and not env.people_cache_replace_enabled:
             cached = await run_in('store', lookup_cached, name, type)
             if cached:
                 photo = cached['served_url']
@@ -189,7 +190,7 @@ class PeopleResolver:
             gender = gender or found.gender
             if found.url:
                 gender = await self._detect_gender(name, type, gender)
-                if cache_enabled():
+                if env.people_cache_enabled:
                     cached = await cache_photo(found.url, name, type, gender, source=found.source)
                     photo = cached['served_url'] if cached else found.url
                 else:
@@ -198,9 +199,9 @@ class PeopleResolver:
         if not photo and use_scene and not scene_first:
             photo, gender = await self._resolve_scene_photo(name, entry, type, gender, ctx)
 
-        if not photo and generic_image_enabled() and gender in ('male', 'female'):
+        if not photo and env.generic_image_enabled and gender in ('male', 'female'):
             generic_url = generic_image_url(gender)
-            if cache_enabled():
+            if env.people_cache_enabled:
                 cached = await cache_photo(generic_url, name, type, gender, source=GENERIC_SOURCE)
                 photo = cached['served_url'] if cached else generic_url
             else:
@@ -240,7 +241,7 @@ def _is_male_role(role: PlexRole) -> bool:
 
 
 def filter_male_actors(response: PlexMetadataResponse) -> int:
-    if not gender_skip_male_enabled():
+    if not env.gender_skip_male_enabled:
         return 0
     removed = 0
     for md in response.MediaContainer.Metadata:
@@ -252,4 +253,4 @@ def filter_male_actors(response: PlexMetadataResponse) -> int:
     return removed
 
 
-__all__ = ['PeopleResolver', 'to_plex_roles', 'filter_male_actors', 'apply_name_aliases', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']
+__all__ = ['PeopleResolver', 'to_plex_roles', 'filter_male_actors', 'apply_name_aliases', 'find_photo', 'Gender', 'PersonInput', 'ResolvedPerson']

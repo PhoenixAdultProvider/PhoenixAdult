@@ -32,10 +32,6 @@ from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 
 def queue_label(rating_key: str) -> str:
-    return _queue_label(rating_key)
-
-
-def _queue_label(rating_key: str) -> str:
     from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode
 
     parsed = parse_rating_key(rating_key)
@@ -212,7 +208,7 @@ class MetadataService:
             return False
 
         site = find_site(parsed['site_name'] or '') if parsed else None
-        label = label or _queue_label(rating_key)
+        label = label or queue_label(rating_key)
         replay = {'kind': 'update', 'provider': provider.id, 'rating_key': rating_key, 'language': language, 'label': label, 'rescrape': rescrape}
         return scrape_queue.enqueue(
             f'{provider.id}:{rating_key}',

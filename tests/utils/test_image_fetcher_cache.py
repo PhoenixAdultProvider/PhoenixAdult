@@ -6,7 +6,7 @@ import pytest
 from cachetools import TTLCache
 
 from phoenixadult.utils.images import image_fetcher as fetcher
-from phoenixadult.utils.images.image_fetcher import ImageEntry, _cache_get, _cache_put
+from phoenixadult.utils.images.image_fetcher import ImageEntry
 
 
 @pytest.fixture(autouse=True)
@@ -29,32 +29,32 @@ def _swap_cache(monkeypatch: pytest.MonkeyPatch, maxsize: int, timer: object | N
 
 def test_put_get_roundtrip() -> None:
     e = _entry(10)
-    _cache_put('u1', e)
-    assert _cache_get('u1') is e
+    fetcher._cache['u1'] = e
+    assert fetcher._cache.get('u1') is e
     assert fetcher._cache.currsize == 10
 
 
 def test_expired_entry_dropped_on_get(monkeypatch: pytest.MonkeyPatch) -> None:
     now = [0.0]
     _swap_cache(monkeypatch, maxsize=1000, timer=lambda: now[0])
-    _cache_put('u1', _entry(10))
+    fetcher._cache['u1'] = _entry(10)
     now[0] = fetcher._CACHE_TTL + 1
-    assert _cache_get('u1') is None
+    assert fetcher._cache.get('u1') is None
 
 
 def test_lru_eviction_respects_byte_cap(monkeypatch: pytest.MonkeyPatch) -> None:
     cache = _swap_cache(monkeypatch, maxsize=25)
-    _cache_put('a', _entry(10))
-    _cache_put('b', _entry(10))
-    _cache_get('a')
-    _cache_put('c', _entry(10))
-    assert _cache_get('b') is None
-    assert _cache_get('a') is not None
-    assert _cache_get('c') is not None
+    fetcher._cache['a'] = _entry(10)
+    fetcher._cache['b'] = _entry(10)
+    fetcher._cache.get('a')
+    fetcher._cache['c'] = _entry(10)
+    assert fetcher._cache.get('b') is None
+    assert fetcher._cache.get('a') is not None
+    assert fetcher._cache.get('c') is not None
     assert cache.currsize == 20
 
 
 def test_replacing_entry_does_not_leak_bytes() -> None:
-    _cache_put('a', _entry(10))
-    _cache_put('a', _entry(4))
+    fetcher._cache['a'] = _entry(10)
+    fetcher._cache['a'] = _entry(4)
     assert fetcher._cache.currsize == 4

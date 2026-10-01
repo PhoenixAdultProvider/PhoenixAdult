@@ -12,13 +12,13 @@ import httpx2
 from PIL import Image as PILImage
 from pydantic import Field
 
+from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.models.camel import CamelModel
 from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.services.plex_reconcile import PlexClient, our_rating_key
-from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.cache.layout import scene_hash_for
@@ -88,7 +88,7 @@ def _resolve(guid: str, studio: str) -> tuple[str, str] | None:
     return (site.name, cur_id) if cur_id else None
 
 
-def _unresolved_detail(guid: str, studio: str) -> str:
+def _unresolved_detail(studio: str) -> str:
     if not studio:
         return 'guid is not ours and the item has no studio to fall back on'
     if find_site(studio) is None:
@@ -219,7 +219,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
     resolved = _resolve(guid, studio)
     if resolved is None:
         report.unresolved += 1
-        report.add(ItemReport(rating_key=rating_key, title=title, status='unresolved', detail=_unresolved_detail(guid, studio)))
+        report.add(ItemReport(rating_key=rating_key, title=title, status='unresolved', detail=_unresolved_detail(studio)))
         return
     site_name, cur_id = resolved
     if not overwrite and scene_store.has(scene_hash_for(site_name, cur_id)):
@@ -231,7 +231,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
         report.add(ItemReport(rating_key=rating_key, title=title, status='importable', site=site_name, cur_id=cur_id))
         return
 
-    staging = safe_join(cache_layout.cache_dir(), f'{_STAGING}/{scene_hash_for(site_name, cur_id)}')
+    staging = safe_join(env.metadata_cache_dir, f'{_STAGING}/{scene_hash_for(site_name, cur_id)}')
     try:
         item = await client.item(rating_key)
         if not item:
@@ -255,7 +255,7 @@ async def _import_one(client: PlexClient, stub: dict[str, Any], report: ImportRe
 
 
 async def import_item(connection: Connection, token: str, rating_key: str, overwrite: bool = False) -> ItemReport:
-    if not cache_layout.enabled():
+    if not env.metadata_cache_enabled:
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
     report = ImportReport(applied=True)
     client = PlexClient(connection.server_url, token)
@@ -284,7 +284,7 @@ async def import_library(
     connection: Connection, token: str, section: str, apply: bool = False, limit: int | None = None, overwrite: bool = False
 ) -> ImportReport:
     report = ImportReport(applied=apply, section=section)
-    if not cache_layout.enabled():
+    if not env.metadata_cache_enabled:
         raise RuntimeError('METADATA_CACHE_ENABLE must be on to import')
     client = PlexClient(connection.server_url, token)
     try:

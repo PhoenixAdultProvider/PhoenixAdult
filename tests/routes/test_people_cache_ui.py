@@ -154,7 +154,7 @@ def test_listing_falls_back_to_files_when_the_index_is_empty(monkeypatch: pytest
     (d / 'actor.bob_male.jpg').write_bytes(b'x')
 
     db.connect()
-    monkeypatch.setattr(pcache._index, '_key', (pcache.people_cache_dir(), pcache.env.state_db_path))
+    monkeypatch.setattr(pcache._index, '_key', (pcache.env.people_cache_dir, pcache.env.state_db_path))
     entries = pcr._list_people(str(Path(str(tmp_path)) / 'people'))
     assert [e['relpath'] for e in entries] == ['actors/male/actor.bob_male.jpg']
     assert entries[0]['type'] == 'actors-male'
@@ -339,10 +339,10 @@ def test_cards_are_wide_enough_that_names_never_break(_person_cache: None) -> No
 def test_the_list_can_be_filtered_by_recorded_source(_person_cache: None) -> None:
     from pathlib import Path
 
+    from phoenixadult.config.env import env
     from phoenixadult.utils.images import face_crop_log
-    from phoenixadult.utils.people.cache import people_cache_dir
 
-    folder = str(Path(people_cache_dir()) / 'actors' / 'female')
+    folder = str(Path(env.people_cache_dir) / 'actors' / 'female')
     face_crop_log.record(
         folder,
         name='Jane Doe',
@@ -396,11 +396,11 @@ def test_the_edit_page_offers_every_known_source(_person_cache: None) -> None:
 def test_saving_relabels_the_recorded_source_without_touching_the_image(_person_cache: None) -> None:
     from pathlib import Path
 
+    from phoenixadult.config.env import env
     from phoenixadult.routes import people_cache_routes as pcr
     from phoenixadult.utils.images import face_crop_log
-    from phoenixadult.utils.people.cache import people_cache_dir
 
-    folder = str(Path(people_cache_dir()) / 'actors' / 'female')
+    folder = str(Path(env.people_cache_dir) / 'actors' / 'female')
     face_crop_log.record(
         folder,
         name='Jane Doe',
@@ -435,10 +435,10 @@ def test_saving_rejects_a_source_it_does_not_know(_person_cache: None) -> None:
 def test_the_list_offers_a_single_name_toggle(_person_cache: None, tmp_path) -> None:  # type: ignore[no-untyped-def]
     from pathlib import Path
 
+    from phoenixadult.config.env import env
     from phoenixadult.utils.images import face_crop_log
-    from phoenixadult.utils.people.cache import people_cache_dir
 
-    folder = Path(people_cache_dir()) / 'actors' / 'female'
+    folder = Path(env.people_cache_dir) / 'actors' / 'female'
     for slug in ('haley', 'kate-smith', 'la-sirena'):
         (folder / f'actor.{slug}_female.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 64)
     face_crop_log.record(

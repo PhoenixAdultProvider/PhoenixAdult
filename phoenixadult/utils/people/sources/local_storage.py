@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from phoenixadult.config.env import env
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people.cache import cache_replace_enabled, lookup_cached
+from phoenixadult.utils.people.cache import lookup_cached
 from phoenixadult.utils.people.types import PersonLookupContext, PhotoHit
 
 
@@ -9,7 +10,7 @@ class _LocalStorageSource:
     name = 'Local Storage'
 
     async def find(self, actor_name: str, ctx: PersonLookupContext) -> PhotoHit | None:
-        if cache_replace_enabled():
+        if env.people_cache_replace_enabled:
             logger.debug('localStorageSource', f'cache-replace forced; skipping cache for "{actor_name}"')
             return None
         hit = lookup_cached(actor_name, ctx.type)

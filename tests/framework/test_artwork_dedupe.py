@@ -28,7 +28,7 @@ def _jpeg(width: int, height: int, *, quality: int = 95, shade: int = 200) -> by
 def _seed(url: str, data: bytes) -> dict[str, object]:
     with Image.open(io.BytesIO(data)) as img:
         width, height = img.size
-    fetcher._cache_put(url, ImageEntry(data=data, content_type='image/jpeg', cached_at=time.time(), width=width, height=height))
+    fetcher._cache[url] = ImageEntry(data=data, content_type='image/jpeg', cached_at=time.time(), width=width, height=height)
     return {'url': url, 'dims': {'width': width, 'height': height}, 'image_class': 'background'}
 
 

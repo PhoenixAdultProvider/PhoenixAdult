@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+from phoenixadult.config.env import env
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import BUNDLE_FILE, BUNDLE_ROOT, BUNDLE_VERSION, bundle_path, cache_dir, enabled
+from phoenixadult.utils.cache.layout import BUNDLE_FILE, BUNDLE_ROOT, BUNDLE_VERSION, bundle_path
 from phoenixadult.utils.logging.logger import logger
 
 
@@ -53,9 +54,9 @@ def sweep(root: Path, overwrite: bool = False) -> dict[str, int]:
 
 
 def startup_sweep() -> None:
-    if not enabled():
+    if not env.metadata_cache_enabled:
         return
-    root = Path(cache_dir())
+    root = Path(env.metadata_cache_dir)
     if not (root / BUNDLE_ROOT).exists():
         return
     stats = sweep(root)

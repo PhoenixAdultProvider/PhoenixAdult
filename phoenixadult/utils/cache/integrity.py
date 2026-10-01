@@ -6,7 +6,6 @@ from pathlib import Path
 from phoenixadult.config.env import env
 from phoenixadult.utils.auth.url_signing import strip_sig
 from phoenixadult.utils.cache import scene_store
-from phoenixadult.utils.cache.layout import cache_dir
 
 _SNAPSHOT_IMG_RE = re.compile(r'^/cache/(?P<rel>.+)/images/(?P<name>[^/?#]+)$')
 _SCAN_CACHE: tuple[str, list[str]] = ('', [])
@@ -21,7 +20,7 @@ def snapshot_image_path(url: str, root: Path | None = None) -> Path | None:
     if '..' in rel.split('/'):
         return None
 
-    base = root if root is not None else Path(cache_dir()).resolve()
+    base = root if root is not None else Path(env.metadata_cache_dir).resolve()
     target = base / rel
     return target if target.is_relative_to(base) else None
 
@@ -42,7 +41,7 @@ def missing_image_entries() -> list[str]:
     if cached_token == token:
         return list(cached_value)
 
-    root = Path(cache_dir()).resolve()
+    root = Path(env.metadata_cache_dir).resolve()
     broken = [str(row['rel_path']) for row in scene_store.image_check_rows() if unrenderable(row['thumb'], root) or unrenderable(row['art'], root)]
     _SCAN_CACHE = (token, sorted(broken))
     return list(_SCAN_CACHE[1])

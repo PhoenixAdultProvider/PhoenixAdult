@@ -30,7 +30,7 @@ def test_headshot_crop_is_head_and_shoulders() -> None:
     x, y, w, h = 300, 100, 111, 156
     img = np.zeros((900, 700, 3), dtype=np.uint8)
     img[y : y + h, x : x + w] = 255
-    crop = _headshot_crop(np, img, (x, y, w, h))
+    crop = _headshot_crop(img, (x, y, w, h))
     assert crop is not None
     ch, cw = crop.shape[:2]
     assert ch == cw
@@ -48,7 +48,7 @@ def test_headshot_crop_keeps_original_when_already_closeup() -> None:
     from phoenixadult.utils.images.face_crop import _headshot_crop
 
     img = np.zeros((150, 150, 3), dtype=np.uint8)
-    assert _headshot_crop(np, img, (15, 15, 120, 120)) is None
+    assert _headshot_crop(img, (15, 15, 120, 120)) is None
 
 
 def test_log_roundtrip(tmp_path: pytest.TempPathFactory) -> None:
