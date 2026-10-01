@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from phoenixadult.config.env import env
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import lookup_cached
 from phoenixadult.utils.people.types import PersonLookupContext, PhotoHit
@@ -13,7 +14,7 @@ class _LocalStorageSource:
         if env.people_cache_replace_enabled:
             logger.debug('localStorageSource', f'cache-replace forced; skipping cache for "{actor_name}"')
             return None
-        hit = lookup_cached(actor_name, ctx.type)
+        hit = await run_in('store', lookup_cached, actor_name, ctx.type)
         if not hit:
             logger.debug('localStorageSource', f'no cached photo for "{actor_name}" (type={ctx.type})')
             return None

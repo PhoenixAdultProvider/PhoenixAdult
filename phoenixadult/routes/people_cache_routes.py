@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.routes import nav_username, read_json_body, render_page
+from phoenixadult.utils import db
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -235,7 +236,16 @@ async def page(request: Request) -> HTMLResponse:
 
 
 def _find_entry(filename: str) -> dict[str, Any] | None:
-    return next((e for e in _list_people(env.people_cache_dir) if e['filename'] == filename), None)
+    row = (
+        index_conn()
+        .execute("SELECT rel_path, mtime FROM people_images WHERE rel_path LIKE ? ESCAPE '\\' ORDER BY rel_path LIMIT 1", (f'%/{db.like_escape(filename)}',))
+        .fetchone()
+    )
+    if row is None:
+        return next((e for e in _list_people(env.people_cache_dir) if e['filename'] == filename), None)
+    relpath = str(row['rel_path'])
+    log = face_crop_log.entry_for(str(Path(env.people_cache_dir) / relpath.rpartition('/')[0]), filename) or {}
+    return _entry(relpath, float(row['mtime']), log)
 
 
 def _find_entry_by_name(name: str, role: str) -> dict[str, Any] | None:
