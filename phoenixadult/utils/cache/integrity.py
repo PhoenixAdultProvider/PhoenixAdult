@@ -6,6 +6,7 @@ from pathlib import Path
 from phoenixadult.config.env import env
 from phoenixadult.utils.auth.url_signing import strip_sig
 from phoenixadult.utils.cache import scene_store
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 
 _SNAPSHOT_IMG_RE = re.compile(r'^/cache/(?P<rel>.+)/images/(?P<name>[^/?#]+)$')
 _SCAN_CACHE: tuple[str, list[str]] = ('', [])
@@ -27,7 +28,7 @@ def snapshot_image_path(url: str, root: Path | None = None) -> Path | None:
 
 def unrenderable(url: object, root: Path | None = None) -> bool:
     raw = str(url or '').strip()
-    if not raw or raw.startswith('/images/local/'):
+    if not raw or raw.startswith(LOCAL_IMAGES):
         return False
 
     target = snapshot_image_path(raw, root)

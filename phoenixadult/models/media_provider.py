@@ -1,27 +1,23 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from phoenixadult.models.metadata import PlexModel
 
 
-class _Model(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-
-class MediaProviderScheme(_Model):
+class MediaProviderScheme(PlexModel):
     scheme: str
 
 
-class MediaProviderType(_Model):
+class MediaProviderType(PlexModel):
     type: int
     Scheme: list[MediaProviderScheme]
 
 
-class MediaProviderFeature(_Model):
+class MediaProviderFeature(PlexModel):
     type: str
     key: str
 
 
-class MediaProviderDefinition(_Model):
+class MediaProviderDefinition(PlexModel):
     identifier: str
     title: str
     version: str
@@ -29,5 +25,5 @@ class MediaProviderDefinition(_Model):
     Feature: list[MediaProviderFeature]
 
 
-class MediaProviderResponse(_Model):
+class MediaProviderResponse(PlexModel):
     MediaProvider: MediaProviderDefinition

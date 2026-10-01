@@ -4,12 +4,18 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from phoenixadult.models.provider_info import PlexMediaType
 
-class _Model(BaseModel):
+
+class PlexModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class PlexImage(_Model):
+CAST_FIELDS = ('Role', 'Director', 'Producer')
+CREDIT_FIELDS = (*CAST_FIELDS, 'Writer')
+
+
+class PlexImage(PlexModel):
     url: str
     type: str
     priority: bool | None = None
@@ -17,7 +23,7 @@ class PlexImage(_Model):
     locked: bool | None = None
 
 
-class PlexRole(_Model):
+class PlexRole(PlexModel):
     tag: str
     role: str | None = None
     thumb: str | None = None
@@ -25,45 +31,45 @@ class PlexRole(_Model):
     order: int | None = None
 
 
-class PlexGenre(_Model):
+class PlexGenre(PlexModel):
     tag: str
 
 
-class PlexRating(_Model):
+class PlexRating(PlexModel):
     type: str
     value: float
     image: str | None = None
 
 
-class PlexGuid(_Model):
+class PlexGuid(PlexModel):
     id: str
 
 
-class PlexData18(_Model):
+class PlexData18(PlexModel):
     type: Literal['scene', 'movie']
     id: str
     manual: bool | None = None
     also: list[str] | None = None
 
 
-class PlexSource(_Model):
+class PlexSource(PlexModel):
     url: str | None = None
     kind: str | None = None
     data: Any = None
 
 
-class PlexCollection(_Model):
+class PlexCollection(PlexModel):
     tag: str
 
 
-class PlexCountry(_Model):
+class PlexCountry(PlexModel):
     tag: str
 
 
-class PlexMatchResult(_Model):
+class PlexMatchResult(PlexModel):
     ratingKey: str
     guid: str
-    type: Literal['movie', 'show', 'season', 'episode']
+    type: PlexMediaType
     title: str
     originallyAvailableAt: str | None = None
     thumb: str | None = None
@@ -73,7 +79,7 @@ class PlexMatchResult(_Model):
     Guid: list[PlexGuid] | None = None
 
 
-class _MatchContainer(_Model):
+class _MatchContainer(PlexModel):
     offset: int
     totalSize: int
     identifier: str
@@ -81,12 +87,12 @@ class _MatchContainer(_Model):
     Metadata: list[PlexMatchResult]
 
 
-class PlexMatchResponse(_Model):
+class PlexMatchResponse(PlexModel):
     MediaContainer: _MatchContainer
 
 
-class PlexMetadata(_Model):
-    type: Literal['movie', 'show', 'season', 'episode']
+class PlexMetadata(PlexModel):
+    type: PlexMediaType
     ratingKey: str
     key: str | None = None
     guid: str
@@ -119,11 +125,11 @@ class PlexMetadata(_Model):
     Country: list[PlexCountry] | None = None
 
 
-class _MetadataContainer(_Model):
+class _MetadataContainer(PlexModel):
     identifier: str
     size: int
     Metadata: list[PlexMetadata]
 
 
-class PlexMetadataResponse(_Model):
+class PlexMetadataResponse(PlexModel):
     MediaContainer: _MetadataContainer

@@ -24,12 +24,12 @@ from phoenixadult.utils.helpers.ids import pack_cur_id
 from phoenixadult.utils.helpers.search_results import build_search_result
 from phoenixadult.utils.helpers.text import slugify
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.people.types import GENDER_SUFFIXES
 from phoenixadult.utils.processors.filename_parser import clean_search_title
 
 _IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.webp')
 _INDEX_TTL_S = 60.0
 _MISS_THROTTLE_S = 2.0
-_ALLOWED_GENDERS = {'male', 'female', 'trans'}
 
 _XML_DECL_RE = re.compile(r'^\s*<\?xml[^>]*\?>')
 _XML_ENTITY_RE = re.compile(r'&(?:#\d+|#x[0-9a-fA-F]+|amp|lt|gt|quot|apos);')
@@ -435,7 +435,7 @@ class ManualNfoClient(Client):
         for a in nfo.actors:
             g = a.get('gender', '').lower().strip()
             thumb = a.get('thumb', '')
-            out.append(ActorResult(name=a['name'], photo_url=thumb if _is_http(thumb) else '', gender=g if g in _ALLOWED_GENDERS else ''))
+            out.append(ActorResult(name=a['name'], photo_url=thumb if _is_http(thumb) else '', gender=g if g in GENDER_SUFFIXES else ''))
 
         metadata.actors = out
 

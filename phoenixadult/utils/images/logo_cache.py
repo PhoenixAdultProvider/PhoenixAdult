@@ -13,6 +13,7 @@ from phoenixadult.config.env import env
 from phoenixadult.utils import db
 from phoenixadult.utils.fs.paths import rel_to
 from phoenixadult.utils.images.logo_trim import trim
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 
 _RASTER_EXTS = ('.png', '.jpg', '.jpeg', '.webp')
@@ -242,7 +243,7 @@ def find_logo(tagline: str | None, studio: str | None) -> Path | None:
 def _url_for_rel(rel: str, mtime: float | None = None) -> str:
     quoted = '/'.join(quote(part) for part in rel.split('/'))
     bust = f'?v={int(mtime)}' if mtime else ''
-    return f'/images/local/logos/{quoted}{bust}'
+    return f'{LOCAL_IMAGES}logos/{quoted}{bust}'
 
 
 def local_url(path: Path, mtime: float | None = None) -> str | None:

@@ -7,6 +7,7 @@ import httpx2
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
+from phoenixadult.config.env import TRUTHY
 from phoenixadult.routes import read_json_body
 from phoenixadult.services import plex_account, plex_connections, plex_import, plex_jobs, plex_reconcile
 from phoenixadult.services.plex_connections import Connection
@@ -19,7 +20,7 @@ _admin = [Depends(admin_auth_guard)]
 
 
 def _truthy(value: str | None) -> bool:
-    return (value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+    return (value or '').strip().lower() in TRUTHY
 
 
 def _limit(request: Request) -> tuple[int | None, JSONResponse | None]:

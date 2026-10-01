@@ -8,6 +8,9 @@ def _cwd() -> Path:
     return Path.cwd()
 
 
+TRUTHY = frozenset({'1', 'true', 'yes', 'on'})
+
+
 def _flag(name: str, default: str) -> str:
     return (os.environ.get(name) or default).strip().lower()
 
@@ -35,7 +38,7 @@ class _Env:
 
     @property
     def http_body_dump(self) -> bool:
-        return _flag('HTTP_BODY_DUMP', 'false') in {'1', 'true', 'yes', 'on'}
+        return _flag('HTTP_BODY_DUMP', 'false') in TRUTHY
 
     @property
     def log_body_max_chars(self) -> int:

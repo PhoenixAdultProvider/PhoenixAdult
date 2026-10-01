@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -20,12 +20,13 @@ from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import ORIGINALS_DIR, cache_photo, index_conn, purge, restore_original, set_gender
 from phoenixadult.utils.people.image_source import KNOWN_SOURCES
 from phoenixadult.utils.people.sources import ALL_SOURCES
 from phoenixadult.utils.people.sources.local_storage import local_storage_source
-from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, parse_person_filename
+from phoenixadult.utils.people.types import Gender, PersonLookupContext, PersonSource, PersonType, parse_person_filename
 from phoenixadult.utils.processors.title_case import title_case
 
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
@@ -35,7 +36,6 @@ FETCHABLE_SOURCES = [source for source in ALL_SOURCES if source.name != local_st
 _BULK_CONCURRENCY = 3
 _BULK_MAX = 250
 
-_ROLES = ('actor', 'director', 'producer')
 _GENDERS = [('', 'gn', 'None'), ('male', 'gm', 'Male'), ('female', 'gf', 'Female'), ('trans', 'gt', 'Trans')]
 _ROLE_CSS = {'actor': 'r-actor', 'director': 'r-director', 'producer': 'r-producer'}
 _TABS = [
@@ -55,7 +55,7 @@ def _display_name(text: str) -> str:
 
 def _parse_filename(filename: str) -> tuple[str, str, str] | None:
     role, slug, gender = parse_person_filename(filename)
-    if role not in _ROLES or not slug:
+    if role not in get_args(PersonType) or not slug:
         return None
     return role, _display_name(slug.replace('-', ' ')), gender
 
@@ -136,7 +136,7 @@ def _display_entry(entry: dict[str, Any]) -> dict[str, Any]:
         'gender_norm': gender_norm,
         'gcss': next(css for key, css, _ in _GENDERS if key == gender_norm),
         'role_css': _ROLE_CSS.get(str(entry.get('role', '')), ''),
-        'local_src': f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}',
+        'local_src': f'{LOCAL_IMAGES}{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}',
         'upstream_quoted': quote(str(entry.get('upstream_url', '')), safe=''),
         'search_key': name.casefold(),
         'single': len(name.split()) == 1,
@@ -274,7 +274,7 @@ async def edit_page(request: Request, filename: str = '', name: str = '', role: 
         )
     filename = filename or str(entry['filename'])
     relpath = str(entry.get('relpath', filename))
-    cached_src = f'/images/local/{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
+    cached_src = f'{LOCAL_IMAGES}{quote(relpath, safe="/")}?v={int(entry.get("mtime", 0))}'
     scenes = await run_in('store', _scene_rows, entry)
     return HTMLResponse(
         render_page(
@@ -463,7 +463,7 @@ async def gender(request: Request) -> JSONResponse:
     new_gender = str(data.get('gender', ''))
     if not filename:
         return JSONResponse({'ok': False, 'error': 'missing filename'}, status_code=400)
-    if new_gender not in ('', 'male', 'female', 'trans'):
+    if new_gender not in get_args(Gender):
         return JSONResponse({'ok': False, 'error': 'invalid gender'}, status_code=400)
     new_filename = await run_in('fs', set_gender, filename, new_gender)
     return JSONResponse({'ok': new_filename is not None, 'filename': new_filename})

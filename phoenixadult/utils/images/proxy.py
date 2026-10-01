@@ -4,6 +4,8 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 from phoenixadult.utils.auth.url_signing import sign_url
 
+LOCAL_IMAGES = '/images/local/'
+
 
 def proxy_url(
     url: str | None,
@@ -18,7 +20,7 @@ def proxy_url(
     base = base_url.rstrip('/')
     if url.startswith(f'{base}/images/proxy'):
         return sign_url(url)
-    if passthrough_local and url.startswith(f'{base}/images/local/'):
+    if passthrough_local and url.startswith(f'{base}{LOCAL_IMAGES}'):
         return sign_url(url)
     out = f'{base}/images/proxy?url={quote(url, safe="")}'
     for r in referers or []:

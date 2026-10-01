@@ -12,7 +12,7 @@ from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import shared_http
 from phoenixadult.utils.http.headers import image_request_headers
-from phoenixadult.utils.images.proxy import proxy_url
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES, proxy_url
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.cache import cache_photo, lookup_cached
 from phoenixadult.utils.people.data import actor_rules
@@ -235,7 +235,7 @@ def to_plex_roles(people: list[ResolvedPerson], base_url: str, referers: list[st
 
 def _is_male_role(role: PlexRole) -> bool:
     gender = (role.gender or '').lower()
-    if not gender and role.thumb and '/images/local/' in role.thumb:
+    if not gender and role.thumb and LOCAL_IMAGES in role.thumb:
         gender = parse_person_filename(role.thumb.rsplit('/', 1)[-1])[2]
     return gender == 'male'
 

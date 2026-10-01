@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phoenixadult.models.metadata import PlexMetadata
+from phoenixadult.models.metadata import CREDIT_FIELDS, PlexMetadata
 from phoenixadult.utils.logging.logger import logger
 
 _CARRY_FIELDS = ('Genre', 'Collection', 'Country', 'Role', 'Director', 'Producer', 'Writer', 'Image')
@@ -94,7 +94,7 @@ def reconcile_dropped_images(meta: dict[str, Any], image_meta: dict[str, tuple[i
     for key, _kind in _PROMOTABLE:
         if meta.get(key) is None:
             meta.pop(key, None)
-    for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+    for role_key in CREDIT_FIELDS:
         for role in meta.get(role_key) or []:
             if role.get('thumb') is None:
                 role.pop('thumb', None)

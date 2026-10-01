@@ -14,7 +14,18 @@ from PIL import Image as PILImage
 
 from phoenixadult.config import config, image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.models.metadata import PlexCollection, PlexCountry, PlexData18, PlexGenre, PlexImage, PlexMetadata, PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import (
+    CAST_FIELDS,
+    CREDIT_FIELDS,
+    PlexCollection,
+    PlexCountry,
+    PlexData18,
+    PlexGenre,
+    PlexImage,
+    PlexMetadata,
+    PlexMetadataResponse,
+    PlexRole,
+)
 from phoenixadult.registry import find_site
 from phoenixadult.utils.auth.url_signing import sign_url, strip_sig
 from phoenixadult.utils.cache import scene_store
@@ -27,7 +38,7 @@ from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.helpers.data18 import data18_ref_with_extras, manual_mapping_url, mapping_slug
 from phoenixadult.utils.images.ext import ext_from
 from phoenixadult.utils.images.image_fetcher import fetch_image, is_solid, rotate_image_bytes
-from phoenixadult.utils.images.proxy import proxy_params
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES, proxy_params
 from phoenixadult.utils.logging.logger import logger
 
 _ERROR_TITLE_RE = re.compile(r'\b(404|403|401|500|not found|forbidden|access denied|just a moment|attention required|page not found|error)\b', re.IGNORECASE)
@@ -129,9 +140,8 @@ def _rebase(obj: Any, base: str, people_base: str) -> Any:
     if isinstance(obj, list):
         return [_rebase(v, base, people_base) for v in obj]
     if isinstance(obj, str):
-        marker = '/images/local/'
-        if marker in obj:
-            return sign_url(f'{people_base}{obj[obj.index(marker) :]}')
+        if LOCAL_IMAGES in obj:
+            return sign_url(f'{people_base}{obj[obj.index(LOCAL_IMAGES) :]}')
         if obj.startswith('/cache/') or obj.startswith('/images/'):
             return sign_url(f'{base}{obj}')
     return obj
@@ -221,7 +231,7 @@ class _SnapshotWrite:
         meta = self.meta
         found: list[tuple[dict[str, Any], str, str]] = [(meta, 'thumb', 'poster'), (meta, 'art', 'art')]
         found.extend((img, 'url', 'img') for img in meta.get('Image', []))
-        for role_key in ('Role', 'Director', 'Producer', 'Writer'):
+        for role_key in CREDIT_FIELDS:
             found.extend((role, 'thumb', 'role') for role in meta.get(role_key, []))
         found.extend((rating, 'image', 'rating') for rating in meta.get('Rating', []))
         return [(obj, key, hint) for obj, key, hint in found if obj.get(key)]
@@ -253,8 +263,8 @@ class _SnapshotWrite:
     async def _localize(self, url: str | None, hint: str, sem: asyncio.Semaphore) -> str | None:
         if not url:
             return url
-        if '/images/local/' in url:
-            return strip_sig(url[url.index('/images/local/') :])
+        if LOCAL_IMAGES in url:
+            return strip_sig(url[url.index(LOCAL_IMAGES) :])
         if (hit := _snapshot_file(url, self.base)) is not None:
             if (kept := await run_in('fs', self._keep, *hit, self.rotations.get(url, 0))) is not None:
                 local, probed, solid = kept
@@ -336,7 +346,6 @@ class _SnapshotWrite:
 
 
 _EDITABLE_TAGS = {'Genre': PlexGenre, 'Collection': PlexCollection, 'Country': PlexCountry}
-_EDITABLE_ROLES = ('Role', 'Director', 'Producer')
 
 
 def drop_stale_people_thumbs(response: PlexMetadataResponse, site_name: str, cur_id: str) -> bool:
@@ -347,9 +356,9 @@ def drop_stale_people_thumbs(response: PlexMetadataResponse, site_name: str, cur
     except (AttributeError, IndexError):
         return False
     cleared = 0
-    for attr in _EDITABLE_ROLES:
+    for attr in CAST_FIELDS:
         for role in getattr(md, attr) or []:
-            if role.thumb and '/images/local/' in role.thumb:
+            if role.thumb and LOCAL_IMAGES in role.thumb:
                 role.thumb = None
                 cleared += 1
     logger.info('meta-cache', f'forced people re-push for "{md.title}": {cleared} headshot(s) to re-resolve')
@@ -391,8 +400,8 @@ def _apply_edits(md: PlexMetadata, fields: dict[str, Any]) -> None:
         if attr in fields:
             tags = [str(t).strip() for t in fields[attr] or [] if str(t).strip()]
             setattr(md, attr, [model(tag=tag) for tag in dict.fromkeys(tags)] or None)
-    existing = {attr: {r.tag: r for r in (getattr(md, attr) or [])} for attr in _EDITABLE_ROLES}
-    for attr in _EDITABLE_ROLES:
+    existing = {attr: {r.tag: r for r in (getattr(md, attr) or [])} for attr in CAST_FIELDS}
+    for attr in CAST_FIELDS:
         if attr not in fields:
             continue
         kept: list[PlexRole] = []

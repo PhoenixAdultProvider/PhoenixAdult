@@ -15,7 +15,7 @@ from pydantic import Field
 from phoenixadult.config.env import env
 from phoenixadult.mappers.metadata_mapper import build_artwork
 from phoenixadult.models.camel import CamelModel
-from phoenixadult.models.metadata import PlexImage, PlexMetadataResponse
+from phoenixadult.models.metadata import CREDIT_FIELDS, PlexImage, PlexMetadataResponse
 from phoenixadult.registry import PROVIDER_DEFINITIONS, find_site
 from phoenixadult.services.plex_connections import Connection
 from phoenixadult.services.plex_reconcile import PlexClient, our_rating_key
@@ -34,7 +34,6 @@ _TAG = 'plex-import'
 _STAGING = '_plex-import'
 _MAX_ITEMS = 500
 _CONCURRENCY = 4
-_ROLE_FIELDS = ('Role', 'Director', 'Writer', 'Producer')
 _NAME_BY_CLASS = {'coverPoster': 'poster', 'background': 'art', 'backgroundSquare': 'square'}
 _FOREIGN_GUID = re.compile(r'^[A-Za-z0-9._-]+://(?P<id>[^?#]+)')
 
@@ -201,7 +200,7 @@ def _build(item: dict[str, Any], site_name: str, cur_id: str, images: list[PlexI
     metadata['Collection'] = _tags(item, 'Collection')
     if country := _tags(item, 'Country'):
         metadata['Country'] = country
-    for key in _ROLE_FIELDS:
+    for key in CREDIT_FIELDS:
         if roles := _roles(item, key):
             metadata[key] = roles
     if poster := next((img.url for img in images if img.type == 'coverPoster'), ''):

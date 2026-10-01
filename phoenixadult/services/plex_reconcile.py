@@ -17,6 +17,7 @@ from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.rating_key import parse_rating_key
 
@@ -326,7 +327,7 @@ async def push_collection_logos(connection: Connection, token: str, apply: bool 
                 if hit is None:
                     continue
                 report.matched += 1
-                marker = f'/images/local/logos/{hit.relative_to(cache_root).as_posix()}'
+                marker = f'{LOCAL_IMAGES}logos/{hit.relative_to(cache_root).as_posix()}'
                 if any(marker in c for c in await client.clear_logo_candidates(plex_key)):
                     report.already += 1
                     continue

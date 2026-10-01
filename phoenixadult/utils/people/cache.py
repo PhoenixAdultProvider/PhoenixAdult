@@ -5,6 +5,7 @@ import re
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
+from typing import get_args
 
 import httpx2
 from cachetools import LRUCache
@@ -18,9 +19,10 @@ from phoenixadult.utils.http.client import shared_http
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content_type
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.image_source import GENERIC_SOURCE, source_for_url
-from phoenixadult.utils.people.types import Gender, PersonType, parse_person_filename
+from phoenixadult.utils.people.types import GENDER_SUFFIXES, Gender, PersonType, parse_person_filename
 
 
 def _slug(name: str) -> str:
@@ -36,7 +38,7 @@ def _base_name(name: str, type: PersonType) -> str:
 
 def _subdir(type: PersonType, gender: Gender) -> str:
     if type == 'actor':
-        bucket = gender if gender in ('male', 'female', 'trans') else 'unknown'
+        bucket = gender if gender in GENDER_SUFFIXES else 'unknown'
         return f'actors/{bucket}'
     return f'{type}s'
 
@@ -75,7 +77,7 @@ def _local_url(relpath: str, data: bytes | None = None) -> str:
     token = _bust_token(relpath, data)
     bust = f'?v={token}' if token else ''
     quoted = '/'.join(quote(part) for part in relpath.split('/'))
-    return sign_url(f'{image_base_url()}/images/local/{quoted}{bust}') or ''
+    return sign_url(f'{image_base_url()}{LOCAL_IMAGES}{quoted}{bust}') or ''
 
 
 # ── Index (people_images table; files are the source of truth) ────────────────
@@ -370,11 +372,8 @@ def purge(filename: str) -> bool:
     return True
 
 
-_GENDERS = ('', 'male', 'female', 'trans')
-
-
 def set_gender(filename: str, new_gender: str) -> str | None:
-    if new_gender not in _GENDERS:
+    if new_gender not in get_args(Gender):
         return None
     directory = env.people_cache_dir
     type, slug, old_gender = parse_person_filename(filename)

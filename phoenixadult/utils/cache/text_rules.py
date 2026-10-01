@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import re
 
-from phoenixadult.models.metadata import PlexCollection, PlexGenre, PlexMetadata, PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import CAST_FIELDS, PlexCollection, PlexGenre, PlexMetadata, PlexMetadataResponse, PlexRole
 from phoenixadult.utils.genres import NormalizeGenresOptions, normalize_genres
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import apply_name_aliases
 from phoenixadult.utils.processors.episode_tag import strip_episode_tag
@@ -91,7 +92,7 @@ def _renormalize_genres(md: PlexMetadata, studio: str) -> bool:
 
 def _realias_people(md: PlexMetadata, studio: str) -> bool:
     changed = False
-    for attr in ('Role', 'Director', 'Producer'):
+    for attr in CAST_FIELDS:
         roles: list[PlexRole] | None = getattr(md, attr)
         if not roles:
             continue
@@ -103,7 +104,7 @@ def _realias_people(md: PlexMetadata, studio: str) -> bool:
             if aliased != r.tag:
                 logger.info('meta-cache', f'recredited "{r.tag}" as "{aliased}"')
                 r.tag = aliased
-                if r.thumb and '/images/local/' in r.thumb:
+                if r.thumb and LOCAL_IMAGES in r.thumb:
                     r.thumb = None
                 changed = True
             if aliased.lower() in seen:
@@ -131,6 +132,6 @@ def reapply_text_rules(response: PlexMetadataResponse, scraper_type: str | None 
             changed = _recase_collections(md) or changed
         if 'Genre' not in held:
             changed = _renormalize_genres(md, studio) or changed
-        if not {'Role', 'Director', 'Producer'} & held:
+        if not held.intersection(CAST_FIELDS):
             changed = _realias_people(md, studio) or changed
     return changed

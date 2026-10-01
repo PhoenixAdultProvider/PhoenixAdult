@@ -6,8 +6,9 @@ from urllib.parse import unquote
 
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
-from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
+from phoenixadult.models.metadata import CAST_FIELDS, PlexMetadataResponse, PlexRole
 from phoenixadult.utils.fs.paths import safe_join
+from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import PeopleResolver, to_plex_roles
 from phoenixadult.utils.processors.title_case import title_sort
@@ -17,10 +18,9 @@ if TYPE_CHECKING:
 
 
 def _is_stale_local_thumb(thumb: str) -> bool:
-    marker = '/images/local/'
-    if marker not in thumb:
+    if LOCAL_IMAGES not in thumb:
         return False
-    relpath = unquote(thumb.rsplit(marker, 1)[1].split('?')[0])
+    relpath = unquote(thumb.rsplit(LOCAL_IMAGES, 1)[1].split('?')[0])
     if not relpath:
         return False
     target = safe_join(env.people_cache_dir, relpath)
@@ -143,7 +143,7 @@ def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
         if (sort := title_sort(md.title)) and md.titleSort != sort:
             md.titleSort = sort
             changed = True
-        for attr in ('Role', 'Director', 'Producer'):
+        for attr in CAST_FIELDS:
             roles: list[PlexRole] | None = getattr(md, attr)
             for idx, r in enumerate(roles or []):
                 if r.order is None:
