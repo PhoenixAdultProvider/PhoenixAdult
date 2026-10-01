@@ -204,7 +204,7 @@ def _mount_routers(app: FastAPI) -> None:
     # ── Stored-Search Browser (admin only) ───────────────────────────────────
     app.include_router(search_routes.router, prefix='/searches')
 
-    # ── Plex Server Reconciliation (admin-guarded; no-op until PLEX_* are set) ─
+    # ── Plex Server Connections and Reconciliation (per-user connections) ─────
     app.include_router(plex_routes.router, prefix='/plex')
 
     # ── Dev / Test UI (off unless DEV_UI_ENABLE, admin-guarded) ──────────────

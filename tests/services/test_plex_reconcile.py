@@ -89,11 +89,12 @@ async def test_items_are_inspected_concurrently(monkeypatch: pytest.MonkeyPatch,
             in_flight -= 1
 
     monkeypatch.setattr(pr.PlexClient, 'item', tracked)
-    report = await pr.reconcile(connection, 'test-token', apply=False)
+    ticks: list[tuple[int, int]] = []
+    report = await pr.reconcile(connection, 'test-token', apply=False, on_progress=lambda total, done: ticks.append((total, done)))
     assert report.matched == 8 and report.scanned == 8
     assert [i.rating_key for i in report.items] == []
     assert peak > 1
-    assert pr.progress(connection.id) == {'active': False, 'total': 8, 'inspected': 8}
+    assert ticks[-1] == (8, 8)
 
 
 @respx.mock

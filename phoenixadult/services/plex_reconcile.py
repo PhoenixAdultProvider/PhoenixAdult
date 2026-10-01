@@ -179,12 +179,6 @@ class PlexClient:
 
 _INSPECT_CONCURRENCY = 8
 
-_progress: dict[int, dict[str, Any]] = {}
-
-
-def progress(connection_id: int) -> dict[str, Any]:
-    return dict(_progress.get(connection_id) or {'active': False, 'total': 0, 'inspected': 0})
-
 
 async def _inspect_item(
     client: PlexClient, section: str, stub: dict[str, Any], rating_key: str, site_name: str, field_filter: set[str]
@@ -227,8 +221,6 @@ async def reconcile(
     field_filter = {f for f in (fields or set()) if f in _FIELDS} or set(_FIELDS)
     site_filter = {s.casefold() for s in sites} if sites else None
     client = PlexClient(connection.server_url, token)
-    run_progress: dict[str, Any] = {'active': False, 'total': 0, 'inspected': 0}
-    _progress[connection.id] = run_progress
     prefixes = _guid_prefixes()
     try:
         work: list[tuple[str, dict[str, Any], str, str]] = []
@@ -245,7 +237,7 @@ async def reconcile(
                     continue
                 work.append((section, stub, rating_key, site_name))
 
-        run_progress.update(active=True, total=len(work), inspected=0)
+        inspected_count = 0
         if on_progress:
             on_progress(len(work), 0)
         sem = asyncio.Semaphore(_INSPECT_CONCURRENCY)
@@ -256,9 +248,10 @@ async def reconcile(
                 if done:
                     return None
                 inspected = await _inspect_item(client, *w, field_filter)
-                run_progress['inspected'] += 1
+                nonlocal inspected_count
+                inspected_count += 1
                 if on_progress:
-                    on_progress(run_progress['total'], run_progress['inspected'])
+                    on_progress(len(work), inspected_count)
                 return inspected
 
         tasks = [asyncio.create_task(_guarded(w)) for w in work]
@@ -297,7 +290,6 @@ async def reconcile(
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        run_progress['active'] = False
         await client.aclose()
 
     verb = 'removed from' if apply else 'would be removed from'

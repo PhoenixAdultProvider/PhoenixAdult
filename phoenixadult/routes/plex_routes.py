@@ -209,13 +209,6 @@ async def update(connection_id: int, request: Request) -> JSONResponse:
         return JSONResponse({'error': 'Update check failed'}, status_code=502)
 
 
-@router.get('/connections/{connection_id}/reconcile/progress')
-async def reconcile_progress(connection_id: int, request: Request) -> JSONResponse:
-    if await _owned(request, connection_id) is None:
-        return JSONResponse({'error': 'No such connection'}, status_code=404)
-    return JSONResponse(plex_reconcile.progress(connection_id))
-
-
 @router.get('/connections/{connection_id}/jobs')
 async def jobs(connection_id: int, request: Request) -> JSONResponse:
     if await _owned(request, connection_id) is None:

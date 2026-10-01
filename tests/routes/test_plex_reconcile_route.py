@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from phoenixadult.app_factory import create_app
-from phoenixadult.services import plex_reconcile
 from tests.support import authed_client, seed_connection
 
 BASE = 'http://192.0.2.10:32400'
@@ -14,7 +13,6 @@ BASE = 'http://192.0.2.10:32400'
 def _fresh_progress() -> None:
     from phoenixadult.services import plex_jobs
 
-    plex_reconcile._progress.clear()
     plex_jobs.reset()
 
 
@@ -82,14 +80,6 @@ def test_actions_409_until_the_connection_is_configured() -> None:
     assert client.post(f'/plex/connections/{cid}/reconcile').status_code == 409
     assert client.get(f'/plex/connections/{cid}/libraries').status_code == 409
     assert client.post(f'/plex/connections/{cid}/import?section=1').status_code == 409
-
-
-def test_reconcile_progress_is_per_connection() -> None:
-    client = authed_client()
-    connection = seed_connection(url=BASE)
-    body = client.get(f'/plex/connections/{connection.id}/reconcile/progress').json()
-    assert body == {'active': False, 'total': 0, 'inspected': 0}
-    assert client.get('/plex/connections/9999/reconcile/progress').status_code == 404
 
 
 def test_reconcile_rejects_a_bad_limit() -> None:
