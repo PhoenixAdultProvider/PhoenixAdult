@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import contextlib
 import hashlib
 import os
 import threading
@@ -31,9 +30,10 @@ def _load_or_create(path: Path) -> bytes:
             return base64.urlsafe_b64decode(path.read_text(encoding='ascii').strip())
         raw = os.urandom(_SECRET_BYTES)
         tmp = path.with_suffix('.key.tmp')
-        tmp.write_text(base64.urlsafe_b64encode(raw).decode('ascii'), encoding='ascii')
-        with contextlib.suppress(OSError):
-            os.chmod(tmp, 0o600)
+        tmp.unlink(missing_ok=True)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w', encoding='ascii') as handle:
+            handle.write(base64.urlsafe_b64encode(raw).decode('ascii'))
         os.replace(tmp, path)
     return raw
 
