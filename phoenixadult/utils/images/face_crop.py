@@ -22,6 +22,7 @@ _cv2: Any = None
 _np: Any = None
 _unavailable_reason: str | None = None
 _libs_lock = threading.Lock()
+_detectors = threading.local()
 
 
 def _libs() -> tuple[Any, Any] | None:
@@ -60,7 +61,10 @@ def _rotation_codes(cv2: Any) -> dict[int, Any]:
 
 def _best_face(cv2: Any, img: Any) -> tuple[Any, tuple[int, int, int, int], float] | None:
     best: tuple[Any, tuple[int, int, int, int], float] | None = None
-    detector = cv2.FaceDetectorYN.create(str(_MODEL_PATH), '', (320, 320), _DETECT_SCORE, 0.3, 5000)
+    detector = getattr(_detectors, 'yunet', None)
+    if detector is None:
+        detector = cv2.FaceDetectorYN.create(str(_MODEL_PATH), '', (320, 320), _DETECT_SCORE, 0.3, 5000)
+        _detectors.yunet = detector
     for code in _rotation_codes(cv2).values():
         rimg = img if code is None else cv2.rotate(img, code)
         h, w = rimg.shape[:2]
