@@ -1,22 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from pathlib import Path
-
-import pytest
-
 from phoenixadult.utils import db
 from scripts.rename_studio import migrate
 
 
-@pytest.fixture(autouse=True)
-def _tmp_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    yield tmp_path
-    db.close()
-
-
-def test_rename_merges_dimensions_and_leaves_snapshot_paths_alone(_tmp_db: Path) -> None:
+def test_rename_merges_dimensions_and_leaves_snapshot_paths_alone() -> None:
     conn = db.connect()
     with conn:
         conn.execute("INSERT INTO studios(name) VALUES('Old Name'), ('Other')")
@@ -44,7 +32,7 @@ def test_rename_merges_dimensions_and_leaves_snapshot_paths_alone(_tmp_db: Path)
     assert conn.execute('SELECT COUNT(*) c FROM scene_collections').fetchone()['c'] == 1
 
 
-def test_rename_can_recase_a_name_in_place(_tmp_db: Path) -> None:
+def test_rename_can_recase_a_name_in_place() -> None:
     conn = db.connect()
     with conn:
         conn.execute("INSERT INTO people(name) VALUES('Gi Joey')")
@@ -54,7 +42,7 @@ def test_rename_can_recase_a_name_in_place(_tmp_db: Path) -> None:
     assert [r['name'] for r in conn.execute('SELECT name FROM people')] == ['GI Joey']
 
 
-def test_rename_merges_into_an_existing_row_of_another_table(_tmp_db: Path) -> None:
+def test_rename_merges_into_an_existing_row_of_another_table() -> None:
     conn = db.connect()
     with conn:
         conn.execute("INSERT INTO genres(name) VALUES('Old Genre'), ('New Genre')")

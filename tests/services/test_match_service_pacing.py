@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
@@ -10,20 +8,12 @@ from phoenixadult.models.provider_info import ProviderInfo
 from phoenixadult.models.scrape import SearchContext, SearchResult
 from phoenixadult.registry import find_site
 from phoenixadult.services.match_service import MatchService
-from phoenixadult.utils import db
 from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 from tests.support import search_context
 
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 SITE = find_site('Nubile Films')
 assert SITE is not None
-
-
-@pytest.fixture(autouse=True)
-def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    yield tmp_path
-    db.close()
 
 
 async def test_deferred_search_returns_empty_queues_and_memoizes(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -14,7 +12,6 @@ from phoenixadult.services import metadata_service as metadata_module
 from phoenixadult.services.match_service import MatchRequest, MatchService
 from phoenixadult.services.metadata_service import MetadataService
 from phoenixadult.services.provider_errors import MalformedRequestError, ProviderUnavailableError
-from phoenixadult.utils import db
 from phoenixadult.utils.helpers.ids import b64url_encode
 from phoenixadult.utils.http.rate_limit_helper import PacingDeferredError
 from phoenixadult.utils.plex.rating_key import to_rating_key
@@ -22,13 +19,6 @@ from phoenixadult.utils.plex.rating_key import to_rating_key
 PROVIDER = ProviderInfo(id='phoenixadult', plex_identifier='tv.plex.test.p', title='P', version='1', media_type='movie')
 FILENAME = 'nubilefilms.24.01.02.cool.scene.mp4'
 RATING_KEY = to_rating_key(b64url_encode('https://nubilefilms.com/video/watch/1'), 'Nubile Films', '2024-01-02')
-
-
-@pytest.fixture(autouse=True)
-def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    yield tmp_path
-    db.close()
 
 
 def _req() -> MatchRequest:

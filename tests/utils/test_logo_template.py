@@ -9,8 +9,7 @@ from phoenixadult.utils.images import logo_template
 
 
 @pytest.fixture(autouse=True)
-def store(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'phoenixadult.db'))
+def store(tmp_path: Path) -> Path:
     return tmp_path / 'logo-templates.json'
 
 

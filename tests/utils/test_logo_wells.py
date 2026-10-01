@@ -10,7 +10,6 @@ from phoenixadult.utils.images import logo_cache
 
 @pytest.fixture(autouse=True)
 def _isolated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'phoenixadult.db'))
     monkeypatch.setattr(logo_cache, '_WELL_CACHE', {'vixen/logo.vixen.png|0|0': 'dark'}, raising=False)
     monkeypatch.setattr(logo_cache, '_WELL_LOADED', True, raising=False)
     monkeypatch.setattr(logo_cache, '_WELL_DIRTY', True, raising=False)

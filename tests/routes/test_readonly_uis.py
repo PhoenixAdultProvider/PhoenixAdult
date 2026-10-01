@@ -59,7 +59,6 @@ def test_metadata_edit_is_read_only(member: TestClient) -> None:
 
 @pytest.fixture
 def _one_cached_person(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     folder = tmp_path / 'images' / 'people' / 'actors' / 'female'
     folder.mkdir(parents=True)
     (folder / 'actor.jane-doe_female.jpg').write_bytes(b'x')

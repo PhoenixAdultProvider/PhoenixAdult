@@ -15,11 +15,8 @@ from scripts.migrate_snapshot_layout import migrate, orphans
 
 @pytest.fixture(autouse=True)
 def _tmp_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'cache'))
     yield tmp_path / 'cache'
-    db.close()
 
 
 def _response(title: str = 'A Scene') -> dict[str, object]:

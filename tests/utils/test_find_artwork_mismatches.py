@@ -30,7 +30,6 @@ def _seed(root: Path, rel: str, images: list[tuple[str, int, int, str]], *, soli
 
 
 def test_flags_swapped_kinds_and_ignores_promoted_and_upstream(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'phoenixadult.db'))
     monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path))
     try:
         _seed(tmp_path, 'corrupt-scene', [('a.jpg', 400, 600, 'background'), ('b.jpg', 800, 450, 'coverPoster')])

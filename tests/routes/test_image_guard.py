@@ -16,7 +16,6 @@ ADMIN_IMG = {'User-Agent': 'Mozilla/5.0', 'Sec-Fetch-Site': 'same-origin', 'Sec-
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv('IMAGE_GUARD_ENABLE', 'true')
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
-    monkeypatch.setenv('METADATA_CACHE_DIR', str(tmp_path / 'cache'))
     (tmp_path / 'pic.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 16)
     (tmp_path / 'cache').mkdir()
     (tmp_path / 'cache' / 'shot.jpg').write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 16)

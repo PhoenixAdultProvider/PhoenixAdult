@@ -207,22 +207,16 @@ async def test_pause_holds_the_worker_until_resume() -> None:
         scrape_queue.resume()
 
 
-async def test_replays_persist_and_drain_via_db(monkeypatch, tmp_path) -> None:
-    from phoenixadult.utils import db
+async def test_replays_persist_and_drain_via_db() -> None:
+    done = asyncio.Event()
 
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    try:
-        done = asyncio.Event()
+    async def job() -> None:
+        await done.wait()
 
-        async def job() -> None:
-            await done.wait()
-
-        scrape_queue.enqueue('r1', job, kind='search', replay={'kind': 'search', 'provider': 'p'})
-        assert scrape_queue.take_replays() == {'r1': {'kind': 'search', 'provider': 'p'}}
-        assert scrape_queue.take_replays() == {}
-        done.set()
-    finally:
-        db.close()
+    scrape_queue.enqueue('r1', job, kind='search', replay={'kind': 'search', 'provider': 'p'})
+    assert scrape_queue.take_replays() == {'r1': {'kind': 'search', 'provider': 'p'}}
+    assert scrape_queue.take_replays() == {}
+    done.set()
 
 
 async def test_progress_counts_one_drain_cycle() -> None:

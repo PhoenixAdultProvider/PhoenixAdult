@@ -151,7 +151,6 @@ def test_the_add_page_stays_put_and_works_a_studio_at_a_time() -> None:
 
 
 def test_upload_files_the_logo_under_the_studio_and_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
     client = authed_client()
@@ -177,7 +176,6 @@ def test_add_url_rejects_a_non_http_address() -> None:
 def test_add_url_falls_back_to_the_impersonate_bypass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.utils.images.image_fetcher as fetcher
 
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
     seen: list[str] = []
@@ -218,7 +216,6 @@ def _fake_catalog(monkeypatch: pytest.MonkeyPatch, catalog: dict[str, list[str]]
 
 
 def test_sub_sites_that_already_have_a_logo_drop_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     _fake_catalog(monkeypatch, {'Vixen': ['Blacked', 'Tushy', 'Deeper']})
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
@@ -232,7 +229,6 @@ def test_sub_sites_that_already_have_a_logo_drop_out(tmp_path: Path, monkeypatch
 
 
 def test_a_studio_drops_out_once_it_and_every_sub_site_are_covered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     _fake_catalog(monkeypatch, {'Vixen': ['Tushy'], 'Bang': ['Bang Confessions']})
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
@@ -253,7 +249,6 @@ def test_a_studio_drops_out_once_it_and_every_sub_site_are_covered(tmp_path: Pat
 def test_state_groups_logos_by_studio_with_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from phoenixadult.routes.logo_routes import _state
 
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     root = tmp_path / 'images' / 'logos'
     for folder, names in (('naughty-america', ('the-spa', 'anal-college')), ('vixen', ('tushy',))):
         (root / folder).mkdir(parents=True)
@@ -279,7 +274,6 @@ def test_the_logo_page_has_a_studio_rail_that_survives_a_refresh() -> None:
 
 
 def test_hyphens_and_casing_never_split_a_logo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     root = tmp_path / 'images' / 'logos'
     (root / 'caramel-cash').mkdir(parents=True)
     _logo(root / 'caramel-cash' / 'logo.vr-pmv-bay.png', (255, 255, 255))
@@ -295,7 +289,6 @@ def test_hyphens_and_casing_never_split_a_logo(tmp_path: Path, monkeypatch: pyte
 
 
 def test_a_folder_resolves_however_it_is_punctuated(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     root = tmp_path / 'images' / 'logos'
     (root / 'blurred-media').mkdir(parents=True)
     _logo(root / 'blurred-media' / 'logo.biguysfuck.png', (255, 255, 255))
@@ -307,7 +300,6 @@ def test_a_folder_resolves_however_it_is_punctuated(tmp_path: Path, monkeypatch:
 
 
 def test_saving_writes_a_squashed_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
     client = authed_client()
@@ -335,8 +327,6 @@ def test_the_logo_page_uses_the_shared_toolbar_with_a_reset() -> None:
 def test_the_backdrop_verdict_survives_a_restart(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import json
 
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'pa.db'))
     root = tmp_path / 'images' / 'logos' / 'studio'
     for name, ink in (('white', (255, 255, 255)), ('black', (18, 18, 20))):
         _logo(root / f'logo.{name}.png', ink)
@@ -364,8 +354,6 @@ def test_the_backdrop_verdict_survives_a_restart(tmp_path: Path, monkeypatch: py
 def test_a_changed_logo_is_rescanned(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import json
 
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'pa.db'))
     root = tmp_path / 'images' / 'logos' / 'studio'
     _logo(root / 'logo.brand.png', (255, 255, 255))
     logo_cache.invalidate()
@@ -380,7 +368,6 @@ def test_a_changed_logo_is_rescanned(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 
 def test_expand_fills_every_missing_sub_site_but_never_the_whole_studio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets', 'Czech Casting']})
     params = {'studio': 'Czech AV', 'template': 'https://static.hqmediago.com/media/{subsiteclean}.com/images/site-logo.svg'}
 
@@ -390,7 +377,6 @@ def test_expand_fills_every_missing_sub_site_but_never_the_whole_studio(tmp_path
 
 
 def test_expand_names_a_placeholder_it_does_not_know(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets']})
     r = authed_client().get('/logos/api/expand', params={'studio': 'Czech AV', 'template': 'https://x/{subsitclean}.png'})
     assert r.status_code == 400 and '{subsitclean}' in r.json()['error']
@@ -403,8 +389,6 @@ def test_expand_asks_for_a_studio_and_a_template() -> None:
 
 
 def test_a_working_template_is_remembered_and_offered_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'phoenixadult.db'))
     _fake_catalog(monkeypatch, {'Czech AV': ['Czech Streets']})
     client = authed_client()
     assert client.get('/logos/api/aliases', params={'studio': 'Czech AV'}).json()['template'] == ''
@@ -416,7 +400,6 @@ def test_a_working_template_is_remembered_and_offered_back(tmp_path: Path, monke
 def test_add_url_walks_the_candidates_until_one_is_an_image(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import phoenixadult.utils.images.image_fetcher as fetcher
 
-    monkeypatch.setenv('IMAGE_DIR', str(tmp_path / 'images'))
     src = tmp_path / 'src.png'
     _logo(src, (255, 255, 255))
     tried: list[str] = []

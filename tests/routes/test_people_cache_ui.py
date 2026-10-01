@@ -275,17 +275,12 @@ def _seed_scene(title: str, cur: str, studio: str, tagline: str, date: str, cast
 def _person_cache(monkeypatch: pytest.MonkeyPatch, tmp_path):  # type: ignore[no-untyped-def]
     from pathlib import Path
 
-    from phoenixadult.utils import db
-
-    monkeypatch.setenv('STATE_DB_PATH', str(Path(str(tmp_path)) / 'state.db'))
     monkeypatch.setenv('IMAGE_DIR', str(tmp_path))
     monkeypatch.setenv('METADATA_CACHE_ENABLE', 'true')
-    monkeypatch.setenv('METADATA_CACHE_DIR', str(Path(str(tmp_path)) / 'cache'))
     headshot = Path(str(tmp_path)) / 'people' / 'actors' / 'female' / 'actor.jane-doe_female.jpg'
     headshot.parent.mkdir(parents=True, exist_ok=True)
     headshot.write_bytes(b'\xff\xd8\xff\xdb' + b'0' * 64)
     yield
-    db.close()
 
 
 def test_the_edit_page_lists_the_scenes_that_credit_the_person(_person_cache: None) -> None:

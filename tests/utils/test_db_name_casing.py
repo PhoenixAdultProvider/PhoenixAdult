@@ -1,19 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
 from phoenixadult.utils import db
-
-
-@pytest.fixture(autouse=True)
-def _tmp_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    yield
-    db.close()
 
 
 def _person(conn: sqlite3.Connection, name: str) -> int:

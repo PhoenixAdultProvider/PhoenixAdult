@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
@@ -12,13 +10,6 @@ from phoenixadult.utils.cache import layout as cache_layout
 from phoenixadult.utils.cache import search_store
 
 KEY = ('Nubile Films', 'cool scene', '2024-01-01', '', '')
-
-
-@pytest.fixture(autouse=True)
-def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]:
-    monkeypatch.setenv('STATE_DB_PATH', str(tmp_path / 'state.db'))
-    yield tmp_path
-    db.close()
 
 
 def test_fold_query_lowers_and_collapses_whitespace() -> None:
