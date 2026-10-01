@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 import httpx2
 from parsel import Selector
 
+from phoenixadult.utils.http.client import make_http
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.searchengines.types import SearchOptions
 
@@ -45,7 +46,7 @@ class DuckDuckGoClient:
         url = f'{_ENDPOINT}?q={quote(query)}'
         logger.debug('search:ddg', f'GET {url}')
         try:
-            async with httpx2.AsyncClient(timeout=10.0) as client:
+            async with make_http(timeout=10.0) as client:
                 resp = await client.get(url, headers=_HEADERS)
                 resp.raise_for_status()
         except httpx2.HTTPError as err:
