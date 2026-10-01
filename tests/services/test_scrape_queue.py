@@ -214,8 +214,8 @@ async def test_replays_persist_and_drain_via_db() -> None:
         await done.wait()
 
     scrape_queue.enqueue('r1', job, kind='search', replay={'kind': 'search', 'provider': 'p'})
-    assert scrape_queue.take_replays() == {'r1': {'kind': 'search', 'provider': 'p'}}
-    assert scrape_queue.take_replays() == {}
+    assert await scrape_queue.take_replays() == {'r1': {'kind': 'search', 'provider': 'p'}}
+    assert await scrape_queue.take_replays() == {}
     done.set()
 
 

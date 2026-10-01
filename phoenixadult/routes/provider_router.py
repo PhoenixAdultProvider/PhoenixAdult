@@ -44,7 +44,7 @@ def match_service_for(provider_id: str) -> tuple[ProviderInfo, MatchService] | N
 
 
 async def restore_queue() -> None:
-    replays = scrape_queue.take_replays()
+    replays = await scrape_queue.take_replays()
     restored = 0
     for replay in replays.values():
         for provider, match_service, metadata_service in _SERVICES:

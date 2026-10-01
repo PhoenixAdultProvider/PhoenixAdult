@@ -9,32 +9,55 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from phoenixadult.config.env import env
 from phoenixadult.utils import db
+from phoenixadult.utils.concurrency import pools
+from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http import rate_limit_helper as pacing
 from phoenixadult.utils.logging.logger import logger
 
 _MAX_PENDING = 10_000
 
 
-def _persist_add(key: str, replay: dict[str, Any]) -> None:
+def _write_replay(key: str, replay: dict[str, Any]) -> None:
     conn = db.connect()
     conn.execute('INSERT OR REPLACE INTO queue_replays(key, replay, queued_at) VALUES(?, ?, ?)', (key, json.dumps(replay), time.time()))
     conn.commit()
 
 
-def _persist_remove(key: str) -> None:
+def _delete_replay(key: str) -> None:
     conn = db.connect()
     conn.execute('DELETE FROM queue_replays WHERE key = ?', (key,))
     conn.commit()
 
 
-def take_replays() -> dict[str, dict[str, Any]]:
+def _report_persist_failure(future: asyncio.Future[None]) -> None:
+    if not future.cancelled() and (err := future.exception()) is not None:
+        logger.warn('scrape-queue', f'queue replay persistence failed: {err!r}')
+
+
+def _persist(write: Callable[..., None], *args: Any) -> None:
+    future = asyncio.get_running_loop().run_in_executor(pools.pool('queue'), write, *args)
+    future.add_done_callback(_report_persist_failure)
+
+
+def _persist_add(key: str, replay: dict[str, Any]) -> None:
+    _persist(_write_replay, key, replay)
+
+
+def _persist_remove(key: str) -> None:
+    _persist(_delete_replay, key)
+
+
+def _take_replays() -> dict[str, dict[str, Any]]:
     conn = db.connect()
     state = {str(r['key']): json.loads(r['replay']) for r in conn.execute('SELECT key, replay FROM queue_replays')}
     conn.execute('DELETE FROM queue_replays')
     conn.commit()
     return state
+
+
+async def take_replays() -> dict[str, dict[str, Any]]:
+    return await run_in('queue', _take_replays)
 
 
 @dataclass
@@ -346,9 +369,7 @@ def _estimate_eta(now: float) -> int | None:
     fast = [e for e in runnable if e.lane == FAST]
     paced = [e for e in runnable if e.lane == PACED]
     eta_fast = math.ceil(len(fast) / _LANE_WORKERS[FAST]) * avg(FAST) if fast else 0.0
-    per_scene_gap = env.scene_gap + (pacing._GAP_JITTER_MIN + pacing._GAP_JITTER_MAX) / 2
-    window_floor = pacing._SCENE_WINDOW / pacing._SCENE_WINDOW_MAX
-    per_paced_job = max(per_scene_gap + avg(PACED), window_floor)
+    per_paced_job = max(pacing.mean_scene_gap() + avg(PACED), pacing.scene_window_floor())
     pacer_wait = pacing.max_pending_wait() if paced else 0.0
     eta_paced = pacer_wait + sum(per_paced_job if e.key not in _running else remaining(e.key, PACED) for e in paced)
     return int(max(eta_fast, eta_paced) + paused_for())

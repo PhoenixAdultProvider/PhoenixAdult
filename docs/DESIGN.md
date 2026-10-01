@@ -597,6 +597,7 @@ Every route is `async def`, so anything synchronous runs on the event loop unles
 | `image` | `min(8, cpu/2)` | Pillow decode/dimension probing, face cropping |
 | `fs` | 4 | People-cache file writes |
 | `auth` | 4 | Session and API-key lookups, kept off `store` so a reporting query cannot delay sign-in |
+| `queue` | 1 | Scrape-queue replay rows; one worker keeps each key's add and remove in order, off the event loop |
 
 Artwork probing is additionally capped at `_PROBE_CONCURRENCY` (8) per scene, so one scene's image set arrives as a stream rather than a burst. Pools are created on first use and shut down in the lifespan's `finally`.
 

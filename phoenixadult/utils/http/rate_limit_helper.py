@@ -23,6 +23,14 @@ _SYNC_WAIT_BUDGET = 10.0
 _PACERS: weakref.WeakSet[ScenePacer] = weakref.WeakSet()
 
 
+def mean_scene_gap() -> float:
+    return env.scene_gap + (_GAP_JITTER_MIN + _GAP_JITTER_MAX) / 2
+
+
+def scene_window_floor() -> float:
+    return _SCENE_WINDOW / _SCENE_WINDOW_MAX
+
+
 def max_pending_wait() -> float:
     return max((p.pending_wait() for p in _PACERS), default=0.0)
 
