@@ -139,7 +139,12 @@ class PlexClient:
         return items[0] if items else {}
 
     async def remove_tags(self, section: str, rating_key: str, tag: str, values: list[str]) -> None:
-        params = {'type': '1', 'id': rating_key, f'{tag}[].tag.tag-': ','.join(values), f'{tag}.locked': '0'}
+        if skipped := [v for v in values if ',' in v]:
+            logger.warn(_TAG, f'{rating_key}: cannot remove {tag} {skipped} — Plex splits a removal list on commas')
+        removable = [v for v in values if ',' not in v]
+        if not removable:
+            return
+        params = {'type': '1', 'id': rating_key, f'{tag}[].tag.tag-': ','.join(removable), f'{tag}.locked': '0'}
         r = await self.http.put(f'{self.base}/library/sections/{section}/all', params=params)
         r.raise_for_status()
 

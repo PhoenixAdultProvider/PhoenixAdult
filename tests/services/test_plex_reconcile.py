@@ -112,6 +112,15 @@ async def test_apply_removes_stale_tags_and_keeps_field_unlocked(monkeypatch: py
 
 
 @respx.mock
+async def test_a_tag_containing_a_comma_is_never_sent_as_two_removals(monkeypatch: pytest.MonkeyPatch, connection: Any) -> None:
+    monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Role=['Gina Gerson']))
+    put = _mock_plex({'Role': [{'tag': 'Gina Gerson'}, {'tag': 'Ghost Actor'}, {'tag': 'Smith, Jr.'}]})
+
+    await pr.reconcile(connection, 'test-token', apply=True)
+    assert [call.request.url.params['actor[].tag.tag-'] for call in put.calls] == ['Ghost Actor']
+
+
+@respx.mock
 async def test_role_maps_to_the_actor_tag(monkeypatch: pytest.MonkeyPatch, connection: Any) -> None:
     monkeypatch.setattr(scene_store, 'tags_for', lambda s, c: _snapshot(Role=['Gina Gerson']))
     put = _mock_plex({'Role': [{'tag': 'Gina Gerson'}, {'tag': 'Ghost Actor'}]})
