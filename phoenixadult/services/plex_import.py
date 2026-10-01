@@ -300,7 +300,9 @@ async def import_library(
             async with sem:
                 await _import_one(client, stub, report, apply, overwrite)
 
-        await asyncio.gather(*(_run(stub) for stub in stubs))
+        outcomes = await asyncio.gather(*(_run(stub) for stub in stubs), return_exceptions=True)
+        if failure := next((o for o in outcomes if isinstance(o, BaseException)), None):
+            raise failure
     finally:
         await client.aclose()
     logger.info(
