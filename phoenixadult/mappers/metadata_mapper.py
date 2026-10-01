@@ -29,7 +29,7 @@ from phoenixadult.utils.images.image_fetcher import content_digest, fetch_dimens
 from phoenixadult.utils.images.image_referers import resolve_image_cookies, resolve_image_referers
 from phoenixadult.utils.images.proxy import proxy_url
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people import PeopleManager, to_plex_roles
+from phoenixadult.utils.people import PeopleResolver, to_plex_roles
 from phoenixadult.utils.plex.rating_key import to_guid, to_rating_key
 from phoenixadult.utils.processors.scene_link import is_api_url
 from phoenixadult.utils.processors.studio_name import normalize_studio
@@ -285,16 +285,8 @@ class MetadataMapper:
         return self._proxy(thumb_raw, referers, cookies), self._proxy(art_raw, referers, cookies), images_proxied
 
     async def _resolve_people(self, detail: SceneDetail, referers: list[str], cookies: list[str]) -> tuple[list[PlexRole], list[PlexRole], list[PlexRole]]:
-        people = PeopleManager()
-        for a in detail.actors or []:
-            if a.name:
-                people.add_actor(a.name, a.photo_url, a.gender or '', a.role)  # type: ignore[arg-type]
-        for d in detail.directors or []:
-            if d.name:
-                people.add_director(d.name, d.photo_url, d.role)
-        for pr in detail.producers or []:
-            if pr.name:
-                people.add_producer(pr.name, pr.photo_url, pr.role)
+        people = PeopleResolver()
+        people.add_detail(detail)
         resolved = await people.resolve_all(studio=detail.studio, site_name=detail.studio, referers=referers, cookies=cookies)
 
         people_base = image_base_url()

@@ -21,8 +21,8 @@ def _store_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Path]
     db.close()
 
 
-def test_normalize_text_lowers_and_collapses_whitespace() -> None:
-    assert search_store.normalize_text('  Cool   SCENE ') == 'cool scene'
+def test_fold_query_lowers_and_collapses_whitespace() -> None:
+    assert search_store.fold_query('  Cool   SCENE ') == 'cool scene'
 
 
 def test_round_trip_preserves_results() -> None:

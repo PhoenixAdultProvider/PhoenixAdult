@@ -3,9 +3,9 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import logging
-import os
 import uuid
 from collections.abc import Iterator
+from pathlib import Path
 
 HTTP = 7
 logging.addLevelName(HTTP, 'HTTP')
@@ -29,7 +29,7 @@ class AlignedFormatter(logging.Formatter):
         record.levelfield = f'{record.levelname:<{_LEVEL_NAME_WIDTH}}'
         module = record.module
         if module == '__init__':
-            folder = os.path.basename(os.path.dirname(record.pathname))
+            folder = Path(record.pathname).parent.name
             if folder:
                 module = f'{folder}/{module}'
         location = f'{module}:{record.lineno}'

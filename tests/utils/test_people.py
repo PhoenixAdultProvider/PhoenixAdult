@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from phoenixadult.utils.people import PeopleManager, to_plex_roles
+from phoenixadult.utils.people import PeopleResolver, to_plex_roles
 from phoenixadult.utils.people.data import actor_rules
 from phoenixadult.utils.people.types import ResolvedPerson
 
@@ -26,14 +26,14 @@ def test_data_loaded() -> None:
 
 
 async def test_alias_resolution() -> None:
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('abby rains', '')
     res = await pm.resolve_all(studio='SomeStudio', site_name='SomeSite')
     assert [p.name for p in res['actors']] == ['Abbey Rain']
 
 
 async def test_skip_name() -> None:
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('Bad Name', '')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'] == []
@@ -41,7 +41,7 @@ async def test_skip_name() -> None:
 
 async def test_male_actor_resolved_not_dropped_at_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENDER_SKIP_MALE_ENABLE', 'true')
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('John Q Smith', '', 'male')
     res = await pm.resolve_all(studio='', site_name='')
     assert [a.gender for a in res['actors']] == ['male']
@@ -82,7 +82,7 @@ def test_filter_male_actors_drops_male_by_field_and_filename(monkeypatch: pytest
 
 async def test_generic_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'true')
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('Jane Q Roe', '', 'female')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'][0].gender == 'female'
@@ -101,7 +101,7 @@ async def test_silhouette_from_discovered_gender(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setenv('GENERIC_IMAGE_ENABLE', 'true')
     monkeypatch.setattr(sources, '_configured_order', lambda: [_GenderOnly()])
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_director('Ken Shiro', '')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['directors'][0].gender == 'male'
@@ -126,7 +126,7 @@ async def test_silhouette_is_cached(tmp_path: pytest.TempPathFactory, monkeypatc
     monkeypatch.setattr(sources, '_configured_order', lambda: [_GenderOnly()])
     respx.get('https://cdn.example/silhouette-m.jpg').mock(return_value=httpx.Response(200, content=b'SILHOUETTE', headers={'content-type': 'image/jpeg'}))
 
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_director('Ken Shiro', '')
     res = await pm.resolve_all(studio='', site_name='')
 
@@ -159,7 +159,7 @@ def test_scene_image_pref(monkeypatch: pytest.MonkeyPatch, order: str | None, ex
 async def test_scene_image_used_when_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Scene,Local Storage')
     respx.head('https://cdn.example/scene.jpg').mock(return_value=httpx.Response(200))
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('Jane Roe', 'https://cdn.example/scene.jpg', 'female')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'][0].photo == 'https://cdn.example/scene.jpg'
@@ -167,7 +167,7 @@ async def test_scene_image_used_when_in_order(monkeypatch: pytest.MonkeyPatch) -
 
 async def test_scene_image_skipped_when_absent(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('PEOPLE_SOURCE_ORDER', 'Local Storage')
-    pm = PeopleManager()
+    pm = PeopleResolver()
     pm.add_actor('Jane Roe', 'https://cdn.example/scene.jpg', 'female')
     res = await pm.resolve_all(studio='', site_name='')
     assert res['actors'][0].photo == ''

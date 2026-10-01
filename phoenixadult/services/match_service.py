@@ -99,7 +99,7 @@ class MatchService:
     def _memo_key(self, search_data: SearchContext) -> tuple[str, str, str, str, str]:
         return (
             search_data.site_info.name,
-            search_store.normalize_text(search_data.title),
+            search_store.fold_query(search_data.title),
             search_data.search_date or '',
             search_data.scene_id or '',
             search_data.language or '',

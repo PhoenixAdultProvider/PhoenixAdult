@@ -24,7 +24,7 @@ def _expired(saved_at: float) -> bool:
     return ttl is not None and time.time() - saved_at > ttl
 
 
-def normalize_text(value: str) -> str:
+def fold_query(value: str) -> str:
     return ' '.join(value.lower().split())
 
 

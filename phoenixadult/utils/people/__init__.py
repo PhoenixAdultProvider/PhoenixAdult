@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import httpx2
 
@@ -26,6 +28,9 @@ from phoenixadult.utils.people.types import (
     parse_person_filename,
 )
 from phoenixadult.utils.processors.title_case import title_case
+
+if TYPE_CHECKING:
+    from phoenixadult.models.scrape import SceneDetail
 
 # fmt: off
 _SKIP_NAMES = {'', 'Bad Name', 'Test Model Name'}
@@ -63,19 +68,19 @@ async def _head_is_ok(url: str, headers: dict[str, str]) -> bool:
         return False
 
 
+@dataclass
 class _ResolveCtx:
-    def __init__(self, studio: str, site_name: str, referers: list[str], cookies: list[str]) -> None:
-        self.studio = studio
-        self.site_name = site_name
-        self.referers = referers
-        self.cookies = cookies
+    studio: str
+    site_name: str
+    referers: list[str]
+    cookies: list[str]
 
 
 def _image_headers(ctx: _ResolveCtx) -> dict[str, str]:
     return image_request_headers(ctx.referers, ctx.cookies)
 
 
-class PeopleManager:
+class PeopleResolver:
     def __init__(self) -> None:
         self._actors: list[PersonInput] = []
         self._directors: list[PersonInput] = []
@@ -98,6 +103,17 @@ class PeopleManager:
 
     def add_producer(self, name: str, photo: str, role: str = '') -> None:
         self._add('producer', self._producers, name, photo, role=role)
+
+    def add_detail(self, detail: SceneDetail) -> None:
+        for a in detail.actors or []:
+            if a.name:
+                self.add_actor(a.name, a.photo_url, a.gender or '', a.role)  # type: ignore[arg-type]
+        for d in detail.directors or []:
+            if d.name:
+                self.add_director(d.name, d.photo_url, d.role)
+        for pr in detail.producers or []:
+            if pr.name:
+                self.add_producer(pr.name, pr.photo_url, pr.role)
 
     async def resolve_all(
         self, *, studio: str, site_name: str, referers: list[str] | None = None, cookies: list[str] | None = None
@@ -236,4 +252,4 @@ def filter_male_actors(response: PlexMetadataResponse) -> int:
     return removed
 
 
-__all__ = ['PeopleManager', 'to_plex_roles', 'filter_male_actors', 'apply_name_aliases', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']
+__all__ = ['PeopleResolver', 'to_plex_roles', 'filter_male_actors', 'apply_name_aliases', 'find_photo', 'Gender', 'Role', 'PersonInput', 'ResolvedPerson']

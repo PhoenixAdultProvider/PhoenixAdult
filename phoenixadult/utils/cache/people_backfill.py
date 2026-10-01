@@ -9,7 +9,7 @@ from phoenixadult.config.env import env
 from phoenixadult.models.metadata import PlexMetadataResponse, PlexRole
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.logging.logger import logger
-from phoenixadult.utils.people import PeopleManager, to_plex_roles
+from phoenixadult.utils.people import PeopleResolver, to_plex_roles
 from phoenixadult.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ def _is_stale_local_thumb(thumb: str) -> bool:
 
 
 async def _resolve_and_fill(
-    people: PeopleManager,
+    people: PeopleResolver,
     fill_groups: list[tuple[list[PlexRole], str]],
     *,
     studio: str,
@@ -96,22 +96,14 @@ async def backfill_people_images(
             logger.warn('meta-cache', f'backfill scene re-fetch failed: {err}')
             detail = None
         if detail is not None:
-            scene = PeopleManager()
-            for a in detail.actors or []:
-                if a.name:
-                    scene.add_actor(a.name, a.photo_url or '', a.gender or '')  # type: ignore[arg-type]
-            for d in detail.directors or []:
-                if d.name:
-                    scene.add_director(d.name, d.photo_url or '')
-            for pr in detail.producers or []:
-                if pr.name:
-                    scene.add_producer(pr.name, pr.photo_url or '')
+            scene = PeopleResolver()
+            scene.add_detail(detail)
             refs = [detail.art_referer] if detail.art_referer else []
             cks = [detail.art_cookie] if detail.art_cookie else []
             if await _resolve_and_fill(scene, fill_groups, studio=detail.studio or md.studio or '', site_name=site_name, referers=refs, cookies=cks):
                 changed = True
 
-    sources = PeopleManager()
+    sources = PeopleResolver()
     enqueued = False
     for entries, role, _key in groups:
         for r in entries:

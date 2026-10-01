@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import sqlite3
 from collections.abc import Iterator
@@ -256,7 +255,7 @@ async def cache_photo(
     reuse = not replace and not cache_replace_enabled()
 
     def _prepare() -> dict[str, str] | None:
-        os.makedirs(directory, exist_ok=True)
+        Path(directory).mkdir(parents=True, exist_ok=True)
         return lookup_cached(name, type) if reuse else None
 
     existing = await run_in('fs', _prepare)

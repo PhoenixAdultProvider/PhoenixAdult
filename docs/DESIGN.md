@@ -173,7 +173,7 @@ flowchart TB
     http["HTTP layer<br/>make_http + bypass chain"]:::u
     ssrf["ssrf_guard"]:::u
     img["Image pipeline<br/>fetcher · classifier · referers"]:::u
-    ppl["PeopleManager<br/>+ photo sources + cache"]:::u
+    ppl["PeopleResolver<br/>+ photo sources + cache"]:::u
     cfg["Config<br/>env · catalog · overrides"]:::u
     log["logger + capture"]:::u
   end
@@ -440,7 +440,7 @@ sequenceDiagram
   participant CL as Client(site)
   participant UP as Upstream site
   participant MM as MetadataMapper
-  participant PM as PeopleManager
+  participant PM as PeopleResolver
   participant IMG as Image pipeline
 
   Plex->>PR: GET /library/metadata/scene-...-...
@@ -661,7 +661,7 @@ flowchart TB
   out -.-> note
 ```
 
-`PeopleManager.resolve_all` (`phoenixadult/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `phoenixadult/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `phoenixadult/utils/people/sources/` (8 site-specific XPath sources: `iafd`, `adult_dvd_empire`, `babepedia`, `babes_and_stars`, `boobpedia`, `indexxx`, `jav_database`, `local_storage`) and are fanned by `find_photo`. Retired sources (Freeones, JAVBus) wait in `phoenixadult/graveyard/`. Gender detection (`iafd_gender_check`, `phoenixadult/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
+`PeopleResolver.resolve_all` (`phoenixadult/utils/people/__init__.py`) drives the cascade per person: clean the name, title-case it (`title_case(..., type='name')`), drop skip-names, apply the per-studio then global alias tables (`ACTORS_REPLACE` / `ACTORS_REPLACE_STUDIOS` in `phoenixadult/utils/people/data.py`), then resolve a headshot in order. External photo sources live under `phoenixadult/utils/people/sources/` (8 site-specific XPath sources: `iafd`, `adult_dvd_empire`, `babepedia`, `babes_and_stars`, `boobpedia`, `indexxx`, `jav_database`, `local_storage`) and are fanned by `find_photo`. Retired sources (Freeones, JAVBus) wait in `phoenixadult/graveyard/`. Gender detection (`iafd_gender_check`, `phoenixadult/utils/people/gender.py`) is decoupled from the cache so `GENDER_DETECT_ENABLE` works regardless of `PEOPLE_CACHE_ENABLE`; `GENDER_SKIP_MALE_ENABLE` drops male actors. IAFD requires a bypass backend.
 
 ---
 
@@ -807,7 +807,7 @@ phoenixadult/
                              #   ssrf_guard, rate_limit_helper (ScenePacer)
     images/                  # image_fetcher, image_classifier, image_referers, logo_cache,
                              #   fanart, fansite_adapters
-    people/                  # PeopleManager (__init__), sources/, cache, gender, generic, data
+    people/                  # PeopleResolver (__init__), sources/, cache, gender, generic, data
     processors/              # filename_parser, search_query, similarity, title_case, studio_name,
                              #   abbreviations, actor_strip
     concurrency/             # pools (named thread pools), coalescer, single_flight
@@ -840,7 +840,7 @@ cleaned on its next refresh), which is why no individual client has to implement
 actor names for Plex. It is a small pipeline: a stateless transform built from a
 tokenizer, a per-word rule engine driven by lookup tables, and a post-process
 regex stage. It is invoked by `MetadataMapper` (clean title + genre labels) and
-`MatchService` (display title) and by `PeopleManager` (actor names, `type='name'`),
+`MatchService` (display title) and by `PeopleResolver` (actor names, `type='name'`),
 so it runs on every result and every actor name.
 
 ### A.1 Pipeline
