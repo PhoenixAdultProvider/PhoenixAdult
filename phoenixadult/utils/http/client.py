@@ -80,3 +80,17 @@ def shared_http(tag: str, **overrides: Any) -> httpx2.AsyncClient:
         client = make_http(**overrides)
         by_tag[tag] = client
     return client
+
+
+async def read_capped(response: httpx2.Response, limit: int, *, truncate: bool = False) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in response.aiter_bytes():
+        if total + len(chunk) > limit:
+            if not truncate:
+                raise ValueError(f'response from {response.url} exceeds {limit} bytes')
+            chunks.append(chunk[: limit - total])
+            break
+        total += len(chunk)
+        chunks.append(chunk)
+    return b''.join(chunks)

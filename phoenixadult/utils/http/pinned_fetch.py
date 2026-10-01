@@ -5,7 +5,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 import httpx2
 
 from phoenixadult.config.env import env
-from phoenixadult.utils.http.client import make_http
+from phoenixadult.utils.http.client import make_http, read_capped
 from phoenixadult.utils.http.ssrf_guard import resolve_public_ip
 
 _MAX_HOPS = 3
@@ -17,7 +17,7 @@ def _ip_netloc(ip: str, port: int | None) -> str:
     return f'{host}:{port}' if port else host
 
 
-async def fetch_pinned(url: str, headers: dict[str, str] | None = None, timeout: float = 10.0) -> httpx2.Response:
+async def fetch_pinned(url: str, headers: dict[str, str] | None = None, timeout: float = 10.0, max_bytes: int | None = None) -> httpx2.Response:
     proxied = bool(env.https_proxy and env.https_proxy.strip())
     current = url
     overrides = {} if proxied else {'proxy': None}
@@ -36,11 +36,15 @@ async def fetch_pinned(url: str, headers: dict[str, str] | None = None, timeout:
                 hop_headers['Host'] = parts.netloc.rsplit('@', 1)[-1]
                 extensions = {'sni_hostname': host} if parts.scheme == 'https' else {}
                 request = client.build_request('GET', pinned_url, headers=hop_headers, extensions=extensions)
-            resp = await client.send(request)
+            resp = await client.send(request, stream=True)
             location = resp.headers.get('location', '')
             if resp.status_code in _REDIRECT_CODES and location:
                 await resp.aclose()
                 current = urljoin(current, location)
                 continue
-            return resp
+            try:
+                body = await read_capped(resp, max_bytes) if max_bytes is not None else await resp.aread()
+            finally:
+                await resp.aclose()
+            return httpx2.Response(resp.status_code, headers=resp.headers, content=body, request=resp.request)
     raise ValueError(f'too many redirects for {url}')

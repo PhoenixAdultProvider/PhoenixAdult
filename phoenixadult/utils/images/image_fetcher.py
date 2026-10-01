@@ -16,11 +16,10 @@ from phoenixadult.config.env import env
 from phoenixadult.config.env_catalog import parse_bytes
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.http.client import DEFAULT_UA, make_http
+from phoenixadult.utils.http.client import DEFAULT_UA, make_http, read_capped
 from phoenixadult.utils.http.headers import sanitize_header
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
 from phoenixadult.utils.http.pinned_fetch import fetch_pinned
-from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images.ext import is_image_content_type
 from phoenixadult.utils.logging.logger import logger
 
@@ -80,7 +79,7 @@ _dims_cache: TLRUCache[str, tuple[int, int] | None] = TLRUCache(maxsize=_DIMS_CA
 _DIMS_MISSING: tuple[int, int] = (-1, -1)
 
 
-def _max_bytes() -> int:
+def max_image_bytes() -> int:
     parsed = parse_bytes(env.image_max_bytes_raw or '')
     if parsed is None:
         return _DEFAULT_MAX_BYTES
@@ -111,28 +110,13 @@ async def _get_once(client: httpx2.AsyncClient, url: str, referer: str | None, c
     if cookie:
         headers['Cookie'] = sanitize_header(cookie)
 
-    cap = _max_bytes()
     async with client.stream('GET', url, headers=headers) as resp:
         resp.raise_for_status()
-        for redirect in resp.history:
-            loc = redirect.headers.get('location', '')
-            if loc:
-                target = str(redirect.url.join(loc))
-                try:
-                    await guard_target(target)
-                except ValueError as err:
-                    raise ValueError(f'blocked redirect to {target}: {err}') from err
         content_type = resp.headers.get('content-type', '')
         if not is_image_content_type(content_type):
             raise ValueError(f'non-image content-type "{content_type}" from {url}')
-        chunks: list[bytes] = []
-        total = 0
-        async for chunk in resp.aiter_bytes():
-            total += len(chunk)
-            if total > cap:
-                raise ValueError(f'image too large (> {cap} bytes) at {url}')
-            chunks.append(chunk)
-    return b''.join(chunks), content_type
+        data = await read_capped(resp, max_image_bytes())
+    return data, content_type
 
 
 def _accept_image_response(resp: httpx2.Response, url: str) -> tuple[bytes, str]:
@@ -141,8 +125,8 @@ def _accept_image_response(resp: httpx2.Response, url: str) -> tuple[bytes, str]
     data = resp.content
     if not is_image_content_type(content_type):
         raise ValueError(f'non-image content-type "{content_type}" ({len(data)} bytes) from {url}')
-    if len(data) > _max_bytes():
-        raise ValueError(f'image too large ({len(data)} bytes > {_max_bytes()}) at {url}')
+    if len(data) > max_image_bytes():
+        raise ValueError(f'image too large ({len(data)} bytes > {max_image_bytes()}) at {url}')
     return data, content_type
 
 
@@ -152,7 +136,7 @@ async def _get_once_pinned(url: str, referer: str | None, cookie: str | None) ->
         headers['Referer'] = sanitize_header(referer)
     if cookie:
         headers['Cookie'] = sanitize_header(cookie)
-    resp = await fetch_pinned(url, headers)
+    resp = await fetch_pinned(url, headers, max_bytes=max_image_bytes())
     return _accept_image_response(resp, url)
 
 
@@ -326,21 +310,14 @@ async def _probe_dims(url: str, referers: list[str] | None, cookies: list[str] |
         if cookie_header:
             headers['Cookie'] = sanitize_header(cookie_header)
         try:
-            resp = await client.get(url, headers=headers)
-            responded = True
-            absent = resp.status_code in (404, 410)
-            for redirect in resp.history:
-                loc = redirect.headers.get('location', '')
-                if loc:
-                    target = str(redirect.url.join(loc))
-                    try:
-                        await guard_target(target)
-                    except ValueError as err:
-                        raise ValueError(f'blocked redirect to {target}: {err}') from err
-            resp.raise_for_status()
-            if not is_image_content_type(resp.headers.get('content-type', '')):
-                continue
-            if dims := await run_in('image', _dims_from_head, resp.content):
+            async with client.stream('GET', url, headers=headers) as resp:
+                responded = True
+                absent = resp.status_code in (404, 410)
+                resp.raise_for_status()
+                if not is_image_content_type(resp.headers.get('content-type', '')):
+                    continue
+                head = await read_capped(resp, _PROBE_HEAD_BYTES, truncate=True)
+            if dims := await run_in('image', _dims_from_head, head):
                 return dims, True
         except Exception as err:  # noqa: BLE001 - `responded` already records whether the host answered at all
             logger.debug(f'dimension probe failed for {url}: {err!r}')

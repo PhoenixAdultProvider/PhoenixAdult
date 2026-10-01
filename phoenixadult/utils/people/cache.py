@@ -17,11 +17,12 @@ from phoenixadult.utils import db
 from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
-from phoenixadult.utils.http.client import shared_http
+from phoenixadult.utils.http.client import read_capped, shared_http
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
 from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content_type
+from phoenixadult.utils.images.image_fetcher import max_image_bytes
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people.image_source import GENERIC_SOURCE, source_for_url
@@ -207,13 +208,13 @@ async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[byt
         logger.warn('people-cache', f'refusing to fetch {url}: {err}')
         return None
     try:
-        resp = await shared_http('people-image').get(url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})})
-        resp.raise_for_status()
-        content_type = resp.headers.get('content-type', 'image/jpeg')
-        if is_image_content_type(content_type):
-            return resp.content, content_type
-            logger.debug('people-cache', f'plain fetch returned non-image ({content_type}) for {url}; trying impersonate')
-    except (httpx2.HTTPError, OSError) as err:
+        async with shared_http('people-image').stream('GET', url, headers={'User-Agent': 'Mozilla/5.0', **(headers or {})}) as resp:
+            resp.raise_for_status()
+            content_type = resp.headers.get('content-type', 'image/jpeg')
+            if is_image_content_type(content_type):
+                return await read_capped(resp, max_image_bytes()), content_type
+        logger.debug('people-cache', f'plain fetch returned non-image ({content_type}) for {url}; trying impersonate')
+    except (httpx2.HTTPError, OSError, ValueError) as err:
         logger.debug('people-cache', f'plain fetch failed {url}: {err}; trying impersonate')
     got = await impersonate_get_bytes(url, headers)
     if got:
@@ -253,7 +254,7 @@ async def cache_photo(
         return None
     data, content_type = fetched
 
-    if len(data) > 20 * 1024 * 1024:
+    if len(data) > max_image_bytes():
         logger.warn('people-cache', f'image too large {upstream_url}')
         return None
 
