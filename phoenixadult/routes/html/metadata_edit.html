@@ -191,15 +191,12 @@
     var LOCKS = {{ locks|tojson }};
     var MAPPING_SLUG = {{ mapping_slug|tojson }};
     var SOURCE_JSON = {{ source_json|tojson }};
-    var SFW = readSfw();
 
     function paintSfwToggle() {
       paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
     }
 
-    function toggleSfw() {
-      SFW = !SFW;
-      persistSfw(SFW);
+    function repaintSfw() {
       paintSfwToggle();
       renderImages();
     }

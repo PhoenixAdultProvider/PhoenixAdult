@@ -228,15 +228,12 @@
     var showPotential = false;
     var showBroken = false;
     var STORE_KEY = 'metadata-cache-filters';
-    var SFW = readSfw();
 
     function paintSfwToggle() {
       paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide every image preview');
     }
 
-    function toggleSfw() {
-      SFW = !SFW;
-      persistSfw(SFW);
+    function repaintSfw() {
       paintSfwToggle();
       render();
     }

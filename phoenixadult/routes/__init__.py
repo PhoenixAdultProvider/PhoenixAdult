@@ -12,6 +12,7 @@ from phoenixadult import __version__
 from phoenixadult.config.env import env
 from phoenixadult.routes.assets import asset_version
 from phoenixadult.routes.theme_view import THEMES_BY_MODE, theme_view
+from phoenixadult.utils.auth.passwords import PASSWORD_RULE
 
 THEME_NAMES = tuple(name for names in THEMES_BY_MODE.values() for name in names)
 FONT_NAMES = ('archivo-latin', 'jetbrains-mono-latin')
@@ -55,6 +56,7 @@ _jinja.globals['theme_version'] = theme_version
 _jinja.globals['theme_versions'] = theme_versions
 _jinja.globals['is_admin'] = is_admin
 _jinja.globals['app_version'] = app_version
+_jinja.globals['password_rule'] = PASSWORD_RULE
 
 
 def render_page(name: str, **context: Any) -> str:

@@ -110,7 +110,6 @@
     var CROP_AVAILABLE = {{ crop_available|tojson }};
     var RECORDED_SOURCES = {{ recorded_sources|tojson }};
     var UNCROPPED_SOURCES = ['IAFD'];
-    var SFW = readSfw();
 
     function leave() { location.href = '/people#' + ENTRY.type; }
 
@@ -201,7 +200,7 @@
       qs('fetchStatus').textContent = 'Found at ' + payload.source + ' — save to apply' + note;
     };
 
-    function paintSfw() {
+    function repaintSfw() {
       document.body.classList.toggle('sfw', SFW);
       paintSfwButton(SFW, 'Previews are hidden and never downloaded', 'Hide the preview images');
       const cached = qs('cachedImg');
@@ -214,13 +213,7 @@
       }
     }
 
-    function toggleSfw() {
-      SFW = !SFW;
-      persistSfw(SFW);
-      paintSfw();
-    }
-
-    paintSfw();
+    repaintSfw();
 
     qs('iafdLink').href = 'https://www.iafd.com/results.asp?searchtype=comprehensive&searchstring=' + encodeURIComponent(ENTRY.name || '').replace(/%20/g, '+');
 

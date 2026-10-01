@@ -90,15 +90,12 @@ Add one below, or drop a file into a studio folder there and click Rescan.{% end
     }
 
 
-    var SFW = readSfw();
 
     function paintSfwToggle() {
       paintSfwButton(SFW, 'Logo artwork is hidden and never downloaded', 'Hide every logo preview');
     }
 
-    function toggleSfw() {
-      SFW = !SFW;
-      persistSfw(SFW);
+    function repaintSfw() {
       paintSfwToggle();
       render();
     }

@@ -6,6 +6,12 @@
   const SFW_KEY = 'metadata-sfw';
   function readSfw() { try { return localStorage.getItem(SFW_KEY) === '1'; } catch { return false; } }
   function persistSfw(on) { try { localStorage.setItem(SFW_KEY, on ? '1' : '0'); } catch {} }
+  var SFW = readSfw();
+  function toggleSfw() {
+    SFW = !SFW;
+    persistSfw(SFW);
+    repaintSfw();
+  }
   function paintSfwButton(on, titleOn, titleOff) {
     const btn = qs('sfwToggle');
     if (!btn) return;

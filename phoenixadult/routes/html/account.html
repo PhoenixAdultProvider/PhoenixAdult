@@ -113,6 +113,7 @@
 
 {% endblock %}
 {% block scripts %}
+  {% include 'password_tools.html' %}
   <script>
     var hdr = { 'Content-Type': 'application/json' };
     var HOOK_PREFIX = {{ hook_prefix | tojson }};
@@ -135,44 +136,7 @@
     function fmt(ts) { return ts ? new Date(ts * 1000).toLocaleString() : '—'; }
     function setStatus(id, msg, kind) { const el = document.getElementById(id); el.textContent = msg; el.className = 'status' + (kind ? ' ' + kind : ''); }
 
-    var RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
-
-    document.querySelectorAll('.reveal').forEach((toggle) => {
-      toggle.addEventListener('click', () => {
-        const field = document.getElementById(toggle.dataset.for);
-        const show = field.type === 'password';
-        field.type = show ? 'text' : 'password';
-        field.classList.toggle('revealed', show);
-        toggle.textContent = show ? 'Hide' : 'Show';
-      });
-    });
-
-    function policyError(pw) {
-      const ok = pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
-      return ok ? '' : RULE;
-    }
-
-    var METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-    var meterTimer = 0;
-    document.getElementById('newPw').addEventListener('input', (e) => {
-      clearTimeout(meterTimer);
-      const value = e.target.value;
-      const meter = document.getElementById('pwMeter');
-      if (!value) { meter.hidden = true; document.getElementById('pwMeterText').textContent = ''; return; }
-      meterTimer = setTimeout(async () => {
-        try {
-          const res = await fetch('/api/password-strength', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: value }),
-          });
-          const data = await res.json();
-          meter.hidden = false;
-          const fill = document.getElementById('pwMeterFill');
-          fill.dataset.score = data.score;
-          fill.style.width = (data.score + 1) * 20 + '%';
-          document.getElementById('pwMeterText').textContent = 'Strength: ' + METER_LABELS[data.score] + (data.feedback ? ' — ' + data.feedback : '');
-        } catch (e) {}
-      }, 250);
-    });
+    wirePasswordMeter(document.getElementById('newPw'));
 
     async function changePassword() {
       const cur = document.getElementById('curPw').value, nw = document.getElementById('newPw').value, cf = document.getElementById('confPw').value;

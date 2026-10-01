@@ -92,7 +92,6 @@
       el.className = 'tally' + (kind ? ' ' + kind : '');
     }
 
-    function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function studio() { return document.getElementById('studio').value; }
     function rowFor(alias) { return document.querySelector(`.lrow[data-alias="${CSS.escape(alias)}"]`); }
 

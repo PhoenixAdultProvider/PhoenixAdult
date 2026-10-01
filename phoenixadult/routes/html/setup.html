@@ -60,50 +60,14 @@
   </form>
 {% endblock %}
 {% block scripts %}
+  {% include 'password_tools.html' %}
   <script>
     const form = document.getElementById('setupForm');
     const err = document.getElementById('err');
     const btn = document.getElementById('submitBtn');
     const pwField = document.getElementById('password');
     const confirmField = document.getElementById('confirm');
-    const RULE = 'Password needs 8+ characters with an uppercase letter, a number, and a special character.';
-
-    document.querySelectorAll('.reveal').forEach((toggle) => {
-      toggle.addEventListener('click', () => {
-        const field = document.getElementById(toggle.dataset.for);
-        const show = field.type === 'password';
-        field.type = show ? 'text' : 'password';
-        field.classList.toggle('revealed', show);
-        toggle.textContent = show ? 'Hide' : 'Show';
-      });
-    });
-
-    function policyError(pw) {
-      const ok = pw.length >= 8 && /[A-Z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
-      return ok ? '' : RULE;
-    }
-
-    const METER_LABELS = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-    let meterTimer = 0;
-    pwField.addEventListener('input', () => {
-      clearTimeout(meterTimer);
-      const value = pwField.value;
-      const meter = document.getElementById('pwMeter');
-      if (!value) { meter.hidden = true; document.getElementById('pwMeterText').textContent = ''; return; }
-      meterTimer = setTimeout(async () => {
-        try {
-          const res = await fetch('/api/password-strength', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: value }),
-          });
-          const data = await res.json();
-          meter.hidden = false;
-          const fill = document.getElementById('pwMeterFill');
-          fill.dataset.score = data.score;
-          fill.style.width = (data.score + 1) * 20 + '%';
-          document.getElementById('pwMeterText').textContent = 'Strength: ' + METER_LABELS[data.score] + (data.feedback ? ' — ' + data.feedback : '');
-        } catch (e) {}
-      }, 250);
-    });
+    wirePasswordMeter(pwField);
 
     form.addEventListener('submit', (e) => {
       err.textContent = '';

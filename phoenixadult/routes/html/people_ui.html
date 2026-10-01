@@ -111,7 +111,6 @@
         location.href = '/people/edit?' + new URLSearchParams({filename}).toString();
       }
       var STORE_KEY = 'people-cache-filters';
-      var SFW = readSfw();
       function paintImages(){
         document.body.classList.toggle('sfw', SFW);
         // Only the cards on the current page get a src, so a big library never
@@ -125,9 +124,7 @@
         });
         paintSfwButton(SFW);
       }
-      function toggleSfw(){
-        SFW = !SFW;
-        persistSfw(SFW);
+      function repaintSfw() {
         paintImages();
       }
       function resetFilters(){
