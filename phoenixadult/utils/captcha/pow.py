@@ -15,6 +15,7 @@ from phoenixadult.utils.http.client import DEFAULT_UA, make_http
 from phoenixadult.utils.logging.logger import logger
 
 _HOST_CACHE_TTL = 30 * 60
+_MAX_DIFFICULTY = 26
 
 _COOKIES: SingleFlight[str, dict[str, str]] = SingleFlight(serve_stale=False)
 
@@ -88,6 +89,9 @@ async def get_verified_cookies(
             logger.warn('pow', f'turnstileConfig JSON parse failed for {host}: {err}')
             return None
 
+        if not isinstance(config.get('difficulty'), int) or not 0 < config['difficulty'] <= _MAX_DIFFICULTY:
+            logger.warn('pow', f'{host}: refusing proof-of-work difficulty {config.get("difficulty")!r} (ceiling {_MAX_DIFFICULTY})')
+            return None
         t0 = time.time()
         nonce = await asyncio.to_thread(solve_pow, config['challenge'], config['difficulty'])
         logger.info('pow', f'{host}: solved difficulty={config["difficulty"]} nonce={nonce} in {round((time.time() - t0) * 1000)}ms')
