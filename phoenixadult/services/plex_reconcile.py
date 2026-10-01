@@ -8,6 +8,7 @@ from typing import Any
 import httpx2
 from pydantic import Field
 
+from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.models.camel import CamelModel
 from phoenixadult.registry import PROVIDER_DEFINITIONS
@@ -17,6 +18,7 @@ from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.cache import scene_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.http.client import make_http
+from phoenixadult.utils.images import logo_cache
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.rating_key import parse_rating_key
@@ -308,9 +310,6 @@ class CollectionLogoReport(CamelModel):
 
 
 async def push_collection_logos(connection: Connection, token: str, apply: bool = False, limit: int | None = None) -> CollectionLogoReport:
-    from phoenixadult.config import image_base_url
-    from phoenixadult.utils.images import logo_cache
-
     report = CollectionLogoReport(applied=apply)
     base = (connection.image_base_url or image_base_url()).rstrip('/')
     cache_root = logo_cache.cache_dir()

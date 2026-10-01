@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from urllib.parse import quote
 
@@ -22,11 +22,12 @@ from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.helpers.dates import format_duration
 from phoenixadult.utils.helpers.ids import unpack_cur_id
-from phoenixadult.utils.helpers.scoring import title_distance_score
+from phoenixadult.utils.helpers.scoring import date_distance_score, title_distance_score
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.plex.responses import empty_media_container, media_container
+from phoenixadult.utils.processors.actor_strip import best_title_score
 from phoenixadult.utils.processors.filename_parser import get_site_name_from_registry
 from phoenixadult.utils.processors.search_query import build_search_pieces
 
@@ -56,9 +57,6 @@ def _result_scene_id(result: SearchResult) -> str | None:
 
 
 def _live_score(result: SearchResult, search_data: SearchContext) -> float:
-    from phoenixadult.utils.helpers.scoring import date_distance_score
-    from phoenixadult.utils.processors.actor_strip import best_title_score
-
     if search_data.scene_id and _result_scene_id(result) == search_data.scene_id:
         return 100.0
     if search_data.search_date and result.display_date and result.display_date != search_data.search_date:
@@ -67,8 +65,6 @@ def _live_score(result: SearchResult, search_data: SearchContext) -> float:
 
 
 def _live_scores(results: list[SearchResult], search_data: SearchContext) -> list[SearchResult]:
-    from dataclasses import replace
-
     rescored = [replace(result, score=_live_score(result, search_data)) for result in results]
     rescored.sort(key=lambda r: r.score or 0.0, reverse=True)
     return rescored

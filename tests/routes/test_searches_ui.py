@@ -75,7 +75,7 @@ def test_sweep_removes_only_expired_rows(monkeypatch) -> None:
 
 
 def test_research_purges_and_requeues_with_the_stored_query(monkeypatch) -> None:
-    from phoenixadult.routes import provider_router
+    from phoenixadult.routes import search_routes
 
     key = _seed(title='requeue me')
     captured: list[dict[str, str]] = []
@@ -84,7 +84,7 @@ def test_research_purges_and_requeues_with_the_stored_query(monkeypatch) -> None
         def requeue_search(self, replay, provider):
             captured.append(replay)
 
-    monkeypatch.setattr(provider_router, 'match_service_for', lambda pid: (object(), _FakeService()))
+    monkeypatch.setattr(search_routes, 'match_service_for', lambda pid: (object(), _FakeService()))
     client = authed_client()
     assert client.post('/searches/api/research', json={'keyHash': 'nope'}).status_code == 404
     r = client.post('/searches/api/research', json={'keyHash': key})

@@ -9,9 +9,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+from lxml import etree
+from PIL import Image
+from PIL.Image import Resampling
+
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
-from phoenixadult.utils.fs.paths import rel_to
+from phoenixadult.utils.fs.paths import rel_to, safe_join
 from phoenixadult.utils.images.logo_trim import trim
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
@@ -82,8 +86,6 @@ _SAFE_HREF_PREFIXES = ('#', 'data:')
 
 
 def _sanitize_svg(svg: Path) -> bool:
-    from lxml import etree
-
     parser = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)
     try:
         tree = etree.parse(str(svg), parser)
@@ -324,9 +326,6 @@ def preferred_well(path: Path, mtime: float, size: int, rel: str = '') -> str:
         return cached
     well = 'dark'
     try:
-        from PIL import Image
-        from PIL.Image import Resampling
-
         with Image.open(path) as im:
             converted: Image.Image = im.convert('RGBA')
             converted.thumbnail((96, 96), Resampling.NEAREST)
@@ -421,8 +420,6 @@ def entries() -> list[dict[str, Any]]:
 
 
 def purge(rel: str) -> bool:
-    from phoenixadult.utils.fs.paths import safe_join
-
     target = safe_join(str(cache_dir()), rel)
     if not target or not target.is_file() or not target.name.startswith('logo.'):
         return False

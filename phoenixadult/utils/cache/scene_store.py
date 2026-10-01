@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 from typing import Any, TypedDict
 
 from phoenixadult.utils import db
+from phoenixadult.utils.cache.layout import scene_hash_for
 
 _TAG_FIELDS = (
     ('Genre', 'scene_genres', 'genres', 'genre_id'),
@@ -262,8 +263,6 @@ def load(scene_hash: str) -> dict[str, Any] | None:
 
 
 def tags_for(site_name: str, cur_id: str) -> dict[str, list[str]] | None:
-    from phoenixadult.utils.cache.layout import scene_hash_for
-
     conn = db.connect()
     row = conn.execute('SELECT id FROM scenes WHERE hash = ?', (scene_hash_for(site_name, cur_id),)).fetchone()
     if row is None:

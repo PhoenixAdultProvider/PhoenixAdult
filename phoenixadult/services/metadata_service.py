@@ -22,7 +22,7 @@ from phoenixadult.utils.cache import metadata as metadata_cache
 from phoenixadult.utils.cache import people_backfill, scene_store, search_store, text_rules
 from phoenixadult.utils.concurrency.coalescer import Coalescer
 from phoenixadult.utils.concurrency.pools import run_in
-from phoenixadult.utils.helpers.ids import split_subsite
+from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode, split_subsite
 from phoenixadult.utils.http.connectivity import begin_transport_watch, internet_reachable, transport_failures
 from phoenixadult.utils.http.rate_limit_helper import PLEX_REQUEST_BUDGET, PacingDeferredError
 from phoenixadult.utils.http.ssrf_guard import ensure_fetchable_url
@@ -33,8 +33,6 @@ from phoenixadult.utils.plex.rating_key import parse_rating_key
 
 
 def queue_label(rating_key: str) -> str:
-    from phoenixadult.utils.helpers.ids import b64url_decode, b64url_encode
-
     parsed = parse_rating_key(rating_key)
     if not parsed or not parsed.get('site_name'):
         return rating_key

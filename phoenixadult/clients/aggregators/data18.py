@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import ClassVar
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 
 import httpx2
 from dateutil import parser as date_parser
@@ -283,8 +283,6 @@ class Data18Client(Client):
             )
 
     async def _fetch_search_page(self, clean_query: str, page: int) -> tuple[str, Selector] | None:
-        from urllib.parse import quote
-
         url = f'{_SEARCH_URL_TPL}{quote(clean_query)}&key2={quote(clean_query)}&next=1&page={page}'
         search_results = await self.fetch_and_load(url, label=f'[data18] search "{clean_query}" p{page}')
         if not search_results:

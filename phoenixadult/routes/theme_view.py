@@ -4,6 +4,8 @@ from contextvars import ContextVar
 
 from fastapi import Request
 
+from phoenixadult.utils.auth.user_auth import user_theme
+
 THEMES_BY_MODE: dict[str, tuple[str, ...]] = {'dark': ('midnight', 'forest'), 'light': ('sky', 'meadow')}
 VIEW_COOKIE = 'pa_view'
 
@@ -33,8 +35,6 @@ def _name_for(mode: str, saved: str | None, cookie: tuple[str, str] | None) -> s
 
 
 def theme_view() -> dict[str, str]:
-    from phoenixadult.utils.auth.user_auth import user_theme
-
     saved = user_theme()
     cookie = current_theme_view.get()
     dark = _name_for('dark', saved.get('dark'), cookie)

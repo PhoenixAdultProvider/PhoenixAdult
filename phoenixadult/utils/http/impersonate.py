@@ -5,6 +5,7 @@ import importlib.util
 from typing import Any
 
 from phoenixadult.utils.http.bypass_types import BypassRequest, BypassResponse
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images.ext import is_image_content_type
 from phoenixadult.utils.logging.logger import logger
 
@@ -63,7 +64,6 @@ impersonate_backend = _ImpersonateBackend()
 async def impersonate_get_bytes(url: str, headers: dict[str, str] | None = None, timeout_ms: int = 30_000) -> tuple[bytes, str] | None:
     if not impersonate_backend.is_available():
         return None
-    from phoenixadult.utils.http.ssrf_guard import guard_target
 
     try:
         await guard_target(url)

@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.routes import nav_username, read_json_body, render_page
+from phoenixadult.routes.provider_router import match_service_for
+from phoenixadult.utils import db
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import search_store
 from phoenixadult.utils.concurrency.pools import run_in
@@ -68,9 +70,6 @@ async def sweep() -> JSONResponse:
 
 @router.post('/api/research')
 async def research(request: Request) -> JSONResponse:
-    from phoenixadult.routes.provider_router import match_service_for
-    from phoenixadult.utils import db
-
     body = await read_json_body(request)
     key_hash = str(body.get('keyHash') or '')
     if not key_hash:

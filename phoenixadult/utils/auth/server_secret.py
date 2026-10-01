@@ -7,7 +7,7 @@ import os
 import threading
 from pathlib import Path
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from filelock import FileLock
 
 from phoenixadult.config.env import env
@@ -67,8 +67,6 @@ def encrypt(plaintext: str) -> str:
 
 
 def decrypt(token: str) -> str | None:
-    from cryptography.fernet import InvalidToken
-
     if not token:
         return None
     try:

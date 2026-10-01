@@ -8,7 +8,9 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from phoenixadult import __version__
 from phoenixadult.config.env import env
+from phoenixadult.routes.assets import asset_version
 from phoenixadult.routes.theme_view import THEMES_BY_MODE, theme_view
 
 THEME_NAMES = tuple(name for names in THEMES_BY_MODE.values() for name in names)
@@ -26,8 +28,6 @@ _NAV_CONFIG_ITEM = ('config', 'Config', '/config')
 
 
 def nav_items() -> list[tuple[str, str, str]]:
-    from phoenixadult.utils.auth.user_auth import is_admin
-
     searches = (_NAV_SEARCHES_ITEM,) if is_admin() else ()
     return [*_NAV_ITEMS, *searches, *((_NAV_DEV_ITEM,) if env.dev_ui_enabled else ()), _NAV_CONFIG_ITEM]
 
@@ -36,14 +36,10 @@ from phoenixadult.utils.auth.user_auth import is_admin, user_theme  # noqa: E402
 
 
 def app_version() -> str:
-    from phoenixadult import __version__
-
     return __version__
 
 
 def theme_version(name: str) -> str:
-    from phoenixadult.routes.assets import asset_version
-
     return asset_version(Path(__file__).parent / 'html' / 'themes' / f'{name}.css')
 
 

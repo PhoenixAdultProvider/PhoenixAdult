@@ -12,6 +12,7 @@ from phoenixadult.config.env import env
 from phoenixadult.registry import find_site
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.routes.provider_router import service_for
+from phoenixadult.services.metadata_service import queue_label
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.cache import duplicates as cache_duplicates
 from phoenixadult.utils.cache import integrity as cache_integrity
@@ -195,8 +196,6 @@ async def refresh_bulk(request: Request) -> JSONResponse:
     keys = data.get('keys')
     if not isinstance(keys, list) or not keys or not all(isinstance(k, str) and '/' in k for k in keys):
         return JSONResponse({'ok': False, 'error': 'bad keys'}, status_code=400)
-
-    from phoenixadult.services.metadata_service import queue_label
 
     def _targets() -> list[tuple[dict[str, Any] | None, str]]:
         found = [scene_store.scrape_target(key) for key in keys]

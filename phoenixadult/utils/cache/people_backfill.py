@@ -11,6 +11,7 @@ from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.people import PeopleResolver, to_plex_roles
+from phoenixadult.utils.plex.rating_key import to_guid
 from phoenixadult.utils.processors.title_case import title_sort
 
 if TYPE_CHECKING:
@@ -125,7 +126,6 @@ async def backfill_people_images(
 
 def backfill_metadata_attrs(response: PlexMetadataResponse) -> bool:
     from phoenixadult.registry import PROVIDER_DEFINITIONS
-    from phoenixadult.utils.plex.rating_key import to_guid
 
     changed = False
     for md in response.MediaContainer.Metadata:

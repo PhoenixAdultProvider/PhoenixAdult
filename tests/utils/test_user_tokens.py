@@ -36,10 +36,8 @@ def test_no_tokens_anywhere_means_none() -> None:
 
 
 def test_env_token_migrates_into_the_first_admin_once(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.config import env_overrides
-
     admin = user_store.create_user('one', 'pw', is_admin=True)
-    monkeypatch.setattr(env_overrides, 'clear_override', lambda _key: None)
+    monkeypatch.setattr(user_tokens, 'clear_override', lambda _key: None)
     monkeypatch.setitem(os.environ, 'METADATAAPI_TOKEN', 'env-tok')
     assert user_tokens.migrate_env_token() is True
     assert user_tokens.token_for_user(admin) == 'env-tok'

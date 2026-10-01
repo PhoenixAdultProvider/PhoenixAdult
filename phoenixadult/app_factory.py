@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -14,6 +15,10 @@ from phoenixadult.config import base_url_config_warning, config
 from phoenixadult.config.env import env
 from phoenixadult.registry import get_all_providers
 from phoenixadult.routes import (
+    FONT_NAMES,
+    THEME_NAMES,
+    assets,
+    auth_routes,
     dev_routes,
     env_routes,
     image_routes,
@@ -23,42 +28,48 @@ from phoenixadult.routes import (
     plex_routes,
     queue_routes,
     search_routes,
+    users_routes,
 )
-from phoenixadult.routes.provider_router import create_provider_router
+from phoenixadult.routes.provider_router import create_provider_router, restore_queue
+from phoenixadult.services import plex_connections
+from phoenixadult.services.scrape_queue import lane_workers
+from phoenixadult.utils.auth import user_store, user_tokens
+from phoenixadult.utils.auth.hook_middleware import HookPathMiddleware
+from phoenixadult.utils.auth.image_guard import FORBIDDEN_PAGE, ImageAccessDenied
+from phoenixadult.utils.auth.user_auth import LoginRequired
+from phoenixadult.utils.cache import bundle_sweep, scene_store
+from phoenixadult.utils.cache.layout import BUNDLE_ROOT
 from phoenixadult.utils.concurrency import pools
+from phoenixadult.utils.concurrency.gate import limits
+from phoenixadult.utils.concurrency.pools import sizes
+from phoenixadult.utils.db import maintenance
 from phoenixadult.utils.http.security_headers import SecurityHeadersMiddleware
+from phoenixadult.utils.images import logo_cache
 from phoenixadult.utils.logging.logger import configure_logging, logger
 from phoenixadult.utils.logging.request_context import RequestContextMiddleware
+from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
 from phoenixadult.utils.logging.uvicorn_logging import configure_uvicorn_logging
+from phoenixadult.utils.people import cache as people_cache
+from phoenixadult.utils.plex import client_hits
 from phoenixadult.utils.plex.media_type import provider_mount_path
 
 
 def _log_startup_banner() -> None:
-    from phoenixadult import __version__
-
     logger.info(f'PhoenixAdult {__version__} — Plex Metadata Provider running on port {config.port}')
     for p in get_all_providers():
         logger.info(f'  Register in Plex → Settings > Metadata Agents > Add Provider: {config.base_url}{provider_mount_path(p)}   ({p.title})')
 
     logger.info('  The provider mount is open to any client; set LOG_LEVEL=verbose to dump the headers of every request it receives')
 
-    from phoenixadult.services.scrape_queue import lane_workers
-    from phoenixadult.utils.concurrency.gate import limits
-    from phoenixadult.utils.concurrency.pools import sizes
-
     logger.info(f'  Thread pools: {", ".join(f"{n}={w}" for n, w in sizes().items())}')
     logger.info(f'  Queue lanes:  {", ".join(f"{n}={w}" for n, w in lane_workers().items())}')
     logger.info(f'  Fan-out caps: {", ".join(f"{n}={w}" for n, w in limits().items())} (process-wide, not per scene)')
     logger.info(f'  Bypass chain: {env.bypass_order_raw or "(default)"} · FlareSolverr {env.flaresolverr_url or "not configured"}')
 
-    from phoenixadult.utils.logging.response_trace import dump_dir, tracing_wanted
-
     if tracing_wanted():
         logger.info(f'  Response body dumps: ON — raw pages land in {dump_dir()}')
     else:
         logger.info(f'  Response body dumps: OFF — set HTTP_BODY_DUMP=true to write raw pages to {dump_dir()}')
-
-    from phoenixadult.utils.auth import user_store
 
     if user_store.user_count() == 0:
         logger.info(f'  First run — create the admin account at {config.base_url}/setup')
@@ -74,16 +85,12 @@ def _log_startup_banner() -> None:
 
 
 def _migrate_plex_env() -> None:
-    from phoenixadult.services import plex_connections
-
     migrated = plex_connections.migrate_env_connection()
     if migrated:
         logger.info('plex-connections', f'migrated the PLEX_* settings into the "{migrated}" connection')
 
 
 def _migrate_metadataapi_env() -> None:
-    from phoenixadult.utils.auth import user_tokens
-
     if user_tokens.migrate_env_token():
         logger.info('config', 'migrated METADATAAPI_TOKEN into the first admin account')
 
@@ -96,8 +103,6 @@ async def _try_startup(label: str, fn: Callable[[], object]) -> None:
 
 
 async def _backup_task() -> None:
-    from phoenixadult.utils.db import maintenance
-
     hours = env.db_backup_interval_hours
     if hours <= 0:
         return
@@ -109,9 +114,6 @@ async def _backup_task() -> None:
 
 
 def _warn_on_legacy_snapshots() -> None:
-    from phoenixadult.utils.cache import scene_store
-    from phoenixadult.utils.cache.layout import BUNDLE_ROOT
-
     stale = scene_store.legacy_count(f'{BUNDLE_ROOT}/%')
     if stale:
         logger.warn(f'{stale} snapshot(s) still use the pre-{BUNDLE_ROOT} folder layout — run scripts/migrate_snapshot_layout.py --apply')
@@ -121,11 +123,6 @@ def _warn_on_legacy_snapshots() -> None:
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     configure_uvicorn_logging()
     _log_startup_banner()
-    from phoenixadult.routes.provider_router import restore_queue
-    from phoenixadult.utils.cache import bundle_sweep
-    from phoenixadult.utils.db import maintenance
-    from phoenixadult.utils.images import logo_cache
-    from phoenixadult.utils.people import cache as people_cache
 
     await _try_startup('db integrity check', maintenance.startup_recover_if_corrupt)
     await _try_startup('snapshot layout check', _warn_on_legacy_snapshots)
@@ -154,9 +151,6 @@ def _install_middleware(app: FastAPI) -> None:
     app.add_middleware(RequestContextMiddleware)
 
     # ── Plex Client Tracking (records hits; resolves the owner's enrichment token) ─
-    from phoenixadult.services import plex_connections
-    from phoenixadult.utils.auth import user_tokens
-    from phoenixadult.utils.plex import client_hits
 
     @app.middleware('http')
     async def plex_client_middleware(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
@@ -169,15 +163,11 @@ def _install_middleware(app: FastAPI) -> None:
                 user_tokens.current_metadataapi_token.set(token)
         return await call_next(request)  # type: ignore[no-any-return]
 
-    from phoenixadult.utils.auth.hook_middleware import HookPathMiddleware
-
     app.add_middleware(HookPathMiddleware)
 
 
 def _mount_routers(app: FastAPI) -> None:
     # ── Authentication (login / setup / logout / account) ────────────────────
-    from phoenixadult.routes import auth_routes
-
     app.include_router(auth_routes.public_router)
     app.include_router(auth_routes.router)
 
@@ -194,7 +184,6 @@ def _mount_routers(app: FastAPI) -> None:
     app.include_router(env_routes.router, prefix='/config')
 
     # ── User Accounts (admin only) ───────────────────────────────────────────
-    from phoenixadult.routes import users_routes
 
     app.include_router(users_routes.router, prefix='/users')
 
@@ -222,7 +211,6 @@ def _mount_routers(app: FastAPI) -> None:
 
 def _install_error_pages(app: FastAPI) -> None:
     # ── Image Guard 403 (HTML page for browsers, JSON for API callers) ───────
-    from phoenixadult.utils.auth.image_guard import FORBIDDEN_PAGE, ImageAccessDenied
 
     @app.exception_handler(ImageAccessDenied)
     async def image_access_denied(request: Request, exc: ImageAccessDenied) -> Response:
@@ -231,10 +219,6 @@ def _install_error_pages(app: FastAPI) -> None:
         return JSONResponse({'error': 'Direct image access is not allowed'}, status_code=403)
 
     # ── Login Required (redirect browsers to /login, JSON 401 for API callers) ─
-    from urllib.parse import quote
-
-    from phoenixadult.utils.auth import user_store
-    from phoenixadult.utils.auth.user_auth import LoginRequired
 
     @app.exception_handler(LoginRequired)
     async def login_required(request: Request, exc: LoginRequired) -> Response:
@@ -256,8 +240,6 @@ def _install_static_routes(app: FastAPI) -> None:
     # ── Favicon (silences the browser's /favicon.ico request) ────────────────
     _html_dir = Path(__file__).parent / 'routes' / 'html'
 
-    from phoenixadult.routes import assets
-
     @app.get('/favicon.ico', include_in_schema=False)
     async def favicon_ico(request: Request) -> Response:
         return assets.css_response(_html_dir / 'favicon.ico', request, '', media_type='image/x-icon')
@@ -267,7 +249,6 @@ def _install_static_routes(app: FastAPI) -> None:
         return assets.css_response(_html_dir / 'favicon.svg', request, '', media_type='image/svg+xml')
 
     # ── Theme Stylesheets (public — colors only, needed before any auth) ─────
-    from phoenixadult.routes import FONT_NAMES, THEME_NAMES
 
     @app.get('/themes/{name}.css', include_in_schema=False)
     async def theme_css(name: str, request: Request, v: str = '') -> Response:

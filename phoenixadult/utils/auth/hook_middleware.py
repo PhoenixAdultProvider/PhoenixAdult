@@ -7,6 +7,7 @@ from typing import Any
 from phoenixadult.utils.auth import rate_limit, user_store
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.plex.media_type import provider_mount_path
 
 Scope = dict[str, Any]
 Message = dict[str, Any]
@@ -19,7 +20,6 @@ HOOK_PREFIX = '/api/hook/'
 
 def _provider_mounts() -> tuple[str, ...]:
     from phoenixadult.registry import get_all_providers
-    from phoenixadult.utils.plex.media_type import provider_mount_path
 
     return tuple(provider_mount_path(p) for p in get_all_providers())
 

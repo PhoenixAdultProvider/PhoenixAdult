@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from phoenixadult.config.env import env
 from phoenixadult.models.capture import RawCaptureEntry
 from phoenixadult.utils.logging.logger import logger, verbose_enabled
 
@@ -43,8 +44,6 @@ def capture_open() -> bool:
 
 
 def dumping_forced() -> bool:
-    from phoenixadult.config.env import env
-
     return env.http_body_dump
 
 
@@ -53,8 +52,6 @@ def tracing_wanted() -> bool:
 
 
 def _clip(body: str) -> str:
-    from phoenixadult.config.env import env
-
     cap = env.log_body_max_chars
     if cap <= 0 or len(body) <= cap:
         return body
@@ -89,8 +86,6 @@ def _record(label: str, body: str, content_type: str) -> None:
 
 
 def dump_dir() -> Path:
-    from phoenixadult.config.env import env
-
     return Path(env.log_dir) / 'dumps'
 
 

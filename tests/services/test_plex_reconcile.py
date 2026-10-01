@@ -210,7 +210,7 @@ async def test_collection_logos_pushes_matching_logo(monkeypatch: pytest.MonkeyP
     from phoenixadult.utils.images import logo_cache
 
     logo_cache.invalidate()
-    monkeypatch.setattr('phoenixadult.config.image_base_url', lambda: 'http://192.0.2.20:3000')
+    monkeypatch.setattr('phoenixadult.services.plex_reconcile.image_base_url', lambda: 'http://192.0.2.20:3000')
     post, put = _mock_collections(candidates=[])
 
     report = await pr.push_collection_logos(connection, 'test-token', apply=True)

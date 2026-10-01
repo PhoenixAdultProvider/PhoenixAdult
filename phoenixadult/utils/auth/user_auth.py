@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from contextvars import ContextVar
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException, Request
 
@@ -90,7 +91,5 @@ async def csrf_guard(request: Request) -> None:
         raise HTTPException(status_code=403, detail='Cross-site request rejected')
     origin = request.headers.get('origin')
     if origin:
-        from urllib.parse import urlsplit
-
         if urlsplit(origin).netloc != request.url.netloc:
             raise HTTPException(status_code=403, detail='Cross-site request rejected')

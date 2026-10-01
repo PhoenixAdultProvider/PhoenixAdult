@@ -9,7 +9,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+from phoenixadult.config.env import env
 from phoenixadult.utils import db
+from phoenixadult.utils.http import rate_limit_helper as pacing
 from phoenixadult.utils.logging.logger import logger
 
 _MAX_PENDING = 10_000
@@ -329,8 +331,6 @@ def snapshot() -> dict[str, object]:
 def _estimate_eta(now: float) -> int | None:
     if not _pending:
         return None
-    from phoenixadult.config.env import env
-    from phoenixadult.utils.http import rate_limit_helper as pacing
 
     def avg(lane: str) -> float:
         samples = _durations[lane]

@@ -5,12 +5,16 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from phoenixadult.config import config
+from phoenixadult.config.env import env
+from phoenixadult.registry import get_all_providers
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth import rate_limit, user_store
 from phoenixadult.utils.auth.passwords import hash_token, password_error, password_strength
 from phoenixadult.utils.auth.user_auth import SESSION_COOKIE, csrf_guard, resolve_user, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.logging.logger import logger
+from phoenixadult.utils.plex.media_type import provider_mount_path
 
 public_router = APIRouter()
 router = APIRouter(dependencies=[Depends(user_auth_guard), Depends(csrf_guard)])
@@ -146,11 +150,6 @@ async def logout(request: Request) -> Response:
 
 
 def _provider_url_fields(api_key: str) -> dict[str, str]:
-    from phoenixadult.config import config
-    from phoenixadult.config.env import env
-    from phoenixadult.registry import get_all_providers
-    from phoenixadult.utils.plex.media_type import provider_mount_path
-
     mount = provider_mount_path(get_all_providers()[0])
     fields = {'hook_prefix': f'{config.base_url}/api/hook/', 'mount_path': mount}
     if not env.token_based_auth:

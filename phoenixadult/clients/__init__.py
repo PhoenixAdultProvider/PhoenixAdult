@@ -5,6 +5,7 @@ import inspect
 import pkgutil
 
 from phoenixadult.clients.base import Client, Enricher, set_enricher_factory
+from phoenixadult.registry import SITE_DEFINITIONS
 
 _NOT_A_SCRAPER = {'phoenixadult.clients.aggregators.data18'}
 
@@ -57,8 +58,6 @@ def is_paced(scraper_type: str) -> bool:
 
 
 def _assert_registry_consistent() -> None:
-    from phoenixadult.registry import SITE_DEFINITIONS
-
     missing = sorted({s.scraper_config.type for s in SITE_DEFINITIONS} - CLIENT_REGISTRY.keys())
     if missing:
         raise RuntimeError(f'selector scraper_type(s) with no registered client: {", ".join(missing)}')

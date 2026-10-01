@@ -4,6 +4,7 @@ import httpx2
 
 from phoenixadult.config.env import env
 from phoenixadult.utils.http.bypass_types import BypassRequest, BypassResponse
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.logging.logger import logger
 
 
@@ -30,8 +31,6 @@ class _FlareSolverrBackend:
             payload['cookies'] = [{'name': name, 'value': value} for name, value in req.cookies.items()]
         if cmd == 'request.post' and req.body is not None:
             payload['postData'] = req.body
-
-        from phoenixadult.utils.http.ssrf_guard import guard_target
 
         try:
             await guard_target(req.url)

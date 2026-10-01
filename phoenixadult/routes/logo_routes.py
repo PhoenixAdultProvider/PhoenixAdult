@@ -8,11 +8,13 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from phoenixadult.registry import canonical_site_display, find_site
+from phoenixadult.registry import canonical_site_display, find_site, get_all_providers, get_sites_for_provider
 from phoenixadult.routes import nav_username, read_json_body, render_page
 from phoenixadult.utils.auth.user_auth import admin_auth_guard, csrf_guard, user_auth_guard
 from phoenixadult.utils.concurrency.pools import run_in
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images import logo_cache, logo_template
+from phoenixadult.utils.images.image_fetcher import fetch_image
 from phoenixadult.utils.logging.logger import logger
 from phoenixadult.utils.processors.title_case import title_case
 
@@ -69,8 +71,6 @@ async def rescan() -> JSONResponse:
 
 
 def _site_catalog() -> dict[str, list[str]]:
-    from phoenixadult.registry import get_all_providers, get_sites_for_provider
-
     groups: dict[str, set[str]] = {}
     for provider in get_all_providers():
         for site in get_sites_for_provider(provider.id):
@@ -183,14 +183,10 @@ async def add_upload(studio: str = Form(''), alias: str = Form(''), file: Upload
 
 
 async def _reject_private_targets(url: str) -> None:
-    from phoenixadult.utils.http.ssrf_guard import guard_target
-
     await guard_target(url)
 
 
 async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
-    from phoenixadult.utils.images.image_fetcher import fetch_image
-
     problems: list[str] = []
     for url in urls:
         try:

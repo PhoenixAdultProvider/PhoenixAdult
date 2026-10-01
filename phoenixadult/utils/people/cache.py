@@ -6,6 +6,7 @@ import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
 from typing import get_args
+from urllib.parse import quote
 
 import httpx2
 from cachetools import LRUCache
@@ -13,10 +14,12 @@ from cachetools import LRUCache
 from phoenixadult.config import image_base_url
 from phoenixadult.config.env import env
 from phoenixadult.utils import db
+from phoenixadult.utils.auth.url_signing import sign_url
 from phoenixadult.utils.concurrency.pools import run_in
 from phoenixadult.utils.fs.paths import safe_join
 from phoenixadult.utils.http.client import shared_http
 from phoenixadult.utils.http.impersonate import impersonate_get_bytes
+from phoenixadult.utils.http.ssrf_guard import guard_target
 from phoenixadult.utils.images import face_crop, face_crop_log
 from phoenixadult.utils.images.ext import IMAGE_EXTS, ext_from, is_image_content_type
 from phoenixadult.utils.images.proxy import LOCAL_IMAGES
@@ -70,10 +73,6 @@ def _bust_token(relpath: str, data: bytes | None) -> str:
 
 
 def _local_url(relpath: str, data: bytes | None = None) -> str:
-    from urllib.parse import quote
-
-    from phoenixadult.utils.auth.url_signing import sign_url
-
     token = _bust_token(relpath, data)
     bust = f'?v={token}' if token else ''
     quoted = '/'.join(quote(part) for part in relpath.split('/'))
@@ -202,8 +201,6 @@ def lookup_cached(name: str, type: PersonType) -> dict[str, str] | None:
 
 
 async def _download_image(url: str, headers: dict[str, str] | None) -> tuple[bytes, str] | None:
-    from phoenixadult.utils.http.ssrf_guard import guard_target
-
     try:
         await guard_target(url)
     except ValueError as err:

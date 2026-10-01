@@ -9,6 +9,8 @@ from typing import Any
 from phoenixadult.config import config
 from phoenixadult.config.env import env
 from phoenixadult.utils.logging.context import HTTP, VERBOSE, AlignedFormatter, current_request_id
+from phoenixadult.utils.logging.redaction import RedactionFilter
+from phoenixadult.utils.logging.session_log import session_log
 
 _old_factory = logging.getLogRecordFactory()
 
@@ -45,9 +47,6 @@ def configure_logging(*, to_file: bool = True) -> None:
         return
     _configured = True
     logging.setLogRecordFactory(_record_factory)
-
-    from phoenixadult.utils.logging.redaction import RedactionFilter
-    from phoenixadult.utils.logging.session_log import session_log
 
     _base.addFilter(RedactionFilter())
     fmt = AlignedFormatter()

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import os
 import threading
 import time
 import uuid
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import ConfigDict
 
+from phoenixadult.config.env import env
+from phoenixadult.config.env_overrides import clear_override
 from phoenixadult.models.camel import CamelModel
 from phoenixadult.utils import db
+from phoenixadult.utils.auth import user_store
 from phoenixadult.utils.auth.server_secret import decrypt, encrypt
 
 _union_lock = threading.Lock()
@@ -148,7 +153,6 @@ def _read_union() -> frozenset[str]:
 
 def allowed_client_union() -> frozenset[str]:
     global _union_cache
-    from phoenixadult.config.env import env
 
     db_path = env.state_db_path
     with _union_lock:
@@ -179,12 +183,6 @@ _MIGRATED_KEYS = ('PLEX_URL', 'PLEX_TOKEN', 'PLEX_CLIENT_ID', 'PLEX_CLIENT_ALLOW
 
 
 def migrate_env_connection() -> str | None:
-    import os
-    from urllib.parse import urlsplit
-
-    from phoenixadult.config.env_overrides import clear_override
-    from phoenixadult.utils.auth import user_store
-
     url = (os.environ.get('PLEX_URL') or '').strip().rstrip('/')
     token = (os.environ.get('PLEX_TOKEN') or '').strip()
     if not url and not token:

@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from cachetools import TTLCache
 from dotenv import find_dotenv, load_dotenv
 
+from phoenixadult.config.env import env
 from phoenixadult.config.env_overrides import load_overrides
 
 load_dotenv(find_dotenv(usecwd=True))
@@ -72,8 +73,6 @@ def _local_ip(family: socket.AddressFamily, probe: str) -> str:
 
 
 def image_base_url() -> str:
-    from phoenixadult.config.env import env
-
     opt = env.image_base_url_raw
     if opt == 'localhost':
         return f'http://localhost:{config.port}'

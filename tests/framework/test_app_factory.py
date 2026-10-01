@@ -8,7 +8,7 @@ from phoenixadult.app_factory import _lifespan, create_app
 
 
 async def test_lifespan_survives_a_failing_reconcile(monkeypatch: pytest.MonkeyPatch) -> None:
-    from phoenixadult.routes import provider_router
+    from phoenixadult import app_factory
     from phoenixadult.utils.images import logo_cache
     from phoenixadult.utils.people import cache as people_cache
 
@@ -20,7 +20,7 @@ async def test_lifespan_survives_a_failing_reconcile(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(logo_cache, 'reconcile', _boom)
     monkeypatch.setattr(people_cache, 'reconcile', _boom)
-    monkeypatch.setattr(provider_router, 'restore_queue', _noop_restore)
+    monkeypatch.setattr(app_factory, 'restore_queue', _noop_restore)
 
     entered = False
     async with _lifespan(create_app()):

@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import Request
 
+from phoenixadult.config.env import env
 from phoenixadult.utils.logging.logger import logger, verbose_enabled
 from phoenixadult.utils.logging.redaction import MASK
 
@@ -12,8 +13,6 @@ _SECRET_HEADERS = frozenset({'authorization', 'cookie', 'proxy-authorization', '
 
 
 def _headers(request: Request) -> str:
-    from phoenixadult.config.env import env
-
     if env.log_redact_token:
         shown = {k: (MASK if k.lower() in _SECRET_HEADERS else v) for k, v in request.headers.items()}
     else:
