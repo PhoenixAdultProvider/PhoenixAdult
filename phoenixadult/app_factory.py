@@ -255,11 +255,11 @@ def _install_static_routes(app: FastAPI) -> None:
 
     @app.get('/favicon.ico', include_in_schema=False)
     async def favicon_ico(request: Request) -> Response:
-        return assets.css_response(_html_dir / 'favicon.ico', request, '', media_type='image/x-icon')
+        return assets.asset_response(_html_dir / 'favicon.ico', request, '', media_type='image/x-icon')
 
     @app.get('/favicon.svg', include_in_schema=False)
     async def favicon_svg(request: Request) -> Response:
-        return assets.css_response(_html_dir / 'favicon.svg', request, '', media_type='image/svg+xml')
+        return assets.asset_response(_html_dir / 'favicon.svg', request, '', media_type='image/svg+xml')
 
     # ── Theme Stylesheets (public — colors only, needed before any auth) ─────
 
@@ -267,7 +267,7 @@ def _install_static_routes(app: FastAPI) -> None:
     async def theme_css(name: str, request: Request, v: str = '') -> Response:
         if name not in THEME_NAMES:
             raise HTTPException(status_code=404, detail='unknown theme')
-        return assets.css_response(_html_dir / 'themes' / f'{name}.css', request, v)
+        return assets.asset_response(_html_dir / 'themes' / f'{name}.css', request, v)
 
     # ── Self-Hosted Fonts (public — the pages need them before any auth) ─────
     @app.get('/fonts/{name}.woff2', include_in_schema=False)
