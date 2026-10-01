@@ -4,12 +4,15 @@ from contextvars import ContextVar
 
 from fastapi import Request
 
-from phoenixadult.utils.auth.user_auth import user_theme
-
 THEMES_BY_MODE: dict[str, tuple[str, ...]] = {'dark': ('midnight', 'forest'), 'light': ('sky', 'meadow')}
 VIEW_COOKIE = 'pa_view'
 
 current_theme_view: ContextVar[tuple[str, str] | None] = ContextVar('current_theme_view', default=None)
+current_user_theme: ContextVar[dict[str, str] | None] = ContextVar('user_theme', default=None)
+
+
+def user_theme() -> dict[str, str]:
+    return current_user_theme.get() or {'dark': '', 'light': ''}
 
 
 def parse_view(raw: str | None) -> tuple[str, str] | None:

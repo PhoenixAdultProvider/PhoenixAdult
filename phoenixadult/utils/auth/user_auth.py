@@ -8,18 +8,15 @@ from fastapi import HTTPException, Request
 
 from phoenixadult.utils.auth import user_store, user_tokens
 from phoenixadult.utils.auth.passwords import hash_token
+from phoenixadult.utils.auth.theme_view import adopt as adopt_theme_view
+from phoenixadult.utils.auth.theme_view import current_user_theme
 from phoenixadult.utils.auth.user_store import AuthedUser
 from phoenixadult.utils.concurrency.pools import run_in
 
 SESSION_COOKIE = 'pa_session'
 _SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
-current_user_theme: ContextVar[dict[str, str] | None] = ContextVar('user_theme', default=None)
 current_user_is_admin: ContextVar[bool] = ContextVar('user_is_admin', default=False)
-
-
-def user_theme() -> dict[str, str]:
-    return current_user_theme.get() or {'dark': '', 'light': ''}
 
 
 def is_admin() -> bool:
@@ -49,8 +46,6 @@ async def resolve_user(request: Request) -> AuthedUser | None:
     cached = getattr(request.state, 'user', 'unset')
     if cached != 'unset':
         return cached  # type: ignore[return-value]
-
-    from phoenixadult.routes.theme_view import adopt as adopt_theme_view
 
     adopt_theme_view(request)
     user: AuthedUser | None = None

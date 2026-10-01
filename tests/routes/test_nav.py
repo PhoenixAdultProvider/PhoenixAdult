@@ -114,7 +114,7 @@ def test_the_theme_table_matches_the_server() -> None:
     from pathlib import Path as _Path
 
     import phoenixadult.routes as routes
-    from phoenixadult.routes.theme_view import THEMES_BY_MODE
+    from phoenixadult.utils.auth.theme_view import THEMES_BY_MODE
 
     text = (_Path(routes.__file__).parent / 'html' / 'theme.html').read_text(encoding='utf-8')
     found = re.search(r'const THEMES = \{ dark: \[([^\]]*)\], light: \[([^\]]*)\] \}', text)

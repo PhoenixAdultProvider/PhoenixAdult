@@ -410,3 +410,6 @@ async def _run(lane: str) -> None:
             _persist_remove(entry.key)
             _mark_done()
             _bump()
+
+
+pacing.on_ban(pause, ban_cleared)

@@ -17,8 +17,6 @@ _KNOWN_UPWARD = {
         'utils/cache/people_backfill.py',
         'utils/processors/studio_name.py',
     },
-    ('utils', 'services'): {'utils/http/rate_limit_helper.py'},
-    ('utils', 'routes'): {'utils/auth/user_auth.py'},
     ('config', 'utils'): {'config/env_overrides.py'},
 }
 
@@ -67,7 +65,7 @@ def test_the_known_upward_edges_are_still_the_only_ones() -> None:
     remaining = {f for files in _KNOWN_UPWARD.values() for f in files}
     for rel in remaining:
         assert (_ROOT / rel).exists(), f'{rel} is gone — drop it from _KNOWN_UPWARD so the list stays honest'
-    assert len(remaining) == 9, 'this only goes down, except when a module split moves one edge into the files that actually use it'
+    assert len(remaining) == 7, 'this only goes down, except when a module split moves one edge into the files that actually use it'
 
 
 def test_models_depends_on_nothing_above_it() -> None:
