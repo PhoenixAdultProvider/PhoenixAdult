@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 from dataclasses import dataclass
 from typing import Annotated, Any
 
@@ -244,21 +245,7 @@ async def state() -> JSONResponse:
     return JSONResponse({'token': await run_in('store', cache_listing.change_token)})
 
 
-_SCOPE_FIELDS = (
-    'studio',
-    'query',
-    'year',
-    'month',
-    'day',
-    'tagline',
-    'collection',
-    'data18',
-    'actor',
-    'genre',
-    'cast',
-    'director',
-    'producer',
-)
+_SCOPE_FIELDS = tuple(f.name for f in dataclasses.fields(scene_store.SceneFilter) if f.name not in ('provider_sites', 'dup_paths'))
 
 
 @dataclass

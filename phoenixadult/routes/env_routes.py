@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from phoenixadult.config.env import env
-from phoenixadult.config.env import env as _env
 from phoenixadult.config.env_catalog import (
     ENV_CATALOG,
     ENV_GROUP_ORDER,
@@ -66,7 +65,7 @@ def _build_state(user: dict[str, Any] | None = None, has_metadataapi_token: bool
     if not (user or {}).get('isAdmin'):
         return {'overridesPath': '', 'groups': [], 'tabs': [], 'user': user or {}, 'metadataapi': {'hasToken': has_metadataapi_token}}
 
-    hidden = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'} if _env.is_production else set()
+    hidden = {'LOG_REDACT_HOSTS', 'LOG_REDACT_TOKEN'} if env.is_production else set()
     by_group: dict[str, list[dict[str, Any]]] = {}
     for spec in ENV_CATALOG:
         if spec.key in hidden:

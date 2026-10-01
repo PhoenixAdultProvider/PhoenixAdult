@@ -182,15 +182,11 @@ async def add_upload(studio: str = Form(''), alias: str = Form(''), file: Upload
     return JSONResponse(_saved(rel))
 
 
-async def _reject_private_targets(url: str) -> None:
-    await guard_target(url)
-
-
 async def _first_image(urls: list[str]) -> tuple[bytes, str, str]:
     problems: list[str] = []
     for url in urls:
         try:
-            await _reject_private_targets(url)
+            await guard_target(url)
             got = await fetch_image(url)
         except Exception as err:  # noqa: BLE001 - report why the whole chain gave up
             problems.append(f'{url} ({err})')
