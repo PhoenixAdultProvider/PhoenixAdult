@@ -127,7 +127,7 @@ class MetadataService:
         self._mapper = MetadataMapper()
         self._memo: TTLCache[tuple[str, str, str], PlexMetadataResponse] = TTLCache(maxsize=_MEMO_MAX_ENTRIES, ttl=_MEMO_TTL_SECONDS)
         self._coalesce: Coalescer[tuple[str, str, str], PlexMetadataResponse | None] = Coalescer()
-        self._refresh_log: dict[tuple[str, str, str], list[float]] = {}
+        self._refresh_log: TTLCache[tuple[str, str, str], list[float]] = TTLCache(maxsize=_MEMO_MAX_ENTRIES * 8, ttl=_REFRESH_WINDOW_SECONDS)
 
     def _force_refresh_due(self, key: tuple[str, str, str]) -> bool:
         now = time.monotonic()
