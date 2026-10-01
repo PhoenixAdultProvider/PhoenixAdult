@@ -37,6 +37,40 @@ async def test_run_reexecutes_after_completion() -> None:
     assert await c.run('k', factory) == 2
 
 
+async def test_a_cancelled_first_caller_does_not_cancel_the_others() -> None:
+    c: Coalescer[str, int] = Coalescer()
+    gate = asyncio.Event()
+
+    async def factory() -> int:
+        await gate.wait()
+        return 42
+
+    leader = asyncio.create_task(c.run('k', factory))
+    await asyncio.sleep(0)
+    follower = asyncio.create_task(c.run('k', factory))
+    await asyncio.sleep(0)
+    leader.cancel()
+    await asyncio.sleep(0)
+    gate.set()
+    assert await follower == 42
+    assert leader.cancelled()
+
+
+async def test_the_work_finishes_after_its_only_caller_leaves() -> None:
+    c: Coalescer[str, int] = Coalescer()
+    finished = asyncio.Event()
+
+    async def factory() -> int:
+        await asyncio.sleep(0.01)
+        finished.set()
+        return 1
+
+    leader = asyncio.create_task(c.run('k', factory))
+    await asyncio.sleep(0)
+    leader.cancel()
+    await asyncio.wait_for(finished.wait(), timeout=1)
+
+
 async def test_coalesce_future_memoizes_for_dict_lifetime() -> None:
     cache: dict[str, asyncio.Future[int]] = {}
     calls = 0
