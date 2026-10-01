@@ -625,7 +625,7 @@
           .map((k) => '<tr><td class="c-key"><code>' + esc(k) + '</code></td><td>' + esc(String(h[k])) + '</td></tr>').join('');
         return '<h2>' + esc(String(title)) + '</h2><div class="card">'
           + '<div class="plex-row"><code>' + esc(c.clientId) + '</code>'
-          + '<button type="button" class="pa-btn pa-btn--sm" onclick="navigator.clipboard.writeText(\'' + esc(c.clientId) + '\')">Copy</button>'
+          + '<button type="button" class="pa-btn pa-btn--sm" data-copy="' + esc(c.clientId) + '" onclick="navigator.clipboard.writeText(this.dataset.copy)">Copy</button>'
           + '<span class="hint">' + c.count + ' hit(s) · first ' + esc(fmt(c.firstSeen)) + ' · last ' + esc(fmt(c.lastSeen))
           + ' · ' + esc(c.lastPath || '') + '</span></div>'
           + '<table class="users-table"><tbody>' + rows + '</tbody></table>'
@@ -663,7 +663,7 @@
           + '<td class="u-conns" data-label="Connections">' + u.connections + '</td>'
           + '<td class="actions">' + toggle
           + '<button type="button" class="pa-btn pa-btn--sm" onclick="resetUserPassword(' + u.id + ')">Reset Password</button>'
-          + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" onclick="deleteUser(' + u.id + ',\'' + esc(u.username) + '\')">Delete</button></td></tr>';
+          + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-name="' + esc(u.username) + '" onclick="deleteUser(' + u.id + ', this.dataset.name)">Delete</button></td></tr>';
       }).join('');
     }
 
@@ -1335,7 +1335,7 @@
       box.innerHTML = ids.map((cid) =>
         '<div class="srcitem"><span class="srcitem-name" data-real="' + esc(cid) + '">●●●●●●●●</span>'
         + '<button type="button" class="pa-btn pa-btn--sm" data-list-show="conn">Show</button>'
-        + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" onclick="removeAllowedClient(\'' + esc(cid) + '\')" title="Remove">×</button></div>'
+        + '<button type="button" class="pa-btn pa-btn--primary srcitem-x" data-cid="' + esc(cid) + '" onclick="removeAllowedClient(this.dataset.cid)" title="Remove">×</button></div>'
       ).join('') || '<span class="hint">empty — any Plex server may call the provider</span>';
     }
 
